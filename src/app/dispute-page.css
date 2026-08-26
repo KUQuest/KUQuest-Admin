@@ -1,0 +1,101 @@
+.dispute-page-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 15px;
+  border-radius: 12px;
+}
+.dispute-page-alert.active {
+  background: var(--danger);
+  color: var(--surface);
+}
+.dispute-page-alert.closed {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.dispute-page-alert > span {
+  flex: 0 0 auto;
+}
+.dispute-page-alert svg {
+  width: 24px;
+  height: 24px;
+}
+.dispute-page-alert > div {
+  min-width: 0;
+  flex: 1;
+}
+.dispute-page-alert strong,
+.dispute-page-alert p {
+  display: block;
+}
+.dispute-page-alert p {
+  max-width: 72ch;
+  margin: 3px 0 0;
+  color: inherit;
+  font-size: 12px;
+}
+.dispute-page-alert.active .badge {
+  color: var(--danger);
+  background: var(--surface);
+}
+.dispute-description {
+  color: var(--text);
+  font-size: 14px;
+}
+.dispute-page-allocation {
+  grid-template-columns: 1fr;
+}
+.dispute-overview {
+  display: grid;
+  gap: 18px;
+}
+.overview-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin: 0;
+}
+.overview-meta > div {
+  min-width: 0;
+}
+.overview-meta dt {
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+}
+.overview-meta dd {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.overview-group > span {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+.overview-group > p {
+  max-width: 74ch;
+  margin: 0;
+  color: var(--text);
+}
+.overview-group .record-panel-head {
+  margin: 0 0 8px;
+}
+.overview-group h3 {
+  margin: 0;
+  font-size: 12px;
+}
+@media (max-width: 700px) {
+  .dispute-page-alert {
+    flex-wrap: wrap;
+  }
+  .overview-meta {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}

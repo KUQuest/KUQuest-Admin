@@ -1,0 +1,21 @@
+:root { color-scheme: light; }
+.login-page { --accent: var(--success); --accent2: var(--success); --accent-soft: var(--success-soft); min-height: 100vh; background-color: var(--success-soft); background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 31px, #d3e3d5 32px); }
+.login-shell { width: min(420px, calc(100% - 40px)); min-height: 100vh; margin: auto; display: grid; align-items: center; padding: 48px 0; }
+.login-panel { width: min(100%, 420px); justify-self: center; padding: 32px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 1px 2px #1f21231f; }
+.login-brand { width: 100%; display: inline-flex; flex-direction: column; align-items: center; gap: 6px; color: var(--text); font-size: 22px; line-height: 1; font-weight: 700; text-align: center; text-decoration: none; }
+.login-brand img { width: 90px; height: 45px; display: block; object-fit: contain; flex: 0 0 auto; }
+.login-copy { margin: 40px 0 28px; }
+.login-copy h1 { margin: 0; color: var(--success); font-size: 24px; line-height: 1.25; letter-spacing: -.025em; }
+.login-copy p { max-width: 38ch; margin: 8px 0 0; color: var(--muted); }
+.login-panel form { display: grid; gap: 8px; }
+.login-panel label { font-size: 12px; font-weight: 600; }
+.login-panel input { width: 100%; height: 42px; padding: 0 12px; border: 1px solid var(--strong); border-radius: 8px; background: var(--surface); color: var(--text); }
+.login-panel input:focus { border-color: var(--accent); }
+.login-panel input:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
+.login-panel .field-help { display: block; margin: -2px 0 10px; color: var(--muted); font-size: 12px; }
+.password-label { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
+.text-button { padding: 0; border: 0; background: transparent; color: var(--accent); font-size: 12px; font-weight: 600; cursor: pointer; }
+.text-button:hover { color: var(--accent2); text-decoration: underline; text-underline-offset: 3px; }
+.login-error { margin: -1px 0 7px; color: var(--danger); font-size: 12px; font-weight: 600; }
+.login-submit { width: 100%; min-height: 42px; margin-top: 12px; }
+@media (max-width: 760px) { .login-shell { width: min(100% - 36px, 420px); display: block; padding: 36px 0; } .login-panel { width: 100%; padding: 24px; } .login-copy { margin-top: 32px; } .text-button { min-width: 44px; min-height: 44px; } }

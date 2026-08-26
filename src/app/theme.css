@@ -1,0 +1,30 @@
+/* KuQuest light-green operational theme. Semantic status colors remain distinct. */
+:root {
+  --bg: #edf7ef;
+  --soft: #f7fbf8;
+  --hover: #e7f3e9;
+  --text: #1d3525;
+  --muted: #5f7063;
+  --faint: #7e9082;
+  --border: #d3e3d5;
+  --strong: #a5bda9;
+  --accent: #176b43;
+  --accent2: #145a37;
+  --accent-soft: #e8f5ee;
+}
+
+*:focus-visible {
+  outline-color: var(--accent);
+}
+
+.sidebar {
+  background: #e3f0e5;
+  border-right-color: var(--border);
+}
+
+.sidebar button:hover { background: var(--surface); }
+.sidebar button.active { box-shadow: 0 1px 2px color-mix(in srgb, var(--accent) 12%, transparent); }
+.brand b { box-shadow: 0 2px 5px color-mix(in srgb, var(--accent) 24%, transparent); }
+.profile { border-top-color: var(--border); }
+.profile > span, .avatar { background: #d4ecd8; color: var(--accent2); }
+header { background: color-mix(in srgb, var(--bg) 92%, transparent); border-bottom-color: var(--border); }
