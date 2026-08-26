@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
 
-import { GoogleIcon } from "../components/icons/googleicon";
 import { ProtectIcon } from "../components/icons/protect";
 
 
@@ -28,8 +27,17 @@ export function Placeholder({ isOpen, onClose }) {
 
 export default function Page() {
   const [isOpen, setIsOpen] = useState(false);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    // TODO: replace with your actual auth logic
+    console.log("Logging in with:", { username, password });
+  };
+
   return (
-    <div className="relative  flex min-h-screen items-center justify-center bg-[#F7FBF0]">
+    <div className="relative  flex min-h-screen items-center justify-center bg-[#F7FBF0] overflow-hidden">
 
         <h1 className="absolute font-montserrat top-10 text-3xl text-[#006600] font-bold text-center z-10">KUQUEST</h1>
     
@@ -45,15 +53,39 @@ export default function Page() {
 
           <h1 className="text-3xl text-[#003200] text-center font-montserrat font-bold">Admin Portal</h1>
           <h3 className="text-sm text-center  text-[#41493D] font-montserrat"> Restricted access for authorized <br/> personnel only</h3>
-        
-        <button
-            onClick={() => setIsOpen(true)}
-            className=" cursor-pointer  flex items-center mx-auto gap-3 rounded-lg border border-gray-300 bg-white px-6 py-3 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-100 transition"
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-1">
+              <input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="username"
+                className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#006600]/40 focus:border-[#006600]"
+                required
+              />
+            </div>
+
+            <div className="space-y-1">
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="password"
+                className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#006600]/40 focus:border-[#006600]"
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="cursor-pointer w-full rounded-lg bg-[#006600] px-6 py-3 text-sm font-medium text-white shadow-sm hover:bg-[#004B00] transition"
             >
-            <GoogleIcon />
-            Sign in with Google
-        </button>
-          
+              Sign in
+            </button>
+          </form>
 
           <hr className="h-px my-8 bg-gray-200 border-1"></hr>
         
