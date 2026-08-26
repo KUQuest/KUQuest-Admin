@@ -5,7 +5,7 @@ const resourceColumns = {
     ["amount", "Amount"],
     ["status", "Status"],
     ["disputeDate", "Dispute date"],
-    ["disputeType", "Dispute type"],
+    ["disputeType", "Category"],
   ],
   quests: [
     ["id", "Quest"],
@@ -40,10 +40,10 @@ const resourceColumns = {
 };
 const resourceTabs = {
   disputes: ["All", "Active", "Closed"],
-  payouts: ["All", "Needs approval", "Processing"],
+  payouts: ["All", "Needs approval", "Processing", "Completed", "Rejected"],
   quests: ["All", "Team", "Open", "Assigned", "In progress", "Submitted", "Change pending", "Rework", "Disputed", "Completed", "Cancelled", "Hidden"],
-  users: ["All", "Normal", "Warning", "Restricted", "Ban"],
-  reports: ["All", "New", "Under review", "Resolved"],
+  users: ["All", "Normal", "Flag", "Temp ban", "Perm ban"],
+  reports: ["All", "Active", "Closed"],
 };
 state.filters = {};
 state.orderBy = {
@@ -166,7 +166,7 @@ function tableCell(view, record, key, target) {
   if (key === "status") return `<td>${badge(record.status, record.tone)}</td>`;
   if (key === "disputeDate") return `<td>${record.disputeDate || "—"}</td>`;
   if (key === "disputeType")
-    return `<td><strong>${record.disputeType || "Other"}</strong></td>`;
+    return `<td><strong>${escapeActivityText(disputeTypeLabel(record))}</strong></td>`;
   if (key === "reportedUserName")
     return `<td><strong>${record.reportedUserName}</strong></td>`;
   if (key === "reporterName")

@@ -1,6 +1,6 @@
 // A complete, self-contained demo dataset. Versioning resets browser-local
 // decisions whenever the seeded marketplace scenario changes.
-const freshDemoVersion = "2026-08-26-v17";
+const freshDemoVersion = "2026-08-26-v24";
 const freshDemoKey = "kuquest-admin-demo-data";
 
 data.disputes = [
@@ -13,7 +13,7 @@ data.disputes = [
     status: "Active",
     tone: "danger",
     disputeDate: "26 Aug 2026",
-    disputeType: "Missing verification photos",
+    disputeType: "Evidence",
     age: "24 min",
     detail: "The submitted checklist confirms the fixtures but does not include the required nighttime photographs for two dorm buildings.",
     evidence: ["Lighting checklist · PDF · 8 pages", "Submitted photo set · JPG · 14 files", "Accepted scope · version 2"],
@@ -27,7 +27,7 @@ data.disputes = [
     status: "Active",
     tone: "danger",
     disputeDate: "26 Aug 2026",
-    disputeType: "Translation accuracy",
+    disputeType: "Quality",
     age: "1 hr",
     detail: "The giver reports that three medical terms differ from the approved glossary and could confuse students using the campus clinic.",
     evidence: ["Delivered sign set · PDF · 18 signs", "Approved clinic glossary · XLSX", "Annotated correction list · PDF"],
@@ -41,7 +41,7 @@ data.disputes = [
     status: "Active",
     tone: "danger",
     disputeDate: "25 Aug 2026",
-    disputeType: "Unapproved footage",
+    disputeType: "Scope",
     age: "1 day",
     detail: "The final film includes two interviews that were not listed in the approved shot plan or consent register.",
     evidence: ["Final cut · MP4 · 312 MB", "Approved shot plan · PDF", "Consent register · XLSX · 11 entries"],
@@ -55,7 +55,7 @@ data.disputes = [
     status: "Active",
     tone: "danger",
     disputeDate: "24 Aug 2026",
-    disputeType: "Incomplete delivery",
+    disputeType: "Delivery",
     age: "2 days",
     detail: "The route map covers the central library but omits the alternate lift path to the west lecture halls required by the accepted brief.",
     evidence: ["Route map · PDF · 6 pages", "Campus accessibility brief · PDF", "Giver feedback · message export"],
@@ -69,7 +69,7 @@ data.disputes = [
     status: "Active",
     tone: "danger",
     disputeDate: "23 Aug 2026",
-    disputeType: "Late rework request",
+    disputeType: "Timing",
     age: "3 days",
     detail: "The giver requested caption corrections after the review window, while the hunter says the delivered file matches the accepted transcript.",
     evidence: ["Caption file · VTT", "Accepted transcript · DOCX", "Post-review correction request · PDF"],
@@ -83,7 +83,7 @@ data.disputes = [
     status: "Closed",
     tone: "neutral",
     disputeDate: "20 Aug 2026",
-    disputeType: "Usage rights",
+    disputeType: "Rights",
     age: "6 days",
     detail: "The requested reuse covered an external event, but the accepted brief limited the labels to campus facilities.",
     evidence: ["Accepted label set · SVG", "Usage terms · PDF", "External reuse request · email export"],
@@ -123,12 +123,12 @@ data.quests = [
 
 data.users = [
   { id: "66100428", title: "Ratchanon Srisai", person: "ratchanon.s@ku.th", other: "Environmental Science · Year 3", amount: null, status: "Normal", tone: "success", age: "Joined 2024" },
-  { id: "66100817", title: "Nicha Prasert", person: "nicha.p@ku.th", other: "Communication Arts · Year 4", amount: null, status: "Warning", tone: "warning", age: "1 active dispute" },
-  { id: "65020314", title: "Kittipong Manee", person: "kittipong.m@ku.th", other: "Architecture · Year 3", amount: null, status: "Restricted", tone: "danger", age: "Temporary all-quest ban · 5 days left" },
-  { id: "66031246", title: "Saran Jindapol", person: "saran.j@ku.th", other: "Engineering · Year 2", amount: null, status: "Warning", tone: "warning", age: "1 active dispute" },
+  { id: "66100817", title: "Nicha Prasert", person: "nicha.p@ku.th", other: "Communication Arts · Year 4", amount: null, status: "Flag", tone: "warning", age: "1 active dispute" },
+  { id: "65020314", title: "Kittipong Manee", person: "kittipong.m@ku.th", other: "Architecture · Year 3", amount: null, status: "Temp ban", tone: "danger", age: "Temporary all-quest ban · 5 days left" },
+  { id: "66031246", title: "Saran Jindapol", person: "saran.j@ku.th", other: "Engineering · Year 2", amount: null, status: "Flag", tone: "warning", age: "1 active dispute" },
   { id: "65017652", title: "Mayuree Nopparat", person: "mayuree.n@ku.th", other: "Agriculture · Year 4", amount: null, status: "Normal", tone: "success", age: "Joined 2023" },
   { id: "66022508", title: "Thanida Lertchai", person: "thanida.l@ku.th", other: "Liberal Arts · Year 3", amount: null, status: "Normal", tone: "success", age: "Joined 2025" },
-  { id: "65011409", title: "Chanon Preecha", person: "chanon.p@ku.th", other: "Digital Media · Year 2", amount: null, status: "Ban", tone: "danger", age: "Permanent all-quest ban" },
+  { id: "65011409", title: "Chanon Preecha", person: "chanon.p@ku.th", other: "Digital Media · Year 2", amount: null, status: "Perm ban", tone: "danger", age: "Permanent all-quest ban" },
 ];
 
 data.reports = [
@@ -141,8 +141,9 @@ data.reports = [
     category: "Harassment or abuse",
     details: "The reported user repeatedly sent misleading payment instructions during a marketplace conversation.",
     evidence: "Conversation export · PDF",
-    status: "New",
-    reportedAt: "Today, 10:18",
+    status: "Active",
+    tone: "warning",
+    reportedAt: "27 Aug 2026 · 10:18 ICT",
   },
   {
     id: "RPT-7002",
@@ -153,8 +154,14 @@ data.reports = [
     category: "Fraud or payment issue",
     details: "The reported user asked to move a quest payment outside KuQuest after the work was accepted.",
     evidence: "Payment request screenshot · PNG",
-    status: "Under review",
-    reportedAt: "Yesterday, 16:42",
+    status: "Closed",
+    tone: "neutral",
+    reportedAt: "26 Aug 2026 · 16:42 ICT",
+    closedAt: "26 Aug 2026 · 17:05 ICT",
+    decision: "temporary-ban",
+    decisionLabel: "Temporary ban",
+    decisionDays: 7,
+    decisionReason: "The submitted payment request was reviewed and retained as a policy violation record.",
   },
 ];
 
@@ -164,7 +171,7 @@ data.payouts = [
   { id: "PAY-8607", questId: "QST-9405", title: "Nicha Prasert", person: "Krungthai · •••• 7410", other: "Quest QST-9405", amount: 1800, status: "Needs approval", tone: "warning", age: "1 hr" },
   { id: "PAY-8602", questId: "QST-9420", title: "Chanon Preecha", person: "Bangkok Bank · •••• 0924", other: "Quest QST-9420", amount: 1900, status: "Processing", tone: "info", age: "Today" },
   { id: "PAY-8598", questId: "QST-9413", title: "Chanon Preecha", person: "Kasikorn · •••• 3186", other: "Quest QST-9413", amount: 2400, status: "Completed", tone: "success", age: "Yesterday" },
-  { id: "PAY-8592", questId: "QST-9405", title: "Nicha Prasert", person: "Krungthai · •••• 7410", other: "Quest QST-9405", amount: 1800, status: "Failed", tone: "danger", age: "2 days" },
+  { id: "PAY-8592", questId: "QST-9405", title: "Nicha Prasert", person: "Krungthai · •••• 7410", other: "Quest QST-9405", amount: 1800, status: "Rejected", tone: "danger", age: "2 days" },
 ];
 
 Object.keys(disputeCases).forEach((key) => delete disputeCases[key]);
@@ -213,5 +220,5 @@ if (!savedFreshDemo || savedFreshDemo.version !== freshDemoVersion)
 
 document.querySelector('[data-view="disputes"] b').textContent = data.disputes.filter((record) => record.status === "Active").length;
 document.querySelector('[data-view="payouts"] b').textContent = data.payouts.filter((record) => record.status === "Needs approval").length;
-document.querySelector('[data-view="reports"] b').textContent = data.reports.filter((record) => record.status === "New").length;
+document.querySelector('[data-view="reports"] b').textContent = data.reports.filter((record) => record.status === "Active").length;
 if (state.view === "home") renderHome();

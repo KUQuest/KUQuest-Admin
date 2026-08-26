@@ -224,6 +224,7 @@
 .dashboard-status-list strong { font-variant-numeric: tabular-nums; }
 .dashboard-activity .activity { padding-bottom: 5px; }
 .dashboard-lower { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 18px; }
+.dashboard-lower > .panel + .panel { margin-top: 0; }
 .dashboard-lower + .dashboard-activity { margin-top: 18px; }
 .dashboard-row { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 12px 16px; border: 0; border-bottom: 1px solid var(--border); background: var(--surface); text-align: left; cursor: pointer; }
 .dashboard-row:last-child { border-bottom: 0; }
@@ -231,6 +232,10 @@
 .dashboard-row strong, .dashboard-row small { display: block; }
 .dashboard-row small { margin-top: 2px; color: var(--muted); font-size: 11px; }
 .dashboard-row > strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dashboard-stat-work-left {
+  order: -1;
+  border-right: 1px solid var(--border) !important;
+}
 @media (max-width: 900px) { .dashboard-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .dashboard-stats .stat:nth-child(2) { border-right: 0; } .dashboard-stats .stat:nth-child(-n + 2) { border-bottom: 1px solid var(--border); } .dashboard-grid { grid-template-columns: 1fr; } .dashboard-lower { grid-template-columns: 1fr; } }
 @media (max-width: 600px) { .dashboard-stats { grid-template-columns: 1fr; } .dashboard-stats .stat { border-right: 0; border-bottom: 1px solid var(--border); } .dashboard-stats .stat:last-child { border-bottom: 0; } .dashboard-row { grid-template-columns: 1fr auto; } .dashboard-row > span:last-child { grid-column: 2; grid-row: 1; } }
 @media (max-width: 600px) { main > .page-head > .btn.primary[data-jump="disputes"] { display: inline-flex; min-height: 44px; padding: 8px 9px; font-size: 11px; white-space: nowrap; } }
@@ -731,4 +736,107 @@
   .evidence-preview-body {
     padding: 16px;
   }
+}
+
+.report-decision-options {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+.report-decision-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  text-align: left;
+  cursor: pointer;
+}
+.report-decision-option:hover {
+  background: var(--hover);
+}
+.report-decision-option.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.report-decision-option strong {
+  font-size: 12px;
+}
+.report-decision-option small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.payout-quest-history-list {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.payout-quest-history-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  background: var(--surface);
+  text-decoration: none;
+}
+.payout-quest-history-row:last-child {
+  border-bottom: 0;
+}
+.payout-quest-history-row:hover {
+  background: var(--hover);
+}
+.payout-quest-history-row span,
+.payout-quest-history-row strong,
+.payout-quest-history-row small {
+  display: block;
+}
+.payout-quest-history-row span {
+  min-width: 0;
+}
+.payout-quest-history-row strong {
+  font-size: 12px;
+}
+.payout-quest-history-row small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.payout-quest-history-row > strong {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.badge.success.quest-status-completed {
+  color: var(--success);
+  background: var(--success-soft);
+}
+
+.sidebar .logout-button {
+  margin-left: auto;
+  width: auto;
+  flex: 0 0 auto;
+  padding: 6px 9px;
+  border: 1px solid var(--strong);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.sidebar .logout-button:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
 }

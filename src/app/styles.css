@@ -204,6 +204,9 @@ header {
   border-bottom: 1px solid var(--border);
   backdrop-filter: blur(12px);
 }
+.header-notifications {
+  margin-left: auto;
+}
 .search {
   width: min(520px, 54vw);
   height: 36px;
@@ -880,9 +883,15 @@ main {
   display: none;
 }
 .timeline strong,
+.timeline time,
 .timeline span {
   display: block;
   font-size: 12px;
+}
+.timeline time {
+  color: var(--text);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
 }
 .timeline span {
   color: var(--muted);

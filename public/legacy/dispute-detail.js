@@ -51,7 +51,7 @@ function questTimelineFor(record, caseData, relatedQuest) {
     },
     {
       title: `${caseData.openedBy.split(" · ")[0]} opened the dispute`,
-      detail: `${record.disputeDate} · 09:14 ICT · ${record.disputeType}`,
+      detail: `${record.disputeDate} · 09:14 ICT · ${disputeTypeLabel(record)}`,
     },
     {
       title: `KuQuest placed ฿${fmt(record.amount)} on hold`,
@@ -164,9 +164,9 @@ function bindResolutionControls(root, record) {
       return toast("Select a resolution before closing this dispute.");
     let detail;
     if (selected === "giver")
-      detail = `Confirm decision for ${record.id}: giver wins; refund ฿${fmt(record.amount)} to the giver.`;
+      detail = `Confirm decision for ${record.id}: Giver wins · ${giverName}; refund ฿${fmt(record.amount)} to the giver.`;
     if (selected === "hunter")
-      detail = `Confirm decision for ${record.id}: hunter wins; release ฿${fmt(record.amount)} to the hunter.`;
+      detail = `Confirm decision for ${record.id}: Hunter wins · ${hunterName}; release ฿${fmt(record.amount)} to the hunter.`;
     if (selected === "rework")
       detail = `Confirm decision for ${record.id}: require rework; keep ฿${fmt(record.amount)} held until revised proof is accepted.`;
     confirmAction("Confirm dispute resolution", record, detail, (reason) => {
@@ -210,9 +210,9 @@ function openDisputeDrawer(index) {
   drawer.innerHTML = `
 <div class="drawer-top"><div><strong>${record.id}</strong><small>Dispute resolution case</small></div><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div>
 <div class="drawer-body dispute-record ${isClosed ? "closed-case" : "active-case"}">
- <div class="case-heading"><div><h2>${record.title}</h2><p>${record.disputeType || caseData.category} · disputed ${record.disputeDate}</p></div>${badge(record.status, record.tone)}</div>
+ <div class="case-heading"><div><h2>${record.title}</h2><p>${disputeTypeLabel(record)} · disputed ${record.disputeDate}</p></div>${badge(record.status, record.tone)}</div>
  <div class="case-alert"><span>${ico("scale")}</span><div><strong>${isClosed ? "Dispute decision recorded" : `฿${fmt(record.amount)} is held`}</strong><p>${isClosed ? "This case is closed and retained as a read-only audit record." : "No payout can settle until this case is resolved."}</p></div></div>
- <section class="section"><h3>Dispute overview</h3><div class="facts"><div class="fact"><span>Dispute type</span><strong>${record.disputeType}</strong></div><div class="fact"><span>Dispute date</span><strong>${record.disputeDate}</strong></div><div class="fact"><span>Amount at risk</span><strong>฿${fmt(record.amount)}</strong></div></div></section>
+ <section class="section"><h3>Dispute overview</h3><div class="facts"><div class="fact"><span>Category</span><strong>${disputeTypeLabel(record)}</strong></div><div class="fact"><span>Dispute date</span><strong>${record.disputeDate}</strong></div><div class="fact"><span>Amount at risk</span><strong>฿${fmt(record.amount)}</strong></div></div></section>
  <section class="section"><h3>Description</h3><p>${disputeDescriptionFor(record, caseData)}</p></section>
  <section class="section"><h3>Participants</h3><div class="party-grid"><div><span>Opened by</span><strong>${caseData.openedBy}</strong></div><div><span>Respondent</span><strong>${caseData.respondent}</strong></div></div></section>
  <section class="section"><div class="section-title"><h3>Related files</h3><span class="section-count">${record.evidence.length}</span></div><div class="evidence-stack">${record.evidence.map((evidence) => `<button class="evidence-item"><span class="evidence-state complete">${ico("check")}</span><span><strong>${evidence.split(" · ")[0]}</strong><small>${evidence.split(" · ").slice(1).join(" · ") || "Verified record"}</small></span><span>Open</span></button>`).join("")}</div></section>

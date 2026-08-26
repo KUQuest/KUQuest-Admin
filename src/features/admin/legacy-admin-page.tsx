@@ -7,7 +7,7 @@ import type { MouseEvent } from "react";
 
 /* oxlint-disable jsx-a11y/prefer-tag-over-role */
 
-type LegacyPage = "home" | "quest" | "dispute" | "login";
+type LegacyPage = "home" | "quest" | "dispute" | "report" | "login";
 type LegacyScriptPlan = {
   sequential: string[];
   parallel: string[];
@@ -15,19 +15,19 @@ type LegacyScriptPlan = {
 
 const adminFoundationScripts = [
   "/legacy/auth.js?v=1",
-  "/legacy/script.js?v=46",
-  "/legacy/fresh-mock-data.js?v=15",
+  "/legacy/script.js?v=59",
+  "/legacy/fresh-mock-data.js?v=24",
 ];
 
 const adminScripts: LegacyScriptPlan = {
   sequential: [
     ...adminFoundationScripts,
-    "/legacy/quest-detail.js?v=30",
-    "/legacy/dispute-detail.js?v=28",
+    "/legacy/quest-detail.js?v=31",
+    "/legacy/dispute-detail.js?v=31",
   ],
   parallel: [
     "/legacy/dispute-interactions.js?v=10",
-    "/legacy/resource-controls.js?v=32",
+    "/legacy/resource-controls.js?v=39",
     "/legacy/functional-controls.js?v=4",
     "/legacy/deep-links.js?v=9",
   ],
@@ -36,8 +36,8 @@ const adminScripts: LegacyScriptPlan = {
 const questScripts: LegacyScriptPlan = {
   sequential: [
     ...adminFoundationScripts,
-    "/legacy/quest-detail.js?v=30",
-    "/legacy/quest-page.js?v=22",
+    "/legacy/quest-detail.js?v=31",
+    "/legacy/quest-page.js?v=24",
     "/legacy/quest-change-review.js?v=10",
   ],
   parallel: ["/legacy/functional-controls.js?v=4"],
@@ -46,9 +46,14 @@ const questScripts: LegacyScriptPlan = {
 const disputeScripts: LegacyScriptPlan = {
   sequential: [
     ...adminFoundationScripts,
-    "/legacy/dispute-detail.js?v=28",
-    "/legacy/dispute-page.js?v=10",
+    "/legacy/dispute-detail.js?v=31",
+    "/legacy/dispute-page.js?v=12",
   ],
+  parallel: ["/legacy/functional-controls.js?v=4"],
+};
+
+const reportScripts: LegacyScriptPlan = {
+    sequential: [...adminFoundationScripts, "/legacy/report-page.js?v=7"],
   parallel: ["/legacy/functional-controls.js?v=4"],
 };
 
@@ -88,6 +93,11 @@ function hardNavigate(event: MouseEvent<HTMLAnchorElement>) {
   window.location.assign(event.currentTarget.href);
 }
 
+function handleLogout() {
+  localStorage.removeItem("kuquest-admin-session");
+  window.location.assign("/login");
+}
+
 function LegacyScripts({ page, recordId }: { page: LegacyPage; recordId?: string }) {
   useEffect(() => {
     if (page === "login") {
@@ -99,7 +109,13 @@ function LegacyScripts({ page, recordId }: { page: LegacyPage; recordId?: string
     document.body.classList.remove("login-page");
     window.__KUQUEST_RECORD_ID__ = recordId;
     loadScripts(
-      page === "quest" ? questScripts : page === "dispute" ? disputeScripts : adminScripts,
+      page === "quest"
+        ? questScripts
+        : page === "dispute"
+          ? disputeScripts
+          : page === "report"
+            ? reportScripts
+            : adminScripts,
     );
   }, [page, recordId]);
 
@@ -210,6 +226,7 @@ export function LegacyAdminPage({ page, recordId }: { page: Exclude<LegacyPage, 
           <div className="profile">
             <span>NP</span>
             <div><strong>Nicha P.</strong><small>Marketplace admin</small></div>
+            <button className="logout-button" type="button" onClick={handleLogout}>Log out</button>
           </div>
         </aside>
         <header>
@@ -234,9 +251,8 @@ export function LegacyAdminPage({ page, recordId }: { page: Exclude<LegacyPage, 
               </button>
             </>
           )}
-          <div className="demo"><i /> Synthetic demo data</div>
           {!detailPage && (
-            <button className="icon" aria-label="Notifications" type="button">
+            <button className="icon header-notifications" aria-label="Notifications" type="button">
               <span data-static-icon="bell" /><em />
             </button>
           )}
