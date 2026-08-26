@@ -12,7 +12,6 @@ const paths = {
   history: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2"/>',
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
-  bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>',
   filter: '<path d="M4 5h16M7 12h10M10 19h4"/>',
   paperclip: '<path d="m21.4 11.6-8.5 8.5a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/>',
   check: '<path d="m4 12 5 5L20 6"/>',
@@ -21,6 +20,18 @@ const paths = {
 };
 const ico = (n) =>
   `<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">${paths[n] || paths.quest}</svg>`;
+const allowedTones = [
+  "warning",
+  "danger",
+  "success",
+  "info",
+  "neutral",
+  "assigned",
+  "cancelled",
+];
+function toneClass(tone) {
+  return allowedTones.includes(tone) ? tone : "neutral";
+}
 const navItems = [
   ["home", "home", "Overview", ""],
   ["quests", "quest", "Quests", ""],
@@ -30,40 +41,6 @@ const navItems = [
   ["users", "users", "Users", ""],
 ];
 const disputeCases = {};
-const polishObserver = new MutationObserver(() => {
-  const d = document.querySelector("#drawer");
-  if (d && d.querySelector(".att-icon") && !d.querySelector(".att-icon svg")) {
-    const id = d.querySelector(".drawer-top strong")?.textContent || "";
-    const kind = id.startsWith("PAY")
-      ? "wallet"
-      : id.startsWith("QST")
-        ? "quest"
-        : /^\d/.test(id)
-          ? "user"
-          : "scale";
-    const mark = d.querySelector(".att-icon");
-    if (mark) mark.innerHTML = ico(kind);
-    const close = d.querySelector("#close");
-    if (close)
-      close.innerHTML = '<span class="close-lines" aria-hidden="true"></span>';
-    d.dataset.polished = "true";
-  }
-  document.querySelectorAll(".result:not([data-polished])").forEach((r) => {
-    const type = r.querySelector("small:last-child")?.textContent;
-    const mark = r.querySelector("span:first-child");
-    if (mark)
-      mark.innerHTML = ico(
-        type === "payouts" ? "wallet" : type === "users" ? "user" : "quest",
-      );
-    r.dataset.polished = "true";
-  });
-  document.querySelectorAll(".toast:not([data-polished])").forEach((t) => {
-    const copy = t.textContent.replace("✓", "").trim();
-    t.innerHTML = ico("check") + `<span>${copy}</span>`;
-    t.dataset.polished = "true";
-  });
-});
-polishObserver.observe(document.body, { childList: true, subtree: true });
 const data = { disputes: [], quests: [], users: [], payouts: [], reports: [] };
 const requestedView = new URLSearchParams(location.search).get("view"),
   initialView = [
@@ -100,7 +77,8 @@ const requestedView = new URLSearchParams(location.search).get("view"),
       ? ` quest-status-${slug}`
       : "";
   },
-  badge = (s, t) => `<span class="badge ${t}${questStatusClass(s)}">${s}</span>`;
+  badge = (s, t) =>
+    `<span class="badge ${toneClass(t)}${questStatusClass(s)}">${escapeActivityText(s)}</span>`;
 document.querySelector("#nav").innerHTML = navItems
   .map(
     ([v, i, l, c]) =>
@@ -248,7 +226,7 @@ function attention(v, i, t, ic, title, sub, x, y) {
           : ic === "flag"
             ? "flag"
           : "quest";
-  return `<button class="attention" data-open="${v}:${i}"><span class="att-icon ${t}">${ico(name)}</span><span><strong>${title}</strong><small>${sub}</small></span><span><strong>${x}</strong><small>${y}</small></span></button>`;
+  return `<button class="attention" data-open="${v}:${i}"><span class="att-icon ${toneClass(t)}">${ico(name)}</span><span><strong>${escapeActivityText(title)}</strong><small>${escapeActivityText(sub)}</small></span><span><strong>${escapeActivityText(x)}</strong><small>${escapeActivityText(y)}</small></span></button>`;
 }
 function activityList() {
   const seeded = [
@@ -412,7 +390,7 @@ function table(v, rows) {
         : v === "users"
           ? ["Student ID", "User", "Email", "Academic profile", "Status"]
           : ["Payout", "Recipient", "Account", "Amount", "Status"];
-  return `<div class="table-wrap"><table class="data"><thead><tr>${h.map((x) => `<th>${x}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr data-open="${v}:${data[v].indexOf(r)}"><td><strong>${r.id}</strong></td><td><strong>${r.title}</strong>${v === "disputes" ? `<small>${r.detail.slice(0, 45)}…</small>` : ""}</td>${v === "disputes" ? "" : `<td><strong>${r.person}</strong></td>`}${v === "disputes" || v === "payouts" ? "" : `<td>${r.other}</td>`}${r.amount !== null ? `<td class="money">฿${fmt(r.amount)}</td>` : ""}<td>${badge(r.status, r.tone)}</td>${v === "disputes" ? `<td>${r.disputeDate || "—"}</td><td><strong>${disputeTypeLabel(r)}</strong></td>` : ""}</tr>`).join("")}</tbody></table></div>`;
+  return `<div class="table-wrap"><table class="data"><thead><tr>${h.map((x) => `<th>${escapeActivityText(x)}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr data-open="${v}:${data[v].indexOf(r)}"><td><strong>${escapeActivityText(r.id)}</strong></td><td><strong>${escapeActivityText(r.title)}</strong>${v === "disputes" ? `<small>${escapeActivityText(r.detail).slice(0, 45)}…</small>` : ""}</td>${v === "disputes" ? "" : `<td><strong>${escapeActivityText(r.person)}</strong></td>`}${v === "disputes" || v === "payouts" ? "" : `<td>${escapeActivityText(r.other)}</td>`}${r.amount !== null ? `<td class="money">฿${fmt(r.amount)}</td>` : ""}<td>${badge(r.status, r.tone)}</td>${v === "disputes" ? `<td>${escapeActivityText(r.disputeDate || "—")}</td><td><strong>${escapeActivityText(disputeTypeLabel(r))}</strong></td>` : ""}</tr>`).join("")}</tbody></table></div>`;
 }
 function renderPolicies() {
   main.innerHTML = `${pageHead(...heads.policies, '<button class="btn">Revision history</button>')}<section class="panel"><div class="panel-head"><div><h2>Current policy · Revision 12</h2><p>Effective 18 July 2026 · authored by Nicha P.</p></div>${badge("Active", "success")}</div><div class="health"><div class="stat"><span>Platform fee</span><strong>5.0%</strong><small>500 basis points</small></div><div class="stat"><span>Funded quest range</span><strong>฿100–50k</strong><small>Per quest</small></div><div class="stat"><span>Payout range</span><strong>฿200–30k</strong><small>Per request</small></div></div><div class="drawer-body"><div class="facts">${[
@@ -436,11 +414,17 @@ function renderActivity() {
 }
 function render() {
   state.view === "home" ? renderHome() : renderResource(state.view);
+  setActiveNavigation(state.view);
+}
+function setActiveNavigation(view) {
   document
     .querySelectorAll("[data-view]")
-    .forEach((b) =>
-      b.classList.toggle("active", b.dataset.view === state.view),
-    );
+    .forEach((b) => {
+      const active = b.dataset.view === view;
+      b.classList.toggle("active", active);
+      if (active) b.setAttribute("aria-current", "page");
+      else b.removeAttribute("aria-current");
+    });
 }
 function bind() {
   document.querySelectorAll(".filter").forEach((b) => {
@@ -507,6 +491,7 @@ const shell = document.querySelector(".shell"),
     '[tabindex]:not([tabindex="-1"])',
   ].join(",");
 let drawerTrigger = null,
+  drawerKeydown = null,
   activeCustomLayerClose = null;
 
 function visibleFocusable(root) {
@@ -515,12 +500,33 @@ function visibleFocusable(root) {
   );
 }
 
+function trapFocus(event, layer) {
+  if (event.key !== "Tab") return;
+  const focusable = visibleFocusable(layer);
+  if (!focusable.length) {
+    event.preventDefault();
+    layer.focus();
+    return;
+  }
+  const first = focusable[0],
+    last = focusable.at(-1);
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
 function showDrawerLayer() {
   drawerTrigger = document.activeElement;
   shell.inert = true;
   drawer.inert = false;
   scrim.hidden = false;
   drawer.setAttribute("aria-hidden", "false");
+  drawerKeydown = (event) => trapFocus(event, drawer);
+  drawer.addEventListener("keydown", drawerKeydown);
   requestAnimationFrame(() => {
     drawer.classList.add("open");
     const title = drawer.querySelector("h2")?.textContent?.trim();
@@ -545,22 +551,7 @@ function showModalLayer(layer, options = {}) {
       close();
       return;
     }
-    if (event.key !== "Tab") return;
-    const focusable = visibleFocusable(layer);
-    if (!focusable.length) {
-      event.preventDefault();
-      layer.focus();
-      return;
-    }
-    const first = focusable[0],
-      last = focusable.at(-1);
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
+    trapFocus(event, layer);
   };
   const close = () => {
     layer.removeEventListener("keydown", onKeydown);
@@ -660,8 +651,7 @@ function openReportDrawer(index) {
 }
 function openDrawer(v, i) {
   if (v === "reports") return openReportDrawer(i);
-  if (v === "quests") return openQuestDrawer(i);
-  if (v === "disputes") return openDisputeDrawer(i);
+  if (v === "quests" || v === "disputes") return ensureDetailDrawer(v, i);
   const r = data[v][i],
     isP = v === "payouts",
     isD = v === "disputes",
@@ -684,7 +674,7 @@ function openDrawer(v, i) {
       : v === "users"
         ? `<button class="btn" data-chat-user>Chat with user</button><button class="btn" data-penalty-user>Apply penalty</button>${hasPenalty ? '<button class="btn primary" data-action="Lift penalty">Lift penalty</button>' : '<button class="btn primary" data-action="Set normal">Set normal</button>'}`
         : '<button class="btn" data-action="Hide quest">Hide quest</button>';
-  drawer.innerHTML = `<div class="drawer-top"><strong>${r.id}</strong><button class="icon" id="close" aria-label="Close">×</button></div><div class="drawer-body"><div class="drawer-title"><span class="att-icon ${r.tone}">${v === "payouts" ? "฿" : v === "users" ? "♙" : v === "quests" ? "▣" : "⚖"}</span><div><h2>${r.title}</h2><p>${r.person} · ${r.other}</p></div></div><div class="facts"><div class="fact"><span>Status</span>${badge(r.status, r.tone)}</div>${r.amount ? `<div class="fact"><span>${isP ? "Payout amount" : "Amount held"}</span><strong>฿${fmt(r.amount)}</strong></div>` : ""}<div class="fact"><span>Record</span><strong>${r.id}</strong></div>${!isP && v !== "users" ? `<div class="fact"><span>Last activity</span><strong>${r.age}</strong></div>` : ""}</div>${isD ? `<section class="section"><h3>Issue summary</h3><p>${r.detail}</p></section><section class="section"><h3>Evidence on record</h3>${r.evidence.map((e) => `<div class="evidence"><strong>${e.split(" · ")[0]}</strong><small>${e.split(" · ").slice(1).join(" · ")}</small></div>`).join("")}</section>` : ""}${isP ? `${payoutQuest ? `<section class="section"><h3>Quest history</h3>${timeline(questDetails(payoutQuest).activity)}</section>` : ""}<section class="section"><h3>${payoutContext.heading}</h3><p>${payoutContext.copy}</p><p class="audit-note">${payoutContext.next}</p></section>` : ""}${!isP ? `<section class="section"><h3>${v === "users" ? "History" : "Audit trail"}</h3>${timeline([r.status, "Record created"])}</section>` : ""}</div><div class="drawer-actions">${drawerActions}</div>`;
+  drawer.innerHTML = `<div class="drawer-top"><strong>${escapeActivityText(r.id)}</strong><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div><div class="drawer-body"><div class="drawer-title"><span class="att-icon ${toneClass(r.tone)}">${ico(v === "payouts" ? "wallet" : v === "users" ? "user" : v === "quests" ? "quest" : "scale")}</span><div><h2>${escapeActivityText(r.title)}</h2><p>${escapeActivityText(r.person)} · ${escapeActivityText(r.other)}</p></div></div><div class="facts"><div class="fact"><span>Status</span>${badge(r.status, r.tone)}</div>${r.amount ? `<div class="fact"><span>${isP ? "Payout amount" : "Amount held"}</span><strong>฿${fmt(r.amount)}</strong></div>` : ""}<div class="fact"><span>Record</span><strong>${escapeActivityText(r.id)}</strong></div>${!isP && v !== "users" ? `<div class="fact"><span>Last activity</span><strong>${escapeActivityText(r.age)}</strong></div>` : ""}</div>${isD ? `<section class="section"><h3>Issue summary</h3><p>${escapeActivityText(r.detail)}</p></section><section class="section"><h3>Evidence on record</h3>${r.evidence.map((e) => { const parts = String(e).split(" · "); return `<div class="evidence"><strong>${escapeActivityText(parts[0])}</strong><small>${escapeActivityText(parts.slice(1).join(" · "))}</small></div>`; }).join("")}</section>` : ""}${isP ? `<section class="section"><h3>${escapeActivityText(payoutContext.heading)}</h3><p>${escapeActivityText(payoutContext.copy)}</p><p class="audit-note">${escapeActivityText(payoutContext.next)}</p></section>` : ""}${!isP ? `<section class="section"><h3>${v === "users" ? "History" : "Audit trail"}</h3>${timeline([r.status, "Record created"])}</section>` : ""}</div><div class="drawer-actions">${drawerActions}</div>`;
   if (isP) {
     const historySection = document.createElement("section");
     historySection.className = "section payout-history";
@@ -719,7 +709,7 @@ function openDrawer(v, i) {
   if (v === "users" && r.penalty) {
     const enforcement = document.createElement("section");
     enforcement.className = "section enforcement-record";
-    enforcement.innerHTML = `<h3>Current enforcement</h3><strong>${r.penalty.label}</strong><p>${r.penalty.reason}</p><small>Recorded ${r.penalty.recordedAt}</small>`;
+    enforcement.innerHTML = `<h3>Current enforcement</h3><strong>${escapeActivityText(r.penalty.label)}</strong><p>${escapeActivityText(r.penalty.reason)}</p><small>Recorded ${escapeActivityText(r.penalty.recordedAt)}</small>`;
     drawer.querySelector(".drawer-body .section")?.before(enforcement);
   }
   document.querySelector("#close").onclick = closeDrawer;
@@ -1031,11 +1021,15 @@ function timeline(items) {
         timeParts = entry.time ? 0 : parts.length > 2 ? 2 : parts.length > 1 ? 1 : 0,
         time = entry.time || parts.slice(0, timeParts).join(" · "),
         detail = entry.time ? entry.detail : parts.slice(timeParts).join(" · ");
-      return `<li><strong>${entry.title}</strong>${time ? `<time>${time}</time>` : ""}<span>${detail}</span></li>`;
+      return `<li><strong>${escapeActivityText(entry.title)}</strong>${time ? `<time>${escapeActivityText(time)}</time>` : ""}<span>${escapeActivityText(detail)}</span></li>`;
     })
     .join("")}</ul>`;
 }
 function closeDrawer() {
+  if (drawerKeydown) {
+    drawer.removeEventListener("keydown", drawerKeydown);
+    drawerKeydown = null;
+  }
   drawer.classList.remove("open");
   drawer.setAttribute("aria-hidden", "true");
   drawer.inert = true;
@@ -1046,6 +1040,49 @@ function closeDrawer() {
     scrim.hidden = true;
     if (restore?.isConnected) restore.focus();
   }, 220);
+}
+const deferredDrawerScripts = {
+  quests: ["/legacy/quest-detail.js?v=32"],
+  disputes: [
+    "/legacy/dispute-detail.js?v=32",
+    "/legacy/dispute-interactions.js?v=10",
+  ],
+};
+const deferredDrawerLoads = new Map();
+function loadDeferredLegacyScript(src) {
+  if (deferredDrawerLoads.has(src)) return deferredDrawerLoads.get(src);
+  const existing = [...document.scripts].find((script) => script.src.includes(src));
+  const load = existing
+    ? new Promise((resolve, reject) => {
+        if (existing.dataset.kuquestLegacyLoaded === "true") return resolve();
+        existing.addEventListener("load", resolve, { once: true });
+        existing.addEventListener("error", reject, { once: true });
+      })
+    : new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = src;
+        script.dataset.kuquestLegacy = "true";
+        script.addEventListener("load", () => {
+          script.dataset.kuquestLegacyLoaded = "true";
+          resolve();
+        }, { once: true });
+        script.addEventListener("error", reject, { once: true });
+        document.body.append(script);
+      });
+  deferredDrawerLoads.set(src, load);
+  return load;
+}
+function ensureDetailDrawer(view, index) {
+  const opener = view === "quests" ? "openQuestDrawer" : "openDisputeDrawer";
+  if (typeof window[opener] === "function") {
+    window[opener](index);
+    return;
+  }
+  const scripts = deferredDrawerScripts[view] || [];
+  scripts
+    .reduce((promise, src) => promise.then(() => loadDeferredLegacyScript(src)), Promise.resolve())
+    .then(() => window[opener]?.(index))
+    .catch((error) => console.error(`Could not open ${view} details`, error));
 }
 const dialog = document.querySelector("#confirm");
 function confirmAction(a, r, decisionDetail = "", onConfirm, options = {}) {
@@ -1108,7 +1145,7 @@ function confirmAction(a, r, decisionDetail = "", onConfirm, options = {}) {
 function toast(s) {
   const t = document.createElement("div");
   t.className = "toast";
-  t.textContent = `✓  ${s}`;
+  t.innerHTML = `${ico("check")}<span>${escapeActivityText(s)}</span>`;
   document.querySelector("#toasts")?.append(t);
   setTimeout(() => t.remove(), 3500);
 }

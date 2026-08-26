@@ -277,11 +277,11 @@ function participantSectionTitle(record, participants, started) {
 }
 
 function giverProfile(detail) {
-  return `<div class="giver-profile"><div><strong>${detail.giver[0]}</strong><span>Student ID · ${detail.giver[1]}</span><span>${detail.giver[2]}</span></div><div><span>Marketplace reputation</span><strong>${detail.giver[3]}</strong></div></div>`;
+  return `<div class="giver-profile"><div><strong>${escapeActivityText(detail.giver[0])}</strong><span>Student ID · ${escapeActivityText(detail.giver[1])}</span><span>${escapeActivityText(detail.giver[2])}</span></div><div><span>Marketplace reputation</span><strong>${escapeActivityText(detail.giver[3])}</strong></div></div>`;
 }
 
 function relatedRows(rows) {
-  return `<div class="related-list">${rows.map((row) => `<button class="related-row"><strong>${row[0]}</strong></button>`).join("")}</div>`;
+  return `<div class="related-list">${rows.map((row) => `<button class="related-row"><strong>${escapeActivityText(row[0])}</strong></button>`).join("")}</div>`;
 }
 
 function fileRows(files) {
@@ -297,7 +297,7 @@ function fileRows(files) {
         preview = attachment.src
           ? `<img class="attachment-thumbnail" src="${attachment.src}" alt="${attachment.alt || ""}" loading="lazy">`
           : `<span class="file-icon">${ico("quest")}</span>`;
-      return `<button class="file-row ${attachment.src ? "image-attachment" : ""}">${preview}<span><strong>${attachment.name}</strong><small>${attachment.detail}</small></span><span>Open</span></button>`;
+      return `<button class="file-row ${attachment.src ? "image-attachment" : ""}">${preview}<span><strong>${escapeActivityText(attachment.name)}</strong><small>${escapeActivityText(attachment.detail)}</small></span><span>Open</span></button>`;
     })
     .join("");
 }
@@ -328,7 +328,7 @@ function proofSubmissionsSection(files, record) {
 
 function pendingChangeSummary(request) {
   if (!request) return "";
-  return `<section class="section change-review"><div class="section-title"><h3>Pending giver changes</h3>${badge(request.status, "warning")}</div><div class="change-warning">${ico("history")}<div><strong>Current accepted terms remain active</strong><p>This proposal does not change the participant’s agreement until both parties consent.</p></div></div><div class="change-meta"><div><span>Requested by</span><strong>${request.requestedBy}</strong></div><div><span>Reason</span><strong>${request.reason}</strong></div></div><div class="change-table"><div class="change-row change-head"><span>Field</span><span>Accepted value</span><span>Proposed value</span><span>Impact</span></div>${request.changes.map((change) => `<div class="change-row"><strong>${change[0]}</strong><span>${change[1]}</span><span>${change[2]}</span><span class="impact ${change[3].includes("increase") || change[3].includes("New") || change[3].includes("later") ? "material" : "safe"}">${change[3]}</span></div>`).join("")}</div><div class="response-block"><h3>Participant consent</h3>${request.responses.map((response) => `<div><span><strong>${response[0]}</strong><small>${response[2]}</small></span>${badge(response[1], response[1] === "Approved" ? "success" : "warning")}</div>`).join("")}</div><div class="change-oversight"><strong>Admin oversight only</strong><p>Do not approve or reject this edit. Intervene only if a participant files a dispute or the proposed terms violate marketplace policy.</p></div></section>`;
+  return `<section class="section change-review"><div class="section-title"><h3>Pending giver changes</h3>${badge(request.status, "warning")}</div><div class="change-warning">${ico("history")}<div><strong>Current accepted terms remain active</strong><p>This proposal does not change the participant’s agreement until both parties consent.</p></div></div><div class="change-meta"><div><span>Requested by</span><strong>${escapeActivityText(request.requestedBy)}</strong></div><div><span>Reason</span><strong>${escapeActivityText(request.reason)}</strong></div></div><div class="change-table"><div class="change-row change-head"><span>Field</span><span>Accepted value</span><span>Proposed value</span><span>Impact</span></div>${request.changes.map((change) => `<div class="change-row"><strong>${escapeActivityText(change[0])}</strong><span>${escapeActivityText(change[1])}</span><span>${escapeActivityText(change[2])}</span><span class="impact ${change[3].includes("increase") || change[3].includes("New") || change[3].includes("later") ? "material" : "safe"}">${escapeActivityText(change[3])}</span></div>`).join("")}</div><div class="response-block"><h3>Participant consent</h3>${request.responses.map((response) => `<div><span><strong>${escapeActivityText(response[0])}</strong><small>${escapeActivityText(response[2])}</small></span>${badge(response[1], response[1] === "Approved" ? "success" : "warning")}</div>`).join("")}</div><div class="change-oversight"><strong>Admin oversight only</strong><p>Do not approve or reject this edit. Intervene only if a participant files a dispute or the proposed terms violate marketplace policy.</p></div></section>`;
 }
 
 function questEditHistory(record) {
@@ -357,14 +357,14 @@ function questEditHistory(record) {
 function renderQuestEditHistory(record) {
   const entries = questEditHistory(record);
   if (!entries.length)
-    return `<section class="record-panel edit-history-panel"><div class="record-panel-head"><div><h2>Edit history</h2><p>Changes to the quest brief, wage, schedule, location, or deliverables appear here.</p></div></div><div class="edit-history-empty"><strong>No edits recorded</strong><p>${record.person} has not changed the quest details since publication.</p></div></section>`;
+    return `<section class="record-panel edit-history-panel"><div class="record-panel-head"><div><h2>Edit history</h2><p>Changes to the quest brief, wage, schedule, location, or deliverables appear here.</p></div></div><div class="edit-history-empty"><strong>No edits recorded</strong><p>${escapeActivityText(record.person)} has not changed the quest details since publication.</p></div></section>`;
   return `<section class="record-panel edit-history-panel"><div class="record-panel-head"><div><h2>Edit history</h2><p>Shows proposed and accepted changes to the quest details.</p></div></div><ol class="edit-history-list">${entries
     .map(
-      (entry) => `<li class="edit-history-entry"><div class="edit-history-meta"><time>${entry.time}</time>${badge(entry.status, entry.tone)}</div><div class="edit-history-content"><h3>${entry.title}</h3><dl><div><dt>Requested by</dt><dd>${entry.actor}</dd></div><div><dt>Effect on quest</dt><dd>${entry.effect}</dd></div></dl><div class="edit-change-list">${entry.changes
+      (entry) => `<li class="edit-history-entry"><div class="edit-history-meta"><time>${escapeActivityText(entry.time)}</time>${badge(entry.status, entry.tone)}</div><div class="edit-history-content"><h3>${escapeActivityText(entry.title)}</h3><dl><div><dt>Requested by</dt><dd>${escapeActivityText(entry.actor)}</dd></div><div><dt>Effect on quest</dt><dd>${escapeActivityText(entry.effect)}</dd></div></dl><div class="edit-change-list">${entry.changes
         .map(
-          (change) => `<div class="edit-change"><div><strong>${change.field}</strong><span>${change.impact}</span></div><dl><div><dt>Current</dt><dd>${change.accepted}</dd></div><div><dt>Proposed</dt><dd>${change.proposed}</dd></div></dl></div>`,
+          (change) => `<div class="edit-change"><div><strong>${escapeActivityText(change.field)}</strong><span>${escapeActivityText(change.impact)}</span></div><dl><div><dt>Current</dt><dd>${escapeActivityText(change.accepted)}</dd></div><div><dt>Proposed</dt><dd>${escapeActivityText(change.proposed)}</dd></div></dl></div>`,
         )
-        .join("")}</div>${entry.responses?.length ? `<div class="response-block"><h3>Participant consent</h3>${entry.responses.map((response) => `<div><span><strong>${response[0]}</strong><small>${response[2]}</small></span>${badge(response[1], response[1] === "Approved" ? "success" : "warning")}</div>`).join("")}</div>` : ""}</div></div></li>`,
+        .join("")}</div>${entry.responses?.length ? `<div class="response-block"><h3>Participant consent</h3>${entry.responses.map((response) => `<div><span><strong>${escapeActivityText(response[0])}</strong><small>${escapeActivityText(response[2])}</small></span>${badge(response[1], response[1] === "Approved" ? "success" : "warning")}</div>`).join("")}</div>` : ""}</div></div></li>`,
     )
     .join("")}</ol></section>`;
 }
@@ -381,19 +381,19 @@ function openQuestDrawer(index) {
   );
   showDrawerLayer();
   drawer.innerHTML = `
-    <div class="drawer-top"><div><strong>${record.id}</strong><small>Full quest record</small></div><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div>
+    <div class="drawer-top"><div><strong>${escapeActivityText(record.id)}</strong><small>Full quest record</small></div><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div>
     <div class="drawer-body quest-record">
-      <div class="drawer-title"><span class="att-icon info">${ico("quest")}</span><div><h2>${record.title}</h2><p>${record.teamQuest ? "Team quest · " : ""}${record.other} · created by ${record.person}</p></div></div>
+      <div class="drawer-title"><span class="att-icon info">${ico("quest")}</span><div><h2>${escapeActivityText(record.title)}</h2><p>${record.teamQuest ? "Team quest · " : ""}${escapeActivityText(record.other)} · created by ${escapeActivityText(record.person)}</p></div></div>
       <div class="facts quest-summary">
         <div class="fact"><span>Status</span>${badge(record.status, record.tone)}</div><div class="fact"><span>Funded wage</span><strong>฿${fmt(record.amount)}</strong></div>
-        <div class="fact"><span>Participant mode</span><strong>${record.teamQuest ? "Team" : "Single"}</strong></div><div class="fact"><span>Candidate mode</span><strong>${record.candidateMode || (record.status === "Open" ? "FCFS" : "CANDIDATE")}</strong></div><div class="fact"><span>Tag</span><strong>${record.other}</strong></div>
+        <div class="fact"><span>Participant mode</span><strong>${record.teamQuest ? "Team" : "Single"}</strong></div><div class="fact"><span>Candidate mode</span><strong>${escapeActivityText(record.candidateMode || (record.status === "Open" ? "FCFS" : "CANDIDATE"))}</strong></div><div class="fact"><span>Tag</span><strong>${escapeActivityText(record.other)}</strong></div>
       </div>
-      ${record.status === "Disputed" ? `<section class="section quest-dispute-reason"><div class="section-title"><h3>Why this quest is disputed</h3>${relatedDispute ? badge(relatedDispute.status, relatedDispute.tone) : badge("Needs case review", "warning")}</div>${relatedDispute ? `<dl class="dispute-summary-context"><div><dt>Case</dt><dd>${relatedDispute.id}</dd></div><div><dt>Category</dt><dd>${disputeTypeLabel(relatedDispute)}</dd></div><div><dt>Description</dt><dd>${relatedDispute.detail}</dd></div></dl><a class="btn full-width" href="/disputes/${encodeURIComponent(relatedDispute.id)}">Open full dispute</a>` : '<p class="audit-note">This quest is marked as disputed, but no active dispute record is linked. Review the record relationship before taking action.</p>'}</section>` : ""}
-      <section class="section"><h3>Quest brief</h3><p>${detail.description}</p><div class="requirement-box"><strong>Completion requirements</strong><ul><li>Submit work before the recorded deadline</li><li>Attach verifiable proof files</li><li>Keep all payment inside KuQuest</li></ul></div></section>
+      ${record.status === "Disputed" ? `<section class="section quest-dispute-reason"><div class="section-title"><h3>Why this quest is disputed</h3>${relatedDispute ? badge(relatedDispute.status, relatedDispute.tone) : badge("Needs case review", "warning")}</div>${relatedDispute ? `<dl class="dispute-summary-context"><div><dt>Case</dt><dd>${escapeActivityText(relatedDispute.id)}</dd></div><div><dt>Category</dt><dd>${escapeActivityText(disputeTypeLabel(relatedDispute))}</dd></div><div><dt>Description</dt><dd>${escapeActivityText(relatedDispute.detail)}</dd></div></dl><a class="btn full-width" href="/disputes/${encodeURIComponent(relatedDispute.id)}">Open full dispute</a>` : '<p class="audit-note">This quest is marked as disputed, but no active dispute record is linked. Review the record relationship before taking action.</p>'}</section>` : ""}
+      <section class="section"><h3>Quest brief</h3><p>${escapeActivityText(detail.description)}</p><div class="requirement-box"><strong>Completion requirements</strong><ul><li>Submit work before the recorded deadline</li><li>Attach verifiable proof files</li><li>Keep all payment inside KuQuest</li></ul></div></section>
       ${giverAttachmentsSection(detail.giverAttachments)}
       ${pendingChangeSummary(pendingQuestChanges[record.id])}
       <section class="section"><div class="section-title"><h3>Giver</h3><button class="link">View user</button></div>${giverProfile(detail)}</section>
-      <section class="section"><h3>Schedule and location</h3><div class="facts"><div class="fact"><span>Starts</span><strong>${detail.schedule[0]}</strong></div><div class="fact"><span>Due</span><strong>${detail.schedule[1]}</strong></div><div class="fact"><span>Application window</span><strong>${detail.schedule[2]}</strong></div><div class="fact"><span>Location</span><strong>${detail.location[0]}</strong><small>${detail.location[1]}</small></div></div></section>
+      <section class="section"><h3>Schedule and location</h3><div class="facts"><div class="fact"><span>Starts</span><strong>${escapeActivityText(detail.schedule[0])}</strong></div><div class="fact"><span>Due</span><strong>${escapeActivityText(detail.schedule[1])}</strong></div><div class="fact"><span>Application window</span><strong>${escapeActivityText(detail.schedule[2])}</strong></div><div class="fact"><span>Location</span><strong>${escapeActivityText(detail.location[0])}</strong><small>${escapeActivityText(detail.location[1])}</small></div></div></section>
       <section class="section"><div class="section-title"><h3>${participantSectionTitle(record, participants, started)}</h3><span class="section-count">${participants.length}</span></div>${relatedRows(participants)}</section>
       ${proofSubmissionsSection(detail.proof, record)}
       <section class="section"><h3>Financial record</h3><div class="financial-line"><span>Funded by giver</span><strong>฿${fmt(record.amount)}</strong></div><div class="financial-line"><span>Platform fee on completion</span><strong>฿${fmt(Math.round(record.amount * 0.05))}</strong></div><div class="financial-line total"><span>${record.teamQuest ? "Team receives (total)" : "Hunter receives"}</span><strong>฿${fmt(Math.round(record.amount * 0.95))}</strong></div><p class="audit-note">Funds are held in the quest ledger until approval or dispute resolution.</p></section>

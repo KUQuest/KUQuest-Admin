@@ -127,9 +127,6 @@ function renderQuestPage() {
           confirmAction(action, questRecord);
         }),
     );
-  document
-    .querySelectorAll(".sidebar button.active")
-    .forEach((button) => button.classList.remove("active"));
-  document.querySelector('[data-view="quests"]')?.classList.add("active");
+  setActiveNavigation("quests");
 }
 renderQuestPage();

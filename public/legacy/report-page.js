@@ -119,10 +119,7 @@ function renderReportPage() {
   main.querySelector("[data-report-evidence]")?.addEventListener("click", () =>
     toast(`Evidence opened for ${reportRecord.id}`),
   );
-  document
-    .querySelectorAll(".sidebar button.active")
-    .forEach((button) => button.classList.remove("active"));
-  document.querySelector('[data-view="reports"]')?.classList.add("active");
+  setActiveNavigation("reports");
 }
 
 renderReportPage();

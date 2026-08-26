@@ -54,10 +54,8 @@
   grid-template-columns: repeat(5, 1fr);
   margin-bottom: 18px;
   border-radius: 12px;
-  background: #fff;
-  box-shadow:
-    0 1px 2px #1f21231f,
-    0 0 0 1px #1f212312;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
   overflow: hidden;
 }
 .record-status-bar > div {
@@ -91,10 +89,8 @@
 .record-panel {
   padding: 18px;
   border-radius: 12px;
-  background: #fff;
-  box-shadow:
-    0 1px 2px #1f21231f,
-    0 0 0 1px #1f212312;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
 }
 .record-panel h2 {
   margin: 0 0 14px;
@@ -258,9 +254,7 @@
 }
 .dispute-summary.has-dispute {
   background: var(--danger-soft);
-  box-shadow:
-    0 1px 2px #1f21231f,
-    0 0 0 1px var(--danger);
+  box-shadow: var(--shadow-low), 0 0 0 1px var(--danger);
 }
 .no-dispute {
   padding: 12px;

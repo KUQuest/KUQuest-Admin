@@ -15,29 +15,24 @@ type LegacyScriptPlan = {
 
 const adminFoundationScripts = [
   "/legacy/auth.js?v=1",
-  "/legacy/script.js?v=59",
+  "/legacy/script.js?v=60",
   "/legacy/fresh-mock-data.js?v=24",
 ];
 
 const adminScripts: LegacyScriptPlan = {
-  sequential: [
-    ...adminFoundationScripts,
-    "/legacy/quest-detail.js?v=31",
-    "/legacy/dispute-detail.js?v=31",
-  ],
+  sequential: adminFoundationScripts,
   parallel: [
-    "/legacy/dispute-interactions.js?v=10",
-    "/legacy/resource-controls.js?v=39",
+    "/legacy/resource-controls.js?v=40",
     "/legacy/functional-controls.js?v=4",
-    "/legacy/deep-links.js?v=9",
+    "/legacy/deep-links.js?v=10",
   ],
 };
 
 const questScripts: LegacyScriptPlan = {
   sequential: [
     ...adminFoundationScripts,
-    "/legacy/quest-detail.js?v=31",
-    "/legacy/quest-page.js?v=24",
+    "/legacy/quest-detail.js?v=32",
+    "/legacy/quest-page.js?v=25",
     "/legacy/quest-change-review.js?v=10",
   ],
   parallel: ["/legacy/functional-controls.js?v=4"],
@@ -46,8 +41,8 @@ const questScripts: LegacyScriptPlan = {
 const disputeScripts: LegacyScriptPlan = {
   sequential: [
     ...adminFoundationScripts,
-    "/legacy/dispute-detail.js?v=31",
-    "/legacy/dispute-page.js?v=12",
+    "/legacy/dispute-detail.js?v=32",
+    "/legacy/dispute-page.js?v=13",
   ],
   parallel: ["/legacy/functional-controls.js?v=4"],
 };
@@ -67,7 +62,10 @@ const loadScript = (src: string) =>
     const script = document.createElement("script");
     script.src = src;
     script.dataset.kuquestLegacy = "true";
-    script.onload = () => resolve();
+    script.onload = () => {
+      script.dataset.kuquestLegacyLoaded = "true";
+      resolve();
+    };
     script.onerror = () => reject(new Error(`Could not load ${src}`));
     document.body.append(script);
   });
@@ -134,6 +132,7 @@ function LegacyOverlays({ detailSearch = false }: { detailSearch?: boolean }) {
         aria-modal="true"
         aria-label="Record details"
         aria-hidden="true"
+        tabIndex={-1}
         inert={true}
       />
       <dialog id="confirm" aria-labelledby="confirm-title" aria-describedby="confirm-copy">
@@ -231,7 +230,19 @@ export function LegacyAdminPage({ page, recordId }: { page: Exclude<LegacyPage, 
         </aside>
         <header>
           {detailPage ? (
-            <Link className="back-link" href="/" onClick={hardNavigate}>← Back to admin</Link>
+            <>
+              <button
+                className="icon mobile"
+                id="menu"
+                aria-label="Open navigation"
+                aria-controls="site-navigation"
+                aria-expanded="false"
+                type="button"
+              >
+                <span data-static-icon="menu" />
+              </button>
+              <Link className="back-link" href="/" onClick={hardNavigate}>← Back to admin</Link>
+            </>
           ) : (
             <>
               <button
@@ -250,11 +261,6 @@ export function LegacyAdminPage({ page, recordId }: { page: Exclude<LegacyPage, 
                 <kbd>⌘ K</kbd>
               </button>
             </>
-          )}
-          {!detailPage && (
-            <button className="icon header-notifications" aria-label="Notifications" type="button">
-              <span data-static-icon="bell" /><em />
-            </button>
           )}
         </header>
         <main id="main" tabIndex={-1} />

@@ -142,7 +142,7 @@ renderResource = function (view) {
   const rows = matchingRows(view),
     tabs = resourceTabs[view],
     hasQuery = Boolean(state.query);
-  main.innerHTML = `${pageHead(...heads[view])}<section class="panel resource"><div class="tabs" aria-label="Filter ${view} records">${tabs.map((tab) => `<button class="tab ${state.tab === tab.toLowerCase() ? "active" : ""}" data-tab="${tab.toLowerCase()}" aria-pressed="${state.tab === tab.toLowerCase()}">${tab}${tab === "All" ? ` (${data[view].length})` : ""}</button>`).join("")}</div><div class="toolbar resource-toolbar"><div class="inline-search search-field">${ico("search")}<input id="resource-search" value="${state.query.replaceAll('"', "&quot;")}" placeholder="Search ${view}…" aria-label="Search ${view}" autocomplete="off">${hasQuery ? '<button class="clear-search" aria-label="Clear search"><span class="close-lines"></span></button>' : ""}</div><span class="sort-help">Click a column to sort</span><span class="count" aria-live="polite">${rows.length} ${rows.length === 1 ? "result" : "results"}</span></div>${rows.length ? controlledTable(view, rows) : `<div class="empty"><h3>No matching records</h3><p>${hasQuery ? "Clear your search to see more results." : "There are no records in this view."}</p><button class="btn reset-results">Reset view</button></div>`}</section>`;
+  main.innerHTML = `${pageHead(...heads[view])}<section class="panel resource"><div class="tabs" aria-label="Filter ${view} records">${tabs.map((tab) => `<button class="tab ${state.tab === tab.toLowerCase() ? "active" : ""}" data-tab="${tab.toLowerCase()}" aria-pressed="${state.tab === tab.toLowerCase()}">${escapeActivityText(tab)}${tab === "All" ? ` (${data[view].length})` : ""}</button>`).join("")}</div><div class="toolbar resource-toolbar"><div class="inline-search search-field">${ico("search")}<input id="resource-search" value="${escapeActivityText(state.query)}" placeholder="Search ${view}…" aria-label="Search ${view}" autocomplete="off">${hasQuery ? '<button class="clear-search" aria-label="Clear search"><span class="close-lines"></span></button>' : ""}</div><span class="sort-help">Click a column to sort</span><span class="count" aria-live="polite">${rows.length} ${rows.length === 1 ? "result" : "results"}</span></div>${rows.length ? controlledTable(view, rows) : `<div class="empty"><h3>No matching records</h3><p>${hasQuery ? "Clear your search to see more results." : "There are no records in this view."}</p><button class="btn reset-results">Reset view</button></div>`}</section>`;
   bind();
 };
 
@@ -157,23 +157,23 @@ function controlledTable(view, rows) {
 }
 function tableCell(view, record, key, target) {
   if (key === "id")
-    return `<td><button class="row-record-button" data-open="${target}" aria-label="Open ${view.slice(0, -1)} ${record.id}">${record.id}</button></td>`;
+    return `<td><button class="row-record-button" data-open="${target}" aria-label="Open ${view.slice(0, -1)} ${escapeActivityText(record.id)}">${escapeActivityText(record.id)}</button></td>`;
   if (key === "title")
-    return `<td><strong>${record.title}</strong>${view === "disputes" ? `<small>${record.detail.slice(0, 45)}…</small>` : view === "quests" && record.teamQuest ? `<small>${record.teamSize} selected participants · Team quest</small>` : ""}</td>`;
-  if (key === "person") return `<td><strong>${record.person}</strong></td>`;
-  if (key === "other") return `<td>${record.other}</td>`;
+    return `<td><strong>${escapeActivityText(record.title)}</strong>${view === "disputes" ? `<small>${escapeActivityText(record.detail).slice(0, 45)}…</small>` : view === "quests" && record.teamQuest ? `<small>${record.teamSize} selected participants · Team quest</small>` : ""}</td>`;
+  if (key === "person") return `<td><strong>${escapeActivityText(record.person)}</strong></td>`;
+  if (key === "other") return `<td>${escapeActivityText(record.other)}</td>`;
   if (key === "amount") return `<td class="money">฿${fmt(record.amount)}</td>`;
   if (key === "status") return `<td>${badge(record.status, record.tone)}</td>`;
-  if (key === "disputeDate") return `<td>${record.disputeDate || "—"}</td>`;
+  if (key === "disputeDate") return `<td>${escapeActivityText(record.disputeDate || "—")}</td>`;
   if (key === "disputeType")
     return `<td><strong>${escapeActivityText(disputeTypeLabel(record))}</strong></td>`;
   if (key === "reportedUserName")
-    return `<td><strong>${record.reportedUserName}</strong></td>`;
+    return `<td><strong>${escapeActivityText(record.reportedUserName)}</strong></td>`;
   if (key === "reporterName")
-    return `<td>${record.reporterName}</td>`;
-  if (key === "category") return `<td>${record.category}</td>`;
-  if (key === "reportedAt") return `<td>${record.reportedAt}</td>`;
-  if (key === "age") return `<td>${record.age}</td>`;
+    return `<td>${escapeActivityText(record.reporterName)}</td>`;
+  if (key === "category") return `<td>${escapeActivityText(record.category)}</td>`;
+  if (key === "reportedAt") return `<td>${escapeActivityText(record.reportedAt)}</td>`;
+  if (key === "age") return `<td>${escapeActivityText(record.age)}</td>`;
   return "<td>—</td>";
 }
 

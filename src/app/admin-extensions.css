@@ -134,7 +134,7 @@
   display: grid;
   place-items: center;
   padding: 20px;
-  background: var(--scrim-dialog, #191b1c6b);
+  background: var(--scrim-dialog);
 }
 .party-chat-modal {
   width: min(560px, 100%);
@@ -524,7 +524,7 @@
   position: absolute;
   z-index: 8;
   inset: 0;
-  background: #fff;
+  background: var(--surface);
   transform: translateX(100%);
   transition: transform 0.2s ease-out;
   overflow: auto;
@@ -546,7 +546,7 @@
   justify-content: space-between;
   padding: 13px 16px;
   border-bottom: 1px solid var(--border);
-  background: #fffffff5;
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
 }
 .evidence-preview-head strong,
 .evidence-preview-head small {
@@ -584,9 +584,7 @@
   font-size: 11px;
 }
 .change-review {
-  box-shadow:
-    0 1px 2px #1f21231f,
-    0 0 0 1px var(--warn);
+  box-shadow: var(--shadow-low), 0 0 0 1px var(--warn);
 }
 .change-review .record-panel-head p {
   margin: 2px 0 0;
