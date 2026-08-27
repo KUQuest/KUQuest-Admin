@@ -15,14 +15,14 @@ type LegacyScriptPlan = {
 
 const adminFoundationScripts = [
   "/legacy/auth.js?v=1",
-  "/legacy/script.js?v=60",
-  "/legacy/fresh-mock-data.js?v=26",
+  "/legacy/script.js?v=72",
+  "/legacy/fresh-mock-data.js?v=34",
 ];
 
 const adminScripts: LegacyScriptPlan = {
   sequential: adminFoundationScripts,
   parallel: [
-    "/legacy/resource-controls.js?v=40",
+    "/legacy/resource-controls.js?v=41",
     "/legacy/functional-controls.js?v=4",
     "/legacy/deep-links.js?v=10",
   ],
@@ -48,7 +48,7 @@ const disputeScripts: LegacyScriptPlan = {
 };
 
 const reportScripts: LegacyScriptPlan = {
-    sequential: [...adminFoundationScripts, "/legacy/report-page.js?v=7"],
+    sequential: [...adminFoundationScripts, "/legacy/report-page.js?v=12"],
   parallel: ["/legacy/functional-controls.js?v=4"],
 };
 
@@ -141,6 +141,7 @@ function LegacyOverlays({ detailSearch = false }: { detailSearch?: boolean }) {
             <span className="warning-icon">!</span>
             <h2 id="confirm-title">Confirm action</h2>
             <p id="confirm-copy" />
+            <div id="confirm-context" hidden />
             <label htmlFor="confirm-reason">
               Reason for this decision <span aria-hidden="true">*</span>
               <textarea

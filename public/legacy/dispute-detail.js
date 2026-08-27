@@ -34,7 +34,7 @@ function questTimelineFor(record, caseData, relatedQuest) {
       month: "short",
       year: "numeric",
       timeZone: "UTC",
-    })} · ${time} ICT`;
+    })} · ${time}`;
   };
   return [
     {
@@ -51,20 +51,20 @@ function questTimelineFor(record, caseData, relatedQuest) {
     },
     {
       title: `${caseData.openedBy.split(" · ")[0]} opened the dispute`,
-      detail: `${record.disputeDate} · 09:14 ICT · ${disputeTypeLabel(record)}`,
+      detail: `${record.disputeDate} · 09:14 · ${disputeTypeLabel(record)}`,
     },
     {
       title: `KuQuest placed ฿${fmt(record.amount)} on hold`,
-      detail: `${record.disputeDate} · 09:15 ICT · Quest progression paused`,
+      detail: `${record.disputeDate} · 09:15 · Quest progression paused`,
     },
     record.status === "Closed"
       ? {
           title: "Admin recorded the final resolution",
-          detail: `${record.disputeDate} · 14:35 ICT · Case closed`,
+          detail: `${record.disputeDate} · 14:35 · Case closed`,
         }
       : {
           title: "Case assigned to admin review",
-          detail: `${record.disputeDate} · 10:08 ICT · Awaiting resolution`,
+          detail: `${record.disputeDate} · 10:08 · Awaiting resolution`,
         },
   ];
 }

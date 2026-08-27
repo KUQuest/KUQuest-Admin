@@ -27,6 +27,7 @@ const resourceColumns = {
     ["title", "Recipient"],
     ["person", "Account"],
     ["amount", "Amount"],
+    ["requestedAt", "Requested"],
     ["status", "Status"],
   ],
   reports: [
@@ -77,6 +78,7 @@ function matchingRows(view) {
       record.category || "",
       record.details || "",
       record.reportedAt || "",
+      record.requestedAt || "",
       record.detail || "",
     ]
       .join(" ")
@@ -132,6 +134,8 @@ function sortSpec(view, order) {
 function sortValue(view, record, key) {
   if (key === "amount") return Number(record.amount || 0);
   if (key === "disputeDate") return new Date(record.disputeDate || 0).getTime();
+  if (key === "requestedAt")
+    return Date.parse(String(record.requestedAt || "").replace(" · ", " ")) || 0;
   if (key === "reportedAt") return record.id || "";
   return record[key] || "";
 }
@@ -163,6 +167,7 @@ function tableCell(view, record, key, target) {
   if (key === "person") return `<td><strong>${escapeActivityText(record.person)}</strong></td>`;
   if (key === "other") return `<td>${escapeActivityText(record.other)}</td>`;
   if (key === "amount") return `<td class="money">฿${fmt(record.amount)}</td>`;
+  if (key === "requestedAt") return `<td>${escapeActivityText(record.requestedAt || "—")}</td>`;
   if (key === "status") return `<td>${badge(record.status, record.tone)}</td>`;
   if (key === "disputeDate") return `<td>${escapeActivityText(record.disputeDate || "—")}</td>`;
   if (key === "disputeType")

@@ -314,9 +314,9 @@ function questActivityDate(age) {
 function defaultQuestActivity(record) {
   const date = questActivityDate(record.age);
   return [
-    `Quest published · ${date}, 09:10 ICT · The quest became available under its published terms`,
-    `Applications received · ${date}, 12:30 ICT · Applications were recorded for review`,
-    `${record.status} · ${date}, 16:45 ICT · The current quest state was recorded in the audit trail`,
+    `Quest published · ${date}, 09:10 · The quest became available under its published terms`,
+    `Applications received · ${date}, 12:30 · Applications were recorded for review`,
+    `${record.status} · ${date}, 16:45 · The current quest state was recorded in the audit trail`,
   ];
 }
 
