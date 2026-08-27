@@ -575,6 +575,48 @@ main {
   color: var(--muted);
   font-size: 12px;
 }
+.page-size-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.page-size-button,
+.page-nav {
+  height: 32px;
+  padding: 0 9px;
+  border: 1px solid var(--strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+.page-size-button:hover,
+.page-size-button.active,
+.page-nav:not(:disabled):hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.page-size-button.active {
+  font-weight: 600;
+}
+.page-nav:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.table-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+}
+.page-indicator {
+  color: var(--muted);
+  font-size: 12px;
+}
 .table-wrap {
   overflow-x: auto;
 }
@@ -1124,6 +1166,17 @@ dialog::backdrop {
   .count {
     display: none;
   }
+  .resource-toolbar .count {
+    display: block;
+    width: 100%;
+    margin-left: 0;
+  }
+  .page-size-controls {
+    width: 100%;
+  }
+  .table-pagination {
+    padding: 10px;
+  }
   .facts {
     grid-template-columns: 1fr;
   }
@@ -1142,7 +1195,9 @@ dialog::backdrop {
   .tab,
   .link,
   .row-record-button,
-  .order-control select {
+  .order-control select,
+  .page-size-button,
+  .page-nav {
     min-height: 44px;
   }
   .icon,
