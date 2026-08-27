@@ -10,7 +10,7 @@ const resourceColumns = {
   quests: [
     ["id", "Quest"],
     ["title", "Title"],
-    ["person", "Giver"],
+    ["person", "Hirer"],
     ["other", "Tag"],
     ["amount", "Wage"],
     ["status", "Status"],

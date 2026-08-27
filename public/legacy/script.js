@@ -179,9 +179,7 @@ function reviewTimestamp(record) {
 function renderHome() {
   const decisions = homeDecisions();
   const activeDisputes = data.disputes.filter((record) => record.status === "Active"),
-    heldAmount = activeDisputes.reduce((total, record) => total + (record.amount || 0), 0),
     pendingPayouts = data.payouts.filter((record) => record.status === "Needs approval"),
-    pendingAmount = pendingPayouts.reduce((total, record) => total + (record.amount || 0), 0),
     reviewUsers = data.users.filter((record) => ["Flag", "Temp ban", "Perm ban"].includes(record.status)),
     openReports = data.reports.filter((record) => record.status === "Active"),
     workLeft = [
@@ -190,26 +188,20 @@ function renderHome() {
       ...pendingPayouts,
     ],
     statusCounts = ["Open", "Assigned", "In progress", "Submitted", "Change pending", "Rework", "Disputed", "Completed", "Cancelled"].map((status) => [status, data.quests.filter((record) => record.status === status).length]);
-  main.innerHTML = `${pageHead("Overview", "A live snapshot of marketplace risk, money, and work in progress.", '<button class="btn primary" data-jump="disputes">Open review queue</button>')}<section class="dashboard-stats"><div class="stat"><span>Active disputes</span><strong>${activeDisputes.length}</strong><small>฿${fmt(heldAmount)} currently held</small></div><div class="stat"><span>Payouts needing review</span><strong>${pendingPayouts.length}</strong><small>฿${fmt(pendingAmount)} awaiting action</small></div><div class="stat"><span>Users needing attention</span><strong>${reviewUsers.length}</strong><small>Review or restricted accounts</small></div><div class="stat"><span>Total work left</span><strong>${workLeft.length}</strong><small>Not completed, cancelled, or hidden</small></div></section><div class="grid dashboard-grid"><section class="panel"><div class="panel-head"><div><h2>Needs a decision</h2><p>Showing ${decisions.length} latest dispute/report records</p></div><button class="link" data-jump="activity">View activity</button></div>${decisions.length ? decisions.map((item) => attention(item.view, data[item.view].indexOf(item.record), item.record.tone, item.icon, item.title, item.detail, item.metric, item.age || item.record.age)).join("") : '<div class="empty"><h3>No decisions waiting</h3><p>All current records are clear or processing normally.</p></div>'}</section><aside><section class="panel"><div class="panel-head"><div><h2>Quest flow</h2><p>Current marketplace distribution</p></div><button class="link" data-jump="quests">Open quests</button></div><div class="dashboard-status-list">${statusCounts.map(([status, count]) => `<div><span>${badge(status, status === "Disputed" ? "danger" : ["Submitted", "Change pending"].includes(status) ? "warning" : status === "In progress" ? "info" : "success")}</span><strong>${count}</strong></div>`).join("")}</div></section><section class="panel dashboard-activity"><div class="panel-head"><div><h2>Recent activity</h2><p>Latest administrative trail</p></div></div>${activityList().slice(0, 3).join("")}</section></aside></div><div class="dashboard-lower"><section class="panel"><div class="panel-head"><div><h2>Payout watch</h2><p>Money movement requiring a closer look</p></div><button class="link" data-jump="payouts">Open payouts</button></div>${pendingPayouts.slice(0, 3).map((record) => `<button class="dashboard-row" data-open="payouts:${data.payouts.indexOf(record)}"><span><strong>${record.id}</strong><small>${record.title} · ${record.status}</small></span><strong>฿${fmt(record.amount)}</strong><span>${badge(record.status, record.tone)}</span></button>`).join("") || '<div class="empty"><h3>No payouts need review</h3><p>Processing and completed payouts are moving normally.</p></div>'}</section><section class="panel"><div class="panel-head"><div><h2>User watch</h2><p>Accounts that may need a moderator</p></div><button class="link" data-jump="users">Open users</button></div>${reviewUsers.slice(0, 3).map((record) => `<button class="dashboard-row" data-open="users:${data.users.indexOf(record)}"><span><strong>${record.title}</strong><small>${record.id} · ${record.age}</small></span><span>${badge(record.status, record.tone)}</span></button>`).join("") || '<div class="empty"><h3>No user reviews</h3><p>All accounts are currently in good standing.</p></div>'}</section></div>`;
+  main.innerHTML = `${pageHead("Overview", "A live snapshot of marketplace risk, money, and work in progress.", '<button class="btn primary" data-jump="disputes">Open review queue</button>')}<section class="dashboard-stats"><div class="stat"><span>Total work left</span><strong>${workLeft.length}</strong><small>Items requiring admin action</small></div></section><div class="grid dashboard-grid"><section class="panel"><div class="panel-head"><div><h2>Needs a decision</h2><p>Showing ${decisions.length} latest dispute/report records</p></div><button class="link" data-jump="activity">View activity</button></div>${decisions.length ? decisions.map((item) => attention(item.view, data[item.view].indexOf(item.record), item.record.tone, item.icon, item.title, item.detail, item.metric, item.age || item.record.age)).join("") : '<div class="empty"><h3>No decisions waiting</h3><p>All current records are clear or processing normally.</p></div>'}</section><aside><section class="panel"><div class="panel-head"><div><h2>Quest flow</h2><p>Current marketplace distribution</p></div><button class="link" data-jump="quests">Open quests</button></div><div class="dashboard-status-list">${statusCounts.map(([status, count]) => `<div><span>${badge(status, status === "Disputed" ? "danger" : ["Submitted", "Change pending"].includes(status) ? "warning" : status === "In progress" ? "info" : "success")}</span><strong>${count}</strong></div>`).join("")}</div></section><section class="panel dashboard-activity"><div class="panel-head"><div><h2>Recent activity</h2><p>Latest administrative trail</p></div></div>${activityList().slice(0, 3).join("")}</section></aside></div><div class="dashboard-lower"><section class="panel"><div class="panel-head"><div><h2>Payout watch</h2><p>Money movement requiring a closer look</p></div><button class="link" data-jump="payouts">Open payouts</button></div>${pendingPayouts.slice(0, 3).map((record) => `<button class="dashboard-row" data-open="payouts:${data.payouts.indexOf(record)}"><span><strong>${record.id}</strong><small>${record.title} · ${record.status}</small></span><strong>฿${fmt(record.amount)}</strong><span>${badge(record.status, record.tone)}</span></button>`).join("") || '<div class="empty"><h3>No payouts need review</h3><p>Processing and completed payouts are moving normally.</p></div>'}</section><section class="panel"><div class="panel-head"><div><h2>User watch</h2><p>Accounts that may need a moderator</p></div><button class="link" data-jump="users">Open users</button></div>${reviewUsers.slice(0, 3).map((record) => `<button class="dashboard-row" data-open="users:${data.users.indexOf(record)}"><span><strong>${record.title}</strong><small>${record.id} · ${record.age}</small></span><span>${badge(record.status, record.tone)}</span></button>`).join("") || '<div class="empty"><h3>No user reviews</h3><p>All accounts are currently in good standing.</p></div>'}</section></div>`;
   main.querySelector(".page-head > div > p")?.remove();
-  main.querySelectorAll(".dashboard-stats .stat:nth-child(-n + 2) small").forEach((node) => node.remove());
+  const dashboardStats = main.querySelector(".dashboard-stats");
+  if (dashboardStats) {
+    dashboardStats.innerHTML = `<div class="stat"><span>Active disputes</span><strong>${activeDisputes.length}</strong></div><div class="stat"><span>Payouts needing review</span><strong>${pendingPayouts.length}</strong></div><div class="stat"><span>Open report</span><strong>${openReports.length}</strong></div><div class="stat"><span>Total work left</span><strong>${workLeft.length}</strong></div>`;
+    dashboardStats.querySelector(".stat:last-child")?.classList.add(
+      "dashboard-stat-work-left",
+    );
+  }
   const decisionsHeading = main.querySelector(".dashboard-grid > .panel h2");
   if (decisionsHeading) decisionsHeading.textContent = "Latest dispute/report";
   const lowerHeadings = main.querySelectorAll(".dashboard-lower .panel h2");
   if (lowerHeadings[0]) lowerHeadings[0].textContent = "Recent Payout Request";
   if (lowerHeadings[1]) lowerHeadings[1].textContent = "Recent User penalty";
-  const workLeftStat = main.querySelector(".dashboard-stats .stat:nth-child(4)");
-  if (workLeftStat) {
-    workLeftStat.querySelector("small").textContent =
-      "Active disputes, active reports, and pending payouts";
-    workLeftStat.classList.add("dashboard-stat-work-left");
-  }
-  const openReportStat = main.querySelector(".dashboard-stats .stat:nth-child(3)");
-  if (openReportStat) {
-    openReportStat.querySelector("span").textContent = "Active report";
-    openReportStat.querySelector("strong").textContent = openReports.length;
-    openReportStat.querySelector("small").textContent = "Reports awaiting review";
-  }
   const recentActivity = main.querySelector(".dashboard-activity"),
     dashboardLower = main.querySelector(".dashboard-lower");
   if (recentActivity && dashboardLower) dashboardLower.after(recentActivity);
@@ -386,7 +378,7 @@ function table(v, rows) {
           "Category",
         ]
       : v === "quests"
-        ? ["Quest", "Title", "Giver", "Tag", "Wage", "Status"]
+        ? ["Quest", "Title", "Hirer", "Tag", "Wage", "Status"]
         : v === "users"
           ? ["Student ID", "User", "Email", "Academic profile", "Status"]
           : ["Payout", "Recipient", "Account", "Amount", "Status"];
@@ -625,7 +617,7 @@ function openReportDrawer(index) {
   showDrawerLayer();
   const isClosed = report.status === "Closed",
     nextAction = isClosed ? "Reopen report" : "Review report";
-  drawer.innerHTML = `<div class="drawer-top"><div><strong>${report.id}</strong><small>User report</small></div><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div><div class="drawer-body report-record ${isClosed ? "closed-record" : "open-record"}"><div class="drawer-title"><span class="att-icon ${isClosed ? "neutral" : "warning"}">${ico("flag")}</span><div><h2>Report against ${escapeActivityText(report.reportedUserName)}</h2><p>Submitted by ${escapeActivityText(report.reporterName)}</p></div></div><div class="case-alert"><span>${ico("flag")}</span><div><strong>${isClosed ? "Report closed — record retained" : "Open report — review is required"}</strong><p>${isClosed ? "This report is closed and retained as a read-only audit record." : "Review the submitted details and evidence before closing this report."}</p></div></div><section class="section"><h3>Report overview</h3><div class="facts"><div class="fact"><span>Status</span>${badge(report.status, report.tone || (isClosed ? "neutral" : "warning"))}</div><div class="fact"><span>Report type</span><strong>${escapeActivityText(report.category)}</strong></div><div class="fact"><span>Reported</span><strong>${escapeActivityText(report.reportedAt)}</strong></div></div></section><section class="section"><h3>What was reported</h3><p>${escapeActivityText(report.details)}</p></section><section class="section"><h3>People involved</h3><div class="facts"><div class="fact"><span>Reported user</span><strong>${escapeActivityText(report.reportedUserName)}</strong><small>${escapeActivityText(report.reportedUserId)}</small></div><div class="fact"><span>Reporting user</span><strong>${escapeActivityText(report.reporterName)}</strong><small>${escapeActivityText(report.reporterId)}</small></div></div></section><section class="section"><h3>Evidence</h3>${report.evidence ? `<div class="evidence"><strong>${escapeActivityText(report.evidence)}</strong><small>Attached by ${escapeActivityText(report.reporterName)}</small></div>` : '<p class="audit-note">No evidence file attached.</p>'}</section>${isClosed && report.decisionReason ? `<section class="section"><h3>Closing note</h3><p>${escapeActivityText(report.decisionReason)}</p></section>` : ""}</div><div class="drawer-actions"><a class="btn" href="/reports/${encodeURIComponent(report.id)}">Full report detail</a><button class="btn" id="close-report-record">Close record</button><button class="btn primary" data-action="${nextAction}">${nextAction}</button></div>`;
+  drawer.innerHTML = `<div class="drawer-top"><div><strong>${report.id}</strong><small>User report</small></div><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div><div class="drawer-body report-record ${isClosed ? "closed-record" : "open-record"}"><div class="drawer-title"><span class="att-icon ${isClosed ? "neutral" : "warning"}">${ico("flag")}</span><div><h2>Report against ${escapeActivityText(report.reportedUserName)}</h2><p>Submitted by ${escapeActivityText(report.reporterName)}</p></div></div><div class="case-alert"><span>${ico("flag")}</span><div><strong>${isClosed ? "Report closed — record retained" : "Open report — review is required"}</strong><p>${isClosed ? "This report is closed and retained as a read-only audit record." : "Review the submitted details and evidence before closing this report."}</p></div></div><section class="section"><h3>Report overview</h3><div class="facts"><div class="fact"><span>Status</span>${badge(report.status, report.tone || (isClosed ? "neutral" : "warning"))}</div><div class="fact"><span>Report type</span><strong>${escapeActivityText(report.category)}</strong></div><div class="fact"><span>Reported</span><strong>${escapeActivityText(report.reportedAt)}</strong></div></div></section><section class="section"><h3>What was reported</h3><p>${escapeActivityText(report.details)}</p></section><section class="section"><h3>People involved</h3><div class="facts"><div class="fact"><span>Reported user</span><strong>${escapeActivityText(report.reportedUserName)}</strong><small>${escapeActivityText(report.reportedUserId)}</small></div><div class="fact"><span>Reporting user</span><strong>${escapeActivityText(report.reporterName)}</strong><small>${escapeActivityText(report.reporterId)}</small></div></div></section><section class="section"><h3>Evidence</h3>${report.evidence ? `<button class="evidence-item" data-report-evidence><span class="evidence-state">${ico("check")}</span><span><strong>${escapeActivityText(report.evidence)}</strong><small>Attached by ${escapeActivityText(report.reporterName)}</small></span><span>Open</span></button>` : '<p class="audit-note">No evidence file attached.</p>'}</section>${isClosed && report.decisionReason ? `<section class="section"><h3>Closing note</h3><p>${escapeActivityText(report.decisionReason)}</p></section>` : ""}</div><div class="drawer-actions"><a class="btn" href="/reports/${encodeURIComponent(report.id)}">Full report detail</a><button class="btn" id="close-report-record">Close record</button><button class="btn primary" data-action="${nextAction}">${nextAction}</button></div>`;
   if (!isClosed)
     drawer.querySelector(".case-alert strong").textContent =
       "Active report — review is required";
@@ -690,11 +682,6 @@ function openDrawer(v, i) {
   }
   if (v === "users") {
     drawer.querySelector("[data-chat-user]")?.remove();
-    const reportButton = document.createElement("button");
-    reportButton.className = "btn";
-    reportButton.dataset.reportUser = "";
-    reportButton.textContent = "Report user";
-    drawer.querySelector(".drawer-actions")?.prepend(reportButton);
   }
   const userReports =
     v === "users"
@@ -728,9 +715,6 @@ function openDrawer(v, i) {
   drawer
     .querySelector("[data-chat-user]")
     ?.addEventListener("click", () => openUserChat(r));
-  drawer
-    .querySelector("[data-report-user]")
-    ?.addEventListener("click", () => openUserReportDialog(r));
   drawer
     .querySelector("[data-penalty-user]")
     ?.addEventListener("click", () => openPenaltyDialog(r));
@@ -943,7 +927,7 @@ function applyReportDecision(report, decision, reason, days) {
   report.tone = "neutral";
   report.closedAt = reportDateTime();
   report.decision = decision;
-  report.decisionLabel = decision === "flag" ? "Flag only" : decision === "temporary-ban" ? "Temporary ban" : "Permanent ban";
+  report.decisionLabel = decision === "do-nothing" ? "Do nothing" : decision === "flag" ? "Flag only" : decision === "temporary-ban" ? "Temporary ban" : "Permanent ban";
   report.decisionDays = decision === "temporary-ban" ? duration : null;
   report.decisionReason = reason;
   if (!user) {
@@ -962,7 +946,7 @@ function applyReportDecision(report, decision, reason, days) {
     user.tone = "danger";
     user.penalty = { label: `Banned from all quests for ${duration} days · until ${until.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`, reason, recordedAt: "Just now" };
     user.age = user.penalty.label;
-  } else {
+  } else if (decision === "permanent-ban") {
     user.status = "Perm ban";
     user.tone = "danger";
     user.penalty = { label: "Permanently banned from all quests", reason, recordedAt: "Just now" };
@@ -1007,21 +991,24 @@ function timelineDetail(title, index) {
   }
   return "This event was recorded in the audit trail";
 }
-function timeline(items) {
+function timeline(items, options = {}) {
   return `<ul class="timeline">${items
     .map((item, index) => {
+      const rawParts = typeof item === "string" ? String(item).split(" · ") : [];
       const entry =
         typeof item === "string"
           ? {
-              title: item,
-              detail: timelineDetail(item, index),
+              title: rawParts.shift() || "Quest activity",
+              detail: rawParts.join(" · "),
             }
           : item,
         parts = String(entry.detail || "").split(" · "),
         timeParts = entry.time ? 0 : parts.length > 2 ? 2 : parts.length > 1 ? 1 : 0,
-        time = entry.time || parts.slice(0, timeParts).join(" · "),
-        detail = entry.time ? entry.detail : parts.slice(timeParts).join(" · ");
-      return `<li><strong>${escapeActivityText(entry.title)}</strong>${time ? `<time>${escapeActivityText(time)}</time>` : ""}<span>${escapeActivityText(detail)}</span></li>`;
+        time = (entry.time || parts.slice(0, timeParts).join(" · ")).replace(/\s+ICT$/, ""),
+        detail = entry.time
+          ? entry.detail
+          : parts.slice(timeParts).join(" · ") || timelineDetail(entry.title, index);
+      return `<li><strong>${escapeActivityText(entry.title)}</strong>${time ? `<time>${escapeActivityText(time)}</time>` : ""}${options.showDetails === false || entry.showDetails === false ? "" : `<span>${escapeActivityText(detail)}</span>`}</li>`;
     })
     .join("")}</ul>`;
 }
@@ -1042,7 +1029,7 @@ function closeDrawer() {
   }, 220);
 }
 const deferredDrawerScripts = {
-  quests: ["/legacy/quest-detail.js?v=32"],
+  quests: ["/legacy/quest-detail.js?v=33"],
   disputes: [
     "/legacy/dispute-detail.js?v=32",
     "/legacy/dispute-interactions.js?v=10",

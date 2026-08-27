@@ -3,8 +3,8 @@ function disputeCaseFor(record) {
     disputeCases[record.id] || {
       questId: "QST-9403",
       category: "Service outcome",
-      openedBy: `${record.other} · Giver`,
-      respondent: `${record.person} · Hunter`,
+      openedBy: `${record.other} · Hirer`,
+      respondent: `${record.person} · Worker`,
       requested: "Admin review",
       claim: record.detail,
       response:
@@ -38,11 +38,11 @@ function questTimelineFor(record, caseData, relatedQuest) {
   };
   return [
     {
-      title: `${relatedQuest?.person || "The giver"} published this quest`,
+      title: `${relatedQuest?.person || "The hirer"} published this quest`,
       detail: `${dateBefore(5, "09:00")} · ${relatedQuest?.title || record.title}`,
     },
     {
-      title: "A hunter team was selected and accepted the terms",
+      title: "A worker team was selected and accepted the terms",
       detail: `${dateBefore(4, "16:40")} · Scope, payment, and attendance requirements locked`,
     },
     {
@@ -89,7 +89,7 @@ function closedDecisionSummary(record) {
 }
 
 function partyChats(caseData) {
-  return `<section class="section party-chats"><h3>Private case messages</h3><p class="chat-intro">Messages are separate for each party and become part of the case audit trail.</p><div class="chat-launches"><button class="party-chat-button" data-chat-role="giver"><span class="avatar">GV</span><span><strong>Chat with giver</strong><small>${escapeActivityText(caseData.openedBy)}</small></span><span>Open</span></button><button class="party-chat-button" data-chat-role="hunter"><span class="avatar">HN</span><span><strong>Chat with hunter</strong><small>${escapeActivityText(caseData.respondent)}</small></span><span>Open</span></button></div></section>`;
+  return `<section class="section party-chats"><h3>Private case messages</h3><p class="chat-intro">Messages are separate for each party and become part of the case audit trail.</p><div class="chat-launches"><button class="party-chat-button" data-chat-role="hirer"><span class="avatar">GV</span><span><strong>Chat with hirer</strong><small>${escapeActivityText(caseData.openedBy)}</small></span><span>Open</span></button><button class="party-chat-button" data-chat-role="worker"><span class="avatar">HN</span><span><strong>Chat with worker</strong><small>${escapeActivityText(caseData.respondent)}</small></span><span>Open</span></button></div></section>`;
 }
 
 function bindPartyChats(root, record) {
@@ -105,7 +105,7 @@ function bindPartyChats(root, record) {
 
 function openPartyChat(record, role, caseData) {
   activeCustomLayerClose?.();
-  const isGiver = role === "giver",
+  const isGiver = role === "hirer",
     name = isGiver ? caseData.openedBy : caseData.respondent,
     senderName = name.split(" · ")[0],
     initial = isGiver
@@ -113,7 +113,7 @@ function openPartyChat(record, role, caseData) {
       : "I have added my response and supporting files.",
     overlay = document.createElement("div");
   overlay.className = "party-chat-overlay";
-  overlay.innerHTML = `<section class="party-chat-modal" role="dialog" aria-modal="true" aria-label="Chat with ${isGiver ? "giver" : "hunter"}"><div class="chat-modal-head"><div><strong>Chat with ${isGiver ? "giver" : "hunter"}</strong><small>${name} · ${record.id}</small></div><button class="icon close-party-chat" aria-label="Close chat"><span class="close-lines"></span></button></div><div class="chat-thread">${chatMessage(senderName, isGiver ? "Today · 09:14" : "Today · 09:16", initial, "received")}${chatMessage("You", "Today · 09:20", "Please keep all further evidence in this case.", "sent")}</div><form class="chat-compose"><label class="visually-hidden" for="case-message-${record.id}-${role}">Message ${isGiver ? "giver" : "hunter"}</label><textarea id="case-message-${record.id}-${role}" rows="3" maxlength="500" placeholder="Message ${isGiver ? "giver" : "hunter"}…"></textarea><div class="chat-compose-actions"><div class="chat-compose-tools"><label class="chat-attach btn" for="case-chat-attachment-${record.id}-${role}">${ico("paperclip")}<span>Attach file</span></label><input class="chat-attachment-input visually-hidden" id="case-chat-attachment-${record.id}-${role}" data-chat-attachment type="file"><span class="chat-attachment-name" data-chat-attachment-name aria-live="polite">No file attached</span></div><button class="btn primary" type="submit">Send message</button></div></form></section>`;
+  overlay.innerHTML = `<section class="party-chat-modal" role="dialog" aria-modal="true" aria-label="Chat with ${isGiver ? "hirer" : "worker"}"><div class="chat-modal-head"><div><strong>Chat with ${isGiver ? "hirer" : "worker"}</strong><small>${name} · ${record.id}</small></div><button class="icon close-party-chat" aria-label="Close chat"><span class="close-lines"></span></button></div><div class="chat-thread">${chatMessage(senderName, isGiver ? "Today · 09:14" : "Today · 09:16", initial, "received")}${chatMessage("You", "Today · 09:20", "Please keep all further evidence in this case.", "sent")}</div><form class="chat-compose"><label class="visually-hidden" for="case-message-${record.id}-${role}">Message ${isGiver ? "hirer" : "worker"}</label><textarea id="case-message-${record.id}-${role}" rows="3" maxlength="500" placeholder="Message ${isGiver ? "hirer" : "worker"}…"></textarea><div class="chat-compose-actions"><div class="chat-compose-tools"><label class="chat-attach btn" for="case-chat-attachment-${record.id}-${role}">${ico("paperclip")}<span>Attach file</span></label><input class="chat-attachment-input visually-hidden" id="case-chat-attachment-${record.id}-${role}" data-chat-attachment type="file"><span class="chat-attachment-name" data-chat-attachment-name aria-live="polite">No file attached</span></div><button class="btn primary" type="submit">Send message</button></div></form></section>`;
   const close = showModalLayer(overlay, { initialFocus: "textarea" });
   overlay.querySelector(".close-party-chat").onclick = close;
   overlay.addEventListener("click", (event) => {
@@ -146,10 +146,10 @@ function bindResolutionControls(root, record) {
       "beforeend",
       '<button data-allocation="rework"><span>Require rework</span><strong>Keep funds held</strong></button>',
     );
-  root.querySelector('[data-allocation="giver"] span').textContent =
-    `Giver wins · ${giverName}`;
-  root.querySelector('[data-allocation="hunter"] span').textContent =
-    `Hunter wins · ${hunterName}`;
+  root.querySelector('[data-allocation="hirer"] span').textContent =
+    `Hirer wins · ${giverName}`;
+  root.querySelector('[data-allocation="worker"] span').textContent =
+    `Worker wins · ${hunterName}`;
   root.querySelectorAll("[data-allocation]").forEach((button) =>
     button.addEventListener("click", () => {
       selected = button.dataset.allocation;
@@ -163,10 +163,10 @@ function bindResolutionControls(root, record) {
     if (!selected)
       return toast("Select a resolution before closing this dispute.");
     let detail;
-    if (selected === "giver")
-      detail = `Confirm decision for ${record.id}: Giver wins · ${giverName}; refund ฿${fmt(record.amount)} to the giver.`;
-    if (selected === "hunter")
-      detail = `Confirm decision for ${record.id}: Hunter wins · ${hunterName}; release ฿${fmt(record.amount)} to the hunter.`;
+    if (selected === "hirer")
+      detail = `Confirm decision for ${record.id}: Hirer wins · ${giverName}; refund ฿${fmt(record.amount)} to the giver.`;
+    if (selected === "worker")
+      detail = `Confirm decision for ${record.id}: Worker wins · ${hunterName}; release ฿${fmt(record.amount)} to the hunter.`;
     if (selected === "rework")
       detail = `Confirm decision for ${record.id}: require rework; keep ฿${fmt(record.amount)} held until revised proof is accepted.`;
     confirmAction("Confirm dispute resolution", record, detail, (reason) => {
@@ -176,7 +176,7 @@ function bindResolutionControls(root, record) {
       record.decisionReason = reason;
       const quest = data.quests.find((item) => item.id === caseData.questId);
       if (quest) {
-        if (selected === "giver") {
+        if (selected === "hirer") {
           quest.status = "Cancelled";
           quest.tone = "neutral";
         } else if (selected === "rework") {
@@ -218,8 +218,8 @@ function openDisputeDrawer(index) {
  <section class="section"><div class="section-title"><h3>Related files</h3><span class="section-count">${record.evidence.length}</span></div><div class="evidence-stack">${record.evidence.map((evidence) => { const parts = String(evidence).split(" · "); return `<button class="evidence-item"><span class="evidence-state complete">${ico("check")}</span><span><strong>${escapeActivityText(parts[0])}</strong><small>${escapeActivityText(parts.slice(1).join(" · ") || "Verified record")}</small></span><span>Open</span></button>`; }).join("")}</div></section>
  <section class="section"><div class="section-title"><h3>Related quest</h3>${questIndex >= 0 ? `<a class="link open-related-quest" href="/quests/${encodeURIComponent(caseData.questId)}">Open full quest</a>` : ""}</div><a class="quest-reference" href="/quests/${encodeURIComponent(caseData.questId)}"><span class="file-icon">${ico("quest")}</span><span><strong>${escapeActivityText(caseData.questId)} · ${escapeActivityText(record.title)}</strong><small>View conditions, assignment, proof, and edit history</small></span><span>›</span></a></section>
  ${partyChats(caseData)}
- ${isClosed ? closedDecisionSummary(record) : `<section class="section"><h3>Resolution decision</h3><div class="allocation"><button data-allocation="giver"><span>Refund giver</span><strong>฿${fmt(record.amount)}</strong></button><button data-allocation="hunter"><span>Release to hunter</span><strong>฿${fmt(record.amount)}</strong></button></div><p class="audit-note">Choose the outcome before resolving.</p></section>`}
- <section class="section"><h3>Overall quest timeline</h3>${timeline(questTimeline)}</section>
+ ${isClosed ? closedDecisionSummary(record) : `<section class="section"><h3>Resolution decision</h3><div class="allocation"><button data-allocation="hirer"><span>Refund hirer</span><strong>฿${fmt(record.amount)}</strong></button><button data-allocation="worker"><span>Release to worker</span><strong>฿${fmt(record.amount)}</strong></button></div><p class="audit-note">Choose the outcome before resolving.</p></section>`}
+ <section class="section"><h3>Overall quest timeline</h3>${timeline(questTimeline, { showDetails: false })}</section>
 </div>
 ${isClosed ? `<div class="drawer-actions case-actions"><a class="btn" href="/disputes/${encodeURIComponent(record.id)}">Full dispute detail</a><button class="btn" id="close-case-record">Close record</button></div>` : `<div class="drawer-actions case-actions"><a class="btn" href="/disputes/${encodeURIComponent(record.id)}">Full dispute detail</a><button class="btn primary resolve-case">Resolve dispute</button></div>`}`;
   document.querySelector("#close").onclick = closeDrawer;

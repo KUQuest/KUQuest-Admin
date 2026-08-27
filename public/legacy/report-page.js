@@ -38,7 +38,7 @@ function reportDecisionPanel(report) {
   if (report.status === "Closed") {
     return `<p class="audit-note">Decision recorded: <strong>${escapeActivityText(report.decisionLabel || "Flag only")}</strong>${report.decisionDays ? ` · ${report.decisionDays} days` : ""}.</p>${report.decisionReason ? `<div class="overview-group"><span>Reason for decision</span><p>${escapeActivityText(report.decisionReason)}</p></div>` : ""}`;
   }
-  return `<p class="audit-note">Select the account action before closing this report. Every decision requires a written reason.</p><div class="report-decision-options" role="group" aria-label="Report decision"><button class="report-decision-option" type="button" data-report-decision="flag"><strong>Flag only</strong><small>Record a policy flag; the account remains active.</small></button><button class="report-decision-option" type="button" data-report-decision="temporary-ban"><strong>Temporary ban · 7 days</strong><small>Restrict the reported user from all quests for 7 days.</small></button><button class="report-decision-option" type="button" data-report-decision="permanent-ban"><strong>Permanent ban</strong><small>Block the reported user from all quests until reversed.</small></button></div>`;
+  return `<p class="audit-note">Select the account action before closing this report. Every decision requires a written reason.</p><div class="report-decision-options" role="group" aria-label="Report decision"><button class="report-decision-option" type="button" data-report-decision="do-nothing"><strong>Do nothing</strong><small>Close the report without changing the reported user’s account.</small></button><button class="report-decision-option" type="button" data-report-decision="flag"><strong>Flag only</strong><small>Record a policy flag; the account remains active.</small></button><button class="report-decision-option" type="button" data-report-decision="temporary-ban"><strong>Temporary ban · 7 days</strong><small>Restrict the reported user from all quests for 7 days.</small></button><button class="report-decision-option" type="button" data-report-decision="permanent-ban"><strong>Permanent ban</strong><small>Block the reported user from all quests until reversed.</small></button></div>`;
 }
 
 function renderReportPage() {
@@ -98,11 +98,11 @@ function renderReportPage() {
     main.querySelectorAll("[data-report-close]").forEach((button) =>
       button.addEventListener("click", () => {
         if (!selectedDecision) {
-          toast("Choose Flag only, Temporary ban, or Permanent ban before closing.");
+          toast("Choose Do nothing, Flag only, Temporary ban, or Permanent ban before closing.");
           return;
         }
         const days = 7;
-        const decisionLabel = selectedDecision === "flag" ? "Flag only" : selectedDecision === "temporary-ban" ? `Temporary ban for ${days} days` : "Permanent ban";
+        const decisionLabel = selectedDecision === "do-nothing" ? "Do nothing" : selectedDecision === "flag" ? "Flag only" : selectedDecision === "temporary-ban" ? `Temporary ban for ${days} days` : "Permanent ban";
         confirmAction(
           "Close report",
           reportRecord,

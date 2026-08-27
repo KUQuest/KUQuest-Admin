@@ -92,7 +92,7 @@ document.addEventListener("click", (event) => {
   }
   if (label === "Request clarification") {
     event.preventDefault();
-    toast("Clarification request saved to the giver-change audit trail.");
+    toast("Clarification request saved to the hirer-change audit trail.");
   }
   if (button.getAttribute("aria-label") === "Notifications") {
     event.preventDefault();

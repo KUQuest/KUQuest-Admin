@@ -16,7 +16,7 @@ type LegacyScriptPlan = {
 const adminFoundationScripts = [
   "/legacy/auth.js?v=1",
   "/legacy/script.js?v=60",
-  "/legacy/fresh-mock-data.js?v=24",
+  "/legacy/fresh-mock-data.js?v=26",
 ];
 
 const adminScripts: LegacyScriptPlan = {
@@ -31,7 +31,7 @@ const adminScripts: LegacyScriptPlan = {
 const questScripts: LegacyScriptPlan = {
   sequential: [
     ...adminFoundationScripts,
-    "/legacy/quest-detail.js?v=32",
+    "/legacy/quest-detail.js?v=33",
     "/legacy/quest-page.js?v=25",
     "/legacy/quest-change-review.js?v=10",
   ],
