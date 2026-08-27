@@ -1,320 +1,416 @@
-// A complete, self-contained demo dataset. Versioning resets browser-local
-// decisions whenever the seeded marketplace scenario changes.
-const freshDemoVersion = "2026-08-27-v34";
+// Deterministic high-volume demo data. Versioning resets browser-local records
+// whenever the synthetic marketplace scenario changes.
+const freshDemoVersion = "2026-08-28-v38-payout-balance";
 const freshDemoKey = "kuquest-admin-demo-data";
+const seedBaseDate = new Date("2026-08-28T08:00:00Z");
 
-data.disputes = [
-  {
-    id: "DSP-4201",
-    title: "Verify dorm fire exits",
-    person: "Saran Jindapol",
-    other: "Mayuree Nopparat",
-    amount: 4500,
-    status: "Active",
-    tone: "danger",
-    disputeDate: "27 Aug 2026",
-    disputeType: "Evidence",
-    age: "18 min",
-    detail: "The submitted inspection confirms the exit signs but does not include the required nighttime checks for two residence halls.",
-    evidence: ["Fire exit checklist · PDF · 9 pages", "Night inspection request · PDF", "Submitted photo set · JPG · 12 files"],
-  },
-  {
-    id: "DSP-4202",
-    title: "Translate clinic wayfinding signs",
-    person: "Nicha Prasert",
-    other: "Kittipong Manee",
-    amount: 3300,
-    status: "Active",
-    tone: "danger",
-    disputeDate: "27 Aug 2026",
-    disputeType: "Quality",
-    age: "42 min",
-    detail: "Several translated clinic directions differ from the approved glossary and could send students to the wrong service desk.",
-    evidence: ["Delivered sign set · PDF · 22 signs", "Approved clinic glossary · XLSX", "Correction notes · DOCX"],
-  },
-  {
-    id: "DSP-4203",
-    title: "Record student wellbeing interviews",
-    person: "Mayuree Nopparat",
-    other: "Chanon Preecha",
-    amount: 5200,
-    status: "Active",
-    tone: "danger",
-    disputeDate: "26 Aug 2026",
-    disputeType: "Scope",
-    age: "3 hr",
-    detail: "The final video includes two interviews that were not included in the accepted consent register or shot plan.",
-    evidence: ["Final interview cut · MP4 · 286 MB", "Consent register · XLSX · 14 entries", "Accepted shot plan · PDF"],
-  },
-  {
-    id: "DSP-4204",
-    title: "Map accessible lecture routes",
-    person: "Kittipong Manee",
-    other: "Ratchanon Srisai",
-    amount: 7100,
-    status: "Active",
-    tone: "danger",
-    disputeDate: "26 Aug 2026",
-    disputeType: "Delivery",
-    age: "6 hr",
-    detail: "The route map covers the main library entrance but omits the alternate lift path required by the accepted accessibility brief.",
-    evidence: ["Lecture route map · PDF · 7 pages", "Accessibility brief · PDF", "Hirer feedback · message export"],
-  },
-  {
-    id: "DSP-4205",
-    title: "Caption faculty welcome series",
-    person: "Thanida Lertchai",
-    other: "Ratchanon Srisai",
-    amount: 2800,
-    status: "Active",
-    tone: "danger",
-    disputeDate: "25 Aug 2026",
-    disputeType: "Timing",
-    age: "1 day",
-    detail: "The hirer requested timing corrections after the review window, while the worker says the delivered captions match the approved transcript.",
-    evidence: ["Caption bundle · VTT · 4 files", "Accepted transcript · DOCX", "Late correction request · PDF"],
-  },
-  {
-    id: "DSP-4206",
-    title: "Design recycling campaign posters",
-    person: "Chanon Preecha",
-    other: "Nicha Prasert",
-    amount: 2100,
-    status: "Closed",
-    tone: "neutral",
-    disputeDate: "22 Aug 2026",
-    disputeType: "Rights",
-    age: "5 days",
-    detail: "The requested reuse covered an external event, but the accepted brief limited the posters to campus facilities.",
-    evidence: ["Accepted poster set · PDF", "Usage terms · PDF", "External reuse request · email export"],
-    resolution: "Worker wins; the original campus-only usage terms remain in force.",
-    decisionReason: "The accepted quest terms did not grant external event usage.",
-  },
-];
+function seedDate(daysAgo, hour = 9, minute = 0) {
+  const date = new Date(seedBaseDate);
+  date.setUTCDate(date.getUTCDate() - daysAgo);
+  date.setUTCHours(hour, minute, 0, 0);
+  return date;
+}
 
-data.quests = [
-  { id: "QST-9501", title: "Map quiet study rooms", person: "Nicha Prasert", other: "Accessibility research", amount: 7200, status: "In progress", tone: "info", age: "Today", teamQuest: true, teamSize: 3, teamParticipants: [["Kittipong Manee", "Accessibility lead"], ["Ratchanon Srisai", "Survey recorder"], ["Saran Jindapol", "Route mapper"]] },
-  { id: "QST-9502", title: "Catalogue lab safety equipment", person: "Ratchanon Srisai", other: "Field work", amount: 3100, status: "Open", tone: "success", age: "Today", selectedParticipant: "Mayuree Nopparat" },
-  { id: "QST-9503", title: "Verify dorm fire exits", person: "Saran Jindapol", other: "Safety research", amount: 4500, status: "Disputed", tone: "danger", age: "Today", selectedParticipant: "Mayuree Nopparat" },
-  { id: "QST-9504", title: "Edit international student handbook", person: "Thanida Lertchai", other: "Writing", amount: 2300, status: "Submitted", tone: "warning", age: "Today", selectedParticipant: "Saran Jindapol" },
-  { id: "QST-9505", title: "Design recycling campaign posters", person: "Chanon Preecha", other: "Design", amount: 2100, status: "Completed", tone: "success", age: "Yesterday", selectedParticipant: "Nicha Prasert" },
-  { id: "QST-9506", title: "Translate clinic wayfinding signs", person: "Nicha Prasert", other: "Translation", amount: 3300, status: "Disputed", tone: "danger", age: "Yesterday", selectedParticipant: "Kittipong Manee" },
-  { id: "QST-9507", title: "Survey shaded study areas", person: "Kittipong Manee", other: "Field research", amount: 3900, status: "Change pending", tone: "warning", age: "Today", selectedParticipant: "Ratchanon Srisai" },
-  { id: "QST-9508", title: "Record student wellbeing interviews", person: "Mayuree Nopparat", other: "Video", amount: 5200, status: "Disputed", tone: "danger", age: "Yesterday", selectedParticipant: "Chanon Preecha" },
-  { id: "QST-9509", title: "Audit faculty room inventory", person: "Chanon Preecha", other: "Data", amount: 1700, status: "Hidden", tone: "neutral", age: "2 days", selectedParticipant: "Ratchanon Srisai" },
-  { id: "QST-9510", title: "Photograph campus pollinators", person: "Thanida Lertchai", other: "Photography", amount: 4100, status: "Open", tone: "success", age: "2 days" },
-  { id: "QST-9511", title: "Translate emergency response guide", person: "Ratchanon Srisai", other: "Translation", amount: 2900, status: "Submitted", tone: "warning", age: "Yesterday", selectedParticipant: "Mayuree Nopparat" },
-  { id: "QST-9512", title: "Film sustainability fair recap", person: "Mayuree Nopparat", other: "Video", amount: 5700, status: "Rework", tone: "warning", age: "2 days", selectedParticipant: "Chanon Preecha" },
-  { id: "QST-9513", title: "Clean scholarship application dataset", person: "Mayuree Nopparat", other: "Data", amount: 2600, status: "Completed", tone: "success", age: "3 days", selectedParticipant: "Chanon Preecha" },
-  { id: "QST-9514", title: "Prepare orientation checklist", person: "Saran Jindapol", other: "Operations", amount: 1800, status: "Open", tone: "success", age: "3 days", selectedParticipant: "Kittipong Manee" },
-  { id: "QST-9515", title: "Map accessible lecture routes", person: "Kittipong Manee", other: "Accessibility research", amount: 7100, status: "Disputed", tone: "danger", age: "3 days", selectedParticipant: "Ratchanon Srisai" },
-  { id: "QST-9516", title: "Build bilingual lab directory", person: "Nicha Prasert", other: "Design", amount: 2700, status: "Change pending", tone: "warning", age: "Today", selectedParticipant: "Thanida Lertchai" },
-  { id: "QST-9517", title: "Summarize commuter survey", person: "Nicha Prasert", other: "Research", amount: 3000, status: "Completed", tone: "success", age: "4 days", selectedParticipant: "Ratchanon Srisai" },
-  { id: "QST-9518", title: "Edit new-student welcome video", person: "Thanida Lertchai", other: "Video", amount: 2800, status: "In progress", tone: "info", age: "4 days", selectedParticipant: "Saran Jindapol" },
-  { id: "QST-9519", title: "Caption faculty welcome series", person: "Thanida Lertchai", other: "Writing", amount: 2800, status: "Disputed", tone: "danger", age: "4 days", selectedParticipant: "Ratchanon Srisai" },
-  { id: "QST-9520", title: "Verify recycling station locations", person: "Chanon Preecha", other: "Field work", amount: 2000, status: "Completed", tone: "success", age: "5 days", selectedParticipant: "Mayuree Nopparat" },
-  { id: "QST-9521", title: "Coordinate sustainability fair volunteers", person: "Nicha Prasert", other: "Event operations", amount: 7600, status: "Open", tone: "success", age: "Today", teamQuest: true, teamSize: 4, teamParticipants: [["Ratchanon Srisai", "Event coordinator"], ["Mayuree Nopparat", "Logistics lead"], ["Saran Jindapol", "Venue planner"], ["Thanida Lertchai", "Communications"]] },
-  { id: "QST-9522", title: "Survey accessible campus entrances", person: "Ratchanon Srisai", other: "Field research", amount: 4800, status: "Submitted", tone: "warning", age: "Yesterday", teamQuest: true, teamSize: 3, teamParticipants: [["Kittipong Manee", "Site mapper"], ["Mayuree Nopparat", "Survey recorder"], ["Thanida Lertchai", "Evidence reviewer"]] },
-  { id: "QST-9523", title: "Build campus wayfinding kit", person: "Thanida Lertchai", other: "Design and copy", amount: 6100, status: "Completed", tone: "success", age: "2 days", teamQuest: true, teamSize: 5, teamParticipants: [["Ratchanon Srisai", "Information architect"], ["Nicha Prasert", "Copy editor"], ["Mayuree Nopparat", "Illustrator"], ["Saran Jindapol", "Field checker"], ["Kittipong Manee", "Accessibility reviewer"]] },
-  { id: "QST-9524", title: "Audit sports facility access", person: "Saran Jindapol", other: "Accessibility research", amount: 6600, status: "Change pending", tone: "warning", age: "Today", teamQuest: true, teamSize: 3, teamParticipants: [["Ratchanon Srisai", "Route mapper"], ["Mayuree Nopparat", "Facilities reviewer"], ["Thanida Lertchai", "Report writer"]] },
-  { id: "QST-9525", title: "Prepare shuttle route guide", person: "Nicha Prasert", other: "Operations", amount: 2400, status: "Cancelled", tone: "cancelled", age: "Today", selectedParticipant: "Mayuree Nopparat", terminationReason: "The hirer withdrew the request before work began." },
-  { id: "QST-9526", title: "Catalog student support services", person: "Ratchanon Srisai", other: "Research", amount: 2500, status: "Assigned", tone: "assigned", age: "Today", selectedParticipant: "Saran Jindapol" },
-];
+function seedDateLabel(daysAgo, hour = 9, minute = 0) {
+  const date = seedDate(daysAgo, hour, minute);
+  return `${date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  })} · ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
 
-data.users = [
-  { id: "66100428", title: "Ratchanon Srisai", person: "ratchanon.s@ku.th", other: "Environmental Science · Year 3", amount: null, status: "Normal", tone: "success", age: "Joined 2024", accountCreatedAt: "12 Mar 2024", lastActiveAt: "27 Aug 2026 · 14:20", statusReason: "No active moderation action.", statusAppliedAt: "12 Mar 2024", statusAppliedBy: "System", moderationHistory: [{ event: "Account created", at: "12 Mar 2024", by: "System", note: "Account created." }], adminNotes: [] },
-  { id: "66100817", title: "Nicha Prasert", person: "nicha.p@ku.th", other: "Communication Arts · Year 4", amount: null, status: "Flag", tone: "warning", age: "1 active report", accountCreatedAt: "18 May 2023", lastActiveAt: "27 Aug 2026 · 11:12", statusReason: "An active harassment report requires moderator review.", statusAppliedAt: "27 Aug 2026 · 11:42", statusAppliedBy: "Nicha P.", moderationHistory: [{ event: "Flag applied", at: "27 Aug 2026 · 11:42", by: "Nicha P.", reason: "An active harassment report requires moderator review.", previousStatus: "Normal", newStatus: "Flag" }, { event: "Report received", at: "27 Aug 2026 · 11:26", by: "Ratchanon Srisai", note: "Harassment or abuse report RPT-7101 submitted." }, { event: "Account created", at: "18 May 2023", by: "System", note: "Account created." }], adminNotes: [{ at: "27 Aug 2026 · 11:50", by: "Nicha P.", note: "Keep the account flagged while the active report is reviewed." }] },
-  { id: "65020314", title: "Kittipong Manee", person: "kittipong.m@ku.th", other: "Architecture · Year 3", amount: null, status: "Temp ban", tone: "danger", age: "Temporary all-quest ban · 6 days left", accountCreatedAt: "6 Feb 2024", lastActiveAt: "26 Aug 2026 · 15:41", statusReason: "Moved a quest payment discussion outside KuQuest after work was accepted.", statusAppliedAt: "26 Aug 2026 · 15:47", statusAppliedBy: "Nicha P.", banExpiresAt: "2 Sep 2026 · 15:47", penalty: { label: "Temporary ban", reason: "Moved a quest payment discussion outside KuQuest after work was accepted.", recordedAt: "26 Aug 2026 · 15:47", appliedBy: "Nicha P.", expiresAt: "2 Sep 2026 · 15:47" }, moderationHistory: [{ event: "Temporary ban applied", at: "26 Aug 2026 · 15:47", by: "Nicha P.", reason: "Moved a quest payment discussion outside KuQuest after work was accepted.", previousStatus: "Normal", newStatus: "Temp ban" }, { event: "Report resolved", at: "26 Aug 2026 · 15:47", by: "Nicha P.", reason: "Fraud or payment issue confirmed." }, { event: "Account created", at: "6 Feb 2024", by: "System", note: "Account created." }], adminNotes: [] },
-  { id: "66031246", title: "Saran Jindapol", person: "saran.j@ku.th", other: "Engineering · Year 2", amount: null, status: "Flag", tone: "warning", age: "1 active report", accountCreatedAt: "21 Sep 2024", lastActiveAt: "27 Aug 2026 · 09:04", statusReason: "An active harassment report is awaiting review.", statusAppliedAt: "27 Aug 2026 · 09:31", statusAppliedBy: "Nicha P.", moderationHistory: [{ event: "Flag applied", at: "27 Aug 2026 · 09:31", by: "Nicha P.", reason: "An active harassment report is awaiting review.", previousStatus: "Normal", newStatus: "Flag" }, { event: "Report received", at: "27 Aug 2026 · 09:18", by: "Kittipong Manee", note: "Harassment or abuse report RPT-7104 submitted." }, { event: "Account created", at: "21 Sep 2024", by: "System", note: "Account created." }], adminNotes: [] },
-  { id: "65017652", title: "Mayuree Nopparat", person: "mayuree.n@ku.th", other: "Agriculture · Year 4", amount: null, status: "Normal", tone: "success", age: "Joined 2023", accountCreatedAt: "4 Aug 2023", lastActiveAt: "27 Aug 2026 · 12:46", statusReason: "No active moderation action.", statusAppliedAt: "25 Aug 2026 · 14:02", statusAppliedBy: "Nicha P.", moderationHistory: [{ event: "Report dismissed", at: "25 Aug 2026 · 14:02", by: "Nicha P.", reason: "The activity log confirmed the final quest terms were accepted before work began.", previousStatus: "Normal", newStatus: "Normal" }, { event: "Account created", at: "4 Aug 2023", by: "System", note: "Account created." }], adminNotes: [] },
-  { id: "66022508", title: "Thanida Lertchai", person: "thanida.l@ku.th", other: "Liberal Arts · Year 3", amount: null, status: "Normal", tone: "success", age: "Joined 2025", accountCreatedAt: "11 Jan 2025", lastActiveAt: "26 Aug 2026 · 17:05", statusReason: "No penalty applied; the current report remains under review.", statusAppliedAt: "11 Jan 2025", statusAppliedBy: "System", moderationHistory: [{ event: "Report received", at: "26 Aug 2026 · 17:05", by: "Nicha Prasert", note: "Fraud or payment issue report RPT-7105 submitted." }, { event: "Account created", at: "11 Jan 2025", by: "System", note: "Account created." }], adminNotes: [] },
-  { id: "65011409", title: "Chanon Preecha", person: "chanon.p@ku.th", other: "Digital Media · Year 2", amount: null, status: "Perm ban", tone: "danger", age: "Permanent all-quest ban", accountCreatedAt: "9 Jul 2022", lastActiveAt: "24 Aug 2026 · 16:46", statusReason: "Repeated harassment after a previous warning.", statusAppliedAt: "24 Aug 2026 · 16:46", statusAppliedBy: "Nicha P.", penalty: { label: "Permanent ban", reason: "Repeated harassment after a previous warning.", recordedAt: "24 Aug 2026 · 16:46", appliedBy: "Nicha P." }, moderationHistory: [{ event: "Permanent ban applied", at: "24 Aug 2026 · 16:46", by: "Nicha P.", reason: "Repeated harassment after a previous warning.", previousStatus: "Flag", newStatus: "Perm ban" }, { event: "Report resolved", at: "24 Aug 2026 · 16:46", by: "Nicha P.", reason: "Violation confirmed." }, { event: "Warning issued", at: "22 Aug 2026 · 10:15", by: "Nicha P.", reason: "Harassment report confirmed." }, { event: "Account created", at: "9 Jul 2022", by: "System", note: "Account created." }], adminNotes: [{ at: "24 Aug 2026 · 17:05", by: "Nicha P.", note: "Payouts require separate financial review after the permanent ban." }] },
-];
+function seedDayLabel(daysAgo) {
+  return seedDate(daysAgo).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
 
-data.reports = [
+const seededUsers = [
   {
-    id: "RPT-7101",
-    reporterId: "66100428",
-    reporterName: "Ratchanon Srisai",
-    reportedUserId: "66100817",
-    reportedUserName: "Nicha Prasert",
-    category: "Harassment or abuse",
-    relatedQuestId: "QST-9517",
-    relatedQuestTitle: "Summarize commuter survey",
-    details: "The reported user repeatedly sent misleading payment instructions during a marketplace conversation.",
-    evidence: "Conversation export · PDF",
-    status: "Active",
+    id: "66100428",
+    title: "Ratchanon Srisai",
+    person: "ratchanon.s@ku.th",
+    other: "Environmental Science · Year 3",
+    status: "Normal",
+    tone: "success",
+    age: "Joined 2024",
+    accountCreatedAt: "12 Mar 2024",
+    lastActiveAt: "28 Aug 2026 · 07:20",
+    statusReason: "No active moderation action.",
+    statusAppliedAt: "12 Mar 2024",
+    statusAppliedBy: "System",
+    moderationHistory: [{ event: "Account created", at: "12 Mar 2024", by: "System", note: "Account created." }],
+    adminNotes: [],
+  },
+  {
+    id: "66100817",
+    title: "Nicha Prasert",
+    person: "nicha.p@ku.th",
+    other: "Communication Arts · Year 4",
+    status: "Flag",
     tone: "warning",
-    reportedAt: "27 Aug 2026 · 11:26",
+    age: "1 active report",
+    accountCreatedAt: "18 May 2023",
+    lastActiveAt: "28 Aug 2026 · 06:12",
+    statusReason: "An active harassment report requires moderator review.",
+    statusAppliedAt: "28 Aug 2026 · 06:42",
+    statusAppliedBy: "Nicha P.",
+    moderationHistory: [
+      { event: "Flag applied", at: "28 Aug 2026 · 06:42", by: "Nicha P.", reason: "An active harassment report requires moderator review.", previousStatus: "Normal", newStatus: "Flag" },
+      { event: "Report received", at: "28 Aug 2026 · 06:26", by: "Ratchanon Srisai", note: "A synthetic report was submitted." },
+      { event: "Account created", at: "18 May 2023", by: "System", note: "Account created." },
+    ],
+    adminNotes: [{ at: "28 Aug 2026 · 06:50", by: "Nicha P.", note: "Keep the account flagged while the active report is reviewed." }],
   },
   {
-    id: "RPT-7102",
-    reporterId: "66022508",
-    reporterName: "Thanida Lertchai",
-    reportedUserId: "65020314",
-    reportedUserName: "Kittipong Manee",
-    category: "Fraud or payment issue",
-    relatedQuestId: "QST-9522",
-    relatedQuestTitle: "Survey accessible campus entrances",
-    details: "The reported user asked to move a quest payment outside KuQuest after the work was accepted.",
-    evidence: "Payment request screenshot · PNG",
-    status: "Closed",
-    tone: "neutral",
-    reportedAt: "26 Aug 2026 · 15:18",
-    closedAt: "26 Aug 2026 · 15:47",
-    decision: "temporary-ban",
-    decisionLabel: "Temporary ban",
-    decisionDays: 7,
-    decisionReason: "The submitted payment request was reviewed and retained as a policy violation record.",
-    resolution: "Temporary ban applied for 7 days.",
-    resolvedBy: "Nicha P.",
-    resolutionAt: "26 Aug 2026 · 15:47",
+    id: "65020314",
+    title: "Kittipong Manee",
+    person: "kittipong.m@ku.th",
+    other: "Architecture · Year 3",
+    status: "Temp ban",
+    tone: "danger",
+    age: "Temporary all-quest ban · 6 days left",
+    accountCreatedAt: "6 Feb 2024",
+    lastActiveAt: "27 Aug 2026 · 15:41",
+    statusReason: "Moved a quest payment discussion outside KuQuest after work was accepted.",
+    statusAppliedAt: "27 Aug 2026 · 15:47",
+    statusAppliedBy: "Nicha P.",
+    banExpiresAt: "3 Sep 2026 · 15:47",
+    penalty: { label: "Temporary ban", reason: "Moved a quest payment discussion outside KuQuest after work was accepted.", recordedAt: "27 Aug 2026 · 15:47", appliedBy: "Nicha P.", expiresAt: "3 Sep 2026 · 15:47" },
+    moderationHistory: [
+      { event: "Temporary ban applied", at: "27 Aug 2026 · 15:47", by: "Nicha P.", reason: "Moved a quest payment discussion outside KuQuest after work was accepted.", previousStatus: "Normal", newStatus: "Temp ban" },
+      { event: "Report resolved", at: "27 Aug 2026 · 15:47", by: "Nicha P.", reason: "Fraud or payment issue confirmed." },
+      { event: "Account created", at: "6 Feb 2024", by: "System", note: "Account created." },
+    ],
+    adminNotes: [],
   },
   {
-    id: "RPT-7103",
-    reporterId: "65017652",
-    reporterName: "Mayuree Nopparat",
-    reportedUserId: "65011409",
-    reportedUserName: "Chanon Preecha",
-    category: "Misleading quest activity",
-    relatedQuestId: "QST-9513",
-    relatedQuestTitle: "Clean scholarship application dataset",
-    details: "The reported user marked a campus dataset task complete while the shared folder still contained placeholder rows and missing source notes.",
-    evidence: "Quest workspace export · ZIP",
-    status: "Active",
+    id: "66031246",
+    title: "Saran Jindapol",
+    person: "saran.j@ku.th",
+    other: "Engineering · Year 2",
+    status: "Flag",
     tone: "warning",
-    reportedAt: "27 Aug 2026 · 10:42",
+    age: "1 active report",
+    accountCreatedAt: "21 Sep 2024",
+    lastActiveAt: "28 Aug 2026 · 04:04",
+    statusReason: "An active harassment report is awaiting review.",
+    statusAppliedAt: "28 Aug 2026 · 04:31",
+    statusAppliedBy: "Nicha P.",
+    moderationHistory: [
+      { event: "Flag applied", at: "28 Aug 2026 · 04:31", by: "Nicha P.", reason: "An active harassment report is awaiting review.", previousStatus: "Normal", newStatus: "Flag" },
+      { event: "Report received", at: "28 Aug 2026 · 04:18", by: "Kittipong Manee", note: "A synthetic report was submitted." },
+      { event: "Account created", at: "21 Sep 2024", by: "System", note: "Account created." },
+    ],
+    adminNotes: [],
   },
   {
-    id: "RPT-7104",
-    reporterId: "65020314",
-    reporterName: "Kittipong Manee",
-    reportedUserId: "66031246",
-    reportedUserName: "Saran Jindapol",
-    category: "Harassment or abuse",
-    relatedQuestId: "QST-9523",
-    relatedQuestTitle: "Build campus wayfinding kit",
-    details: "The reported user sent repeated personal messages after the quest conversation ended and continued contacting the reporter through unrelated listings.",
-    evidence: "Message thread export · PDF",
-    status: "Active",
-    tone: "warning",
-    reportedAt: "27 Aug 2026 · 09:18",
+    id: "65017652",
+    title: "Mayuree Nopparat",
+    person: "mayuree.n@ku.th",
+    other: "Agriculture · Year 4",
+    status: "Normal",
+    tone: "success",
+    age: "Joined 2023",
+    accountCreatedAt: "4 Aug 2023",
+    lastActiveAt: "28 Aug 2026 · 05:46",
+    statusReason: "No active moderation action.",
+    statusAppliedAt: "26 Aug 2026 · 14:02",
+    statusAppliedBy: "Nicha P.",
+    moderationHistory: [{ event: "Report dismissed", at: "26 Aug 2026 · 14:02", by: "Nicha P.", reason: "The activity log confirmed the final quest terms were accepted before work began.", previousStatus: "Normal", newStatus: "Normal" }, { event: "Account created", at: "4 Aug 2023", by: "System", note: "Account created." }],
+    adminNotes: [],
   },
   {
-    id: "RPT-7105",
-    reporterId: "66100817",
-    reporterName: "Nicha Prasert",
-    reportedUserId: "66022508",
-    reportedUserName: "Thanida Lertchai",
-    category: "Fraud or payment issue",
-    relatedQuestId: "QST-9516",
-    relatedQuestTitle: "Build bilingual lab directory",
-    details: "The reported user requested a second payment for the same deliverable and provided a bank account that did not match the accepted payout details.",
-    evidence: "Payout instruction screenshot · PNG",
-    status: "Active",
-    tone: "warning",
-    reportedAt: "26 Aug 2026 · 17:05",
+    id: "66022508",
+    title: "Thanida Lertchai",
+    person: "thanida.l@ku.th",
+    other: "Liberal Arts · Year 3",
+    status: "Normal",
+    tone: "success",
+    age: "Joined 2025",
+    accountCreatedAt: "11 Jan 2025",
+    lastActiveAt: "27 Aug 2026 · 17:05",
+    statusReason: "No penalty applied; the current report remains under review.",
+    statusAppliedAt: "11 Jan 2025",
+    statusAppliedBy: "System",
+    moderationHistory: [{ event: "Report received", at: "27 Aug 2026 · 17:05", by: "Nicha Prasert", note: "A synthetic report was submitted." }, { event: "Account created", at: "11 Jan 2025", by: "System", note: "Account created." }],
+    adminNotes: [],
   },
   {
-    id: "RPT-7106",
-    reporterId: "66031246",
-    reporterName: "Saran Jindapol",
-    reportedUserId: "65017652",
-    reportedUserName: "Mayuree Nopparat",
-    category: "Misleading quest activity",
-    relatedQuestId: "QST-9521",
-    relatedQuestTitle: "Coordinate sustainability fair volunteers",
-    details: "The report claimed the quest description was changed after assignment, but the activity log shows the updated terms were accepted before work started.",
-    evidence: "Quest activity log · PDF",
-    status: "Closed",
-    tone: "neutral",
-    reportedAt: "25 Aug 2026 · 13:20",
-    closedAt: "25 Aug 2026 · 14:02",
-    decision: "do-nothing",
-    decisionLabel: "Do nothing",
-    decisionReason: "The activity log confirmed that the final quest terms were accepted before work began.",
-    resolution: "Report dismissed; no policy violation found.",
-    resolvedBy: "Nicha P.",
-    resolutionAt: "25 Aug 2026 · 14:02",
-  },
-  {
-    id: "RPT-7107",
-    reporterId: "66100428",
-    reporterName: "Ratchanon Srisai",
-    reportedUserId: "65011409",
-    reportedUserName: "Chanon Preecha",
-    category: "Harassment or abuse",
-    relatedQuestId: "QST-9509",
-    relatedQuestTitle: "Audit faculty room inventory",
-    details: "The reported user used threatening language in a follow-up message after a disagreement about a submitted data deliverable.",
-    evidence: "Conversation export · PDF",
-    status: "Closed",
-    tone: "neutral",
-    reportedAt: "24 Aug 2026 · 16:12",
-    closedAt: "24 Aug 2026 · 16:46",
-    decision: "permanent-ban",
-    decisionLabel: "Permanent ban",
-    decisionReason: "The message record showed a repeated threat after a prior moderation warning.",
-    resolution: "Permanent ban applied.",
-    resolvedBy: "Nicha P.",
-    resolutionAt: "24 Aug 2026 · 16:46",
+    id: "65011409",
+    title: "Chanon Preecha",
+    person: "chanon.p@ku.th",
+    other: "Digital Media · Year 2",
+    status: "Perm ban",
+    tone: "danger",
+    age: "Permanent all-quest ban",
+    accountCreatedAt: "9 Jul 2022",
+    lastActiveAt: "26 Aug 2026 · 16:46",
+    statusReason: "Repeated harassment after a previous warning.",
+    statusAppliedAt: "26 Aug 2026 · 16:46",
+    statusAppliedBy: "Nicha P.",
+    penalty: { label: "Permanent ban", reason: "Repeated harassment after a previous warning.", recordedAt: "26 Aug 2026 · 16:46", appliedBy: "Nicha P." },
+    moderationHistory: [{ event: "Permanent ban applied", at: "26 Aug 2026 · 16:46", by: "Nicha P.", reason: "Repeated harassment after a previous warning.", previousStatus: "Flag", newStatus: "Perm ban" }, { event: "Report resolved", at: "26 Aug 2026 · 16:46", by: "Nicha P.", reason: "Violation confirmed." }, { event: "Warning issued", at: "24 Aug 2026 · 10:15", by: "Nicha P.", reason: "Harassment report confirmed." }, { event: "Account created", at: "9 Jul 2022", by: "System", note: "Account created." }],
+    adminNotes: [{ at: "26 Aug 2026 · 17:05", by: "Nicha P.", note: "Payouts require separate financial review after the permanent ban." }],
   },
 ];
 
-data.payouts = [
-  { id: "PAY-8714", questId: "QST-9513", title: "Chanon Preecha", person: "Kasikorn · •••• 3186", other: "Quest QST-9513", amount: 2600, status: "Rejected", tone: "danger", age: "12 min", requestedAt: "27 Aug 2026 · 14:32", rejectedAt: "27 Aug 2026 · 14:33", rejectedBy: "Nicha P.", rejectionReason: "The full ฿2,600 earned from QST-9513 was already paid in PAY-8698. No withdrawable balance remains." },
-  { id: "PAY-8711", questId: "QST-9517", title: "Ratchanon Srisai", person: "SCB · •••• 5812", other: "Quest QST-9517", amount: 3000, status: "Needs approval", tone: "warning", age: "31 min", requestedAt: "27 Aug 2026 · 14:18" },
-  { id: "PAY-8707", questId: "QST-9505", title: "Nicha Prasert", person: "Krungthai · •••• 7410", other: "Quest QST-9505", amount: 2100, status: "Needs approval", tone: "warning", age: "58 min", requestedAt: "27 Aug 2026 · 13:55" },
-  { id: "PAY-8702", questId: "QST-9520", title: "Mayuree Nopparat", person: "Bangkok Bank · •••• 0924", other: "Quest QST-9520", amount: 2000, status: "Processing", tone: "info", age: "Today", requestedAt: "26 Aug 2026 · 16:20", approvedAt: "26 Aug 2026 · 16:42", approvedBy: "Nicha P." },
-  { id: "PAY-8698", questId: "QST-9513", title: "Chanon Preecha", person: "Kasikorn · •••• 3186", other: "Quest QST-9513", amount: 2600, status: "Completed", tone: "success", age: "Yesterday", requestedAt: "25 Aug 2026 · 11:05", approvedAt: "25 Aug 2026 · 11:30", approvedBy: "Nicha P." },
-  { id: "PAY-8692", questId: "QST-9505", title: "Nicha Prasert", person: "Krungthai · •••• 7410", other: "Quest QST-9505", amount: 2100, status: "Rejected", tone: "danger", age: "2 days", requestedAt: "24 Aug 2026 · 15:18", rejectedAt: "24 Aug 2026 · 15:23", rejectedBy: "Nicha P.", rejectionReason: "Bank account name does not match the verified account holder." },
+const firstNames = [
+  "Anan", "Arisa", "Boonmee", "Chalida", "Daranee", "Ekkachai", "Fahsai", "Jirawat", "Kanya", "Lalita",
+  "Manat", "Narin", "Nattaya", "Orathai", "Pasin", "Rinrada", "Siriporn", "Teerawat", "Udom", "Waranya",
 ];
+const lastNames = [
+  "Boonma", "Chaiyapruk", "Charoensuk", "Dhanakij", "Inthanon", "Jantana", "Kanjana", "Kittisak", "Limsakul", "Maneerat",
+  "Nakorn", "Phromphak", "Rattanakul", "Saengsawang", "Sakulchai", "Sangthong", "Sittichai", "Suwannarat", "Thaworn", "Wongsa",
+];
+const faculties = ["Computer Engineering", "Economics", "Forestry", "Food Science", "Geography", "Industrial Design", "Information Studies", "Landscape Architecture", "Mathematics", "Political Science"];
+const accountStatuses = ["Normal", "Normal", "Normal", "Normal", "Normal", "Normal", "Flag", "Normal", "Normal", "Temp ban", "Normal", "Normal", "Normal", "Perm ban"];
 
+function statusTone(status) {
+  return status === "Normal" || status === "Completed" ? "success" : status === "Flag" || status === "Submitted" || status === "Change pending" || status === "Rework" || status === "Needs approval" ? "warning" : status === "Open" ? "success" : status === "In progress" || status === "Processing" ? "info" : status === "Assigned" ? "assigned" : status === "Cancelled" ? "cancelled" : "danger";
+}
+
+const generatedUsers = Array.from({ length: 133 }, (_, index) => {
+  const firstName = firstNames[index % firstNames.length];
+  const lastName = lastNames[Math.floor(index / firstNames.length) % lastNames.length];
+  const title = `${firstName} ${lastName}`;
+  const id = String(67000000 + index * 17 + (index % 5));
+  const status = accountStatuses[index % accountStatuses.length];
+  const createdDaysAgo = 240 + ((index * 29) % 1_100);
+  const accountCreatedAt = seedDayLabel(createdDaysAgo);
+  const activeAt = seedDateLabel(index % 9, 7 + (index % 10), (index * 7) % 60);
+  const reason = status === "Normal" ? "No active moderation action." : status === "Flag" ? "An account activity report requires moderator review." : status === "Temp ban" ? "Repeated off-platform payment requests were recorded." : "Repeated policy violations were confirmed by an administrator.";
+  const history = [{ event: `${status === "Flag" ? "Flag" : status === "Temp ban" ? "Temporary ban" : status === "Perm ban" ? "Permanent ban" : "Account"} ${status === "Normal" ? "created" : "applied"}`, at: activeAt, by: status === "Normal" ? "System" : "Nicha P.", reason: status === "Normal" ? undefined : reason, previousStatus: status === "Normal" ? undefined : "Normal", newStatus: status }];
+  history.push({ event: "Account created", at: accountCreatedAt, by: "System", note: "Account created." });
+  return {
+    id,
+    title,
+    person: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@ku.th`,
+    other: `${faculties[index % faculties.length]} · Year ${(index % 4) + 1}`,
+    status,
+    tone: statusTone(status),
+    age: status === "Normal" ? `Joined ${2023 + (index % 4)}` : status === "Temp ban" ? "Temporary all-quest ban · 5 days left" : status === "Perm ban" ? "Permanent all-quest ban" : "1 active report",
+    accountCreatedAt,
+    lastActiveAt: activeAt,
+    statusReason: reason,
+    statusAppliedAt: activeAt,
+    statusAppliedBy: status === "Normal" ? "System" : "Nicha P.",
+    ...(status === "Temp ban" ? { banExpiresAt: seedDateLabel(Math.max(0, (index % 5) - 2), 7, 0), penalty: { label: "Temporary ban", reason, recordedAt: activeAt, appliedBy: "Nicha P.", expiresAt: seedDateLabel(0, 7, 0) } } : {}),
+    ...(status === "Perm ban" ? { penalty: { label: "Permanent ban", reason, recordedAt: activeAt, appliedBy: "Nicha P." } } : {}),
+    moderationHistory: history,
+    adminNotes: index % 11 === 0 ? [{ at: activeAt, by: "Nicha P.", note: "Synthetic review note retained for moderation testing." }] : [],
+  };
+});
+
+data.users = [...seededUsers, ...generatedUsers];
+
+const questSeedSpecs = [
+  ["QST-9401", "Map quiet study rooms", "Accessibility research", "In progress"],
+  ["QST-9403", "Verify dorm fire exits", "Safety research", "Disputed"],
+  ["QST-9404", "Edit international student handbook", "Writing", "Submitted"],
+  ["QST-9406", "Translate clinic wayfinding signs", "Translation", "Disputed"],
+  ["QST-9407", "Map accessible lecture routes", "Accessibility research", "Change pending"],
+  ["QST-9412", "Record student wellbeing interviews", "Video", "Disputed"],
+  ["QST-9415", "Survey shaded study areas", "Field research", "Disputed"],
+  ["QST-9416", "Build bilingual lab directory", "Design", "Change pending"],
+  ["QST-9419", "Caption faculty welcome series", "Writing", "Disputed"],
+  ["QST-9424", "Audit sports facility access", "Accessibility research", "Change pending"],
+  ["QST-9501", "Catalogue lab safety equipment", "Field work", "Open"],
+  ["QST-9502", "Prepare orientation checklist", "Operations", "Assigned"],
+  ["QST-9503", "Clean scholarship application dataset", "Data", "Completed"],
+  ["QST-9504", "Photograph campus pollinators", "Photography", "Open"],
+  ["QST-9505", "Design recycling campaign posters", "Design", "Completed"],
+  ["QST-9506", "Summarize commuter survey", "Research", "Completed"],
+  ["QST-9507", "Edit new-student welcome video", "Video", "In progress"],
+  ["QST-9508", "Film sustainability fair recap", "Video", "Rework"],
+  ["QST-9509", "Audit faculty room inventory", "Data", "Hidden"],
+  ["QST-9510", "Verify recycling station locations", "Field work", "Completed"],
+  ["QST-9511", "Coordinate sustainability fair volunteers", "Event operations", "Open"],
+  ["QST-9512", "Survey accessible campus entrances", "Field research", "Submitted"],
+  ["QST-9513", "Build campus wayfinding kit", "Design and copy", "Completed"],
+  ["QST-9514", "Prepare shuttle route guide", "Operations", "Cancelled"],
+  ["QST-9515", "Catalog student support services", "Research", "Assigned"],
+  ["QST-9516", "Review campus tree inventory", "Research", "Disputed"],
+];
+const questTitles = [
+  "Document campus water stations", "Review student club handbooks", "Create a faculty event calendar", "Audit laboratory signage", "Map bicycle parking capacity", "Transcribe oral history interviews", "Test library room booking flow", "Photograph accessible entrances", "Build a campus biodiversity log", "Proofread scholarship guidance", "Compare cafeteria menu labels", "Survey evening shuttle demand", "Design orientation social cards", "Check emergency contact posters", "Clean research participant records", "Translate exchange student FAQs", "Record museum collection metadata", "Measure classroom daylight levels", "Create a student services index", "Review campus event accessibility",
+];
+const questTags = ["Research", "Field work", "Writing", "Design", "Data", "Operations", "Accessibility research", "Translation", "Photography", "Video"];
+const questStatuses = ["Open", "Assigned", "In progress", "Submitted", "Change pending", "Rework", "Completed", "Cancelled", "Hidden"];
+
+function createQuest(id, title, tag, requestedStatus, index) {
+  const status = requestedStatus || (index % 4 === 0 ? "Disputed" : questStatuses[index % questStatuses.length]);
+  const hirer = data.users[(index * 7) % data.users.length];
+  const teamQuest = index % 8 === 0 || index % 13 === 0;
+  const participants = [1, 2, 3, 4].map((offset) => data.users[(index * 11 + offset + 3) % data.users.length]).filter((candidate) => candidate.id !== hirer.id);
+  const amount = 1800 + ((index * 683) % 8_200);
+  const hasParticipant = !["Open", "Hidden"].includes(status);
+  return {
+    id,
+    title,
+    person: hirer.title,
+    other: tag,
+    amount,
+    status,
+    tone: statusTone(status),
+    age: index < 12 ? "Today" : index < 24 ? "Yesterday" : `${(index % 8) + 1} days`,
+    ...(teamQuest ? { teamQuest: true, teamSize: 3, teamParticipants: participants.slice(0, 3).map((candidate, participantIndex) => [candidate.title, ["Field lead", "Evidence reviewer", "Report writer"][participantIndex]]) } : hasParticipant ? { selectedParticipant: participants[0].title } : {}),
+    candidateMode: status === "Open" ? "FCFS" : "CANDIDATE",
+    ...(status === "Cancelled" ? { terminationReason: "The hirer withdrew the request before work began." } : {}),
+  };
+}
+
+data.quests = questSeedSpecs.map((spec, index) => createQuest(...spec, index)).concat(
+  Array.from({ length: 174 }, (_, index) => {
+    const sequence = index + 1;
+    return createQuest(`QST-${String(9600 + sequence).padStart(4, "0")}`, questTitles[index % questTitles.length], questTags[index % questTags.length], null, questSeedSpecs.length + index);
+  }),
+);
+
+const disputeCategories = ["Evidence", "Quality", "Scope", "Delivery", "Timing", "Rights", "Payment", "Completion"];
 Object.keys(disputeCases).forEach((key) => delete disputeCases[key]);
-Object.assign(disputeCases, {
-  "DSP-4201": {
-    questId: "QST-9503", category: "Evidence completeness", openedBy: "Saran Jindapol · Hirer", respondent: "Mayuree Nopparat · Worker", requested: "Add nighttime exit checks", claim: "The accepted safety brief required nighttime checks for every residence hall, but the submission covers only daytime inspections.", response: "The worker says access to the west residence hall was limited after hours and can return with a facilities escort.", recommended: "Compare the accepted checklist with the submitted evidence before requiring a supervised recheck.", policy: ["Accepted quest conditions control the decision", "Evidence timestamps are authoritative", "Administrative reasons are required"], signals: [["Evidence coverage", "74%", "warning"], ["Account risk", "Low", "success"], ["Response state", "Received", "info"]],
-  },
-  "DSP-4202": {
-    questId: "QST-9506", category: "Translation accuracy", openedBy: "Nicha Prasert · Hirer", respondent: "Kittipong Manee · Worker", requested: "Correct clinic directions", claim: "Four translated directions differ from the approved glossary and could send students to the wrong clinic service desk.", response: "The worker accepts the correction list and asks for a one-day rework window.", recommended: "Require a corrected sign set and keep funds held until the revised terms are verified.", policy: ["Published glossary controls terminology", "Submitted revisions must be traceable", "Funds remain held during an active dispute"], signals: [["Evidence coverage", "86%", "warning"], ["Account risk", "Medium", "warning"], ["Response state", "Acknowledged", "info"]],
-  },
-  "DSP-4203": {
-    questId: "QST-9508", category: "Scope compliance", openedBy: "Mayuree Nopparat · Hirer", respondent: "Chanon Preecha · Worker", requested: "Remove two unapproved interviews", claim: "Two interviews appear in the final wellbeing video but are absent from the accepted shot plan and consent register.", response: "The worker says both interviews were recorded at a public booth and can be removed from a revised export.", recommended: "Require a consent-safe export with the two interviews removed before releasing funds.", policy: ["Consent records govern publication", "The accepted shot plan defines scope", "Every resolution needs an evidence-based reason"], signals: [["Evidence coverage", "69%", "warning"], ["Account risk", "High", "danger"], ["Response state", "Responded", "info"]],
-  },
-  "DSP-4204": {
-    questId: "QST-9515", category: "Delivery completeness", openedBy: "Kittipong Manee · Hirer", respondent: "Ratchanon Srisai · Worker", requested: "Complete the east-hall route", claim: "The accepted map required a continuous accessible route to the east lecture halls, but the alternate lift path is missing.", response: "The worker says the lift was under maintenance during the survey and proposes a follow-up visit.", recommended: "Request the missing route evidence and keep the quest blocked until the map is complete.", policy: ["Accepted scope controls completion", "Location evidence must be verifiable", "Disputes pause quest progression"], signals: [["Evidence coverage", "64%", "warning"], ["Account risk", "Low", "success"], ["Response state", "Received", "info"]],
-  },
-  "DSP-4205": {
-    questId: "QST-9519", category: "Review-window timing", openedBy: "Thanida Lertchai · Hirer", respondent: "Ratchanon Srisai · Worker", requested: "Correct caption timing", claim: "The hirer requested timing corrections after the review window and says the delivered file is not usable for the welcome series.", response: "The worker says the delivered VTT matches the accepted transcript and the timing request arrived late.", recommended: "Compare the review-window timestamps with the accepted transcript before requiring any rework.", policy: ["Review windows apply to both parties", "Accepted transcripts define the requested output", "Resolution reasons must cite the record"], signals: [["Evidence coverage", "91%", "success"], ["Account risk", "Low", "success"], ["Response state", "Contested", "warning"]],
-  },
-  "DSP-4206": {
-    questId: "QST-9505", category: "Usage rights", openedBy: "Chanon Preecha · Hirer", respondent: "Nicha Prasert · Worker", requested: "Permit external campaign reuse", claim: "The hirer requested to reuse the completed posters at an external event after delivery.", response: "The worker points to the accepted campus-only usage terms.", recommended: "Closed: retain the accepted campus-only rights and do not expand the license retroactively.", policy: ["Accepted usage terms control delivery", "Post-delivery scope changes require a new quest", "Closed cases are retained read-only"], signals: [["Evidence coverage", "100%", "success"], ["Account risk", "Low", "success"], ["Response state", "Resolved", "success"]],
-  },
+const disputableQuests = data.quests.filter((quest) => quest.status === "Disputed").slice(0, 36);
+
+data.disputes = disputableQuests.map((quest, index) => {
+  const hirer = data.users.find((user) => user.title === quest.person) || data.users[index % data.users.length];
+  const workerName = quest.selectedParticipant || quest.teamParticipants?.[0]?.[0] || data.users[(index + 1) % data.users.length].title;
+  const worker = data.users.find((user) => user.title === workerName) || data.users[(index + 1) % data.users.length];
+  const category = disputeCategories[index % disputeCategories.length];
+  const status = index % 3 === 2 ? "Closed" : "Active";
+  const amount = quest.amount;
+  const record = {
+    id: `DSP-${String(4201 + index).padStart(4, "0")}`,
+    title: quest.title,
+    person: hirer.title,
+    other: worker.title,
+    amount,
+    status,
+    tone: status === "Active" ? "danger" : "neutral",
+    disputeDate: seedDayLabel((index % 12) + 1),
+    disputeType: category,
+    age: index < 2 ? `${18 + index * 24} min` : `${(index % 6) + 1} days`,
+    detail: `The submitted record for ${quest.title.toLowerCase()} does not fully match the accepted quest conditions and requires an accountable review.`,
+    evidence: [`${quest.title} submission · PDF · ${3 + (index % 8)} pages`, "Accepted quest conditions · PDF", "Participant message export · PDF"],
+    ...(status === "Closed" ? { resolution: index % 2 ? "Worker wins; the accepted delivery remains on record." : "Hirer wins; the held amount was returned after review.", decisionReason: "The accepted quest terms and submitted evidence were compared before recording this outcome." } : {}),
+  };
+  disputeCases[record.id] = {
+    questId: quest.id,
+    category: `${category} review`,
+    openedBy: `${hirer.title} · Hirer`,
+    respondent: `${worker.title} · Worker`,
+    requested: "Admin review",
+    claim: `The accepted brief for ${quest.title} requires a complete, verifiable delivery before funds can settle.`,
+    response: "The responding party has acknowledged the case and is preparing supporting evidence.",
+    recommended: "Review the accepted conditions and submitted evidence before resolving the held funds.",
+    policy: ["Published quest condition controls scope", "Evidence timestamps are authoritative", "Administrative reason required"],
+    signals: [["Evidence coverage", `${58 + (index % 38)}%`, "warning"], ["Account risk", index % 5 === 0 ? "High" : "Low", index % 5 === 0 ? "danger" : "success"], ["Response state", status, status === "Active" ? "info" : "neutral"]],
+  };
+  return record;
+});
+
+const reportCategories = ["Harassment or abuse", "Fraud or payment issue", "Misleading quest activity", "Other"];
+data.reports = Array.from({ length: 48 }, (_, index) => {
+  const reporter = data.users[(index * 5 + 2) % data.users.length];
+  let reported = data.users[(index * 7 + 7) % data.users.length];
+  if (reported.id === reporter.id) reported = data.users[(index * 7 + 8) % data.users.length];
+  const quest = data.quests[(index * 3 + 2) % data.quests.length];
+  const status = index % 4 === 0 ? "Active" : "Closed";
+  const reportedAt = seedDateLabel((index % 18) + 1, 8 + (index % 8), (index * 11) % 60);
+  return {
+    id: `RPT-${String(7101 + index).padStart(4, "0")}`,
+    reporterId: reporter.id,
+    reporterName: reporter.title,
+    reportedUserId: reported.id,
+    reportedUserName: reported.title,
+    category: reportCategories[index % reportCategories.length],
+    relatedQuestId: quest.id,
+    relatedQuestTitle: quest.title,
+    details: `The report concerns activity connected to ${quest.title}. The submitted record is retained for admin review and audit testing.`,
+    evidence: index % 7 === 0 ? "No attachment provided" : `${reportCategories[index % reportCategories.length]} evidence · PDF`,
+    status,
+    tone: status === "Active" ? "warning" : "neutral",
+    reportedAt,
+    ...(status === "Closed" ? { closedAt: seedDateLabel((index % 16) + 1, 15, 30), decision: index % 3 === 0 ? "flag" : "do-nothing", decisionLabel: index % 3 === 0 ? "Flag only" : "Do nothing", decisionReason: "The submitted activity and related quest history were reviewed before closing this report.", resolution: index % 3 === 0 ? "Flag only applied." : "Report dismissed; no policy violation found.", resolvedBy: "Nicha P.", resolutionAt: seedDateLabel((index % 16) + 1, 15, 47) } : {}),
+  };
+});
+
+const payoutStatuses = ["Needs approval", "Processing", "Completed", "Completed", "Rejected"];
+const payoutSources = data.quests
+  .filter((quest) => quest.status === "Completed")
+  .flatMap((quest) => {
+    const recipients = quest.teamParticipants?.map(([name]) => name) || [quest.selectedParticipant];
+    return recipients.filter(Boolean).map((recipientName) => ({ quest, recipientName }));
+  });
+function seedRecipientEarnings(recipientName) {
+  return data.quests
+    .filter((quest) => quest.status === "Completed" && (quest.selectedParticipant === recipientName || quest.teamParticipants?.some(([name]) => name === recipientName)))
+    .reduce((total, quest) => {
+      const workerCount = quest.teamParticipants?.length || Number(quest.teamSize) || 1;
+      return total + Math.round(Number(quest.amount || 0) / workerCount);
+    }, 0);
+}
+data.payouts = Array.from({ length: 90 }, (_, index) => {
+  const source = payoutSources[index % payoutSources.length];
+  const quest = source.quest;
+  const recipientName = source.recipientName;
+  const recipient = data.users.find((user) => user.title === recipientName) || data.users[(index + 4) % data.users.length];
+  const status = payoutStatuses[index % payoutStatuses.length];
+  const requestedAt = seedDateLabel((index % 20) + 1, 10 + (index % 7), (index * 13) % 60);
+  const earned = seedRecipientEarnings(recipient.title);
+  const amount = Math.max(1, Math.round(earned * 0.95));
+  return {
+    id: `PAY-${String(8714 - index).padStart(4, "0")}`,
+    questId: quest.id,
+    title: recipient.title,
+    person: `${["Kasikorn", "SCB", "Krungthai", "Bangkok Bank"][index % 4]} · •••• ${String(1200 + ((index * 137) % 8800)).slice(-4)}`,
+    other: `Quest ${quest.id}`,
+    amount,
+    status,
+    tone: statusTone(status),
+    age: index < 3 ? `${12 + index * 19} min` : `${(index % 8) + 1} days`,
+    requestedAt,
+    previouslyPaidOut: Math.max(0, earned - amount),
+    ...(status === "Processing" || status === "Completed" ? { approvedAt: seedDateLabel((index % 18) + 1, 12, 15), approvedBy: "Nicha P." } : {}),
+    ...(status === "Rejected" ? { rejectedAt: seedDateLabel((index % 18) + 1, 12, 22), rejectedBy: "Nicha P.", rejectionReason: "The payout request requires additional account verification before funds can be released." } : {}),
+  };
 });
 
 const savedFreshDemo = (() => {
-  try { return JSON.parse(localStorage.getItem(freshDemoKey) || "null"); } catch { return null; }
+  try {
+    return JSON.parse(localStorage.getItem(freshDemoKey) || "null");
+  } catch {
+    return null;
+  }
 })();
+
 if (savedFreshDemo?.version === freshDemoVersion) {
   ["disputes", "quests", "users", "payouts", "reports"].forEach((collection) => {
-    if (Array.isArray(savedFreshDemo.collections?.[collection]))
-      data[collection] = savedFreshDemo.collections[collection];
+    if (Array.isArray(savedFreshDemo.collections?.[collection])) data[collection] = savedFreshDemo.collections[collection];
   });
 } else {
   localStorage.removeItem(freshDemoKey);
 }
 
 function persistAdminData() {
-  localStorage.setItem(
-    freshDemoKey,
-    JSON.stringify({ version: freshDemoVersion, collections: data }),
-  );
+  localStorage.setItem(freshDemoKey, JSON.stringify({ version: freshDemoVersion, collections: data }));
 }
 
-if (!savedFreshDemo || savedFreshDemo.version !== freshDemoVersion)
-  persistAdminData();
+const autoRejectedPayouts = typeof autoRejectUnavailablePayout === "function"
+  ? data.payouts.filter((record) => autoRejectUnavailablePayout(record))
+  : [];
+if (!savedFreshDemo || savedFreshDemo.version !== freshDemoVersion || autoRejectedPayouts.length) persistAdminData();
 
-document.querySelector('[data-view="disputes"] b').textContent = data.disputes.filter((record) => record.status === "Active").length;
-document.querySelector('[data-view="payouts"] b').textContent = data.payouts.filter((record) => record.status === "Needs approval").length;
-document.querySelector('[data-view="reports"] b').textContent = data.reports.filter((record) => record.status === "Active").length;
+function setSeedCounter(view, count) {
+  const counter = document.querySelector(`[data-view="${view}"] b`);
+  if (counter) counter.textContent = count;
+}
+
+setSeedCounter("disputes", data.disputes.filter((record) => record.status === "Active").length);
+setSeedCounter("payouts", data.payouts.filter((record) => record.status === "Needs approval").length);
+setSeedCounter("reports", data.reports.filter((record) => record.status === "Active").length);
 if (state.view === "home") renderHome();

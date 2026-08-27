@@ -408,8 +408,11 @@ function giverProfile(detail) {
 function relatedRows(rows) {
   return `<div class="related-list">${rows
     .map((row) => {
-      const statusTone = row[1] === "Selected" ? "success" : row[1] === "Not selected" ? "neutral" : "warning";
-      return `<button class="related-row"><strong>${escapeActivityText(row[0])}</strong><span>${badge(row[1], statusTone)}</span></button>`;
+      const user = data.users.find((candidate) => candidate.title === row[0]);
+      const isSelected = row[1] === "Selected";
+      const status = isSelected ? user?.status || row[1] : row[1];
+      const statusTone = isSelected ? user?.tone || "success" : row[1] === "Not selected" ? "neutral" : "warning";
+      return `<button class="related-row"><strong>${escapeActivityText(row[0])}</strong><span>${badge(status, statusTone)}</span></button>`;
     })
     .join("")}</div>`;
 }

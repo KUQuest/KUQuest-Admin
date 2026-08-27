@@ -55,6 +55,15 @@
   margin: 0 0 3px;
   font-size: 20px;
 }
+.user-summary-name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.user-summary-name h2 {
+  margin-bottom: 0;
+}
 .user-summary-identity p,
 .user-summary-identity a {
   display: block;
@@ -87,7 +96,7 @@
 }
 .user-summary-stats {
   display: grid;
-  grid-template-columns: repeat(4, minmax(60px, 1fr));
+  grid-template-columns: repeat(3, minmax(60px, 1fr));
   border-left: 1px solid var(--border);
 }
 .user-summary-stat,
@@ -252,6 +261,33 @@
 .user-review-summary strong {
   color: var(--text);
   font-size: 15px;
+}
+.user-review-summary span {
+  font-size: 14px;
+}
+.user-review-count {
+  color: var(--muted);
+}
+.user-review-rating-links {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.user-review-rating-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.user-review-rating-link:hover,
+.user-review-rating-link:focus-visible,
+.user-review-rating-link.active {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .user-review-preview > div,
 .user-recent-reports > a {

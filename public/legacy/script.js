@@ -221,37 +221,16 @@ function attention(v, i, t, ic, title, sub, x, y) {
   return `<button class="attention" data-open="${v}:${i}"><span class="att-icon ${toneClass(t)}">${ico(name)}</span><span><strong>${escapeActivityText(title)}</strong><small>${escapeActivityText(sub)}</small></span><span><strong>${escapeActivityText(x)}</strong><small>${escapeActivityText(y)}</small></span></button>`;
 }
 function activityList() {
-  const seeded = [
-    [
-      "RS",
-      "You reviewed DSP-4106",
-      "Dorm lighting audit · nighttime evidence requested",
-      "24 minutes ago",
-    ],
-    ["TP", "Thanida approved PAY-8611", "฿2,800 payout for transport survey", "1 hour ago"],
-    [
-      "NL",
-      "Nicha reviewed Kittipong Manee",
-      "Translation case · restriction remains active",
-      "3 hours ago",
-    ],
-    [
-      "RS",
-      "You changed QST-9407",
-      "Participant consent is pending",
-      "Yesterday, 16:42",
-    ],
-  ];
   const saved = readActivityEvents().map((event) => [
     event.actor || "NP",
     event.title,
     event.detail,
     formatActivityTime(event.timestamp),
   ]);
-  return [...saved, ...seeded].map(
+  return saved.length ? saved.map(
     (a) =>
       `<ul class="activity"><li><span class="avatar">${escapeActivityText(a[0])}</span><span><strong>${escapeActivityText(a[1])}</strong><p>${escapeActivityText(a[2])}</p><time>${escapeActivityText(a[3])}</time></span></li></ul>`,
-  );
+  ) : ['<div class="empty"><h3>No activity recorded</h3><p>Administrative activity will appear here as actions are taken.</p></div>'];
 }
 function escapeActivityText(value) {
   return String(value ?? "").replace(/[&<>"']/g, (character) => ({
@@ -306,6 +285,16 @@ function bindChatAttachment(form) {
   });
 }
 const activityStorageKey = "kuquest-admin-activity-v2";
+const activityDataVersionKey = "kuquest-admin-activity-version";
+const activityDataVersion = "2026-08-27-empty";
+try {
+  if (localStorage.getItem(activityDataVersionKey) !== activityDataVersion) {
+    localStorage.removeItem(activityStorageKey);
+    localStorage.setItem(activityDataVersionKey, activityDataVersion);
+  }
+} catch {
+  // Keep activity empty if browser storage is blocked.
+}
 function readActivityEvents() {
   try {
     const events = JSON.parse(localStorage.getItem(activityStorageKey) || "[]");
@@ -327,7 +316,7 @@ function recordActivity(title, detail, actor = "NP") {
       JSON.stringify([event, ...readActivityEvents()].slice(0, 40)),
     );
   } catch {
-    // Keep the seeded audit trail available if browser storage is blocked.
+    // Ignore activity writes if browser storage is blocked.
   }
 }
 function formatActivityTime(timestamp) {
@@ -648,6 +637,18 @@ function payoutSummarySection(record) {
   const financials = payoutFinancials(record);
   return `<section class="section payout-summary"><h3>Payout summary</h3><div class="payout-summary-grid"><div><span>Available to withdraw</span><strong>฿${fmt(financials.available)}</strong></div><div><span>Payout amount</span><strong>฿${fmt(record.amount)}</strong></div><div><span>Remaining after payout</span><strong>฿${fmt(financials.remaining)}</strong></div><div><span>Previously paid out</span><strong>฿${fmt(financials.previousPaidOut)}</strong></div></div></section>`;
 }
+function autoRejectUnavailablePayout(record) {
+  if (record.status !== "Needs approval") return false;
+  const available = payoutFinancials(record).available;
+  if (available >= Number(record.amount || 0)) return false;
+  record.status = "Rejected";
+  record.tone = "danger";
+  record.rejectedAt = payoutDateTime();
+  record.rejectedBy = payoutAdminName();
+  record.rejectionReason = "Insufficient withdrawable balance.";
+  record.rejectionNote = "Automatically rejected before admin review because the available balance did not cover the request.";
+  return true;
+}
 function payoutTimingSection(record) {
   const events = [["Requested", record.requestedAt || "Not recorded"]];
   if (record.approvedAt) events.push(["Approved", record.approvedAt], ["By", record.approvedBy || "Admin"]);
@@ -798,32 +799,17 @@ function openReportDrawer(index) {
   const report = data.reports[index];
   if (!report) return;
   showDrawerLayer();
-  const isClosed = report.status === "Closed",
-    nextAction = isClosed ? "Reopen report" : "Review report";
-  drawer.innerHTML = `<div class="drawer-top"><div><strong>${report.id}</strong><small>User report</small></div><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div><div class="drawer-body report-record ${isClosed ? "closed-record" : "open-record"}"><div class="drawer-title"><span class="att-icon ${isClosed ? "neutral" : "warning"}">${ico("flag")}</span><div><h2>Report against ${escapeActivityText(report.reportedUserName)}</h2><p>Submitted by ${escapeActivityText(report.reporterName)}</p></div></div><div class="case-alert"><span>${ico("flag")}</span><div><strong>${isClosed ? "Report closed — record retained" : "Open report — review is required"}</strong><p>${isClosed ? "This report is closed and retained as a read-only audit record." : "Review the submitted details and evidence before closing this report."}</p></div></div><section class="section"><h3>Report overview</h3><div class="facts"><div class="fact"><span>Status</span>${badge(report.status, report.tone || (isClosed ? "neutral" : "warning"))}</div><div class="fact"><span>Report type</span><strong>${escapeActivityText(report.category)}</strong></div><div class="fact"><span>Reported</span><strong>${escapeActivityText(report.reportedAt)}</strong></div></div></section><section class="section"><h3>What was reported</h3><p>${escapeActivityText(report.details)}</p></section><section class="section"><h3>People involved</h3><div class="facts"><div class="fact"><span>Reported user</span><strong>${escapeActivityText(report.reportedUserName)}</strong><small>${escapeActivityText(report.reportedUserId)}</small></div><div class="fact"><span>Reporting user</span><strong>${escapeActivityText(report.reporterName)}</strong><small>${escapeActivityText(report.reporterId)}</small></div></div></section><section class="section"><h3>Evidence</h3>${report.evidence ? `<button class="evidence-item" data-report-evidence><span class="evidence-state">${ico("check")}</span><span><strong>${escapeActivityText(report.evidence)}</strong><small>Attached by ${escapeActivityText(report.reporterName)}</small></span><span>Open</span></button>` : '<p class="audit-note">No evidence file attached.</p>'}</section>${isClosed && report.decisionReason ? `<section class="section"><h3>Closing note</h3><p>${escapeActivityText(report.decisionReason)}</p></section>` : ""}</div><div class="drawer-actions"><a class="btn" href="/reports/${encodeURIComponent(report.id)}">Full report detail</a><button class="btn" id="close-report-record">Close record</button><button class="btn primary" data-action="${nextAction}">${nextAction}</button></div>`;
+  const isClosed = report.status === "Closed";
+  drawer.innerHTML = `<div class="drawer-top"><div><strong>${report.id}</strong><small>User report</small></div><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div><div class="drawer-body report-record ${isClosed ? "closed-record" : "open-record"}"><div class="drawer-title"><span class="att-icon ${isClosed ? "neutral" : "warning"}">${ico("flag")}</span><div><h2>Report against ${escapeActivityText(report.reportedUserName)}</h2><p>Submitted by ${escapeActivityText(report.reporterName)}</p></div></div><div class="case-alert"><span>${ico("flag")}</span><div><strong>${isClosed ? "Report closed — record retained" : "Open report — review is required"}</strong><p>${isClosed ? "This report is closed and retained as a read-only audit record." : "Review the submitted details and evidence before closing this report."}</p></div></div><section class="section"><h3>Report overview</h3><div class="facts"><div class="fact"><span>Status</span>${badge(report.status, report.tone || (isClosed ? "neutral" : "warning"))}</div><div class="fact"><span>Report type</span><strong>${escapeActivityText(report.category)}</strong></div><div class="fact"><span>Reported</span><strong>${escapeActivityText(report.reportedAt)}</strong></div></div></section><section class="section"><h3>Report detail</h3><p>${escapeActivityText(report.details)}</p></section><section class="section"><h3>People involved</h3><div class="facts"><div class="fact"><span>Reported user</span><strong>${escapeActivityText(report.reportedUserName)}</strong><small>${escapeActivityText(report.reportedUserId)}</small></div><div class="fact"><span>Reporting user</span><strong>${escapeActivityText(report.reporterName)}</strong><small>${escapeActivityText(report.reporterId)}</small></div></div></section><section class="section"><h3>Evidence</h3>${report.evidence ? `<button class="evidence-item" data-report-evidence><span class="evidence-state">${ico("check")}</span><span><strong>${escapeActivityText(report.evidence)}</strong><small>Attached by ${escapeActivityText(report.reporterName)}</small></span><span>Open</span></button>` : '<p class="audit-note">No evidence file attached.</p>'}</section>${isClosed && report.decisionReason ? `<section class="section"><h3>Closing note</h3><p>${escapeActivityText(report.decisionReason)}</p></section>` : ""}</div><div class="drawer-actions"><a class="btn" href="/reports/${encodeURIComponent(report.id)}">Full report detail</a><button class="btn" id="close-report-record">Close record</button>${isClosed ? "" : '<a class="btn primary" href="/reports/' + encodeURIComponent(report.id) + '">Review report</a>'}</div>`;
   if (!isClosed)
     drawer.querySelector(".case-alert strong").textContent =
       "Active report — review is required";
   if (!isClosed) {
     drawer.querySelector('.drawer-actions a[href^="/reports/"]')?.remove();
-    const reviewButton = drawer.querySelector("[data-action]");
-    const reviewLink = document.createElement("a");
-    reviewLink.className = "btn primary";
-    reviewLink.href = `/reports/${encodeURIComponent(report.id)}`;
-    reviewLink.textContent = nextAction;
-    reviewButton?.replaceWith(reviewLink);
   }
   drawer.querySelector("#close").onclick = closeDrawer;
   scrim.onclick = closeDrawer;
   drawer.querySelector("#close-report-record").onclick = closeDrawer;
-  drawer.querySelector("[data-action]")?.addEventListener("click", (button) => {
-    const action = button.currentTarget.dataset.action;
-    confirmAction(action, report, `This will update ${report.id} and keep the submitted report record available to admins.`, () => {
-      applyDemoAction(action, report);
-      persistAdminData();
-      render();
-    });
-  });
 }
 function openDrawer(v, i) {
   if (v === "reports") return openReportDrawer(i);
@@ -1213,7 +1199,6 @@ function applyDemoAction(action, record) {
     "Reject payout": ["Rejected", "danger"],
     "Approve payout": ["Processing", "info"],
     "Close report": ["Closed", "neutral"],
-    "Reopen report": ["Active", "warning"],
     "Terminate quest": ["Cancelled", "cancelled"],
   };
   const next = transitions[action];
@@ -1222,7 +1207,6 @@ function applyDemoAction(action, record) {
   if (action === "Lift penalty") delete record.penalty;
   record.age = "Just now";
   if (action === "Close report") record.closedAt = reportDateTime();
-  if (action === "Reopen report") delete record.closedAt;
   refreshNavigationCounts();
 }
 function refreshNavigationCounts() {
@@ -1497,6 +1481,10 @@ function finishPayoutAction(record, action, onComplete) {
 }
 function confirmPayoutApproval(record) {
   if (!dialog) return;
+  if (autoRejectUnavailablePayout(record)) {
+    finishPayoutAction(record, "Auto-reject payout");
+    return;
+  }
   const form = document.querySelector("#confirm-form"),
     reason = document.querySelector("#confirm-reason"),
     reasonLabel = reason?.closest("label"),

@@ -97,10 +97,9 @@ function renderReportPage() {
   }
 
   const isClosed = reportRecord.status === "Closed",
-    action = isClosed ? "Reopen report" : "Close report",
     tone = reportTone(reportRecord);
   main.innerHTML = `<div class="record-breadcrumb"><a href="/?view=reports">Reports</a><span>›</span><span>${escapeActivityText(reportRecord.id)}</span></div>
-  <div class="full-record-head"><div><div class="record-id">${escapeActivityText(reportRecord.id)}</div><h1>Report against ${escapeActivityText(reportRecord.reportedUserName)}</h1><p>${escapeActivityText(reportRecord.category || "General report")} · submitted ${escapeActivityText(reportRecord.reportedAt)}</p></div><div class="full-record-actions"><a class="btn" href="/?view=reports">Back to reports</a><button class="btn ${isClosed ? "" : "danger"}" data-report-${isClosed ? "action" : "close"}="${action}">${action}</button></div></div>
+  <div class="full-record-head"><div><div class="record-id">${escapeActivityText(reportRecord.id)}</div><h1>Report against ${escapeActivityText(reportRecord.reportedUserName)}</h1><p>${escapeActivityText(reportRecord.category || "General report")} · submitted ${escapeActivityText(reportRecord.reportedAt)}</p></div><div class="full-record-actions"><a class="btn" href="/?view=reports">Back to reports</a>${isClosed ? "" : '<button class="btn danger" data-report-close="Close report">Close report</button>'}</div></div>
   <div class="dispute-page-alert report-page-alert ${isClosed ? "closed" : "open"}"><span>${ico("flag")}</span><div><strong>${isClosed ? "Closed report — record retained" : "Active report — review is required"}</strong><p>${isClosed ? "This report is closed and retained as a read-only audit record." : "Review the submitted details and evidence before closing this report."}</p></div></div>
   <div class="record-status-bar"><div><span>Status</span>${badge(reportRecord.status, tone)}</div><div><span>Report type</span><strong>${escapeActivityText(reportRecord.category || "General report")}</strong></div><div><span>Submitted</span><strong>${escapeActivityText(reportRecord.reportedAt)}</strong></div><div><span>Reported user</span><strong>${escapeActivityText(reportRecord.reportedUserName)}</strong></div><div><span>Evidence</span><strong>${reportRecord.evidence ? "1 record" : "None attached"}</strong></div></div>
   <div class="full-record-grid"><div class="record-primary">
@@ -112,30 +111,14 @@ function renderReportPage() {
   </div><aside class="record-side">
     <section class="record-panel"><h2>Reported account</h2><div class="side-facts"><div><span>Name</span><strong>${escapeActivityText(reportRecord.reportedUserName)}</strong></div><div><span>Student ID</span><strong>${escapeActivityText(reportRecord.reportedUserId)}</strong></div></div>${reportUserProfileLink(reportRecord.reportedUserId)}</section>
     <section class="record-panel"><h2>Submitted by</h2><div class="side-facts"><div><span>Name</span><strong>${escapeActivityText(reportRecord.reporterName)}</strong></div><div><span>Student ID</span><strong>${escapeActivityText(reportRecord.reporterId)}</strong></div></div>${reportUserProfileLink(reportRecord.reporterId)}</section>
-    <section class="record-panel report-decision-panel"><h2>${isClosed ? "Recorded outcome" : "Report decision"}</h2>${isClosed ? reportDecisionPanel(reportRecord) : reportDecisionPanel(reportRecord)}<button class="btn ${isClosed ? "" : "danger"} full-width" data-report-${isClosed ? "action" : "close"}="${action}">${action}</button></section>
+    <section class="record-panel report-decision-panel"><h2>${isClosed ? "Recorded outcome" : "Report decision"}</h2>${reportDecisionPanel(reportRecord)}${isClosed ? "" : '<button class="btn danger full-width" data-report-close="Close report">Close report</button>'}</section>
   </aside></div>`;
 
   if (!isClosed)
     main.querySelector(".report-page-alert strong").textContent =
       "Active report — review is required";
 
-  if (isClosed) {
-    main.querySelectorAll("[data-report-action]").forEach((button) =>
-      button.addEventListener("click", () =>
-        confirmAction(
-          action,
-          reportRecord,
-          `This will reopen ${reportRecord.id} for another admin review.`,
-          (reason) => {
-            applyDemoAction(action, reportRecord);
-            reportRecord.reopenReason = reason;
-            persistAdminData();
-            renderReportPage();
-          },
-        ),
-      ),
-    );
-  } else {
+  if (!isClosed) {
     let selectedDecision = "";
     main.querySelectorAll("[data-report-decision]").forEach((button) =>
       button.addEventListener("click", () => {
