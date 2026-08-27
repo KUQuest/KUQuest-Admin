@@ -162,8 +162,10 @@ function controlledTable(view, rows) {
 function tableCell(view, record, key, target) {
   if (key === "id")
     return `<td><button class="row-record-button" data-open="${target}" aria-label="Open ${view.slice(0, -1)} ${escapeActivityText(record.id)}">${escapeActivityText(record.id)}</button></td>`;
-  if (key === "title")
-    return `<td><strong>${escapeActivityText(record.title)}</strong>${view === "disputes" ? `<small>${escapeActivityText(record.detail).slice(0, 45)}…</small>` : view === "quests" && record.teamQuest ? `<small>${record.teamSize} selected participants · Team quest</small>` : ""}</td>`;
+  if (key === "title") {
+    const title = `<strong>${escapeActivityText(record.title)}</strong>${view === "disputes" ? `<small>${escapeActivityText(record.detail).slice(0, 45)}…</small>` : view === "quests" && record.teamQuest ? `<small>${record.teamSize} selected participants · Team quest</small>` : ""}`;
+    return view === "users" ? `<td><a class="user-record-link" href="/users/${encodeURIComponent(record.id)}">${title}</a></td>` : `<td>${title}</td>`;
+  }
   if (key === "person") return `<td><strong>${escapeActivityText(record.person)}</strong></td>`;
   if (key === "other") return `<td>${escapeActivityText(record.other)}</td>`;
   if (key === "amount") return `<td class="money">฿${fmt(record.amount)}</td>`;
@@ -173,9 +175,9 @@ function tableCell(view, record, key, target) {
   if (key === "disputeType")
     return `<td><strong>${escapeActivityText(disputeTypeLabel(record))}</strong></td>`;
   if (key === "reportedUserName")
-    return `<td><strong>${escapeActivityText(record.reportedUserName)}</strong></td>`;
+    return `<td><a class="user-record-link" href="/users/${encodeURIComponent(record.reportedUserId)}"><strong>${escapeActivityText(record.reportedUserName)}</strong></a></td>`;
   if (key === "reporterName")
-    return `<td>${escapeActivityText(record.reporterName)}</td>`;
+    return `<td><a class="user-record-link" href="/users/${encodeURIComponent(record.reporterId)}">${escapeActivityText(record.reporterName)}</a></td>`;
   if (key === "category") return `<td>${escapeActivityText(record.category)}</td>`;
   if (key === "reportedAt") return `<td>${escapeActivityText(record.reportedAt)}</td>`;
   if (key === "age") return `<td>${escapeActivityText(record.age)}</td>`;

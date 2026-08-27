@@ -26,6 +26,10 @@ function reportPartyChats(report) {
   return `<section class="record-panel report-party-chats"><div class="record-panel-head"><h2>Private report messages</h2><span class="section-count">2</span></div><p class="chat-intro">Open a separate conversation with either side to review their messages and follow up.</p><div class="chat-launches"><button class="party-chat-button" data-report-chat-role="reporter"><span class="avatar">${reportChatInitials(report.reporterName)}</span><span><strong>Chat with reporter</strong><small>${escapeActivityText(report.reporterName)}</small></span><span>Open</span></button><button class="party-chat-button" data-report-chat-role="reported"><span class="avatar">${reportChatInitials(report.reportedUserName)}</span><span><strong>Chat with reported user</strong><small>${escapeActivityText(report.reportedUserName)}</small></span><span>Open</span></button></div></section>`;
 }
 
+function reportUserProfileLink(userId) {
+  return `<a class="btn full-width" href="/users/${encodeURIComponent(userId)}">See full user profile</a>`;
+}
+
 function openReportPartyChat(report, role) {
   activeCustomLayerClose?.();
   const isReporter = role === "reporter",
@@ -106,8 +110,8 @@ function renderReportPage() {
     <section class="record-panel"><div class="record-panel-head"><h2>Evidence</h2><span class="section-count">${reportRecord.evidence ? "1" : "0"}</span></div><div class="evidence-stack">${reportEvidence(reportRecord)}</div></section>
     <section class="record-panel"><h2>Report timeline</h2>${timeline(reportTimeline(reportRecord), { showDetails: false })}</section>
   </div><aside class="record-side">
-    <section class="record-panel"><h2>Reported account</h2><div class="side-facts"><div><span>Name</span><strong>${escapeActivityText(reportRecord.reportedUserName)}</strong></div><div><span>Student ID</span><strong>${escapeActivityText(reportRecord.reportedUserId)}</strong></div></div></section>
-    <section class="record-panel"><h2>Submitted by</h2><div class="side-facts"><div><span>Name</span><strong>${escapeActivityText(reportRecord.reporterName)}</strong></div><div><span>Student ID</span><strong>${escapeActivityText(reportRecord.reporterId)}</strong></div></div></section>
+    <section class="record-panel"><h2>Reported account</h2><div class="side-facts"><div><span>Name</span><strong>${escapeActivityText(reportRecord.reportedUserName)}</strong></div><div><span>Student ID</span><strong>${escapeActivityText(reportRecord.reportedUserId)}</strong></div></div>${reportUserProfileLink(reportRecord.reportedUserId)}</section>
+    <section class="record-panel"><h2>Submitted by</h2><div class="side-facts"><div><span>Name</span><strong>${escapeActivityText(reportRecord.reporterName)}</strong></div><div><span>Student ID</span><strong>${escapeActivityText(reportRecord.reporterId)}</strong></div></div>${reportUserProfileLink(reportRecord.reporterId)}</section>
     <section class="record-panel report-decision-panel"><h2>${isClosed ? "Recorded outcome" : "Report decision"}</h2>${isClosed ? reportDecisionPanel(reportRecord) : reportDecisionPanel(reportRecord)}<button class="btn ${isClosed ? "" : "danger"} full-width" data-report-${isClosed ? "action" : "close"}="${action}">${action}</button></section>
   </aside></div>`;
 

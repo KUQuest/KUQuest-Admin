@@ -7,7 +7,7 @@ import type { MouseEvent } from "react";
 
 /* oxlint-disable jsx-a11y/prefer-tag-over-role */
 
-type LegacyPage = "home" | "quest" | "dispute" | "report" | "login";
+type LegacyPage = "home" | "quest" | "dispute" | "report" | "user" | "login";
 type LegacyScriptPlan = {
   sequential: string[];
   parallel: string[];
@@ -15,16 +15,16 @@ type LegacyScriptPlan = {
 
 const adminFoundationScripts = [
   "/legacy/auth.js?v=1",
-  "/legacy/script.js?v=72",
+  "/legacy/script.js?v=75",
   "/legacy/fresh-mock-data.js?v=34",
 ];
 
 const adminScripts: LegacyScriptPlan = {
   sequential: adminFoundationScripts,
   parallel: [
-    "/legacy/resource-controls.js?v=41",
+    "/legacy/resource-controls.js?v=42",
     "/legacy/functional-controls.js?v=4",
-    "/legacy/deep-links.js?v=10",
+    "/legacy/deep-links.js?v=11",
   ],
 };
 
@@ -48,7 +48,12 @@ const disputeScripts: LegacyScriptPlan = {
 };
 
 const reportScripts: LegacyScriptPlan = {
-    sequential: [...adminFoundationScripts, "/legacy/report-page.js?v=12"],
+  sequential: [...adminFoundationScripts, "/legacy/report-page.js?v=14"],
+  parallel: ["/legacy/functional-controls.js?v=4"],
+};
+
+const userScripts: LegacyScriptPlan = {
+  sequential: [...adminFoundationScripts, "/legacy/user-page.js?v=2"],
   parallel: ["/legacy/functional-controls.js?v=4"],
 };
 
@@ -113,7 +118,9 @@ function LegacyScripts({ page, recordId }: { page: LegacyPage; recordId?: string
           ? disputeScripts
           : page === "report"
             ? reportScripts
-            : adminScripts,
+            : page === "user"
+              ? userScripts
+              : adminScripts,
     );
   }, [page, recordId]);
 
@@ -206,7 +213,7 @@ function LegacyOverlays({ detailSearch = false }: { detailSearch?: boolean }) {
 }
 
 export function LegacyAdminPage({ page, recordId }: { page: Exclude<LegacyPage, "login">; recordId?: string }) {
-  const detailPage = page !== "home";
+  const detailPage = page !== "home" && page !== "user";
 
   return (
     <>

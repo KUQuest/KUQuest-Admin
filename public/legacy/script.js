@@ -774,7 +774,7 @@ function reportPenaltySummary(report) {
 }
 function openUserReportDetails(user, report) {
   const isOpen = reportStatusLabel(report) === "Open";
-  drawer.innerHTML = `<div class="drawer-top"><div><strong>${escapeActivityText(report.id)}</strong><small>Report details</small></div><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div><div class="drawer-body user-report-detail"><div class="drawer-title"><span class="att-icon ${isOpen ? "warning" : "neutral"}">${ico("flag")}</span><div><h2>${escapeActivityText(report.category)}</h2><p>Reported user: ${escapeActivityText(user.title)}</p></div></div><section class="section"><h3>Report overview</h3><div class="user-context-list"><div><span>Status</span>${userReportDetailStatus(report)}</div><div><span>Reporter</span><strong>${escapeActivityText(report.reporterName)}</strong></div><div><span>Reported</span><strong>${escapeActivityText(report.reportedAt || "Date not recorded").replace(/\s+ICT$/, "")}</strong></div><div><span>Category</span><strong>${escapeActivityText(report.category)}</strong></div></div></section><section class="section"><h3>Description</h3><p>${escapeActivityText(report.details)}</p></section><section class="section"><h3>Evidence</h3>${report.evidence ? `<button class="evidence-item" data-report-evidence><span class="evidence-state">${ico("check")}</span><span><strong>${escapeActivityText(report.evidence)}</strong><small>Attached by ${escapeActivityText(report.reporterName)}</small></span><span>Open</span></button>` : '<p class="audit-note">No evidence or attachment was provided.</p>'}</section><section class="section"><h3>Resolution</h3>${isOpen ? '<div class="user-context-list"><div><span>Penalty</span><strong>Pending moderator resolution</strong></div></div>' : `<div class="user-context-list"><div><span>Outcome</span><strong>${escapeActivityText(report.resolution || report.decisionLabel || "Closed")}</strong></div><div><span>Penalty applied</span><strong>${escapeActivityText(reportPenaltySummary(report))}</strong></div><div><span>Resolved by</span><strong>${escapeActivityText(report.resolvedBy || "Admin")}</strong></div><div><span>Resolved</span><strong>${escapeActivityText(report.resolutionAt || report.closedAt || "Date not recorded").replace(/\s+ICT$/, "")}</strong></div></div>`}</section></div><div class="drawer-actions"><button class="btn" id="back-to-user">Back to user</button><a class="btn primary" href="/reports/${encodeURIComponent(report.id)}">Open full report</a><button class="btn" id="close-user-report">Close record</button></div>`;
+  drawer.innerHTML = `<div class="drawer-top"><div><strong>${escapeActivityText(report.id)}</strong><small>Report details</small></div><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div><div class="drawer-body user-report-detail"><div class="drawer-title"><span class="att-icon ${isOpen ? "warning" : "neutral"}">${ico("flag")}</span><div><h2>${escapeActivityText(report.category)}</h2><p>Reported user: ${escapeActivityText(user.title)}</p></div></div><section class="section"><h3>Report overview</h3><div class="user-context-list"><div><span>Status</span>${userReportDetailStatus(report)}</div><div><span>Reporter</span><strong>${escapeActivityText(report.reporterName)}</strong></div><div><span>Reported</span><strong>${escapeActivityText(report.reportedAt || "Date not recorded").replace(/\s+ICT$/, "")}</strong></div><div><span>Category</span><strong>${escapeActivityText(report.category)}</strong></div></div></section><section class="section"><h3>Description</h3><p>${escapeActivityText(report.details)}</p></section><section class="section"><h3>Evidence</h3>${report.evidence ? `<button class="evidence-item" data-report-evidence><span class="evidence-state">${ico("check")}</span><span><strong>${escapeActivityText(report.evidence)}</strong><small>Attached by ${escapeActivityText(report.reporterName)}</small></span><span>Open</span></button>` : '<p class="audit-note">No evidence or attachment was provided.</p>'}</section><section class="section"><h3>Resolution</h3>${isOpen ? '<div class="user-context-list"><div><span>Penalty</span><strong>Pending moderator resolution</strong></div></div>' : `<div class="user-context-list"><div><span>Outcome</span><strong>${escapeActivityText(report.resolution || report.decisionLabel || "Closed")}</strong></div><div><span>Penalty applied</span><strong>${escapeActivityText(reportPenaltySummary(report))}</strong></div><div><span>Resolved by</span><strong>${escapeActivityText(report.resolvedBy || "Admin")}</strong></div><div><span>Resolved</span><strong>${escapeActivityText(report.resolutionAt || report.closedAt || "Date not recorded").replace(/\s+ICT$/, "")}</strong></div></div>`}</section></div><div class="drawer-actions"><button class="btn" id="back-to-user">Back to user</button><a class="btn" href="/users/${encodeURIComponent(user.id)}">See full user profile</a><a class="btn primary" href="/reports/${encodeURIComponent(report.id)}">Open full report</a><button class="btn" id="close-user-report">Close record</button></div>`;
   drawer.querySelector("#close").onclick = closeDrawer;
   drawer.querySelector("#close-user-report").onclick = closeDrawer;
   drawer.querySelector("#back-to-user").onclick = () => {
@@ -842,7 +842,7 @@ function openDrawer(v, i) {
         ? `${payoutQuestLink}<button class="btn" data-action="Reject payout">Reject payout</button><button class="btn primary" data-action="Approve payout">Approve payout</button>`
         : `${payoutQuestLink}<button class="btn" id="close-payout-record">Close record</button>`
       : v === "users"
-        ? userDrawerActions(r)
+        ? `${userDrawerActions(r)}<a class="btn" href="/users/${encodeURIComponent(r.id)}">See full user profile</a>`
         : '<button class="btn" data-action="Hide quest">Hide quest</button>';
   drawer.innerHTML = `<div class="drawer-top"><strong>${escapeActivityText(r.id)}</strong><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div><div class="drawer-body"><div class="drawer-title"><span class="att-icon ${toneClass(r.tone)}">${ico(v === "payouts" ? "wallet" : v === "users" ? "user" : v === "quests" ? "quest" : "scale")}</span><div><h2>${escapeActivityText(r.title)}</h2><p>${escapeActivityText(r.person)} · ${escapeActivityText(r.other)}</p></div></div><div class="facts"><div class="fact"><span>Status</span>${badge(r.status, r.tone)}</div>${r.amount ? `<div class="fact"><span>${isP ? "Payout amount" : "Amount held"}</span><strong>฿${fmt(r.amount)}</strong></div>` : ""}<div class="fact"><span>Record</span><strong>${escapeActivityText(r.id)}</strong></div>${!isP && v !== "users" ? `<div class="fact"><span>Last activity</span><strong>${escapeActivityText(r.age)}</strong></div>` : ""}</div>${drawerContent}</div><div class="drawer-actions">${drawerActions}</div>`;
   if (isP) {
@@ -985,15 +985,22 @@ function openUserReportDialog(user) {
     refreshNavigationCounts();
     recordActivity("User report submitted", `${reporter.title} reported ${user.title} · ${report.category}`);
     close();
-    if (state.view === "home") renderHome();
-    else if (state.view === "users") render();
-    openDrawer("users", data.users.indexOf(user));
+    if (!refreshUserAfterMutation(user)) openDrawer("users", data.users.indexOf(user));
     toast(`Report submitted against ${user.title}.`);
   });
 }
 
 function addUserHistory(user, entry) {
   user.moderationHistory = [entry, ...(user.moderationHistory || [])];
+}
+function refreshUserAfterMutation(user) {
+  if (window.__KUQUEST_USER_DETAIL__?.user === user) {
+    window.__KUQUEST_USER_DETAIL__.render();
+    return true;
+  }
+  if (state.view === "home") renderHome();
+  else if (state.view === "users") render();
+  return false;
 }
 function applyUserPenalty(user, action, reason, note) {
   const previousStatus = user.status;
@@ -1033,7 +1040,8 @@ function openPenaltyDialog(user, options = {}) {
   activeCustomLayerClose?.();
   const temporaryBanDays = 7;
   const mode = options.mode === "modify" ? "modify" : "apply";
-  const initialAction = user.status === "Temp ban" ? "temporary-ban" : user.status === "Perm ban" ? "ban" : "warning";
+  const requestedAction = ["warning", "temporary-ban", "ban"].includes(options.initialAction) ? options.initialAction : null;
+  const initialAction = requestedAction || (user.status === "Temp ban" ? "temporary-ban" : user.status === "Perm ban" ? "ban" : "warning");
   const modalTitle = mode === "modify" ? "Modify ban" : "Apply penalty";
   const overlay = document.createElement("div");
   overlay.className = "party-chat-overlay";
@@ -1074,9 +1082,7 @@ function openPenaltyDialog(user, options = {}) {
     persistAdminData();
     recordActivity(`${user.status} applied`, `${user.id} · ${user.title} · ${reason}`);
     close();
-    if (state.view === "home") renderHome();
-    else if (state.view === "users") render();
-    openDrawer("users", data.users.indexOf(user));
+    if (!refreshUserAfterMutation(user)) openDrawer("users", data.users.indexOf(user));
     toast(`${user.status} applied for ${user.title}.`);
   });
   updateFields();
@@ -1106,9 +1112,7 @@ function openAdminNoteDialog(user) {
     persistAdminData();
     recordActivity("Admin note added", `${user.id} · ${user.title}`);
     close();
-    if (state.view === "home") renderHome();
-    else if (state.view === "users") render();
-    openDrawer("users", data.users.indexOf(user));
+    if (!refreshUserAfterMutation(user)) openDrawer("users", data.users.indexOf(user));
     toast(`Admin note saved for ${user.title}.`);
   });
 }
@@ -1182,8 +1186,7 @@ function confirmUserStatusChange(user, action) {
     persistAdminData();
     recordActivity(event, `${user.id} · ${user.title} · ${reason.value.trim()}`);
     closeDrawer();
-    render();
-    openDrawer("users", data.users.indexOf(user));
+    if (!refreshUserAfterMutation(user)) openDrawer("users", data.users.indexOf(user));
     toast(`${event} for ${user.title}.`);
   }, { once: true });
   dialog.showModal();
