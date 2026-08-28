@@ -1,298 +1,26 @@
-const pendingQuestChanges = {
-  "QST-9407": {
-    id: "EDT-402",
-    status: "Awaiting participant consent",
-    requestedBy: "Kittipong Manee · Hirer",
-    requestedAt: "Today, 09:26",
-    reason:
-      "The library asked for quiet-floor opening hours and accessible route notes to be included in the handover.",
-    responses: [
-      ["Ratchanon Srisai", "Pending", "Worker"],
-      ["Kittipong Manee", "Approved", "Hirer"],
-    ],
-    changes: [
-      [
-        "Quest description",
-        "Map five library floors and identify quiet study areas",
-        "Add quiet-floor opening hours and accessibility route notes",
-        "Scope increase",
-      ],
-      [
-        "Location",
-        "Main library, floors 1–5",
-        "Main library, floors 1–5 + accessible routes",
-        "Scope increase",
-      ],
-      [
-        "Due date",
-        "30 Aug 2026 · 18:00",
-        "1 Sep 2026 · 18:00",
-        "2 days later",
-      ],
-    ],
-  },
-  "QST-9416": {
-    id: "EDT-403",
-    status: "Awaiting participant consent",
-    requestedBy: "Nicha Prasert · Hirer",
-    requestedAt: "Today, 08:52",
-    reason:
-      "The lab requested bilingual wording and QR directions for the additional entrances.",
-    responses: [
-      ["Thanida Lertchai", "Pending", "Worker"],
-      ["Nicha Prasert", "Approved", "Hirer"],
-    ],
-    changes: [
-      [
-        "Quest description",
-        "Create signs for three lab entrances",
-        "Add bilingual wording and QR directions for six entrances",
-        "Scope increase",
-      ],
-      [
-        "Deliverables",
-        "6 sign layouts",
-        "6 final sign layouts + print-ready QR labels",
-        "New deliverable",
-      ],
-      [
-        "Due date",
-        "29 Aug 2026 · 18:00",
-        "31 Aug 2026 · 18:00",
-        "2 days later",
-      ],
-    ],
-  },
-  "QST-9424": {
-    id: "EDT-404",
-    status: "Awaiting participant consent",
-    requestedBy: "Saran Jindapol · Hirer",
-    requestedAt: "Today, 09:04",
-    reason:
-      "Facilities access expanded to include changing-room routes and slope measurements.",
-    responses: [
-      ["Ratchanon Srisai", "Approved", "Route mapper"],
-      ["Mayuree Nopparat", "Pending", "Facilities reviewer"],
-      ["Thanida Lertchai", "Pending", "Report writer"],
-      ["Saran Jindapol", "Approved", "Hirer"],
-    ],
-    changes: [
-      [
-        "Quest description",
-        "Audit ramps, lifts, and accessible entrances",
-        "Add changing-room routes and slope measurements",
-        "Scope increase",
-      ],
-      [
-        "Deliverables",
-        "Facility checklist and route notes",
-        "Checklist, route notes, and photo evidence",
-        "New deliverable",
-      ],
-      [
-        "Due date",
-        "31 Aug 2026 · 18:00",
-        "2 Sep 2026 · 18:00",
-        "2 days later",
-      ],
-    ],
-  },
-  "QST-9507": {
-    id: "EDT-405",
-    status: "Awaiting participant consent",
-    requestedBy: "Kittipong Manee · Hirer",
-    requestedAt: "Today, 10:14",
-    reason:
-      "The study-area request expanded to include shaded outdoor seating and noise-level readings.",
-    responses: [
-      ["Ratchanon Srisai", "Pending", "Worker"],
-      ["Kittipong Manee", "Approved", "Hirer"],
-    ],
-    changes: [
-      [
-        "Quest description",
-        "Survey shaded study areas around the main library",
-        "Add outdoor seating capacity and noise-level readings",
-        "Scope increase",
-      ],
-      [
-        "Location",
-        "Main library grounds and reading garden",
-        "Main library grounds, reading garden, and west courtyard",
-        "Scope increase",
-      ],
-      [
-        "Due date",
-        "30 Aug 2026 · 18:00",
-        "1 Sep 2026 · 18:00",
-        "2 days later",
-      ],
-    ],
-  },
-  "QST-9516": {
-    id: "EDT-406",
-    status: "Awaiting participant consent",
-    requestedBy: "Nicha Prasert · Hirer",
-    requestedAt: "Today, 09:48",
-    reason:
-      "The faculty asked for accessible copy and a bilingual lab directory before publication.",
-    responses: [
-      ["Thanida Lertchai", "Pending", "Worker"],
-      ["Nicha Prasert", "Approved", "Hirer"],
-    ],
-    changes: [
-      [
-        "Quest description",
-        "Build a directory for six campus labs",
-        "Add accessible descriptions and bilingual labels for all six labs",
-        "Scope increase",
-      ],
-      [
-        "Deliverables",
-        "Lab directory draft",
-        "Accessible bilingual directory + label sheet",
-        "New deliverable",
-      ],
-      [
-        "Due date",
-        "31 Aug 2026 · 18:00",
-        "2 Sep 2026 · 18:00",
-        "2 days later",
-      ],
-    ],
-  },
-  "QST-9524": {
-    id: "EDT-407",
-    status: "Awaiting participant consent",
-    requestedBy: "Saran Jindapol · Hirer",
-    requestedAt: "Today, 09:32",
-    reason:
-      "Facilities requested a second route pass through the sports complex and updated slope measurements.",
-    responses: [
-      ["Ratchanon Srisai", "Approved", "Route mapper"],
-      ["Mayuree Nopparat", "Pending", "Facilities reviewer"],
-      ["Thanida Lertchai", "Pending", "Report writer"],
-      ["Saran Jindapol", "Approved", "Hirer"],
-    ],
-    changes: [
-      [
-        "Quest description",
-        "Audit sports facility access",
-        "Add changing-room routes and slope measurements",
-        "Scope increase",
-      ],
-      [
-        "Deliverables",
-        "Facility checklist and route notes",
-        "Checklist, route notes, and photo evidence",
-        "New deliverable",
-      ],
-      [
-        "Due date",
-        "2 Sep 2026 · 18:00",
-        "4 Sep 2026 · 18:00",
-        "2 days later",
-      ],
-    ],
-  },
-};
+const pendingQuestChanges = {};
 
-const questRelations = {
-  "QST-9401": {
-    description:
-      "Review accessible routes between student services, the central library, and the west lecture halls. The team must document ramps, lifts, surface barriers, and alternate paths.",
-    giver: ["Nicha Prasert", "66031246", "Communication Arts · Year 4", "4.8 from 14 quests"],
-    location: ["Kasetsart University, Bangkhen", "Five campus zones · indoor and outdoor routes", "Route checkpoints on file"],
-    schedule: ["26 Aug 2026 · 08:30", "30 Aug 2026 · 18:00", "Applications closed 25 Aug"],
-    activity: ["Quest published · 24 Aug, 10:15", "Applications closed · 25 Aug, 16:00", "Three-person team selected · 25 Aug, 17:20", "Field work started · Today, 08:34"],
-    applications: [["Mayuree Nopparat", "Selected", "Accessibility lead"], ["Ratchanon Srisai", "Selected", "Survey recorder"], ["Saran Jindapol", "Selected", "Route mapper"], ["Chanon Preecha", "Not selected", "Application retained"]],
-    proof: [],
-  },
-  "QST-9407": {
-    description:
-      "Map quiet study areas across the main library and document accessibility routes, opening hours, and noise-level guidance for students.",
-    giver: ["Kittipong Manee", "65020314", "Architecture · Year 3", "4.7 from 9 quests"],
-    location: ["Kasetsart University Main Library", "Bangkhen campus · floors 1–5", "13.8466, 100.5696"],
-    schedule: ["30 Aug 2026 · 09:00", "1 Sep 2026 · 18:00", "Applications closed 23 Aug"],
-    activity: ["Quest published · 22 Aug, 09:10", "Applications received · 23 Aug, 16:20", "Ratchanon Srisai selected · 23 Aug, 17:04", "Hirer proposed terms change · Today, 09:26"],
-    applications: [["Ratchanon Srisai", "Selected", "4.8 rating"], ["Saran Jindapol", "Not selected", "4.6 rating"]],
-    proof: [],
-  },
-};
-
-const giverAttachmentFixtures = {
-  "QST-9401": [
-    {
-      name: "Campus route zones",
-      detail: "PDF · 5 marked zones · added by Nicha Prasert",
-    },
-    {
-      name: "Accessibility checkpoint list",
-      detail: "XLSX · 32 checkpoints · added with quest",
-    },
-  ],
-  "QST-9403": [
-    {
-      name: "Dorm lighting checklist",
-      detail: "PDF · 8 pages · added by Saran Jindapol",
-    },
-    {
-      name: "Building floor plan",
-      detail: "PDF · 2 pages · added with quest",
-    },
-  ],
-  "QST-9406": [
-    {
-      name: "Clinic terminology glossary",
-      detail: "XLSX · 46 terms · added by Nicha Prasert",
-    },
-    {
-      name: "Approved sign layout",
-      detail: "PDF · 18 signs · added with quest",
-    },
-  ],
-  "QST-9407": [
-    {
-      name: "Main library floor plan",
-      detail: "PDF · 5 floors · added by Kittipong Manee",
-    },
-    {
-      name: "Quiet-zone opening hours",
-      detail: "XLSX · 18 KB · added with quest",
-    },
-  ],
-  "QST-9412": [
-    {
-      name: "Sustainability fair shot plan",
-      detail: "PDF · 5 pages · source document",
-    },
-    {
-      name: "Consent register",
-      detail: "XLSX · 11 entries · added with quest",
-    },
-  ],
-};
-
-const submissionFixtures = {
-  "QST-9403": ["Dorm lighting checklist · PDF · submitted Today, 10:42"],
-  "QST-9404": [
-    "International student guide · DOCX · 86 pages",
-    "Style sheet · PDF · submitted Today, 08:55",
-  ],
-  "QST-9406": [
-    "Clinic sign set · PDF · submitted Yesterday, 17:20",
-    "Translator notes · PDF · 3 pages",
-  ],
-  "QST-9412": [
-    "Sustainability fair final cut · MP4 · 428 MB",
-    "Consent log · XLSX · 11 participants",
-  ],
-  "QST-9415": ["Accessible route map · PDF · submitted 3 days ago"],
-  "QST-9419": ["Welcome video captions · VTT · submitted 4 days ago"],
-};
+data.quests
+  .filter((record) => record.status === "Change pending")
+  .forEach((record, index) => {
+    const participants = record.teamParticipants?.map(([name, role]) => [name, "Pending", role]) ||
+      (record.selectedParticipant ? [[record.selectedParticipant, "Pending", "Worker"]] : []);
+    pendingQuestChanges[record.id] = {
+      id: `EDT-${String(5201 + index).padStart(3, "0")}`,
+      status: "Awaiting participant consent",
+      requestedBy: `${record.person} · Hirer`,
+      requestedAt: record.createdAt,
+      reason: "The hirer proposed updated scope and delivery details for moderator review.",
+      responses: [...participants, [record.person, "Approved", "Hirer"]],
+      changes: [
+        ["Quest description", record.description, `${record.description} Add the latest stakeholder notes.` , "Scope increase"],
+        ["Location", record.location[0], `${record.location[0]} · additional checkpoints`, "Scope increase"],
+        ["Due date", record.dueAt, `${record.dueAt} · revised terms`, "Schedule update"],
+      ],
+    };
+  });
 
 function submissionFilesFor(record) {
-  if (submissionFixtures[record.id]) return submissionFixtures[record.id];
   if (!["Submitted", "Disputed", "Completed", "Rework"].includes(record.status))
     return [];
   return [`Completed work package · ZIP · submitted ${record.age.toLowerCase()}`];
@@ -332,37 +60,40 @@ function questDetails(record) {
       linkedPayout?.title ||
       record.selectedParticipant ||
       "Selected worker",
-    relation = questRelations[record.id] || {
-      description: `Operational details for “${record.title},” including the full marketplace lifecycle and linked records.`,
-      giver: [
+    relation = {
+      description:
+        record.description ||
+        `Operational details for “${record.title},” including the full marketplace lifecycle and linked records.`,
+      giver: record.giver || [
         record.person,
         "Verified university account",
         record.other,
         "No unresolved account flags",
       ],
-      location: [
+      location: record.location || [
         "Kasetsart University, Bangkhen",
         "Campus location confirmed",
         "Map coordinates on file",
       ],
-      schedule: [
+      schedule: record.schedule || [
         "26 Aug 2026 · 09:00",
         "30 Aug 2026 · 18:00",
         "Applications closed · 25 Aug 2026 · 18:00",
       ],
-      activity: defaultQuestActivity(record),
-      applications: [
-        ...(record.teamQuest && record.teamParticipants?.length
+      activity: record.activity || defaultQuestActivity(record),
+      applications: record.applications ?? (record.status === "Draft"
+        ? []
+        : record.teamQuest && record.teamParticipants?.length
           ? record.teamParticipants.map(([name, role]) => [name, "Selected", role])
           : [[selectedParticipant, "Selected", "Assignment on record"]]),
-      ],
       relation: ["No open dispute", "—", `฿${fmt(record.amount)} funded`],
+      giverAttachments: record.giverAttachments,
+      proof: record.proof,
     };
   return {
     ...relation,
     giverAttachments:
-      relation.giverAttachments ||
-      giverAttachmentFixtures[record.id] || [
+      relation.giverAttachments || [
         {
           name: `${record.title} requirements`,
           detail: `PDF · reference brief · added by ${record.person}`,

@@ -13,37 +13,6 @@ const userPageTableState = {
   penalties: { page: 1, size: 10, sortKey: "at", direction: "desc" },
 };
 
-const userProfileFixtures = {
-  "66100428": {
-    about: "Environmental science student who helps teams turn field observations into clear, useful records.",
-    tags: ["Field work", "Research", "Accessibility"],
-  },
-  "66100817": {
-    about: "Communication Arts student with experience preparing clear, accessible content for campus projects.",
-    tags: ["Writing", "Research", "Content"],
-  },
-  "65020314": {
-    about: "Architecture student who contributes practical research and visual documentation to campus projects.",
-    tags: ["Design", "Field work", "Documentation"],
-  },
-  "66031246": {
-    about: "Engineering student focused on structured field research and practical improvements to campus access.",
-    tags: ["Accessibility", "Research", "Operations"],
-  },
-  "65017652": {
-    about: "Agriculture student who supports careful data collection and clear project handoffs.",
-    tags: ["Data", "Field work", "Research"],
-  },
-  "66022508": {
-    about: "Liberal Arts student who brings thoughtful communication and dependable project support.",
-    tags: ["Writing", "Content", "Research"],
-  },
-  "65011409": {
-    about: "Digital Media student with experience creating visual assets for university communities.",
-    tags: ["Design", "Video", "Content"],
-  },
-};
-
 function userPageEscape(value) {
   return escapeActivityText(value ?? "");
 }
@@ -146,61 +115,15 @@ function userPageFaculty(user) {
 }
 
 function userPageProfile(user) {
-  return userProfileFixtures[user.id] || {
-    about: "KuQuest participant contributing to university marketplace projects.",
-    tags: ["Student", "Marketplace", "University"],
+  return {
+    about: user.about ||
+      "KuQuest participant contributing to university marketplace projects.",
+    tags: user.tags || ["Student", "Marketplace", "University"],
   };
 }
 
 function userPageReviewRows(user) {
-  const reported = userReportsFor(user).length > 0;
-  return [
-    {
-      reviewer: "Alex Smith",
-      rating: 5,
-      review: "Reliable, thoughtful, and clear throughout the project.",
-      date: "2 weeks ago",
-      reports: 0,
-      status: "Visible",
-      tone: "success",
-    },
-    {
-      reviewer: "Mayuree Nopparat",
-      rating: 5,
-      review: "Delivered careful work and responded quickly to feedback.",
-      date: "1 month ago",
-      reports: reported ? 1 : 0,
-      status: reported ? "Reported" : "Visible",
-      tone: reported ? "warning" : "success",
-    },
-    {
-      reviewer: "Kittipong Manee",
-      rating: 4,
-      review: "Strong result with useful notes for the team.",
-      date: "2 months ago",
-      reports: 0,
-      status: "Visible",
-      tone: "success",
-    },
-    {
-      reviewer: "Saran Jindapol",
-      rating: 4,
-      review: "Good communication and a well-organized delivery.",
-      date: "3 months ago",
-      reports: 0,
-      status: "Visible",
-      tone: "success",
-    },
-    {
-      reviewer: "Ratchanon Srisai",
-      rating: 5,
-      review: "Careful work that matched the agreed project requirements.",
-      date: "4 months ago",
-      reports: 0,
-      status: "Visible",
-      tone: "success",
-    },
-  ];
+  return Array.isArray(user.reviews) ? user.reviews : [];
 }
 
 function userPageHistory(user) {
@@ -266,12 +189,16 @@ function userPageCertificates(user) {
   return `<section class="user-detail-panel"><h2>Certificates</h2><div class="user-certificate-list"><div><strong>University marketplace orientation</strong><span>KuQuest · ${userPageEscape(user.accountCreatedAt || "2026")}</span></div><div><strong>${userPageEscape(faculty)} project fundamentals</strong><span>University learning centre · 2025</span></div></div></section>`;
 }
 
-function userPageReviewSummary() {
-  return `<div class="user-review-summary"><strong>4.9 ★</strong><span class="user-review-count">(15)</span><span class="user-review-rating-links" role="group" aria-label="Filter reviews by rating">${[5, 4, 3, 2, 1].map((rating) => `<button class="user-review-rating-link${userPageState.reviewRating === rating ? " active" : ""}" type="button" data-review-rating="${rating}" aria-pressed="${userPageState.reviewRating === rating}">${rating} star</button>`).join("")}</span></div>`;
+function userPageReviewSummary(user) {
+  const reviews = userPageReviewsData(user);
+  const average = reviews.length
+    ? (reviews.reduce((total, review) => total + Number(review.rating || 0), 0) / reviews.length).toFixed(1)
+    : "—";
+  return `<div class="user-review-summary"><strong>${average} ★</strong><span class="user-review-count">(${reviews.length})</span><span class="user-review-rating-links" role="group" aria-label="Filter reviews by rating">${[5, 4, 3, 2, 1].map((rating) => `<button class="user-review-rating-link${userPageState.reviewRating === rating ? " active" : ""}" type="button" data-review-rating="${rating}" aria-pressed="${userPageState.reviewRating === rating}">${rating} star</button>`).join("")}</span></div>`;
 }
 
 function userPageReviewPreview(user) {
-  return `<section class="user-detail-panel"><div class="user-panel-heading"><div><h2>Reviews</h2>${userPageReviewSummary()}</div><button class="link" type="button" data-user-tab="reviews">View all</button></div><div class="user-review-preview">${userPageReviewRows(user).slice(0, 5).map((review) => `<div><span><strong>${userPageEscape(review.reviewer)}</strong><small>${"★".repeat(review.rating)} · ${userPageEscape(review.date)}</small></span>${badge(review.status, review.tone)}</div>`).join("")}</div></section>`;
+  return `<section class="user-detail-panel"><div class="user-panel-heading"><div><h2>Reviews</h2>${userPageReviewSummary(user)}</div><button class="link" type="button" data-user-tab="reviews">View all</button></div><div class="user-review-preview">${userPageReviewRows(user).slice(0, 5).map((review) => `<div><span><strong>${userPageEscape(review.reviewer)}</strong><small>${"★".repeat(review.rating)} · ${userPageEscape(review.date)}</small></span>${badge(review.status, review.tone)}</div>`).join("")}</div></section>`;
 }
 
 function userPageOverview(user) {
@@ -361,31 +288,11 @@ function userPageReviews(user) {
   });
   const sorted = userPageSortedTableRows("reviews", filtered);
   const pagination = userPagePaginateTable("reviews", sorted);
-  return `<section class="user-detail-panel user-tab-panel"><div class="user-panel-heading"><div><h2>Reviews</h2>${userPageReviewSummary()}</div></div><div class="user-review-toolbar"><div class="inline-search search-field">${ico("search")}<input type="search" data-review-search value="${userPageEscape(userPageState.reviewQuery)}" placeholder="Search reviews…" aria-label="Search reviews"></div><div class="user-review-sort"><label for="review-sort">Sort</label><select id="review-sort" data-review-sort aria-label="Sort reviews"><option value="latest" ${userPageState.reviewSort === "latest" ? "selected" : ""}>Latest</option><option value="rating-desc" ${userPageState.reviewSort === "rating-desc" ? "selected" : ""}>Rating: 5 → 1</option><option value="rating-asc" ${userPageState.reviewSort === "rating-asc" ? "selected" : ""}>Rating: 1 → 5</option><option value="custom" ${userPageState.reviewSort === "custom" ? "selected" : ""}>Column selected</option></select></div><div class="user-review-filters" role="group" aria-label="Review filters">${["all", "reported", "hidden"].map((filter) => `<button class="tab ${userPageState.reviewFilter === filter ? "active" : ""}" type="button" data-review-filter="${filter}">${filter[0].toUpperCase() + filter.slice(1)}</button>`).join("")}</div></div>${pagination.total ? `<div class="table-wrap"><table class="data user-detail-table"><thead><tr>${userPageTableSortHeader("reviews", "reviewer", "Reviewer")}${userPageTableSortHeader("reviews", "rating", "Rating")}${userPageTableSortHeader("reviews", "review", "Review")}${userPageTableSortHeader("reviews", "date", "Date")}${userPageTableSortHeader("reviews", "reports", "Reports")}${userPageTableSortHeader("reviews", "status", "Status")}<th scope="col">Action</th></tr></thead><tbody>${pagination.rows.map((review) => `<tr><td><strong>${userPageEscape(review.reviewer)}</strong></td><td>${"★".repeat(review.rating)}</td><td>${userPageEscape(review.review)}</td><td>${userPageEscape(review.date)}</td><td>${review.reports}</td><td>${badge(review.status, review.tone)}</td><td><button class="link" type="button" data-review-action="View" data-review-name="${userPageEscape(review.reviewer)}">View</button> <button class="link" type="button" data-review-action="Hide" data-review-name="${userPageEscape(review.reviewer)}">Hide</button> <button class="link danger-link" type="button" data-review-action="Remove" data-review-name="${userPageEscape(review.reviewer)}">Remove</button></td></tr>`).join("")}</tbody></table></div>${userPageTablePagination("reviews", pagination)}` : '<div class="empty"><h3>No matching reviews</h3><p>Try another filter or search term.</p></div>'}</section>`;
+  return `<section class="user-detail-panel user-tab-panel"><div class="user-panel-heading"><div><h2>Reviews</h2>${userPageReviewSummary(user)}</div></div><div class="user-review-toolbar"><div class="inline-search search-field">${ico("search")}<input type="search" data-review-search value="${userPageEscape(userPageState.reviewQuery)}" placeholder="Search reviews…" aria-label="Search reviews"></div><div class="user-review-sort"><label for="review-sort">Sort</label><select id="review-sort" data-review-sort aria-label="Sort reviews"><option value="latest" ${userPageState.reviewSort === "latest" ? "selected" : ""}>Latest</option><option value="rating-desc" ${userPageState.reviewSort === "rating-desc" ? "selected" : ""}>Rating: 5 → 1</option><option value="rating-asc" ${userPageState.reviewSort === "rating-asc" ? "selected" : ""}>Rating: 1 → 5</option><option value="custom" ${userPageState.reviewSort === "custom" ? "selected" : ""}>Column selected</option></select></div><div class="user-review-filters" role="group" aria-label="Review filters">${["all", "reported", "hidden"].map((filter) => `<button class="tab ${userPageState.reviewFilter === filter ? "active" : ""}" type="button" data-review-filter="${filter}">${filter[0].toUpperCase() + filter.slice(1)}</button>`).join("")}</div></div>${pagination.total ? `<div class="table-wrap"><table class="data user-detail-table"><thead><tr>${userPageTableSortHeader("reviews", "reviewer", "Reviewer")}${userPageTableSortHeader("reviews", "rating", "Rating")}${userPageTableSortHeader("reviews", "review", "Review")}${userPageTableSortHeader("reviews", "date", "Date")}${userPageTableSortHeader("reviews", "reports", "Reports")}${userPageTableSortHeader("reviews", "status", "Status")}<th scope="col">Action</th></tr></thead><tbody>${pagination.rows.map((review) => `<tr><td><strong>${userPageEscape(review.reviewer)}</strong></td><td>${"★".repeat(review.rating)}</td><td>${userPageEscape(review.review)}</td><td>${userPageEscape(review.date)}</td><td>${review.reports}</td><td>${badge(review.status, review.tone)}</td><td><button class="link" type="button" data-review-action="View" data-review-name="${userPageEscape(review.reviewer)}">View</button> <button class="link" type="button" data-review-action="Hide" data-review-name="${userPageEscape(review.reviewer)}">Hide</button> <button class="link danger-link" type="button" data-review-action="Remove" data-review-name="${userPageEscape(review.reviewer)}">Remove</button></td></tr>`).join("")}</tbody></table></div>${userPageTablePagination("reviews", pagination)}` : '<div class="empty"><h3>No matching reviews</h3><p>Try another filter or search term.</p></div>'}</section>`;
 }
 
 function userPageReviewsData(user) {
-  return userPageReviewsFixtures(user);
-}
-
-function userPageReviewsFixtures(user) {
-  return [
-    { reviewer: "Alex Smith", rating: 5, review: "Reliable, thoughtful, and clear throughout the project.", date: "2 weeks ago", reports: 0, status: "Visible", tone: "success" },
-    { reviewer: "Mayuree Nopparat", rating: 5, review: "Delivered careful work and responded quickly to feedback.", date: "1 month ago", reports: userReportsFor(user).length ? 1 : 0, status: userReportsFor(user).length ? "Reported" : "Visible", tone: userReportsFor(user).length ? "warning" : "success" },
-    { reviewer: "Kittipong Manee", rating: 4, review: "Strong result with useful notes for the team.", date: "2 months ago", reports: 0, status: "Visible", tone: "success" },
-    { reviewer: "Saran Jindapol", rating: 4, review: "Good communication and a well-organized delivery.", date: "3 months ago", reports: 0, status: "Visible", tone: "success" },
-    { reviewer: "Ratchanon Srisai", rating: 5, review: "Careful work that matched the agreed project requirements.", date: "4 months ago", reports: 0, status: "Visible", tone: "success" },
-    { reviewer: "Pimchanok Insee", rating: 5, review: "Clear updates and dependable delivery from start to finish.", date: "5 months ago", reports: 0, status: "Visible", tone: "success" },
-    { reviewer: "Worawut Inthanon", rating: 5, review: "The final work was accurate and easy for our team to use.", date: "6 months ago", reports: 0, status: "Visible", tone: "success" },
-    { reviewer: "Chalida Wongthong", rating: 5, review: "Thoughtful questions helped us clarify the project early.", date: "7 months ago", reports: 0, status: "Visible", tone: "success" },
-    { reviewer: "Pakorn Sittichai", rating: 5, review: "A careful contributor who kept every handoff organized.", date: "8 months ago", reports: 0, status: "Visible", tone: "success" },
-    { reviewer: "Arisa Chaisiri", rating: 5, review: "Responsive, precise, and professional throughout the quest.", date: "9 months ago", reports: 0, status: "Visible", tone: "success" },
-    { reviewer: "Nawin Sukkasem", rating: 5, review: "Delivered useful evidence and communicated any blockers quickly.", date: "10 months ago", reports: 0, status: "Visible", tone: "success" },
-    { reviewer: "Manita Sombat", rating: 5, review: "The result followed the accepted brief closely.", date: "11 months ago", reports: 0, status: "Visible", tone: "success" },
-    { reviewer: "Kanchana Niyom", rating: 5, review: "Well prepared and easy to collaborate with.", date: "1 year ago", reports: 0, status: "Visible", tone: "success" },
-    { reviewer: "Teerapong Phromma", rating: 5, review: "Reliable work with clear supporting notes.", date: "1 year ago", reports: 0, status: "Visible", tone: "success" },
-    { reviewer: "Mayuree Nopparat", rating: 3, review: "The result was usable, but the first delivery needed several clarifications.", date: "1 year ago", reports: 0, status: "Visible", tone: "success" },
-  ];
+  return Array.isArray(user.reviews) ? user.reviews : [];
 }
 
 function userPageReports(user) {
@@ -415,7 +322,11 @@ function userPageSummary(user) {
   const profile = userPageProfile(user);
   const quests = userQuestRecords(user);
   const completed = quests.filter((quest) => quest.status === "Completed").length;
-  return `<section class="user-summary-panel"><div class="user-summary-grid"><div class="user-summary-identity"><span class="user-profile-avatar">${userPageInitials(user.title)}</span><div><div class="user-summary-name"><h2>${userPageEscape(user.title)}</h2>${badge(userPageStatus(user), user.tone)}</div><p>${userPageEscape(userPageFaculty(user))}</p><p>Kasetsart University</p><a href="mailto:${userPageEscape(user.person)}">${userPageEscape(user.person)}</a><div class="user-detail-tags">${profile.tags.map((tag) => `<span>${userPageEscape(tag)}</span>`).join("")}</div></div></div><div class="user-summary-stats"><div><strong>4.9</strong><span>Rating</span></div><div><strong>15</strong><span>Reviews</span></div><div><strong>${completed}</strong><span>Completed</span></div></div></div></section>`;
+  const reviews = userPageReviewsData(user);
+  const rating = reviews.length
+    ? (reviews.reduce((total, review) => total + Number(review.rating || 0), 0) / reviews.length).toFixed(1)
+    : "—";
+  return `<section class="user-summary-panel"><div class="user-summary-grid"><div class="user-summary-identity"><span class="user-profile-avatar">${userPageInitials(user.title)}</span><div><div class="user-summary-name"><h2>${userPageEscape(user.title)}</h2>${badge(userPageStatus(user), user.tone)}</div><p>${userPageEscape(userPageFaculty(user))}</p><p>Kasetsart University</p><a href="mailto:${userPageEscape(user.person)}">${userPageEscape(user.person)}</a><div class="user-detail-tags">${profile.tags.map((tag) => `<span>${userPageEscape(tag)}</span>`).join("")}</div></div></div><div class="user-summary-stats"><div><strong>${rating}</strong><span>Rating</span></div><div><strong>${reviews.length}</strong><span>Reviews</span></div><div><strong>${completed}</strong><span>Completed</span></div></div></div></section>`;
 }
 
 function renderUserPage() {

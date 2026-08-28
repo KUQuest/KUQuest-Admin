@@ -42,7 +42,7 @@ const resourceColumns = {
 const resourceTabs = {
   disputes: ["All", "Active", "Closed"],
   payouts: ["All", "Needs approval", "Processing", "Completed", "Rejected"],
-  quests: ["All", "Team", "Open", "Assigned", "In progress", "Submitted", "Change pending", "Rework", "Disputed", "Completed", "Cancelled", "Hidden"],
+  quests: ["All", "Team", "Draft", "Open", "Assigned", "In progress", "Submitted", "Change pending", "Rework", "Disputed", "Completed", "Cancelled", "Hidden"],
   users: ["All", "Normal", "Flag", "Temp ban", "Perm ban"],
   reports: ["All", "Active", "Closed"],
 };

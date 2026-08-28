@@ -1,4 +1,4 @@
-const questId = window.__KUQUEST_RECORD_ID__ || new URLSearchParams(location.search).get("id") || "QST-9401",
+const questId = window.__KUQUEST_RECORD_ID__ || new URLSearchParams(location.search).get("id") || "QST-12001",
   questRecord = data.quests.find((quest) => quest.id === questId);
 function questActivityTimeline(activity) {
   return activity.map((event) => {

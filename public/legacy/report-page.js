@@ -1,7 +1,7 @@
 const reportId =
   window.__KUQUEST_RECORD_ID__ ||
   new URLSearchParams(location.search).get("id") ||
-  "RPT-7001";
+  "RPT-8201";
 const reportRecord = data.reports.find((report) => report.id === reportId);
 
 function reportTone(report) {

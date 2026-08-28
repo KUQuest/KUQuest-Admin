@@ -1,4 +1,4 @@
-const disputeId = window.__KUQUEST_RECORD_ID__ || new URLSearchParams(location.search).get("id") || "DSP-4106";
+const disputeId = window.__KUQUEST_RECORD_ID__ || new URLSearchParams(location.search).get("id") || "DSP-5201";
 const disputeRecord = data.disputes.find((dispute) => dispute.id === disputeId);
 
 function renderDisputePage() {

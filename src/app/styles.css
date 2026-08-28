@@ -787,6 +787,10 @@ main {
   color: var(--neutral);
   background: var(--neutral-soft);
 }
+.badge.quest-status-draft {
+  color: var(--neutral);
+  background: var(--neutral-soft);
+}
 .badge.quest-status-cancelled {
   color: var(--quest-cancelled);
   background: var(--quest-cancelled-soft);

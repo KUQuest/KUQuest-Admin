@@ -15,14 +15,14 @@ type LegacyScriptPlan = {
 
 const adminFoundationScripts = [
   "/legacy/auth.js?v=1",
-  "/legacy/script.js?v=86",
-  "/legacy/fresh-mock-data.js?v=43-user-quest-history",
+  "/legacy/script.js?v=88",
+  "/legacy/fresh-mock-data.js?v=46-large-refresh",
 ];
 
 const adminScripts: LegacyScriptPlan = {
   sequential: adminFoundationScripts,
   parallel: [
-    "/legacy/resource-controls.js?v=44",
+    "/legacy/resource-controls.js?v=45",
     "/legacy/functional-controls.js?v=4",
     "/legacy/deep-links.js?v=11",
   ],
@@ -31,8 +31,8 @@ const adminScripts: LegacyScriptPlan = {
 const questScripts: LegacyScriptPlan = {
   sequential: [
     ...adminFoundationScripts,
-    "/legacy/quest-detail.js?v=37",
-    "/legacy/quest-page.js?v=26",
+    "/legacy/quest-detail.js?v=39",
+    "/legacy/quest-page.js?v=27",
     "/legacy/quest-change-review.js?v=10",
   ],
   parallel: ["/legacy/functional-controls.js?v=4"],
@@ -41,19 +41,19 @@ const questScripts: LegacyScriptPlan = {
 const disputeScripts: LegacyScriptPlan = {
   sequential: [
     ...adminFoundationScripts,
-    "/legacy/dispute-detail.js?v=32",
-    "/legacy/dispute-page.js?v=13",
+    "/legacy/dispute-detail.js?v=33",
+    "/legacy/dispute-page.js?v=14",
   ],
   parallel: ["/legacy/functional-controls.js?v=4"],
 };
 
 const reportScripts: LegacyScriptPlan = {
-  sequential: [...adminFoundationScripts, "/legacy/report-page.js?v=15"],
+  sequential: [...adminFoundationScripts, "/legacy/report-page.js?v=16"],
   parallel: ["/legacy/functional-controls.js?v=4"],
 };
 
 const userScripts: LegacyScriptPlan = {
-  sequential: [...adminFoundationScripts, "/legacy/user-page.js?v=8"],
+  sequential: [...adminFoundationScripts, "/legacy/user-page.js?v=9"],
   parallel: ["/legacy/functional-controls.js?v=4"],
 };
 

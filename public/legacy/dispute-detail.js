@@ -1,10 +1,10 @@
 function disputeCaseFor(record) {
   return (
     disputeCases[record.id] || {
-      questId: "QST-9403",
-      category: "Service outcome",
-      openedBy: `${record.other} · Hirer`,
-      respondent: `${record.person} · Worker`,
+      questId: record.questId || "",
+      category: `${record.disputeType || "Service outcome"} review`,
+      openedBy: `${record.person} · Hirer`,
+      respondent: `${record.other} · Worker`,
       requested: "Admin review",
       claim: record.detail,
       response:

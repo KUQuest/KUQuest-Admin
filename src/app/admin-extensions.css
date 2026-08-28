@@ -809,7 +809,7 @@
   font-size: 11px;
 }
 .change-review {
-  box-shadow: var(--shadow-low), 0 0 0 1px var(--warn);
+  box-shadow: var(--shadow-low);
 }
 .change-review .record-panel-head p {
   margin: 2px 0 0;
