@@ -242,6 +242,24 @@ function userPageWorks(user) {
   return `<section class="user-detail-panel"><div class="user-panel-heading"><h2>My Works</h2><span class="section-count">${works.length}</span></div><div class="user-work-grid">${works.map((work, index) => `<article class="user-work-item"><span class="user-work-thumb" aria-hidden="true">${index === 0 ? "▦" : "◈"}</span><strong>${userPageEscape(work.title)}</strong><span>${userPageEscape(work.other || "University project")} · ${userPageEscape(work.teamQuest ? "Team quest" : "Individual quest")}</span></article>`).join("")}</div></section>`;
 }
 
+function userPagePayoutRecords(user) {
+  return data.payouts
+    .map((record, index) => ({ record, index }))
+    .filter(({ record }) => record.title === user.title)
+    .sort((first, second) => payoutTimestamp(second.record) - payoutTimestamp(first.record));
+}
+
+function userPagePayoutHistory(user, compact = false) {
+  const payoutRecords = userPagePayoutRecords(user),
+    completed = payoutRecords.filter(({ record }) => record.status === "Completed"),
+    inFlight = payoutRecords.filter(({ record }) => ["Needs approval", "Processing"].includes(record.status)),
+    shownRecords = compact ? payoutRecords.slice(0, 5) : payoutRecords,
+    headingAction = compact && payoutRecords.length > shownRecords.length
+      ? '<button class="link" type="button" data-user-tab="payouts">View all</button>'
+      : "";
+  return `<section class="user-detail-panel${compact ? " user-payout-preview" : " user-tab-panel"}"><div class="user-panel-heading"><div><h2>Payout history</h2>${compact ? '<p>Recent requests and transfer outcomes for this account.</p>' : `<p>${payoutRecords.length} payout records · ${completed.length} completed.</p>`}</div><div class="user-panel-heading-actions">${headingAction}<span class="section-count">${payoutRecords.length}</span></div></div>${!compact && payoutRecords.length ? `<div class="user-payout-stat-list"><div><strong>฿${fmt(completed.reduce((total, entry) => total + Number(entry.record.amount || 0), 0))}</strong><span>Paid out</span></div><div><strong>฿${fmt(inFlight.reduce((total, entry) => total + Number(entry.record.amount || 0), 0))}</strong><span>In progress</span></div><div><strong>${payoutRecords.length}</strong><span>Total requests</span></div></div>` : ""}${shownRecords.length ? `<div class="user-payout-list">${shownRecords.map(({ record, index }) => `<button class="user-payout-row" type="button" data-user-payout="${index}" aria-label="Open payout ${userPageEscape(record.id)}"><span class="user-payout-primary"><strong>${userPageEscape(record.id)}</strong><small>${userPageDate(record.requestedAt)}</small><small>${userPageEscape(record.questId || record.other || "Quest")}</small></span><span class="user-payout-secondary"><strong>฿${fmt(record.amount)}</strong>${badge(record.status, record.tone)}</span></button>`).join("")}</div>` : '<div class="empty"><h3>No payout history</h3><p>This account has no payout records.</p></div>'}</section>`;
+}
+
 function userPageCertificates(user) {
   const faculty = userPageFaculty(user);
   return `<section class="user-detail-panel"><h2>Certificates</h2><div class="user-certificate-list"><div><strong>University marketplace orientation</strong><span>KuQuest · ${userPageEscape(user.accountCreatedAt || "2026")}</span></div><div><strong>${userPageEscape(faculty)} project fundamentals</strong><span>University learning centre · 2025</span></div></div></section>`;
@@ -256,7 +274,7 @@ function userPageReviewPreview(user) {
 }
 
 function userPageOverview(user) {
-  return `<div class="user-detail-main-column">${userPageAbout(user)}${userPageExperience(user)}${userPageWorks(user)}${userPageCertificates(user)}${userPageReviewPreview(user)}</div><aside class="user-detail-side-column">${userPageAccountInfo(user)}${userPageModerationSummary(user)}${userPageRecentReports(user)}${userPageAdminNotes(user)}${userPageAccountActions(user)}</aside>`;
+  return `<div class="user-detail-main-column">${userPageAbout(user)}${userPageExperience(user)}${userPageWorks(user)}${userPagePayoutHistory(user, true)}${userPageCertificates(user)}${userPageReviewPreview(user)}</div><aside class="user-detail-side-column">${userPageAccountInfo(user)}${userPageModerationSummary(user)}${userPageRecentReports(user)}${userPageAdminNotes(user)}${userPageAccountActions(user)}</aside>`;
 }
 
 function userPageAccountInfo(user) {
@@ -355,6 +373,7 @@ function userPagePenaltyHistory(user) {
 
 function userPageTabContent(user) {
   if (userPageState.tab === "activity") return userPageActivity(user);
+  if (userPageState.tab === "payouts") return userPagePayoutHistory(user);
   if (userPageState.tab === "reviews") return userPageReviews(user);
   if (userPageState.tab === "reports") return userPageReports(user);
   if (userPageState.tab === "penalty-history") return userPagePenaltyHistory(user);
@@ -377,7 +396,7 @@ function renderUserPage() {
   }
   window.__KUQUEST_USER_DETAIL__.user = user;
   setActiveNavigation("users");
-  main.innerHTML = `<div class="user-detail-breadcrumb"><a href="/?view=users">Users</a><span>›</span><span>${userPageEscape(user.title)}</span></div><div class="page-head user-detail-page-head"><div><h1>${userPageEscape(user.title)}</h1><p>Review user information, activity, and penalty history.</p></div></div>${userPageSummary(user)}<nav class="user-detail-tabs" aria-label="User detail sections">${[["overview", "Overview"], ["activity", "Activity"], ["reviews", "Reviews"], ["reports", "Reports"], ["penalty-history", "Penalty History"]].map(([value, label]) => `<button class="${userPageState.tab === value ? "active" : ""}" type="button" data-user-tab="${value}" aria-current="${userPageState.tab === value ? "page" : "false"}">${label}</button>`).join("")}</nav><div class="user-detail-layout">${userPageTabContent(user)}</div>`;
+  main.innerHTML = `<div class="user-detail-breadcrumb"><a href="/?view=users">Users</a><span>›</span><span>${userPageEscape(user.title)}</span></div><div class="page-head user-detail-page-head"><div><h1>${userPageEscape(user.title)}</h1><p>Review user information, activity, payouts, and penalty history.</p></div></div>${userPageSummary(user)}<nav class="user-detail-tabs" aria-label="User detail sections">${[["overview", "Overview"], ["activity", "Activity"], ["payouts", "Payouts"], ["reviews", "Reviews"], ["reports", "Reports"], ["penalty-history", "Penalty History"]].map(([value, label]) => `<button class="${userPageState.tab === value ? "active" : ""}" type="button" data-user-tab="${value}" aria-current="${userPageState.tab === value ? "page" : "false"}">${label}</button>`).join("")}</nav><div class="user-detail-layout">${userPageTabContent(user)}</div>`;
   bindUserPage(user);
 }
 
@@ -399,6 +418,9 @@ function bindUserPage(user) {
   document.querySelectorAll("[data-user-page-history]").forEach((button) => (button.onclick = () => {
     userPageState.tab = "penalty-history";
     renderUserPage();
+  }));
+  document.querySelectorAll("[data-user-payout]").forEach((button) => (button.onclick = () => {
+    openDrawer("payouts", Number(button.dataset.userPayout));
   }));
   const saveNote = document.querySelector("[data-save-user-note]");
   const noteInput = document.querySelector("[data-user-note-input]");
