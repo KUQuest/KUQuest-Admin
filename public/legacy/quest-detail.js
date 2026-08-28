@@ -205,7 +205,7 @@ const questRelations = {
     location: ["Kasetsart University, Bangkhen", "Five campus zones · indoor and outdoor routes", "Route checkpoints on file"],
     schedule: ["26 Aug 2026 · 08:30", "30 Aug 2026 · 18:00", "Applications closed 25 Aug"],
     activity: ["Quest published · 24 Aug, 10:15", "Applications closed · 25 Aug, 16:00", "Three-person team selected · 25 Aug, 17:20", "Field work started · Today, 08:34"],
-    applications: [["Kittipong Manee", "Selected", "Accessibility lead"], ["Ratchanon Srisai", "Selected", "Survey recorder"], ["Saran Jindapol", "Selected", "Route mapper"], ["Chanon Preecha", "Not selected", "Application retained"]],
+    applications: [["Mayuree Nopparat", "Selected", "Accessibility lead"], ["Ratchanon Srisai", "Selected", "Survey recorder"], ["Saran Jindapol", "Selected", "Route mapper"], ["Chanon Preecha", "Not selected", "Application retained"]],
     proof: [],
   },
   "QST-9407": {

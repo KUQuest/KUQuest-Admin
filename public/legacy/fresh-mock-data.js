@@ -1,6 +1,6 @@
 // Deterministic high-volume demo data. Versioning resets browser-local records
 // whenever the synthetic marketplace scenario changes.
-const freshDemoVersion = "2026-08-28-v38-payout-balance";
+const freshDemoVersion = "2026-08-28-v40-payout-ledger-eligibility";
 const freshDemoKey = "kuquest-admin-demo-data";
 const seedBaseDate = new Date("2026-08-28T08:00:00Z");
 
@@ -247,7 +247,10 @@ function createQuest(id, title, tag, requestedStatus, index) {
   const status = requestedStatus || (index % 4 === 0 ? "Disputed" : questStatuses[index % questStatuses.length]);
   const hirer = data.users[(index * 7) % data.users.length];
   const teamQuest = index % 8 === 0 || index % 13 === 0;
-  const participants = [1, 2, 3, 4].map((offset) => data.users[(index * 11 + offset + 3) % data.users.length]).filter((candidate) => candidate.id !== hirer.id);
+  const eligibleParticipants = data.users.filter((candidate) => !["Temp ban", "Perm ban"].includes(candidate.status));
+  const participants = [1, 2, 3, 4]
+    .map((offset) => eligibleParticipants[(index * 11 + offset + 3) % eligibleParticipants.length])
+    .filter((candidate) => candidate && candidate.id !== hirer.id);
   const amount = 1800 + ((index * 683) % 8_200);
   const hasParticipant = !["Open", "Hidden"].includes(status);
   return {
@@ -339,13 +342,14 @@ data.reports = Array.from({ length: 48 }, (_, index) => {
   };
 });
 
-const payoutStatuses = ["Needs approval", "Processing", "Completed", "Completed", "Rejected"];
+const payoutStatuses = ["Completed", "Processing", "Completed", "Rejected", "Needs approval"];
 const payoutSources = data.quests
   .filter((quest) => quest.status === "Completed")
   .flatMap((quest) => {
     const recipients = quest.teamParticipants?.map(([name]) => name) || [quest.selectedParticipant];
     return recipients.filter(Boolean).map((recipientName) => ({ quest, recipientName }));
   });
+const payoutRecipientSources = [...new Map(payoutSources.map((source) => [source.recipientName, source])).values()];
 function seedRecipientEarnings(recipientName) {
   return data.quests
     .filter((quest) => quest.status === "Completed" && (quest.selectedParticipant === recipientName || quest.teamParticipants?.some(([name]) => name === recipientName)))
@@ -354,17 +358,40 @@ function seedRecipientEarnings(recipientName) {
       return total + Math.round(Number(quest.amount || 0) / workerCount);
     }, 0);
 }
-data.payouts = Array.from({ length: 90 }, (_, index) => {
-  const source = payoutSources[index % payoutSources.length];
+const payoutLedgers = new Map();
+const generatedPayouts = Array.from({ length: 90 }, (_, index) => {
+  const source = payoutRecipientSources[index % payoutRecipientSources.length];
   const quest = source.quest;
   const recipientName = source.recipientName;
   const recipient = data.users.find((user) => user.title === recipientName) || data.users[(index + 4) % data.users.length];
-  const status = payoutStatuses[index % payoutStatuses.length];
-  const requestedAt = seedDateLabel((index % 20) + 1, 10 + (index % 7), (index * 13) % 60);
   const earned = seedRecipientEarnings(recipient.title);
-  const amount = Math.max(1, Math.round(earned * 0.95));
+  const ledger = payoutLedgers.get(recipient.title) || { committed: 0, pending: 0 };
+  const balance = Math.max(0, earned - ledger.committed - ledger.pending);
+  let status = payoutStatuses[index % payoutStatuses.length];
+  let amount;
+  if (status === "Needs approval") {
+    if (balance <= 0) {
+      status = "Rejected";
+      amount = Math.max(1, Math.round(earned * 0.2));
+    } else {
+      amount = Math.max(1, Math.min(balance, Math.round(balance * 0.6)));
+      ledger.pending += amount;
+    }
+  } else if (status === "Processing" || status === "Completed") {
+    if (balance <= 0) {
+      status = "Rejected";
+      amount = Math.max(1, Math.round(earned * 0.2));
+    } else {
+      amount = Math.max(1, Math.min(balance, Math.round(balance * 0.6)));
+      ledger.committed += amount;
+    }
+  } else {
+    amount = Math.max(1, Math.min(Math.max(balance, 1), Math.round(Math.max(earned, 1) * 0.2)));
+  }
+  payoutLedgers.set(recipient.title, ledger);
+  const requestedAt = seedDateLabel(90 - index, 10 + (index % 7), (index * 13) % 60);
   return {
-    id: `PAY-${String(8714 - index).padStart(4, "0")}`,
+    id: `PAY-${String(8625 + index).padStart(4, "0")}`,
     questId: quest.id,
     title: recipient.title,
     person: `${["Kasikorn", "SCB", "Krungthai", "Bangkok Bank"][index % 4]} · •••• ${String(1200 + ((index * 137) % 8800)).slice(-4)}`,
@@ -372,13 +399,13 @@ data.payouts = Array.from({ length: 90 }, (_, index) => {
     amount,
     status,
     tone: statusTone(status),
-    age: index < 3 ? `${12 + index * 19} min` : `${(index % 8) + 1} days`,
+    age: `${90 - index} days`,
     requestedAt,
-    previouslyPaidOut: Math.max(0, earned - amount),
-    ...(status === "Processing" || status === "Completed" ? { approvedAt: seedDateLabel((index % 18) + 1, 12, 15), approvedBy: "Nicha P." } : {}),
-    ...(status === "Rejected" ? { rejectedAt: seedDateLabel((index % 18) + 1, 12, 22), rejectedBy: "Nicha P.", rejectionReason: "The payout request requires additional account verification before funds can be released." } : {}),
+    ...(status === "Processing" || status === "Completed" ? { approvedAt: seedDateLabel(90 - index, 12, 15), approvedBy: "Nicha P." } : {}),
+    ...(status === "Rejected" ? { rejectedAt: seedDateLabel(90 - index, 12, 22), rejectedBy: "Nicha P.", rejectionReason: "The payout request requires additional account verification before funds can be released." } : {}),
   };
 });
+data.payouts = generatedPayouts.reverse();
 
 const savedFreshDemo = (() => {
   try {
@@ -405,6 +432,8 @@ const autoRejectedPayouts = typeof autoRejectUnavailablePayout === "function"
   : [];
 if (!savedFreshDemo || savedFreshDemo.version !== freshDemoVersion || autoRejectedPayouts.length) persistAdminData();
 
+if (typeof seedGeneratedActivity === "function") seedGeneratedActivity(data);
+
 function setSeedCounter(view, count) {
   const counter = document.querySelector(`[data-view="${view}"] b`);
   if (counter) counter.textContent = count;
@@ -414,3 +443,4 @@ setSeedCounter("disputes", data.disputes.filter((record) => record.status === "A
 setSeedCounter("payouts", data.payouts.filter((record) => record.status === "Needs approval").length);
 setSeedCounter("reports", data.reports.filter((record) => record.status === "Active").length);
 if (state.view === "home") renderHome();
+else if (state.view === "activity") renderActivity();

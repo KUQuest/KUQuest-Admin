@@ -286,7 +286,7 @@ function bindChatAttachment(form) {
 }
 const activityStorageKey = "kuquest-admin-activity-v2";
 const activityDataVersionKey = "kuquest-admin-activity-version";
-const activityDataVersion = "2026-08-27-empty";
+const activityDataVersion = "2026-08-28-generated-v1";
 try {
   if (localStorage.getItem(activityDataVersionKey) !== activityDataVersion) {
     localStorage.removeItem(activityStorageKey);
@@ -301,6 +301,121 @@ function readActivityEvents() {
     return Array.isArray(events) ? events : [];
   } catch {
     return [];
+  }
+}
+function activityTimestamp(value, fallback) {
+  const timestamp = Date.parse(String(value ?? "").replace(" · ", " "));
+  return Number.isFinite(timestamp) ? timestamp : fallback;
+}
+function activityInitials(name, fallback) {
+  const initials = String(name ?? "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+  return initials || fallback;
+}
+function seedGeneratedActivity(records) {
+  if (readActivityEvents().length) return;
+  const events = [];
+  const now = Date.now();
+  const add = (actor, title, detail, at, fallback) => {
+    events.push({
+      actor,
+      title,
+      detail,
+      timestamp: activityTimestamp(at, fallback),
+    });
+  };
+
+  (records.reports || []).slice(0, 14).forEach((record, index) => {
+    const fallback = now - (index + 1) * 38 * 60 * 1000;
+    add(
+      activityInitials(record.reporterName, "US"),
+      "User report received",
+      `${record.id} · ${record.reporterName} reported ${record.reportedUserName}`,
+      record.reportedAt,
+      fallback,
+    );
+    if (record.status === "Closed") {
+      add(
+        "NP",
+        "Report resolved",
+        `${record.id} · ${record.decisionLabel || "Report closed"}`,
+        record.resolutionAt || record.closedAt,
+        fallback + 47 * 60 * 1000,
+      );
+    }
+  });
+
+  (records.disputes || []).slice(0, 12).forEach((record, index) => {
+    const fallback = now - (index + 2) * 17 * 60 * 60 * 1000;
+    add(
+      "SYS",
+      "Dispute opened",
+      `${record.id} · ${record.title}`,
+      record.disputeDate,
+      fallback,
+    );
+    if (record.status === "Closed") {
+      add(
+        "NP",
+        "Dispute resolved",
+        `${record.id} · ${record.resolution || "Resolution recorded"}`,
+        record.disputeDate,
+        fallback + 3 * 60 * 60 * 1000,
+      );
+    }
+  });
+
+  (records.payouts || []).slice(0, 12).forEach((record, index) => {
+    const fallback = now - (index + 1) * 21 * 60 * 60 * 1000;
+    add(
+      "SYS",
+      "Payout requested",
+      `${record.id} · ${record.title} · ฿${fmt(record.amount)}`,
+      record.requestedAt,
+      fallback,
+    );
+    if (record.status === "Processing" || record.status === "Completed") {
+      add(
+        "NP",
+        "Payout approved",
+        `${record.id} · ${record.title}`,
+        record.approvedAt,
+        fallback + 2 * 60 * 60 * 1000,
+      );
+    } else if (record.status === "Rejected") {
+      add(
+        "NP",
+        "Payout rejected",
+        `${record.id} · ${record.rejectionReason}`,
+        record.rejectedAt,
+        fallback + 2 * 60 * 60 * 1000,
+      );
+    }
+  });
+
+  (records.users || []).slice(0, 16).forEach((user, index) => {
+    (user.moderationHistory || []).slice(0, 2).forEach((entry, entryIndex) => {
+      add(
+        activityInitials(entry.by, entry.by === "System" ? "SYS" : "NP"),
+        entry.event,
+        `${user.id} · ${user.title}${entry.reason || entry.note ? ` · ${entry.reason || entry.note}` : ""}`,
+        entry.at,
+        now - (index * 2 + entryIndex + 1) * 29 * 60 * 60 * 1000,
+      );
+    });
+  });
+
+  events.sort((first, second) => second.timestamp - first.timestamp);
+  try {
+    localStorage.setItem(activityStorageKey, JSON.stringify(events.slice(0, 40)));
+  } catch {
+    // Keep activity empty if browser storage is blocked.
   }
 }
 function recordActivity(title, detail, actor = "NP") {
@@ -601,8 +716,13 @@ function payoutDecisionContext(record) {
   return contexts[record.status] || contexts["Needs approval"];
 }
 function payoutPreviousRecords(record) {
+  const currentTimestamp = payoutTimestamp(record);
   return data.payouts
-    .filter((payout) => payout.title === record.title && payout.id !== record.id)
+    .filter((payout) => {
+      if (payout.title !== record.title || payout.id === record.id) return false;
+      const timestamp = payoutTimestamp(payout);
+      return timestamp < currentTimestamp || (!timestamp && !currentTimestamp);
+    })
     .sort((first, second) => payoutTimestamp(second) - payoutTimestamp(first));
 }
 function payoutTimestamp(record) {
@@ -614,16 +734,26 @@ function payoutEarningForQuest(quest) {
   return Math.round(Number(quest.amount || 0) / workerCount);
 }
 function payoutFinancials(record) {
+  const previousPayouts = payoutPreviousRecords(record),
+    processingReserved = previousPayouts
+      .filter((payout) => payout.status === "Processing")
+      .reduce((total, payout) => total + Number(payout.amount || 0), 0),
+    pendingReserved = previousPayouts
+      .filter((payout) => payout.status === "Needs approval")
+      .reduce((total, payout) => total + Number(payout.amount || 0), 0);
   const previousPaidOut =
       record.previouslyPaidOut ??
-      payoutPreviousRecords(record)
+      previousPayouts
         .filter((payout) => payout.status === "Completed")
         .reduce((total, payout) => total + Number(payout.amount || 0), 0),
     earned = completedPayoutQuests(record).reduce(
       (total, quest) => total + payoutEarningForQuest(quest),
       0,
     ),
-    balanceBeforeRequest = Math.max(0, earned - previousPaidOut),
+    balanceBeforeRequest = Math.max(
+      0,
+      earned - previousPaidOut - processingReserved - pendingReserved,
+    ),
     settledCurrentPayout = ["Processing", "Completed"].includes(record.status)
       ? Number(record.amount || 0)
       : 0,
