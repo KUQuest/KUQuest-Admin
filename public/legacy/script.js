@@ -946,12 +946,6 @@ function openDrawer(v, i) {
     isD = v === "disputes";
   showDrawerLayer();
   const payoutContext = isP ? payoutDecisionContext(r) : null,
-    payoutQuest = isP
-      ? data.quests.find((quest) => quest.id === payoutQuestId(r))
-      : null,
-    payoutQuestLink = payoutQuest
-      ? `<a class="btn" href="/quests/${encodeURIComponent(payoutQuest.id)}">See quest</a>`
-      : "",
     payoutNeedsDecision = isP && r.status === "Needs approval",
     drawerContent =
       v === "users"
@@ -963,8 +957,8 @@ function openDrawer(v, i) {
             : `<section class="section"><h3>Audit trail</h3>${timeline([r.status, "Record created"])}</section>`;
   const drawerActions = isP
       ? payoutNeedsDecision
-        ? `${payoutQuestLink}<button class="btn" data-action="Reject payout">Reject payout</button><button class="btn primary" data-action="Approve payout">Approve payout</button>`
-        : `${payoutQuestLink}<button class="btn" id="close-payout-record">Close record</button>`
+        ? '<button class="btn" data-action="Reject payout">Reject payout</button><button class="btn primary" data-action="Approve payout">Approve payout</button>'
+        : '<button class="btn" id="close-payout-record">Close record</button>'
       : v === "users"
         ? `${userDrawerActions(r)}<a class="btn" href="/users/${encodeURIComponent(r.id)}">See full user profile</a>`
         : '<button class="btn" data-action="Hide quest">Hide quest</button>';
