@@ -114,6 +114,7 @@ function homeDecisions() {
         title: `Resolve ${disputeTypeLabel(record)} dispute`,
         detail: `${record.id} · ${record.title}`,
         metric: `฿${fmt(record.amount)} held`,
+        age: record.disputeDate,
       })),
     ...data.payouts
       .filter((record) => record.status === "Needs approval")

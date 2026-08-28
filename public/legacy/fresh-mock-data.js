@@ -1,6 +1,6 @@
 // Deterministic high-volume demo data. Versioning resets browser-local records
 // whenever the synthetic marketplace scenario changes.
-const freshDemoVersion = "2026-08-28-v41-payout-timeline";
+const freshDemoVersion = "2026-08-28-v42-overview-datetime";
 const freshDemoKey = "kuquest-admin-demo-data";
 const seedBaseDate = new Date("2026-08-28T08:00:00Z");
 
@@ -294,7 +294,7 @@ data.disputes = disputableQuests.map((quest, index) => {
     amount,
     status,
     tone: status === "Active" ? "danger" : "neutral",
-    disputeDate: seedDayLabel((index % 12) + 1),
+    disputeDate: seedDateLabel((index % 12) + 1, 9 + (index % 8), (index * 7) % 60),
     disputeType: category,
     age: index < 2 ? `${18 + index * 24} min` : `${(index % 6) + 1} days`,
     detail: `The submitted record for ${quest.title.toLowerCase()} does not fully match the accepted quest conditions and requires an accountable review.`,
