@@ -53,7 +53,7 @@ const reportScripts: LegacyScriptPlan = {
 };
 
 const userScripts: LegacyScriptPlan = {
-  sequential: [...adminFoundationScripts, "/legacy/user-page.js?v=3"],
+  sequential: [...adminFoundationScripts, "/legacy/user-page.js?v=4"],
   parallel: ["/legacy/functional-controls.js?v=4"],
 };
 
