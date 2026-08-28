@@ -15,8 +15,8 @@ type LegacyScriptPlan = {
 
 const adminFoundationScripts = [
   "/legacy/auth.js?v=1",
-  "/legacy/script.js?v=81",
-  "/legacy/fresh-mock-data.js?v=40-payout-ledger-eligibility",
+  "/legacy/script.js?v=82",
+  "/legacy/fresh-mock-data.js?v=41-payout-timeline",
 ];
 
 const adminScripts: LegacyScriptPlan = {

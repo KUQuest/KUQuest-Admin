@@ -1,6 +1,6 @@
 // Deterministic high-volume demo data. Versioning resets browser-local records
 // whenever the synthetic marketplace scenario changes.
-const freshDemoVersion = "2026-08-28-v40-payout-ledger-eligibility";
+const freshDemoVersion = "2026-08-28-v41-payout-timeline";
 const freshDemoKey = "kuquest-admin-demo-data";
 const seedBaseDate = new Date("2026-08-28T08:00:00Z");
 
@@ -401,8 +401,8 @@ const generatedPayouts = Array.from({ length: 90 }, (_, index) => {
     tone: statusTone(status),
     age: `${90 - index} days`,
     requestedAt,
-    ...(status === "Processing" || status === "Completed" ? { approvedAt: seedDateLabel(90 - index, 12, 15), approvedBy: "Nicha P." } : {}),
-    ...(status === "Rejected" ? { rejectedAt: seedDateLabel(90 - index, 12, 22), rejectedBy: "Nicha P.", rejectionReason: "The payout request requires additional account verification before funds can be released." } : {}),
+    ...(status === "Processing" || status === "Completed" ? { approvedAt: seedDateLabel(90 - index, 18, 15), approvedBy: "Nicha P." } : {}),
+    ...(status === "Rejected" ? { rejectedAt: seedDateLabel(90 - index, 19, 22), rejectedBy: "Nicha P.", rejectionReason: "The payout request requires additional account verification before funds can be released." } : {}),
   };
 });
 data.payouts = generatedPayouts.reverse();

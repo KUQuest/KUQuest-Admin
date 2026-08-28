@@ -754,10 +754,7 @@ function payoutFinancials(record) {
       0,
       earned - previousPaidOut - processingReserved - pendingReserved,
     ),
-    settledCurrentPayout = ["Processing", "Completed"].includes(record.status)
-      ? Number(record.amount || 0)
-      : 0,
-    available = Math.max(0, balanceBeforeRequest - settledCurrentPayout),
+    available = balanceBeforeRequest,
     remaining = ["Rejected", "Failed"].includes(record.status)
       ? balanceBeforeRequest
       : Math.max(0, balanceBeforeRequest - Number(record.amount || 0));
