@@ -31,7 +31,7 @@ const adminScripts: LegacyScriptPlan = {
 const questScripts: LegacyScriptPlan = {
   sequential: [
     ...adminFoundationScripts,
-    "/legacy/quest-detail.js?v=35",
+    "/legacy/quest-detail.js?v=36",
     "/legacy/quest-page.js?v=25",
     "/legacy/quest-change-review.js?v=10",
   ],

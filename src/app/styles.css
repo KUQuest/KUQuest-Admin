@@ -1413,6 +1413,9 @@ svg.ui-icon {
 .file-row:hover {
   background: var(--hover);
 }
+.related-row {
+  cursor: default;
+}
 .related-row strong,
 .related-row small,
 .file-row strong,
@@ -1425,6 +1428,14 @@ svg.ui-icon {
 .file-row > span:last-child {
   color: var(--muted);
   font-size: 11px;
+}
+.related-row > strong {
+  flex: 1;
+}
+.related-profile-link {
+  flex: 0 0 auto;
+  font-size: 11px;
+  white-space: nowrap;
 }
 .file-row {
   justify-content: flex-start;

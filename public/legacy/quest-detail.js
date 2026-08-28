@@ -412,7 +412,7 @@ function relatedRows(rows) {
       const isSelected = row[1] === "Selected";
       const status = isSelected ? user?.status || row[1] : row[1];
       const statusTone = isSelected ? user?.tone || "success" : row[1] === "Not selected" ? "neutral" : "warning";
-      return `<button class="related-row"><strong>${escapeActivityText(row[0])}</strong><span>${badge(status, statusTone)}</span></button>`;
+      return `<div class="related-row"><strong>${escapeActivityText(row[0])}</strong><span>${badge(status, statusTone)}</span>${user ? `<a class="link related-profile-link" href="/users/${encodeURIComponent(user.id)}">View profile</a>` : ""}</div>`;
     })
     .join("")}</div>`;
 }
