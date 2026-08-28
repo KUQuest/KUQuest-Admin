@@ -78,6 +78,7 @@
   margin-top: 0;
 }
 .quest-dispute-reason {
+  padding: 18px 14px 14px;
   border: 1px solid var(--danger);
   border-radius: 10px;
   background: var(--danger-soft);

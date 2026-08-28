@@ -168,7 +168,7 @@ function homeDecisions() {
       (first, second) =>
         reviewTimestamp(second.record) - reviewTimestamp(first.record),
     )
-    .slice(0, 5);
+    .slice(0, 6);
 }
 function reviewTimestamp(record) {
   const value = String(record.reportedAt || record.disputeDate || "")
@@ -1447,7 +1447,7 @@ function closeDrawer() {
   }, 220);
 }
 const deferredDrawerScripts = {
-  quests: ["/legacy/quest-detail.js?v=33"],
+  quests: ["/legacy/quest-detail.js?v=37"],
   disputes: [
     "/legacy/dispute-detail.js?v=32",
     "/legacy/dispute-interactions.js?v=10",

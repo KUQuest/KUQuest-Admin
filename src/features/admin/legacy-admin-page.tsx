@@ -15,8 +15,8 @@ type LegacyScriptPlan = {
 
 const adminFoundationScripts = [
   "/legacy/auth.js?v=1",
-  "/legacy/script.js?v=84",
-  "/legacy/fresh-mock-data.js?v=42-overview-datetime",
+  "/legacy/script.js?v=86",
+  "/legacy/fresh-mock-data.js?v=43-user-quest-history",
 ];
 
 const adminScripts: LegacyScriptPlan = {
@@ -31,8 +31,8 @@ const adminScripts: LegacyScriptPlan = {
 const questScripts: LegacyScriptPlan = {
   sequential: [
     ...adminFoundationScripts,
-    "/legacy/quest-detail.js?v=36",
-    "/legacy/quest-page.js?v=25",
+    "/legacy/quest-detail.js?v=37",
+    "/legacy/quest-page.js?v=26",
     "/legacy/quest-change-review.js?v=10",
   ],
   parallel: ["/legacy/functional-controls.js?v=4"],
@@ -53,7 +53,7 @@ const reportScripts: LegacyScriptPlan = {
 };
 
 const userScripts: LegacyScriptPlan = {
-  sequential: [...adminFoundationScripts, "/legacy/user-page.js?v=4"],
+  sequential: [...adminFoundationScripts, "/legacy/user-page.js?v=8"],
   parallel: ["/legacy/functional-controls.js?v=4"],
 };
 

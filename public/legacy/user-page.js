@@ -304,20 +304,50 @@ function userPageAccountActions(user) {
   return `<section class="user-detail-panel user-account-actions"><h2>Account Actions</h2><div class="user-action-stack">${userPageActionButtons(user)}<button class="btn" type="button" data-user-page-history>View penalty history</button></div></section>`;
 }
 
+function userPageQuestRole(quest, user) {
+  if (quest.person === user.title) {
+    return { label: "Hirer", isHirer: true };
+  }
+  return { label: "Worker", isHirer: false };
+}
+
+function userPageQuestStatus(quest) {
+  return { label: quest.status || "Unknown", tone: quest.tone || "neutral" };
+}
+
+function userPageQuestDates(quest, index) {
+  const created = userPageActivityDate(quest.createdAt || quest.activityAt || quest.age, index);
+  const starts = userPageActivityDate(quest.startsAt || quest.createdAt || quest.age, index);
+  const due = userPageActivityDate(quest.dueAt || quest.createdAt || quest.age, index);
+  return { created: created.text, starts: starts.text, due: due.text, timestamp: created.timestamp };
+}
+
+function userPageQuestAmount(quest, role) {
+  if (role.isHirer) return { label: "Amount funded", amount: Number(quest.amount || 0) };
+  const workerAmount = typeof payoutEarningForQuest === "function"
+    ? payoutEarningForQuest(quest)
+    : Math.round(Number(quest.amount || 0) / (quest.teamParticipants?.length || Number(quest.teamSize) || 1));
+  return { label: "Amount earned", amount: workerAmount };
+}
+
 function userPageActivity(user) {
   const questRecords = userQuestRecords(user);
   const completedQuests = questRecords.filter((quest) => quest.status === "Completed").length;
   const quests = questRecords.map((quest, index) => {
-    const activityDate = userPageActivityDate(quest.activityAt || quest.age, index);
+    const role = userPageQuestRole(quest, user);
+    const status = userPageQuestStatus(quest);
+    const dates = userPageQuestDates(quest, index);
+    const amount = userPageQuestAmount(quest, role);
     return {
-      at: activityDate.text,
-      timestamp: activityDate.timestamp,
-      title: quest.status === "Completed" ? "Quest completed" : quest.person === user.title ? "Quest created" : "Quest joined",
-      detail: `${quest.id} · ${quest.title}`,
+      quest,
+      role,
+      status,
+      dates,
+      amount,
     };
   });
-  const events = quests.sort((first, second) => second.timestamp - first.timestamp);
-  return `<section class="user-detail-panel user-tab-panel"><div class="user-panel-heading"><div><h2>Quest history</h2><p>All ${questRecords.length} quest records · ${completedQuests} completed.</p></div></div>${events.length ? `<div class="user-activity-list">${events.map((event) => `<article><span class="user-activity-dot" aria-hidden="true"></span><div><strong>${userPageEscape(event.title)}</strong><time>${userPageEscape(event.at)}</time><p>${userPageEscape(event.detail)}</p></div></article>`).join("")}</div>` : '<div class="empty"><h3>No quest history</h3><p>This account has no linked quest records.</p></div>'}</section>`;
+  const events = quests.sort((first, second) => second.dates.timestamp - first.dates.timestamp);
+  return `<section class="user-detail-panel user-tab-panel"><div class="user-panel-heading"><div><h2>Quest history</h2><p>All ${questRecords.length} connected quests · ${completedQuests} completed.</p></div><span class="section-count">${questRecords.length}</span></div>${events.length ? `<div class="user-quest-history-list">${events.map((event) => `<a class="user-quest-history-row" href="/quests/${encodeURIComponent(event.quest.id)}"><div class="user-quest-history-primary"><div class="user-quest-history-title"><strong>${userPageEscape(event.quest.title)}</strong><span>${userPageEscape(event.quest.id)}</span></div><div class="user-quest-history-fields"><div class="user-quest-history-field"><span>Role</span><strong>${userPageEscape(event.role.label)}</strong></div><div class="user-quest-history-field"><span>Quest status</span>${badge(event.status.label, event.status.tone)}</div><div class="user-quest-history-field user-quest-history-dates"><span>Dates</span><strong>Created ${userPageEscape(event.dates.created)}</strong><small>Starts ${userPageEscape(event.dates.starts)}</small><small>Due ${userPageEscape(event.dates.due)}</small></div><div class="user-quest-history-field"><span>${userPageEscape(event.amount.label)}</span><strong>฿${fmt(event.amount.amount)}</strong></div></div></div><span class="user-quest-history-action">View full quest <span aria-hidden="true">→</span></span></a>`).join("")}</div>` : '<div class="empty"><h3>No quest history</h3><p>This account has no linked quest records.</p></div>'}</section>`;
 }
 
 function userPageReviews(user) {

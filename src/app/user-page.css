@@ -483,6 +483,81 @@
   grid-column: 1 / -1;
   min-width: 0;
 }
+.user-quest-history-list {
+  display: grid;
+}
+.user-quest-history-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  padding: 15px 0;
+  border-top: 1px solid var(--border);
+  color: var(--text);
+  text-decoration: none;
+}
+.user-quest-history-row:first-child {
+  padding-top: 2px;
+  border-top: 0;
+}
+.user-quest-history-row:hover {
+  color: var(--accent);
+}
+.user-quest-history-primary {
+  min-width: 0;
+}
+.user-quest-history-title {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.user-quest-history-title strong {
+  font-size: 13px;
+}
+.user-quest-history-title > span {
+  color: var(--muted);
+  font-size: 11px;
+}
+.user-quest-history-fields {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.8fr) minmax(155px, 1fr) minmax(250px, 1.7fr) minmax(115px, 0.8fr);
+  gap: 12px;
+  margin-top: 10px;
+}
+.user-quest-history-field {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  min-width: 0;
+}
+.user-quest-history-field > span {
+  color: var(--muted);
+  font-size: 10px;
+}
+.user-quest-history-field strong {
+  font-size: 12px;
+}
+.user-quest-history-field small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.user-quest-history-field .badge {
+  justify-self: start;
+  max-width: 100%;
+}
+.user-quest-history-action {
+  align-self: center;
+  color: var(--accent);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.user-quest-history-row:hover .user-quest-history-action {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .user-detail-panel .user-activity-list {
   display: grid;
   grid-template-columns: 1fr;
@@ -608,6 +683,16 @@
   .user-detail-main-column > * {
     grid-column: 1;
   }
+  .user-quest-history-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .user-quest-history-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .user-quest-history-action {
+    justify-self: start;
+  }
 }
 @media (max-width: 600px) {
   .user-summary-grid {
@@ -633,6 +718,9 @@
     gap: 18px;
   }
   .user-work-grid {
+    grid-template-columns: 1fr;
+  }
+  .user-quest-history-fields {
     grid-template-columns: 1fr;
   }
   .user-payout-stat-list {

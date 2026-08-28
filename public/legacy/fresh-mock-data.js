@@ -1,6 +1,6 @@
 // Deterministic high-volume demo data. Versioning resets browser-local records
 // whenever the synthetic marketplace scenario changes.
-const freshDemoVersion = "2026-08-28-v42-overview-datetime";
+const freshDemoVersion = "2026-08-28-v43-user-quest-history";
 const freshDemoKey = "kuquest-admin-demo-data";
 const seedBaseDate = new Date("2026-08-28T08:00:00Z");
 
@@ -253,12 +253,19 @@ function createQuest(id, title, tag, requestedStatus, index) {
     .filter((candidate) => candidate && candidate.id !== hirer.id);
   const amount = 1800 + ((index * 683) % 8_200);
   const hasParticipant = !["Open", "Hidden"].includes(status);
+  const createdDaysAgo = index < 12 ? index % 3 : index < 24 ? 1 + (index % 2) : 3 + (index % 45);
+  const createdAt = seedDateLabel(createdDaysAgo, 9 + (index % 6), (index * 13) % 60);
+  const startsAt = seedDateLabel(Math.max(0, createdDaysAgo - 1), 8 + (index % 3), 30);
+  const dueAt = seedDateLabel(Math.max(0, createdDaysAgo - 5), 18, 0);
   return {
     id,
     title,
     person: hirer.title,
     other: tag,
     amount,
+    createdAt,
+    startsAt,
+    dueAt,
     status,
     tone: statusTone(status),
     age: index < 12 ? "Today" : index < 24 ? "Yesterday" : `${(index % 8) + 1} days`,

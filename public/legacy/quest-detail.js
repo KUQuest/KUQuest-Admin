@@ -405,6 +405,13 @@ function giverProfile(detail) {
   return `<div class="hirer-profile"><div class="hirer-profile-summary"><strong>${escapeActivityText(detail.giver[0])}</strong>${badge(status, statusTone)}</div></div>`;
 }
 
+function giverProfileLink(detail, label = "Open user profile", className = "btn full-width") {
+  const hirer = data.users.find((user) => user.title === detail.giver[0]);
+  return hirer
+    ? `<a class="${className}" href="/users/${encodeURIComponent(hirer.id)}">${label}</a>`
+    : "";
+}
+
 function relatedRows(rows) {
   return `<div class="related-list">${rows
     .map((row) => {
@@ -533,7 +540,7 @@ function openQuestDrawer(index) {
       <section class="section"><h3>Quest description</h3><p>${escapeActivityText(detail.description)}</p><div class="requirement-box"><strong>Completion requirements</strong><ul><li>Submit work before the recorded deadline</li><li>Attach verifiable proof files</li><li>Keep all payment inside KuQuest</li></ul></div></section>
       ${giverAttachmentsSection(detail.giverAttachments)}
       ${pendingChangeSummary(pendingQuestChanges[record.id])}
-      <section class="section"><div class="section-title"><h3>Hirer</h3><button class="link">View user</button></div>${giverProfile(detail)}</section>
+      <section class="section"><div class="section-title"><h3>Hirer</h3>${giverProfileLink(detail, "View profile", "link")}</div>${giverProfile(detail)}</section>
       <section class="section"><h3>Schedule and location</h3><div class="facts"><div class="fact"><span>Starts</span><strong>${escapeActivityText(detail.schedule[0])}</strong></div><div class="fact"><span>Due</span><strong>${escapeActivityText(detail.schedule[1])}</strong></div><div class="fact"><span>Application window</span><strong>${escapeActivityText(detail.schedule[2])}</strong></div><div class="fact"><span>Location</span><strong>${escapeActivityText(detail.location[0])}</strong><small>${escapeActivityText(detail.location[1])}</small></div></div></section>
       <section class="section"><div class="section-title"><h3>${participantSectionTitle(record, participants, started)}</h3><span class="section-count">${participants.length}</span></div>${relatedRows(participants)}</section>
       ${proofSubmissionsSection(detail.proof, record)}
