@@ -11,6 +11,7 @@
     "lint:type": "oxlint src --type-aware",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
+    "test:e2e": "playwright test",
     "test:watch": "bun test --watch",
     "test:coverage": "bun test --coverage",
     "check": "bun run lint && bun run typecheck && bun run test && bun run build"
