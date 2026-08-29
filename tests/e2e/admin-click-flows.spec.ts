@@ -4,8 +4,13 @@ async function signIn(page: Page) {
   await page.goto("/login");
   const email = page.getByLabel("University email");
   await expect(email).toBeFocused();
+  const password = page.getByLabel("Password");
+  await page.getByRole("button", { name: "Show" }).click();
+  await expect(password).toHaveAttribute("type", "text");
+  await page.getByRole("button", { name: "Hide" }).click();
+  await expect(password).toHaveAttribute("type", "password");
   await email.fill("admin@ku.th");
-  await page.getByLabel("Password").fill("password123");
+  await password.fill("password123");
   await page.getByRole("button", { name: "Sign in" }).click();
 
   await expect(page).toHaveURL(/\/$/);
