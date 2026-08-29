@@ -31,6 +31,25 @@ test.describe("admin click flows", () => {
     await expect(password).toHaveAttribute("type", "password");
   });
 
+  test("admin can switch the sign-in screen between English and Thai", async ({
+    page,
+  }) => {
+    await page.goto("/login");
+
+    await page.getByRole("button", { name: "ไทย", exact: true }).click();
+    await expect(page.locator("html")).toHaveAttribute("lang", "th");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "เข้าสู่ระบบผู้ดูแล" }),
+    ).toBeVisible();
+    await expect(page.getByLabel("อีเมลมหาวิทยาลัย")).toBeVisible();
+
+    await page.getByRole("button", { name: "English", exact: true }).click();
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Sign in to admin" }),
+    ).toBeVisible();
+  });
+
   test("admin can sign in and open Users from primary navigation", async ({
     page,
   }) => {
@@ -41,6 +60,42 @@ test.describe("admin click flows", () => {
     await expect(page).toHaveURL(/\/\?view=users$/);
     await expect(
       page.getByRole("heading", { level: 1, name: "Users" }),
+    ).toBeVisible();
+  });
+
+  test("admin can switch the interface between English and Thai", async ({
+    page,
+  }) => {
+    await signIn(page);
+
+    const languageOptions = page.getByRole("group", {
+      name: /Language options|ตัวเลือกภาษา/,
+    });
+    await languageOptions.getByRole("button", { name: "ไทย", exact: true }).click();
+
+    await expect(page.locator("html")).toHaveAttribute("lang", "th");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "ภาพรวม" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "ผู้ใช้", exact: true }),
+    ).toBeVisible();
+    await expect(
+      languageOptions.getByRole("button", { name: "ไทย", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+
+    await page.reload();
+    await expect(page.locator("html")).toHaveAttribute("lang", "th");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "ภาพรวม" }),
+    ).toBeVisible();
+
+    await languageOptions
+      .getByRole("button", { name: "English", exact: true })
+      .click();
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Overview" }),
     ).toBeVisible();
   });
 

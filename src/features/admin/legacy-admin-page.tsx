@@ -15,6 +15,7 @@ type LegacyScriptPlan = {
 
 const adminFoundationScripts = [
   "/legacy/auth.js?v=1",
+  "/legacy/language.js?v=1",
   "/legacy/script.js?v=89",
   "/legacy/fresh-mock-data.js?v=46-large-refresh",
   "/legacy/resource-controls.js?v=46",
@@ -59,7 +60,7 @@ const userScripts: LegacyScriptPlan = {
 };
 
 const loginScripts: LegacyScriptPlan = {
-  sequential: ["/legacy/login.js?v=1"],
+  sequential: ["/legacy/language.js?v=1", "/legacy/login.js?v=1"],
   parallel: [],
 };
 
@@ -100,6 +101,22 @@ function hardNavigate(event: MouseEvent<HTMLAnchorElement>) {
 function handleLogout() {
   localStorage.removeItem("kuquest-admin-session");
   window.location.assign("/login");
+}
+
+function LanguageControl({ className = "" }: { className?: string }) {
+  return (
+    <div className={`language-control${className ? ` ${className}` : ""}`} data-language-control>
+      <span className="language-control-label">Language</span>
+      <div className="language-options" role="group" aria-label="Language options">
+        <button className="language-option" type="button" data-language-option="en" aria-pressed="true">
+          English
+        </button>
+        <button className="language-option" type="button" data-language-option="th" aria-pressed="false">
+          ไทย
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function LegacyScripts({ page, recordId }: { page: LegacyPage; recordId?: string }) {
@@ -266,6 +283,7 @@ export function LegacyAdminPage({ page, recordId }: { page: Exclude<LegacyPage, 
               </div>
             </div>
           </div>
+          <LanguageControl />
           <div className="profile">
             <span>NP</span>
             <div><strong>Nicha P.</strong><small>Marketplace admin</small></div>
@@ -358,6 +376,7 @@ export function LegacyLoginPage() {
             <p className="login-error" id="password-error" role="alert" hidden />
             <button className="btn primary login-submit" type="submit">Sign in</button>
           </form>
+          <LanguageControl className="login-language" />
         </section>
       </main>
       <LegacyScripts page="login" />

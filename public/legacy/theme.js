@@ -34,8 +34,13 @@ function persistTheme(theme) {
 function syncThemeControls() {
   const theme = currentTheme();
   const definition = themeDefinitions[theme];
+  const translate =
+    typeof window !== "undefined" && window.__KUQUEST_LANGUAGE__?.translate
+      ? window.__KUQUEST_LANGUAGE__.translate
+      : (value) => value;
   document.querySelectorAll("[data-theme-current]").forEach((label) => {
-    if (label.textContent !== definition.label) label.textContent = definition.label;
+    const labelText = translate(definition.label);
+    if (label.textContent !== labelText) label.textContent = labelText;
   });
   document.querySelectorAll("[data-theme-option]").forEach((option) => {
     option.setAttribute("aria-pressed", String(option.dataset.themeOption === theme));

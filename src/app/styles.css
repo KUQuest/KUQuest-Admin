@@ -328,6 +328,56 @@ nav {
 .theme-swatch-grey { background: var(--theme-preview-grey); }
 .theme-swatch-green { background: var(--theme-preview-green); }
 .theme-swatch-dark { background: var(--theme-preview-dark); }
+.language-control {
+  flex: 0 0 auto;
+  padding: 8px 0;
+}
+.language-control-label {
+  display: block;
+  margin: 0 10px 6px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.language-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+.language-option {
+  min-height: 36px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--soft);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.language-option:hover,
+.language-option[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.sidebar .language-option {
+  width: auto;
+  height: auto;
+  display: block;
+  padding: 6px 8px;
+  text-align: center;
+}
+.login-language {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.login-language .language-control-label {
+  margin-left: 0;
+}
 header {
   grid-column: 2;
   position: sticky;

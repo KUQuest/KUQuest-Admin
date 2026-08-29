@@ -22,17 +22,32 @@ const themeBootstrap = `
 })();
 `;
 
+const languageBootstrap = `
+(() => {
+  try {
+    const language = localStorage.getItem("kuquest-admin-language");
+    if (language === "th") {
+      document.documentElement.lang = "th";
+      document.documentElement.dataset.language = "th";
+    }
+  } catch {}
+})();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="color-scheme" content="light dark" />
         <Script id="theme-bootstrap" strategy="beforeInteractive">
           {themeBootstrap}
+        </Script>
+        <Script id="language-bootstrap" strategy="beforeInteractive">
+          {languageBootstrap}
         </Script>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
