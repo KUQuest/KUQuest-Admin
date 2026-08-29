@@ -317,19 +317,39 @@ function openReviewRemovalDialog(user, reviewIndex) {
   activeCustomLayerClose?.();
   const overlay = document.createElement("div");
   overlay.className = "party-chat-overlay";
-  overlay.innerHTML = `<section class="party-chat-modal penalty-modal review-remove-modal" role="dialog" aria-modal="true" aria-labelledby="review-remove-title" aria-describedby="review-remove-copy"><div class="chat-modal-head"><div><strong id="review-remove-title">Remove review</strong><small>${userPageEscape(review.reviewer)}</small></div><button class="icon close-review-remove" type="button" aria-label="Close remove review confirmation"><span class="close-lines"></span></button></div><div class="review-remove-content"><p id="review-remove-copy">This review will be permanently removed from the user's profile.</p><div class="review-remove-actions"><button class="btn review-remove-cancel" type="button">Cancel</button><button class="btn danger review-remove-confirm" type="button">Confirm remove</button></div></div></section>`;
-  const close = showModalLayer(overlay, { initialFocus: ".review-remove-cancel" });
+  overlay.innerHTML = `<section class="party-chat-modal penalty-modal review-remove-modal" role="dialog" aria-modal="true" aria-labelledby="review-remove-title" aria-describedby="review-remove-copy"><div class="chat-modal-head"><div><strong id="review-remove-title">Remove review</strong><small>${userPageEscape(review.reviewer)}</small></div><button class="icon close-review-remove" type="button" aria-label="Close remove review confirmation"><span class="close-lines"></span></button></div><div class="review-remove-content"><p id="review-remove-copy">This review will be permanently removed from the user's profile.</p><label for="review-remove-reason">Reason for removing this review <span aria-hidden="true">*</span><textarea id="review-remove-reason" rows="3" minlength="8" maxlength="500" required aria-describedby="review-remove-reason-help review-remove-reason-error" placeholder="Explain why this review should be removed…"></textarea><span class="field-help" id="review-remove-reason-help"><span>Required for the permanent audit trail</span><span data-review-remove-count>0 / 500</span></span></label><p class="field-error" id="review-remove-reason-error" role="alert" hidden>Enter at least 8 characters before confirming.</p><div class="review-remove-actions"><button class="btn review-remove-cancel" type="button">Cancel</button><button class="btn danger review-remove-confirm" type="button" disabled>Confirm remove</button></div></div></section>`;
+  const close = showModalLayer(overlay, { initialFocus: "#review-remove-reason" });
   overlay.querySelector(".close-review-remove").onclick = close;
   overlay.addEventListener("click", (event) => {
     if (event.target === overlay) close();
   });
   overlay.querySelector(".review-remove-cancel").onclick = close;
+  const reason = overlay.querySelector("#review-remove-reason"),
+    reasonError = overlay.querySelector("#review-remove-reason-error"),
+    reasonCount = overlay.querySelector("[data-review-remove-count]"),
+    confirmButton = overlay.querySelector(".review-remove-confirm");
+  const validateReason = () => {
+    const valid = reason.value.trim().length >= 8;
+    confirmButton.disabled = !valid;
+    reason.setAttribute("aria-invalid", String(!valid && reason.value.length > 0));
+    reasonError.hidden = true;
+    reasonCount.textContent = `${reason.value.length} / 500`;
+    return valid;
+  };
+  reason.oninput = validateReason;
   overlay.querySelector(".review-remove-confirm").onclick = () => {
+    if (!validateReason()) {
+      reason.setAttribute("aria-invalid", "true");
+      reasonError.hidden = false;
+      reason.focus();
+      return;
+    }
     const reviews = userPageReviewsData(user);
     const removed = reviews.splice(reviewIndex, 1)[0];
     if (!removed) return close();
+    const decisionReason = reason.value.trim();
     persistAdminData();
-    recordActivity("Review removed", `${user.id} · ${user.title} · ${removed.reviewer}`);
+    recordActivity("Review removed", `${user.id} · ${user.title} · ${removed.reviewer} · Reason: ${decisionReason}`);
     close();
     userPageState.tab = "reviews";
     renderUserPage();

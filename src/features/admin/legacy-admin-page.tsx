@@ -15,7 +15,7 @@ type LegacyScriptPlan = {
 
 const adminFoundationScripts = [
   "/legacy/auth.js?v=1",
-  "/legacy/language.js?v=7-srs-localization",
+  "/legacy/language.js?v=8-review-removal-reason",
   "/legacy/script.js?v=94-penalty-ladder",
   "/legacy/fresh-mock-data.js?v=49-penalty-ladder",
   "/legacy/resource-controls.js?v=49-penalty-ladder",
@@ -55,12 +55,12 @@ const reportScripts: LegacyScriptPlan = {
 };
 
 const userScripts: LegacyScriptPlan = {
-  sequential: [...adminFoundationScripts, "/legacy/user-page.js?v=11-review-removal"],
+    sequential: [...adminFoundationScripts, "/legacy/user-page.js?v=12-review-removal-reason"],
   parallel: ["/legacy/functional-controls.js?v=5"],
 };
 
 const loginScripts: LegacyScriptPlan = {
-  sequential: ["/legacy/language.js?v=7-srs-localization", "/legacy/login.js?v=1"],
+  sequential: ["/legacy/language.js?v=8-review-removal-reason", "/legacy/login.js?v=1"],
   parallel: [],
 };
 const legacyScriptLoads = new Map<string, Promise<void>>();

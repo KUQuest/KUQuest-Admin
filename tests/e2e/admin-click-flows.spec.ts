@@ -514,18 +514,37 @@ test.describe("admin click flows", () => {
     const confirmation = page.getByRole("dialog", { name: "Remove review" });
     await expect(confirmation).toBeVisible();
     await expect(confirmation).toContainText(reviewer);
+    const reason = confirmation.getByLabel("Reason for removing this review");
+    const confirmRemove = confirmation.getByRole("button", {
+      name: "Confirm remove",
+      exact: true,
+    });
+    await expect(reason).toBeVisible();
+    await expect(confirmRemove).toBeDisabled();
+    await reason.fill("short");
+    await expect(confirmRemove).toBeDisabled();
     await confirmation.getByRole("button", { name: "Cancel", exact: true }).click();
     await expect(confirmation).toHaveCount(0);
     await expect(reviewRows).toHaveCount(initialCount);
 
     await reviewRows.first().getByRole("button", { name: "Remove", exact: true }).click();
-    await page
-      .getByRole("dialog", { name: "Remove review" })
-      .getByRole("button", { name: "Confirm remove", exact: true })
-      .click();
+    const removalConfirmation = page.getByRole("dialog", { name: "Remove review" });
+    const removalReason = removalConfirmation.getByLabel("Reason for removing this review");
+    const removalConfirm = removalConfirmation.getByRole("button", {
+      name: "Confirm remove",
+      exact: true,
+    });
+    await removalReason.fill("This review contains inaccurate delivery claims.");
+    await expect(removalConfirm).toBeEnabled();
+    await removalConfirm.click();
 
     await expect(page.getByRole("dialog", { name: "Remove review" })).toHaveCount(0);
     await expect(page.locator(".user-detail-table tbody tr")).toHaveCount(initialCount - 1);
+
+    await page.goto("/?view=activity");
+    await expect(page.locator("main")).toContainText(
+      "Reason: This review contains inaccurate delivery claims.",
+    );
   });
 
   test("hide changes a review status and can be reversed", async ({ page }) => {

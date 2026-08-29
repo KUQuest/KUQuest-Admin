@@ -102,6 +102,8 @@ const translations = {
   "Confirm remove": "ยืนยันการลบ",
   "Close remove review confirmation": "ปิดการยืนยันการลบรีวิว",
   "This review will be permanently removed from the user's profile.": "รีวิวนี้จะถูกลบออกจากโปรไฟล์ผู้ใช้อย่างถาวร",
+  "Reason for removing this review": "เหตุผลในการลบรีวิวนี้",
+  "Explain why this review should be removed…": "อธิบายเหตุผลที่ควรลบรีวิวนี้…",
   "Review removed": "ลบรีวิวแล้ว",
   Cancel: "ยกเลิก",
   Confirm: "ยืนยัน",

@@ -664,6 +664,33 @@
   line-height: 1.5;
 }
 
+.review-remove-content > label {
+  display: grid;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.review-remove-content textarea {
+  width: 100%;
+  min-height: 90px;
+  padding: 9px 10px;
+  border: 1px solid var(--strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  resize: vertical;
+}
+
+.review-remove-content textarea[aria-invalid="true"] {
+  border-color: var(--danger);
+  outline: 3px solid var(--danger-soft);
+}
+
+.review-remove-content .field-error {
+  margin: -8px 0 0;
+}
+
 .review-remove-actions {
   display: flex;
   gap: 8px;
