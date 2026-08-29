@@ -256,25 +256,21 @@ test.describe("input fields and responsive layouts", () => {
     await dialog.getByRole("button", { name: "Close report form" }).click();
   });
 
-  test("penalty radios, reason, and note accept input on mobile", async ({
+  test("penalty ladder reason and note accept input on mobile", async ({
     page,
   }) => {
     await page.setViewportSize(mobileViewport);
     await signIn(page);
     const drawer = await openUserDrawer(page);
-    await drawer.getByRole("button", { name: "Apply penalty" }).click();
+    await drawer.getByRole("button", { name: "Record violation" }).click();
 
     const dialog = page.getByRole("dialog", {
-      name: "Apply penalty for Akarin Ariyawat",
+      name: "Confirm violation for Akarin Ariyawat",
     });
-    const radios = dialog.getByRole("radio");
-    await expect(radios).toHaveCount(3);
-    for (const radio of await radios.all()) {
-      await radio.check();
-      await expect(radio).toBeChecked();
-    }
+    await expect(dialog.getByText("1st violation: Red Flag", { exact: false })).toBeVisible();
+    await expect(dialog.getByText("Next outcomeRed Flag · 7 days", { exact: false })).toBeVisible();
 
-    const reason = dialog.getByRole("textbox", { name: "Reason for this penalty" });
+    const reason = dialog.getByRole("textbox", { name: "Reason for confirmed violation" });
     const note = dialog.getByRole("textbox", {
       name: "Internal admin note (optional)",
     });
@@ -285,6 +281,40 @@ test.describe("input fields and responsive layouts", () => {
     await expectResponsiveInput(page, reason);
     await expectResponsiveInput(page, note);
     await dialog.getByRole("button", { name: "Close penalty form" }).click();
+  });
+
+  test("confirmed violations advance through the automatic penalty ladder", async ({
+    page,
+  }) => {
+    await signIn(page);
+    let drawer = await openUserDrawer(page);
+    await drawer.getByRole("button", { name: "Record violation" }).click();
+
+    let dialog = page.getByRole("dialog", {
+      name: "Confirm violation for Akarin Ariyawat",
+    });
+    await dialog
+      .getByRole("textbox", { name: "Reason for confirmed violation" })
+      .fill("The evidence confirms a policy violation.");
+    await dialog.getByRole("button", { name: "Confirm violation" }).click();
+
+    drawer = page.getByRole("dialog", { name: /Record details/ });
+    await expect(drawer).toContainText("Red Flag");
+    await expect(drawer).toContainText("Confirmed violations");
+    await expect(drawer).toContainText("1");
+
+    await drawer.getByRole("button", { name: "Record violation" }).click();
+    dialog = page.getByRole("dialog", {
+      name: "Confirm violation for Akarin Ariyawat",
+    });
+    await dialog
+      .getByRole("textbox", { name: "Reason for confirmed violation" })
+      .fill("The second confirmed violation is on record.");
+    await dialog.getByRole("button", { name: "Confirm violation" }).click();
+
+    drawer = page.getByRole("dialog", { name: /Record details/ });
+    await expect(drawer).toContainText("Temp ban");
+    await expect(drawer).toContainText("Expires");
   });
 
   test("admin note dialog accepts input and fits the mobile viewport", async ({
@@ -305,7 +335,7 @@ test.describe("input fields and responsive layouts", () => {
     await dialog.getByRole("button", { name: "Close admin note form" }).click();
   });
 
-  test("lift-ban reason and optional note accept input on mobile", async ({
+  test("temporary ban follows the fixed SRS duration", async ({
     page,
   }) => {
     await page.setViewportSize(mobileViewport);
@@ -316,18 +346,8 @@ test.describe("input fields and responsive layouts", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "Jakkrit Ariyawat" }),
     ).toBeVisible();
-    await page.getByRole("button", { name: "Lift ban" }).click();
-
-    const dialog = page.getByRole("dialog", { name: "Lift ban" });
-    const reason = dialog.getByRole("textbox").first();
-    const note = dialog.getByRole("textbox").nth(1);
-    await reason.fill("The appeal review confirmed compliance.");
-    await note.fill("Lifted after manual review.");
-    await expect(reason).toHaveValue("The appeal review confirmed compliance.");
-    await expect(note).toHaveValue("Lifted after manual review.");
-    await expectResponsiveInput(page, reason);
-    await expectResponsiveInput(page, note);
-    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(page.getByText("No manual penalty override is available.", { exact: false })).toBeVisible();
+    await expect(page.getByText("Temporary ban expires", { exact: false })).toBeVisible();
   });
 
   test("quest termination reason accepts input on mobile", async ({ page }) => {
@@ -366,7 +386,7 @@ test.describe("input fields and responsive layouts", () => {
     await page.setViewportSize(mobileViewport);
     await signIn(page);
     await page.goto("/reports/RPT-8201");
-    await page.getByRole("button", { name: /^Flag only/ }).click();
+    await page.getByRole("radio", { name: /^Confirm violation/ }).check();
     await page.getByRole("button", { name: "Close report" }).first().click();
 
     const dialog = page.getByRole("dialog", { name: "Close report" });

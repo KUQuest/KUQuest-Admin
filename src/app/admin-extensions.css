@@ -187,6 +187,8 @@
 .report-error { margin: -7px 0 0; }
 .penalty-form fieldset { display: grid; gap: 7px; margin: 0; padding: 0; border: 0; }
 .penalty-form legend, .penalty-form > label { font-size: 12px; font-weight: 600; }
+.penalty-form > label { display: grid; gap: 5px; }
+.penalty-form > label small { color: var(--muted); font-size: 11px; font-weight: 400; }
 .penalty-choice { display: grid; grid-template-columns: 18px 1fr; gap: 8px; align-items: start; padding: 9px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
 .penalty-choice:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
 .penalty-choice strong, .penalty-choice small { display: block; }
@@ -196,6 +198,9 @@
 .penalty-form textarea { width: 100%; padding: 9px 10px; border: 1px solid var(--strong); border-radius: 8px; background: var(--surface); color: var(--text); }
 .penalty-form textarea { resize: vertical; }
 .penalty-error { margin: -7px 0 0; }
+.penalty-policy-note { display: grid; gap: 4px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--accent-soft); }
+.penalty-policy-note strong { font-size: 12px; }
+.penalty-policy-note span { color: var(--muted); font-size: 11px; }
 .enforcement-record { padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--soft); }
 .enforcement-record strong, .enforcement-record small { display: block; }
 .enforcement-record p { margin: 5px 0; }
@@ -983,12 +988,15 @@
   display: grid;
   gap: 8px;
   margin-top: 14px;
+  padding: 0;
+  border: 0;
 }
 .report-decision-option {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  align-items: start;
+  row-gap: 3px;
+  column-gap: 8px;
   width: 100%;
   padding: 11px 12px;
   border: 1px solid var(--border);
@@ -997,6 +1005,8 @@
   text-align: left;
   cursor: pointer;
 }
+.report-decision-option input { margin: 2px 0 0; }
+.report-decision-option > span { display: grid; gap: 3px; }
 .report-decision-option:hover {
   background: var(--hover);
 }

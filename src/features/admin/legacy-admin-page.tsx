@@ -15,10 +15,10 @@ type LegacyScriptPlan = {
 
 const adminFoundationScripts = [
   "/legacy/auth.js?v=1",
-  "/legacy/language.js?v=4",
-  "/legacy/script.js?v=93",
-  "/legacy/fresh-mock-data.js?v=48-remove-rework",
-  "/legacy/resource-controls.js?v=48",
+  "/legacy/language.js?v=6-penalty-ladder",
+  "/legacy/script.js?v=94-penalty-ladder",
+  "/legacy/fresh-mock-data.js?v=49-penalty-ladder",
+  "/legacy/resource-controls.js?v=49-penalty-ladder",
   "/legacy/theme.js?v=1",
 ];
 
@@ -50,12 +50,12 @@ const disputeScripts: LegacyScriptPlan = {
 };
 
 const reportScripts: LegacyScriptPlan = {
-  sequential: [...adminFoundationScripts, "/legacy/report-page.js?v=16"],
+  sequential: [...adminFoundationScripts, "/legacy/report-page.js?v=17-penalty-ladder"],
   parallel: ["/legacy/functional-controls.js?v=5"],
 };
 
 const userScripts: LegacyScriptPlan = {
-  sequential: [...adminFoundationScripts, "/legacy/user-page.js?v=9"],
+  sequential: [...adminFoundationScripts, "/legacy/user-page.js?v=10-penalty-ladder"],
   parallel: ["/legacy/functional-controls.js?v=5"],
 };
 

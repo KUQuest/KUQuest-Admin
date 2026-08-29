@@ -1,6 +1,6 @@
 // Deterministic high-volume demo data. Versioning resets browser-local records
 // whenever the synthetic marketplace scenario changes.
-const freshDemoVersion = "2026-08-29-v48-remove-rework";
+const freshDemoVersion = "2026-08-29-v49-penalty-ladder";
 const freshDemoKey = "kuquest-admin-demo-data";
 const seedBaseDate = new Date("2026-08-28T08:00:00Z");
 
@@ -52,14 +52,14 @@ const faculties = [
   "Information Studies", "Landscape Architecture", "Liberal Arts", "Mathematics", "Political Science",
 ];
 const accountStatuses = [
-  "Normal", "Normal", "Normal", "Normal", "Normal", "Normal", "Normal", "Flag", "Normal", "Normal",
-  "Temp ban", "Normal", "Normal", "Normal", "Perm ban", "Normal", "Normal", "Flag", "Normal", "Normal",
+  "Normal", "Normal", "Normal", "Normal", "Normal", "Normal", "Normal", "Red Flag", "Normal", "Normal",
+  "Temp ban", "Normal", "Normal", "Normal", "Perm ban", "Normal", "Normal", "Red Flag", "Normal", "Normal",
 ];
 const adminNames = ["Nicha P.", "Pimchanok R.", "Worawut K."];
 
 function statusTone(status) {
   if (["Normal", "Completed", "Approved"].includes(status)) return "success";
-  if (["Flag", "Submitted", "Change pending", "Needs approval"].includes(status)) return "warning";
+  if (["Red Flag", "Submitted", "Change pending", "Needs approval"].includes(status)) return "warning";
   if (["Open"].includes(status)) return "success";
   if (["In progress", "Processing"].includes(status)) return "info";
   if (["Assigned"].includes(status)) return "assigned";
@@ -91,14 +91,14 @@ const generatedUsers = Array.from({ length: 280 }, (_, index) => {
   const title = `${firstName} ${lastName}`;
   const id = String(68000000 + index * 19 + (index % 7));
   const status = accountStatuses[index % accountStatuses.length];
-  const createdDaysAgo = 70 + ((index * 31) % 1_350);
+  const createdDaysAgo = index === 1 ? 5 : 70 + ((index * 31) % 1_350);
   const activeDaysAgo = index % 15;
   const accountCreatedAt = seedDayLabel(createdDaysAgo);
   const activeAt = seedDateLabel(activeDaysAgo, 7 + (index % 11), (index * 11) % 60);
   const admin = adminNames[index % adminNames.length];
   const reason = status === "Normal"
     ? "No active moderation action."
-    : status === "Flag"
+    : status === "Red Flag"
       ? "An account activity report requires moderator review."
       : status === "Temp ban"
         ? "Repeated off-platform payment requests were recorded."
@@ -111,7 +111,7 @@ const generatedUsers = Array.from({ length: 280 }, (_, index) => {
   }];
   if (status !== "Normal") {
     history.unshift({
-      event: status === "Flag" ? "Flag applied" : status === "Temp ban" ? "Temporary ban applied" : "Permanent ban applied",
+      event: status === "Red Flag" ? "Red Flag applied" : status === "Temp ban" ? "Temporary ban applied" : "Permanent ban applied",
       at: activeAt,
       by: admin,
       reason,
@@ -138,9 +138,22 @@ const generatedUsers = Array.from({ length: 280 }, (_, index) => {
     statusReason: reason,
     statusAppliedAt: activeAt,
     statusAppliedBy: status === "Normal" ? "System" : admin,
+    confirmedViolationCount: status === "Red Flag" ? 1 : status === "Temp ban" ? 2 : status === "Perm ban" ? 3 : 0,
+    ...(index === 1 ? { newUserExemptionRemaining: penaltyPolicy.newUserExemptionCount } : {}),
     about: `${faculties[index % faculties.length]} student who helps university teams produce reliable research, documentation, and project support.`,
     tags: [faculties[index % faculties.length], ["Research", "Writing", "Field work", "Design"][index % 4], "University"],
     reviews: userReviewRows(index),
+    ...(status === "Red Flag" ? {
+      redFlagExpiresAt: seedDateLabel(-6, 16, 0),
+      penalty: {
+        label: "Red Flag",
+        reason,
+        recordedAt: activeAt,
+        appliedBy: admin,
+        durationDays: penaltyPolicy.redFlagDays,
+        expiresAt: seedDateLabel(-6, 16, 0),
+      },
+    } : {}),
     ...(status === "Temp ban" ? {
       banExpiresAt: seedDateLabel(-6, 16, 0),
       penalty: {
@@ -148,6 +161,7 @@ const generatedUsers = Array.from({ length: 280 }, (_, index) => {
         reason,
         recordedAt: activeAt,
         appliedBy: admin,
+        durationDays: penaltyPolicy.temporaryBanDays,
         expiresAt: seedDateLabel(-6, 16, 0),
       },
     } : {}),
@@ -323,10 +337,10 @@ data.reports = Array.from({ length: 180 }, (_, index) => {
     reportedAt,
     ...(status === "Closed" ? {
       closedAt: seedDateLabel((index % 70) + 1, 15, 30),
-      decision: index % 3 === 0 ? "do-nothing" : "flag",
-      decisionLabel: index % 3 === 0 ? "Do nothing" : "Flag only",
+      decision: index % 3 === 0 ? "no-violation" : "confirmed-violation",
+      decisionLabel: index % 3 === 0 ? "No violation" : "Violation confirmed",
       decisionReason: "The submitted activity and related quest history were reviewed before closing this report.",
-      resolution: index % 3 === 0 ? "Report dismissed; no policy violation found." : "Flag only applied.",
+      resolution: index % 3 === 0 ? "Report dismissed; no policy violation found." : "Violation confirmed; the account penalty ladder was applied.",
       resolvedBy: adminNames[index % adminNames.length],
       resolutionAt: seedDateLabel((index % 70) + 1, 15, 47),
     } : {}),
@@ -399,6 +413,35 @@ if (savedFreshDemo?.version === freshDemoVersion) {
   localStorage.removeItem(freshDemoKey);
 }
 
+function expirePenaltyIfDue(user) {
+  const expiry = user.status === "Red Flag" ? user.redFlagExpiresAt : user.status === "Temp ban" ? user.banExpiresAt : "";
+  const expiryTimestamp = Date.parse(String(expiry || "").replace(" ยท ", " "));
+  if (!expiry || !Number.isFinite(expiryTimestamp) || expiryTimestamp > Date.now()) return false;
+  const previousStatus = user.status;
+  const changedAt = adminDateTime();
+  user.status = "Normal";
+  user.tone = "success";
+  user.statusReason = "No active moderation action.";
+  user.statusAppliedAt = changedAt;
+  user.statusAppliedBy = "System";
+  user.age = "No active moderation action";
+  delete user.redFlagExpiresAt;
+  delete user.banExpiresAt;
+  delete user.penalty;
+  if (previousStatus === "Temp ban") user.postBanExemptionRemaining = penaltyPolicy.postBanExemptionCount;
+  addUserHistory(user, {
+    event: `${previousStatus} expired`,
+    at: changedAt,
+    by: "System",
+    reason: previousStatus === "Temp ban" ? `The ${penaltyPolicy.temporaryBanDays}-day temporary ban ended.` : `The ${penaltyPolicy.redFlagDays}-day Red Flag period ended.`,
+    previousStatus,
+    newStatus: "Normal",
+  });
+  return true;
+}
+
+const expiredPenalties = data.users.filter(expirePenaltyIfDue);
+
 function persistAdminData() {
   localStorage.setItem(freshDemoKey, JSON.stringify({ version: freshDemoVersion, collections: data }));
 }
@@ -406,7 +449,7 @@ function persistAdminData() {
 const autoRejectedPayouts = typeof autoRejectUnavailablePayout === "function"
   ? data.payouts.filter((record) => autoRejectUnavailablePayout(record))
   : [];
-if (!savedFreshDemo || savedFreshDemo.version !== freshDemoVersion || autoRejectedPayouts.length) persistAdminData();
+if (!savedFreshDemo || savedFreshDemo.version !== freshDemoVersion || autoRejectedPayouts.length || expiredPenalties.length) persistAdminData();
 
 if (typeof seedGeneratedActivity === "function") seedGeneratedActivity(data);
 

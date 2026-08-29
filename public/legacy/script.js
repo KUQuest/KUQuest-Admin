@@ -130,7 +130,7 @@ function homeDecisions() {
         metric: `฿${fmt(record.amount)}`,
       })),
     ...data.users
-      .filter((record) => ["Flag", "Temp ban", "Perm ban"].includes(record.status))
+      .filter((record) => ["Red Flag", "Temp ban", "Perm ban"].includes(record.status))
       .map((record) => ({
         view: "users",
         record,
@@ -183,7 +183,7 @@ function renderHome() {
   const decisions = homeDecisions();
   const activeDisputes = data.disputes.filter((record) => record.status === "Active"),
     pendingPayouts = data.payouts.filter((record) => record.status === "Needs approval"),
-    reviewUsers = data.users.filter((record) => ["Flag", "Temp ban", "Perm ban"].includes(record.status)),
+    reviewUsers = data.users.filter((record) => ["Red Flag", "Temp ban", "Perm ban"].includes(record.status)),
     openReports = data.reports.filter((record) => record.status === "Active"),
     workLeft = [
       ...activeDisputes,
@@ -465,7 +465,7 @@ function renderResource(v) {
             ? ["All", "Draft", "Open", "Assigned", "In progress", "Submitted", "Change pending", "Approved", "Disputed", "Completed", "Cancelled", "Hidden"]
             : v === "reports"
               ? ["All", "Active", "Closed"]
-              : ["All", "Normal", "Flag", "Temp ban", "Perm ban"];
+              : ["All", "Normal", "Red Flag", "Temp ban", "Perm ban"];
   const filtered = rows.filter(
     (r) =>
       `${r.id} ${r.title || ""} ${r.person || ""} ${r.reportedUserName || ""} ${r.reporterName || ""} ${r.category || ""}`
@@ -875,7 +875,10 @@ function userModerationSection(user) {
   const appliedBy = user.statusAppliedBy || user.penalty?.appliedBy || "Not recorded";
   const expiresAt = user.banExpiresAt || user.penalty?.expiresAt;
   const activeModeration = user.status !== "Normal";
-  return `<section class="section user-moderation"><h3>Moderation</h3><div class="user-context-list"><div><span>Status</span>${badge(user.status, user.tone)}</div><div><span>Reason</span><strong>${escapeActivityText(reason)}</strong></div>${activeModeration ? `<div><span>Applied</span><strong>${escapeActivityText(appliedAt)}</strong></div><div><span>By</span><strong>${escapeActivityText(appliedBy)}</strong></div>${user.status === "Temp ban" && expiresAt ? `<div><span>Expires</span><strong>${escapeActivityText(expiresAt)}</strong></div>` : ""}` : ""}</div></section>`;
+  const confirmedViolations = confirmedViolationCount(user);
+  const nextOutcome = penaltyOutcomeFor(user);
+  const exemption = redFlagExemptionFor(user);
+  return `<section class="section user-moderation"><h3>Moderation</h3><div class="user-context-list"><div><span>Status</span>${badge(user.status, user.tone)}</div><div><span>Confirmed violations</span><strong>${confirmedViolations}</strong></div><div><span>Next outcome</span><strong>${escapeActivityText(penaltyOutcomeLabel(nextOutcome))}</strong></div>${exemption ? `<div><span>Red Flag exemption</span><strong>${exemption.remaining} remaining (${escapeActivityText(exemption.label)})</strong></div>` : ""}<div><span>Reason</span><strong>${escapeActivityText(reason)}</strong></div>${activeModeration ? `<div><span>Applied</span><strong>${escapeActivityText(appliedAt)}</strong></div><div><span>By</span><strong>${escapeActivityText(appliedBy)}</strong></div>${(user.status === "Temp ban" || user.status === "Red Flag") && expiresAt ? `<div><span>Expires</span><strong>${escapeActivityText(expiresAt)}</strong></div>` : ""}` : ""}</div></section>`;
 }
 function userReportsSection(user) {
   const reports = userReportsFor(user);
@@ -908,23 +911,15 @@ function userNotesSection(user) {
 }
 function userDrawerActions(user) {
   const reportButton = '<button class="btn" type="button" data-report-user>Report user</button>';
-  if (user.status === "Flag") {
-    return `${reportButton}<button class="btn primary" data-user-status-action="Clear flag">Clear flag</button><button class="btn" data-penalty-user>Apply penalty</button>`;
-  }
-  if (user.status === "Temp ban") {
-    return `${reportButton}<button class="btn" data-penalty-user data-penalty-mode="modify">Modify ban</button><button class="btn primary" data-user-status-action="Lift ban">Lift ban</button>`;
-  }
-  if (user.status === "Perm ban") {
-    return `${reportButton}<button class="btn primary" data-user-status-action="Lift ban">Lift ban</button>`;
-  }
-  return `${reportButton}<button class="btn primary" data-penalty-user>Apply penalty</button>`;
+  if (["Temp ban", "Perm ban"].includes(user.status)) return reportButton;
+  return `${reportButton}<button class="btn primary" data-penalty-user>Record violation</button>`;
 }
 function userReportDetailStatus(report) {
   return badge(reportStatusLabel(report), reportStatusTone(report));
 }
 function reportPenaltySummary(report) {
   if (report.status === "Active") return "Pending moderator resolution";
-  if (report.decision === "do-nothing") return "No penalty applied";
+  if (report.decision === "no-violation" || report.decision === "do-nothing") return "No penalty applied";
   const label = report.decisionLabel || "Penalty applied";
   return report.decisionDays ? `${label} · ${report.decisionDays} days` : label;
 }
@@ -1032,19 +1027,10 @@ function openDrawer(v, i) {
     ?.addEventListener("click", () => openAdminNoteDialog(r));
   drawer
     .querySelector("[data-penalty-user]")
-    ?.addEventListener("click", (event) =>
-      openPenaltyDialog(r, { mode: event.currentTarget.dataset.penaltyMode || "apply" }),
-    );
+    ?.addEventListener("click", () => openPenaltyDialog(r));
   drawer
     .querySelector("[data-report-user]")
     ?.addEventListener("click", () => openUserReportDialog(r));
-  drawer
-    .querySelectorAll("[data-user-status-action]")
-    .forEach((button) =>
-      button.addEventListener("click", () =>
-        confirmUserStatusChange(r, button.dataset.userStatusAction),
-      ),
-    );
 }
 
 function openUserChat(user) {
@@ -1140,53 +1126,108 @@ function refreshUserAfterMutation(user) {
   else if (state.view === "users") render();
   return false;
 }
-function applyUserPenalty(user, action, reason, note) {
+const penaltyPolicy = Object.freeze({
+  redFlagDays: 7,
+  temporaryBanDays: 7,
+  newUserExemptionCount: 10,
+  postBanExemptionCount: 3,
+});
+function confirmedViolationCount(user) {
+  const fallback = user.status === "Red Flag" ? 1 : user.status === "Temp ban" ? 2 : user.status === "Perm ban" ? 3 : 0;
+  return Math.max(0, Number(user.confirmedViolationCount ?? fallback) || 0);
+}
+function redFlagExemptionFor(user) {
+  const newUserRemaining = Math.max(0, Number(user.newUserExemptionRemaining) || 0);
+  if (newUserRemaining) return { field: "newUserExemptionRemaining", remaining: newUserRemaining, label: "new user (PC-12)" };
+  const postBanRemaining = Math.max(0, Number(user.postBanExemptionRemaining) || 0);
+  if (postBanRemaining) return { field: "postBanExemptionRemaining", remaining: postBanRemaining, label: "post-ban (PC-13)" };
+  return null;
+}
+function penaltyOutcomeFor(user) {
+  const violationNumber = confirmedViolationCount(user) + 1;
+  if (violationNumber === 1) {
+    return { key: "red-flag", label: "Red Flag", status: "Red Flag", tone: "warning", durationDays: penaltyPolicy.redFlagDays };
+  }
+  if (violationNumber === 2) {
+    return { key: "temporary-ban", label: "Temporary ban", status: "Temp ban", tone: "danger", durationDays: penaltyPolicy.temporaryBanDays };
+  }
+  return { key: "permanent-ban", label: "Permanent ban", status: "Perm ban", tone: "danger" };
+}
+function penaltyOutcomeLabel(outcome) {
+  if (!outcome) return "No penalty determined";
+  if (outcome.key === "red-flag-exempted") return "Red Flag exempted";
+  return `${outcome.label}${outcome.durationDays ? ` · ${outcome.durationDays} days` : ""}`;
+}
+function consumeRedFlagExemption(user, exemption) {
+  if (!exemption) return;
+  user[exemption.field] = Math.max(0, exemption.remaining - 1);
+}
+function recordConfirmedViolation(user, reason, note) {
   const previousStatus = user.status;
   const appliedAt = adminDateTime();
   const appliedBy = currentAdminName();
-  const temporary = action === "temporary-ban";
-  const temporaryBanDays = 7;
-  const status = action === "warning" ? "Flag" : temporary ? "Temp ban" : "Perm ban";
-  const tone = action === "warning" ? "warning" : "danger";
+  const violationNumber = confirmedViolationCount(user) + 1;
+  const nextOutcome = penaltyOutcomeFor(user);
+  const exemption = nextOutcome.key === "red-flag" ? redFlagExemptionFor(user) : null;
+  const outcome = exemption
+    ? { ...nextOutcome, key: "red-flag-exempted", status: "Normal", tone: "success", durationDays: null }
+    : nextOutcome;
+  user.confirmedViolationCount = violationNumber;
+  consumeRedFlagExemption(user, exemption);
   let expiresAt = "";
-  if (temporary) {
+  if (outcome.durationDays) {
     const expires = new Date();
-    expires.setDate(expires.getDate() + temporaryBanDays);
+    expires.setDate(expires.getDate() + outcome.durationDays);
     expiresAt = adminDateTime(expires);
   }
-  const event = action === "warning" ? "Flag applied" : temporary ? "Temporary ban applied" : "Permanent ban applied";
-  user.status = status;
-  user.tone = tone;
+  const event = outcome.key === "red-flag-exempted"
+    ? "Violation recorded (Red Flag exempted)"
+    : `${outcome.label} applied`;
+  user.status = outcome.status;
+  user.tone = outcome.tone;
   user.statusReason = reason;
   user.statusAppliedAt = appliedAt;
   user.statusAppliedBy = appliedBy;
-  user.banExpiresAt = expiresAt || undefined;
-  user.penalty = {
-    label: status === "Flag" ? "Flag" : status === "Temp ban" ? "Temporary ban" : "Permanent ban",
+  delete user.redFlagExpiresAt;
+  delete user.banExpiresAt;
+  delete user.penalty;
+  if (outcome.key !== "red-flag-exempted") {
+    if (outcome.key === "red-flag") user.redFlagExpiresAt = expiresAt;
+    if (outcome.key === "temporary-ban") user.banExpiresAt = expiresAt;
+    user.penalty = {
+      label: outcome.label,
+      reason,
+      recordedAt: appliedAt,
+      appliedBy,
+      ...(outcome.durationDays ? { durationDays: outcome.durationDays } : {}),
+      ...(expiresAt ? { expiresAt } : {}),
+    };
+  }
+  user.age = outcome.key === "red-flag-exempted"
+    ? "Violation recorded · Red Flag exempted"
+    : expiresAt
+      ? `${outcome.status} · expires ${expiresAt}`
+      : outcome.status;
+  addUserHistory(user, {
+    event,
+    at: appliedAt,
+    by: appliedBy,
     reason,
-    recordedAt: appliedAt,
-    appliedBy,
-    ...(temporary ? { durationDays: temporaryBanDays } : {}),
-    ...(expiresAt ? { expiresAt } : {}),
-  };
-  user.age = expiresAt ? `${status} · expires ${expiresAt}` : status;
-  addUserHistory(user, { event, at: appliedAt, by: appliedBy, reason, previousStatus, newStatus: status });
+    previousStatus,
+    newStatus: outcome.status,
+    violationNumber,
+    outcome: penaltyOutcomeLabel(outcome),
+  });
   if (note) user.adminNotes = [{ at: appliedAt, by: appliedBy, note }, ...(user.adminNotes || [])];
   refreshNavigationCounts();
+  return outcome;
 }
-function openPenaltyDialog(user, options = {}) {
+function openPenaltyDialog(user) {
   activeCustomLayerClose?.();
-  const temporaryBanDays = 7;
-  const mode = options.mode === "modify" ? "modify" : "apply";
-  const requestedAction = ["warning", "temporary-ban", "ban"].includes(options.initialAction) ? options.initialAction : null;
-  const initialAction = requestedAction || (user.status === "Temp ban" ? "temporary-ban" : user.status === "Perm ban" ? "ban" : "warning");
-  const modalTitle = mode === "modify" ? "Modify ban" : "Apply penalty";
   const overlay = document.createElement("div");
   overlay.className = "party-chat-overlay";
-  overlay.innerHTML = `<section class="party-chat-modal penalty-modal" role="dialog" aria-modal="true" aria-label="${modalTitle} for ${escapeActivityText(user.title)}"><div class="chat-modal-head"><div><strong>${modalTitle}</strong><small>${escapeActivityText(user.title)} · ${escapeActivityText(user.id)}</small></div><button class="icon close-party-chat" aria-label="Close penalty form"><span class="close-lines"></span></button></div><form class="penalty-form"><p class="chat-intro">Review the account action, record why it is necessary, then confirm. A flag does not restrict account access.</p><section class="penalty-preview" data-penalty-preview aria-live="polite"></section><fieldset><legend>Enforcement action</legend><label class="penalty-choice"><input type="radio" name="penalty" value="warning" ${initialAction === "warning" ? "checked" : ""}><span><strong>Flag</strong><small>Records the violation; account access stays unchanged.</small></span></label><label class="penalty-choice"><input type="radio" name="penalty" value="temporary-ban" ${initialAction === "temporary-ban" ? "checked" : ""}><span><strong>Temporary ban · 7 days</strong><small>Stops this user from all quests for 7 days.</small></span></label><label class="penalty-choice"><input type="radio" name="penalty" value="ban" ${initialAction === "ban" ? "checked" : ""}><span><strong>Permanent ban</strong><small>Stops this user from all quests until an admin reverses it.</small></span></label></fieldset><label>Reason for this penalty<textarea name="reason" rows="3" minlength="8" maxlength="500" required placeholder="State the evidence and policy behind this penalty…"></textarea></label><label>Internal admin note (optional)<textarea name="note" rows="2" maxlength="500" placeholder="Add context for authorized moderators…"></textarea></label><p class="login-error penalty-error" role="alert" hidden></p><button class="btn danger" type="submit">Apply penalty</button></form></section>`;
-  const close = showModalLayer(overlay, {
-    initialFocus: 'input[name="penalty"]',
-  });
+  overlay.innerHTML = `<section class="party-chat-modal penalty-modal" role="dialog" aria-modal="true" aria-label="Confirm violation for ${escapeActivityText(user.title)}"><div class="chat-modal-head"><div><strong>Confirm violation</strong><small>${escapeActivityText(user.title)} · ${escapeActivityText(user.id)}</small></div><button class="icon close-party-chat" aria-label="Close penalty form"><span class="close-lines"></span></button></div><form class="penalty-form"><p class="chat-intro">Confirm that this account committed an actual policy violation. The SRS penalty ladder applies the next consequence automatically.</p><section class="penalty-policy-note" aria-label="Penalty ladder"><strong>Penalty ladder</strong><span>1st violation: Red Flag · 7 days</span><span>2nd violation: Temporary ban · 7 days</span><span>3rd violation: Permanent ban</span></section><section class="penalty-preview" data-penalty-preview aria-live="polite"></section><label for="penalty-reason">Reason for confirmed violation<textarea id="penalty-reason" name="reason" rows="3" minlength="8" maxlength="500" required aria-describedby="penalty-reason-help penalty-error" placeholder="State the evidence and policy behind this violation…"></textarea><small id="penalty-reason-help">Enter 8–500 characters explaining the evidence and policy.</small></label><label for="penalty-note">Internal admin note (optional)<textarea id="penalty-note" name="note" rows="2" maxlength="500" placeholder="Add context for authorized moderators…"></textarea></label><p class="login-error penalty-error" id="penalty-error" role="alert" hidden></p><button class="btn danger" type="submit">Confirm violation</button></form></section>`;
+  const close = showModalLayer(overlay, { initialFocus: "#penalty-reason" });
   overlay.querySelector(".close-party-chat").onclick = close;
   overlay.addEventListener("click", (event) => {
     if (event.target === overlay) close();
@@ -1194,34 +1235,30 @@ function openPenaltyDialog(user, options = {}) {
   const form = overlay.querySelector("form");
   const preview = form.querySelector("[data-penalty-preview]");
   const updateFields = () => {
-    const action = form.elements.penalty.value;
-    const temporary = action === "temporary-ban";
-    const newStatus = action === "warning" ? "Flag" : temporary ? "Temp ban" : "Perm ban";
-    const expires = temporary ? new Date(Date.now() + temporaryBanDays * 86400000) : null;
-    preview.innerHTML = `<div><span>User</span><strong>${escapeActivityText(user.title)}</strong></div><div><span>Current status</span>${badge(user.status, user.tone)}</div><div><span>New status</span>${badge(newStatus, newStatus === "Flag" ? "warning" : "danger")}</div>${temporary ? `<div><span>Expires</span><strong>${escapeActivityText(adminDateTime(expires))}</strong></div>` : ""}<div><span>Reason</span><strong>${escapeActivityText(form.elements.reason.value.trim() || "Reason required before applying")}</strong></div>${form.elements.note.value.trim() ? `<div><span>Internal note</span><strong>${escapeActivityText(form.elements.note.value.trim())}</strong></div>` : ""}`;
+    const outcome = penaltyOutcomeFor(user);
+    const exemption = outcome.key === "red-flag" ? redFlagExemptionFor(user) : null;
+    const previewOutcome = exemption ? { ...outcome, key: "red-flag-exempted" } : outcome;
+    const expires = outcome.durationDays ? new Date(Date.now() + outcome.durationDays * 86400000) : null;
+    preview.innerHTML = `<div><span>User</span><strong>${escapeActivityText(user.title)}</strong></div><div><span>Confirmed violations</span><strong>${confirmedViolationCount(user)}</strong></div><div><span>Next outcome</span><strong>${escapeActivityText(penaltyOutcomeLabel(previewOutcome))}</strong></div>${exemption ? `<div><span>Exemption</span><strong>${exemption.remaining} Red Flag decision${exemption.remaining === 1 ? "" : "s"} remaining · ${escapeActivityText(exemption.label)}</strong></div>` : ""}${expires && !exemption ? `<div><span>Expires</span><strong>${escapeActivityText(adminDateTime(expires))}</strong></div>` : ""}<div><span>Reason</span><strong>${escapeActivityText(form.elements.reason.value.trim() || "Reason required before confirming")}</strong></div>${form.elements.note.value.trim() ? `<div><span>Internal note</span><strong>${escapeActivityText(form.elements.note.value.trim())}</strong></div>` : ""}`;
   };
-  form.querySelectorAll('input[name="penalty"]').forEach((input) =>
-    input.addEventListener("change", updateFields),
-  );
   form.elements.reason.addEventListener("input", updateFields);
   form.elements.note.addEventListener("input", updateFields);
   form.addEventListener("submit", (event) => {
     event.preventDefault();
-    const action = form.elements.penalty.value;
     const reason = form.elements.reason.value.trim();
     const error = form.querySelector(".penalty-error");
     if (reason.length < 8) {
-      error.textContent = "Enter at least 8 characters explaining this penalty.";
+      error.textContent = "Enter at least 8 characters explaining this confirmed violation.";
       error.hidden = false;
       form.elements.reason.focus();
       return;
     }
-    applyUserPenalty(user, action, reason, form.elements.note.value.trim());
+    const outcome = recordConfirmedViolation(user, reason, form.elements.note.value.trim());
     persistAdminData();
-    recordActivity(`${user.status} applied`, `${user.id} · ${user.title} · ${reason}`);
+    recordActivity(`Violation confirmed · ${penaltyOutcomeLabel(outcome)}`, `${user.id} · ${user.title} · ${reason}`);
     close();
     if (!refreshUserAfterMutation(user)) openDrawer("users", data.users.indexOf(user));
-    toast(`${user.status} applied for ${user.title}.`);
+    toast(`${penaltyOutcomeLabel(outcome)} recorded for ${user.title}.`);
   });
   updateFields();
 }
@@ -1254,83 +1291,6 @@ function openAdminNoteDialog(user) {
     toast(`Admin note saved for ${user.title}.`);
   });
 }
-function confirmUserStatusChange(user, action) {
-  if (!dialog) return;
-  const form = document.querySelector("#confirm-form");
-  const reason = document.querySelector("#confirm-reason");
-  const reasonLabel = reason?.closest("label");
-  const help = document.querySelector("#confirm-reason-help");
-  const error = document.querySelector("#confirm-reason-error");
-  const count = document.querySelector("#confirm-reason-count");
-  const context = document.querySelector("#confirm-context");
-  const confirmButton = document.querySelector("#confirm-btn");
-  const title = action === "Clear flag" ? "Clear flag" : "Lift ban";
-  const appliedAt = user.statusAppliedAt || user.penalty?.recordedAt || "Not recorded";
-  const appliedBy = user.statusAppliedBy || user.penalty?.appliedBy || "Not recorded";
-  const originalReason = user.statusReason || user.penalty?.reason || "No reason recorded.";
-  resetConfirmationDialog();
-  document.querySelector("#confirm-title").textContent = title;
-  document.querySelector("#confirm-copy").textContent = `Confirm this change for ${user.title}. The action will be added to the moderation history.`;
-  context.hidden = false;
-  context.innerHTML = `<div class="moderation-confirm-summary"><div><span>User</span><strong>${escapeActivityText(user.title)}</strong></div><div><span>Current status</span>${badge(user.status, user.tone)}</div><div><span>Applied</span><strong>${escapeActivityText(appliedAt)}</strong></div><div><span>By</span><strong>${escapeActivityText(appliedBy)}</strong></div><div><span>Original reason</span><strong>${escapeActivityText(originalReason)}</strong></div></div><label class="moderation-confirm-note" for="moderation-lift-note">Internal admin note (optional)<textarea id="moderation-lift-note" rows="2" maxlength="500" placeholder="Add context for authorized moderators…"></textarea></label>`;
-  reasonLabel.hidden = false;
-  reasonLabel.firstChild.textContent = `Reason for ${action.toLowerCase()} `;
-  reason.required = true;
-  reason.disabled = false;
-  help.hidden = false;
-  error.hidden = true;
-  count.textContent = "0 / 500";
-  confirmButton.textContent = title;
-  confirmButton.className = "btn primary";
-  confirmButton.disabled = true;
-  const validate = () => {
-    const valid = reason.value.trim().length >= 8;
-    confirmButton.disabled = !valid;
-    reason.setAttribute("aria-invalid", String(!valid && reason.value.length > 0));
-    error.hidden = true;
-    count.textContent = `${reason.value.length} / 500`;
-    return valid;
-  };
-  reason.oninput = validate;
-  form.onsubmit = (event) => {
-    if (event.submitter?.value !== "confirm") return;
-    if (!validate()) {
-      event.preventDefault();
-      error.textContent = `Enter at least 8 characters explaining why you want to ${action.toLowerCase()}.`;
-      error.hidden = false;
-      reason.focus();
-      return;
-    }
-    event.preventDefault();
-    dialog.close("confirm");
-  };
-  dialog.addEventListener("close", () => {
-    if (dialog.returnValue !== "confirm") return;
-    const previousStatus = user.status;
-    const changedAt = adminDateTime();
-    const changedBy = currentAdminName();
-    const event = action === "Clear flag" ? "Flag cleared" : "Ban lifted";
-    const adminNote = document.querySelector("#moderation-lift-note")?.value.trim() || "";
-    user.status = "Normal";
-    user.tone = "success";
-    user.statusReason = "No active moderation action.";
-    user.statusAppliedAt = changedAt;
-    user.statusAppliedBy = changedBy;
-    user.age = "No active moderation action";
-    delete user.banExpiresAt;
-    delete user.penalty;
-    addUserHistory(user, { event, at: changedAt, by: changedBy, reason: reason.value.trim(), previousStatus, newStatus: "Normal" });
-    if (adminNote) user.adminNotes = [{ at: changedAt, by: changedBy, note: adminNote }, ...(user.adminNotes || [])];
-    persistAdminData();
-    recordActivity(event, `${user.id} · ${user.title} · ${reason.value.trim()}`);
-    closeDrawer();
-    if (!refreshUserAfterMutation(user)) openDrawer("users", data.users.indexOf(user));
-    toast(`${event} for ${user.title}.`);
-  }, { once: true });
-  dialog.showModal();
-  requestAnimationFrame(() => reason.focus());
-}
-
 function applyDemoAction(action, record) {
   const transitions = {
     "Restrict user": ["Temp ban", "danger"],
@@ -1364,30 +1324,30 @@ function refreshNavigationCounts() {
 }
 function applyReportDecision(report, decision, reason) {
   const user = data.users.find((candidate) => candidate.id === report.reportedUserId),
-    duration = decision === "temporary-ban" ? 7 : null,
     resolvedAt = adminDateTime(),
     resolvedBy = currentAdminName();
+  const outcome = decision === "confirmed-violation" && user
+    ? recordConfirmedViolation(user, reason, "")
+    : null;
   report.status = "Closed";
   report.tone = "neutral";
   report.closedAt = reportDateTime();
   report.decision = decision;
-  report.decisionLabel = decision === "do-nothing" ? "Do nothing" : decision === "flag" ? "Flag only" : decision === "temporary-ban" ? "Temporary ban" : "Permanent ban";
-  report.decisionDays = decision === "temporary-ban" ? duration : null;
+  report.decisionLabel = decision === "no-violation"
+    ? "No violation"
+    : `Violation confirmed · ${penaltyOutcomeLabel(outcome)}`;
+  report.decisionDays = outcome?.durationDays || null;
   report.decisionReason = reason;
-  report.resolution = decision === "do-nothing" ? "Report dismissed; no policy violation found." : `${report.decisionLabel} applied.`;
+  report.resolution = decision === "no-violation"
+    ? "Report dismissed; no policy violation found."
+    : `${report.decisionLabel}.`;
   report.resolvedBy = resolvedBy;
   report.resolutionAt = resolvedAt;
   if (!user) {
     refreshNavigationCounts();
     return;
   }
-  if (decision === "flag") {
-    applyUserPenalty(user, "warning", reason, "");
-  } else if (decision === "temporary-ban") {
-    applyUserPenalty(user, "temporary-ban", reason, "");
-  } else if (decision === "permanent-ban") {
-    applyUserPenalty(user, "ban", reason, "");
-  } else {
+  if (decision === "no-violation") {
     addUserHistory(user, { event: "Report dismissed", at: resolvedAt, by: resolvedBy, reason, previousStatus: user.status, newStatus: user.status });
   }
   refreshNavigationCounts();

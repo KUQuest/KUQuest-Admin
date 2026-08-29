@@ -4,6 +4,14 @@ const languageDefinitions = {
   th: { label: "ไทย", documentLanguage: "th" },
 };
 const translations = {
+  "Red Flag": "ติดธงแดง",
+  "Record violation": "บันทึกการละเมิด",
+  "Confirm violation": "ยืนยันการละเมิด",
+  "No violation": "ไม่พบการละเมิด",
+  "Confirmed violations": "การละเมิดที่ยืนยันแล้ว",
+  "Active Red Flags": "Red Flag ที่ใช้งานอยู่",
+  "Next outcome": "ผลลัพธ์ถัดไป",
+  "Penalty ladder": "บทลงโทษแบบขั้นบันได",
   Overview: "ภาพรวม",
   Quests: "งาน",
   Disputes: "ข้อพิพาท",

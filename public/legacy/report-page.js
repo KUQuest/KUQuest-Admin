@@ -85,9 +85,14 @@ function reportTimeline(report) {
 
 function reportDecisionPanel(report) {
   if (report.status === "Closed") {
-    return `<p class="audit-note">Decision recorded: <strong>${escapeActivityText(report.decisionLabel || "Flag only")}</strong>${report.decisionDays ? ` · ${report.decisionDays} days` : ""}.</p>${report.decisionReason ? `<div class="overview-group"><span>Reason for decision</span><p>${escapeActivityText(report.decisionReason)}</p></div>` : ""}`;
+    return `<p class="audit-note">Decision recorded: <strong>${escapeActivityText(report.decisionLabel || "No violation")}</strong>${report.decisionDays ? ` · ${report.decisionDays} days` : ""}.</p>${report.decisionReason ? `<div class="overview-group"><span>Reason for decision</span><p>${escapeActivityText(report.decisionReason)}</p></div>` : ""}`;
   }
-  return `<p class="audit-note">Select the account action before closing this report. Every decision requires a written reason.</p><div class="report-decision-options" role="group" aria-label="Report decision"><button class="report-decision-option" type="button" data-report-decision="do-nothing"><strong>Do nothing</strong><small>Close the report without changing the reported user’s account.</small></button><button class="report-decision-option" type="button" data-report-decision="flag"><strong>Flag only</strong><small>Record a policy flag; the account remains active.</small></button><button class="report-decision-option" type="button" data-report-decision="temporary-ban"><strong>Temporary ban · 7 days</strong><small>Restrict the reported user from all quests for 7 days.</small></button><button class="report-decision-option" type="button" data-report-decision="permanent-ban"><strong>Permanent ban</strong><small>Block the reported user from all quests until reversed.</small></button></div>`;
+  const user = data.users.find((candidate) => candidate.id === report.reportedUserId);
+  const outcome = user ? penaltyOutcomeFor(user) : null;
+  const exemption = outcome?.key === "red-flag" && user ? redFlagExemptionFor(user) : null;
+  const outcomeLabel = exemption ? "Red Flag exempted" : penaltyOutcomeLabel(outcome);
+  const nextViolationNumber = user ? confirmedViolationCount(user) + 1 : "the next";
+  return `<p class="audit-note">Decide whether the evidence confirms an actual policy violation. The next penalty is calculated from the account history.</p><fieldset class="report-decision-options"><legend class="visually-hidden">Report decision</legend><label class="report-decision-option"><input type="radio" name="report-decision" value="no-violation" data-report-decision="no-violation"><span><strong>No violation</strong><small>Close the report without changing the reported user’s account or violation count.</small></span></label><label class="report-decision-option"><input type="radio" name="report-decision" value="confirmed-violation" data-report-decision="confirmed-violation"><span><strong>Confirm violation</strong><small>Record violation #${nextViolationNumber}; apply ${escapeActivityText(outcomeLabel)} automatically.</small></span></label></fieldset>`;
 }
 
 function renderReportPage() {
@@ -120,22 +125,21 @@ function renderReportPage() {
 
   if (!isClosed) {
     let selectedDecision = "";
-    main.querySelectorAll("[data-report-decision]").forEach((button) =>
-      button.addEventListener("click", () => {
-        selectedDecision = button.dataset.reportDecision;
+    main.querySelectorAll("[data-report-decision]").forEach((input) =>
+      input.addEventListener("change", () => {
+        selectedDecision = input.value;
         main
-          .querySelectorAll("[data-report-decision]")
-          .forEach((option) => option.classList.toggle("selected", option === button));
+          .querySelectorAll(".report-decision-option")
+          .forEach((option) => option.classList.toggle("selected", option === input.closest(".report-decision-option")));
       }),
     );
     main.querySelectorAll("[data-report-close]").forEach((button) =>
       button.addEventListener("click", () => {
         if (!selectedDecision) {
-          toast("Choose Do nothing, Flag only, Temporary ban, or Permanent ban before closing.");
+          toast("Choose No violation or Confirm violation before closing.");
           return;
         }
-        const days = 7;
-        const decisionLabel = selectedDecision === "do-nothing" ? "Do nothing" : selectedDecision === "flag" ? "Flag only" : selectedDecision === "temporary-ban" ? `Temporary ban for ${days} days` : "Permanent ban";
+        const decisionLabel = selectedDecision === "no-violation" ? "No violation" : "Confirm violation";
         confirmAction(
           "Close report",
           reportRecord,

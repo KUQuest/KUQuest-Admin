@@ -127,23 +127,15 @@ function userPageReviewRows(user) {
 
 function userPageHistory(user) {
   const history = (Array.isArray(user.moderationHistory) ? user.moderationHistory : [])
-    .filter((entry) => /flag|warning|ban|penalty/i.test(String(entry.event || "")));
+    .filter((entry) => /flag|violation|warning|ban|penalty/i.test(String(entry.event || "")));
   return history.length
     ? history
     : [];
 }
 
 function userPageActionButtons(user) {
-  if (user.status === "Temp ban") {
-    return '<button class="btn" data-user-page-penalty="modify">Modify ban</button><button class="btn" data-user-page-lift>Lift ban</button>';
-  }
-  if (user.status === "Perm ban") {
-    return '<button class="btn" data-user-page-lift>Lift ban</button>';
-  }
-  if (user.status === "Flag") {
-    return '<button class="btn" data-user-page-clear>Clear flag</button><button class="btn primary" data-user-page-penalty="apply">Apply penalty</button>';
-  }
-  return '<button class="btn primary" data-user-page-penalty="apply">Apply penalty</button>';
+  if (["Temp ban", "Perm ban"].includes(user.status)) return '<p class="audit-note">No manual penalty override is available. The SRS duration or permanent ban rule applies.</p>';
+  return '<button class="btn primary" data-user-page-penalty="apply">Record violation</button>';
 }
 
 function userPageAbout(user) {
@@ -211,9 +203,13 @@ function userPageAccountInfo(user) {
 
 function userPageModerationSummary(user) {
   const reports = userReportsFor(user);
-  const activeWarnings = user.status === "Flag" ? 1 : 0;
+  const activeWarnings = user.status === "Red Flag" ? 1 : 0;
   const suspensions = ["Temp ban", "Perm ban"].includes(user.status) ? 1 : 0;
-  return `<section class="user-detail-panel"><h2>Moderation Summary</h2><div class="user-counter-list"><div><strong>${reports.length}</strong><span>Reports received</span></div><div><strong>${activeWarnings}</strong><span>Active warnings</span></div><div><strong>${suspensions}</strong><span>Suspensions</span></div></div><button class="btn full-width" type="button" data-user-tab="reports">View reports</button></section>`;
+  const confirmedViolations = confirmedViolationCount(user);
+  const nextOutcome = penaltyOutcomeFor(user);
+  const exemption = redFlagExemptionFor(user);
+  const expiresAt = user.status === "Temp ban" ? user.banExpiresAt : user.status === "Red Flag" ? user.redFlagExpiresAt : "";
+  return `<section class="user-detail-panel"><h2>Moderation Summary</h2><div class="user-counter-list"><div><strong>${reports.length}</strong><span>Reports received</span></div><div><strong>${confirmedViolations}</strong><span>Confirmed violations</span></div><div><strong>${activeWarnings}</strong><span>Active Red Flags</span></div><div><strong>${suspensions}</strong><span>Suspensions</span></div></div><p class="audit-note">Next outcome: <strong>${userPageEscape(penaltyOutcomeLabel(nextOutcome))}</strong>${exemption ? ` · ${exemption.remaining} Red Flag exemption${exemption.remaining === 1 ? "" : "s"} remaining` : ""}${expiresAt ? ` · ${user.status === "Temp ban" ? "Temporary ban" : "Red Flag"} expires ${userPageDate(expiresAt)}` : ""}.</p><button class="btn full-width" type="button" data-user-tab="reports">View reports</button></section>`;
 }
 
 function userPageRecentReports(user) {
@@ -350,12 +346,9 @@ function bindUserPage(user) {
   });
   document.querySelectorAll("[data-user-page-penalty]").forEach((button) => {
     button.onclick = () => {
-      const action = button.dataset.userPagePenalty;
-      openPenaltyDialog(user, { mode: action === "modify" ? "modify" : "apply", initialAction: action === "warning" ? "warning" : action === "temporary-ban" ? "temporary-ban" : undefined });
+      openPenaltyDialog(user);
     };
   });
-  document.querySelectorAll("[data-user-page-lift]").forEach((button) => (button.onclick = () => confirmUserStatusChange(user, "Lift ban")));
-  document.querySelectorAll("[data-user-page-clear]").forEach((button) => (button.onclick = () => confirmUserStatusChange(user, "Clear flag")));
   document.querySelectorAll("[data-user-page-history]").forEach((button) => (button.onclick = () => {
     userPageState.tab = "penalty-history";
     renderUserPage();

@@ -251,7 +251,7 @@ describe("resource table sorting", () => {
     controls.state.tab = "flag";
     controls.state.query = "search term";
     controls.state.questFilters = { mode: "team", status: "Approved" };
-    controls.state.filters.users = ["Flag"];
+    controls.state.filters.users = ["Red Flag"];
     controls.state.orderBy.users = "status-desc";
     controls.state.pagination.users = { page: 4, size: "all" };
 

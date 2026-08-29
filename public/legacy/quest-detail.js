@@ -132,7 +132,7 @@ function participantSectionTitle(record, participants, started) {
 function giverProfile(detail) {
   const hirer = data.users.find((user) => user.title === detail.giver[0]),
     status = hirer?.status || "Normal",
-    statusTone = hirer?.tone || (status === "Normal" ? "success" : status === "Flag" ? "warning" : "danger");
+    statusTone = hirer?.tone || (status === "Normal" ? "success" : status === "Red Flag" ? "warning" : "danger");
   return `<div class="hirer-profile"><div class="hirer-profile-summary"><strong>${escapeActivityText(detail.giver[0])}</strong>${badge(status, statusTone)}</div></div>`;
 }
 

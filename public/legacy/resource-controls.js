@@ -43,7 +43,7 @@ const resourceTabs = {
   disputes: ["All", "Active", "Closed"],
   payouts: ["All", "Needs approval", "Processing", "Completed", "Rejected"],
   quests: ["All", "Team", "Solo", "Draft", "Open", "Assigned", "In progress", "Submitted", "Change pending", "Approved", "Disputed", "Completed", "Cancelled", "Hidden"],
-  users: ["All", "Normal", "Flag", "Temp ban", "Perm ban"],
+  users: ["All", "Normal", "Red Flag", "Temp ban", "Perm ban"],
   reports: ["All", "Active", "Closed"],
 };
 const pageSizeOptions = [
