@@ -391,42 +391,24 @@ test.describe("admin click flows", () => {
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   });
 
-  test("admin can approve an open quest and preserve its approved state", async ({
+  test("quest detail does not offer an approval action", async ({
     page,
   }) => {
     await signIn(page);
-    await page.getByRole("button", { name: /^Quests/ }).click();
-
-    await page.getByRole("button", {
-      name: "Open quest QST-12001",
-      exact: true,
-    }).click();
-    await page
-      .getByRole("dialog", { name: /Record details/ })
-      .getByRole("link", { name: "Full quest detail" })
-      .click();
-
-    const approveButton = page.getByRole("button", {
-      name: "Approve quest",
-      exact: true,
-    });
-    await expect(approveButton).toBeVisible();
-    await approveButton.click();
-
-    const confirmation = page.getByRole("dialog", { name: "Approve quest" });
-    await confirmation
-      .getByLabel("Reason for this decision")
-      .fill("Quest scope and funding were verified.");
-    await confirmation
-      .getByRole("button", { name: "Approve quest", exact: true })
-      .click();
-
-    await expect(page.locator(".record-status-bar")).toContainText("Approved");
+    await page.goto("/quests/QST-12001");
     await expect(
-      page.getByRole("button", { name: "Approve quest", exact: true }),
+      page.getByRole("heading", { name: /Audit campus laboratory signage/ }),
+    ).toBeVisible();
+
+    await expect(
+      page.getByRole("button", {
+        name: "Approve quest",
+        exact: true,
+      }),
     ).toHaveCount(0);
-    await page.reload();
-    await expect(page.locator(".record-status-bar")).toContainText("Approved");
+    await expect(
+      page.getByRole("button", { name: "Terminate quest", exact: true }),
+    ).toBeVisible();
   });
 
   test("user quest history links to the complete quest record", async ({

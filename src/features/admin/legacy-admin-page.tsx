@@ -34,7 +34,7 @@ const questScripts: LegacyScriptPlan = {
   sequential: [
     ...adminFoundationScripts,
     "/legacy/quest-detail.js?v=41",
-    "/legacy/quest-page.js?v=29",
+    "/legacy/quest-page.js?v=30",
     "/legacy/quest-change-review.js?v=10",
   ],
   parallel: ["/legacy/functional-controls.js?v=5"],

@@ -1297,7 +1297,6 @@ function applyDemoAction(action, record) {
     "Set normal": ["Normal", "success"],
     "Lift penalty": ["Normal", "success"],
     "Hide quest": ["Hidden", "neutral"],
-    "Approve quest": ["Approved", "success"],
     "Reject payout": ["Rejected", "danger"],
     "Approve payout": ["Processing", "info"],
     "Close report": ["Closed", "neutral"],
