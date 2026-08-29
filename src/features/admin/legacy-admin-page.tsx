@@ -18,6 +18,7 @@ const adminFoundationScripts = [
   "/legacy/script.js?v=89",
   "/legacy/fresh-mock-data.js?v=46-large-refresh",
   "/legacy/resource-controls.js?v=46",
+  "/legacy/theme.js?v=1",
 ];
 
 const adminScripts: LegacyScriptPlan = {
@@ -229,6 +230,41 @@ export function LegacyAdminPage({ page, recordId }: { page: Exclude<LegacyPage, 
             <button data-view="activity" type="button">
               <span data-static-icon="history" />Activity log
             </button>
+          </div>
+          <div className="theme-control" data-theme-control>
+            <button
+              className="theme-trigger"
+              type="button"
+              data-theme-trigger
+              aria-expanded="false"
+              aria-controls="theme-options"
+            >
+              <span className="theme-trigger-copy">
+                <strong>Theme</strong>
+                <small data-theme-current>Grey-white</small>
+              </span>
+              <span className="theme-trigger-chevron" aria-hidden="true">⌄</span>
+            </button>
+            <div className="theme-menu" id="theme-options" data-theme-menu hidden>
+              <p className="theme-menu-title">Choose a theme</p>
+              <div className="theme-options" role="group" aria-label="Theme options">
+                <button className="theme-option" type="button" data-theme-option="grey" aria-pressed="true">
+                  <span className="theme-swatch theme-swatch-grey" aria-hidden="true" />
+                  <span className="theme-option-copy"><strong>Grey-white</strong><small>Neutral workspace</small></span>
+                  <span className="theme-option-check" aria-hidden="true">✓</span>
+                </button>
+                <button className="theme-option" type="button" data-theme-option="green" aria-pressed="false">
+                  <span className="theme-swatch theme-swatch-green" aria-hidden="true" />
+                  <span className="theme-option-copy"><strong>Light green</strong><small>Original KuQuest palette</small></span>
+                  <span className="theme-option-check" aria-hidden="true">✓</span>
+                </button>
+                <button className="theme-option" type="button" data-theme-option="dark" aria-pressed="false">
+                  <span className="theme-swatch theme-swatch-dark" aria-hidden="true" />
+                  <span className="theme-option-copy"><strong>Dark</strong><small>Low-light workspace</small></span>
+                  <span className="theme-option-check" aria-hidden="true">✓</span>
+                </button>
+              </div>
+            </div>
           </div>
           <div className="profile">
             <span>NP</span>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -9,6 +10,18 @@ export const metadata: Metadata = {
   description: "KuQuest university gig marketplace administration console",
 };
 
+const themeBootstrap = `
+(() => {
+  try {
+    const theme = localStorage.getItem("kuquest-admin-theme");
+    if (theme === "green" || theme === "dark") {
+      document.documentElement.dataset.theme = theme;
+      document.querySelector('meta[name="color-scheme"]')?.setAttribute("content", theme === "dark" ? "dark" : "light");
+    }
+  } catch {}
+})();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -17,6 +30,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <meta name="color-scheme" content="light dark" />
+        <Script id="theme-bootstrap" strategy="beforeInteractive">
+          {themeBootstrap}
+        </Script>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* eslint-disable-next-line @next/next/no-page-custom-font -- mirrors the source app's Figtree font */}
