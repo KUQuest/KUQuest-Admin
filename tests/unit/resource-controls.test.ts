@@ -11,6 +11,7 @@ type TestState = {
   view: string;
   tab: string;
   query: string;
+  filters: Partial<Record<ResourceView, string[]>>;
   orderBy: Record<ResourceView, string | null>;
   pagination: Record<ResourceView, { page: number; size: number | "all" }>;
 };
@@ -23,6 +24,7 @@ type ControlsContext = {
   state: TestState;
   matchingRows: (view: ResourceView) => ResourceRecord[];
   renderResource: (view: ResourceView) => void;
+  resetResourceState: () => void;
 };
 
 const controlsSource = await Bun.file("public/legacy/resource-controls.js").text();
@@ -32,6 +34,7 @@ function loadControls(records: Partial<Record<ResourceView, ResourceRecord[]>>) 
     view: "home",
     tab: "all",
     query: "",
+    filters: {},
     orderBy: {} as Record<ResourceView, string | null>,
     pagination: {} as Record<ResourceView, { page: number; size: number | "all" }>,
   };
@@ -82,12 +85,28 @@ function loadControls(records: Partial<Record<ResourceView, ResourceRecord[]>>) 
     disputeTypeLabel(record: ResourceRecord) {
       return String(record.disputeType ?? "");
     },
+    window: {
+      addEventListener(_type: string, handler: (event: { persisted: boolean }) => void) {
+        context.pageShowHandler = handler;
+      },
+    },
+    setActiveNavigation() {},
     console,
   } as Record<string, unknown>;
 
   runInNewContext(controlsSource, context);
   const loaded = context as unknown as ControlsContext;
-  return { state, main, matchingRows: loaded.matchingRows, renderResource: loaded.renderResource, pageSizeButtons, pageNavButtons, sortButton };
+  return {
+    state,
+    main,
+    matchingRows: loaded.matchingRows,
+    renderResource: loaded.renderResource,
+    resetResourceState: loaded.resetResourceState,
+    pageShowHandler: context.pageShowHandler as ((event: { persisted: boolean }) => void) | undefined,
+    pageSizeButtons,
+    pageNavButtons,
+    sortButton,
+  };
 }
 
 function testNode(dataset: Record<string, string>): TestNode {
@@ -196,5 +215,47 @@ describe("resource table sorting", () => {
 
     expect(controls.main.innerHTML).toContain("Showing 0 of 0 results");
     expect(controls.main.innerHTML).not.toContain("table-pagination");
+  });
+
+  it("resets resource navigation state to the default values", () => {
+    const controls = loadControls({});
+    controls.state.tab = "flag";
+    controls.state.query = "search term";
+    controls.state.filters.users = ["Flag"];
+    controls.state.orderBy.users = "status-desc";
+    controls.state.pagination.users = { page: 4, size: "all" };
+
+    controls.resetResourceState();
+
+    expect(controls.state.tab).toBe("all");
+    expect(controls.state.query).toBe("");
+    expect(controls.state.filters).toEqual({});
+    expect(controls.state.orderBy.users).toBeNull();
+    expect(controls.state.pagination.users).toEqual({ page: 1, size: 10 });
+  });
+
+  it("resets a cached resource list when the page is restored from history", () => {
+    const controls = loadControls({
+      users: Array.from({ length: 23 }, (_, index) => ({
+        id: `USR-${index + 1}`,
+        title: `User ${index + 1}`,
+        status: "Normal",
+      })),
+    });
+    controls.state.view = "users";
+    controls.state.orderBy.users = "title-desc";
+    controls.state.pagination.users = { page: 2, size: 25 };
+    controls.state.tab = "normal";
+    controls.state.query = "user";
+
+    controls.pageShowHandler?.({ persisted: true });
+
+    expect(controls.state.tab).toBe("all");
+    expect(controls.state.query).toBe("");
+    expect(controls.state.orderBy.users).toBeNull();
+    expect(controls.state.pagination.users).toEqual({ page: 1, size: 10 });
+    expect(controls.main.innerHTML).toContain("Show 10");
+    expect(controls.main.innerHTML).toContain("Page 1 of 3");
+    expect(controls.main.innerHTML).not.toContain('class="table-sort is-active"');
   });
 });

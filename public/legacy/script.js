@@ -570,15 +570,10 @@ function bind() {
 }
 function navigate(v) {
   const nextUrl = v === "home" ? "/" : `/?view=${encodeURIComponent(v)}`;
-  if (state.orderBy) {
-    Object.keys(state.orderBy).forEach((view) => {
-      state.orderBy[view] = null;
-    });
-  }
-  if (state.pagination) {
-    Object.keys(state.pagination).forEach((view) => {
-      state.pagination[view] = { page: 1, size: 10 };
-    });
+  if (typeof resetResourceState === "function") resetResourceState();
+  else {
+    state.tab = "all";
+    state.query = "";
   }
   if (/^\/(quests|disputes|reports)\//.test(location.pathname)) {
     location.assign(nextUrl);

@@ -70,6 +70,18 @@ state.visibleColumns = Object.fromEntries(
   ]),
 );
 
+function resetResourceState() {
+  state.filters = {};
+  state.orderBy = Object.fromEntries(
+    Object.keys(resourceColumns).map((view) => [view, null]),
+  );
+  state.pagination = Object.fromEntries(
+    Object.keys(resourceColumns).map((view) => [view, { page: 1, size: 10 }]),
+  );
+  state.tab = "all";
+  state.query = "";
+}
+
 function matchingRows(view) {
   const query = state.query.trim().toLowerCase(),
     statuses = state.filters[view] || [];
@@ -322,4 +334,9 @@ bind = function () {
     renderResource(state.view);
   });
 };
+window.addEventListener("pageshow", (event) => {
+  if (!event.persisted || !resourceColumns[state.view]) return;
+  resetResourceState();
+  renderResource(state.view);
+});
 if (state.view !== "home") renderResource(state.view);

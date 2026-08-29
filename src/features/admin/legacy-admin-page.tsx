@@ -15,14 +15,14 @@ type LegacyScriptPlan = {
 
 const adminFoundationScripts = [
   "/legacy/auth.js?v=1",
-  "/legacy/script.js?v=88",
+  "/legacy/script.js?v=89",
   "/legacy/fresh-mock-data.js?v=46-large-refresh",
+  "/legacy/resource-controls.js?v=46",
 ];
 
 const adminScripts: LegacyScriptPlan = {
   sequential: adminFoundationScripts,
   parallel: [
-    "/legacy/resource-controls.js?v=45",
     "/legacy/functional-controls.js?v=4",
     "/legacy/deep-links.js?v=11",
   ],
