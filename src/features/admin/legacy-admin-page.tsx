@@ -55,7 +55,7 @@ const reportScripts: LegacyScriptPlan = {
 };
 
 const userScripts: LegacyScriptPlan = {
-  sequential: [...adminFoundationScripts, "/legacy/user-page.js?v=10-penalty-ladder"],
+  sequential: [...adminFoundationScripts, "/legacy/user-page.js?v=11-review-removal"],
   parallel: ["/legacy/functional-controls.js?v=5"],
 };
 

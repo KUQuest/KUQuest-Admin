@@ -495,6 +495,72 @@ test.describe("admin click flows", () => {
     await expect(allRatings).toHaveAttribute("aria-pressed", "true");
   });
 
+  test("review removal requires confirmation before deleting", async ({ page }) => {
+    await signIn(page);
+    await page.getByRole("button", { name: "Users", exact: true }).click();
+
+    const search = page.getByRole("textbox", { name: "Search users" });
+    await search.fill("Akarin Ariyawat");
+    await page.getByRole("link", { name: /Akarin Ariyawat/ }).click();
+    await page.getByRole("button", { name: "Reviews", exact: true }).click();
+
+    const reviewRows = page.locator(".user-detail-table tbody tr");
+    const initialCount = await reviewRows.count();
+    expect(initialCount).toBeGreaterThan(0);
+    const firstReview = reviewRows.first();
+    const reviewer = (await firstReview.locator("td").first().innerText()).trim();
+
+    await firstReview.getByRole("button", { name: "Remove", exact: true }).click();
+    const confirmation = page.getByRole("dialog", { name: "Remove review" });
+    await expect(confirmation).toBeVisible();
+    await expect(confirmation).toContainText(reviewer);
+    await confirmation.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(confirmation).toHaveCount(0);
+    await expect(reviewRows).toHaveCount(initialCount);
+
+    await reviewRows.first().getByRole("button", { name: "Remove", exact: true }).click();
+    await page
+      .getByRole("dialog", { name: "Remove review" })
+      .getByRole("button", { name: "Confirm remove", exact: true })
+      .click();
+
+    await expect(page.getByRole("dialog", { name: "Remove review" })).toHaveCount(0);
+    await expect(page.locator(".user-detail-table tbody tr")).toHaveCount(initialCount - 1);
+  });
+
+  test("hide changes a review status and can be reversed", async ({ page }) => {
+    await signIn(page);
+    await page.getByRole("button", { name: "Users", exact: true }).click();
+
+    const search = page.getByRole("textbox", { name: "Search users" });
+    await search.fill("Akarin Ariyawat");
+    await page.getByRole("link", { name: /Akarin Ariyawat/ }).click();
+    await page.getByRole("button", { name: "Reviews", exact: true }).click();
+
+    const reviewRows = page.locator(".user-detail-table tbody tr");
+    const firstReview = reviewRows.first();
+    const reviewer = (await firstReview.locator("td").first().innerText()).trim();
+    const previousStatus = (await firstReview.locator("td").nth(5).innerText()).trim();
+
+    await firstReview.getByRole("button", { name: "Hide", exact: true }).click();
+    await expect(firstReview.locator("td").nth(5)).toHaveText("Hidden");
+    await expect(firstReview.getByRole("button", { name: "Unhide", exact: true })).toBeVisible();
+
+    await page.reload();
+    await page.getByRole("button", { name: "Reviews", exact: true }).click();
+    const reviewFilters = page.getByRole("group", { name: "Review filters" });
+    await reviewFilters.getByRole("button", { name: "Hidden", exact: true }).click();
+    const hiddenReview = page.locator(".user-detail-table tbody tr").filter({ hasText: reviewer });
+    await expect(hiddenReview).toHaveCount(1);
+    await hiddenReview.getByRole("button", { name: "Unhide", exact: true }).click();
+
+    await expect(page.locator(".user-detail-table tbody tr")).toHaveCount(0);
+    await reviewFilters.getByRole("button", { name: "All", exact: true }).click();
+    const restoredReview = page.locator(".user-detail-table tbody tr").filter({ hasText: reviewer });
+    await expect(restoredReview).toHaveCount(1);
+    await expect(restoredReview.locator("td").nth(5)).toHaveText(previousStatus);
+  });
+
   test("admin can log out from the dashboard", async ({ page }) => {
     await signIn(page);
 

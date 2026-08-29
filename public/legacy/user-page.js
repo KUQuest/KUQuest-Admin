@@ -283,11 +283,58 @@ function userPageReviews(user) {
   });
   const sorted = userPageSortedTableRows("reviews", filtered);
   const pagination = userPagePaginateTable("reviews", sorted);
-  return `<section class="user-detail-panel user-tab-panel"><div class="user-panel-heading"><div><h2>Reviews</h2>${userPageReviewSummary(user)}</div></div><div class="user-review-toolbar"><div class="inline-search search-field">${ico("search")}<input type="search" data-review-search value="${userPageEscape(userPageState.reviewQuery)}" placeholder="Search reviews…" aria-label="Search reviews"></div><div class="user-review-filters" role="group" aria-label="Review filters">${["all", "reported", "hidden"].map((filter) => `<button class="tab ${userPageState.reviewFilter === filter ? "active" : ""}" type="button" data-review-filter="${filter}">${filter[0].toUpperCase() + filter.slice(1)}</button>`).join("")}</div></div>${pagination.total ? `<div class="table-wrap"><table class="data user-detail-table"><thead><tr>${userPageTableSortHeader("reviews", "reviewer", "Reviewer")}${userPageTableSortHeader("reviews", "rating", "Rating")}${userPageTableSortHeader("reviews", "review", "Review")}${userPageTableSortHeader("reviews", "date", "Date")}${userPageTableSortHeader("reviews", "reports", "Reports")}${userPageTableSortHeader("reviews", "status", "Status")}<th scope="col">Action</th></tr></thead><tbody>${pagination.rows.map((review) => `<tr><td><strong>${userPageEscape(review.reviewer)}</strong></td><td>${"★".repeat(review.rating)}</td><td>${userPageEscape(review.review)}</td><td>${userPageEscape(review.date)}</td><td>${review.reports}</td><td>${badge(review.status, review.tone)}</td><td><button class="link" type="button" data-review-action="View" data-review-name="${userPageEscape(review.reviewer)}">View</button> <button class="link" type="button" data-review-action="Hide" data-review-name="${userPageEscape(review.reviewer)}">Hide</button> <button class="link danger-link" type="button" data-review-action="Remove" data-review-name="${userPageEscape(review.reviewer)}">Remove</button></td></tr>`).join("")}</tbody></table></div>${userPageTablePagination("reviews", pagination)}` : '<div class="empty"><h3>No matching reviews</h3><p>Try another filter or search term.</p></div>'}</section>`;
+  return `<section class="user-detail-panel user-tab-panel"><div class="user-panel-heading"><div><h2>Reviews</h2>${userPageReviewSummary(user)}</div></div><div class="user-review-toolbar"><div class="inline-search search-field">${ico("search")}<input type="search" data-review-search value="${userPageEscape(userPageState.reviewQuery)}" placeholder="Search reviews…" aria-label="Search reviews"></div><div class="user-review-filters" role="group" aria-label="Review filters">${["all", "reported", "hidden"].map((filter) => `<button class="tab ${userPageState.reviewFilter === filter ? "active" : ""}" type="button" data-review-filter="${filter}">${filter[0].toUpperCase() + filter.slice(1)}</button>`).join("")}</div></div>${pagination.total ? `<div class="table-wrap"><table class="data user-detail-table"><thead><tr>${userPageTableSortHeader("reviews", "reviewer", "Reviewer")}${userPageTableSortHeader("reviews", "rating", "Rating")}${userPageTableSortHeader("reviews", "review", "Review")}${userPageTableSortHeader("reviews", "date", "Date")}${userPageTableSortHeader("reviews", "reports", "Reports")}${userPageTableSortHeader("reviews", "status", "Status")}<th scope="col">Action</th></tr></thead><tbody>${pagination.rows.map((review) => `<tr><td><strong>${userPageEscape(review.reviewer)}</strong></td><td>${"★".repeat(review.rating)}</td><td>${userPageEscape(review.review)}</td><td>${userPageEscape(review.date)}</td><td>${review.reports}</td><td>${badge(review.status, review.tone)}</td><td><button class="link" type="button" data-review-action="View" data-review-name="${userPageEscape(review.reviewer)}">View</button> <button class="link" type="button" data-review-action="${review.status === "Hidden" ? "Unhide" : "Hide"}" data-review-index="${reviews.indexOf(review)}" data-review-name="${userPageEscape(review.reviewer)}">${review.status === "Hidden" ? "Unhide" : "Hide"}</button> <button class="link danger-link" type="button" data-review-action="Remove" data-review-index="${reviews.indexOf(review)}" data-review-name="${userPageEscape(review.reviewer)}">Remove</button></td></tr>`).join("")}</tbody></table></div>${userPageTablePagination("reviews", pagination)}` : '<div class="empty"><h3>No matching reviews</h3><p>Try another filter or search term.</p></div>'}</section>`;
 }
 
 function userPageReviewsData(user) {
   return Array.isArray(user.reviews) ? user.reviews : [];
+}
+
+function toggleReviewVisibility(user, reviewIndex) {
+  const review = userPageReviewsData(user)[reviewIndex];
+  if (!review) return;
+  const isHidden = review.status === "Hidden";
+  if (isHidden) {
+    review.status = review.statusBeforeHidden || "Visible";
+    review.tone = review.toneBeforeHidden || "success";
+    delete review.statusBeforeHidden;
+    delete review.toneBeforeHidden;
+  } else {
+    review.statusBeforeHidden = review.status;
+    review.toneBeforeHidden = review.tone;
+    review.status = "Hidden";
+    review.tone = "neutral";
+  }
+  persistAdminData();
+  recordActivity(isHidden ? "Review unhidden" : "Review hidden", `${user.id} · ${user.title} · ${review.reviewer}`);
+  renderUserPage();
+  toast(isHidden ? "Review unhidden" : "Review hidden");
+}
+
+function openReviewRemovalDialog(user, reviewIndex) {
+  const review = userPageReviewsData(user)[reviewIndex];
+  if (!review) return;
+  activeCustomLayerClose?.();
+  const overlay = document.createElement("div");
+  overlay.className = "party-chat-overlay";
+  overlay.innerHTML = `<section class="party-chat-modal penalty-modal review-remove-modal" role="dialog" aria-modal="true" aria-labelledby="review-remove-title" aria-describedby="review-remove-copy"><div class="chat-modal-head"><div><strong id="review-remove-title">Remove review</strong><small>${userPageEscape(review.reviewer)}</small></div><button class="icon close-review-remove" type="button" aria-label="Close remove review confirmation"><span class="close-lines"></span></button></div><div class="review-remove-content"><p id="review-remove-copy">This review will be permanently removed from the user's profile.</p><div class="review-remove-actions"><button class="btn review-remove-cancel" type="button">Cancel</button><button class="btn danger review-remove-confirm" type="button">Confirm remove</button></div></div></section>`;
+  const close = showModalLayer(overlay, { initialFocus: ".review-remove-cancel" });
+  overlay.querySelector(".close-review-remove").onclick = close;
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) close();
+  });
+  overlay.querySelector(".review-remove-cancel").onclick = close;
+  overlay.querySelector(".review-remove-confirm").onclick = () => {
+    const reviews = userPageReviewsData(user);
+    const removed = reviews.splice(reviewIndex, 1)[0];
+    if (!removed) return close();
+    persistAdminData();
+    recordActivity("Review removed", `${user.id} · ${user.title} · ${removed.reviewer}`);
+    close();
+    userPageState.tab = "reviews";
+    renderUserPage();
+    toast("Review removed");
+  };
 }
 
 function userPageReports(user) {
@@ -408,7 +455,17 @@ function bindUserPage(user) {
     userPageTableState[table].page = Number(page) || 1;
     renderUserPage();
   }));
-  document.querySelectorAll("[data-review-action]").forEach((button) => (button.onclick = () => toast(`${button.dataset.reviewAction} review by ${button.dataset.reviewName}.`)));
+  document.querySelectorAll("[data-review-action]").forEach((button) => (button.onclick = () => {
+    if (["Hide", "Unhide"].includes(button.dataset.reviewAction)) {
+      toggleReviewVisibility(user, Number(button.dataset.reviewIndex));
+      return;
+    }
+    if (button.dataset.reviewAction === "Remove") {
+      openReviewRemovalDialog(user, Number(button.dataset.reviewIndex));
+      return;
+    }
+    toast(`${button.dataset.reviewAction} review by ${button.dataset.reviewName}.`);
+  }));
 }
 
 window.__KUQUEST_USER_DETAIL__ = {

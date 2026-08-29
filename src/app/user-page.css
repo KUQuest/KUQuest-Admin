@@ -651,6 +651,27 @@
 .danger-link {
   color: var(--danger) !important;
 }
+
+.review-remove-content {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.review-remove-content p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.review-remove-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.review-remove-actions .btn {
+  flex: 1;
+}
 .user-record-link {
   color: var(--text);
   text-decoration: none;
