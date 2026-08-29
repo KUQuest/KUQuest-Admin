@@ -1,0 +1,24 @@
+.report-page-alert.open {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.report-page-alert.open .badge {
+  color: var(--warn);
+  background: var(--surface);
+}
+.report-page-alert.closed .badge {
+  color: var(--success);
+  background: var(--surface);
+}
+.report-overview .overview-meta {
+  margin-top: 18px;
+}
+.report-parties small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.report-table {
+  min-width: 760px;
+}
