@@ -114,6 +114,7 @@ const translations = {
   "Moderation Summary": "สรุปการดูแล",
   "Recent Reports": "รายงานล่าสุด",
   "Admin Notes": "บันทึกผู้ดูแล",
+  "Internal note": "บันทึกภายใน",
   "Account Actions": "การดำเนินการบัญชี",
   "Quest history": "ประวัติงาน",
   Role: "บทบาท",
@@ -162,6 +163,10 @@ const translations = {
   "Search disputes": "ค้นหาข้อพิพาท",
   "Search reports": "ค้นหารายงาน",
   "Search reviews": "ค้นหารีวิว",
+  "Reporting user": "ผู้รายงาน",
+  "Report type": "ประเภทรายงาน",
+  "What happened?": "เกิดอะไรขึ้น?",
+  "Evidence file (optional)": "ไฟล์หลักฐาน (ไม่บังคับ)",
   "Moderate listings through every marketplace state.": "ดูแลรายการงานในทุกสถานะของตลาด",
   "Review student accounts, reports, and marketplace access.": "ตรวจสอบบัญชีนักศึกษา รายงาน และสิทธิ์การใช้งานตลาด",
   "Approve or investigate money leaving the marketplace.": "อนุมัติหรือตรวจสอบเงินที่ออกจากตลาด",
@@ -268,6 +273,7 @@ const translations = {
   "Admin only": "สำหรับผู้ดูแลเท่านั้น",
   "Save note": "บันทึกหมายเหตุ",
   "Apply penalty": "ใช้บทลงโทษ",
+  "Report user": "รายงานผู้ใช้",
   "View penalty history": "ดูประวัติบทลงโทษ",
 };
 const categoryTranslations = {

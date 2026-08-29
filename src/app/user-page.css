@@ -467,6 +467,12 @@
   margin: 6px 0 0;
   font-size: 12px;
 }
+.user-note-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
 .user-detail-panel textarea {
   width: 100%;
   resize: vertical;

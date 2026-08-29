@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { MouseEvent } from "react";
@@ -63,6 +63,7 @@ const loginScripts: LegacyScriptPlan = {
   sequential: ["/legacy/language.js?v=2", "/legacy/login.js?v=1"],
   parallel: [],
 };
+const legacyScriptLoads = new Map<string, Promise<void>>();
 
 const loadScript = (src: string) =>
   new Promise<void>((resolve, reject) => {
@@ -80,17 +81,20 @@ const loadScript = (src: string) =>
 function loadScripts(plan: LegacyScriptPlan) {
   const scripts = [...plan.sequential, ...plan.parallel];
   const marker = scripts.join("|");
-  if (document.body.dataset.kuquestLegacyPage === marker) return;
+  const existingLoad = legacyScriptLoads.get(marker);
+  if (existingLoad) return existingLoad;
+  if (document.body.dataset.kuquestLegacyPage === marker) return Promise.resolve();
   const existing = document.querySelector<HTMLScriptElement>(
     "script[data-kuquest-legacy]",
   );
-  if (existing) return;
+  if (existing) return Promise.resolve();
   document.body.dataset.kuquestLegacyPage = marker;
 
   let chain = Promise.resolve();
   for (const src of plan.sequential) chain = chain.then(() => loadScript(src));
   chain = chain.then(() => Promise.all(plan.parallel.map(loadScript)).then(() => undefined));
-  void chain.catch((error: unknown) => console.error(error));
+  legacyScriptLoads.set(marker, chain);
+  return chain;
 }
 
 function hardNavigate(event: MouseEvent<HTMLAnchorElement>) {
@@ -103,15 +107,15 @@ function handleLogout() {
   window.location.assign("/login");
 }
 
-function LanguageControl({ className = "" }: { className?: string }) {
+function LanguageControl({ className = "", disabled = false }: { className?: string; disabled?: boolean }) {
   return (
     <div className={`language-control${className ? ` ${className}` : ""}`} data-language-control>
       <span className="language-control-label">Language</span>
       <div className="language-options" role="group" aria-label="Language options">
-        <button className="language-option" type="button" data-language-option="en" aria-pressed="true">
+        <button className="language-option" type="button" data-language-option="en" aria-pressed="true" disabled={disabled}>
           English
         </button>
-        <button className="language-option" type="button" data-language-option="th" aria-pressed="false">
+        <button className="language-option" type="button" data-language-option="th" aria-pressed="false" disabled={disabled}>
           ไทย
         </button>
       </div>
@@ -119,17 +123,24 @@ function LanguageControl({ className = "" }: { className?: string }) {
   );
 }
 
-function LegacyScripts({ page, recordId }: { page: LegacyPage; recordId?: string }) {
+function LegacyScripts({ page, recordId, onReady }: { page: LegacyPage; recordId?: string; onReady?: () => void }) {
   useEffect(() => {
+    let cancelled = false;
+    const notifyReady = () => {
+      if (!cancelled) onReady?.();
+    };
     if (page === "login") {
       document.body.classList.add("login-page");
-      loadScripts(loginScripts);
-      return () => document.body.classList.remove("login-page");
+      void loadScripts(loginScripts).then(notifyReady).catch((error: unknown) => console.error(error));
+      return () => {
+        cancelled = true;
+        document.body.classList.remove("login-page");
+      };
     }
 
     document.body.classList.remove("login-page");
     window.__KUQUEST_RECORD_ID__ = recordId;
-    loadScripts(
+    void loadScripts(
       page === "quest"
         ? questScripts
         : page === "dispute"
@@ -139,8 +150,11 @@ function LegacyScripts({ page, recordId }: { page: LegacyPage; recordId?: string
             : page === "user"
               ? userScripts
               : adminScripts,
-    );
-  }, [page, recordId]);
+    ).then(notifyReady).catch((error: unknown) => console.error(error));
+    return () => {
+      cancelled = true;
+    };
+  }, [onReady, page, recordId]);
 
   return null;
 }
@@ -334,6 +348,9 @@ export function LegacyAdminPage({ page, recordId }: { page: Exclude<LegacyPage, 
 }
 
 export function LegacyLoginPage() {
+  const [legacyReady, setLegacyReady] = useState(false);
+  const handleLegacyReady = useCallback(() => setLegacyReady(true), []);
+
   return (
     <>
       <main className="login-shell" aria-labelledby="login-title">
@@ -362,7 +379,7 @@ export function LegacyLoginPage() {
             <p className="login-error" id="email-error" role="alert" hidden />
             <div className="password-label">
               <label htmlFor="admin-password">Password</label>
-              <button type="button" className="text-button" id="toggle-password" aria-controls="admin-password">Show</button>
+              <button type="button" className="text-button" id="toggle-password" aria-controls="admin-password" disabled={!legacyReady}>Show</button>
             </div>
             <input
               id="admin-password"
@@ -374,12 +391,12 @@ export function LegacyLoginPage() {
               required
             />
             <p className="login-error" id="password-error" role="alert" hidden />
-            <button className="btn primary login-submit" type="submit">Sign in</button>
+            <button className="btn primary login-submit" type="submit" disabled={!legacyReady}>Sign in</button>
           </form>
-          <LanguageControl className="login-language" />
+          <LanguageControl className="login-language" disabled={!legacyReady} />
         </section>
       </main>
-      <LegacyScripts page="login" />
+      <LegacyScripts page="login" onReady={handleLegacyReady} />
     </>
   );
 }

@@ -891,16 +891,17 @@ function userNotesSection(user) {
   return `<section class="section user-notes"><div class="section-title"><h3>Admin notes</h3><button type="button" class="link" data-add-admin-note>Add note</button></div>${notes.length ? `<div class="user-notes-list">${notes.map((note) => `<article><div><strong>${escapeActivityText(note.at || "Date not recorded")}</strong><small>${escapeActivityText(note.by || "Admin")}</small></div><p>${escapeActivityText(note.note)}</p></article>`).join("")}</div>` : '<p class="audit-note">No internal notes recorded.</p>'}</section>`;
 }
 function userDrawerActions(user) {
+  const reportButton = '<button class="btn" type="button" data-report-user>Report user</button>';
   if (user.status === "Flag") {
-    return '<button class="btn primary" data-user-status-action="Clear flag">Clear flag</button><button class="btn" data-penalty-user>Apply penalty</button>';
+    return `${reportButton}<button class="btn primary" data-user-status-action="Clear flag">Clear flag</button><button class="btn" data-penalty-user>Apply penalty</button>`;
   }
   if (user.status === "Temp ban") {
-    return '<button class="btn" data-penalty-user data-penalty-mode="modify">Modify ban</button><button class="btn primary" data-user-status-action="Lift ban">Lift ban</button>';
+    return `${reportButton}<button class="btn" data-penalty-user data-penalty-mode="modify">Modify ban</button><button class="btn primary" data-user-status-action="Lift ban">Lift ban</button>`;
   }
   if (user.status === "Perm ban") {
-    return '<button class="btn primary" data-user-status-action="Lift ban">Lift ban</button>';
+    return `${reportButton}<button class="btn primary" data-user-status-action="Lift ban">Lift ban</button>`;
   }
-  return '<button class="btn primary" data-penalty-user>Apply penalty</button>';
+  return `${reportButton}<button class="btn primary" data-penalty-user>Apply penalty</button>`;
 }
 function userReportDetailStatus(report) {
   return badge(reportStatusLabel(report), reportStatusTone(report));
@@ -1019,6 +1020,9 @@ function openDrawer(v, i) {
       openPenaltyDialog(r, { mode: event.currentTarget.dataset.penaltyMode || "apply" }),
     );
   drawer
+    .querySelector("[data-report-user]")
+    ?.addEventListener("click", () => openUserReportDialog(r));
+  drawer
     .querySelectorAll("[data-user-status-action]")
     .forEach((button) =>
       button.addEventListener("click", () =>
@@ -1061,7 +1065,7 @@ function openUserReportDialog(user) {
     .join("");
   const overlay = document.createElement("div");
   overlay.className = "party-chat-overlay";
-  overlay.innerHTML = `<section class="party-chat-modal penalty-modal report-modal" role="dialog" aria-modal="true" aria-label="Report ${user.title}"><div class="chat-modal-head"><div><strong>Report user</strong><small>${user.title} · ${user.id}</small></div><button class="icon close-party-chat" aria-label="Close report form"><span class="close-lines"></span></button></div><form class="report-form"><p class="chat-intro">Record a report submitted by one KuQuest user about another. This report does not apply a penalty automatically.</p><label>Reporting user<select name="reporter" required>${reporterOptions}</select></label><label>Report type<select name="category" required><option>Harassment or abuse</option><option>Fraud or payment issue</option><option>Misleading quest activity</option><option>Other</option></select></label><label>What happened?<textarea name="details" rows="5" minlength="20" maxlength="500" required placeholder="Describe what happened and what evidence supports the report…"></textarea></label><label class="report-file"><span>Evidence file (optional)</span><input type="file" data-report-attachment><small data-report-attachment-name>No file attached</small></label><p class="login-error report-error" role="alert" hidden></p><button class="btn danger" type="submit">Submit report</button></form></section>`;
+  overlay.innerHTML = `<section class="party-chat-modal penalty-modal report-modal" role="dialog" aria-modal="true" aria-label="Report ${user.title}"><div class="chat-modal-head"><div><strong>Report user</strong><small>${user.title} · ${user.id}</small></div><button class="icon close-party-chat" aria-label="Close report form"><span class="close-lines"></span></button></div><form class="report-form"><p class="chat-intro">Record a report submitted by one KuQuest user about another. This report does not apply a penalty automatically.</p><label for="report-reporter">Reporting user<select id="report-reporter" name="reporter" required>${reporterOptions}</select></label><label for="report-category">Report type<select id="report-category" name="category" required><option>Harassment or abuse</option><option>Fraud or payment issue</option><option>Misleading quest activity</option><option>Other</option></select></label><label for="report-details">What happened?<textarea id="report-details" name="details" rows="5" minlength="20" maxlength="500" required placeholder="Describe what happened and what evidence supports the report…"></textarea></label><label class="report-file" for="report-attachment"><span>Evidence file (optional)</span><input id="report-attachment" type="file" data-report-attachment><small data-report-attachment-name>No file attached</small></label><p class="login-error report-error" role="alert" hidden></p><button class="btn danger" type="submit">Submit report</button></form></section>`;
   const close = showModalLayer(overlay, { initialFocus: "select[name=reporter]" });
   overlay.querySelector(".close-party-chat").onclick = close;
   overlay.addEventListener("click", (event) => {

@@ -223,7 +223,7 @@ function userPageRecentReports(user) {
 
 function userPageAdminNotes(user) {
   const notes = Array.isArray(user.adminNotes) ? user.adminNotes : [];
-  return `<section class="user-detail-panel"><div class="user-panel-heading"><h2>Admin Notes</h2><span class="admin-only-label">Admin only</span></div>${notes.length ? `<div class="user-admin-notes">${notes.slice(0, 2).map((note) => `<article><strong>${userPageDate(note.at)}</strong><small>${userPageEscape(note.by || "Admin")}</small><p>${userPageEscape(note.note)}</p></article>`).join("")}</div>` : '<p class="audit-note">No internal notes recorded.</p>'}<textarea data-user-note-input rows="3" maxlength="500" placeholder="Add an internal note about this user…"></textarea><button class="btn" type="button" data-save-user-note>Save note</button></section>`;
+  return `<section class="user-detail-panel"><div class="user-panel-heading"><h2>Admin Notes</h2><span class="admin-only-label">Admin only</span></div>${notes.length ? `<div class="user-admin-notes">${notes.slice(0, 2).map((note) => `<article><strong>${userPageDate(note.at)}</strong><small>${userPageEscape(note.by || "Admin")}</small><p>${userPageEscape(note.note)}</p></article>`).join("")}</div>` : '<p class="audit-note">No internal notes recorded.</p>'}<label class="user-note-label" for="user-note-input">Internal note</label><textarea id="user-note-input" data-user-note-input rows="3" maxlength="500" placeholder="Add an internal note about this user…"></textarea><button class="btn" type="button" data-save-user-note>Save note</button></section>`;
 }
 
 function userPageAccountActions(user) {
