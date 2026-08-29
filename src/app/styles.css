@@ -29,6 +29,8 @@
   --warn-soft: #fff3dc;
   --success: #176b43;
   --success-soft: #e8f5ee;
+  --quest-open: #166534;
+  --quest-open-soft: #dcfce7;
   --quest-assigned: #0f766e;
   --quest-assigned-soft: #e6fffb;
   --info: #205f88;
@@ -37,8 +39,16 @@
   --quest-progress-soft: #eff6ff;
   --quest-submitted: #6941c6;
   --quest-submitted-soft: #f2edff;
+  --quest-change-pending: #a16207;
+  --quest-change-pending-soft: #fef3c7;
+  --quest-approved: #047857;
+  --quest-approved-soft: #d1fae5;
   --quest-completed: #0e7490;
   --quest-completed-soft: #e6f7fb;
+  --quest-hidden: #475569;
+  --quest-hidden-soft: #f1f5f9;
+  --quest-draft: #6b21a8;
+  --quest-draft-soft: #f3e8ff;
   --quest-cancelled: #8f2d56;
   --quest-cancelled-soft: #faeaf0;
   --shadow-low: 0 1px 2px #1f21231f;
@@ -931,8 +941,8 @@ main {
   background: var(--neutral-soft);
 }
 .badge.quest-status-open {
-  color: var(--success);
-  background: var(--success-soft);
+  color: var(--quest-open);
+  background: var(--quest-open-soft);
 }
 .badge.quest-status-assigned {
   color: var(--quest-assigned);
@@ -947,8 +957,12 @@ main {
   background: var(--quest-submitted-soft);
 }
 .badge.quest-status-change-pending {
-  color: var(--warn);
-  background: var(--warn-soft);
+  color: var(--quest-change-pending);
+  background: var(--quest-change-pending-soft);
+}
+.badge.quest-status-approved {
+  color: var(--quest-approved);
+  background: var(--quest-approved-soft);
 }
 .badge.quest-status-disputed {
   color: var(--danger);
@@ -959,12 +973,12 @@ main {
   background: var(--quest-completed-soft);
 }
 .badge.quest-status-hidden {
-  color: var(--neutral);
-  background: var(--neutral-soft);
+  color: var(--quest-hidden);
+  background: var(--quest-hidden-soft);
 }
 .badge.quest-status-draft {
-  color: var(--neutral);
-  background: var(--neutral-soft);
+  color: var(--quest-draft);
+  background: var(--quest-draft-soft);
 }
 .badge.quest-status-cancelled {
   color: var(--quest-cancelled);

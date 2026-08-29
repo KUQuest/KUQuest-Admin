@@ -140,12 +140,6 @@ function bindResolutionControls(root, record) {
     giverName = caseData.openedBy.split(" · ")[0],
     hunterName = caseData.respondent.split(" · ")[0],
     resolve = root.querySelector(".resolve-case, [data-dispute-action]");
-  const allocation = root.querySelector(".allocation");
-  if (allocation && !allocation.querySelector('[data-allocation="rework"]'))
-    allocation.insertAdjacentHTML(
-      "beforeend",
-      '<button data-allocation="rework"><span>Require rework</span><strong>Keep funds held</strong></button>',
-    );
   root.querySelector('[data-allocation="hirer"] span').textContent =
     `Hirer wins · ${giverName}`;
   root.querySelector('[data-allocation="worker"] span').textContent =
@@ -167,8 +161,6 @@ function bindResolutionControls(root, record) {
       detail = `Confirm decision for ${record.id}: Hirer wins · ${giverName}; refund ฿${fmt(record.amount)} to the giver.`;
     if (selected === "worker")
       detail = `Confirm decision for ${record.id}: Worker wins · ${hunterName}; release ฿${fmt(record.amount)} to the hunter.`;
-    if (selected === "rework")
-      detail = `Confirm decision for ${record.id}: require rework; keep ฿${fmt(record.amount)} held until revised proof is accepted.`;
     confirmAction("Confirm dispute resolution", record, detail, (reason) => {
       record.status = "Closed";
       record.tone = "neutral";
@@ -179,9 +171,6 @@ function bindResolutionControls(root, record) {
         if (selected === "hirer") {
           quest.status = "Cancelled";
           quest.tone = "neutral";
-        } else if (selected === "rework") {
-          quest.status = "Rework";
-          quest.tone = "warning";
         } else {
           quest.status = "Completed";
           quest.tone = "success";

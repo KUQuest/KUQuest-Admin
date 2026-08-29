@@ -15,10 +15,10 @@ type LegacyScriptPlan = {
 
 const adminFoundationScripts = [
   "/legacy/auth.js?v=1",
-  "/legacy/language.js?v=2",
-  "/legacy/script.js?v=89",
-  "/legacy/fresh-mock-data.js?v=46-large-refresh",
-  "/legacy/resource-controls.js?v=46",
+  "/legacy/language.js?v=4",
+  "/legacy/script.js?v=93",
+  "/legacy/fresh-mock-data.js?v=48-remove-rework",
+  "/legacy/resource-controls.js?v=48",
   "/legacy/theme.js?v=1",
 ];
 
@@ -33,8 +33,8 @@ const adminScripts: LegacyScriptPlan = {
 const questScripts: LegacyScriptPlan = {
   sequential: [
     ...adminFoundationScripts,
-    "/legacy/quest-detail.js?v=39",
-    "/legacy/quest-page.js?v=27",
+    "/legacy/quest-detail.js?v=41",
+    "/legacy/quest-page.js?v=29",
     "/legacy/quest-change-review.js?v=10",
   ],
   parallel: ["/legacy/functional-controls.js?v=5"],
@@ -43,7 +43,7 @@ const questScripts: LegacyScriptPlan = {
 const disputeScripts: LegacyScriptPlan = {
   sequential: [
     ...adminFoundationScripts,
-    "/legacy/dispute-detail.js?v=33",
+    "/legacy/dispute-detail.js?v=34",
     "/legacy/dispute-page.js?v=14",
   ],
   parallel: ["/legacy/functional-controls.js?v=5"],
@@ -60,7 +60,7 @@ const userScripts: LegacyScriptPlan = {
 };
 
 const loginScripts: LegacyScriptPlan = {
-  sequential: ["/legacy/language.js?v=2", "/legacy/login.js?v=1"],
+  sequential: ["/legacy/language.js?v=5", "/legacy/login.js?v=1"],
   parallel: [],
 };
 const legacyScriptLoads = new Map<string, Promise<void>>();

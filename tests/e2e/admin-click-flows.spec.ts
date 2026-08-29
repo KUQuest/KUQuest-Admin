@@ -216,6 +216,63 @@ test.describe("admin click flows", () => {
     await expect(pageIndicator).toHaveText(/Page 2 of/);
   });
 
+  test("quest status and team or solo filters can be combined", async ({
+    page,
+  }) => {
+    await signIn(page);
+    await page.getByRole("button", { name: /^Quests/ }).click();
+
+    const approvedTab = page.getByRole("button", {
+      name: "Approved",
+      exact: true,
+    });
+    const completedTab = page.getByRole("button", {
+      name: "Completed",
+      exact: true,
+    });
+    const teamTab = page.getByRole("button", { name: "Team", exact: true });
+    const soloTab = page.getByRole("button", { name: "Solo", exact: true });
+    await expect(approvedTab).toBeVisible();
+    await expect(soloTab).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Rework", exact: true }),
+    ).toHaveCount(0);
+
+    await approvedTab.click();
+    await expect(page.locator(".data tbody")).toContainText("Approved");
+    await approvedTab.click();
+    await completedTab.click();
+    await teamTab.click();
+    await expect(approvedTab).toHaveAttribute("aria-pressed", "false");
+    await expect(teamTab).toHaveAttribute("aria-pressed", "true");
+    await expect(completedTab).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator(".data tbody")).toContainText("Completed");
+    await expect(page.locator(".data tbody")).toContainText("Team quest");
+
+    await soloTab.click();
+    await expect(approvedTab).toHaveAttribute("aria-pressed", "false");
+    await expect(teamTab).toHaveAttribute("aria-pressed", "false");
+    await expect(soloTab).toHaveAttribute("aria-pressed", "true");
+    await expect(completedTab).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator(".data tbody")).toContainText("Completed");
+    await expect(page.locator(".data tbody")).not.toContainText("Team quest");
+  });
+
+  test("dispute resolution does not offer rework", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/disputes/DSP-5201");
+
+    await expect(
+      page.getByRole("button", { name: /Require rework/, exact: false }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: /Hirer wins/, exact: false }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Worker wins/, exact: false }),
+    ).toBeVisible();
+  });
+
   test("admin can review a payout approval and cancel safely", async ({
     page,
   }) => {
@@ -330,6 +387,44 @@ test.describe("admin click flows", () => {
 
     await expect(page).toHaveURL(/\/quests\/QST-12001$/);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  });
+
+  test("admin can approve an open quest and preserve its approved state", async ({
+    page,
+  }) => {
+    await signIn(page);
+    await page.getByRole("button", { name: /^Quests/ }).click();
+
+    await page.getByRole("button", {
+      name: "Open quest QST-12001",
+      exact: true,
+    }).click();
+    await page
+      .getByRole("dialog", { name: /Record details/ })
+      .getByRole("link", { name: "Full quest detail" })
+      .click();
+
+    const approveButton = page.getByRole("button", {
+      name: "Approve quest",
+      exact: true,
+    });
+    await expect(approveButton).toBeVisible();
+    await approveButton.click();
+
+    const confirmation = page.getByRole("dialog", { name: "Approve quest" });
+    await confirmation
+      .getByLabel("Reason for this decision")
+      .fill("Quest scope and funding were verified.");
+    await confirmation
+      .getByRole("button", { name: "Approve quest", exact: true })
+      .click();
+
+    await expect(page.locator(".record-status-bar")).toContainText("Approved");
+    await expect(
+      page.getByRole("button", { name: "Approve quest", exact: true }),
+    ).toHaveCount(0);
+    await page.reload();
+    await expect(page.locator(".record-status-bar")).toContainText("Approved");
   });
 
   test("user quest history links to the complete quest record", async ({

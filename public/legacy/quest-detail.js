@@ -21,7 +21,7 @@ data.quests
   });
 
 function submissionFilesFor(record) {
-  if (!["Submitted", "Disputed", "Completed", "Rework"].includes(record.status))
+  if (!["Submitted", "Disputed", "Completed"].includes(record.status))
     return [];
   return [`Completed work package · ZIP · submitted ${record.age.toLowerCase()}`];
 }
@@ -109,9 +109,9 @@ function questHasStarted(record) {
     "Change pending",
     "In progress",
     "Submitted",
+    "Approved",
     "Completed",
     "Disputed",
-    "Rework",
   ].includes(record.status);
 }
 
@@ -287,15 +287,6 @@ function openQuestDrawer(index) {
   if (defaultFinancialNote)
     defaultFinancialNote.textContent =
       "Funds remain held until submitted proof is accepted or a dispute is resolved.";
-  if (record.status === "Rework") {
-    const financialSection = [...drawer.querySelectorAll(".section")].find(
-      (section) => section.querySelector("h3")?.textContent === "Financial record",
-    );
-    const financialNote = financialSection?.querySelector(".audit-note");
-    if (financialNote)
-      financialNote.textContent =
-        "Funds remain held until the revised proof is accepted or another dispute is opened.";
-  }
   drawer
     .querySelectorAll("[data-action]")
     .forEach(

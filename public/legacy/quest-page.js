@@ -35,6 +35,9 @@ function renderQuestPage() {
   const canTerminate = !["Completed", "Cancelled", "Hidden", "Disputed"].includes(
     questRecord.status,
   );
+  const canApprove = ["Open", "Assigned", "In progress", "Submitted"].includes(
+    questRecord.status,
+  );
   if (canTerminate) {
     const terminateButton = document.createElement("button");
     terminateButton.className = "btn danger";
@@ -60,24 +63,10 @@ function renderQuestPage() {
       "This quest was cancelled by an administrator.";
     main.querySelector(".record-status-bar")?.before(terminationNote);
   }
-  if (questRecord.status === "Rework") {
-    const financialPanel = [...main.querySelectorAll(".record-panel")].find(
-      (panel) => panel.querySelector("h2")?.textContent === "Financial record",
-    );
-    const financialNote = financialPanel?.querySelector(".audit-note");
-    if (financialNote)
-      financialNote.textContent =
-        "Funds remain held until the revised proof is accepted or another dispute is opened.";
-  }
   if (relatedDispute?.status === "Closed") {
     main.querySelector(".dispute-summary")?.classList.remove("has-dispute");
   }
-  if (questRecord.status === "Change pending") {
-    const approveButton = main.querySelector(
-      '[data-page-action="Approve quest"]',
-    );
-    approveButton?.remove();
-  } else if (!isBlocked) {
+  if (!isBlocked && !canApprove) {
     main.querySelector('[data-page-action="Approve quest"]')?.remove();
   }
   if (isBlocked) {
@@ -119,6 +108,19 @@ function renderQuestPage() {
               (reason) => {
                 applyDemoAction(action, questRecord);
                 questRecord.terminationReason = reason;
+                persistAdminData();
+                renderQuestPage();
+              },
+            );
+            return;
+          }
+          if (action === "Approve quest") {
+            confirmAction(
+              action,
+              questRecord,
+              "This will approve the quest and add the decision to the permanent admin audit trail.",
+              () => {
+                applyDemoAction(action, questRecord);
                 persistAdminData();
                 renderQuestPage();
               },

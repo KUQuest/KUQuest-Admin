@@ -42,7 +42,7 @@ const resourceColumns = {
 const resourceTabs = {
   disputes: ["All", "Active", "Closed"],
   payouts: ["All", "Needs approval", "Processing", "Completed", "Rejected"],
-  quests: ["All", "Team", "Draft", "Open", "Assigned", "In progress", "Submitted", "Change pending", "Rework", "Disputed", "Completed", "Cancelled", "Hidden"],
+  quests: ["All", "Team", "Solo", "Draft", "Open", "Assigned", "In progress", "Submitted", "Change pending", "Approved", "Disputed", "Completed", "Cancelled", "Hidden"],
   users: ["All", "Normal", "Flag", "Temp ban", "Perm ban"],
   reports: ["All", "Active", "Closed"],
 };
@@ -53,6 +53,7 @@ const pageSizeOptions = [
   ["all", "Show all"],
 ];
 state.filters = {};
+state.questFilters = { mode: "all", status: "all" };
 state.orderBy = {
   disputes: null,
   quests: null,
@@ -72,6 +73,7 @@ state.visibleColumns = Object.fromEntries(
 
 function resetResourceState() {
   state.filters = {};
+  state.questFilters = { mode: "all", status: "all" };
   state.orderBy = Object.fromEntries(
     Object.keys(resourceColumns).map((view) => [view, null]),
   );
@@ -84,7 +86,8 @@ function resetResourceState() {
 
 function matchingRows(view) {
   const query = state.query.trim().toLowerCase(),
-    statuses = state.filters[view] || [];
+    statuses = state.filters[view] || [],
+    questFilters = state.questFilters || { mode: "all", status: "all" };
   const rows = data[view].filter((record) => {
     const searchable = [
       record.id,
@@ -105,10 +108,14 @@ function matchingRows(view) {
       .join(" ")
       .toLowerCase();
     const matchesTab =
-      state.tab === "all" ||
-      (view === "quests" && state.tab === "team"
-        ? Boolean(record.teamQuest)
-        : record.status.toLowerCase().includes(state.tab));
+      view === "quests"
+        ? (questFilters.mode === "all" ||
+            (questFilters.mode === "team"
+              ? Boolean(record.teamQuest)
+              : !record.teamQuest)) &&
+          (questFilters.status === "all" ||
+            record.status === questFilters.status)
+        : state.tab === "all" || record.status.toLowerCase().includes(state.tab);
     return (
       (!query || searchable.includes(query)) &&
       matchesTab &&
@@ -241,6 +248,22 @@ function paginationControls(view, pagination) {
   return `<div class="table-pagination" aria-label="${view} pagination"><button class="page-nav" type="button" data-page-number="${pagination.page - 1}"${pagination.page === 1 ? " disabled" : ""}>Previous</button><span class="page-indicator">Page ${pagination.page} of ${pagination.pageCount}</span><button class="page-nav" type="button" data-page-number="${pagination.page + 1}"${pagination.page === pagination.pageCount ? " disabled" : ""}>Next</button></div>`;
 }
 
+function questFilterKind(tab) {
+  const normalized = tab.toLowerCase();
+  if (normalized === "all") return "all";
+  if (["team", "solo"].includes(normalized)) return "mode";
+  return "status";
+}
+
+function resourceTabIsActive(view, tab) {
+  const normalized = tab.toLowerCase();
+  if (view !== "quests") return state.tab === normalized;
+  const filters = state.questFilters || { mode: "all", status: "all" };
+  if (normalized === "all") return filters.mode === "all" && filters.status === "all";
+  if (["team", "solo"].includes(normalized)) return filters.mode === normalized;
+  return filters.status === tab;
+}
+
 renderResource = function (view) {
   if (view === "policies") return renderPolicies();
   if (view === "activity") return renderActivity();
@@ -249,6 +272,16 @@ renderResource = function (view) {
     tabs = resourceTabs[view],
     hasQuery = Boolean(state.query);
   main.innerHTML = `${pageHead(...heads[view])}<section class="panel resource"><div class="tabs" aria-label="Filter ${view} records">${tabs.map((tab) => `<button class="tab ${state.tab === tab.toLowerCase() ? "active" : ""}" data-tab="${tab.toLowerCase()}" aria-pressed="${state.tab === tab.toLowerCase()}">${escapeActivityText(tab)}${tab === "All" ? ` (${data[view].length})` : ""}</button>`).join("")}</div><div class="toolbar resource-toolbar"><div class="inline-search search-field">${ico("search")}<input id="resource-search" value="${escapeActivityText(state.query)}" placeholder="Search ${view}…" aria-label="Search ${view}" autocomplete="off">${hasQuery ? '<button class="clear-search" aria-label="Clear search"><span class="close-lines"></span></button>' : ""}</div><span class="sort-help">Click a column to sort</span>${pageSizeControls(view)}<span class="count" aria-live="polite">${resultCount(view, pagination)}</span></div>${rows.length ? `${controlledTable(view, pagination.rows)}${paginationControls(view, pagination)}` : `<div class="empty"><h3>No matching records</h3><p>${hasQuery ? "Clear your search to see more results." : "There are no records in this view."}</p><button class="btn reset-results">Reset view</button></div>`}</section>`;
+  main.querySelectorAll("[data-tab]").forEach((button) => {
+    const tab = button.textContent.trim().replace(/\s+\(\d+\)$/, ""),
+      kind = view === "quests" ? questFilterKind(tab) : "status",
+      active = resourceTabIsActive(view, tab);
+    button.type = "button";
+    button.dataset.filterKind = kind;
+    if (kind === "status") button.dataset.filterValue = tab;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
   bind();
 };
 
@@ -330,6 +363,7 @@ bind = function () {
   document.querySelector(".reset-results")?.addEventListener("click", () => {
     state.query = "";
     state.tab = "all";
+    state.questFilters = { mode: "all", status: "all" };
     resetPagination(state.view);
     renderResource(state.view);
   });

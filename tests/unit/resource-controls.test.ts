@@ -11,6 +11,7 @@ type TestState = {
   view: string;
   tab: string;
   query: string;
+  questFilters: { mode: string; status: string };
   filters: Partial<Record<ResourceView, string[]>>;
   orderBy: Record<ResourceView, string | null>;
   pagination: Record<ResourceView, { page: number; size: number | "all" }>;
@@ -34,6 +35,7 @@ function loadControls(records: Partial<Record<ResourceView, ResourceRecord[]>>) 
     view: "home",
     tab: "all",
     query: "",
+    questFilters: { mode: "all", status: "all" },
     filters: {},
     orderBy: {} as Record<ResourceView, string | null>,
     pagination: {} as Record<ResourceView, { page: number; size: number | "all" }>,
@@ -41,7 +43,7 @@ function loadControls(records: Partial<Record<ResourceView, ResourceRecord[]>>) 
   const pageSizeButtons = ["10", "25", "50", "all"].map((size) => testNode({ pageSize: size })),
     sortButton = testNode({ sortKey: "title" }),
     pageNavButtons = [testNode({ pageNumber: "0" }), testNode({ pageNumber: "2" })],
-    main = { innerHTML: "" };
+    main = { innerHTML: "", querySelectorAll: () => [] };
   const context = {
     state,
     data: {
@@ -217,10 +219,38 @@ describe("resource table sorting", () => {
     expect(controls.main.innerHTML).not.toContain("table-pagination");
   });
 
+  it("combines quest status and team or solo filters", () => {
+    const controls = loadControls({
+      quests: [
+        { ...quest("QST-team-approved", 10), status: "Approved", teamQuest: true },
+        { ...quest("QST-solo-approved", 20), status: "Approved", teamQuest: false },
+        { ...quest("QST-team-open", 30), teamQuest: true },
+        { ...quest("QST-solo-open", 40), teamQuest: false },
+      ],
+    });
+    controls.state.view = "quests";
+    controls.state.questFilters = { mode: "team", status: "Approved" };
+
+    expect(controls.matchingRows("quests").map((record) => record.id)).toEqual([
+      "QST-team-approved",
+    ]);
+
+    controls.state.questFilters = { mode: "solo", status: "Approved" };
+    expect(controls.matchingRows("quests").map((record) => record.id)).toEqual([
+      "QST-solo-approved",
+    ]);
+
+    controls.renderResource("quests");
+    expect(controls.main.innerHTML).toContain(">Approved<");
+    expect(controls.main.innerHTML).toContain(">Solo<");
+    expect(controls.main.innerHTML).not.toContain('data-tab="rework"');
+  });
+
   it("resets resource navigation state to the default values", () => {
     const controls = loadControls({});
     controls.state.tab = "flag";
     controls.state.query = "search term";
+    controls.state.questFilters = { mode: "team", status: "Approved" };
     controls.state.filters.users = ["Flag"];
     controls.state.orderBy.users = "status-desc";
     controls.state.pagination.users = { page: 4, size: "all" };
@@ -229,6 +259,7 @@ describe("resource table sorting", () => {
 
     expect(controls.state.tab).toBe("all");
     expect(controls.state.query).toBe("");
+    expect(controls.state.questFilters).toEqual({ mode: "all", status: "all" });
     expect(controls.state.filters).toEqual({});
     expect(controls.state.orderBy.users).toBeNull();
     expect(controls.state.pagination.users).toEqual({ page: 1, size: 10 });

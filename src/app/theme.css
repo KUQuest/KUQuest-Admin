@@ -54,6 +54,8 @@ html[data-theme="dark"] {
   --warn-soft: #3c301d;
   --success: #72d6a4;
   --success-soft: #1b3b2d;
+  --quest-open: #86efac;
+  --quest-open-soft: #173b2a;
   --quest-assigned: #63d5cb;
   --quest-assigned-soft: #183b39;
   --info: #8bcaf1;
@@ -62,8 +64,16 @@ html[data-theme="dark"] {
   --quest-progress-soft: #202f4e;
   --quest-submitted: #c9adff;
   --quest-submitted-soft: #302348;
+  --quest-change-pending: #f6c66b;
+  --quest-change-pending-soft: #3c301d;
+  --quest-approved: #6ee7b7;
+  --quest-approved-soft: #163a2c;
   --quest-completed: #6bd1e2;
   --quest-completed-soft: #183b43;
+  --quest-hidden: #cbd5e1;
+  --quest-hidden-soft: #303b42;
+  --quest-draft: #d8b4fe;
+  --quest-draft-soft: #352043;
   --quest-cancelled: #f2a1bd;
   --quest-cancelled-soft: #452936;
   --shadow-low: 0 1px 2px #00000066;

@@ -55,7 +55,7 @@ const requestedView = new URLSearchParams(location.search).get("view"),
   ].includes(requestedView)
     ? requestedView
     : "home",
-  state = { view: initialView, tab: "all", query: "" },
+  state = { view: initialView, tab: "all", query: "", questFilters: { mode: "all", status: "all" } },
   main = document.querySelector("main"),
   fmt = (n) => new Intl.NumberFormat("en-US").format(n),
   questStatusClass = (status) => {
@@ -69,6 +69,7 @@ const requestedView = new URLSearchParams(location.search).get("view"),
       "in-progress",
       "submitted",
       "change-pending",
+      "approved",
       "disputed",
       "completed",
       "hidden",
@@ -189,7 +190,7 @@ function renderHome() {
       ...openReports,
       ...pendingPayouts,
     ],
-    statusCounts = ["Draft", "Open", "Assigned", "In progress", "Submitted", "Change pending", "Rework", "Disputed", "Completed", "Cancelled"].map((status) => [status, data.quests.filter((record) => record.status === status).length]);
+    statusCounts = ["Draft", "Open", "Assigned", "In progress", "Submitted", "Change pending", "Approved", "Disputed", "Completed", "Cancelled"].map((status) => [status, data.quests.filter((record) => record.status === status).length]);
   main.innerHTML = `${pageHead("Overview", "A live snapshot of marketplace risk, money, and work in progress.", '<button class="btn primary" data-jump="disputes">Open review queue</button>')}<section class="dashboard-stats"><div class="stat"><span>Total work left</span><strong>${workLeft.length}</strong><small>Items requiring admin action</small></div></section><div class="grid dashboard-grid"><section class="panel"><div class="panel-head"><div><h2>Needs a decision</h2><p>Showing ${decisions.length} latest dispute/report records</p></div><button class="link" data-jump="activity">View activity</button></div>${decisions.length ? decisions.map((item) => attention(item.view, data[item.view].indexOf(item.record), item.record.tone, item.icon, item.title, item.detail, item.metric, item.age || item.record.age)).join("") : '<div class="empty"><h3>No decisions waiting</h3><p>All current records are clear or processing normally.</p></div>'}</section><aside><section class="panel"><div class="panel-head"><div><h2>Quest flow</h2><p>Current marketplace distribution</p></div><button class="link" data-jump="quests">Open quests</button></div><div class="dashboard-status-list">${statusCounts.map(([status, count]) => `<div><span>${badge(status, status === "Disputed" ? "danger" : ["Submitted", "Change pending"].includes(status) ? "warning" : status === "In progress" ? "info" : "success")}</span><strong>${count}</strong></div>`).join("")}</div></section><section class="panel dashboard-activity"><div class="panel-head"><div><h2>Recent activity</h2><p>Latest administrative trail</p></div></div>${activityList().slice(0, 3).join("")}</section></aside></div><div class="dashboard-lower"><section class="panel"><div class="panel-head"><div><h2>Payout watch</h2><p>Money movement requiring a closer look</p></div><button class="link" data-jump="payouts">Open payouts</button></div>${pendingPayouts.slice(0, 3).map((record) => `<button class="dashboard-row" data-open="payouts:${data.payouts.indexOf(record)}"><span><strong>${record.id}</strong><small>${record.title} · ${record.status}</small></span><strong>฿${fmt(record.amount)}</strong><span>${badge(record.status, record.tone)}</span></button>`).join("") || '<div class="empty"><h3>No payouts need review</h3><p>Processing and completed payouts are moving normally.</p></div>'}</section><section class="panel"><div class="panel-head"><div><h2>User watch</h2><p>Accounts that may need a moderator</p></div><button class="link" data-jump="users">Open users</button></div>${reviewUsers.slice(0, 3).map((record) => `<button class="dashboard-row" data-open="users:${data.users.indexOf(record)}"><span><strong>${record.title}</strong><small>${record.id} · ${record.age}</small></span><span>${badge(record.status, record.tone)}</span></button>`).join("") || '<div class="empty"><h3>No user reviews</h3><p>All accounts are currently in good standing.</p></div>'}</section></div>`;
   main.querySelector(".page-head > div > p")?.remove();
   const dashboardStats = main.querySelector(".dashboard-stats");
@@ -461,7 +462,7 @@ function renderResource(v) {
         : v === "payouts"
           ? ["All", "Needs approval", "Processing", "Completed", "Rejected"]
           : v === "quests"
-            ? ["All", "Draft", "Open", "Assigned", "In progress", "Submitted", "Change pending", "Rework", "Disputed", "Completed", "Cancelled", "Hidden"]
+            ? ["All", "Draft", "Open", "Assigned", "In progress", "Submitted", "Change pending", "Approved", "Disputed", "Completed", "Cancelled", "Hidden"]
             : v === "reports"
               ? ["All", "Active", "Closed"]
               : ["All", "Normal", "Flag", "Temp ban", "Perm ban"];
@@ -553,7 +554,21 @@ function bind() {
   document.querySelectorAll("[data-tab]").forEach(
     (b) =>
       (b.onclick = () => {
-        state.tab = b.dataset.tab;
+        if (state.view === "quests" && b.dataset.filterKind) {
+          const filters = state.questFilters || (state.questFilters = { mode: "all", status: "all" });
+          if (b.dataset.filterKind === "mode") {
+            filters.mode = filters.mode === b.dataset.tab ? "all" : b.dataset.tab;
+          } else if (b.dataset.filterKind === "status") {
+            const status = b.dataset.filterValue || b.dataset.tab;
+            filters.status = filters.status === status ? "all" : status;
+          } else {
+            filters.mode = "all";
+            filters.status = "all";
+          }
+          state.tab = "all";
+        } else {
+          state.tab = b.dataset.tab;
+        }
         if (state.pagination?.[state.view]) state.pagination[state.view].page = 1;
         render();
       }),
@@ -574,6 +589,7 @@ function navigate(v) {
   else {
     state.tab = "all";
     state.query = "";
+    state.questFilters = { mode: "all", status: "all" };
   }
   if (/^\/(quests|disputes|reports)\//.test(location.pathname)) {
     location.assign(nextUrl);
@@ -1321,6 +1337,7 @@ function applyDemoAction(action, record) {
     "Set normal": ["Normal", "success"],
     "Lift penalty": ["Normal", "success"],
     "Hide quest": ["Hidden", "neutral"],
+    "Approve quest": ["Approved", "success"],
     "Reject payout": ["Rejected", "danger"],
     "Approve payout": ["Processing", "info"],
     "Close report": ["Closed", "neutral"],

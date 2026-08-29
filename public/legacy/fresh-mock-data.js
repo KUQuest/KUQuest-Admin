@@ -1,6 +1,6 @@
 // Deterministic high-volume demo data. Versioning resets browser-local records
 // whenever the synthetic marketplace scenario changes.
-const freshDemoVersion = "2026-08-28-v46-large-refresh";
+const freshDemoVersion = "2026-08-29-v48-remove-rework";
 const freshDemoKey = "kuquest-admin-demo-data";
 const seedBaseDate = new Date("2026-08-28T08:00:00Z");
 
@@ -58,8 +58,8 @@ const accountStatuses = [
 const adminNames = ["Nicha P.", "Pimchanok R.", "Worawut K."];
 
 function statusTone(status) {
-  if (["Normal", "Completed"].includes(status)) return "success";
-  if (["Flag", "Submitted", "Change pending", "Rework", "Needs approval"].includes(status)) return "warning";
+  if (["Normal", "Completed", "Approved"].includes(status)) return "success";
+  if (["Flag", "Submitted", "Change pending", "Needs approval"].includes(status)) return "warning";
   if (["Open"].includes(status)) return "success";
   if (["In progress", "Processing"].includes(status)) return "info";
   if (["Assigned"].includes(status)) return "assigned";
@@ -179,7 +179,7 @@ const questTags = [
   "Research", "Field work", "Writing", "Design", "Data", "Operations", "Accessibility research", "Translation", "Photography", "Video",
 ];
 const questStatuses = [
-  "Open", "Assigned", "In progress", "Submitted", "Change pending", "Rework", "Completed", "Completed", "Cancelled", "Hidden", "Disputed", "Draft",
+  "Open", "Assigned", "In progress", "Submitted", "Change pending", "Completed", "Completed", "Cancelled", "Hidden", "Disputed", "Draft", "Approved",
 ];
 const campusLocations = [
   "Kasetsart University, Bangkhen", "Central Library", "Student Activity Centre", "Faculty of Engineering", "Chalermphrakiat Building",
@@ -244,7 +244,7 @@ function createQuest(index) {
       { name: `${title} brief`, detail: `PDF · ${3 + (index % 8)} pages · added by ${hirer.title}` },
       { name: `${tag} reference notes`, detail: `XLSX · ${12 + (index % 40)} KB · added with quest` },
     ],
-    ...( ["Submitted", "Rework", "Completed", "Disputed"].includes(status) ? {
+    ...( ["Submitted", "Completed", "Disputed"].includes(status) ? {
       proof: [`${title} delivery package · PDF · submitted ${relativeAge(Math.max(1, createdDaysAgo - 2)).toLowerCase()}`],
     } : { proof: [] }),
     candidateMode: status === "Draft" ? "Not published" : status === "Open" ? "FCFS" : "CANDIDATE",
