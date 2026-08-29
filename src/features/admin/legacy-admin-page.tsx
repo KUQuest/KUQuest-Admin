@@ -15,7 +15,7 @@ type LegacyScriptPlan = {
 
 const adminFoundationScripts = [
   "/legacy/auth.js?v=1",
-  "/legacy/language.js?v=2",
+  "/legacy/language.js?v=4",
   "/legacy/script.js?v=89",
   "/legacy/fresh-mock-data.js?v=46-large-refresh",
   "/legacy/resource-controls.js?v=46",
@@ -60,7 +60,7 @@ const userScripts: LegacyScriptPlan = {
 };
 
 const loginScripts: LegacyScriptPlan = {
-  sequential: ["/legacy/language.js?v=2", "/legacy/login.js?v=1"],
+  sequential: ["/legacy/language.js?v=4", "/legacy/login.js?v=1"],
   parallel: [],
 };
 const legacyScriptLoads = new Map<string, Promise<void>>();
