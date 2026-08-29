@@ -190,7 +190,7 @@ function proofEmptyState(record) {
 }
 
 function proofSubmissionsPanel(files, record) {
-  return `<section class="record-panel"><div class="record-panel-head"><div><h2>Proof submissions</h2><p>Files uploaded by the selected ${record.teamQuest ? "participants" : "participant"}.</p></div>${files.length ? '<button class="link">Download all</button>' : ""}</div>${files.length ? fileRows(files) : `<div class="submission-empty"><strong>No submission yet</strong><p>${proofEmptyState(record)}</p></div>`}</section>`;
+  return `<section class="record-panel"><div class="record-panel-head"><div><h2>Proof submissions</h2><p>Files uploaded by the selected ${record.teamQuest ? "participants" : "participant"}.</p></div>${files.length ? '<button class="link" data-functional-action="download-all">Download all</button>' : ""}</div>${files.length ? fileRows(files) : `<div class="submission-empty"><strong>No submission yet</strong><p>${proofEmptyState(record)}</p></div>`}</section>`;
 }
 
 function proofSubmissionsSection(files, record) {

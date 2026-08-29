@@ -63,6 +63,24 @@ test.describe("admin click flows", () => {
     ).toBeVisible();
   });
 
+  test("admin can export a quest log after switching to Thai", async ({ page }) => {
+    await signIn(page);
+    await page.getByRole("button", { name: /^Quests/ }).click();
+    await page.getByRole("button", { name: "Open quest QST-12001", exact: true }).click();
+    await page.getByRole("link", { name: "Full quest detail" }).click();
+    await page.waitForFunction(() =>
+      Boolean((window as unknown as { __KUQUEST_LANGUAGE__?: unknown }).__KUQUEST_LANGUAGE__),
+    );
+
+    await page.getByRole("button", { name: "ไทย", exact: true }).click();
+    await expect(page.locator("html")).toHaveAttribute("lang", "th");
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("button", { name: "ส่งออกบันทึก", exact: true }).click(),
+    ]);
+    expect(download.suggestedFilename()).toBe("kuquest-admin-export.csv");
+  });
+
   test("admin can switch the interface between English and Thai", async ({
     page,
   }) => {
@@ -221,6 +239,44 @@ test.describe("admin click flows", () => {
     await confirmation.getByRole("button", { name: "Cancel" }).click();
     await expect(confirmation).toHaveCount(0);
     await expect(drawer).toContainText("Needs approval");
+  });
+
+  test("admin must enter a reason before approving a payout", async ({
+    page,
+  }) => {
+    await signIn(page);
+    await page.getByRole("button", { name: /^Payouts/ }).click();
+
+    const payout = page.getByRole("button", {
+      name: "Open payout PAY-9637",
+      exact: true,
+    });
+    await expect(payout).toBeVisible();
+    await payout.click();
+
+    const drawer = page.getByRole("dialog", { name: /Record details/ });
+    await drawer.getByRole("button", { name: "Approve payout" }).click();
+
+    const confirmation = page.getByRole("dialog", { name: "Approve payout" });
+    const reason = confirmation.getByLabel("Reason for this decision");
+    const confirmButton = confirmation.getByRole("button", {
+      name: "Approve payout",
+    });
+    await expect(reason).toBeVisible();
+    await expect(reason).toBeEnabled();
+    await expect(reason).toBeFocused();
+    await expect(confirmButton).toBeDisabled();
+
+    const approvalReason = "Recipient and balance were verified.";
+    await reason.fill(approvalReason);
+    await expect(confirmButton).toBeEnabled();
+    await confirmButton.click();
+
+    await expect(confirmation).toHaveCount(0);
+    await payout.click();
+    await expect(page.getByRole("dialog", { name: /Record details/ })).toContainText(
+      approvalReason,
+    );
   });
 
   test("admin must choose a payout rejection reason before confirming", async ({

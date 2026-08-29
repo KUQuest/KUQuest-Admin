@@ -31,7 +31,7 @@ document.addEventListener("click", (event) => {
     button.dataset.chatUser
   )
     return;
-  const label = button.textContent.trim();
+  const action = button.dataset.functionalAction;
   if (button.matches(".file-row, .evidence-item")) {
     event.preventDefault();
     const previewImage = button.querySelector("img");
@@ -47,28 +47,28 @@ document.addEventListener("click", (event) => {
       `<p>${button.querySelector("small")?.textContent || "Related marketplace record"}</p>`,
     );
   }
-  if (label === "View accepted terms") {
+  if (action === "view-accepted-terms") {
     event.preventDefault();
     openUtilityPreview(
       "Accepted terms",
       "<p>The accepted scope, wage, schedule, and completion conditions are the governing record for this quest.</p>",
     );
   }
-  if (label === "Compare versions") {
+  if (action === "compare-versions") {
     event.preventDefault();
     openUtilityPreview(
       "Terms version history",
       "<p>Version 3 is the accepted record. Earlier edits remain available in the quest audit history.</p>",
     );
   }
-  if (label === "Download all") {
+  if (action === "download-all") {
     event.preventDefault();
     downloadMockFile(
       "kuquest-proof-records.txt",
       "Synthetic proof-record export",
     );
   }
-  if (label === "Export log" || label === "Export CSV") {
+  if (action === "export-log" || action === "export-csv") {
     event.preventDefault();
     downloadMockFile(
       "kuquest-admin-export.csv",
@@ -76,25 +76,25 @@ document.addEventListener("click", (event) => {
       "text/csv",
     );
   }
-  if (label === "Revision history") {
+  if (action === "revision-history") {
     event.preventDefault();
     openUtilityPreview(
       "Money policy revisions",
       "<p>Revision 12 is active. The audit history preserves its effective date, author, and reason.</p>",
     );
   }
-  if (label === "Open user profile" || label === "View user") {
+  if (action === "open-user-profile" || action === "view-user") {
     event.preventDefault();
     openUtilityPreview(
       "User profile",
       "<p>This synthetic profile is connected to the selected marketplace record. Use the Users board to review status, moderation actions, and the private message history.</p>",
     );
   }
-  if (label === "Request clarification") {
+  if (action === "request-clarification") {
     event.preventDefault();
     toast("Clarification request saved to the hirer-change audit trail.");
   }
-  if (button.getAttribute("aria-label") === "Notifications") {
+  if (action === "notifications") {
     event.preventDefault();
     toast("You have 3 items needing admin attention.");
   }

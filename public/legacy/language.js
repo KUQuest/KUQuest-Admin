@@ -128,6 +128,14 @@ const translations = {
   "Open user profile": "เปิดโปรไฟล์ผู้ใช้",
   "See full user profile": "ดูโปรไฟล์ผู้ใช้แบบเต็ม",
   "Back to admin": "กลับไปหน้าผู้ดูแล",
+  "View accepted terms": "ดูข้อกำหนดที่ยอมรับ",
+  "Compare versions": "เปรียบเทียบเวอร์ชัน",
+  "Download all": "ดาวน์โหลดทั้งหมด",
+  "Export CSV": "ส่งออก CSV",
+  "Revision history": "ประวัติการแก้ไข",
+  "Request clarification": "ขอคำชี้แจง",
+  "More actions": "การดำเนินการเพิ่มเติม",
+  Notifications: "การแจ้งเตือน",
   "Payout summary": "สรุปการจ่ายเงิน",
   "Available to withdraw": "ยอดถอนได้",
   "Payout amount": "จำนวนเงินที่จ่าย",
@@ -140,6 +148,7 @@ const translations = {
   "Transfer completed": "โอนเงินสำเร็จ",
   "Why your approval is needed": "เหตุผลที่ต้องอนุมัติ",
   "Approve payout": "อนุมัติการจ่ายเงิน",
+  "Approval reason": "เหตุผลการอนุมัติ",
   "Reject payout": "ปฏิเสธการจ่ายเงิน",
   Record: "รายการ",
   "Record details": "รายละเอียดรายการ",
@@ -220,6 +229,9 @@ const translations = {
   "No edits recorded": "ไม่มีการบันทึกการแก้ไข",
   "Overall quest timeline": "ลำดับเหตุการณ์ของงานทั้งหมด",
   "Export log": "ส่งออกบันทึก",
+  "Accepted terms": "ข้อกำหนดที่ยอมรับ",
+  "Terms version history": "ประวัติเวอร์ชันข้อกำหนด",
+  "Money policy revisions": "ประวัติการแก้ไขนโยบายการเงิน",
   "Quest published": "เผยแพร่งานแล้ว",
   "Quest record created": "สร้างรายการงานแล้ว",
   "Schedule and location": "กำหนดการและสถานที่",
@@ -300,6 +312,18 @@ const patternTranslations = [
   [/^XLSX · (.+) · added with quest$/, (match) => `XLSX · ${match[1]} · เพิ่มพร้อมงาน`],
   [/^(.+) · created by (.+)$/, (match) => `${match[1]} · สร้างโดย ${match[2]}`],
 ];
+const functionalActionLabels = {
+  "View accepted terms": "view-accepted-terms",
+  "Compare versions": "compare-versions",
+  "Download all": "download-all",
+  "Export log": "export-log",
+  "Export CSV": "export-csv",
+  "Revision history": "revision-history",
+  "Open user profile": "open-user-profile",
+  "View user": "view-user",
+  "Request clarification": "request-clarification",
+  Notifications: "notifications",
+};
 const originalText = new WeakMap();
 const originalAttributes = new WeakMap();
 let activeLanguage = "en";
@@ -352,6 +376,42 @@ function translateAttribute(element, name) {
   if (element.getAttribute(name) !== next) element.setAttribute(name, next);
 }
 
+function markFunctionalActions(root) {
+  if (root.nodeType === 1 && root.matches("button")) markFunctionalAction(root);
+  root.querySelectorAll("button").forEach(markFunctionalAction);
+}
+
+function markFunctionalAction(button) {
+  if (button.dataset.functionalAction) return;
+  const action = functionalActionLabels[button.textContent.trim()];
+  if (action) button.dataset.functionalAction = action;
+}
+
+function translateTextNodes(root) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let node;
+  while ((node = walker.nextNode())) translateTextNode(node);
+}
+
+function translateAttributes(root) {
+  if (root.nodeType === 1) {
+    ["aria-label", "placeholder", "title"].forEach((name) => translateAttribute(root, name));
+  }
+  root.querySelectorAll("*").forEach((element) => {
+    ["aria-label", "placeholder", "title"].forEach((name) => translateAttribute(element, name));
+  });
+}
+
+function translateAddedNode(node) {
+  if (node.nodeType === 3) {
+    translateTextNode(node);
+    return;
+  }
+  if (node.nodeType !== 1 && node.nodeType !== 11) return;
+  translateTextNodes(node);
+  translateAttributes(node);
+}
+
 function syncLanguageControls() {
   document.querySelectorAll("[data-language-option]").forEach((option) => {
     option.setAttribute("aria-pressed", String(option.dataset.languageOption === activeLanguage));
@@ -363,13 +423,10 @@ function translateDocument() {
   translating = true;
   document.documentElement.lang = languageDefinitions[activeLanguage].documentLanguage;
   document.documentElement.dataset.language = activeLanguage;
+  markFunctionalActions(document.body);
   syncLanguageControls();
-  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-  let node;
-  while ((node = walker.nextNode())) translateTextNode(node);
-  document.body.querySelectorAll("*").forEach((element) => {
-    ["aria-label", "placeholder", "title"].forEach((name) => translateAttribute(element, name));
-  });
+  translateTextNodes(document.body);
+  translateAttributes(document.body);
   translating = false;
 }
 
@@ -401,7 +458,32 @@ document.addEventListener("click", (event) => {
 });
 
 applyLanguage(storedLanguage(), false);
-const languageObserver = new MutationObserver(() => translateDocument());
+let translationScheduled = false;
+const pendingMutations = [];
+function scheduleMutationTranslation(records) {
+  pendingMutations.push(...records);
+  if (translationScheduled) return;
+  translationScheduled = true;
+  const flush = () => {
+    translationScheduled = false;
+    const mutations = pendingMutations.splice(0);
+    mutations.forEach((record) => {
+      if (record.type === "attributes") translateAttribute(record.target, record.attributeName);
+      else if (record.type === "characterData") translateTextNode(record.target);
+      else {
+        record.addedNodes.forEach((node) => {
+          if (node.nodeType === 1 || node.nodeType === 11) markFunctionalActions(node);
+          if (activeLanguage !== "en") translateAddedNode(node);
+        });
+      }
+    });
+    if (activeLanguage === "en") return;
+    syncLanguageControls();
+  };
+  if (typeof requestAnimationFrame === "function") requestAnimationFrame(flush);
+  else setTimeout(flush, 0);
+}
+const languageObserver = new MutationObserver(scheduleMutationTranslation);
 languageObserver.observe(document.body, {
   attributes: true,
   attributeFilter: ["aria-label", "placeholder", "title"],

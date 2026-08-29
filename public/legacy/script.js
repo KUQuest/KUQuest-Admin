@@ -775,7 +775,10 @@ function autoRejectUnavailablePayout(record) {
 }
 function payoutTimingSection(record) {
   const events = [["Requested", record.requestedAt || "Not recorded"]];
-  if (record.approvedAt) events.push(["Approved", record.approvedAt], ["By", record.approvedBy || "Admin"]);
+  if (record.approvedAt) {
+    events.push(["Approved", record.approvedAt], ["By", record.approvedBy || "Admin"]);
+    if (record.approvalReason) events.push(["Approval reason", record.approvalReason]);
+  }
   if (record.rejectedAt) events.push(["Rejected", record.rejectedAt], ["By", record.rejectedBy || "Admin"]);
   return `<section class="section payout-timing"><h3>Payout timing</h3><div class="payout-audit-list">${events.map(([label, value]) => `<div><span>${escapeActivityText(label)}</span><strong>${escapeActivityText(value)}</strong></div>`).join("")}</div></section>`;
 }
@@ -1607,6 +1610,8 @@ function confirmPayoutApproval(record) {
     reason = document.querySelector("#confirm-reason"),
     reasonLabel = reason?.closest("label"),
     help = document.querySelector("#confirm-reason-help"),
+    error = document.querySelector("#confirm-reason-error"),
+    count = document.querySelector("#confirm-reason-count"),
     context = document.querySelector("#confirm-context"),
     confirmButton = document.querySelector("#confirm-btn");
   resetConfirmationDialog();
@@ -1615,33 +1620,55 @@ function confirmPayoutApproval(record) {
     "Review the destination and balance before approving this payout.";
   context.hidden = false;
   context.innerHTML = payoutConfirmationSummary(record);
-  reasonLabel.hidden = true;
-  reason.required = false;
-  reason.disabled = true;
-  help.hidden = true;
+  reasonLabel.hidden = false;
+  reason.required = true;
+  reason.disabled = false;
+  help.hidden = false;
   confirmButton.textContent = "Approve payout";
   confirmButton.className = "btn primary";
-  confirmButton.disabled = false;
+  confirmButton.disabled = true;
+  const validate = () => {
+    const valid = reason.value.trim().length >= 8;
+    confirmButton.disabled = !valid;
+    reason.setAttribute(
+      "aria-invalid",
+      String(!valid && reason.value.length > 0),
+    );
+    error.hidden = true;
+    count.textContent = `${reason.value.length} / 500`;
+    return valid;
+  };
+  reason.oninput = validate;
   form.onsubmit = (event) => {
-    if (event.submitter?.value === "confirm") {
+    if (event.submitter?.value !== "confirm") return;
+    if (!validate()) {
       event.preventDefault();
-      dialog.close("confirm");
+      reason.setAttribute("aria-invalid", "true");
+      error.hidden = false;
+      reason.focus();
+      return;
     }
+    event.preventDefault();
+    dialog.close("confirm");
   };
   dialog.addEventListener(
     "close",
     () => {
       if (dialog.returnValue !== "confirm") return;
+      const approvalReason = reason.value.trim();
       record.status = "Processing";
       record.tone = "info";
       record.approvedAt = payoutDateTime();
       record.approvedBy = payoutAdminName();
-      finishPayoutAction(record, "Approve payout");
+      record.approvalReason = approvalReason;
+      finishPayoutAction(record, "Approve payout", () => {
+        recordActivity("Payout approval reason", `${record.id} · ${approvalReason}`);
+      });
     },
     { once: true },
   );
   dialog.showModal();
-  requestAnimationFrame(() => confirmButton.focus());
+  requestAnimationFrame(() => reason.focus());
 }
 function confirmPayoutRejection(record) {
   if (!dialog) return;
