@@ -10,7 +10,7 @@
     "lint:fix": "oxlint src --fix",
     "lint:type": "oxlint src --type-aware",
     "typecheck": "tsc --noEmit",
-    "test": "bun test",
+    "test": "bun test tests/unit/*.test.ts",
     "test:e2e": "playwright test",
     "test:watch": "bun test --watch",
     "test:coverage": "bun test --coverage",

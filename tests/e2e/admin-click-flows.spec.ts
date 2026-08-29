@@ -243,6 +243,50 @@ test.describe("admin click flows", () => {
     await expect(page).toHaveURL(/\/quests\/QST-\d+$/);
   });
 
+  test("reviews keep search and filters without a separate sort control", async ({
+    page,
+  }) => {
+    await signIn(page);
+    await page.getByRole("button", { name: "Users", exact: true }).click();
+
+    const search = page.getByRole("textbox", { name: "Search users" });
+    await search.fill("Akarin Ariyawat");
+    await page.getByRole("link", { name: /Akarin Ariyawat/ }).click();
+    await page.getByRole("button", { name: "Reviews", exact: true }).click();
+
+    await expect(
+      page.getByRole("heading", { name: "Reviews", level: 2 }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("searchbox", { name: "Search reviews" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("combobox", { name: "Sort reviews" }),
+    ).toHaveCount(0);
+  });
+
+  test("review rating filters can be cleared with All", async ({ page }) => {
+    await signIn(page);
+    await page.getByRole("button", { name: "Users", exact: true }).click();
+
+    const search = page.getByRole("textbox", { name: "Search users" });
+    await search.fill("Akarin Ariyawat");
+    await page.getByRole("link", { name: /Akarin Ariyawat/ }).click();
+    await page.getByRole("button", { name: "Reviews", exact: true }).click();
+
+    const ratingFilters = page.getByRole("group", {
+      name: "Filter reviews by rating",
+    });
+    const allRatings = ratingFilters.getByRole("button", { name: "All" });
+    await expect(allRatings).toHaveAttribute("aria-pressed", "true");
+
+    await ratingFilters.getByRole("button", { name: "5 star" }).click();
+    await expect(allRatings).toHaveAttribute("aria-pressed", "false");
+
+    await allRatings.click();
+    await expect(allRatings).toHaveAttribute("aria-pressed", "true");
+  });
+
   test("admin can log out from the dashboard", async ({ page }) => {
     await signIn(page);
 

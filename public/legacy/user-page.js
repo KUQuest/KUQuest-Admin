@@ -4,7 +4,6 @@ const userPageState = {
   tab: "overview",
   reviewFilter: "all",
   reviewQuery: "",
-  reviewSort: "latest",
   reviewRating: null,
 };
 const userPageTableState = {
@@ -194,7 +193,7 @@ function userPageReviewSummary(user) {
   const average = reviews.length
     ? (reviews.reduce((total, review) => total + Number(review.rating || 0), 0) / reviews.length).toFixed(1)
     : "—";
-  return `<div class="user-review-summary"><strong>${average} ★</strong><span class="user-review-count">(${reviews.length})</span><span class="user-review-rating-links" role="group" aria-label="Filter reviews by rating">${[5, 4, 3, 2, 1].map((rating) => `<button class="user-review-rating-link${userPageState.reviewRating === rating ? " active" : ""}" type="button" data-review-rating="${rating}" aria-pressed="${userPageState.reviewRating === rating}">${rating} star</button>`).join("")}</span></div>`;
+  return `<div class="user-review-summary"><strong>${average} ★</strong><span class="user-review-count">(${reviews.length})</span><span class="user-review-rating-links" role="group" aria-label="Filter reviews by rating"><button class="user-review-rating-link${userPageState.reviewRating === null ? " active" : ""}" type="button" data-review-rating="all" aria-pressed="${userPageState.reviewRating === null}">All</button>${[5, 4, 3, 2, 1].map((rating) => `<button class="user-review-rating-link${userPageState.reviewRating === rating ? " active" : ""}" type="button" data-review-rating="${rating}" aria-pressed="${userPageState.reviewRating === rating}">${rating} star</button>`).join("")}</span></div>`;
 }
 
 function userPageReviewPreview(user) {
@@ -288,7 +287,7 @@ function userPageReviews(user) {
   });
   const sorted = userPageSortedTableRows("reviews", filtered);
   const pagination = userPagePaginateTable("reviews", sorted);
-  return `<section class="user-detail-panel user-tab-panel"><div class="user-panel-heading"><div><h2>Reviews</h2>${userPageReviewSummary(user)}</div></div><div class="user-review-toolbar"><div class="inline-search search-field">${ico("search")}<input type="search" data-review-search value="${userPageEscape(userPageState.reviewQuery)}" placeholder="Search reviews…" aria-label="Search reviews"></div><div class="user-review-sort"><label for="review-sort">Sort</label><select id="review-sort" data-review-sort aria-label="Sort reviews"><option value="latest" ${userPageState.reviewSort === "latest" ? "selected" : ""}>Latest</option><option value="rating-desc" ${userPageState.reviewSort === "rating-desc" ? "selected" : ""}>Rating: 5 → 1</option><option value="rating-asc" ${userPageState.reviewSort === "rating-asc" ? "selected" : ""}>Rating: 1 → 5</option><option value="custom" ${userPageState.reviewSort === "custom" ? "selected" : ""}>Column selected</option></select></div><div class="user-review-filters" role="group" aria-label="Review filters">${["all", "reported", "hidden"].map((filter) => `<button class="tab ${userPageState.reviewFilter === filter ? "active" : ""}" type="button" data-review-filter="${filter}">${filter[0].toUpperCase() + filter.slice(1)}</button>`).join("")}</div></div>${pagination.total ? `<div class="table-wrap"><table class="data user-detail-table"><thead><tr>${userPageTableSortHeader("reviews", "reviewer", "Reviewer")}${userPageTableSortHeader("reviews", "rating", "Rating")}${userPageTableSortHeader("reviews", "review", "Review")}${userPageTableSortHeader("reviews", "date", "Date")}${userPageTableSortHeader("reviews", "reports", "Reports")}${userPageTableSortHeader("reviews", "status", "Status")}<th scope="col">Action</th></tr></thead><tbody>${pagination.rows.map((review) => `<tr><td><strong>${userPageEscape(review.reviewer)}</strong></td><td>${"★".repeat(review.rating)}</td><td>${userPageEscape(review.review)}</td><td>${userPageEscape(review.date)}</td><td>${review.reports}</td><td>${badge(review.status, review.tone)}</td><td><button class="link" type="button" data-review-action="View" data-review-name="${userPageEscape(review.reviewer)}">View</button> <button class="link" type="button" data-review-action="Hide" data-review-name="${userPageEscape(review.reviewer)}">Hide</button> <button class="link danger-link" type="button" data-review-action="Remove" data-review-name="${userPageEscape(review.reviewer)}">Remove</button></td></tr>`).join("")}</tbody></table></div>${userPageTablePagination("reviews", pagination)}` : '<div class="empty"><h3>No matching reviews</h3><p>Try another filter or search term.</p></div>'}</section>`;
+  return `<section class="user-detail-panel user-tab-panel"><div class="user-panel-heading"><div><h2>Reviews</h2>${userPageReviewSummary(user)}</div></div><div class="user-review-toolbar"><div class="inline-search search-field">${ico("search")}<input type="search" data-review-search value="${userPageEscape(userPageState.reviewQuery)}" placeholder="Search reviews…" aria-label="Search reviews"></div><div class="user-review-filters" role="group" aria-label="Review filters">${["all", "reported", "hidden"].map((filter) => `<button class="tab ${userPageState.reviewFilter === filter ? "active" : ""}" type="button" data-review-filter="${filter}">${filter[0].toUpperCase() + filter.slice(1)}</button>`).join("")}</div></div>${pagination.total ? `<div class="table-wrap"><table class="data user-detail-table"><thead><tr>${userPageTableSortHeader("reviews", "reviewer", "Reviewer")}${userPageTableSortHeader("reviews", "rating", "Rating")}${userPageTableSortHeader("reviews", "review", "Review")}${userPageTableSortHeader("reviews", "date", "Date")}${userPageTableSortHeader("reviews", "reports", "Reports")}${userPageTableSortHeader("reviews", "status", "Status")}<th scope="col">Action</th></tr></thead><tbody>${pagination.rows.map((review) => `<tr><td><strong>${userPageEscape(review.reviewer)}</strong></td><td>${"★".repeat(review.rating)}</td><td>${userPageEscape(review.review)}</td><td>${userPageEscape(review.date)}</td><td>${review.reports}</td><td>${badge(review.status, review.tone)}</td><td><button class="link" type="button" data-review-action="View" data-review-name="${userPageEscape(review.reviewer)}">View</button> <button class="link" type="button" data-review-action="Hide" data-review-name="${userPageEscape(review.reviewer)}">Hide</button> <button class="link danger-link" type="button" data-review-action="Remove" data-review-name="${userPageEscape(review.reviewer)}">Remove</button></td></tr>`).join("")}</tbody></table></div>${userPageTablePagination("reviews", pagination)}` : '<div class="empty"><h3>No matching reviews</h3><p>Try another filter or search term.</p></div>'}</section>`;
 }
 
 function userPageReviewsData(user) {
@@ -387,26 +386,16 @@ function bindUserPage(user) {
     renderUserPage();
     document.querySelector("[data-review-search]")?.focus();
   };
-  const reviewSort = document.querySelector("[data-review-sort]");
-  if (reviewSort) reviewSort.onchange = (event) => {
-    const value = event.target.value;
-    userPageState.reviewSort = value;
-    userPageTableState.reviews.sortKey = value === "latest" ? "date" : "rating";
-    userPageTableState.reviews.direction = value === "rating-asc" ? "asc" : "desc";
-    userPageTableState.reviews.page = 1;
-    renderUserPage();
-  };
   document.querySelectorAll("[data-review-filter]").forEach((button) => (button.onclick = () => {
     userPageState.reviewFilter = button.dataset.reviewFilter;
     userPageTableState.reviews.page = 1;
     renderUserPage();
   }));
   document.querySelectorAll("[data-review-rating]").forEach((button) => (button.onclick = () => {
-    const rating = Number(button.dataset.reviewRating);
+    const rating = button.dataset.reviewRating === "all" ? null : Number(button.dataset.reviewRating);
     const isSelected = userPageState.reviewRating === rating;
-    userPageState.reviewRating = isSelected ? null : rating;
-    userPageState.reviewSort = isSelected ? "latest" : "rating-desc";
-    userPageTableState.reviews.sortKey = isSelected ? "date" : "rating";
+    userPageState.reviewRating = rating === null || isSelected ? null : rating;
+    userPageTableState.reviews.sortKey = userPageState.reviewRating === null ? "date" : "rating";
     userPageTableState.reviews.direction = "desc";
     userPageTableState.reviews.page = 1;
     userPageState.tab = "reviews";
@@ -419,9 +408,6 @@ function bindUserPage(user) {
     state.sortKey = key;
     state.direction = sameColumn && state.direction === "asc" ? "desc" : "asc";
     state.page = 1;
-    if (table === "reviews") {
-      userPageState.reviewSort = key === "rating" ? (state.direction === "asc" ? "rating-asc" : "rating-desc") : key === "date" ? "latest" : "custom";
-    }
     renderUserPage();
   }));
   document.querySelectorAll("[data-user-table-page]").forEach((button) => (button.onclick = () => {
