@@ -17,4 +17,5 @@
 .text-button:hover { color: var(--accent2); text-decoration: underline; text-underline-offset: 3px; }
 .login-error { margin: -1px 0 7px; color: var(--danger); font-size: 12px; font-weight: 600; }
 .login-submit { width: 100%; min-height: 42px; margin-top: 12px; }
+.login-language-options { margin: 0; padding: 0; border: 0; }
 @media (max-width: 760px) { .login-shell { width: min(100% - 36px, 420px); display: block; padding: 36px 0; } .login-panel { width: 100%; padding: 24px; } .login-copy { margin-top: 32px; } .text-button { min-width: 44px; min-height: 44px; } }

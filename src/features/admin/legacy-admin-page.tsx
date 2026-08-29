@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { MouseEvent } from "react";
 
 /* oxlint-disable jsx-a11y/prefer-tag-over-role */
 
-type LegacyPage = "home" | "quest" | "dispute" | "report" | "user" | "login";
+type LegacyPage = "home" | "quest" | "dispute" | "report" | "user";
 type LegacyScriptPlan = {
   sequential: string[];
   parallel: string[];
@@ -59,10 +59,6 @@ const userScripts: LegacyScriptPlan = {
   parallel: ["/legacy/functional-controls.js?v=5"],
 };
 
-const loginScripts: LegacyScriptPlan = {
-  sequential: ["/legacy/language.js?v=8-review-removal-reason", "/legacy/login.js?v=1"],
-  parallel: [],
-};
 const legacyScriptLoads = new Map<string, Promise<void>>();
 
 const loadScript = (src: string) =>
@@ -129,16 +125,6 @@ function LegacyScripts({ page, recordId, onReady }: { page: LegacyPage; recordId
     const notifyReady = () => {
       if (!cancelled) onReady?.();
     };
-    if (page === "login") {
-      document.body.classList.add("login-page");
-      void loadScripts(loginScripts).then(notifyReady).catch((error: unknown) => console.error(error));
-      return () => {
-        cancelled = true;
-        document.body.classList.remove("login-page");
-      };
-    }
-
-    document.body.classList.remove("login-page");
     window.__KUQUEST_RECORD_ID__ = recordId;
     void loadScripts(
       page === "quest"
@@ -244,7 +230,7 @@ function LegacyOverlays({ detailSearch = false }: { detailSearch?: boolean }) {
   );
 }
 
-export function LegacyAdminPage({ page, recordId }: { page: Exclude<LegacyPage, "login">; recordId?: string }) {
+export function LegacyAdminPage({ page, recordId }: { page: LegacyPage; recordId?: string }) {
   const detailPage = page !== "home" && page !== "user";
 
   return (
@@ -343,60 +329,6 @@ export function LegacyAdminPage({ page, recordId }: { page: Exclude<LegacyPage, 
       </div>
       <LegacyOverlays detailSearch={detailPage} />
       <LegacyScripts page={page} recordId={recordId} />
-    </>
-  );
-}
-
-export function LegacyLoginPage() {
-  const [legacyReady, setLegacyReady] = useState(false);
-  const handleLegacyReady = useCallback(() => setLegacyReady(true), []);
-
-  return (
-    <>
-      <main className="login-shell" aria-labelledby="login-title">
-        <section className="login-panel">
-          <Link className="login-brand" href="/login" onClick={hardNavigate} aria-label="KuQuest admin sign in">
-            <Image src="/kuquest-logo.png?v=2" alt="" width={101} height={51} priority unoptimized />
-            <span>KuQuest</span>
-          </Link>
-          <div className="login-copy">
-            <h1 id="login-title">Sign in to admin</h1>
-            <p>Use your Kasetsart University email to access.</p>
-          </div>
-          <form id="login-form" noValidate>
-            <label htmlFor="admin-email">University email</label>
-            <input
-              id="admin-email"
-              name="email"
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              placeholder="name@ku.th"
-              aria-describedby="email-help email-error"
-              required
-            />
-            <p className="field-help" id="email-help">Only <strong>@ku.th</strong> accounts can access this console.</p>
-            <p className="login-error" id="email-error" role="alert" hidden />
-            <div className="password-label">
-              <label htmlFor="admin-password">Password</label>
-              <button type="button" className="text-button" id="toggle-password" aria-controls="admin-password" disabled={!legacyReady}>Show</button>
-            </div>
-            <input
-              id="admin-password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              placeholder="Enter your password"
-              aria-describedby="password-error"
-              required
-            />
-            <p className="login-error" id="password-error" role="alert" hidden />
-            <button className="btn primary login-submit" type="submit" disabled={!legacyReady}>Sign in</button>
-          </form>
-          <LanguageControl className="login-language" disabled={!legacyReady} />
-        </section>
-      </main>
-      <LegacyScripts page="login" onReady={handleLegacyReady} />
     </>
   );
 }
