@@ -1,5 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 
+const reportFixtures = {
+  active: "RPT-8201",
+  closed: "RPT-8202",
+} as const;
+
 async function signIn(page: Page) {
   await page.goto("/login");
   const email = page.getByLabel("University email");
@@ -19,6 +24,19 @@ async function switchToThai(page: Page) {
   });
   await languageOptions.getByRole("button", { name: "ไทย", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("lang", "th");
+}
+
+async function openReportFromTable(page: Page, reportId: string) {
+  const reportButton = page.getByRole("button", {
+    name: `Open report ${reportId}`,
+    exact: true,
+  });
+  await expect(reportButton).toBeVisible();
+  await reportButton.click();
+
+  const drawer = page.locator("#drawer");
+  await expect(drawer).toContainText(reportId);
+  return drawer;
 }
 
 test.describe("Thai translation for full records and overlays", () => {
@@ -54,6 +72,19 @@ test.describe("Thai translation for full records and overlays", () => {
     await expect(chat.getByText("Send message", { exact: true })).toHaveCount(0);
   });
 
+  test("translates dispute search placeholder and table headers", async ({ page }) => {
+    await signIn(page);
+    await switchToThai(page);
+    await page.goto("/?view=disputes");
+
+    const search = page.getByRole("textbox", { name: "ค้นหาข้อพิพาท" });
+    await expect(search).toHaveAttribute("placeholder", "ค้นหาข้อพิพาท…");
+
+    const firstHeader = page.locator("table thead th").first();
+    await expect(firstHeader).toHaveText(/คดี/);
+    await expect(firstHeader).not.toHaveText(/Case/);
+  });
+
   test("translates report decision and reporter chat content", async ({ page }) => {
     await signIn(page);
     await switchToThai(page);
@@ -77,16 +108,12 @@ test.describe("Thai translation for full records and overlays", () => {
     await switchToThai(page);
     await page.goto("/?view=reports");
 
-    const reportButton = page.locator('button[data-open="reports:0"]');
-    await expect(reportButton).toBeVisible();
-    await reportButton.click();
-
-    const drawer = page.locator("#drawer");
+    const drawer = await openReportFromTable(page, reportFixtures.active);
     await expect(drawer.getByText("ตรวจสอบรายงาน", { exact: true })).toBeVisible();
     await expect(drawer.getByText("Review report", { exact: true })).toHaveCount(0);
 
     await drawer.locator("#close").click();
-    await page.locator('button[data-open="reports:1"]').click();
+    await openReportFromTable(page, reportFixtures.closed);
 
     await expect(drawer.getByText("รายละเอียดรายงานทั้งหมด", { exact: true })).toBeVisible();
     await expect(drawer.getByText("Full report detail", { exact: true })).toHaveCount(0);

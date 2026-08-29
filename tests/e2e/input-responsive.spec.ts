@@ -234,7 +234,11 @@ test.describe("input fields and responsive layouts", () => {
     const category = dialog.getByLabel("Report type");
     const details = dialog.getByLabel("What happened?");
     const evidence = dialog.getByLabel("Evidence file (optional)");
-    await reporter.selectOption({ index: 1 });
+    const reporterValue = await reporter.locator("option").evaluateAll((options) =>
+      options.find((option) => option.getAttribute("value"))?.getAttribute("value") || null,
+    );
+    if (!reporterValue) throw new Error("Report form has no reporter options");
+    await reporter.selectOption({ value: reporterValue });
     await category.selectOption({ label: "Fraud or payment issue" });
     await details.fill("The submitted activity does not match the evidence provided.");
     await evidence.setInputFiles({
@@ -319,8 +323,8 @@ test.describe("input fields and responsive layouts", () => {
     await page.getByRole("button", { name: "Lift ban" }).click();
 
     const dialog = page.getByRole("dialog", { name: "Lift ban" });
-    const reason = dialog.getByRole("textbox").first();
-    const note = dialog.getByRole("textbox").nth(1);
+    const reason = dialog.locator("#confirm-reason");
+    const note = dialog.locator("#moderation-lift-note");
     await reason.fill("The appeal review confirmed compliance.");
     await note.fill("Lifted after manual review.");
     await expect(reason).toHaveValue("The appeal review confirmed compliance.");
@@ -367,7 +371,10 @@ test.describe("input fields and responsive layouts", () => {
     await signIn(page);
     await page.goto("/reports/RPT-8201");
     await page.getByRole("button", { name: /^Flag only/ }).click();
-    await page.getByRole("button", { name: "Close report" }).first().click();
+    await page
+      .locator(".full-record-actions")
+      .getByRole("button", { name: "Close report", exact: true })
+      .click();
 
     const dialog = page.getByRole("dialog", { name: "Close report" });
     const reason = dialog.getByLabel("Reason for this decision");
