@@ -98,6 +98,7 @@ test.describe("admin click flows", () => {
     await expect(
       page.getByRole("button", { name: "ผู้ใช้", exact: true }),
     ).toBeVisible();
+    await expect(page.locator(".profile small")).toHaveText("ผู้ดูแลระบบ");
     await expect(
       languageOptions.getByRole("button", { name: "ไทย", exact: true }),
     ).toHaveAttribute("aria-pressed", "true");
@@ -115,6 +116,7 @@ test.describe("admin click flows", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "Overview" }),
     ).toBeVisible();
+    await expect(page.locator(".profile small")).toHaveText("Administrator");
   });
 
   test("admin can open a record from global search", async ({ page }) => {

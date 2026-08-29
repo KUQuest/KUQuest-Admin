@@ -15,7 +15,7 @@ type LegacyScriptPlan = {
 
 const adminFoundationScripts = [
   "/legacy/auth.js?v=1",
-  "/legacy/language.js?v=6-penalty-ladder",
+  "/legacy/language.js?v=7-srs-localization",
   "/legacy/script.js?v=94-penalty-ladder",
   "/legacy/fresh-mock-data.js?v=49-penalty-ladder",
   "/legacy/resource-controls.js?v=49-penalty-ladder",
@@ -60,7 +60,7 @@ const userScripts: LegacyScriptPlan = {
 };
 
 const loginScripts: LegacyScriptPlan = {
-  sequential: ["/legacy/language.js?v=5", "/legacy/login.js?v=1"],
+  sequential: ["/legacy/language.js?v=7-srs-localization", "/legacy/login.js?v=1"],
   parallel: [],
 };
 const legacyScriptLoads = new Map<string, Promise<void>>();
@@ -300,7 +300,7 @@ export function LegacyAdminPage({ page, recordId }: { page: Exclude<LegacyPage, 
           <LanguageControl />
           <div className="profile">
             <span>NP</span>
-            <div><strong>Nicha P.</strong><small>Marketplace admin</small></div>
+            <div><strong>Nicha P.</strong><small>Administrator</small></div>
             <button className="logout-button" type="button" onClick={handleLogout}>Log out</button>
           </div>
         </aside>
