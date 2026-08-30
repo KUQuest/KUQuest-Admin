@@ -1,17 +1,28 @@
+import {
+  addUserHistory,
+  adminDateTime,
+  autoRejectUnavailablePayout,
+  penaltyPolicy,
+  recordActivity,
+  seedGeneratedActivity,
+} from "./runtime-seed";
+import { data, disputeCases } from "./runtime-data";
+import type { LegacyDomElement, LegacyHistoryEntry, LegacyRecord, LegacyRuntimeData } from "./runtime";
+
 // Deterministic high-volume demo data. Versioning resets browser-local records
 // whenever the synthetic marketplace scenario changes.
-const freshDemoVersion = "2026-08-29-v49-penalty-ladder";
+const freshDemoVersion = "2026-08-30-v50-dispute-role-eligibility";
 const freshDemoKey = "kuquest-admin-demo-data";
 const seedBaseDate = new Date("2026-08-28T08:00:00Z");
 
-function seedDate(daysAgo, hour = 9, minute = 0) {
+function seedDate(daysAgo: number, hour = 9, minute = 0): Date {
   const date = new Date(seedBaseDate);
   date.setUTCDate(date.getUTCDate() - daysAgo);
   date.setUTCHours(hour, minute, 0, 0);
   return date;
 }
 
-function seedDateLabel(daysAgo, hour = 9, minute = 0) {
+function seedDateLabel(daysAgo: number, hour = 9, minute = 0): string {
   const date = seedDate(daysAgo, hour, minute);
   return `${date.toLocaleDateString("en-GB", {
     day: "2-digit",
@@ -21,7 +32,7 @@ function seedDateLabel(daysAgo, hour = 9, minute = 0) {
   })} · ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
-function seedDayLabel(daysAgo) {
+function seedDayLabel(daysAgo: number): string {
   return seedDate(daysAgo).toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "short",
@@ -30,7 +41,7 @@ function seedDayLabel(daysAgo) {
   });
 }
 
-function relativeAge(daysAgo) {
+function relativeAge(daysAgo: number): string {
   if (daysAgo === 0) return "Today";
   if (daysAgo === 1) return "Yesterday";
   return `${daysAgo} days`;
@@ -57,7 +68,7 @@ const accountStatuses = [
 ];
 const adminNames = ["Nicha P.", "Pimchanok R.", "Worawut K."];
 
-function statusTone(status) {
+function statusTone(status: string): string {
   if (["Normal", "Completed", "Approved"].includes(status)) return "success";
   if (["Red Flag", "Submitted", "Change pending", "Needs approval"].includes(status)) return "warning";
   if (["Open"].includes(status)) return "success";
@@ -68,8 +79,8 @@ function statusTone(status) {
   return "danger";
 }
 
-function userReviewRows(index) {
-  return Array.from({ length: 9 + (index % 7) }, (_, reviewIndex) => ({
+function userReviewRows(index: number): LegacyRecord[] {
+  return Array.from({ length: 9 + (index % 7) }, (_, reviewIndex: number) => ({
     reviewer: `${firstNames[(index + reviewIndex + 4) % firstNames.length]} ${lastNames[(index + reviewIndex + 9) % lastNames.length]}`,
     rating: 3 + ((index + reviewIndex * 2) % 3),
     review: [
@@ -82,10 +93,10 @@ function userReviewRows(index) {
     reports: reviewIndex === 4 && index % 5 === 0 ? 1 : 0,
     status: reviewIndex === 4 && index % 5 === 0 ? "Reported" : "Visible",
     tone: reviewIndex === 4 && index % 5 === 0 ? "warning" : "success",
-  }));
+  } as unknown as LegacyRecord));
 }
 
-const generatedUsers = Array.from({ length: 280 }, (_, index) => {
+const generatedUsers: LegacyRecord[] = Array.from({ length: 280 }, (_, index: number) => {
   const firstName = firstNames[index % firstNames.length];
   const lastName = lastNames[Math.floor(index / firstNames.length) % lastNames.length];
   const title = `${firstName} ${lastName}`;
@@ -103,7 +114,7 @@ const generatedUsers = Array.from({ length: 280 }, (_, index) => {
       : status === "Temp ban"
         ? "Repeated off-platform payment requests were recorded."
         : "Repeated policy violations were confirmed by an administrator.";
-  const history = [{
+  const history: LegacyHistoryEntry[] = [{
     event: "Account created",
     at: accountCreatedAt,
     by: "System",
@@ -174,7 +185,7 @@ const generatedUsers = Array.from({ length: 280 }, (_, index) => {
       by: admin,
       note: "Synthetic review note retained for moderation testing.",
     }] : [],
-  };
+  } as unknown as LegacyRecord;
 });
 
 data.users = generatedUsers;
@@ -200,15 +211,18 @@ const campusLocations = [
   "Kasetsart Innovation Centre", "Bangkhen Sports Complex", "Faculty of Agriculture", "Learning Resource Centre", "International College",
 ];
 
-function createQuest(index) {
+function createQuest(index: number): LegacyRecord {
   const status = questStatuses[index % questStatuses.length];
-  const hirer = data.users[(index * 11 + 7) % data.users.length];
-  const eligibleParticipants = data.users.filter((candidate) => !["Temp ban", "Perm ban"].includes(candidate.status));
+  const eligibleQuestUsers = data.users.filter(
+    (candidate: LegacyRecord) => !["Temp ban", "Perm ban"].includes(candidate.status),
+  );
+  const hirer: LegacyRecord = eligibleQuestUsers[(index * 11 + 7) % eligibleQuestUsers.length];
+  const eligibleParticipants = eligibleQuestUsers;
   const teamQuest = !["Draft", "Open", "Hidden", "Cancelled"].includes(status) && index % 9 === 0;
   const participantCount = teamQuest ? 3 : 1;
-  const participants = Array.from({ length: participantCount }, (_, participantIndex) =>
+  const participants = Array.from({ length: participantCount }, (_, participantIndex: number) =>
     eligibleParticipants[(index * 13 + participantIndex * 17 + 5) % eligibleParticipants.length],
-  ).filter((candidate, participantIndex, all) => candidate && candidate.id !== hirer.id && all.findIndex((item) => item?.id === candidate.id) === participantIndex);
+  ).filter((candidate: LegacyRecord | undefined, participantIndex: number, all: Array<LegacyRecord | undefined>) => candidate && candidate.id !== hirer.id && all.findIndex((item) => item?.id === candidate.id) === participantIndex) as LegacyRecord[];
   const amount = 1400 + ((index * 719) % 10_600);
   const createdDaysAgo = index < 12 ? index % 3 : 3 + ((index * 17) % 180);
   const createdAt = seedDateLabel(createdDaysAgo, 8 + (index % 9), (index * 13) % 60);
@@ -263,21 +277,37 @@ function createQuest(index) {
     } : { proof: [] }),
     candidateMode: status === "Draft" ? "Not published" : status === "Open" ? "FCFS" : "CANDIDATE",
     ...(status === "Cancelled" ? { terminationReason: "The hirer withdrew the request before work began." } : {}),
-  };
+  } as unknown as LegacyRecord;
 }
 
-data.quests = Array.from({ length: 480 }, (_, index) => createQuest(index));
+data.quests = Array.from({ length: 480 }, (_, index: number) => createQuest(index));
 
 const disputeCategories = ["Evidence", "Quality", "Scope", "Delivery", "Timing", "Rights", "Payment", "Completion"];
 Object.keys(disputeCases).forEach((key) => delete disputeCases[key]);
 const disputableQuests = data.quests.filter((quest) => quest.status === "Disputed");
 
-data.disputes = disputableQuests.map((quest, index) => {
+data.disputes = disputableQuests.map((quest: LegacyRecord, index: number) => {
   const hirer = data.users.find((user) => user.title === quest.person) || data.users[index % data.users.length];
   const workerName = quest.selectedParticipant || quest.teamParticipants?.[0]?.[0] || data.users[(index + 1) % data.users.length].title;
   const worker = data.users.find((user) => user.title === workerName) || data.users[(index + 1) % data.users.length];
   const category = disputeCategories[index % disputeCategories.length];
   const status = index % 3 === 2 ? "Closed" : "Active";
+  const resolvedQuestStatus = index % 2 ? "Completed" : "Cancelled";
+  if (status === "Closed") {
+    quest.status = resolvedQuestStatus;
+    quest.tone = statusTone(resolvedQuestStatus);
+    const activity = quest.activity;
+    if (Array.isArray(activity) && activity.every((event): event is string => typeof event === "string")) {
+      quest.activity = activity.map((event) =>
+        event.startsWith("Disputed ·")
+          ? `${resolvedQuestStatus}${event.slice("Disputed".length)}`
+          : event,
+      );
+    }
+    if (resolvedQuestStatus === "Cancelled") {
+      quest.terminationReason = "The dispute was resolved in the hirer's favor.";
+    }
+  }
   const record = {
     id: `DSP-${String(5201 + index).padStart(4, "0")}`,
     questId: quest.id,
@@ -309,11 +339,11 @@ data.disputes = disputableQuests.map((quest, index) => {
     policy: ["Published quest condition controls scope", "Evidence timestamps are authoritative", "Administrative reason required"],
     signals: [["Evidence coverage", `${58 + (index % 38)}%`, "warning"], ["Account risk", index % 5 === 0 ? "High" : "Low", index % 5 === 0 ? "danger" : "success"], ["Response state", status, status === "Active" ? "info" : "neutral"]],
   };
-  return record;
+  return record as LegacyRecord;
 });
 
 const reportCategories = ["Harassment or abuse", "Fraud or payment issue", "Misleading quest activity", "Other"];
-data.reports = Array.from({ length: 180 }, (_, index) => {
+data.reports = Array.from({ length: 180 }, (_, index: number) => {
   const reporter = data.users[(index * 5 + 13) % data.users.length];
   let reported = data.users[(index * 7 + 31) % data.users.length];
   if (reported.id === reporter.id) reported = data.users[(index * 7 + 32) % data.users.length];
@@ -331,7 +361,7 @@ data.reports = Array.from({ length: 180 }, (_, index) => {
     relatedQuestId: quest.id,
     relatedQuestTitle: quest.title,
     details: `The report concerns activity connected to ${quest.title}. The submitted record is retained for admin review and audit testing.`,
-    evidence: index % 7 === 0 ? "No attachment provided" : `${category} evidence · PDF`,
+    evidence: index % 7 === 0 ? ["No attachment provided"] : [`${category} evidence · PDF`],
     status,
     tone: status === "Active" ? "warning" : "neutral",
     reportedAt,
@@ -344,29 +374,30 @@ data.reports = Array.from({ length: 180 }, (_, index) => {
       resolvedBy: adminNames[index % adminNames.length],
       resolutionAt: seedDateLabel((index % 70) + 1, 15, 47),
     } : {}),
-  };
+  } as unknown as LegacyRecord;
 });
 
 const payoutStatuses = ["Completed", "Processing", "Needs approval", "Rejected", "Completed", "Processing"];
-const payoutSources = data.quests
+type PayoutSource = { quest: LegacyRecord; recipientName: string };
+const payoutSources: PayoutSource[] = data.quests
   .filter((quest) => quest.status === "Completed")
   .flatMap((quest) => {
     const recipients = quest.teamParticipants?.map(([name]) => name) || [quest.selectedParticipant];
-    return recipients.filter(Boolean).map((recipientName) => ({ quest, recipientName }));
+    return recipients.filter((recipientName): recipientName is string => Boolean(recipientName)).map((recipientName) => ({ quest, recipientName }));
   });
-const payoutRecipientSources = [...new Map(payoutSources.map((source) => [source.recipientName, source])).values()];
+const payoutRecipientSources: PayoutSource[] = [...new Map(payoutSources.map((source): [string, PayoutSource] => [source.recipientName, source])).values()];
 
-function seedRecipientEarnings(recipientName) {
+function seedRecipientEarnings(recipientName: string): number {
   return data.quests
     .filter((quest) => quest.status === "Completed" && (quest.selectedParticipant === recipientName || quest.teamParticipants?.some(([name]) => name === recipientName)))
-    .reduce((total, quest) => {
+    .reduce((total: number, quest: LegacyRecord) => {
       const workerCount = quest.teamParticipants?.length || Number(quest.teamSize) || 1;
       return total + Math.round(Number(quest.amount || 0) / workerCount);
     }, 0);
 }
 
-const payoutLedgers = new Map();
-const generatedPayouts = Array.from({ length: 240 }, (_, index) => {
+const payoutLedgers = new Map<string, { committed: number; pending: number }>();
+const generatedPayouts: LegacyRecord[] = Array.from({ length: 240 }, (_, index: number) => {
   const source = payoutRecipientSources[index % payoutRecipientSources.length];
   const quest = source.quest;
   const recipientName = source.recipientName;
@@ -393,7 +424,7 @@ const generatedPayouts = Array.from({ length: 240 }, (_, index) => {
     requestedAt,
     ...(status === "Processing" || status === "Completed" ? { approvedAt: seedDateLabel(240 - index, 18, 15), approvedBy: adminNames[index % adminNames.length] } : {}),
     ...(status === "Rejected" ? { rejectedAt: seedDateLabel(240 - index, 19, 22), rejectedBy: adminNames[index % adminNames.length], rejectionReason: "The payout request requires additional account verification before funds can be released." } : {}),
-  };
+  } as LegacyRecord;
 });
 data.payouts = generatedPayouts.reverse();
 
@@ -407,13 +438,15 @@ const savedFreshDemo = (() => {
 
 if (savedFreshDemo?.version === freshDemoVersion) {
   ["disputes", "quests", "users", "payouts", "reports"].forEach((collection) => {
-    if (Array.isArray(savedFreshDemo.collections?.[collection])) data[collection] = savedFreshDemo.collections[collection];
+    const key = collection as keyof LegacyRuntimeData;
+    const savedCollection = savedFreshDemo.collections?.[collection];
+    if (Array.isArray(savedCollection)) data[key] = savedCollection as LegacyRecord[];
   });
 } else {
   localStorage.removeItem(freshDemoKey);
 }
 
-function expirePenaltyIfDue(user) {
+function expirePenaltyIfDue(user: LegacyRecord): boolean {
   const expiry = user.status === "Red Flag" ? user.redFlagExpiresAt : user.status === "Temp ban" ? user.banExpiresAt : "";
   const expiryTimestamp = Date.parse(String(expiry || "").replace(" ยท ", " "));
   if (!expiry || !Number.isFinite(expiryTimestamp) || expiryTimestamp > Date.now()) return false;
@@ -442,7 +475,7 @@ function expirePenaltyIfDue(user) {
 
 const expiredPenalties = data.users.filter(expirePenaltyIfDue);
 
-function persistAdminData() {
+export function persistAdminData(): void {
   localStorage.setItem(freshDemoKey, JSON.stringify({ version: freshDemoVersion, collections: data }));
 }
 
@@ -453,13 +486,15 @@ if (!savedFreshDemo || savedFreshDemo.version !== freshDemoVersion || autoReject
 
 if (typeof seedGeneratedActivity === "function") seedGeneratedActivity(data);
 
-function setSeedCounter(view, count) {
-  const counter = document.querySelector(`[data-view="${view}"] b`);
-  if (counter) counter.textContent = count;
+window.data = data;
+window.persistAdminData = persistAdminData;
+window.recordActivity = recordActivity;
+
+function setSeedCounter(view: string, count: number): void {
+  const counter = document.querySelector<LegacyDomElement>(`[data-view="${view}"] b`);
+  if (counter) counter.textContent = String(count);
 }
 
 setSeedCounter("disputes", data.disputes.filter((record) => record.status === "Active").length);
 setSeedCounter("payouts", data.payouts.filter((record) => record.status === "Needs approval").length);
 setSeedCounter("reports", data.reports.filter((record) => record.status === "Active").length);
-if (state.view === "home") renderHome();
-else if (state.view === "activity") renderActivity();

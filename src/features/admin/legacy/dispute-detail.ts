@@ -1,4 +1,139 @@
-function disputeCaseFor(record) {
+import type { LegacyRecord, LegacyRuntimeData } from "./runtime";
+
+export type ModerationRecord = LegacyRecord & {
+  evidence: string[];
+  decisionReason?: string;
+  penaltyOutcome?: string;
+  resolution?: string;
+};
+
+export type ModerationQuest = LegacyRecord;
+
+export type DisputeCase = {
+  questId: string;
+  category: string;
+  openedBy: string;
+  respondent: string;
+  requested: string;
+  claim: string;
+  response: string;
+  policy: string[];
+  signals: Array<[string, string, string]>;
+  recommended: string;
+};
+
+export type TimelineEntry = {
+  title: string;
+  detail: string;
+};
+
+type ModalClose = () => void;
+type ModalOptions = { initialFocus?: string; keepDrawerOpen?: boolean };
+type InteractiveElement = HTMLElement & {
+  value: string;
+  disabled: boolean;
+  files: FileList | null;
+};
+
+export type ModerationPageContext = {
+  data: Omit<LegacyRuntimeData, "disputes" | "quests"> & {
+    disputes: ModerationRecord[];
+    quests: ModerationQuest[];
+  };
+  disputeCases: Record<string, DisputeCase>;
+  main: HTMLElement;
+  drawer: HTMLElement;
+  scrim: HTMLElement;
+  closeActiveLayer: () => void;
+  showDrawerLayer: () => void;
+  showModalLayer: (layer: HTMLElement, options?: ModalOptions) => ModalClose;
+  closeDrawer: () => void;
+  state: { view: string };
+  icon: (name: string) => string;
+  escapeActivityText: (value: unknown) => string;
+  fmt: (value: number | null | undefined) => string;
+  badge: (status: string, tone: string) => string;
+  toneClass: (tone: string) => string;
+  disputeTypeLabel: (record: LegacyRecord) => string;
+  timeline: (items: TimelineEntry[], options?: { showDetails?: boolean }) => string;
+  chatMessage: (sender: string, time: string, message: string, variant: string) => string;
+  chatTimeLabel: () => string;
+  bindChatAttachment: (form: HTMLFormElement) => void;
+  confirmAction: (
+    title: string,
+    record: LegacyRecord,
+    detail: string,
+    onConfirm: (reason: string) => void,
+    options?: { keepDrawerOpen?: boolean },
+  ) => void;
+  persistAdminData: () => void;
+  toast: (message: string) => void;
+  renderHome: () => void;
+  render: () => void;
+  renderDisputePage?: () => void;
+};
+
+function query<T extends Element>(root: ParentNode, selector: string): T | null {
+  return root.querySelector<T>(selector);
+}
+
+function queryAll<T extends Element>(
+  root: ParentNode,
+  selector: string,
+): NodeListOf<T> {
+  return root.querySelectorAll<T>(selector);
+}
+
+export type DisputeDetailApi = {
+  disputeCaseFor: (record: ModerationRecord) => DisputeCase;
+  questTimelineFor: (
+    record: ModerationRecord,
+    caseData: DisputeCase,
+    relatedQuest?: ModerationQuest,
+  ) => TimelineEntry[];
+  disputeDescriptionFor: (
+    record: ModerationRecord,
+    caseData: DisputeCase,
+  ) => string;
+  partyChats: (caseData: DisputeCase) => string;
+  bindPartyChats: (root: HTMLElement, record: ModerationRecord) => void;
+  bindResolutionControls: (root: HTMLElement, record: ModerationRecord) => void;
+  openDisputeDrawer: (index: number) => void;
+};
+
+export function initializeDisputeDetail(
+  context: ModerationPageContext,
+): DisputeDetailApi {
+  const {
+    data,
+    disputeCases,
+    main,
+    drawer,
+    scrim,
+    closeActiveLayer,
+    showDrawerLayer,
+    showModalLayer,
+    closeDrawer,
+    state,
+    icon: ico,
+    escapeActivityText,
+    fmt,
+    badge,
+    disputeTypeLabel,
+    timeline,
+    chatMessage,
+    chatTimeLabel,
+    bindChatAttachment,
+    confirmAction,
+    persistAdminData,
+    toast,
+    renderHome,
+    render,
+    renderDisputePage,
+  } = context;
+  const activeCustomLayerClose = closeActiveLayer;
+
+function disputeCaseFor(record: ModerationRecord): DisputeCase {
   return (
     disputeCases[record.id] || {
       questId: record.questId || "",
@@ -25,9 +160,11 @@ function disputeCaseFor(record) {
   );
 }
 
-function questTimelineFor(record, caseData, relatedQuest) {
-  const dateBefore = (daysBefore, time) => {
-    const date = new Date(`${record.disputeDate} 12:00:00 UTC`);
+function questTimelineFor(record: ModerationRecord, caseData: DisputeCase, relatedQuest?: ModerationQuest): TimelineEntry[] {
+  const dateBefore = (daysBefore: number, time: string): string => {
+    const disputeDay = String(record.disputeDate || "").split(" · ")[0];
+    const date = new Date(`${disputeDay} 12:00:00 UTC`);
+    if (Number.isNaN(date.getTime())) return `Date not recorded · ${time}`;
     date.setUTCDate(date.getUTCDate() - daysBefore);
     return `${date.toLocaleDateString("en-GB", {
       day: "2-digit",
@@ -69,13 +206,13 @@ function questTimelineFor(record, caseData, relatedQuest) {
   ];
 }
 
-function disputeDescriptionFor(record, caseData) {
+function disputeDescriptionFor(record: ModerationRecord, caseData: DisputeCase): string {
   const opener = caseData.openedBy.split(" · ")[0];
   const respondent = caseData.respondent.split(" · ")[0];
   return `${record.detail} ${opener} states: ${caseData.claim} ${respondent} responds: ${caseData.response}`;
 }
 
-function closedDecisionSummary(record) {
+function closedDecisionSummary(record: ModerationRecord): string {
   const reason = String(
     record.decisionReason ||
       "No written reason was recorded for this legacy demo case.",
@@ -88,14 +225,14 @@ function closedDecisionSummary(record) {
   return `<section class="section"><h3>Recorded outcome</h3><p class="audit-note">${escapeActivityText(record.resolution || "The final allocation was recorded and the case is now read-only.")}</p></section><section class="section"><h3>Reason for this decision</h3><p>${reason}</p></section>${record.penaltyOutcome ? `<section class="section"><h3>Additional enforcement</h3><p>${escapeActivityText(record.penaltyOutcome)}</p></section>` : ""}`;
 }
 
-function partyChats(caseData) {
+function partyChats(caseData: DisputeCase): string {
   return `<section class="section party-chats"><h3>Private case messages</h3><p class="chat-intro">Messages are separate for each party and become part of the case audit trail.</p><div class="chat-launches"><button class="party-chat-button" data-chat-role="hirer"><span class="avatar">GV</span><span><strong>Chat with hirer</strong><small>${escapeActivityText(caseData.openedBy)}</small></span><span>Open</span></button><button class="party-chat-button" data-chat-role="worker"><span class="avatar">HN</span><span><strong>Chat with worker</strong><small>${escapeActivityText(caseData.respondent)}</small></span><span>Open</span></button></div></section>`;
 }
 
-function bindPartyChats(root, record) {
+function bindPartyChats(root: HTMLElement, record: ModerationRecord): void {
   const caseData = disputeCaseFor(record);
   root
-    .querySelectorAll("[data-chat-role]")
+    .querySelectorAll<InteractiveElement>("[data-chat-role]")
     .forEach((button) =>
       button.addEventListener("click", () =>
         openPartyChat(record, button.dataset.chatRole, caseData),
@@ -103,7 +240,7 @@ function bindPartyChats(root, record) {
     );
 }
 
-function openPartyChat(record, role, caseData) {
+function openPartyChat(record: ModerationRecord, role: string | undefined, caseData: DisputeCase): void {
   activeCustomLayerClose?.();
   const isGiver = role === "hirer",
     name = isGiver ? caseData.openedBy : caseData.respondent,
@@ -115,38 +252,41 @@ function openPartyChat(record, role, caseData) {
   overlay.className = "party-chat-overlay";
   overlay.innerHTML = `<section class="party-chat-modal" role="dialog" aria-modal="true" aria-label="Chat with ${isGiver ? "hirer" : "worker"}"><div class="chat-modal-head"><div><strong>Chat with ${isGiver ? "hirer" : "worker"}</strong><small>${name} · ${record.id}</small></div><button class="icon close-party-chat" aria-label="Close chat"><span class="close-lines"></span></button></div><div class="chat-thread">${chatMessage(senderName, isGiver ? "Today · 09:14" : "Today · 09:16", initial, "received")}${chatMessage("You", "Today · 09:20", "Please keep all further evidence in this case.", "sent")}</div><form class="chat-compose"><label class="visually-hidden" for="case-message-${record.id}-${role}">Message ${isGiver ? "hirer" : "worker"}</label><textarea id="case-message-${record.id}-${role}" rows="3" maxlength="500" placeholder="Message ${isGiver ? "hirer" : "worker"}…"></textarea><div class="chat-compose-actions"><div class="chat-compose-tools"><label class="chat-attach btn" for="case-chat-attachment-${record.id}-${role}">${ico("paperclip")}<span>Attach file</span></label><input class="chat-attachment-input visually-hidden" id="case-chat-attachment-${record.id}-${role}" data-chat-attachment type="file"><span class="chat-attachment-name" data-chat-attachment-name aria-live="polite">No file attached</span></div><button class="btn primary" type="submit">Send message</button></div></form></section>`;
   const close = showModalLayer(overlay, { initialFocus: "textarea" });
-  overlay.querySelector(".close-party-chat").onclick = close;
+  const closeButton = query<InteractiveElement>(overlay, ".close-party-chat");
+  if (closeButton) closeButton.onclick = close;
   overlay.addEventListener("click", (event) => {
     if (event.target === overlay) close();
   });
-  const form = overlay.querySelector("form");
+  const form = query<HTMLFormElement>(overlay, "form");
+  if (!form) return;
   bindChatAttachment(form);
   form.addEventListener("submit", (event) => {
     event.preventDefault();
-    const input = overlay.querySelector("textarea"),
-      message = input.value.trim();
+    const input = query<HTMLTextAreaElement>(overlay, "textarea");
+    if (!input) return;
+    const message = input.value.trim();
     if (!message) return;
-    overlay
-      .querySelector(".chat-thread")
-      .insertAdjacentHTML("beforeend", chatMessage("You", chatTimeLabel(), message, "sent"));
+    const thread = query<HTMLElement>(overlay, ".chat-thread");
+    if (!thread) return;
+    thread.insertAdjacentHTML("beforeend", chatMessage("You", chatTimeLabel(), message, "sent"));
     input.value = "";
     toast(`Message saved to ${record.id}`);
   });
 }
 
-function bindResolutionControls(root, record) {
+function bindResolutionControls(root: HTMLElement, record: ModerationRecord): void {
   let selected = "";
   const caseData = disputeCaseFor(record),
     giverName = caseData.openedBy.split(" · ")[0],
     hunterName = caseData.respondent.split(" · ")[0],
-    resolve = root.querySelector(".resolve-case, [data-dispute-action]");
-  root.querySelector('[data-allocation="hirer"] span').textContent =
-    `Hirer wins · ${giverName}`;
-  root.querySelector('[data-allocation="worker"] span').textContent =
-    `Worker wins · ${hunterName}`;
-  root.querySelectorAll("[data-allocation]").forEach((button) =>
+    resolve = query<InteractiveElement>(root, ".resolve-case, [data-dispute-action]");
+  const hirerAllocation = query<HTMLElement>(root, '[data-allocation="hirer"] span');
+  const workerAllocation = query<HTMLElement>(root, '[data-allocation="worker"] span');
+  if (hirerAllocation) hirerAllocation.textContent = `Hirer wins · ${giverName}`;
+  if (workerAllocation) workerAllocation.textContent = `Worker wins · ${hunterName}`;
+  queryAll<InteractiveElement>(root, "[data-allocation]").forEach((button) =>
     button.addEventListener("click", () => {
-      selected = button.dataset.allocation;
+      selected = button.dataset.allocation || "";
       root
         .querySelectorAll("[data-allocation]")
         .forEach((item) => item.classList.remove("selected"));
@@ -156,7 +296,7 @@ function bindResolutionControls(root, record) {
   resolve?.addEventListener("click", () => {
     if (!selected)
       return toast("Select a resolution before closing this dispute.");
-    let detail;
+    let detail = "";
     if (selected === "hirer")
       detail = `Confirm decision for ${record.id}: Hirer wins · ${giverName}; refund ฿${fmt(record.amount)} to the giver.`;
     if (selected === "worker")
@@ -178,15 +318,15 @@ function bindResolutionControls(root, record) {
       }
       persistAdminData();
       if (state.view === "home") renderHome();
+      else if (state.view === "disputes") render();
       if (root === drawer) openDisputeDrawer(data.disputes.indexOf(record));
       else if (root === main && typeof renderDisputePage === "function")
         renderDisputePage();
-      else if (state.view === "disputes") render();
     }, { keepDrawerOpen: root === drawer });
   });
 }
 
-function openDisputeDrawer(index) {
+function openDisputeDrawer(index: number): void {
   const record = data.disputes[index],
     isClosed = record.status === "Closed",
     caseData = disputeCaseFor(record),
@@ -211,7 +351,8 @@ function openDisputeDrawer(index) {
  <section class="section"><h3>Overall quest timeline</h3>${timeline(questTimeline, { showDetails: false })}</section>
 </div>
 ${isClosed ? `<div class="drawer-actions case-actions"><a class="btn" href="/disputes/${encodeURIComponent(record.id)}">Full dispute detail</a><button class="btn" id="close-case-record">Close record</button></div>` : `<div class="drawer-actions case-actions"><a class="btn" href="/disputes/${encodeURIComponent(record.id)}">Full dispute detail</a><button class="btn primary resolve-case">Resolve dispute</button></div>`}`;
-  document.querySelector("#close").onclick = closeDrawer;
+  const closeButton = query<InteractiveElement>(document, "#close");
+  if (closeButton) closeButton.onclick = closeDrawer;
   scrim.onclick = closeDrawer;
   drawer.querySelector(".signal-list")?.closest(".section")?.remove();
   bindPartyChats(drawer, record);
@@ -219,4 +360,16 @@ ${isClosed ? `<div class="drawer-actions case-actions"><a class="btn" href="/dis
   drawer
     .querySelector("#close-case-record")
     ?.addEventListener("click", closeDrawer);
+}
+
+
+  return {
+    disputeCaseFor,
+    questTimelineFor,
+    disputeDescriptionFor,
+    partyChats,
+    bindPartyChats,
+    bindResolutionControls,
+    openDisputeDrawer,
+  };
 }

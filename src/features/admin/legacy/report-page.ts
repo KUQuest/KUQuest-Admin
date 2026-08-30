@@ -1,19 +1,81 @@
-const reportId =
-  window.__KUQUEST_RECORD_ID__ ||
-  new URLSearchParams(location.search).get("id") ||
-  "RPT-8201";
-const reportRecord = data.reports.find((report) => report.id === reportId);
+import type { LegacyRecord } from "./runtime";
+import type {
+  ModerationPageContext,
+  TimelineEntry,
+} from "./dispute-detail";
 
-function reportTone(report) {
+export type ReportPageContext = ModerationPageContext & {
+  recordId?: string;
+  search: string;
+  setActiveNavigation: (view: string) => void;
+  penaltyOutcomeFor: (user: LegacyRecord) => { key: string; label: string } | null;
+  penaltyOutcomeLabel: (
+    outcome: { key: string; label: string } | null,
+  ) => string;
+  redFlagExemptionFor: (
+    user: LegacyRecord,
+  ) => { key: string; remaining: number } | null;
+  confirmedViolationCount: (user: LegacyRecord) => number;
+  applyReportDecision: (
+    report: LegacyRecord,
+    decision: string,
+    reason: string,
+  ) => void;
+};
+
+function query<T extends Element>(root: ParentNode, selector: string): T | null {
+  return root.querySelector<T>(selector);
+}
+
+function queryAll<T extends Element>(
+  root: ParentNode,
+  selector: string,
+): NodeListOf<T> {
+  return root.querySelectorAll<T>(selector);
+}
+
+export function initializeReportPage(
+  context: ReportPageContext,
+): () => void {
+  const {
+    data,
+    main,
+    closeActiveLayer,
+    showModalLayer,
+    icon: ico,
+    escapeActivityText,
+    badge,
+    timeline,
+    chatMessage,
+    chatTimeLabel,
+    bindChatAttachment,
+    confirmAction,
+    persistAdminData,
+    toast,
+    setActiveNavigation,
+    penaltyOutcomeFor,
+    penaltyOutcomeLabel,
+    redFlagExemptionFor,
+    confirmedViolationCount,
+    applyReportDecision,
+  } = context;
+  const activeCustomLayerClose = closeActiveLayer;
+  const reportId =
+    context.recordId ||
+    new URLSearchParams(context.search).get("id") ||
+    "RPT-8201";
+  const reportRecord = data.reports.find((report) => report.id === reportId);
+
+function reportTone(report: LegacyRecord): string {
   return report.tone || (report.status === "Closed" ? "neutral" : "warning");
 }
 
-function reportEvidence(report) {
+function reportEvidence(report: LegacyRecord): string {
   if (!report.evidence) return '<p class="audit-note">No evidence file attached.</p>';
   return `<button class="evidence-item" data-report-evidence><span class="evidence-state">${ico("check")}</span><span><strong>${escapeActivityText(report.evidence)}</strong><small>Attached by ${escapeActivityText(report.reporterName)}</small></span><span>Open</span></button>`;
 }
 
-function reportChatInitials(name) {
+function reportChatInitials(name: unknown): string {
   return String(name || "User")
     .split(/\s+/)
     .map((part) => part[0] || "")
@@ -22,15 +84,15 @@ function reportChatInitials(name) {
     .toUpperCase();
 }
 
-function reportPartyChats(report) {
+function reportPartyChats(report: LegacyRecord): string {
   return `<section class="record-panel report-party-chats"><div class="record-panel-head"><h2>Private report messages</h2><span class="section-count">2</span></div><p class="chat-intro">Open a separate conversation with either side to review their messages and follow up.</p><div class="chat-launches"><button class="party-chat-button" data-report-chat-role="reporter"><span class="avatar">${reportChatInitials(report.reporterName)}</span><span><strong>Chat with reporter</strong><small>${escapeActivityText(report.reporterName)}</small></span><span>Open</span></button><button class="party-chat-button" data-report-chat-role="reported"><span class="avatar">${reportChatInitials(report.reportedUserName)}</span><span><strong>Chat with reported user</strong><small>${escapeActivityText(report.reportedUserName)}</small></span><span>Open</span></button></div></section>`;
 }
 
-function reportUserProfileLink(userId) {
-  return `<a class="btn full-width" href="/users/${encodeURIComponent(userId)}">See full user profile</a>`;
+function reportUserProfileLink(userId: string | undefined): string {
+  return `<a class="btn full-width" href="/users/${encodeURIComponent(userId || "")}">See full user profile</a>`;
 }
 
-function openReportPartyChat(report, role) {
+function openReportPartyChat(report: LegacyRecord, role: string | undefined): void {
   activeCustomLayerClose?.();
   const isReporter = role === "reporter",
     participantName = isReporter ? report.reporterName : report.reportedUserName,
@@ -41,28 +103,32 @@ function openReportPartyChat(report, role) {
     messageId = `${report.id}-${role}`,
     overlay = document.createElement("div");
   overlay.className = "party-chat-overlay";
-  overlay.innerHTML = `<section class="party-chat-modal" role="dialog" aria-modal="true" aria-label="Chat with ${escapeActivityText(participantName)}"><div class="chat-modal-head"><div><strong>Chat with ${escapeActivityText(participantName)}</strong><small>${escapeActivityText(participantRole)} · ${escapeActivityText(report.id)}</small></div><button class="icon close-party-chat" aria-label="Close chat"><span class="close-lines"></span></button></div><div class="chat-thread">${chatMessage(participantName, escapeActivityText(report.reportedAt || "Submitted"), initial, "received")}${chatMessage("You", "Admin review", "Please keep any further context in this report.", "sent")}</div><form class="chat-compose"><label class="visually-hidden" for="report-message-${messageId}">Message ${escapeActivityText(participantName)}</label><textarea id="report-message-${messageId}" rows="3" maxlength="500" placeholder="Message ${escapeActivityText(participantName)}…"></textarea><div class="chat-compose-actions"><div class="chat-compose-tools"><label class="chat-attach btn" for="report-chat-attachment-${messageId}">${ico("paperclip")}<span>Attach file</span></label><input class="chat-attachment-input visually-hidden" id="report-chat-attachment-${messageId}" data-chat-attachment type="file"><span class="chat-attachment-name" data-chat-attachment-name aria-live="polite">No file attached</span></div><button class="btn primary" type="submit">Send message</button></div></form></section>`;
+  const participant = String(participantName || "User");
+  overlay.innerHTML = `<section class="party-chat-modal" role="dialog" aria-modal="true" aria-label="Chat with ${escapeActivityText(participant)}"><div class="chat-modal-head"><div><strong>Chat with ${escapeActivityText(participant)}</strong><small>${escapeActivityText(participantRole)} · ${escapeActivityText(report.id)}</small></div><button class="icon close-party-chat" aria-label="Close chat"><span class="close-lines"></span></button></div><div class="chat-thread">${chatMessage(participant, escapeActivityText(report.reportedAt || "Submitted"), initial, "received")}${chatMessage("You", "Admin review", "Please keep any further context in this report.", "sent")}</div><form class="chat-compose"><label class="visually-hidden" for="report-message-${messageId}">Message ${escapeActivityText(participant)}</label><textarea id="report-message-${messageId}" rows="3" maxlength="500" placeholder="Message ${escapeActivityText(participant)}…"></textarea><div class="chat-compose-actions"><div class="chat-compose-tools"><label class="chat-attach btn" for="report-chat-attachment-${messageId}">${ico("paperclip")}<span>Attach file</span></label><input class="chat-attachment-input visually-hidden" id="report-chat-attachment-${messageId}" data-chat-attachment type="file"><span class="chat-attachment-name" data-chat-attachment-name aria-live="polite">No file attached</span></div><button class="btn primary" type="submit">Send message</button></div></form></section>`;
   const close = showModalLayer(overlay, { initialFocus: "textarea" });
-  overlay.querySelector(".close-party-chat").onclick = close;
+  const closeButton = query<HTMLElement>(overlay, ".close-party-chat");
+  if (closeButton) closeButton.onclick = close;
   overlay.addEventListener("click", (event) => {
     if (event.target === overlay) close();
   });
-  const form = overlay.querySelector("form");
+  const form = query<HTMLFormElement>(overlay, "form");
+  if (!form) return;
   bindChatAttachment(form);
   form.addEventListener("submit", (event) => {
     event.preventDefault();
-    const input = overlay.querySelector("textarea"),
-      message = input.value.trim();
+    const input = query<HTMLTextAreaElement>(overlay, "textarea");
+    if (!input) return;
+    const message = input.value.trim();
     if (!message) return;
-    overlay
-      .querySelector(".chat-thread")
-      .insertAdjacentHTML("beforeend", chatMessage("You", chatTimeLabel(), message, "sent"));
+    const thread = query<HTMLElement>(overlay, ".chat-thread");
+    if (!thread) return;
+    thread.insertAdjacentHTML("beforeend", chatMessage("You", chatTimeLabel(), message, "sent"));
     input.value = "";
     toast(`Message saved to ${report.id}`);
   });
 }
 
-function reportTimeline(report) {
+function reportTimeline(report: LegacyRecord): TimelineEntry[] {
   const events = [
     {
       title: "Report submitted",
@@ -83,7 +149,7 @@ function reportTimeline(report) {
   return events;
 }
 
-function reportDecisionPanel(report) {
+function reportDecisionPanel(report: LegacyRecord): string {
   if (report.status === "Closed") {
     return `<p class="audit-note">Decision recorded: <strong>${escapeActivityText(report.decisionLabel || "No violation")}</strong>${report.decisionDays ? ` · ${report.decisionDays} days` : ""}.</p>${report.decisionReason ? `<div class="overview-group"><span>Reason for decision</span><p>${escapeActivityText(report.decisionReason)}</p></div>` : ""}`;
   }
@@ -95,7 +161,7 @@ function reportDecisionPanel(report) {
   return `<p class="audit-note">Decide whether the evidence confirms an actual policy violation. The next penalty is calculated from the account history.</p><fieldset class="report-decision-options"><legend class="visually-hidden">Report decision</legend><label class="report-decision-option"><input type="radio" name="report-decision" value="no-violation" data-report-decision="no-violation"><span><strong>No violation</strong><small>Close the report without changing the reported user’s account or violation count.</small></span></label><label class="report-decision-option"><input type="radio" name="report-decision" value="confirmed-violation" data-report-decision="confirmed-violation"><span><strong>Confirm violation</strong><small>Record violation #${nextViolationNumber}; apply ${escapeActivityText(outcomeLabel)} automatically.</small></span></label></fieldset>`;
 }
 
-function renderReportPage() {
+function renderReportPage(): void {
   if (!reportRecord) {
     main.innerHTML = `<div class="full-page-empty"><h1>Report not found</h1><p>No synthetic report matches <strong>${escapeActivityText(reportId)}</strong>.</p><a class="btn primary" href="/?view=reports">Return to reports</a></div>`;
     return;
@@ -119,13 +185,14 @@ function renderReportPage() {
     <section class="record-panel report-decision-panel"><h2>${isClosed ? "Recorded outcome" : "Report decision"}</h2>${reportDecisionPanel(reportRecord)}${isClosed ? "" : '<button class="btn danger full-width" data-report-close="Close report">Close report</button>'}</section>
   </aside></div>`;
 
-  if (!isClosed)
-    main.querySelector(".report-page-alert strong").textContent =
-      "Active report — review is required";
+  if (!isClosed) {
+    const alertTitle = query<HTMLElement>(main, ".report-page-alert strong");
+    if (alertTitle) alertTitle.textContent = "Active report — review is required";
+  }
 
   if (!isClosed) {
     let selectedDecision = "";
-    main.querySelectorAll("[data-report-decision]").forEach((input) =>
+    queryAll<HTMLInputElement>(main, "[data-report-decision]").forEach((input) =>
       input.addEventListener("change", () => {
         selectedDecision = input.value;
         main
@@ -133,7 +200,7 @@ function renderReportPage() {
           .forEach((option) => option.classList.toggle("selected", option === input.closest(".report-decision-option")));
       }),
     );
-    main.querySelectorAll("[data-report-close]").forEach((button) =>
+    queryAll<HTMLElement>(main, "[data-report-close]").forEach((button) =>
       button.addEventListener("click", () => {
         if (!selectedDecision) {
           toast("Choose No violation or Confirm violation before closing.");
@@ -156,7 +223,7 @@ function renderReportPage() {
   main.querySelector("[data-report-evidence]")?.addEventListener("click", () =>
     toast(`Evidence opened for ${reportRecord.id}`),
   );
-  main.querySelectorAll("[data-report-chat-role]").forEach((button) =>
+  queryAll<HTMLElement>(main, "[data-report-chat-role]").forEach((button) =>
     button.addEventListener("click", () =>
       openReportPartyChat(reportRecord, button.dataset.reportChatRole),
     ),
@@ -164,4 +231,7 @@ function renderReportPage() {
   setActiveNavigation("reports");
 }
 
-renderReportPage();
+
+
+  return renderReportPage;
+}

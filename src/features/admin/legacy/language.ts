@@ -1,9 +1,27 @@
+export {};
+
+type Language = "en" | "th";
+type TranslationMap = Record<string, string>;
+type TranslationRoot = Document | DocumentFragment | Element;
+type PatternTranslation = readonly [RegExp, (match: RegExpMatchArray) => string];
+type LanguageDefinition = { label: string; documentLanguage: string };
+
+declare global {
+  interface Window {
+    __KUQUEST_LANGUAGE__?: {
+      current: () => Language;
+      translate: (value: string) => string;
+      set: (language: Language) => void;
+    };
+  }
+}
+
 const languageStorageKey = "kuquest-admin-language";
-const languageDefinitions = {
+const languageDefinitions: Record<Language, LanguageDefinition> = {
   en: { label: "English", documentLanguage: "en" },
   th: { label: "ไทย", documentLanguage: "th" },
 };
-const translations = {
+const translations: TranslationMap = {
   "Red Flag": "ติดธงแดง",
   "Record violation": "บันทึกการละเมิด",
   "Confirm violation": "ยืนยันการละเมิด",
@@ -83,7 +101,6 @@ const translations = {
   Active: "ใช้งานอยู่",
   Closed: "ปิดแล้ว",
   Visible: "แสดงอยู่",
-  Reported: "ถูกรายงาน",
   Hidden: "ซ่อนอยู่",
   All: "ทั้งหมด",
   Previous: "ก่อนหน้า",
@@ -118,7 +135,6 @@ const translations = {
   Review: "รีวิว",
   Reviews: "รีวิว",
   Date: "วันที่",
-  Reports: "รายงาน",
   Status: "สถานะ",
   Action: "การดำเนินการ",
   "Filter reviews by rating": "กรองรีวิวตามคะแนน",
@@ -137,7 +153,6 @@ const translations = {
   "Quest history": "ประวัติงาน",
   Role: "บทบาท",
   Worker: "ผู้ทำงาน",
-  Hirer: "ผู้ว่าจ้าง",
   "Quest status": "สถานะงาน",
   Dates: "วันที่",
   "Amount earned": "รายได้",
@@ -468,7 +483,6 @@ const translations = {
   "Active report — review is required": "รายงานที่กำลังดำเนินการ — ต้องตรวจสอบ",
   "This report is closed and retained as a read-only audit record.": "รายงานนี้ปิดแล้วและเก็บไว้เป็นรายการตรวจสอบแบบอ่านอย่างเดียว",
   "Review the submitted details and evidence before closing this report.": "ตรวจสอบรายละเอียดและหลักฐานที่ส่งมาก่อนปิดรายงานนี้",
-  Submitted: "ส่งแล้ว",
   "1 record": "1 รายการ",
   "None attached": "ไม่มีไฟล์แนบ",
   "Report detail": "รายละเอียดรายงาน",
@@ -484,7 +498,6 @@ const translations = {
   "Awaiting admin decision": "รอการตัดสินใจจากผู้ดูแล",
   "Reported account": "บัญชีที่ถูกรายงาน",
   Name: "ชื่อ",
-  "See full user profile": "ดูโปรไฟล์ผู้ใช้แบบเต็ม",
   "Recorded outcome": "ผลลัพธ์ที่บันทึกไว้",
   "Report decision": "การตัดสินใจเกี่ยวกับรายงาน",
   "Select the account action before closing this report. Every decision requires a written reason.": "เลือกการดำเนินการกับบัญชีก่อนปิดรายงานนี้ ทุกการตัดสินใจต้องมีเหตุผลเป็นลายลักษณ์อักษร",
@@ -542,7 +555,7 @@ const translations = {
   "Add context for authorized moderators…": "เพิ่มบริบทสำหรับผู้ดูแลที่ได้รับอนุญาต…",
   "Enter at least 8 characters explaining this penalty.": "กรอกอย่างน้อย 8 ตัวอักษรเพื่ออธิบายบทลงโทษนี้",
 };
-const categoryTranslations = {
+const categoryTranslations: TranslationMap = {
   Payment: "การชำระเงิน",
   Evidence: "หลักฐาน",
   Completion: "การทำงานให้เสร็จ",
@@ -552,20 +565,30 @@ const categoryTranslations = {
   Timing: "กำหนดเวลา",
   Rights: "สิทธิ์",
 };
-const patternTranslations = [
+const roleTranslations: TranslationMap = {
+  hirer: "ผู้ว่าจ้าง",
+  worker: "ผู้ทำงาน",
+  reporter: "ผู้รายงาน",
+  "reported user": "ผู้ถูกรายงาน",
+};
+const reportRoleTranslations: TranslationMap = {
+  Reporter: "ผู้รายงาน",
+  "Reported user": "ผู้ถูกรายงาน",
+};
+const patternTranslations: PatternTranslation[] = [
   [/^Team quest · (.+) · created by (.+)$/, (match) => `งานทีม · ${match[1]} · สร้างโดย ${match[2]}`],
   [/^(.+) · filed (.+)$/, (match) => `${translations[match[1]] || categoryTranslations[match[1]] || match[1]} · ยื่นเมื่อ ${match[2]}`],
   [/^(.+) · submitted (.+)$/, (match) => `${translations[match[1]] || categoryTranslations[match[1]] || match[1]} · ส่งแล้ว ${match[2]}`],
   [/^Report against (.+)$/, (match) => `รายงานเกี่ยวกับ ${match[1]}`],
   [/^(.+) · disputed (.+)$/, (match) => `${match[1]} · เกิดข้อพิพาทเมื่อ ${match[2]}`],
-  [/^Chat with (.+)$/, (match) => `แชทกับ ${({ hirer: "ผู้ว่าจ้าง", worker: "ผู้ทำงาน", reporter: "ผู้รายงาน", "reported user": "ผู้ถูกรายงาน" })[match[1].toLowerCase()] || match[1]}`],
-  [/^Message (hirer|worker|reporter|reported user)…$/i, (match) => `ส่งข้อความถึง${({ hirer: "ผู้ว่าจ้าง", worker: "ผู้ทำงาน", reporter: "ผู้รายงาน", "reported user": "ผู้ถูกรายงาน" })[match[1].toLowerCase()]}…`],
-  [/^Message (hirer|worker|reporter|reported user)$/i, (match) => `ส่งข้อความถึง${({ hirer: "ผู้ว่าจ้าง", worker: "ผู้ทำงาน", reporter: "ผู้รายงาน", "reported user": "ผู้ถูกรายงาน" })[match[1].toLowerCase()]}`],
+  [/^Chat with (.+)$/, (match) => `แชทกับ ${roleTranslations[match[1].toLowerCase()] || match[1]}`],
+  [/^Message (hirer|worker|reporter|reported user)…$/i, (match) => `ส่งข้อความถึง${roleTranslations[match[1].toLowerCase()]}…`],
+  [/^Message (hirer|worker|reporter|reported user)$/i, (match) => `ส่งข้อความถึง${roleTranslations[match[1].toLowerCase()]}`],
   [/^Message (.+)…$/, (match) => `ส่งข้อความถึง ${match[1]}…`],
   [/^Message (.+)$/, (match) => `ส่งข้อความถึง ${match[1]}`],
   [/^(Hirer|Worker|Reporter|Reported user) · (.+)$/, (match) => `${translations[match[1]] || match[1]} · ${match[2]}`],
   [/^(.+) · (Hirer|Worker|Reporter|Reported user) · (.+)$/, (match) => `${match[1]} · ${translations[match[2]] || match[2]} · ${match[3]}`],
-  [/^(.+) · (Hirer|Worker|Reporter|Reported user)$/, (match) => `${match[1]} · ${translations[match[2]] || ({ Reporter: "ผู้รายงาน", "Reported user": "ผู้ถูกรายงาน" })[match[2]] || match[2]}`],
+  [/^(.+) · (Hirer|Worker|Reporter|Reported user)$/, (match) => `${match[1]} · ${translations[match[2]] || reportRoleTranslations[match[2]] || match[2]}`],
   [/^(Hirer|Worker) wins · (.+)$/, (match) => `${match[1] === "Hirer" ? "ผู้ว่าจ้างชนะ" : "ผู้ทำงานชนะ"} · ${match[2]}`],
   [/^(.+) published this quest$/, (match) => `${match[1]} เผยแพร่งานนี้แล้ว`],
   [/^(.+) opened the dispute$/, (match) => `${match[1]} เปิดข้อพิพาทแล้ว`],
@@ -621,7 +644,7 @@ const patternTranslations = [
   [/^XLSX · (.+) · added with quest$/, (match) => `XLSX · ${match[1]} · เพิ่มพร้อมงาน`],
   [/^(.+) · created by (.+)$/, (match) => `${match[1]} · สร้างโดย ${match[2]}`],
 ];
-const functionalActionLabels = {
+const functionalActionLabels: TranslationMap = {
   "View accepted terms": "view-accepted-terms",
   "Compare versions": "compare-versions",
   "Download all": "download-all",
@@ -633,16 +656,16 @@ const functionalActionLabels = {
   "Request clarification": "request-clarification",
   Notifications: "notifications",
 };
-const originalText = new WeakMap();
-const originalAttributes = new WeakMap();
-let activeLanguage = "en";
+const originalText = new WeakMap<Text, string>();
+const originalAttributes = new WeakMap<Element, TranslationMap>();
+let activeLanguage: Language = "en";
 let translating = false;
 
-function isLanguage(value) {
-  return Object.prototype.hasOwnProperty.call(languageDefinitions, value);
+function isLanguage(value: unknown): value is Language {
+  return typeof value === "string" && Object.prototype.hasOwnProperty.call(languageDefinitions, value);
 }
 
-function storedLanguage() {
+function storedLanguage(): Language {
   try {
     const value = localStorage.getItem(languageStorageKey);
     return isLanguage(value) ? value : "en";
@@ -651,7 +674,7 @@ function storedLanguage() {
   }
 }
 
-function translatedValue(value) {
+function translatedValue(value: string): string {
   if (activeLanguage === "en") return value;
   const trimmed = value.trim();
   if (!trimmed) return value;
@@ -664,15 +687,15 @@ function translatedValue(value) {
   return value;
 }
 
-function translateTextNode(node) {
+function translateTextNode(node: Text): void {
   if (!node.parentElement?.closest("body") || node.parentElement.closest("script, style, template")) return;
   if (!originalText.has(node)) originalText.set(node, node.nodeValue || "");
-  const source = originalText.get(node);
+  const source = originalText.get(node) ?? "";
   const next = translatedValue(source);
   if (node.nodeValue !== next) node.nodeValue = next;
 }
 
-function translateAttribute(element, name) {
+function translateAttribute(element: Element, name: string): void {
   const value = element.getAttribute(name);
   if (value === null) return;
   let values = originalAttributes.get(element);
@@ -685,25 +708,27 @@ function translateAttribute(element, name) {
   if (element.getAttribute(name) !== next) element.setAttribute(name, next);
 }
 
-function markFunctionalActions(root) {
-  if (root.nodeType === 1 && root.matches("button")) markFunctionalAction(root);
+function markFunctionalActions(root: TranslationRoot): void {
+  if (root instanceof HTMLButtonElement) markFunctionalAction(root);
   root.querySelectorAll("button").forEach(markFunctionalAction);
 }
 
-function markFunctionalAction(button) {
+function markFunctionalAction(button: HTMLButtonElement): void {
   if (button.dataset.functionalAction) return;
   const action = functionalActionLabels[button.textContent.trim()];
   if (action) button.dataset.functionalAction = action;
 }
 
-function translateTextNodes(root) {
+function translateTextNodes(root: TranslationRoot): void {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   let node;
-  while ((node = walker.nextNode())) translateTextNode(node);
+  while ((node = walker.nextNode())) {
+    if (node instanceof Text) translateTextNode(node);
+  }
 }
 
-function translateAttributes(root) {
-  if (root.nodeType === 1) {
+function translateAttributes(root: TranslationRoot): void {
+  if (root instanceof Element) {
     ["aria-label", "placeholder", "title"].forEach((name) => translateAttribute(root, name));
   }
   root.querySelectorAll("*").forEach((element) => {
@@ -711,23 +736,23 @@ function translateAttributes(root) {
   });
 }
 
-function translateAddedNode(node) {
-  if (node.nodeType === 3) {
+function translateAddedNode(node: Node): void {
+  if (node instanceof Text) {
     translateTextNode(node);
     return;
   }
-  if (node.nodeType !== 1 && node.nodeType !== 11) return;
+  if (!(node instanceof Element) && !(node instanceof DocumentFragment)) return;
   translateTextNodes(node);
   translateAttributes(node);
 }
 
-function syncLanguageControls() {
-  document.querySelectorAll("[data-language-option]").forEach((option) => {
+function syncLanguageControls(): void {
+  document.querySelectorAll<HTMLElement>("[data-language-option]").forEach((option) => {
     option.setAttribute("aria-pressed", String(option.dataset.languageOption === activeLanguage));
   });
 }
 
-function translateDocument() {
+function translateDocument(): void {
   if (translating) return;
   translating = true;
   document.documentElement.lang = languageDefinitions[activeLanguage].documentLanguage;
@@ -739,7 +764,7 @@ function translateDocument() {
   translating = false;
 }
 
-function persistLanguage(language) {
+function persistLanguage(language: Language): void {
   try {
     localStorage.setItem(languageStorageKey, language);
   } catch {
@@ -747,7 +772,7 @@ function persistLanguage(language) {
   }
 }
 
-function applyLanguage(language, shouldPersist = true) {
+function applyLanguage(language: unknown, shouldPersist = true): void {
   activeLanguage = isLanguage(language) ? language : "en";
   if (shouldPersist) persistLanguage(activeLanguage);
   translateDocument();
@@ -756,11 +781,12 @@ function applyLanguage(language, shouldPersist = true) {
 window.__KUQUEST_LANGUAGE__ = {
   current: () => activeLanguage,
   translate: translatedValue,
+  set: (language: Language) => applyLanguage(language),
 };
 
 document.addEventListener("click", (event) => {
   const target = event.target instanceof Element ? event.target : null;
-  const option = target?.closest("[data-language-option]");
+  const option = target?.closest<HTMLElement>("[data-language-option]");
   if (!option) return;
   applyLanguage(option.dataset.languageOption);
   option.focus();
@@ -768,8 +794,8 @@ document.addEventListener("click", (event) => {
 
 applyLanguage(storedLanguage(), false);
 let translationScheduled = false;
-const pendingMutations = [];
-function scheduleMutationTranslation(records) {
+const pendingMutations: MutationRecord[] = [];
+function scheduleMutationTranslation(records: MutationRecord[]): void {
   pendingMutations.push(...records);
   if (translationScheduled) return;
   translationScheduled = true;
@@ -777,11 +803,11 @@ function scheduleMutationTranslation(records) {
     translationScheduled = false;
     const mutations = pendingMutations.splice(0);
     mutations.forEach((record) => {
-      if (record.type === "attributes") translateAttribute(record.target, record.attributeName);
-      else if (record.type === "characterData") translateTextNode(record.target);
+      if (record.type === "attributes" && record.target instanceof Element && record.attributeName) translateAttribute(record.target, record.attributeName);
+      else if (record.type === "characterData" && record.target instanceof Text) translateTextNode(record.target);
       else {
         record.addedNodes.forEach((node) => {
-          if (node.nodeType === 1 || node.nodeType === 11) markFunctionalActions(node);
+          if (node instanceof Element || node instanceof DocumentFragment) markFunctionalActions(node);
           if (activeLanguage !== "en") translateAddedNode(node);
         });
       }

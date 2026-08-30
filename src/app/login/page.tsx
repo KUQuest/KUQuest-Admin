@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { LegacyLoginPage } from "@/features/admin/legacy-admin-page";
+import { AdminLoginPage } from "@/features/admin/login/admin-login-page";
 
 export const metadata: Metadata = {
   title: "Sign in",
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function LoginPage() {
-  return <LegacyLoginPage />;
+  return <AdminLoginPage />;
 }

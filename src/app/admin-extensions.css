@@ -183,6 +183,10 @@
 .report-form select, .report-form textarea { width: 100%; padding: 9px 10px; border: 1px solid var(--strong); border-radius: 8px; background: var(--surface); color: var(--text); }
 .report-form select { height: 36px; }
 .report-form textarea { min-height: 110px; resize: vertical; }
+.report-selected-user { display: grid; gap: 4px; padding: 11px 12px; border: 2px solid var(--accent); border-radius: 9px; background: var(--accent-soft); }
+.report-selected-user > span { color: var(--muted); font-size: 11px; font-weight: 600; }
+.report-selected-user > strong { font-size: 14px; }
+.report-selected-user > small { color: var(--muted); font-size: 11px; font-weight: 400; }
 .report-file small { color: var(--muted); font-size: 11px; font-weight: 400; }
 .report-error { margin: -7px 0 0; }
 .penalty-form fieldset { display: grid; gap: 7px; margin: 0; padding: 0; border: 0; }

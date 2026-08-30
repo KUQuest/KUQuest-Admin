@@ -40,6 +40,17 @@ test.describe("Thai translation for full records and overlays", () => {
     await expect(page.getByText("Platform fee on completion", { exact: true })).toHaveCount(0);
   });
 
+  test("translates functional controls in the rendered quest page", async ({ page }) => {
+    await signIn(page);
+    await switchToThai(page);
+    await page.goto("/quests/QST-12001");
+
+    const exportLog = page.getByRole("button", { name: "ส่งออกบันทึก", exact: true });
+    await expect(exportLog).toBeVisible();
+    await expect(exportLog).toHaveAttribute("data-functional-action", "export-log");
+    await expect(page.getByRole("button", { name: "Export log", exact: true })).toHaveCount(0);
+  });
+
   test("translates dispute chat content inserted after Thai is active", async ({ page }) => {
     await signIn(page);
     await switchToThai(page);

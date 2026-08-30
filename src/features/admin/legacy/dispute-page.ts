@@ -1,7 +1,48 @@
-const disputeId = window.__KUQUEST_RECORD_ID__ || new URLSearchParams(location.search).get("id") || "DSP-5201";
-const disputeRecord = data.disputes.find((dispute) => dispute.id === disputeId);
+import type {
+  DisputeDetailApi,
+  ModerationPageContext,
+} from "./dispute-detail";
 
-function renderDisputePage() {
+export type DisputePageContext = ModerationPageContext & {
+  recordId?: string;
+  search: string;
+  setActiveNavigation: (view: string) => void;
+};
+
+export function initializeDisputePage(
+  context: DisputePageContext,
+  detail: DisputeDetailApi,
+): () => void {
+  const {
+    data,
+    main,
+    escapeActivityText,
+    fmt,
+    badge,
+    icon: ico,
+    toneClass,
+    disputeTypeLabel,
+    timeline,
+    toast,
+    setActiveNavigation,
+  } = context;
+  const {
+    disputeCaseFor,
+    questTimelineFor,
+    disputeDescriptionFor,
+    partyChats,
+    bindPartyChats,
+    bindResolutionControls,
+  } = detail;
+  const disputeId =
+    context.recordId ||
+    new URLSearchParams(context.search).get("id") ||
+    "DSP-5201";
+  const disputeRecord = data.disputes.find(
+    (dispute) => dispute.id === disputeId,
+  );
+
+function renderDisputePage(): void {
   if (!disputeRecord) {
     main.innerHTML = `<div class="full-page-empty"><h1>Dispute not found</h1><p>No synthetic dispute matches <strong>${escapeActivityText(disputeId)}</strong>.</p><a class="btn primary" href="/">Return to disputes</a></div>`;
     return;
@@ -41,7 +82,7 @@ function renderDisputePage() {
   summaryTable?.remove();
   positionsPanel.remove();
   evidencePanel.remove();
-  partyPanel.remove();
+  partyPanel?.remove();
   const timelinePanel = [
     ...main.querySelectorAll(".record-primary > .record-panel"),
   ].find(
@@ -72,16 +113,20 @@ function renderDisputePage() {
   const chats = document.createElement("div");
   chats.innerHTML = partyChats(caseData);
   const chatSection = chats.firstElementChild;
+  if (!chatSection) return;
   chatSection.classList.add("record-panel");
   const relatedQuestPanel = [
     ...main.querySelectorAll(".record-side > .record-panel"),
   ].find((panel) => panel.querySelector("h2")?.textContent === "Related quest");
   relatedQuestPanel?.after(chatSection);
-  main.querySelector(".record-primary")?.append(timelinePanel);
+  if (timelinePanel) main.querySelector(".record-primary")?.append(timelinePanel);
   main.querySelector(".signal-list")?.closest(".record-panel")?.remove();
   bindPartyChats(main, disputeRecord);
   if (!isClosed) bindResolutionControls(main, disputeRecord);
   setActiveNavigation("disputes");
 }
 
-renderDisputePage();
+
+
+  return renderDisputePage;
+}
