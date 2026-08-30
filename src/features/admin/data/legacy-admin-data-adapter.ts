@@ -1,30 +1,20 @@
-import type { AdminReview, PersistedAdminData } from "./admin-records";
+import {
+  persistedAdminDataSchema,
+  type AdminReview,
+  type PersistedAdminData,
+} from "./admin-records";
 
 export const ADMIN_DEMO_DATA_KEY = "kuquest-admin-demo-data";
 
 export type BrowserStorage = Pick<Storage, "getItem" | "setItem">;
-
-function isPersistedAdminData(value: unknown): value is PersistedAdminData {
-  if (!value || typeof value !== "object") return false;
-  const candidate = value as Partial<PersistedAdminData>;
-  const collections = candidate.collections;
-  if (!collections) return false;
-  return (
-    typeof candidate.version === "string" &&
-    Array.isArray(collections.users) &&
-    Array.isArray(collections.quests) &&
-    Array.isArray(collections.payouts) &&
-    Array.isArray(collections.disputes) &&
-    Array.isArray(collections.reports)
-  );
-}
 
 export function readAdminData(storage: BrowserStorage): PersistedAdminData | null {
   try {
     const raw = storage.getItem(ADMIN_DEMO_DATA_KEY);
     if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
-    return isPersistedAdminData(parsed) ? parsed : null;
+    const result = persistedAdminDataSchema.safeParse(parsed);
+    return result.success ? result.data : null;
   } catch {
     return null;
   }

@@ -2,6 +2,7 @@ import {
   badge,
   bind,
   data,
+  disputeCases,
   disputeTypeLabel,
   escapeActivityText,
   fmt,
@@ -130,6 +131,14 @@ function controlledTable(view: ResourceView, rows: LegacyRecord[]): string {
     return `<tr class="${view === "disputes" && record.status === "Active" ? "dispute-active-row" : ""}" data-open="${target}">${columns.map(([key]) => tableCell(view, record, key, target)).join("")}</tr>`;
   }).join("")}</tbody></table></div>`;
 }
+
+function disputeCaseIdForQuest(record: LegacyRecord): string | undefined {
+  if (record.status !== "Disputed") return undefined;
+  return Object.entries(disputeCases).find(
+    ([, caseData]) => String(caseData.questId || "") === record.id,
+  )?.[0];
+}
+
 function tableCell(view: ResourceView, record: LegacyRecord, key: string, target: string): string {
   if (key === "id")
     return `<td><button class="row-record-button" data-open="${target}" aria-label="Open ${view.slice(0, -1)} ${escapeActivityText(record.id)}">${escapeActivityText(record.id)}</button></td>`;
@@ -141,7 +150,10 @@ function tableCell(view: ResourceView, record: LegacyRecord, key: string, target
   if (key === "other") return `<td>${escapeActivityText(record.other)}</td>`;
   if (key === "amount") return `<td class="money">฿${fmt(record.amount)}</td>`;
   if (key === "requestedAt") return `<td>${escapeActivityText(record.requestedAt || "—")}</td>`;
-  if (key === "status") return `<td>${badge(record.status, record.tone)}</td>`;
+  if (key === "status") {
+    const disputeCaseId = view === "quests" ? disputeCaseIdForQuest(record) : undefined;
+    return `<td>${badge(record.status, record.tone)}${disputeCaseId ? `<a class="link quest-dispute-link" href="/disputes/${encodeURIComponent(disputeCaseId)}">View dispute case</a>` : ""}</td>`;
+  }
   if (key === "disputeDate") return `<td>${escapeActivityText(record.disputeDate || "—")}</td>`;
   if (key === "disputeType")
     return `<td><strong>${escapeActivityText(disputeTypeLabel(record))}</strong></td>`;

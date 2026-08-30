@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, type MouseEvent } from "react";
 
-import { readAdminData } from "../data/legacy-admin-data-adapter";
+import { loadDashboardData } from "./dashboard-bootstrap";
 import {
   dashboardModel,
   type DashboardActivity,
@@ -60,12 +60,16 @@ export function AdminDashboard() {
   const [model, setModel] = useState<DashboardModel | null>(null);
 
   useEffect(() => {
-    const loadDashboard = () => {
-      const data = readAdminData(localStorage);
-      setModel(data ? dashboardModel(data, activityEvents()) : null);
+    let cancelled = false;
+    const loadDashboard = async () => {
+      const data = loadDashboardData(localStorage);
+      if (!cancelled) setModel(dashboardModel(data, activityEvents()));
+      await import("../legacy/language");
     };
-    window.addEventListener("kuquest-legacy-ready", loadDashboard);
-    return () => window.removeEventListener("kuquest-legacy-ready", loadDashboard);
+    void loadDashboard().catch((error: unknown) => console.error(error));
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (!model) {

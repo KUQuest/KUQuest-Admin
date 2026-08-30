@@ -52,6 +52,7 @@ function questDisputeCases(
 function createQuestDetailDependencies(
   core: typeof import("./script"),
   data: QuestData,
+  persistAdminData: () => void,
 ): QuestDetailDependencies {
   return {
     document,
@@ -62,6 +63,9 @@ function createQuestDetailDependencies(
     showDrawerLayer: core.showDrawerLayer,
     closeDrawer: core.closeDrawer,
     confirmAction: core.confirmAction,
+    applyDemoAction: core.applyDemoAction,
+    persistAdminData,
+    refresh: core.render,
     badge: core.badge,
     fmt: core.fmt,
     escapeActivityText: core.escapeActivityText,
@@ -138,7 +142,7 @@ export async function initializeTypedLegacyPage(
     await import("./resource-controls");
     if (isQuestData(core.data)) {
       const { createQuestDetailModule } = await import("./quest-detail");
-      const detail = createQuestDetailModule(createQuestDetailDependencies(core, core.data));
+      const detail = createQuestDetailModule(createQuestDetailDependencies(core, core.data, mockData.persistAdminData));
       window.openQuestDrawer = detail.openQuestDrawer;
     }
     if (isModerationData(core.data)) {
@@ -161,7 +165,7 @@ export async function initializeTypedLegacyPage(
       import("./quest-page"),
       import("./quest-change-review"),
     ]);
-    const detail = createQuestDetailModule(createQuestDetailDependencies(core, core.data));
+    const detail = createQuestDetailModule(createQuestDetailDependencies(core, core.data, mockData.persistAdminData));
     window.openQuestDrawer = detail.openQuestDrawer;
     const questPage = createQuestPageModule({
       document,
@@ -185,6 +189,7 @@ export async function initializeTypedLegacyPage(
       detail,
       applyDemoAction: core.applyDemoAction,
       persistAdminData: mockData.persistAdminData,
+      refresh: core.render,
       setActiveNavigation: core.setActiveNavigation,
     });
     questPage.renderQuestPage();

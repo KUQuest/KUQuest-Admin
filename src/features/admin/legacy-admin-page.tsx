@@ -1,20 +1,153 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import dynamic from "next/dynamic";
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { MouseEvent } from "react";
 
+import "../../app/admin-extensions.css";
+import "../../app/theme.css";
+
+import { readAdminData } from "./data/legacy-admin-data-adapter";
+import type { PersistedAdminData } from "./data/admin-records";
 import { AdminDashboard } from "./dashboard/admin-dashboard";
-import { requireAdminSession } from "./legacy/auth";
-import { applyRequestedLegacyRecords } from "./legacy/deep-links";
-import { initializeFunctionalControls } from "./legacy/functional-controls";
-import { getLegacyAdminRuntime } from "./legacy/runtime";
 import { AdminThemeControl } from "./theme/admin-theme-control";
+import type { LegacyPage } from "./legacy/legacy-runtime-loader";
+
+const LegacyRuntimeLoader = dynamic(
+  () => import("./legacy/legacy-runtime-loader").then(({ LegacyRuntimeLoader: RuntimeLoader }) => RuntimeLoader),
+  { ssr: false },
+);
 
 /* oxlint-disable jsx-a11y/prefer-tag-over-role */
 
-type LegacyPage = "home" | "quest" | "dispute" | "report" | "user";
+type DashboardView = "home" | "quests" | "disputes" | "reports" | "payouts" | "users";
+
+const dashboardNavItems: Array<{ view: DashboardView; label: string; icon: DashboardView }> = [
+  { view: "home", label: "Overview", icon: "home" },
+  { view: "quests", label: "Quests", icon: "quests" },
+  { view: "disputes", label: "Disputes", icon: "disputes" },
+  { view: "reports", label: "Reports", icon: "reports" },
+  { view: "payouts", label: "Payouts", icon: "payouts" },
+  { view: "users", label: "Users", icon: "users" },
+];
+
+function DashboardIcon({ name }: { name: DashboardView | "menu" | "search" }) {
+  const paths = {
+    home: <><path d="M3 11.5 12 4l9 7.5" /><path d="M5.5 10v10h13V10M9 20v-6h6v6" /></>,
+    quests: <><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4V3h6v1M8 9h8M8 13h8M8 17h5" /></>,
+    disputes: <path d="M12 3v18M5 7h14M5 7l-3 6h6L5 7Zm14 0-3 6h6l-3-6ZM8 21h8" />,
+    reports: <path d="M5 21V4m0 0h12l-2 4 2 4H5" />,
+    payouts: <><path d="M3 6h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Zm0 0 12-3v3" /><path d="M16 12h5v4h-5a2 2 0 0 1 0-4Z" /></>,
+    users: <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.8" />,
+    menu: <path d="M4 7h16M4 12h16M4 17h16" />,
+    search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></>,
+  } as const;
+  return <svg className="ui-icon" viewBox="0 0 24 24" aria-hidden="true">{paths[name]}</svg>;
+}
+
+function DashboardNavigation() {
+  return (
+    <nav id="nav" aria-label="Primary navigation">
+      {dashboardNavItems.map(({ view, label, icon }) => (
+        <button key={view} data-view={view} type="button">
+          <span><DashboardIcon name={icon} /></span>{label}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+type DashboardSearchResult = {
+  view: "users" | "quests" | "payouts";
+  id: string;
+  title: string;
+  detail: string;
+  href: string;
+};
+
+function recordText(record: unknown, key: string): string {
+  if (!record || typeof record !== "object") return "";
+  const value = (record as Record<string, unknown>)[key];
+  return typeof value === "string" || typeof value === "number" ? String(value) : "";
+}
+
+function dashboardSearchResults(data: PersistedAdminData | null, query: string): DashboardSearchResult[] {
+  if (!data || !query.trim()) return [];
+  const normalizedQuery = query.trim().toLowerCase();
+  const users = data.collections.users.map((user): DashboardSearchResult => ({
+    view: "users",
+    id: user.id,
+    title: user.title,
+    detail: "User",
+    href: `/?view=users&openUser=${encodeURIComponent(user.id)}`,
+  }));
+  const quests = data.collections.quests.flatMap((record): DashboardSearchResult[] => {
+    const id = recordText(record, "id");
+    const title = recordText(record, "title");
+    return id && title ? [{ view: "quests", id, title, detail: "Quest", href: "/?view=quests" }] : [];
+  });
+  const payouts = data.collections.payouts.flatMap((record): DashboardSearchResult[] => {
+    const id = recordText(record, "id");
+    const title = recordText(record, "title");
+    return id && title ? [{ view: "payouts", id, title, detail: "Payout", href: "/?view=payouts" }] : [];
+  });
+  return [...users, ...quests, ...payouts]
+    .filter((result) => `${result.id} ${result.title} ${result.detail}`.toLowerCase().includes(normalizedQuery))
+    .slice(0, 12);
+}
+
+function DashboardGlobalSearch({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [query, setQuery] = useState("");
+  const [data, setData] = useState<PersistedAdminData | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setQuery("");
+    setData(readAdminData(localStorage));
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [onClose, open]);
+
+  if (!open) return null;
+  const results = dashboardSearchResults(data, query);
+  return (
+    <div id="dashboard-command" className="command" role="dialog" aria-modal="true" aria-label="Search marketplace records">
+      <button className="command-backdrop" type="button" aria-label="Close search" onClick={onClose} />
+      <div className="command-box">
+        <div className="command-input">
+          <DashboardIcon name="search" />
+          <input
+            type="search"
+            aria-label="Search marketplace records"
+            placeholder="Search by name, quest, student ID, or payout…"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            autoFocus
+          />
+          <kbd>Esc</kbd>
+        </div>
+        <div id="dashboard-command-results">
+          {results.map((result) => (
+            <button key={`${result.view}-${result.id}`} className="result" type="button" onClick={() => {
+              onClose();
+              window.location.assign(result.href);
+            }}>
+              <span aria-hidden="true"><DashboardIcon name={result.view} /></span>
+              <span><strong>{result.title}</strong><small>{result.id} · {result.detail}</small></span>
+              <small>{result.view}</small>
+            </button>
+          ))}
+          {query && !results.length && <p className="empty">No matching records</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function hardNavigate(event: MouseEvent<HTMLAnchorElement>) {
   event.preventDefault();
@@ -42,44 +175,7 @@ function LanguageControl({ className = "", disabled = false }: { className?: str
   );
 }
 
-function LegacyScripts({ page, recordId, onReady }: { page: LegacyPage; recordId?: string; onReady?: () => void }) {
-  useEffect(() => {
-    let cancelled = false;
-    if (!requireAdminSession(window.localStorage, window.location)) return;
-    const notifyReady = async () => {
-      if (cancelled) return;
-      const runtime = getLegacyAdminRuntime(window);
-      if (runtime) {
-        if (page === "dispute" && typeof window.openDisputeDrawer === "function") {
-          const { initializeDisputeInteractions } = await import("./legacy/dispute-interactions");
-          if (cancelled) return;
-          window.openDisputeDrawer = initializeDisputeInteractions(document, runtime, window.openDisputeDrawer);
-        }
-        initializeFunctionalControls(document, runtime);
-        applyRequestedLegacyRecords(
-          new URLSearchParams(window.location.search),
-          runtime,
-          window.requestAnimationFrame,
-        );
-      }
-      onReady?.();
-    };
-    window.__KUQUEST_RECORD_ID__ = recordId;
-    window.__KUQUEST_PAGE__ = page;
-    void import("./legacy/language")
-      .then(() => import("./legacy/page-runtime"))
-      .then(({ initializeTypedLegacyPage }) => initializeTypedLegacyPage({ page, recordId, search: window.location.search }))
-      .then(notifyReady)
-      .catch((error: unknown) => console.error(error));
-    return () => {
-      cancelled = true;
-    };
-  }, [onReady, page, recordId]);
-
-  return null;
-}
-
-function LegacyOverlays({ detailSearch = false }: { detailSearch?: boolean }) {
+function LegacyOverlays({ detailSearch = false, includeCommand = true }: { detailSearch?: boolean; includeCommand?: boolean }) {
   return (
     <>
       <div id="scrim" className="scrim" hidden />
@@ -129,7 +225,7 @@ function LegacyOverlays({ detailSearch = false }: { detailSearch?: boolean }) {
         </form>
       </dialog>
       {/* eslint-disable-next-line jsx-a11y/prefer-tag-over-role -- the source shell uses a hidden div overlay */}
-      <div
+      {includeCommand && <div
         id="command"
         className="command"
         role="dialog"
@@ -158,7 +254,7 @@ function LegacyOverlays({ detailSearch = false }: { detailSearch?: boolean }) {
           </div>
           <div id="results" />
         </div>
-      </div>
+      </div>}
       <div id="toasts" className="toasts" aria-live="polite" />
     </>
   );
@@ -173,10 +269,9 @@ export function LegacyAdminPage({
   recordId?: string;
   reactDashboard?: boolean;
 }) {
+  const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
+  const [dashboardSearchOpen, setDashboardSearchOpen] = useState(false);
   const detailPage = page !== "home" && page !== "user";
-  const handleLegacyReady = useCallback(() => {
-    window.dispatchEvent(new Event("kuquest-legacy-ready"));
-  }, []);
   const navigateFromDashboard = useCallback((event: MouseEvent<HTMLElement>) => {
     const target = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-view]") : null;
     const view = target?.dataset.view;
@@ -189,12 +284,12 @@ export function LegacyAdminPage({
   return (
     <>
       <div className="shell">
-        <aside className="sidebar" id="site-navigation" onClickCapture={reactDashboard ? navigateFromDashboard : undefined}>
+        <aside className={`sidebar${reactDashboard && mobileNavigationOpen ? " open" : ""}`} id="site-navigation" onClickCapture={reactDashboard ? navigateFromDashboard : undefined}>
           <div className="brand">
             <Image src="/kuquest-logo.png?v=2" alt="" width={101} height={51} priority unoptimized />
             <span>KuQuest</span>
           </div>
-          <nav id="nav" aria-label="Primary navigation" />
+          {reactDashboard ? <DashboardNavigation /> : <nav id="nav" aria-label="Primary navigation" />}
           <div className="nav-group">
             <small>SYSTEM</small>
             <button data-view="activity" type="button">
@@ -217,10 +312,11 @@ export function LegacyAdminPage({
                 id="menu"
                 aria-label="Open navigation"
                 aria-controls="site-navigation"
-                aria-expanded="false"
+                aria-expanded={reactDashboard ? mobileNavigationOpen : false}
                 type="button"
+                onClick={reactDashboard ? () => setMobileNavigationOpen((open) => !open) : undefined}
               >
-                <span data-static-icon="menu" />
+                {reactDashboard ? <DashboardIcon name="menu" /> : <span data-static-icon="menu" />}
               </button>
               <Link className="back-link" href="/" onClick={hardNavigate}>← Back to admin</Link>
             </>
@@ -231,13 +327,14 @@ export function LegacyAdminPage({
                 id="menu"
                 aria-label="Open navigation"
                 aria-controls="site-navigation"
-                aria-expanded="false"
+                aria-expanded={reactDashboard ? mobileNavigationOpen : false}
                 type="button"
+                onClick={reactDashboard ? () => setMobileNavigationOpen((open) => !open) : undefined}
               >
-                <span data-static-icon="menu" />
+                {reactDashboard ? <DashboardIcon name="menu" /> : <span data-static-icon="menu" />}
               </button>
-              <button className="search" id="open-search" aria-label="Search quests, users, and payouts" type="button">
-                <span data-static-icon="search" />
+              <button className="search" id="open-search" aria-label="Search quests, users, and payouts" type="button" onClick={reactDashboard ? () => setDashboardSearchOpen(true) : undefined}>
+                {reactDashboard ? <DashboardIcon name="search" /> : <span data-static-icon="search" />}
                 <span>Search quests, users, payouts…</span>
                 <kbd>⌘ K</kbd>
               </button>
@@ -247,8 +344,9 @@ export function LegacyAdminPage({
         <main id="main" tabIndex={-1} hidden={reactDashboard} />
         {reactDashboard && <AdminDashboard />}
       </div>
-      <LegacyOverlays detailSearch={detailPage} />
-      <LegacyScripts page={page} recordId={recordId} onReady={reactDashboard ? handleLegacyReady : undefined} />
+      <LegacyOverlays detailSearch={detailPage} includeCommand={!reactDashboard} />
+      {reactDashboard && <DashboardGlobalSearch open={dashboardSearchOpen} onClose={() => setDashboardSearchOpen(false)} />}
+      {!reactDashboard && <LegacyRuntimeLoader page={page} recordId={recordId} />}
     </>
   );
 }

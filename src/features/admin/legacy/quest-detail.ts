@@ -127,6 +127,9 @@ export type QuestDetailDependencies = {
     decisionDetail?: string,
     onConfirm?: (reason: string) => void,
   ) => void;
+  applyDemoAction: (action: string, record: QuestRecord) => void;
+  persistAdminData: () => void;
+  refresh: () => void;
   badge: (status: string, tone: string) => string;
   fmt: (amount: number | null | undefined) => string;
   escapeActivityText: (value: unknown) => string;
@@ -219,6 +222,9 @@ export function createQuestDetailModule(
     showDrawerLayer,
     closeDrawer,
     confirmAction,
+    applyDemoAction,
+    persistAdminData,
+    refresh,
     badge,
     fmt,
     escapeActivityText,
@@ -410,7 +416,7 @@ export function createQuestDetailModule(
     const detail = questDetails(record);
     const participants = participantsForQuest(record, detail);
     const started = questHasStarted(record);
-    const relatedDispute = data.disputes.find((dispute) => dispute.status === "Active" && (disputeCases[dispute.id]?.questId ?? "") === record.id);
+    const relatedDispute = data.disputes.find((dispute) => (disputeCases[dispute.id]?.questId ?? "") === record.id);
     showDrawerLayer();
     drawer.innerHTML = `
     <div class="drawer-top"><div><strong>${escapeActivityText(record.id)}</strong><small>Full quest record</small></div><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div>
@@ -440,7 +446,14 @@ export function createQuestDetailModule(
       ?.querySelector<HTMLElement>(".audit-note");
     if (defaultFinancialNote) defaultFinancialNote.textContent = "Funds remain held until submitted proof is accepted or a dispute is resolved.";
     drawer.querySelectorAll<HTMLButtonElement>("[data-action]").forEach((button) => {
-      button.addEventListener("click", () => confirmAction(button.dataset.action ?? "", record));
+      button.addEventListener("click", () => {
+        const action = button.dataset.action ?? "";
+        confirmAction(action, record, "", () => {
+          applyDemoAction(action, record);
+          persistAdminData();
+          refresh();
+        });
+      });
     });
   };
 

@@ -12,7 +12,10 @@ import {
   saveUserReviews,
   type BrowserStorage,
 } from "../../src/features/admin/data/legacy-admin-data-adapter";
-import type { AdminReview } from "../../src/features/admin/data/admin-records";
+import {
+  reportSubmissionSchema,
+  type AdminReview,
+} from "../../src/features/admin/data/admin-records";
 
 const reviews: AdminReview[] = [
   {
@@ -82,6 +85,25 @@ describe("user review model", () => {
 });
 
 describe("legacy admin data adapter", () => {
+  it("rejects malformed persisted records at the storage boundary", () => {
+    const storage = storageWith({
+      version: "demo",
+      collections: {
+        users: [{
+          id: "68000000",
+          title: "Akarin Ariyawat",
+          reviews: [{ ...reviews[0], rating: 6 }],
+        }],
+        quests: [],
+        payouts: [],
+        disputes: [],
+        reports: [],
+      },
+    });
+
+    expect(readUserReviews(storage, "68000000")).toBeNull();
+  });
+
   it("persists changed reviews without changing other stored collections", () => {
     const storage = storageWith({
       version: "demo",
@@ -100,5 +122,29 @@ describe("legacy admin data adapter", () => {
     expect(JSON.parse(storage.values[ADMIN_DEMO_DATA_KEY]).collections.quests).toEqual([
       { id: "QST-12001" },
     ]);
+  });
+});
+
+describe("report submission schema", () => {
+  it("requires valid identities, evidence names, and report details", () => {
+    expect(reportSubmissionSchema.safeParse({
+      reporterId: "68000001",
+      reporterName: "Benja Ariyawat",
+      reportedUserId: "68000000",
+      reportedUserName: "Akarin Ariyawat",
+      category: "Fraud or payment issue",
+      details: "Too short",
+      evidence: ["report.txt"],
+    }).success).toBe(false);
+
+    expect(reportSubmissionSchema.safeParse({
+      reporterId: "68000001",
+      reporterName: "Benja Ariyawat",
+      reportedUserId: "68000000",
+      reportedUserName: "Akarin Ariyawat",
+      category: "Fraud or payment issue",
+      details: "The submitted activity does not match the evidence provided.",
+      evidence: ["report.txt"],
+    }).success).toBe(true);
   });
 });

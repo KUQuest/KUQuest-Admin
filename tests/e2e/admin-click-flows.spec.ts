@@ -325,6 +325,10 @@ test.describe("admin click flows", () => {
     await disputeButton.click();
 
     const drawer = page.getByRole("dialog", { name: /Record details/ });
+    const questHref = await drawer
+      .getByRole("link", { name: "Open full quest", exact: true })
+      .getAttribute("href");
+    if (!questHref) throw new Error("The dispute has no linked quest.");
     await drawer.getByRole("button", { name: /Hirer wins/ }).click();
     await drawer.getByRole("button", { name: "Resolve dispute", exact: true }).click();
 
@@ -341,6 +345,9 @@ test.describe("admin click flows", () => {
     await expect(disputeRow).toContainText("Closed");
     await expect(disputeRow).not.toHaveClass(/dispute-active-row/);
     await expect(drawer).toContainText("Dispute decision recorded");
+
+    await page.goto(questHref);
+    await expect(page.locator(".record-status-bar .badge")).toHaveText("Cancelled");
   });
 
   test("admin can review a payout approval and cancel safely", async ({
@@ -463,7 +470,38 @@ test.describe("admin click flows", () => {
     ).toBeVisible();
   });
 
-  test("admin can approve an open quest and preserve its approved state", async ({
+  test("hiding a quest updates and persists its status", async ({ page }) => {
+    await signIn(page);
+    await page.getByRole("button", { name: /^Quests/ }).click();
+
+    await page.getByRole("button", {
+      name: "Open quest QST-12001",
+      exact: true,
+    }).click();
+    const drawer = page.getByRole("dialog", { name: /Record details/ });
+    await drawer.getByRole("button", { name: "Hide quest", exact: true }).click();
+
+    const confirmation = page.getByRole("dialog", { name: "Hide quest" });
+    await confirmation.getByLabel("Reason for this decision").fill(
+      "This quest should be hidden from the marketplace.",
+    );
+    await confirmation.getByRole("button", { name: "Hide quest", exact: true }).click();
+
+    const questRow = page
+      .getByRole("button", { name: "Open quest QST-12001", exact: true })
+      .locator("xpath=ancestor::tr");
+    await expect(questRow).toContainText("Hidden");
+
+    await page.reload();
+    await page.getByRole("button", { name: /^Quests/ }).click();
+    await expect(
+      page
+        .getByRole("button", { name: "Open quest QST-12001", exact: true })
+        .locator("xpath=ancestor::tr"),
+    ).toContainText("Hidden");
+  });
+
+  test("quest detail does not offer an approval action", async ({
     page,
   }) => {
     await signIn(page);
@@ -478,27 +516,100 @@ test.describe("admin click flows", () => {
       .getByRole("link", { name: "Full quest detail" })
       .click();
 
-    const approveButton = page.getByRole("button", {
+    await expect(page.getByRole("button", {
       name: "Approve quest",
       exact: true,
+    })).toHaveCount(0);
+  });
+
+  test("every disputed quest links to its dispute case", async ({ page }) => {
+    await signIn(page);
+    await page.getByRole("button", { name: /^Quests/ }).click();
+    await page.getByRole("button", { name: "Disputed", exact: true }).click();
+    await page.getByRole("button", { name: "Show all", exact: true }).click();
+
+    const rows = page.locator("#main .table-wrap[aria-label='quests table'] tbody tr");
+    const links = rows.locator("a.quest-dispute-link");
+    const rowCount = await rows.count();
+    expect(rowCount).toBeGreaterThan(0);
+    await expect(links).toHaveCount(rowCount);
+    const hrefs = await links.evaluateAll((elements) =>
+      elements.map((element) => element.getAttribute("href")),
+    );
+    expect(hrefs.every((href) => /^\/disputes\/DSP-\d+$/.test(href ?? ""))).toBe(true);
+  });
+
+  test("closed disputes leave their linked quest in a final status", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/?view=disputes");
+    await page.getByRole("button", { name: "Closed", exact: true }).click();
+
+    const closedCase = page.locator("#main .table-wrap[aria-label='disputes table'] tbody tr").first();
+    await expect(closedCase).toBeVisible();
+    await closedCase.getByRole("button").first().click();
+
+    const drawer = page.getByRole("dialog", { name: /Record details/ });
+    const questLink = drawer.getByRole("link", { name: "Open full quest", exact: true });
+    await expect(questLink).toBeVisible();
+    const questHref = await questLink.getAttribute("href");
+    if (!questHref) throw new Error("The closed dispute has no linked quest.");
+    await page.goto(questHref);
+
+    await expect(page.locator(".record-status-bar .badge")).not.toHaveText("Disputed");
+    await expect(page.locator(".record-status-bar .badge")).toHaveText(/Completed|Cancelled/);
+  });
+
+  test("banned users are never assigned as quest hirers or workers", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/?view=quests");
+    await page.waitForFunction(() => Boolean(window.data?.quests?.length));
+
+    const invalidAssignments = await page.evaluate(() => {
+      const runtimeData = window.data;
+      if (!runtimeData) throw new Error("The admin data runtime is not available.");
+      const bannedUsers = new Set(
+        runtimeData.users
+          .filter((user) => user.status === "Temp ban" || user.status === "Perm ban")
+          .map((user) => user.title),
+      );
+      return runtimeData.quests
+        .filter((quest) => {
+          const workers = quest.teamParticipants?.map(([name]) => name) ??
+            (quest.selectedParticipant ? [quest.selectedParticipant] : []);
+          return bannedUsers.has(quest.person) || workers.some((worker) => bannedUsers.has(worker));
+        })
+        .map((quest) => quest.id);
     });
-    await expect(approveButton).toBeVisible();
-    await approveButton.click();
 
-    const confirmation = page.getByRole("dialog", { name: "Approve quest" });
-    await confirmation
-      .getByLabel("Reason for this decision")
-      .fill("Quest scope and funding were verified.");
-    await confirmation
-      .getByRole("button", { name: "Approve quest", exact: true })
-      .click();
+    expect(invalidAssignments).toEqual([]);
+  });
 
-    await expect(page.locator(".record-status-bar")).toContainText("Approved");
-    await expect(
-      page.getByRole("button", { name: "Approve quest", exact: true }),
-    ).toHaveCount(0);
-    await page.reload();
-    await expect(page.locator(".record-status-bar")).toContainText("Approved");
+  test("dispute full detail keeps its two-column record layout", async ({
+    page,
+  }) => {
+    await signIn(page);
+    await page.goto("/disputes/DSP-5201");
+
+    const grid = page.locator("#main .full-record-grid");
+    await expect(grid).toHaveCSS("display", "grid");
+    const columns = await grid.evaluate((element) => getComputedStyle(element).gridTemplateColumns);
+    expect(columns.split(" ")).toHaveLength(2);
+    await expect(page.locator("#main .record-side")).toBeVisible();
+    await expect(page.getByText(/Invalid Date/)).toHaveCount(0);
+  });
+
+  test("report and user boards use the app style for profile links", async ({
+    page,
+  }) => {
+    await signIn(page);
+
+    for (const view of ["reports", "users"]) {
+      await page.goto(`/?view=${view}`);
+      const profileLink = page.locator("#main .user-record-link").first();
+      await expect(profileLink).toBeVisible();
+      await expect(profileLink).toHaveAttribute("href", /^\/users\//);
+      await expect(profileLink).toHaveCSS("text-decoration-line", "none");
+    }
   });
 
   test("user quest history links to the complete quest record", async ({

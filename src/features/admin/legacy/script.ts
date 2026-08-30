@@ -1,4 +1,5 @@
 import type { LegacyAdminRuntime, LegacyDisputeCase, LegacyDomElement, LegacyHistoryEntry, LegacyModalOptions, LegacyPageState, LegacyRecord, LegacyRuntimeData } from "./runtime";
+import { reportSubmissionSchema } from "../data/admin-records";
 
 type LegacyView = "home" | "disputes" | "quests" | "users" | "payouts" | "reports" | "policies" | "activity";
 type IconName = "home" | "scale" | "quest" | "users" | "wallet" | "settings" | "history" | "menu" | "search" | "filter" | "paperclip" | "check" | "user" | "flag";
@@ -1142,7 +1143,16 @@ function openUserReportDialog(user: LegacyRecord): void {
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     const details = form.elements.details.value.trim();
-    if (details.length < 20) {
+    const result = reportSubmissionSchema.safeParse({
+      reporterId: reporter.id,
+      reporterName: reporter.title,
+      reportedUserId: user.id,
+      reportedUserName: user.title,
+      category: form.elements.category.value,
+      details,
+      evidence: attachmentInput.files?.[0]?.name ? [attachmentInput.files[0].name] : [],
+    });
+    if (!result.success) {
       error.textContent = "Describe the report in at least 20 characters.";
       error.hidden = false;
       form.elements.details.focus();
@@ -1151,17 +1161,11 @@ function openUserReportDialog(user: LegacyRecord): void {
     const report: LegacyRecord = {
       id: `RPT-${String(Date.now()).slice(-6)}`,
       title: `Report against ${user.title}`,
-      person: reporter.title,
-      other: user.title,
+      person: result.data.reporterName,
+      other: result.data.reportedUserName,
       amount: null,
       age: "Just now",
-      reporterId: reporter.id,
-      reporterName: reporter.title,
-      reportedUserId: user.id,
-      reportedUserName: user.title,
-      category: form.elements.category.value,
-      details,
-      evidence: attachmentInput.files?.[0]?.name ? [attachmentInput.files[0].name] : [],
+      ...result.data,
       status: "Active",
       tone: "warning",
       reportedAt: reportDateTime(),
@@ -1362,7 +1366,6 @@ export function applyDemoAction(action: string, record: LegacyRecord): void {
     "Set normal": ["Normal", "success"],
     "Lift penalty": ["Normal", "success"],
     "Hide quest": ["Hidden", "neutral"],
-    "Approve quest": ["Approved", "success"],
     "Reject payout": ["Rejected", "danger"],
     "Approve payout": ["Processing", "info"],
     "Close report": ["Closed", "neutral"],

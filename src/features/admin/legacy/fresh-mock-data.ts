@@ -15,7 +15,7 @@ import type { LegacyDomElement, LegacyHistoryEntry, LegacyRecord, LegacyRuntimeD
 
 // Deterministic high-volume demo data. Versioning resets browser-local records
 // whenever the synthetic marketplace scenario changes.
-const freshDemoVersion = "2026-08-29-v49-penalty-ladder";
+const freshDemoVersion = "2026-08-30-v50-dispute-role-eligibility";
 const freshDemoKey = "kuquest-admin-demo-data";
 const seedBaseDate = new Date("2026-08-28T08:00:00Z");
 
@@ -217,8 +217,11 @@ const campusLocations = [
 
 function createQuest(index: number): LegacyRecord {
   const status = questStatuses[index % questStatuses.length];
-  const hirer: LegacyRecord = data.users[(index * 11 + 7) % data.users.length];
-  const eligibleParticipants = data.users.filter((candidate: LegacyRecord) => !["Temp ban", "Perm ban"].includes(candidate.status));
+  const eligibleQuestUsers = data.users.filter(
+    (candidate: LegacyRecord) => !["Temp ban", "Perm ban"].includes(candidate.status),
+  );
+  const hirer: LegacyRecord = eligibleQuestUsers[(index * 11 + 7) % eligibleQuestUsers.length];
+  const eligibleParticipants = eligibleQuestUsers;
   const teamQuest = !["Draft", "Open", "Hidden", "Cancelled"].includes(status) && index % 9 === 0;
   const participantCount = teamQuest ? 3 : 1;
   const participants = Array.from({ length: participantCount }, (_, participantIndex: number) =>
@@ -293,6 +296,22 @@ data.disputes = disputableQuests.map((quest: LegacyRecord, index: number) => {
   const worker = data.users.find((user) => user.title === workerName) || data.users[(index + 1) % data.users.length];
   const category = disputeCategories[index % disputeCategories.length];
   const status = index % 3 === 2 ? "Closed" : "Active";
+  const resolvedQuestStatus = index % 2 ? "Completed" : "Cancelled";
+  if (status === "Closed") {
+    quest.status = resolvedQuestStatus;
+    quest.tone = statusTone(resolvedQuestStatus);
+    const activity = quest.activity;
+    if (Array.isArray(activity) && activity.every((event): event is string => typeof event === "string")) {
+      quest.activity = activity.map((event) =>
+        event.startsWith("Disputed ·")
+          ? `${resolvedQuestStatus}${event.slice("Disputed".length)}`
+          : event,
+      );
+    }
+    if (resolvedQuestStatus === "Cancelled") {
+      quest.terminationReason = "The dispute was resolved in the hirer's favor.";
+    }
+  }
   const record = {
     id: `DSP-${String(5201 + index).padStart(4, "0")}`,
     questId: quest.id,

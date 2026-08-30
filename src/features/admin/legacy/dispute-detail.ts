@@ -163,7 +163,9 @@ function disputeCaseFor(record: ModerationRecord): DisputeCase {
 
 function questTimelineFor(record: ModerationRecord, caseData: DisputeCase, relatedQuest?: ModerationQuest): TimelineEntry[] {
   const dateBefore = (daysBefore: number, time: string): string => {
-    const date = new Date(`${record.disputeDate} 12:00:00 UTC`);
+    const disputeDay = String(record.disputeDate || "").split(" · ")[0];
+    const date = new Date(`${disputeDay} 12:00:00 UTC`);
+    if (Number.isNaN(date.getTime())) return `Date not recorded · ${time}`;
     date.setUTCDate(date.getUTCDate() - daysBefore);
     return `${date.toLocaleDateString("en-GB", {
       day: "2-digit",
