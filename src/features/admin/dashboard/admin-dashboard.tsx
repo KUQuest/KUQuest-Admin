@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type MouseEvent } from "react";
+import { useEffect, useState } from "react";
 
 import { loadDashboardData } from "./dashboard-bootstrap";
+import { hardNavigate } from "../navigation";
 import {
   dashboardModel,
   type DashboardActivity,
@@ -49,11 +50,6 @@ function Badge({ status, tone }: { status: string; tone: DashboardTone }) {
 
 function dashboardHref(view: "disputes" | "reports", id: string): string {
   return `/${view}/${encodeURIComponent(id)}`;
-}
-
-function hardNavigate(event: MouseEvent<HTMLAnchorElement>) {
-  event.preventDefault();
-  window.location.assign(event.currentTarget.href);
 }
 
 export function AdminDashboard() {

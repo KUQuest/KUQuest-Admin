@@ -11,6 +11,7 @@ import "../../app/theme.css";
 
 import { readAdminData } from "./data/legacy-admin-data-adapter";
 import type { PersistedAdminData } from "./data/admin-records";
+import { hardNavigate } from "./navigation";
 import { AdminDashboard } from "./dashboard/admin-dashboard";
 import { AdminThemeControl } from "./theme/admin-theme-control";
 import type { LegacyPage } from "./legacy/legacy-runtime-loader";
@@ -149,25 +150,29 @@ function DashboardGlobalSearch({ open, onClose }: { open: boolean; onClose: () =
   );
 }
 
-function hardNavigate(event: MouseEvent<HTMLAnchorElement>) {
-  event.preventDefault();
-  window.location.assign(event.currentTarget.href);
-}
-
 function handleLogout() {
   localStorage.removeItem("kuquest-admin-session");
   window.location.assign("/login");
 }
 
 function LanguageControl({ className = "", disabled = false }: { className?: string; disabled?: boolean }) {
+  const selectLanguage = (language: "en" | "th") => {
+    const languageRuntime = window.__KUQUEST_LANGUAGE__;
+    if (languageRuntime) {
+      languageRuntime.set(language);
+      return;
+    }
+    void import("./legacy/language").then(() => window.__KUQUEST_LANGUAGE__?.set(language));
+  };
+
   return (
     <div className={`language-control${className ? ` ${className}` : ""}`} data-language-control>
       <span className="language-control-label">Language</span>
       <div className="language-options" role="group" aria-label="Language options">
-        <button className="language-option" type="button" data-language-option="en" aria-pressed="true" disabled={disabled}>
+        <button className="language-option" type="button" data-language-option="en" aria-pressed="true" disabled={disabled} onClick={() => selectLanguage("en")}>
           English
         </button>
-        <button className="language-option" type="button" data-language-option="th" aria-pressed="false" disabled={disabled}>
+        <button className="language-option" type="button" data-language-option="th" aria-pressed="false" disabled={disabled} onClick={() => selectLanguage("th")}>
           ไทย
         </button>
       </div>

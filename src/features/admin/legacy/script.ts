@@ -1,5 +1,8 @@
-import type { LegacyDisputeCase, LegacyDomElement, LegacyHistoryEntry, LegacyModalOptions, LegacyPageState, LegacyRecord, LegacyRuntimeData } from "./runtime";
+import type { LegacyDomElement, LegacyHistoryEntry, LegacyModalOptions, LegacyPageState, LegacyRecord, LegacyRuntimeData } from "./runtime";
 import { reportSubmissionSchema } from "../data/admin-records";
+import { data, recordsFor } from "./runtime-data";
+
+export { data, disputeCases } from "./runtime-data";
 
 type LegacyView = "home" | "disputes" | "quests" | "users" | "payouts" | "reports" | "policies" | "activity";
 type IconName = "home" | "scale" | "quest" | "users" | "wallet" | "settings" | "history" | "menu" | "search" | "filter" | "paperclip" | "check" | "user" | "flag";
@@ -55,8 +58,6 @@ const navItems: Array<[LegacyView, IconName, string, string]> = [
   ["payouts", "wallet", "Payouts", "4"],
   ["users", "users", "Users", ""],
 ];
-export const disputeCases: Record<string, LegacyDisputeCase> = {};
-export const data: LegacyRuntimeData = { disputes: [], quests: [], users: [], payouts: [], reports: [] };
 function persistAdminData(): void {
   window.persistAdminData?.();
 }
@@ -131,9 +132,6 @@ export const heads: Record<Exclude<LegacyView, "home">, [string, string]> = {
 };
 export const pageHead = (t: string, p: string, a = ""): string =>
   `<div class="page-head"><div><h1>${t}</h1><p>${p}</p></div>${a}</div>`;
-function recordsFor(view: string): LegacyRecord[] {
-  return data[view as keyof LegacyRuntimeData] || [];
-}
 function homeDecisions(): Array<{ view: keyof LegacyRuntimeData; record: LegacyRecord; priority: number; icon: string; title: string; detail: string; metric: string; age?: string }> {
   const decisions: Array<{ view: keyof LegacyRuntimeData; record: LegacyRecord; priority: number; icon: string; title: string; detail: string; metric: string; age?: string }> = [
     ...data.disputes

@@ -11,6 +11,7 @@ declare global {
     __KUQUEST_LANGUAGE__?: {
       current: () => Language;
       translate: (value: string) => string;
+      set: (language: Language) => void;
     };
   }
 }
@@ -780,6 +781,7 @@ function applyLanguage(language: unknown, shouldPersist = true): void {
 window.__KUQUEST_LANGUAGE__ = {
   current: () => activeLanguage,
   translate: translatedValue,
+  set: (language: Language) => applyLanguage(language),
 };
 
 document.addEventListener("click", (event) => {
