@@ -2,12 +2,11 @@ import {
   addUserHistory,
   adminDateTime,
   autoRejectUnavailablePayout,
-  disputeCases,
   penaltyPolicy,
   recordActivity,
   seedGeneratedActivity,
-} from "./detail-runtime";
-import { data } from "./runtime-data";
+} from "./runtime-seed";
+import { data, disputeCases } from "./runtime-data";
 import type { LegacyDomElement, LegacyHistoryEntry, LegacyRecord, LegacyRuntimeData } from "./runtime";
 
 // Deterministic high-volume demo data. Versioning resets browser-local records
