@@ -12,13 +12,20 @@ import "../../app/theme.css";
 import { readAdminData } from "./data/legacy-admin-data-adapter";
 import type { PersistedAdminData } from "./data/admin-records";
 import { hardNavigate } from "./navigation";
-import { AdminDashboard } from "./dashboard/admin-dashboard";
 import { AdminThemeControl } from "./theme/admin-theme-control";
 import type { LegacyPage } from "./legacy/legacy-runtime-loader";
 
 const LegacyRuntimeLoader = dynamic(
   () => import("./legacy/legacy-runtime-loader").then(({ LegacyRuntimeLoader: RuntimeLoader }) => RuntimeLoader),
   { ssr: false },
+);
+
+const AdminDashboard = dynamic(
+  () => import("./dashboard/admin-dashboard").then(({ AdminDashboard: Dashboard }) => Dashboard),
+  {
+    ssr: false,
+    loading: () => <main id="dashboard-main" tabIndex={-1}><section className="panel"><p>Loading marketplace overview…</p></section></main>,
+  },
 );
 
 /* oxlint-disable jsx-a11y/prefer-tag-over-role */
