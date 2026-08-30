@@ -234,11 +234,17 @@ test.describe("input fields and responsive layouts", () => {
     const category = dialog.getByLabel("Report type");
     const details = dialog.getByLabel("What happened?");
     const evidence = dialog.getByLabel("Evidence file (optional)");
-    await expect(selectedUser).toContainText("Akarin Ariyawat");
-    await expect(selectedUser).toContainText("68000000");
+    const selectedUserName = (await selectedUser.locator("strong").textContent())?.trim() ?? "";
+    const selectedUserId = (await selectedUser.locator("small").textContent())?.replace("Student ID ·", "").trim() ?? "";
+    const reporterId = await dialog.locator('input[name="reporter"]').inputValue();
+    const reportDetails = "The submitted activity does not match the evidence provided.";
+    expect(selectedUserName).not.toBe("");
+    expect(selectedUserId).not.toBe("");
+    await expect(selectedUser).toContainText(selectedUserName);
+    await expect(selectedUser).toContainText(selectedUserId);
     await expect(dialog.getByLabel("Reporting user")).toHaveCount(0);
     await category.selectOption({ label: "Fraud or payment issue" });
-    await details.fill("The submitted activity does not match the evidence provided.");
+    await details.fill(reportDetails);
     await evidence.setInputFiles({
       name: "report-evidence.txt",
       mimeType: "text/plain",
@@ -246,14 +252,53 @@ test.describe("input fields and responsive layouts", () => {
     });
 
     await expect(category).toHaveValue("Fraud or payment issue");
-    await expect(details).toHaveValue(
-      "The submitted activity does not match the evidence provided.",
-    );
+    await expect(details).toHaveValue(reportDetails);
     await expect(dialog.getByText("report-evidence.txt", { exact: true })).toBeVisible();
     await expectResponsiveInput(page, category);
     await expectResponsiveInput(page, details);
     await expectResponsiveInput(page, dialog.locator('label[for="report-attachment"]'));
-    await dialog.getByRole("button", { name: "Close report form" }).click();
+    await dialog.getByRole("button", { name: "Submit report" }).click();
+    await expect(page.getByText(`Report submitted against ${selectedUserName}.`, { exact: true })).toBeVisible();
+
+    const persistedReport = await page.evaluate(({ details, reporterId }) => {
+      type StoredRecord = {
+        id?: string;
+        title?: string;
+        details?: string;
+        reporterId?: string;
+        reporterName?: string;
+        reportedUserId?: string;
+        reportedUserName?: string;
+      };
+      const raw = window.localStorage.getItem("kuquest-admin-demo-data");
+      if (!raw) return null;
+      const stored = JSON.parse(raw) as {
+        collections?: { reports?: StoredRecord[]; users?: StoredRecord[] };
+      };
+      const report = stored.collections?.reports?.find((candidate) => candidate.details === details);
+      const reporter = stored.collections?.users?.find((candidate) => candidate.id === reporterId);
+      if (!report) return null;
+      return {
+        report: {
+          details: report.details,
+          reporterId: report.reporterId,
+          reporterName: report.reporterName,
+          reportedUserId: report.reportedUserId,
+          reportedUserName: report.reportedUserName,
+        },
+        reporterName: reporter?.title ?? null,
+      };
+    }, { details: reportDetails, reporterId });
+
+    if (!persistedReport) throw new Error("Submitted report was not persisted.");
+    expect(persistedReport.reporterName).toBeTruthy();
+    expect(persistedReport.report).toMatchObject({
+      details: reportDetails,
+      reporterId,
+      reporterName: persistedReport.reporterName,
+      reportedUserId: selectedUserId,
+      reportedUserName: selectedUserName,
+    });
   });
 
   test("penalty ladder reason and note accept input on mobile", async ({

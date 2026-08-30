@@ -124,6 +124,7 @@ export type LegacyAdminRuntime = {
 
 declare global {
   interface Window {
+    __KUQUEST_PAGE__?: "home" | "quest" | "dispute" | "report" | "user";
     __KUQUEST_LEGACY_RUNTIME__?: LegacyAdminRuntime;
     data?: LegacyRuntimeData;
     navigate?: (view: string) => void;

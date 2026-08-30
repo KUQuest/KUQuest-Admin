@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
 import Script from "next/script";
-import "./globals.css";
+import "./styles.css";
+import "./admin-extensions.css";
+import "./quest-page.css";
+import "./dispute-page.css";
+import "./report-page.css";
+import "./user-page.css";
+import "./login.css";
+import "./theme.css";
 
 export const metadata: Metadata = {
   title: {

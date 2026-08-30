@@ -49,6 +49,29 @@ function questDisputeCases(
   );
 }
 
+function createQuestDetailDependencies(
+  core: typeof import("./script"),
+  data: QuestData,
+): QuestDetailDependencies {
+  return {
+    document,
+    data,
+    disputeCases: questDisputeCases(core.disputeCases),
+    drawer: core.drawer,
+    scrim: core.scrim,
+    showDrawerLayer: core.showDrawerLayer,
+    closeDrawer: core.closeDrawer,
+    confirmAction: core.confirmAction,
+    badge: core.badge,
+    fmt: core.fmt,
+    escapeActivityText: core.escapeActivityText,
+    ico: core.ico,
+    timeline: core.timeline,
+    disputeTypeLabel: core.disputeTypeLabel,
+    payoutQuestId: core.payoutQuestId,
+  };
+}
+
 function moderationDisputeCases(
   disputeCases: Record<string, Record<string, unknown>>,
 ): Record<string, ModerationDisputeCase> {
@@ -82,7 +105,6 @@ export async function initializeTypedLegacyPage(
 ): Promise<void> {
   const core = await import("./script");
   const mockData = await import("./fresh-mock-data");
-  await import("./resource-controls");
 
   const common = {
     document,
@@ -113,25 +135,10 @@ export async function initializeTypedLegacyPage(
   };
 
   if (options.page === "home") {
+    await import("./resource-controls");
     if (isQuestData(core.data)) {
       const { createQuestDetailModule } = await import("./quest-detail");
-      const detail = createQuestDetailModule({
-        document,
-        data: core.data,
-        disputeCases: questDisputeCases(core.disputeCases),
-        drawer: core.drawer,
-        scrim: core.scrim,
-        showDrawerLayer: core.showDrawerLayer,
-        closeDrawer: core.closeDrawer,
-        confirmAction: core.confirmAction,
-        badge: core.badge,
-        fmt: core.fmt,
-        escapeActivityText: core.escapeActivityText,
-        ico: core.ico,
-        timeline: core.timeline,
-        disputeTypeLabel: core.disputeTypeLabel,
-        payoutQuestId: core.payoutQuestId,
-      });
+      const detail = createQuestDetailModule(createQuestDetailDependencies(core, core.data));
       window.openQuestDrawer = detail.openQuestDrawer;
     }
     if (isModerationData(core.data)) {
@@ -154,23 +161,7 @@ export async function initializeTypedLegacyPage(
       import("./quest-page"),
       import("./quest-change-review"),
     ]);
-    const detail = createQuestDetailModule({
-      document,
-      data: core.data,
-      disputeCases: questDisputeCases(core.disputeCases),
-      drawer: core.drawer,
-      scrim: core.scrim,
-      showDrawerLayer: core.showDrawerLayer,
-      closeDrawer: core.closeDrawer,
-      confirmAction: core.confirmAction,
-      badge: core.badge,
-      fmt: core.fmt,
-      escapeActivityText: core.escapeActivityText,
-      ico: core.ico,
-      timeline: core.timeline,
-      disputeTypeLabel: core.disputeTypeLabel,
-      payoutQuestId: core.payoutQuestId,
-    });
+    const detail = createQuestDetailModule(createQuestDetailDependencies(core, core.data));
     window.openQuestDrawer = detail.openQuestDrawer;
     const questPage = createQuestPageModule({
       document,

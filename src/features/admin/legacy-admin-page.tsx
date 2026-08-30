@@ -8,9 +8,7 @@ import type { MouseEvent } from "react";
 import { AdminDashboard } from "./dashboard/admin-dashboard";
 import { requireAdminSession } from "./legacy/auth";
 import { applyRequestedLegacyRecords } from "./legacy/deep-links";
-import { initializeDisputeInteractions } from "./legacy/dispute-interactions";
 import { initializeFunctionalControls } from "./legacy/functional-controls";
-import { initializeTypedLegacyPage } from "./legacy/page-runtime";
 import { getLegacyAdminRuntime } from "./legacy/runtime";
 import { AdminThemeControl } from "./theme/admin-theme-control";
 
@@ -48,11 +46,13 @@ function LegacyScripts({ page, recordId, onReady }: { page: LegacyPage; recordId
   useEffect(() => {
     let cancelled = false;
     if (!requireAdminSession(window.localStorage, window.location)) return;
-    const notifyReady = () => {
+    const notifyReady = async () => {
       if (cancelled) return;
       const runtime = getLegacyAdminRuntime(window);
       if (runtime) {
         if (page === "dispute" && typeof window.openDisputeDrawer === "function") {
+          const { initializeDisputeInteractions } = await import("./legacy/dispute-interactions");
+          if (cancelled) return;
           window.openDisputeDrawer = initializeDisputeInteractions(document, runtime, window.openDisputeDrawer);
         }
         initializeFunctionalControls(document, runtime);
@@ -65,8 +65,10 @@ function LegacyScripts({ page, recordId, onReady }: { page: LegacyPage; recordId
       onReady?.();
     };
     window.__KUQUEST_RECORD_ID__ = recordId;
+    window.__KUQUEST_PAGE__ = page;
     void import("./legacy/language")
-      .then(() => initializeTypedLegacyPage({ page, recordId, search: window.location.search }))
+      .then(() => import("./legacy/page-runtime"))
+      .then(({ initializeTypedLegacyPage }) => initializeTypedLegacyPage({ page, recordId, search: window.location.search }))
       .then(notifyReady)
       .catch((error: unknown) => console.error(error));
     return () => {
@@ -254,6 +256,7 @@ export function LegacyAdminPage({
 declare global {
   interface Window {
     __KUQUEST_RECORD_ID__?: string;
+    __KUQUEST_PAGE__?: LegacyPage;
     openDisputeDrawer?: (index: number) => void;
   }
 }
