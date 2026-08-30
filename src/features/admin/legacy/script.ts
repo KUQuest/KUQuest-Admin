@@ -1861,7 +1861,7 @@ menuButton?.addEventListener("click", () =>
 closeMenuButton?.addEventListener("click", () => setMobileNavigation(false));
 mobileNavigationQuery.addEventListener("change", () => setMobileNavigation(false));
 setMobileNavigation(false);
-render();
+if (window.__KUQUEST_PAGE__ === "home") render();
 window.__KUQUEST_LEGACY_RUNTIME__ = {
   data,
   navigate,

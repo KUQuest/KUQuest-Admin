@@ -1,8 +1,1 @@
-@import "./styles.css";
-@import "./admin-extensions.css";
-@import "./quest-page.css";
-@import "./dispute-page.css";
-@import "./report-page.css";
-@import "./user-page.css";
-@import "./login.css";
-@import "./theme.css";
+/* Global styles are bundled through the root layout imports in layout.tsx. */

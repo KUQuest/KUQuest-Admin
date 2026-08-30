@@ -483,5 +483,7 @@ function setSeedCounter(view: string, count: number): void {
 setSeedCounter("disputes", data.disputes.filter((record) => record.status === "Active").length);
 setSeedCounter("payouts", data.payouts.filter((record) => record.status === "Needs approval").length);
 setSeedCounter("reports", data.reports.filter((record) => record.status === "Active").length);
-if (state.view === "home") renderHome();
-else if (state.view === "activity") renderActivity();
+if (window.__KUQUEST_PAGE__ === "home") {
+  if (state.view === "home") renderHome();
+  else if (state.view === "activity") renderActivity();
+}
