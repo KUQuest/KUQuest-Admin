@@ -570,6 +570,10 @@ main {
   color: var(--accent);
   font-weight: 600;
   cursor: pointer;
+  text-decoration: none;
+}
+.link:visited {
+  color: var(--accent);
 }
 .attention {
   width: 100%;
@@ -583,6 +587,14 @@ main {
   background: var(--surface);
   text-align: left;
   cursor: pointer;
+  color: inherit;
+  text-decoration: none;
+}
+.attention:visited,
+.dashboard-row,
+.dashboard-row:visited {
+  color: inherit;
+  text-decoration: none;
 }
 .attention:last-child {
   border-bottom: 0;

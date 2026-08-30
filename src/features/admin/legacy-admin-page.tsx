@@ -242,12 +242,8 @@ export function LegacyAdminPage({
             </>
           )}
         </header>
-        {reactDashboard ? (
-          <>
-            <main id="legacy-main" tabIndex={-1} hidden />
-            <AdminDashboard />
-          </>
-        ) : <main id="main" tabIndex={-1} />}
+        <main id="main" tabIndex={-1} hidden={reactDashboard} />
+        {reactDashboard && <AdminDashboard />}
       </div>
       <LegacyOverlays detailSearch={detailPage} />
       <LegacyScripts page={page} recordId={recordId} onReady={reactDashboard ? handleLegacyReady : undefined} />

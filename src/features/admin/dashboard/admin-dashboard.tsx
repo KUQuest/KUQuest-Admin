@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 
 import { readAdminData } from "../data/legacy-admin-data-adapter";
 import {
@@ -51,6 +51,11 @@ function dashboardHref(view: "disputes" | "reports", id: string): string {
   return `/${view}/${encodeURIComponent(id)}`;
 }
 
+function hardNavigate(event: MouseEvent<HTMLAnchorElement>) {
+  event.preventDefault();
+  window.location.assign(event.currentTarget.href);
+}
+
 export function AdminDashboard() {
   const [model, setModel] = useState<DashboardModel | null>(null);
 
@@ -86,7 +91,7 @@ export function AdminDashboard() {
                 <Link className="link" href="/?view=activity">View activity</Link>
               </div>
               {model.decisions.length ? model.decisions.map((decision) => (
-                <Link className="attention" href={dashboardHref(decision.view, decision.id)} key={`${decision.view}-${decision.id}`}>
+                <Link className="attention" href={dashboardHref(decision.view, decision.id)} onClick={hardNavigate} key={`${decision.view}-${decision.id}`}>
                   <span className={`att-icon ${decision.tone}`} aria-hidden="true">{decision.view === "disputes" ? "⚖" : "⚑"}</span>
                   <span><strong>{decision.title}</strong><small>{decision.detail}</small></span>
                   <span><strong>{decision.metric}</strong><small>{decision.age}</small></span>

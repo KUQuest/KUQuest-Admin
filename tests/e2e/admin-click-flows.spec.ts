@@ -159,6 +159,18 @@ test.describe("admin click flows", () => {
     await expect(drawer).toContainText("Akarin Ariyawat");
   });
 
+  test("dashboard dispute links render the selected dispute detail", async ({ page }) => {
+    await signIn(page);
+
+    const disputeLink = page.getByRole("link", { name: /Resolve .* dispute/ }).first();
+    await expect(disputeLink).toBeVisible();
+    await disputeLink.click();
+
+    await expect(page).toHaveURL(/\/disputes\/DSP-\d+$/);
+    await expect(page.locator("#main .full-record-head")).toBeVisible();
+    await expect(page.locator("#main h1")).toBeVisible();
+  });
+
   test("admin can search users and open the linked profile", async ({ page }) => {
     await signIn(page);
     await page.getByRole("button", { name: "Users", exact: true }).click();
