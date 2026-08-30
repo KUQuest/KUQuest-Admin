@@ -155,6 +155,7 @@ export async function initializeTypedLegacyPage(
       });
       window.openDisputeDrawer = detail.openDisputeDrawer;
     }
+    core.render();
     return;
   }
 

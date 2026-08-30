@@ -230,5 +230,4 @@ window.addEventListener("pageshow", (event) => {
   resetResourceState();
   renderResource(state.view);
 });
-if (state.view !== "home") renderResource(state.view);
 window.__KUQUEST_RESET_RESOURCE_STATE__ = resetResourceState;
