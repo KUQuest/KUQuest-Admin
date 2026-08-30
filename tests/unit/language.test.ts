@@ -1,7 +1,7 @@
 import { expect, it } from "bun:test";
 
-const languageSource = await Bun.file("public/legacy/language.js").text();
-const functionalControlsSource = await Bun.file("public/legacy/functional-controls.js").text();
+const languageSource = await Bun.file("src/features/admin/legacy/language.ts").text();
+const functionalControlsSource = await Bun.file("src/features/admin/legacy/functional-controls.ts").text();
 const renderedActionSources = (
   await Promise.all([
     Bun.file("public/legacy/quest-page.js").text(),

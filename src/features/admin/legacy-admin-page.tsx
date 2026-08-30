@@ -1,97 +1,22 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { MouseEvent } from "react";
 
+import { AdminDashboard } from "./dashboard/admin-dashboard";
+import { requireAdminSession } from "./legacy/auth";
+import { applyRequestedLegacyRecords } from "./legacy/deep-links";
+import { initializeDisputeInteractions } from "./legacy/dispute-interactions";
+import { initializeFunctionalControls } from "./legacy/functional-controls";
+import { initializeTypedLegacyPage } from "./legacy/page-runtime";
+import { getLegacyAdminRuntime } from "./legacy/runtime";
+import { AdminThemeControl } from "./theme/admin-theme-control";
+
 /* oxlint-disable jsx-a11y/prefer-tag-over-role */
 
 type LegacyPage = "home" | "quest" | "dispute" | "report" | "user";
-type LegacyScriptPlan = {
-  sequential: string[];
-  parallel: string[];
-};
-
-const adminFoundationScripts = [
-  "/legacy/auth.js?v=1",
-  "/legacy/language.js?v=8-review-removal-reason",
-  "/legacy/script.js?v=94-penalty-ladder",
-  "/legacy/fresh-mock-data.js?v=49-penalty-ladder",
-  "/legacy/resource-controls.js?v=49-penalty-ladder",
-  "/legacy/theme.js?v=1",
-];
-
-const adminScripts: LegacyScriptPlan = {
-  sequential: adminFoundationScripts,
-  parallel: [
-    "/legacy/functional-controls.js?v=5",
-    "/legacy/deep-links.js?v=11",
-  ],
-};
-
-const questScripts: LegacyScriptPlan = {
-  sequential: [
-    ...adminFoundationScripts,
-    "/legacy/quest-detail.js?v=41",
-    "/legacy/quest-page.js?v=29",
-    "/legacy/quest-change-review.js?v=10",
-  ],
-  parallel: ["/legacy/functional-controls.js?v=5"],
-};
-
-const disputeScripts: LegacyScriptPlan = {
-  sequential: [
-    ...adminFoundationScripts,
-    "/legacy/dispute-detail.js?v=34",
-    "/legacy/dispute-page.js?v=14",
-  ],
-  parallel: ["/legacy/functional-controls.js?v=5"],
-};
-
-const reportScripts: LegacyScriptPlan = {
-  sequential: [...adminFoundationScripts, "/legacy/report-page.js?v=17-penalty-ladder"],
-  parallel: ["/legacy/functional-controls.js?v=5"],
-};
-
-const userScripts: LegacyScriptPlan = {
-    sequential: [...adminFoundationScripts, "/legacy/user-page.js?v=12-review-removal-reason"],
-  parallel: ["/legacy/functional-controls.js?v=5"],
-};
-
-const legacyScriptLoads = new Map<string, Promise<void>>();
-
-const loadScript = (src: string) =>
-  new Promise<void>((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = src;
-    script.dataset.kuquestLegacy = "true";
-    script.onload = () => {
-      script.dataset.kuquestLegacyLoaded = "true";
-      resolve();
-    };
-    script.onerror = () => reject(new Error(`Could not load ${src}`));
-    document.body.append(script);
-  });
-
-function loadScripts(plan: LegacyScriptPlan) {
-  const scripts = [...plan.sequential, ...plan.parallel];
-  const marker = scripts.join("|");
-  const existingLoad = legacyScriptLoads.get(marker);
-  if (existingLoad) return existingLoad;
-  if (document.body.dataset.kuquestLegacyPage === marker) return Promise.resolve();
-  const existing = document.querySelector<HTMLScriptElement>(
-    "script[data-kuquest-legacy]",
-  );
-  if (existing) return Promise.resolve();
-  document.body.dataset.kuquestLegacyPage = marker;
-
-  let chain = Promise.resolve();
-  for (const src of plan.sequential) chain = chain.then(() => loadScript(src));
-  chain = chain.then(() => Promise.all(plan.parallel.map(loadScript)).then(() => undefined));
-  legacyScriptLoads.set(marker, chain);
-  return chain;
-}
 
 function hardNavigate(event: MouseEvent<HTMLAnchorElement>) {
   event.preventDefault();
@@ -122,21 +47,28 @@ function LanguageControl({ className = "", disabled = false }: { className?: str
 function LegacyScripts({ page, recordId, onReady }: { page: LegacyPage; recordId?: string; onReady?: () => void }) {
   useEffect(() => {
     let cancelled = false;
+    if (!requireAdminSession(window.localStorage, window.location)) return;
     const notifyReady = () => {
-      if (!cancelled) onReady?.();
+      if (cancelled) return;
+      const runtime = getLegacyAdminRuntime(window);
+      if (runtime) {
+        if (page === "dispute" && typeof window.openDisputeDrawer === "function") {
+          window.openDisputeDrawer = initializeDisputeInteractions(document, runtime, window.openDisputeDrawer);
+        }
+        initializeFunctionalControls(document, runtime);
+        applyRequestedLegacyRecords(
+          new URLSearchParams(window.location.search),
+          runtime,
+          window.requestAnimationFrame,
+        );
+      }
+      onReady?.();
     };
     window.__KUQUEST_RECORD_ID__ = recordId;
-    void loadScripts(
-      page === "quest"
-        ? questScripts
-        : page === "dispute"
-          ? disputeScripts
-          : page === "report"
-            ? reportScripts
-            : page === "user"
-              ? userScripts
-              : adminScripts,
-    ).then(notifyReady).catch((error: unknown) => console.error(error));
+    void import("./legacy/language")
+      .then(() => initializeTypedLegacyPage({ page, recordId, search: window.location.search }))
+      .then(notifyReady)
+      .catch((error: unknown) => console.error(error));
     return () => {
       cancelled = true;
     };
@@ -230,13 +162,32 @@ function LegacyOverlays({ detailSearch = false }: { detailSearch?: boolean }) {
   );
 }
 
-export function LegacyAdminPage({ page, recordId }: { page: LegacyPage; recordId?: string }) {
+export function LegacyAdminPage({
+  page,
+  recordId,
+  reactDashboard = false,
+}: {
+  page: LegacyPage;
+  recordId?: string;
+  reactDashboard?: boolean;
+}) {
   const detailPage = page !== "home" && page !== "user";
+  const handleLegacyReady = useCallback(() => {
+    window.dispatchEvent(new Event("kuquest-legacy-ready"));
+  }, []);
+  const navigateFromDashboard = useCallback((event: MouseEvent<HTMLElement>) => {
+    const target = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-view]") : null;
+    const view = target?.dataset.view;
+    if (!view) return;
+    event.preventDefault();
+    event.stopPropagation();
+    window.location.assign(view === "home" ? "/" : `/?view=${encodeURIComponent(view)}`);
+  }, []);
 
   return (
     <>
       <div className="shell">
-        <aside className="sidebar" id="site-navigation">
+        <aside className="sidebar" id="site-navigation" onClickCapture={reactDashboard ? navigateFromDashboard : undefined}>
           <div className="brand">
             <Image src="/kuquest-logo.png?v=2" alt="" width={101} height={51} priority unoptimized />
             <span>KuQuest</span>
@@ -248,41 +199,7 @@ export function LegacyAdminPage({ page, recordId }: { page: LegacyPage; recordId
               <span data-static-icon="history" />Activity log
             </button>
           </div>
-          <div className="theme-control" data-theme-control>
-            <button
-              className="theme-trigger"
-              type="button"
-              data-theme-trigger
-              aria-expanded="false"
-              aria-controls="theme-options"
-            >
-              <span className="theme-trigger-copy">
-                <strong>Theme</strong>
-                <small data-theme-current>Grey-white</small>
-              </span>
-              <span className="theme-trigger-chevron" aria-hidden="true">⌄</span>
-            </button>
-            <div className="theme-menu" id="theme-options" data-theme-menu hidden>
-              <p className="theme-menu-title">Choose a theme</p>
-              <div className="theme-options" role="group" aria-label="Theme options">
-                <button className="theme-option" type="button" data-theme-option="grey" aria-pressed="true">
-                  <span className="theme-swatch theme-swatch-grey" aria-hidden="true" />
-                  <span className="theme-option-copy"><strong>Grey-white</strong><small>Neutral workspace</small></span>
-                  <span className="theme-option-check" aria-hidden="true">✓</span>
-                </button>
-                <button className="theme-option" type="button" data-theme-option="green" aria-pressed="false">
-                  <span className="theme-swatch theme-swatch-green" aria-hidden="true" />
-                  <span className="theme-option-copy"><strong>Light green</strong><small>Original KuQuest palette</small></span>
-                  <span className="theme-option-check" aria-hidden="true">✓</span>
-                </button>
-                <button className="theme-option" type="button" data-theme-option="dark" aria-pressed="false">
-                  <span className="theme-swatch theme-swatch-dark" aria-hidden="true" />
-                  <span className="theme-option-copy"><strong>Dark</strong><small>Low-light workspace</small></span>
-                  <span className="theme-option-check" aria-hidden="true">✓</span>
-                </button>
-              </div>
-            </div>
-          </div>
+          <AdminThemeControl />
           <LanguageControl />
           <div className="profile">
             <span>NP</span>
@@ -325,10 +242,15 @@ export function LegacyAdminPage({ page, recordId }: { page: LegacyPage; recordId
             </>
           )}
         </header>
-        <main id="main" tabIndex={-1} />
+        {reactDashboard ? (
+          <>
+            <main id="legacy-main" tabIndex={-1} hidden />
+            <AdminDashboard />
+          </>
+        ) : <main id="main" tabIndex={-1} />}
       </div>
       <LegacyOverlays detailSearch={detailPage} />
-      <LegacyScripts page={page} recordId={recordId} />
+      <LegacyScripts page={page} recordId={recordId} onReady={reactDashboard ? handleLegacyReady : undefined} />
     </>
   );
 }
@@ -336,5 +258,6 @@ export function LegacyAdminPage({ page, recordId }: { page: LegacyPage; recordId
 declare global {
   interface Window {
     __KUQUEST_RECORD_ID__?: string;
+    openDisputeDrawer?: (index: number) => void;
   }
 }

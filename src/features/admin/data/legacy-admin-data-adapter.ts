@@ -19,7 +19,7 @@ function isPersistedAdminData(value: unknown): value is PersistedAdminData {
   );
 }
 
-function readData(storage: BrowserStorage): PersistedAdminData | null {
+export function readAdminData(storage: BrowserStorage): PersistedAdminData | null {
   try {
     const raw = storage.getItem(ADMIN_DEMO_DATA_KEY);
     if (!raw) return null;
@@ -34,7 +34,7 @@ export function readUserReviews(
   storage: BrowserStorage,
   userId: string,
 ): AdminReview[] | null {
-  const user = readData(storage)?.collections.users.find((candidate) => candidate.id === userId);
+  const user = readAdminData(storage)?.collections.users.find((candidate) => candidate.id === userId);
   return user?.reviews ? [...user.reviews] : null;
 }
 
@@ -43,7 +43,7 @@ export function saveUserReviews(
   userId: string,
   reviews: AdminReview[],
 ): boolean {
-  const data = readData(storage);
+  const data = readAdminData(storage);
   const user = data?.collections.users.find((candidate) => candidate.id === userId);
   if (!data || !user) return false;
 

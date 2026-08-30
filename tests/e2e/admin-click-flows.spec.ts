@@ -119,6 +119,18 @@ test.describe("admin click flows", () => {
     await expect(page.locator(".profile small")).toHaveText("Administrator");
   });
 
+  test("admin can persist a selected dashboard theme", async ({ page }) => {
+    await signIn(page);
+
+    await page.getByRole("button", { name: "Theme Grey-white" }).click();
+    await page.getByRole("button", { name: /Dark Low-light workspace/ }).click();
+
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await page.reload();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await expect(page.getByRole("heading", { level: 1, name: "Overview" })).toBeVisible();
+  });
+
   test("admin can open a record from global search", async ({ page }) => {
     await signIn(page);
 
