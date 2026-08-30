@@ -16,68 +16,27 @@ import {
   setRenderResource,
   state,
 } from "./script";
-import type { LegacyDomElement, LegacyRecord, LegacyRuntimeData } from "./runtime";
+import {
+  matchingRows as matchingResourceRows,
+  pageSizeOptions,
+  paginateRows as paginateResourceRows,
+  paginationFor as getPagination,
+  questFilterKind,
+  resetPagination as resetResourcePagination,
+  resetResourceState as resetResourceStateModel,
+  resourceColumns,
+  resourceTabIsActive as resourceTabIsActiveModel,
+  resourceTabs,
+  resultCount as getResultCount,
+  sortSpec,
+  type Pagination,
+  type PaginationResult,
+  type ResourceColumn,
+  type ResourceView,
+} from "./resource-controls-model";
+import type { LegacyDomElement, LegacyRecord } from "./runtime";
 
-type ResourceView = keyof Pick<LegacyRuntimeData, "disputes" | "quests" | "users" | "payouts" | "reports">;
-type ResourceColumn = [string, string];
-type Pagination = { page: number; size: number | "all" };
-type PaginationResult = { rows: LegacyRecord[]; page: number; pageCount: number; start: number; end: number; total: number };
-
-const resourceCollections: Record<string, LegacyRecord[]> = data;
-const resourceColumns: Record<ResourceView, ResourceColumn[]> = {
-  disputes: [
-    ["id", "Case"],
-    ["title", "Quest"],
-    ["amount", "Amount"],
-    ["status", "Status"],
-    ["disputeDate", "Dispute date"],
-    ["disputeType", "Category"],
-  ],
-  quests: [
-    ["id", "Quest"],
-    ["title", "Title"],
-    ["person", "Hirer"],
-    ["other", "Tag"],
-    ["amount", "Wage"],
-    ["status", "Status"],
-  ],
-  users: [
-    ["id", "Student ID"],
-    ["title", "User"],
-    ["person", "Email"],
-    ["other", "Academic profile"],
-    ["status", "Status"],
-  ],
-  payouts: [
-    ["id", "Payout"],
-    ["title", "Recipient"],
-    ["person", "Account"],
-    ["amount", "Amount"],
-    ["requestedAt", "Requested"],
-    ["status", "Status"],
-  ],
-  reports: [
-    ["id", "Report"],
-    ["reportedUserName", "Reported user"],
-    ["reporterName", "Reported by"],
-    ["category", "Type"],
-    ["status", "Status"],
-    ["reportedAt", "Reported"],
-  ],
-};
-const resourceTabs: Record<ResourceView, string[]> = {
-  disputes: ["All", "Active", "Closed"],
-  payouts: ["All", "Needs approval", "Processing", "Completed", "Rejected"],
-  quests: ["All", "Team", "Solo", "Draft", "Open", "Assigned", "In progress", "Submitted", "Change pending", "Approved", "Disputed", "Completed", "Cancelled", "Hidden"],
-  users: ["All", "Normal", "Red Flag", "Temp ban", "Perm ban"],
-  reports: ["All", "Active", "Closed"],
-};
-const pageSizeOptions: Array<[number | "all", string]> = [
-  [10, "Show 10"],
-  [25, "Show 25"],
-  [50, "Show 50"],
-  ["all", "Show all"],
-];
+const resourceCollections: Record<ResourceView, LegacyRecord[]> = data;
 state.filters = {};
 state.questFilters = { mode: "all", status: "all" };
 state.orderBy = {
@@ -98,167 +57,31 @@ state.visibleColumns = Object.fromEntries(
 );
 
 function resetResourceState(): void {
-  state.filters = {};
-  state.questFilters = { mode: "all", status: "all" };
-  state.orderBy = Object.fromEntries(
-    Object.keys(resourceColumns).map((view) => [view, null]),
-  );
-  state.pagination = Object.fromEntries(
-    Object.keys(resourceColumns).map((view) => [view, { page: 1, size: 10 }]),
-  );
-  state.tab = "all";
-  state.query = "";
+  resetResourceStateModel(state);
 }
 
 function matchingRows(view: ResourceView): LegacyRecord[] {
-  const query = state.query.trim().toLowerCase(),
-    statuses = state.filters[view] || [],
-    questFilters = state.questFilters || { mode: "all", status: "all" };
-  const rows = resourceCollections[view].filter((record: LegacyRecord) => {
-    const searchable = [
-      record.id,
-      record.title,
-      record.person,
-      record.other,
-      record.status,
-      record.disputeDate || "",
-      record.disputeType || "",
-      record.reporterName || "",
-      record.reportedUserName || "",
-      record.category || "",
-      record.details || "",
-      record.reportedAt || "",
-      record.requestedAt || "",
-      record.detail || "",
-    ]
-      .join(" ")
-      .toLowerCase();
-    const matchesTab =
-      view === "quests"
-        ? (questFilters.mode === "all" ||
-            (questFilters.mode === "team"
-              ? Boolean(record.teamQuest)
-              : !record.teamQuest)) &&
-          (questFilters.status === "all" ||
-            record.status === questFilters.status)
-        : state.tab === "all" || record.status.toLowerCase().includes(state.tab);
-    return (
-      (!query || searchable.includes(query)) &&
-      matchesTab &&
-      (!statuses.length || statuses.includes(record.status))
-    );
-  });
-  const order = state.orderBy[view],
-    activeSort = sortSpec(view, order);
-  if (!activeSort) return rows;
-  const { key, direction } = activeSort,
-    compareText = (a: string | number | null, b: string | number | null) =>
-      String(a ?? "").localeCompare(String(b ?? ""), undefined, {
-        numeric: true,
-        sensitivity: "base",
-      });
-  return rows
-    .map((record, index) => ({ record, index }))
-    .sort((leftRecord, rightRecord) => {
-      const left = sortValue(view, leftRecord.record, key),
-        right = sortValue(view, rightRecord.record, key),
-        leftEmpty = isEmptySortValue(left),
-        rightEmpty = isEmptySortValue(right);
-      if (leftEmpty || rightEmpty) {
-        if (leftEmpty && rightEmpty) return leftRecord.index - rightRecord.index;
-        return leftEmpty ? 1 : -1;
-      }
-      const difference =
-        typeof left === "number" && typeof right === "number"
-          ? left - right
-          : compareText(left, right);
-      return difference ? (direction === "desc" ? -difference : difference) : leftRecord.index - rightRecord.index;
-    })
-    .map(({ record }) => record);
-}
-
-function sortSpec(view: ResourceView, order: string | null | undefined): { key: string; direction: "asc" | "desc" } | null {
-  if (!order) return null;
-  const aliases: Record<string, { key: string; direction: "asc" | "desc" }> = {
-    newest: { key: "disputeDate", direction: "desc" },
-    oldest: { key: "disputeDate", direction: "asc" },
-    "quest-id-desc": { key: "id", direction: "desc" },
-    "quest-id-asc": { key: "id", direction: "asc" },
-    "amount-high": { key: "amount", direction: "desc" },
-    "amount-low": { key: "amount", direction: "asc" },
-    title: { key: "title", direction: "asc" },
-    "title-desc": { key: "title", direction: "desc" },
-    status: { key: "status", direction: "asc" },
-    id: { key: "id", direction: "asc" },
-  };
-  if (aliases[order]) return aliases[order];
-  const generic = /^(.*)-(asc|desc)$/.exec(order || "");
-  if (generic && resourceColumns[view].some(([column]) => column === generic[1]))
-    return { key: generic[1], direction: generic[2] === "desc" ? "desc" : "asc" };
-  return null;
-}
-
-function sortValue(view: ResourceView, record: LegacyRecord, key: string): string | number | null {
-  if (key === "amount") return record.amount == null ? null : Number(record.amount);
-  if (key === "disputeDate") return dateSortValue(record.disputeDate);
-  if (key === "requestedAt")
-    return dateSortValue(record.requestedAt);
-  if (key === "reportedAt") return dateSortValue(record.reportedAt);
-  const value = record[key];
-  return typeof value === "string" || typeof value === "number" ? value : value == null ? null : String(value);
-}
-
-function dateSortValue(value: unknown): number | null {
-  if (!value) return null;
-  const timestamp = Date.parse(String(value).replace(" · ", " "));
-  return Number.isNaN(timestamp) ? null : timestamp;
-}
-
-function isEmptySortValue(value: string | number | null | undefined): boolean {
-  return value === null || value === undefined || value === "" || Number.isNaN(value);
+  return matchingResourceRows(resourceCollections, state, view);
 }
 
 function paginationFor(view: ResourceView): Pagination {
-  return state.pagination[view] || (state.pagination[view] = { page: 1, size: 10 });
+  return getPagination(state, view);
 }
 
 function resetPagination(view: ResourceView): void {
-  paginationFor(view).page = 1;
+  resetResourcePagination(state, view);
 }
 
 function paginateRows(view: ResourceView, rows: LegacyRecord[]): PaginationResult {
-  const pagination = paginationFor(view);
-  if (pagination.size === "all") {
-    pagination.page = 1;
-    return {
-      rows,
-      page: 1,
-      pageCount: 1,
-      start: rows.length ? 1 : 0,
-      end: rows.length,
-      total: rows.length,
-    };
-  }
-  const size = Number(pagination.size) || 10,
-    pageCount = Math.max(1, Math.ceil(rows.length / size));
-  pagination.page = Math.min(Math.max(1, Number(pagination.page) || 1), pageCount);
-  const startIndex = (pagination.page - 1) * size;
-  return {
-    rows: rows.slice(startIndex, startIndex + size),
-    page: pagination.page,
-    pageCount,
-    start: rows.length ? startIndex + 1 : 0,
-    end: Math.min(startIndex + size, rows.length),
-    total: rows.length,
-  };
+  return paginateResourceRows(state, view, rows);
 }
 
 function resultCount(view: ResourceView, pagination: PaginationResult): string {
-  const noun = pagination.total === 1 ? "result" : "results";
-  if (!pagination.total) return "Showing 0 of 0 results";
-  if (paginationFor(view).size === "all")
-    return `Showing all ${pagination.total} ${noun}`;
-  return `Showing ${pagination.start}–${pagination.end} of ${pagination.total} ${noun}`;
+  return getResultCount(state, view, pagination);
+}
+
+function resourceTabIsActive(view: ResourceView, tab: string): boolean {
+  return resourceTabIsActiveModel(state, view, tab);
 }
 
 function pageSizeControls(view: ResourceView): string {
@@ -273,22 +96,6 @@ function pageSizeControls(view: ResourceView): string {
 
 function paginationControls(view: ResourceView, pagination: PaginationResult): string {
   return `<div class="table-pagination" aria-label="${view} pagination"><button class="page-nav" type="button" data-page-number="${pagination.page - 1}"${pagination.page === 1 ? " disabled" : ""}>Previous</button><span class="page-indicator">Page ${pagination.page} of ${pagination.pageCount}</span><button class="page-nav" type="button" data-page-number="${pagination.page + 1}"${pagination.page === pagination.pageCount ? " disabled" : ""}>Next</button></div>`;
-}
-
-function questFilterKind(tab: string): "all" | "mode" | "status" {
-  const normalized = tab.toLowerCase();
-  if (normalized === "all") return "all";
-  if (["team", "solo"].includes(normalized)) return "mode";
-  return "status";
-}
-
-function resourceTabIsActive(view: ResourceView, tab: string): boolean {
-  const normalized = tab.toLowerCase();
-  if (view !== "quests") return state.tab === normalized;
-  const filters = state.questFilters || { mode: "all", status: "all" };
-  if (normalized === "all") return filters.mode === "all" && filters.status === "all";
-  if (["team", "solo"].includes(normalized)) return filters.mode === normalized;
-  return filters.status === tab;
 }
 
 setRenderResource(function resourceRender(view: string): void {

@@ -318,10 +318,10 @@ function bindResolutionControls(root: HTMLElement, record: ModerationRecord): vo
       }
       persistAdminData();
       if (state.view === "home") renderHome();
+      else if (state.view === "disputes") render();
       if (root === drawer) openDisputeDrawer(data.disputes.indexOf(record));
       else if (root === main && typeof renderDisputePage === "function")
         renderDisputePage();
-      else if (state.view === "disputes") render();
     }, { keepDrawerOpen: root === drawer });
   });
 }

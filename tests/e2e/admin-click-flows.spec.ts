@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
 
 async function signIn(page: Page) {
@@ -79,6 +80,11 @@ test.describe("admin click flows", () => {
       page.getByRole("button", { name: "ส่งออกบันทึก", exact: true }).click(),
     ]);
     expect(download.suggestedFilename()).toBe("kuquest-admin-export.csv");
+    const downloadedPath = await download.path();
+    if (!downloadedPath) throw new Error("The export download did not provide a file path.");
+    const csv = await readFile(downloadedPath, "utf8");
+    expect(csv).toContain("record,action,status");
+    expect(csv).toContain("synthetic,exported,complete");
   });
 
   test("admin can switch the interface between English and Thai", async ({
@@ -164,11 +170,16 @@ test.describe("admin click flows", () => {
 
     const disputeLink = page.getByRole("link", { name: /Resolve .* dispute/ }).first();
     await expect(disputeLink).toBeVisible();
+    const disputeHref = await disputeLink.getAttribute("href");
+    expect(disputeHref).toMatch(/^\/disputes\/DSP-\d+$/);
+    if (!disputeHref) throw new Error("The dashboard dispute link has no href.");
+    const expectedUrl = new URL(disputeHref, page.url()).toString();
+    const disputeId = disputeHref.slice(disputeHref.lastIndexOf("/") + 1);
     await disputeLink.click();
 
-    await expect(page).toHaveURL(/\/disputes\/DSP-\d+$/);
+    await expect(page).toHaveURL(expectedUrl);
     await expect(page.locator("#main .full-record-head")).toBeVisible();
-    await expect(page.locator("#main h1")).toBeVisible();
+    await expect(page.locator("#main .record-id")).toHaveText(disputeId);
   });
 
   test("admin can search users and open the linked profile", async ({ page }) => {
@@ -299,6 +310,39 @@ test.describe("admin click flows", () => {
     ).toBeVisible();
   });
 
+  test("resolving a dispute in the board drawer refreshes its row", async ({
+    page,
+  }) => {
+    await signIn(page);
+    await page.getByRole("button", { name: /^Disputes/ }).click();
+
+    const disputeButton = page.getByRole("button", {
+      name: "Open dispute DSP-5201",
+      exact: true,
+    });
+    const disputeRow = disputeButton.locator("xpath=ancestor::tr");
+    await expect(disputeRow).toContainText("Active");
+    await disputeButton.click();
+
+    const drawer = page.getByRole("dialog", { name: /Record details/ });
+    await drawer.getByRole("button", { name: /Hirer wins/ }).click();
+    await drawer.getByRole("button", { name: "Resolve dispute", exact: true }).click();
+
+    const confirmation = page.getByRole("dialog", {
+      name: "Confirm dispute resolution",
+    });
+    await confirmation
+      .getByLabel("Reason for this decision")
+      .fill("The evidence supports a refund to the hirer.");
+    await confirmation
+      .getByRole("button", { name: "Confirm dispute resolution", exact: true })
+      .click();
+
+    await expect(disputeRow).toContainText("Closed");
+    await expect(disputeRow).not.toHaveClass(/dispute-active-row/);
+    await expect(drawer).toContainText("Dispute decision recorded");
+  });
+
   test("admin can review a payout approval and cancel safely", async ({
     page,
   }) => {
@@ -409,10 +453,14 @@ test.describe("admin click flows", () => {
 
     const drawer = page.getByRole("dialog", { name: /Record details/ });
     await expect(drawer).toBeVisible();
+    const questTitle = (await drawer.locator("h2").first().innerText()).trim();
     await drawer.getByRole("link", { name: "Full quest detail" }).click();
 
     await expect(page).toHaveURL(/\/quests\/QST-12001$/);
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.locator("#main .record-id")).toHaveText("QST-12001");
+    await expect(
+      page.getByRole("heading", { level: 1, name: questTitle, exact: true }),
+    ).toBeVisible();
   });
 
   test("admin can approve an open quest and preserve its approved state", async ({
@@ -470,9 +518,19 @@ test.describe("admin click flows", () => {
 
     const questLink = page.getByRole("link", { name: /View full quest/ }).first();
     await expect(questLink).toContainText("Quest status");
+    const questHref = await questLink.getAttribute("href");
+    expect(questHref).toMatch(/^\/quests\/QST-\d+$/);
+    if (!questHref) throw new Error("The quest history link has no href.");
+    const expectedUrl = new URL(questHref, page.url()).toString();
+    const questId = questHref.slice(questHref.lastIndexOf("/") + 1);
+    const questTitle = await questLink.locator(".user-quest-history-title strong").innerText();
     await questLink.click();
 
-    await expect(page).toHaveURL(/\/quests\/QST-\d+$/);
+    await expect(page).toHaveURL(expectedUrl);
+    await expect(page.locator("#main .record-id")).toHaveText(questId);
+    await expect(
+      page.getByRole("heading", { level: 1, name: questTitle, exact: true }),
+    ).toBeVisible();
   });
 
   test("reviews keep search and filters without a separate sort control", async ({
