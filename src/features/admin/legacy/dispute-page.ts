@@ -1,8 +1,6 @@
-import type { LegacyRecord } from "./runtime";
-import {
-  type DisputeDetailApi,
-  type ModerationPageContext,
-  type ModerationRecord,
+import type {
+  DisputeDetailApi,
+  ModerationPageContext,
 } from "./dispute-detail";
 
 export type DisputePageContext = ModerationPageContext & {
@@ -10,17 +8,6 @@ export type DisputePageContext = ModerationPageContext & {
   search: string;
   setActiveNavigation: (view: string) => void;
 };
-
-function query<T extends Element>(root: ParentNode, selector: string): T | null {
-  return root.querySelector<T>(selector);
-}
-
-function queryAll<T extends Element>(
-  root: ParentNode,
-  selector: string,
-): NodeListOf<T> {
-  return root.querySelectorAll<T>(selector);
-}
 
 export function initializeDisputePage(
   context: DisputePageContext,

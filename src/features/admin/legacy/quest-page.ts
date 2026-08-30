@@ -46,7 +46,6 @@ export function createQuestPageModule(
     detail,
     badge,
     fmt,
-    escapeActivityText,
     ico,
     timeline,
     disputeTypeLabel,

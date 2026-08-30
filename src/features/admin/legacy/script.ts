@@ -1,4 +1,4 @@
-import type { LegacyAdminRuntime, LegacyDisputeCase, LegacyDomElement, LegacyHistoryEntry, LegacyModalOptions, LegacyPageState, LegacyRecord, LegacyRuntimeData } from "./runtime";
+import type { LegacyDisputeCase, LegacyDomElement, LegacyHistoryEntry, LegacyModalOptions, LegacyPageState, LegacyRecord, LegacyRuntimeData } from "./runtime";
 import { reportSubmissionSchema } from "../data/admin-records";
 
 type LegacyView = "home" | "disputes" | "quests" | "users" | "payouts" | "reports" | "policies" | "activity";
@@ -553,7 +553,8 @@ export function renderActivity() {
   bind();
 }
 export function render() {
-  state.view === "home" ? renderHome() : renderResource(state.view);
+  if (state.view === "home") renderHome();
+  else renderResource(state.view);
   setActiveNavigation(state.view);
 }
 export function setActiveNavigation(view: string): void {
@@ -1090,33 +1091,6 @@ export function openDrawer(v: string, i: number): void {
   drawer
     .querySelector<LegacyDomElement>("[data-report-user]")
     ?.addEventListener("click", () => openUserReportDialog(r));
-}
-
-function openUserChat(user: LegacyRecord): void {
-  activeCustomLayerClose?.();
-  const overlay = document.createElement("div");
-  overlay.className = "party-chat-overlay";
-  overlay.innerHTML = `<section class="party-chat-modal" role="dialog" aria-modal="true" aria-label="Chat with ${user.title}"><div class="chat-modal-head"><div><strong>Chat with ${user.title}</strong><small>${user.id} · ${user.person}</small></div><button class="icon close-party-chat" aria-label="Close chat"><span class="close-lines"></span></button></div><div class="chat-thread">${chatMessage(user.title, "Today · 09:42", "Hello, I am available to clarify the information on my account.", "received")}${chatMessage("You", "Today · 09:47", "Please keep messages relevant to this marketplace review.", "sent")}</div><form class="chat-compose"><textarea rows="3" maxlength="500" placeholder="Message ${user.title}…" aria-label="Message ${user.title}"></textarea><div class="chat-compose-actions"><div class="chat-compose-tools"><label class="chat-attach btn" for="user-chat-attachment">${ico("paperclip")}<span>Attach file</span></label><input class="chat-attachment-input visually-hidden" id="user-chat-attachment" data-chat-attachment type="file"><span class="chat-attachment-name" data-chat-attachment-name aria-live="polite">No file attached</span></div><button class="btn primary" type="submit">Send message</button></div></form></section>`;
-  const close = showModalLayer(overlay, { initialFocus: "textarea" });
-  overlay.querySelector<LegacyDomElement>(".close-party-chat")?.addEventListener("click", close);
-  overlay.addEventListener("click", (event) => {
-    if (event.target === overlay) close();
-  });
-  const form = overlay.querySelector<LegacyForm>("form");
-  if (!form) return;
-  bindChatAttachment(form);
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const input = requiredQuery<LegacyDomElement>(overlay, "textarea"),
-      message = input.value.trim();
-    if (!message) return;
-    overlay
-      .querySelector<LegacyDomElement>(".chat-thread")
-      ?.insertAdjacentHTML("beforeend", chatMessage("You", chatTimeLabel(), message, "sent"));
-    input.value = "";
-    recordActivity("Message sent", `${user.id} · ${user.title}`);
-    toast(`Message saved to ${user.id}`);
-  });
 }
 
 function openUserReportDialog(user: LegacyRecord): void {

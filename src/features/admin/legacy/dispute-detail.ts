@@ -119,7 +119,6 @@ export function initializeDisputeDetail(
     escapeActivityText,
     fmt,
     badge,
-    toneClass,
     disputeTypeLabel,
     timeline,
     chatMessage,
@@ -267,7 +266,6 @@ function openPartyChat(record: ModerationRecord, role: string | undefined, caseD
     if (!input) return;
     const message = input.value.trim();
     if (!message) return;
-    overlay
     const thread = query<HTMLElement>(overlay, ".chat-thread");
     if (!thread) return;
     thread.insertAdjacentHTML("beforeend", chatMessage("You", chatTimeLabel(), message, "sent"));
