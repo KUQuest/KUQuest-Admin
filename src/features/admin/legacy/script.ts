@@ -1120,14 +1120,12 @@ function openUserChat(user: LegacyRecord): void {
 
 function openUserReportDialog(user: LegacyRecord): void {
   activeCustomLayerClose?.();
-  const reporters = data.users.filter((candidate) => candidate.id !== user.id);
-  const reporterOptions = reporters
-    .map((reporter) => `<option value="${reporter.id}">${reporter.title} · ${reporter.id}</option>`)
-    .join("");
+  const reporter = data.users.find((candidate) => candidate.id !== user.id);
+  if (!reporter) return;
   const overlay = document.createElement("div");
   overlay.className = "party-chat-overlay";
-  overlay.innerHTML = `<section class="party-chat-modal penalty-modal report-modal" role="dialog" aria-modal="true" aria-label="Report ${user.title}"><div class="chat-modal-head"><div><strong>Report user</strong><small>${user.title} · ${user.id}</small></div><button class="icon close-party-chat" aria-label="Close report form"><span class="close-lines"></span></button></div><form class="report-form"><p class="chat-intro">Record a report submitted by one KuQuest user about another. This report does not apply a penalty automatically.</p><label for="report-reporter">Reporting user<select id="report-reporter" name="reporter" required>${reporterOptions}</select></label><label for="report-category">Report type<select id="report-category" name="category" required><option>Harassment or abuse</option><option>Fraud or payment issue</option><option>Misleading quest activity</option><option>Other</option></select></label><label for="report-details">What happened?<textarea id="report-details" name="details" rows="5" minlength="20" maxlength="500" required placeholder="Describe what happened and what evidence supports the report…"></textarea></label><label class="report-file" for="report-attachment"><span>Evidence file (optional)</span><input id="report-attachment" type="file" data-report-attachment><small data-report-attachment-name>No file attached</small></label><p class="login-error report-error" role="alert" hidden></p><button class="btn danger" type="submit">Submit report</button></form></section>`;
-  const close = showModalLayer(overlay, { initialFocus: "select[name=reporter]" });
+  overlay.innerHTML = `<section class="party-chat-modal penalty-modal report-modal" role="dialog" aria-modal="true" aria-label="Report ${user.title}"><div class="chat-modal-head"><div><strong>Report user</strong><small>${user.title} · ${user.id}</small></div><button class="icon close-party-chat" aria-label="Close report form"><span class="close-lines"></span></button></div><form class="report-form"><p class="chat-intro">Record a report submitted by one KuQuest user about another. This report does not apply a penalty automatically.</p><div class="report-selected-user" role="group" aria-labelledby="report-selected-user-label"><span id="report-selected-user-label">Reported user</span><strong>${escapeActivityText(user.title)}</strong><small>Student ID · ${escapeActivityText(user.id)}</small></div><input type="hidden" name="reporter" value="${escapeActivityText(reporter.id)}"><label for="report-category">Report type<select id="report-category" name="category" required><option>Harassment or abuse</option><option>Fraud or payment issue</option><option>Misleading quest activity</option><option>Other</option></select></label><label for="report-details">What happened?<textarea id="report-details" name="details" rows="5" minlength="20" maxlength="500" required placeholder="Describe what happened and what evidence supports the report…"></textarea></label><label class="report-file" for="report-attachment"><span>Evidence file (optional)</span><input id="report-attachment" type="file" data-report-attachment><small data-report-attachment-name>No file attached</small></label><p class="login-error report-error" role="alert" hidden></p><button class="btn danger" type="submit">Submit report</button></form></section>`;
+  const close = showModalLayer(overlay, { initialFocus: "#report-category" });
   overlay.querySelector<LegacyDomElement>(".close-party-chat")?.addEventListener("click", close);
   overlay.addEventListener("click", (event) => {
     if (event.target === overlay) close();
@@ -1150,8 +1148,6 @@ function openUserReportDialog(user: LegacyRecord): void {
       form.elements.details.focus();
       return;
     }
-    const reporter = reporters.find((candidate) => candidate.id === form.elements.reporter.value);
-    if (!reporter) return;
     const report: LegacyRecord = {
       id: `RPT-${String(Date.now()).slice(-6)}`,
       title: `Report against ${user.title}`,

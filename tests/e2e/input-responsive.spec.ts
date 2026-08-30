@@ -230,11 +230,13 @@ test.describe("input fields and responsive layouts", () => {
     await drawer.getByRole("button", { name: "Report user" }).click();
 
     const dialog = page.getByRole("dialog", { name: "Report Akarin Ariyawat" });
-    const reporter = dialog.getByLabel("Reporting user");
+    const selectedUser = dialog.getByRole("group", { name: "Reported user" });
     const category = dialog.getByLabel("Report type");
     const details = dialog.getByLabel("What happened?");
     const evidence = dialog.getByLabel("Evidence file (optional)");
-    await reporter.selectOption({ index: 1 });
+    await expect(selectedUser).toContainText("Akarin Ariyawat");
+    await expect(selectedUser).toContainText("68000000");
+    await expect(dialog.getByLabel("Reporting user")).toHaveCount(0);
     await category.selectOption({ label: "Fraud or payment issue" });
     await details.fill("The submitted activity does not match the evidence provided.");
     await evidence.setInputFiles({
@@ -243,13 +245,11 @@ test.describe("input fields and responsive layouts", () => {
       buffer: Buffer.from("report evidence"),
     });
 
-    await expect(reporter).toHaveValue(/.+/);
     await expect(category).toHaveValue("Fraud or payment issue");
     await expect(details).toHaveValue(
       "The submitted activity does not match the evidence provided.",
     );
     await expect(dialog.getByText("report-evidence.txt", { exact: true })).toBeVisible();
-    await expectResponsiveInput(page, reporter);
     await expectResponsiveInput(page, category);
     await expectResponsiveInput(page, details);
     await expectResponsiveInput(page, dialog.locator('label[for="report-attachment"]'));
