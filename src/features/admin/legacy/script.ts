@@ -631,7 +631,7 @@ export function navigate(v: string): void {
     state.query = "";
     state.questFilters = { mode: "all", status: "all" };
   }
-  if (/^\/(quests|disputes|reports)\//.test(location.pathname)) {
+  if (/^\/(quests|disputes|reports|users)\//.test(location.pathname)) {
     location.assign(nextUrl);
     return;
   }

@@ -598,6 +598,22 @@ test.describe("admin click flows", () => {
     await expect(page.getByText(/Invalid Date/)).toHaveCount(0);
   });
 
+  test("report full detail keeps its alert and metadata layout", async ({
+    page,
+  }) => {
+    await signIn(page);
+    await page.goto("/reports/RPT-8281");
+
+    await expect(page.locator("#main .report-page-alert")).toHaveCSS(
+      "display",
+      "flex",
+    );
+    const columns = await page.locator("#main .report-overview .overview-meta").evaluate(
+      (element) => getComputedStyle(element).gridTemplateColumns,
+    );
+    expect(columns.split(" ")).toHaveLength(3);
+  });
+
   test("report and user boards use the app style for profile links", async ({
     page,
   }) => {
@@ -609,6 +625,25 @@ test.describe("admin click flows", () => {
       await expect(profileLink).toBeVisible();
       await expect(profileLink).toHaveAttribute("href", /^\/users\//);
       await expect(profileLink).toHaveCSS("text-decoration-line", "none");
+    }
+  });
+
+  test("all board rows remain actionable after opening a full user profile", async ({
+    page,
+  }) => {
+    await signIn(page);
+    await page.goto("/?view=users");
+    await page.locator("#main .user-record-link").first().click();
+    await expect(page).toHaveURL(/\/users\//);
+    await expect(page.locator("#main .user-summary-panel")).toBeVisible();
+
+    for (const view of ["quests", "disputes", "reports", "payouts"]) {
+      await page.locator(`#nav button[data-view="${view}"]`).click();
+      await expect(page).toHaveURL(new RegExp(`\\?view=${view}$`));
+      await page.locator("#main tbody tr").first().click();
+      await expect(page.locator("#drawer")).toHaveAttribute("aria-hidden", "false");
+      await page.locator("#drawer #close").click();
+      await expect(page.locator("#drawer")).toHaveAttribute("aria-hidden", "true");
     }
   });
 
