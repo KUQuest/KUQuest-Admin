@@ -4,6 +4,8 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
+give me a little bit of context, talk in ASD-STE100 Simplified Technical English, and use the ubiquitous language from `CONTEXT.md`.
+
 ## Agent skills
 
 ### Issue tracker
@@ -12,11 +14,19 @@ Issues live in GitHub Issues on `KUQuest/KUQuest-Admin`, via the `gh` CLI. See `
 
 ### Triage labels
 
-Default five canonical roles (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`), no remapping. See `docs/agents/triage-labels.md`.
+Use the five canonical labels without remapping: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, and `wontfix`. See `docs/agents/triage-labels.md`.
 
 ### Domain docs
 
-Single-context: root `CONTEXT.md` + `docs/adr/`. See `docs/agents/domain.md`.
+Single-context repository: read root `CONTEXT.md` and relevant ADRs under `docs/adr/`. See `docs/agents/domain.md`.
+
+**Admin Rulebook** — for Payout Approval, Dispute Case, Quest Hide, Wallet Freeze or Suspend, Report Case moderation, Conduct Report, Red Flag, or Member Ban, read `docs/rulebook/admin/admin-rulebook.md` before planning or coding.
+
+**Finance Rulebook** — for `Top-up`, `Wallet`, `Funding Reservation`, `Ledger Transaction`, `Earnings Conversion`, `Payout`, or `Payout Destination`, read `docs/rulebook/finance/finance-rulebook.md` before planning or coding.
+
+**Quest Rulebook** — for Quest State, Start Work, Proof Submission, cancellation, failure, or Work Chat membership, read `docs/rulebook/quest/quest-work-chat-rulebook.md` §Resolved Quest lifecycle before planning or coding.
+
+**Rulebook routing** — for an authoritative decision table mapping tasks, actors, and states to Rulebooks, sub-contracts, and reconciliation guides, read `docs/agents/routing.md` before planning or coding.
 
 ### Workflow
 
@@ -55,5 +65,3 @@ Behavioral guidelines to reduce common LLM coding mistakes ([source](https://git
 - "Fix the bug" → write a test that reproduces it, then make it pass.
 - "Refactor X" → ensure tests pass before and after.
 - Multi-step tasks: state a brief plan, one line per step with its verify check.
-
-These guidelines are working if: fewer unnecessary changes in diffs, fewer rewrites from overcomplication, clarifying questions come before implementation rather than after mistakes.
