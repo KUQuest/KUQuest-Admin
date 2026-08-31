@@ -1,51 +1,44 @@
 # Domain Docs
 
-How the engineering skills should consume this repo's domain documentation when exploring the codebase.
+This is a single-context repository.
 
-## Before exploring, read these
+## Before exploring
 
-- **`CONTEXT.md`** at the repo root, or
-- **`CONTEXT-MAP.md`** at the repo root if it exists — it points at one `CONTEXT.md` per context. Read each one relevant to the topic.
-- **`docs/adr/`** — read ADRs that touch the area you're about to work in. In multi-context repos, also check `src/<context>/docs/adr/` for context-scoped decisions.
+Read these sources when they exist:
 
-If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The `/domain-modeling` skill (reached via `/grill-with-docs` and `/improve-codebase-architecture`) creates them lazily when terms or decisions actually get resolved.
+- `CONTEXT.md` at the repository root
+- Relevant architectural decisions under `docs/adr/`
+- Relevant domain rulebooks under `docs/rulebook/`
 
-## File structure
+For Admin operations (Payout Approval, Dispute Case, Quest Hide, Wallet Freeze/Suspend, Trust & Safety moderation, Member Bans, and Conduct Reports), read `docs/rulebook/admin/admin-rulebook.md` before planning or coding.
 
-Single-context repo (most repos):
+If they do not exist, proceed silently. Domain-modeling skills create them lazily when terminology or architectural decisions are established.
 
-```
-/
-├── CONTEXT.md
-├── docs/adr/
-│   ├── 0001-event-sourced-orders.md
-│   └── 0002-postgres-for-write-model.md
-└── src/
-```
+## Rulebooks
 
-Multi-context repo (presence of `CONTEXT-MAP.md` at the root):
+A Rulebook is accepted domain policy. It defines what the system must do for one domain. `CONTEXT.md` defines the canonical language; it is not a Rulebook.
 
-```
-/
-├── CONTEXT-MAP.md
-├── docs/adr/                          ← system-wide decisions
-└── src/
-    ├── ordering/
-    │   ├── CONTEXT.md
-    │   └── docs/adr/                  ← context-specific decisions
-    └── billing/
-        ├── CONTEXT.md
-        └── docs/adr/
-```
+### Accepted Rulebooks
 
-## Use the glossary's vocabulary
+- `docs/rulebook/admin/admin-rulebook.md` — Admin Operations.
+- `docs/rulebook/quest/quest-work-chat-rulebook.md` — Quest and Work Chat.
+- `docs/rulebook/finance/finance-rulebook.md` — Finance and Wallets.
 
-When your output names a domain concept (in an issue title, a refactor proposal, a hypothesis, a test name), use the term as defined in `CONTEXT.md`. Don't drift to synonyms the glossary explicitly avoids.
+### Authority
 
-If the concept you need isn't in the glossary yet, that's a signal — either you're inventing language the project doesn't use (reconsider) or there's a real gap (note it for `/domain-modeling`).
+1. A relevant Rulebook defines current policy for its Domain and overrides Legacy Implementation.
+2. Each Rulebook owns its Domain. A shared flow must name its exact boundary; neither Rulebook is globally superior.
+3. ADRs record decisions. Rulebooks define domain policy.
 
-## Flag ADR conflicts
+### Reading route
 
-If your output contradicts an existing ADR, surface it explicitly rather than silently overriding:
+For a complete decision table mapping tasks, branches, actors, and Quest states directly to Rulebooks, sub-contracts, and ADRs, see [`docs/agents/routing.md`](routing.md).
 
-> _Contradicts ADR-0007 (event-sourced orders) — but worth reopening because…_
+- **Policy** — read the Rulebook that owns the Domain before planning.
+- **Admin Operations** — read `docs/rulebook/admin/admin-rulebook.md`.
+- **Finance & Money** — read `docs/rulebook/finance/finance-rulebook.md`.
+- **Quest & Chat** — read `docs/rulebook/quest/quest-work-chat-rulebook.md`.
+
+## Vocabulary
+
+Use domain terms as defined in `CONTEXT.md`. Do not substitute terminology that the glossary explicitly avoids.
