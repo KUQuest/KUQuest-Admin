@@ -125,6 +125,7 @@ describe("Admin API boundary", () => {
       idempotencyKey: "resolve-case-1",
       expectedVersion: 2,
       outcome: "RELEASE_TO_WORKER",
+      reason: "The accepted evidence supports the worker.",
       allocations: [{ workerId: "member-1", amountSatang: 12501 }],
     });
 
@@ -133,6 +134,7 @@ describe("Admin API boundary", () => {
     expect(await request?.json()).toEqual({
       expectedVersion: 2,
       outcome: "RELEASE_TO_WORKER",
+      reason: "The accepted evidence supports the worker.",
       allocations: [{ workerId: "member-1", amountSatang: 12501 }],
     });
   });
@@ -182,7 +184,7 @@ describe("Admin API boundary", () => {
     await adminApi.terminateQuest("quest-1", { idempotencyKey: "terminate-1", reason: "Policy violation." });
     await adminApi.listDisputes();
     await adminApi.getDispute("case-1");
-    await adminApi.resolveDispute("quest-1", { idempotencyKey: "resolve-1", outcome: "REFUND_HIRER" });
+    await adminApi.resolveDispute("quest-1", { idempotencyKey: "resolve-1", outcome: "REFUND_HIRER", reason: "The evidence supports a refund." });
     await adminApi.listPayouts();
     await adminApi.getPayout("payout-1");
     await adminApi.getPayoutHistory("payout-1");

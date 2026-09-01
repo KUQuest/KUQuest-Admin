@@ -1,13 +1,18 @@
 import type { LegacyRecord } from "./runtime";
 import { data, disputeCases } from "./runtime-data";
 import { payoutStatusFor } from "../domain/rulebook";
+import { mockAdminCommandPort } from "./admin-command-port";
+import type { AdminCommandPort } from "../api/admin-api";
 
 export { data, disputeCases };
+export { mockAdminCommandPort };
+export type { AdminCommandPort };
+// The demo runtime selects the local adapter. Replace this one binding with
+// adminApiProvider.commands when the Admin API is enabled.
+export const adminCommands: AdminCommandPort = mockAdminCommandPort;
 export {
   addUserHistory,
   adminDateTime,
-  applyDemoAction,
-  applyReportDecision,
   completedPayoutQuests,
   confirmedViolationCount,
   currentAdminName,

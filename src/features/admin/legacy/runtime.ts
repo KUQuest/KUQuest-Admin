@@ -54,6 +54,7 @@ export type LegacyRecord = {
   tone: LegacyTone;
   amount: number | null;
   age: string;
+  version?: number;
   questState?: string;
   disputeCaseStatus?: string;
   reportCaseStatus?: string;
@@ -63,6 +64,8 @@ export type LegacyRecord = {
   hiddenAt?: string | null;
   hiddenByAdminId?: string | null;
   evidenceRefs?: string[];
+  workerId?: string;
+  amountSatang?: number;
   fundingTotalSatang?: number;
   questRewardSatang?: number;
   platformFeeSatang?: number;

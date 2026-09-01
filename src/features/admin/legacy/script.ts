@@ -2,8 +2,6 @@ import type { LegacyDomElement, LegacyHistoryEntry, LegacyModalOptions, LegacyPa
 import { reportSubmissionSchema } from "../data/admin-records";
 import {
   adminDateTime,
-  applyDemoAction as applyDemoActionCore,
-  applyReportDecision as applyReportDecisionCore,
   badge,
   completedPayoutQuests,
   confirmedViolationCount,
@@ -29,10 +27,12 @@ import {
   userQuestRecords,
   userReportsFor,
   data,
+  adminCommands,
 } from "./runtime-core";
 import { createOverlayRuntime } from "./overlay-runtime";
 import { setActiveNavigation as setActiveNavigationCore } from "./navigation-state";
 import { recordsFor } from "./runtime-data";
+import { newAdminIdempotencyKey } from "./admin-command-port";
 import {
   QUEST_STATES,
   disputeCaseStatusFor,
@@ -73,6 +73,7 @@ export {
   userReportsFor,
   data,
   disputeCases,
+  adminCommands,
 } from "./runtime-core";
 
 type LegacyView = "home" | "disputes" | "quests" | "users" | "payouts" | "reports" | "policies" | "activity";
@@ -104,7 +105,7 @@ function questStatusTone(status: string): string {
 function memberNeedsReview(record: LegacyRecord): boolean {
   const legacyStatus = record.status;
   const walletStatus = walletStatusFor(record.walletStatus ?? legacyStatus);
-  return ["Red Flag", "Temp ban", "Perm ban"].includes(legacyStatus)
+  return Boolean(record.penalty)
     || ["FROZEN", "SUSPENDED", "CLOSED"].includes(walletStatus);
 }
 
@@ -118,6 +119,37 @@ const navItems: Array<[LegacyView, IconName, string, string]> = [
 ];
 function persistAdminData(): void {
   window.persistAdminData?.();
+}
+
+function runAdminAction(record: LegacyRecord, action: string, reason: string): Promise<void> {
+  const idempotencyKey = newAdminIdempotencyKey(action, record.id);
+  const expectedVersion = typeof record.version === "number" ? { expectedVersion: record.version } : {};
+  if (action === "Hide quest") {
+    return adminCommands.hideQuest(record.id, { ...expectedVersion, idempotencyKey, reason }).then(() => undefined);
+  }
+  if (action === "Restore quest") {
+    return adminCommands.restoreQuest(record.id, { ...expectedVersion, idempotencyKey }).then(() => undefined);
+  }
+  if (action === "Terminate quest") {
+    return adminCommands.terminateQuest(record.id, { ...expectedVersion, idempotencyKey, reason }).then(() => undefined);
+  }
+  if (action === "Restrict user" || action === "Set normal" || action === "Lift penalty") {
+    return adminCommands.setWalletStatus(record.id, {
+      ...expectedVersion,
+      idempotencyKey,
+      reason,
+      status: action === "Restrict user" ? "FROZEN" : "ACTIVE",
+    }).then(() => undefined);
+  }
+  if (action === "Close report") {
+    return adminCommands.decideReport(record.id, {
+      ...expectedVersion,
+      idempotencyKey,
+      reason,
+      decision: "REPORT_CASE_DISMISSED",
+    }).then(() => undefined);
+  }
+  return Promise.resolve();
 }
 function requiredQuery<T extends Element>(root: ParentNode, selector: string): T {
   const element = root.querySelector<T>(selector);
@@ -196,7 +228,7 @@ function homeDecisions(): Array<{ view: keyof LegacyRuntimeData; record: LegacyR
       .map((record) => ({
         view: "users" as const,
         record,
-        priority: record.status === "Perm ban" ? 400 : record.status === "Temp ban" ? 350 : 250,
+        priority: record.penalty?.label === "Permanent ban" ? 400 : record.penalty?.label === "Temporary ban" ? 350 : 250,
         icon: "♙",
         title: `${walletStatusFor(record.walletStatus ?? record.status)} account`,
         detail: `${record.title} · ${record.age}`,
@@ -215,7 +247,7 @@ function homeDecisions(): Array<{ view: keyof LegacyRuntimeData; record: LegacyR
         age: record.reportedAt,
       })),
     ...data.quests
-      .filter((record) => record.status === "Change pending")
+      .filter((record) => record.editRequestStatus === "EDIT_REQUEST_PENDING")
       .map((record) => ({
         view: "quests" as const,
         record,
@@ -528,12 +560,13 @@ function userModerationSection(user: LegacyRecord): string {
   const appliedBy = user.statusAppliedBy || user.penalty?.appliedBy || "Not recorded";
   const expiresAt = user.banExpiresAt || user.penalty?.expiresAt;
   const walletStatus = walletStatusFor(user.walletStatus ?? user.status);
-  const activeModeration = ["Red Flag", "Temp ban", "Perm ban"].includes(user.status)
+  const activeModeration = Boolean(user.penalty)
     || walletStatus !== "ACTIVE";
   const confirmedViolations = confirmedViolationCount(user);
   const nextOutcome = penaltyOutcomeFor(user);
   const exemption = redFlagExemptionFor(user);
-  return `<section class="section user-moderation"><h3>Moderation</h3><div class="user-context-list"><div><span>Status</span>${badge(walletStatusFor(user.walletStatus ?? user.status), user.tone)}</div><div><span>Confirmed violations</span><strong>${confirmedViolations}</strong></div><div><span>Next outcome</span><strong>${escapeActivityText(penaltyOutcomeLabel(nextOutcome))}</strong></div>${exemption ? `<div><span>Red Flag exemption</span><strong>${exemption.remaining} remaining (${escapeActivityText(exemption.label)})</strong></div>` : ""}<div><span>Reason</span><strong>${escapeActivityText(reason)}</strong></div>${activeModeration ? `<div><span>Applied</span><strong>${escapeActivityText(appliedAt)}</strong></div><div><span>By</span><strong>${escapeActivityText(appliedBy)}</strong></div>${(user.status === "Temp ban" || user.status === "Red Flag") && expiresAt ? `<div><span>Expires</span><strong>${escapeActivityText(expiresAt)}</strong></div>` : ""}` : ""}</div></section>`;
+  const penaltyLabel = user.penalty?.label || "";
+  return `<section class="section user-moderation"><h3>Moderation</h3><div class="user-context-list"><div><span>Status</span>${badge(walletStatusFor(user.walletStatus ?? user.status), user.tone)}</div><div><span>Confirmed violations</span><strong>${confirmedViolations}</strong></div><div><span>Next outcome</span><strong>${escapeActivityText(penaltyOutcomeLabel(nextOutcome))}</strong></div>${exemption ? `<div><span>Red Flag exemption</span><strong>${exemption.remaining} remaining (${escapeActivityText(exemption.label)})</strong></div>` : ""}<div><span>Reason</span><strong>${escapeActivityText(reason)}</strong></div>${activeModeration ? `<div><span>Applied</span><strong>${escapeActivityText(appliedAt)}</strong></div><div><span>By</span><strong>${escapeActivityText(appliedBy)}</strong></div>${(penaltyLabel === "Temporary ban" || penaltyLabel === "Red Flag") && expiresAt ? `<div><span>Expires</span><strong>${escapeActivityText(expiresAt)}</strong></div>` : ""}` : ""}</div></section>`;
 }
 function userReportsSection(user: LegacyRecord): string {
   const reports = userReportsFor(user);
@@ -662,11 +695,13 @@ export function openDrawer(v: string, i: number): void {
           return confirmPayoutApproval(r);
         if (action === "Reject payout")
           return confirmPayoutRejection(r);
-        confirmAction(action, r, "", () => {
-          applyDemoAction(action, r);
-          persistAdminData();
-          if (state.view === "home") renderHome();
-          else render();
+        confirmAction(action, r, "", (reason) => {
+          void runAdminAction(r, action, reason).then(() => {
+            persistAdminData();
+            if (state.view === "home") renderHome();
+            else render();
+            return undefined;
+          });
         });
       }),
   );
@@ -736,7 +771,8 @@ function openUserReportDialog(user: LegacyRecord): void {
       amount: null,
       age: "Just now",
       ...result.data,
-      status: "Active",
+      status: "REPORT_CASE_PENDING",
+      reportCaseStatus: "REPORT_CASE_PENDING",
       tone: "warning",
       reportedAt: reportDateTime(),
     };
@@ -849,13 +885,6 @@ export function ensureDetailDrawer(view: string, index: number): void {
   const open = window[opener];
   if (open) open(index);
 }
-export function applyDemoAction(action: string, record: LegacyRecord): void {
-  if (applyDemoActionCore(action, record)) refreshNavigationCounts();
-}
-export function applyReportDecision(report: LegacyRecord, decision: string, reason: string): void {
-  applyReportDecisionCore(report, decision, reason);
-  refreshNavigationCounts();
-}
 const dialog = document.querySelector<LegacyDomElement>("#confirm");
 export function confirmAction(a: string, r: LegacyRecord, decisionDetail = "", onConfirm?: (reason: string) => void, options: ConfirmActionOptions = {}): void {
   if (!dialog) return;
@@ -914,12 +943,6 @@ export function confirmAction(a: string, r: LegacyRecord, decisionDetail = "", o
     },
     { once: true },
   );
-}
-function payoutDateTime(date = new Date()) {
-  return reportDateTime(date).replace(/\s+ICT$/, "");
-}
-function payoutAdminName() {
-  return "Nicha P.";
 }
 function payoutConfirmationSummary(record: LegacyRecord): string {
   const financials = payoutFinancials(record);
@@ -1021,14 +1044,15 @@ function confirmPayoutApproval(record: LegacyRecord): void {
     () => {
       if (dialog.returnValue !== "confirm") return;
       const approvalReason = reason.value.trim();
-      record.status = "Processing";
-      record.payoutStatus = "SUBMITTED_TO_PROVIDER";
-      record.tone = "info";
-      record.approvedAt = payoutDateTime();
-      record.approvedBy = payoutAdminName();
-      record.approvalReason = approvalReason;
-      finishPayoutAction(record, "Approve payout", () => {
-        recordActivity("Payout approval reason", `${record.id} · ${approvalReason}`);
+      void adminCommands.approvePayout(record.id, {
+        idempotencyKey: newAdminIdempotencyKey("approve-payout", record.id),
+        ...(typeof record.version === "number" ? { expectedVersion: record.version } : {}),
+        note: approvalReason,
+      }).then(() => {
+        finishPayoutAction(record, "Approve payout", () => {
+          recordActivity("Payout approval reason", `${record.id} · ${approvalReason}`);
+        });
+        return undefined;
       });
     },
     { once: true },
@@ -1088,16 +1112,17 @@ function confirmPayoutRejection(record: LegacyRecord): void {
     () => {
       if (dialog.returnValue !== "confirm") return;
       const adminNote = reason.value.trim();
-      record.status = "Rejected";
-      record.payoutStatus = "CANCELLED";
-      record.tone = "danger";
-      record.rejectedAt = payoutDateTime();
-      record.rejectedBy = payoutAdminName();
-      record.rejectionReason = choice.value;
-      record.rejectionNote = adminNote;
-      record.remainingBalance = payoutFinancials(record).available;
-      finishPayoutAction(record, "Reject payout", () => {
-        recordActivity("Payout rejection reason", `${record.id} · ${choice.value}${adminNote ? ` · ${adminNote}` : ""}`);
+      void adminCommands.rejectPayout(record.id, {
+        idempotencyKey: newAdminIdempotencyKey("reject-payout", record.id),
+        ...(typeof record.version === "number" ? { expectedVersion: record.version } : {}),
+        reason: choice.value,
+      }).then(() => {
+        record.rejectionNote = adminNote;
+        record.remainingBalance = payoutFinancials(record).available;
+        finishPayoutAction(record, "Reject payout", () => {
+          recordActivity("Payout rejection reason", `${record.id} · ${choice.value}${adminNote ? ` · ${adminNote}` : ""}`);
+        });
+        return undefined;
       });
     },
     { once: true },

@@ -35,13 +35,12 @@ type SharedRuntimeCore = Pick<
   | "renderHome"
   | "render"
   | "setActiveNavigation"
-  | "applyDemoAction"
   | "payoutQuestId"
   | "penaltyOutcomeFor"
   | "penaltyOutcomeLabel"
   | "redFlagExemptionFor"
   | "confirmedViolationCount"
-  | "applyReportDecision"
+  | "adminCommands"
   | "openDrawer"
   | "openPenaltyDialog"
   | "userQuestRecords"
@@ -109,7 +108,7 @@ function createQuestDetailDependencies(
     showDrawerLayer: core.showDrawerLayer,
     closeDrawer: core.closeDrawer,
     confirmAction: core.confirmAction,
-    applyDemoAction: core.applyDemoAction,
+    adminCommands: core.adminCommands,
     persistAdminData,
     refresh: core.render,
     badge: core.badge,
@@ -149,6 +148,7 @@ async function initializeHomePage(
     renderHome: core.renderHome,
     render: core.render,
     setActiveNavigation: core.setActiveNavigation,
+    adminCommands: core.adminCommands,
   };
 
   await import("./resource-controls");
@@ -239,6 +239,7 @@ export async function initializeTypedLegacyPage(
     renderHome: core.renderHome,
     render: core.render,
     setActiveNavigation: core.setActiveNavigation,
+    adminCommands: core.adminCommands,
   };
 
   if (options.page === "quest") {
@@ -272,7 +273,7 @@ export async function initializeTypedLegacyPage(
       recordId: options.recordId,
       locationSearch: options.search,
       detail,
-      applyDemoAction: core.applyDemoAction,
+      adminCommands: core.adminCommands,
       persistAdminData: mockData.persistAdminData,
       refresh: core.render,
       setActiveNavigation: core.setActiveNavigation,
@@ -334,7 +335,6 @@ export async function initializeTypedLegacyPage(
         return exemption ? { key: exemption.field, remaining: exemption.remaining } : null;
       },
       confirmedViolationCount: core.confirmedViolationCount,
-      applyReportDecision: core.applyReportDecision,
     })();
     return;
   }

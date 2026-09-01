@@ -127,9 +127,8 @@ export function dashboardModel(
     text(record, "decision"),
   ));
   const reviewUsers = users.filter((record) => {
-    const legacyStatus = text(record, "status");
-    const walletStatus = walletStatusFor(text(record, "walletStatus") || legacyStatus);
-    return ["Red Flag", "Temp ban", "Perm ban"].includes(legacyStatus)
+    const walletStatus = walletStatusFor(text(record, "walletStatus") || text(record, "status"));
+    return Boolean(record.penalty)
       || ["FROZEN", "SUSPENDED", "CLOSED"].includes(walletStatus);
   });
   const decisions = [

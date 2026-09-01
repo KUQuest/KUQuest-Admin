@@ -5,8 +5,6 @@ import type {
   LegacyRecord,
 } from "./runtime";
 import {
-  applyDemoAction as applyDemoActionCore,
-  applyReportDecision as applyReportDecisionCore,
   badge,
   confirmedViolationCount,
   escapeActivityText,
@@ -21,9 +19,11 @@ import {
   recordConfirmedViolation,
   data,
   disputeCases,
+  adminCommands,
 } from "./runtime-core";
 import { createOverlayRuntime } from "./overlay-runtime";
 import { setActiveNavigation as setActiveNavigationCore } from "./navigation-state";
+import { newAdminIdempotencyKey } from "./admin-command-port";
 import {
   disputeCaseStatusFor,
   isReportCasePending,
@@ -108,6 +108,7 @@ export const drawer = drawerElement;
 export const scrim = scrimElement;
 export const shell = shellElement;
 export { data, disputeCases };
+export { adminCommands };
 
 export function initializeDetailRuntime(): void {
   navigation.innerHTML = navItems.map(([view, icon, label, count]) =>
@@ -147,15 +148,6 @@ function refreshNavigationCounts(): void {
     const counter = document.querySelector<HTMLElement>(`[data-view="${view}"] b`);
     if (counter) counter.textContent = String(count);
   });
-}
-
-export function applyDemoAction(action: string, record: LegacyRecord): void {
-  if (applyDemoActionCore(action, record)) refreshNavigationCounts();
-}
-
-export function applyReportDecision(report: LegacyRecord, decision: string, reason: string): void {
-  applyReportDecisionCore(report, decision, reason);
-  refreshNavigationCounts();
 }
 
 function persistAdminData(): void {
@@ -216,10 +208,23 @@ function openPayoutDrawer(index: number): void {
   drawer.querySelectorAll<HTMLElement>("[data-action]").forEach((button) => button.addEventListener("click", () => {
     const action = button.dataset.action;
     if (!action) return;
-    confirmAction(action, record, "", () => {
-      applyDemoAction(action, record);
-      persistAdminData();
-      closeDrawer();
+    confirmAction(action, record, "", (reason) => {
+      const command = action === "Approve payout"
+        ? adminCommands.approvePayout(record.id, {
+          idempotencyKey: newAdminIdempotencyKey("approve-payout", record.id),
+          ...(typeof record.version === "number" ? { expectedVersion: record.version } : {}),
+          note: reason,
+        })
+        : adminCommands.rejectPayout(record.id, {
+          idempotencyKey: newAdminIdempotencyKey("reject-payout", record.id),
+          ...(typeof record.version === "number" ? { expectedVersion: record.version } : {}),
+          reason,
+        });
+      void command.then(() => {
+        persistAdminData();
+        closeDrawer();
+        return undefined;
+      });
     });
   }));
 }

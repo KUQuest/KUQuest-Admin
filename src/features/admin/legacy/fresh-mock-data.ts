@@ -7,11 +7,17 @@ import {
 } from "./runtime-seed";
 import { data, disputeCases } from "./runtime-data";
 import type { LegacyDomElement, LegacyHistoryEntry, LegacyRecord, LegacyRuntimeData } from "./runtime";
-import { questStateFor } from "../domain/rulebook";
+import {
+  disputeCaseStatusFor,
+  payoutStatusFor,
+  questStateFor,
+  reportCaseStatusFor,
+  walletStatusFor,
+} from "../domain/rulebook";
 
 // Deterministic high-volume demo data. Versioning resets browser-local records
 // whenever the synthetic marketplace scenario changes.
-const freshDemoVersion = "2026-09-01-v51-admin-contract-alignment";
+const freshDemoVersion = "2026-09-01-v52-api-ready-contract-fixtures";
 const freshDemoKey = "kuquest-admin-demo-data";
 const seedBaseDate = new Date("2026-08-28T08:00:00Z");
 
@@ -67,6 +73,23 @@ const accountStatuses = [
   "Temp ban", "Normal", "Normal", "Normal", "Perm ban", "Normal", "Normal", "Red Flag", "Normal", "Normal",
 ];
 const adminNames = ["Nicha P.", "Pimchanok R.", "Worawut K."];
+
+// These values represent the server-calculated financial fields. The demo
+// client selects a complete record; it does not calculate the fee.
+const questFinancialFixtures = [
+  { amount: 1400, fundingTotalSatang: 140000, questRewardSatang: 137200, platformFeeSatang: 2800 },
+  { amount: 2119, fundingTotalSatang: 211900, questRewardSatang: 207662, platformFeeSatang: 4238 },
+  { amount: 2838, fundingTotalSatang: 283800, questRewardSatang: 278124, platformFeeSatang: 5676 },
+  { amount: 3557, fundingTotalSatang: 355700, questRewardSatang: 348586, platformFeeSatang: 7114 },
+  { amount: 4276, fundingTotalSatang: 427600, questRewardSatang: 419048, platformFeeSatang: 8552 },
+  { amount: 4995, fundingTotalSatang: 499500, questRewardSatang: 489510, platformFeeSatang: 9990 },
+  { amount: 5714, fundingTotalSatang: 571400, questRewardSatang: 559972, platformFeeSatang: 11428 },
+  { amount: 6433, fundingTotalSatang: 643300, questRewardSatang: 630434, platformFeeSatang: 12866 },
+  { amount: 7152, fundingTotalSatang: 715200, questRewardSatang: 700896, platformFeeSatang: 14304 },
+  { amount: 7871, fundingTotalSatang: 787100, questRewardSatang: 771358, platformFeeSatang: 15742 },
+  { amount: 8590, fundingTotalSatang: 859000, questRewardSatang: 841820, platformFeeSatang: 17180 },
+  { amount: 9309, fundingTotalSatang: 930900, questRewardSatang: 912282, platformFeeSatang: 18618 },
+] as const;
 
 function statusTone(status: string): string {
   if (["Normal", "Completed", "Approved"].includes(status)) return "success";
@@ -126,8 +149,8 @@ const generatedUsers: LegacyRecord[] = Array.from({ length: 280 }, (_, index: nu
       at: activeAt,
       by: admin,
       reason,
-      previousStatus: "Normal",
-      newStatus: status,
+      previousStatus: "ACTIVE",
+      newStatus: walletStatusFor(status),
     });
   }
   return {
@@ -135,7 +158,8 @@ const generatedUsers: LegacyRecord[] = Array.from({ length: 280 }, (_, index: nu
     title,
     person: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@ku.th`,
     other: `${faculties[index % faculties.length]} · Year ${(index % 4) + 1}`,
-    status,
+    status: walletStatusFor(status),
+    walletStatus: walletStatusFor(status),
     tone: statusTone(status),
     age: status === "Normal"
       ? `Joined ${2022 + (index % 5)}`
@@ -179,6 +203,7 @@ const generatedUsers: LegacyRecord[] = Array.from({ length: 280 }, (_, index: nu
     ...(status === "Perm ban" ? {
       penalty: { label: "Permanent ban", reason, recordedAt: activeAt, appliedBy: admin },
     } : {}),
+    version: 1,
     moderationHistory: history,
     adminNotes: index % 13 === 0 ? [{
       at: activeAt,
@@ -216,7 +241,7 @@ function createQuest(index: number): LegacyRecord {
   const hidden = seededStatus === "Hidden";
   const status = hidden ? "Open" : seededStatus;
   const eligibleQuestUsers = data.users.filter(
-    (candidate: LegacyRecord) => !["Temp ban", "Perm ban"].includes(candidate.status),
+    (candidate: LegacyRecord) => !["FROZEN", "SUSPENDED", "CLOSED"].includes(walletStatusFor(candidate.walletStatus ?? candidate.status)),
   );
   const hirer: LegacyRecord = eligibleQuestUsers[(index * 11 + 7) % eligibleQuestUsers.length];
   const eligibleParticipants = eligibleQuestUsers;
@@ -225,10 +250,9 @@ function createQuest(index: number): LegacyRecord {
   const participants = Array.from({ length: participantCount }, (_, participantIndex: number) =>
     eligibleParticipants[(index * 13 + participantIndex * 17 + 5) % eligibleParticipants.length],
   ).filter((candidate: LegacyRecord | undefined, participantIndex: number, all: Array<LegacyRecord | undefined>) => candidate && candidate.id !== hirer.id && all.findIndex((item) => item?.id === candidate.id) === participantIndex) as LegacyRecord[];
-  const amount = 1400 + ((index * 719) % 10_600);
-  const fundingTotalSatang = amount * 100;
+  const financialFixture = questFinancialFixtures[index % questFinancialFixtures.length];
+  const { amount, fundingTotalSatang, questRewardSatang, platformFeeSatang } = financialFixture;
   const platformFeeBps = 200;
-  const platformFeeSatang = Math.ceil((fundingTotalSatang * platformFeeBps) / 10_000);
   const createdDaysAgo = index < 12 ? index % 3 : 3 + ((index * 17) % 180);
   const createdAt = seedDateLabel(createdDaysAgo, 8 + (index % 9), (index * 13) % 60);
   const startsAt = seedDateLabel(Math.max(0, createdDaysAgo - 1), 8 + (index % 3), 30);
@@ -253,17 +277,19 @@ function createQuest(index: number): LegacyRecord {
     other: tag,
     amount,
     fundingTotalSatang,
-    questRewardSatang: fundingTotalSatang - platformFeeSatang,
+    questRewardSatang,
     platformFeeSatang,
     platformFeeBps,
     feeRoundingMode: "UP",
     createdAt,
     startsAt,
     dueAt,
-    status,
+    status: questStateFor(seededStatus),
     tone: statusTone(status),
     age: relativeAge(createdDaysAgo),
     questState: questStateFor(seededStatus),
+    version: 1,
+    ...(seededStatus === "Change pending" ? { editRequestStatus: "EDIT_REQUEST_PENDING" } : {}),
     ...(hidden ? { hiddenAt: seedDateLabel(createdDaysAgo, 17, 20), hiddenByAdminId: adminNames[index % adminNames.length] } : {}),
     description: `Complete the ${title.toLowerCase()} brief and submit a clear, verifiable record for the university marketplace team.`,
     giver: [hirer.title, hirer.id, hirer.other, `${4.4 + (index % 6) / 10} from ${4 + (index % 18)} quests`],
@@ -272,7 +298,7 @@ function createQuest(index: number): LegacyRecord {
     activity: [
       `Quest ${status === "Draft" ? "saved as draft" : "published"} · ${activityDate}, 09:10`,
       hasApplicants ? `Applications received · ${activityDate}, 12:30` : `Quest record created · ${activityDate}, 12:30`,
-      `${status} · ${activityDate}, 16:45`,
+      `${questStateFor(seededStatus)} · ${activityDate}, 16:45`,
     ],
     applications,
     ...(teamQuest ? {
@@ -296,7 +322,7 @@ data.quests = Array.from({ length: 480 }, (_, index: number) => createQuest(inde
 
 const disputeCategories = ["Evidence", "Quality", "Scope", "Delivery", "Timing", "Rights", "Payment", "Completion"];
 Object.keys(disputeCases).forEach((key) => delete disputeCases[key]);
-const disputableQuests = data.quests.filter((quest) => quest.status === "Disputed");
+const disputableQuests = data.quests.filter((quest) => quest.questState === "QUEST_FAILED");
 
 data.disputes = disputableQuests.map((quest: LegacyRecord, index: number) => {
   const hirer = data.users.find((user) => user.title === quest.person) || data.users[index % data.users.length];
@@ -314,7 +340,7 @@ data.disputes = disputableQuests.map((quest: LegacyRecord, index: number) => {
     person: hirer.title,
     other: worker.title,
     amount: quest.amount,
-    status,
+    status: disputeCaseStatus,
     disputeCaseStatus,
     tone: status === "Active" ? "danger" : "neutral",
     disputeDate: seedDateLabel((index % 30) + 1, 9 + (index % 8), (index * 7) % 60),
@@ -322,11 +348,10 @@ data.disputes = disputableQuests.map((quest: LegacyRecord, index: number) => {
     age: index < 2 ? `${18 + index * 24} min` : `${(index % 12) + 1} days`,
     detail: `The submitted record for ${quest.title.toLowerCase()} does not fully match the accepted quest conditions and requires an accountable review.`,
     evidence: [`${quest.title} submission · PDF · ${3 + (index % 8)} pages`, "Accepted quest conditions · PDF", "Participant message export · PDF"],
-    evidenceRefs: [
-      `evidence:${disputeId}:submission`,
-      `evidence:${disputeId}:conditions`,
-      `evidence:${disputeId}:messages`,
-    ],
+    evidenceRefs: [],
+    workerId: worker.id,
+    amountSatang: quest.fundingTotalSatang,
+    version: 1,
     ...(status === "Closed" ? {
       resolution: index % 2 ? "Worker wins; the accepted delivery remains on record." : "Hirer wins; the held amount was returned after review.",
       decisionReason: "The accepted quest terms and submitted evidence were compared before recording this outcome.",
@@ -371,13 +396,18 @@ data.reports = Array.from({ length: 180 }, (_, index: number) => {
     relatedQuestTitle: quest.title,
     details: `The report concerns activity connected to ${quest.title}. The submitted record is retained for admin review and audit testing.`,
     evidence,
-    evidenceRefs: evidence.length ? [`evidence:RPT-${String(8201 + index).padStart(4, "0")}:message`] : [],
-    status,
+    evidenceRefs: [],
+    status: status === "Active"
+      ? "REPORT_CASE_PENDING"
+      : decision === "confirmed-violation"
+        ? "REPORT_CASE_HIDDEN"
+        : "REPORT_CASE_DISMISSED",
     reportCaseStatus: status === "Active"
       ? "REPORT_CASE_PENDING"
       : decision === "confirmed-violation"
         ? "REPORT_CASE_HIDDEN"
         : "REPORT_CASE_DISMISSED",
+    version: 1,
     tone: status === "Active" ? "warning" : "neutral",
     reportedAt,
     ...(status === "Closed" ? {
@@ -395,7 +425,7 @@ data.reports = Array.from({ length: 180 }, (_, index: number) => {
 const payoutStatuses = ["Completed", "Processing", "Needs approval", "Rejected", "Completed", "Processing"];
 type PayoutSource = { quest: LegacyRecord; recipientName: string };
 const payoutSources: PayoutSource[] = data.quests
-  .filter((quest) => quest.status === "Completed")
+  .filter((quest) => quest.questState === "QUEST_COMPLETED")
   .flatMap((quest) => {
     const recipients = quest.teamParticipants?.map(([name]) => name) || [quest.selectedParticipant];
     return recipients.filter((recipientName): recipientName is string => Boolean(recipientName)).map((recipientName) => ({ quest, recipientName }));
@@ -404,7 +434,7 @@ const payoutRecipientSources: PayoutSource[] = [...new Map(payoutSources.map((so
 
 function seedRecipientEarnings(recipientName: string): number {
   return data.quests
-    .filter((quest) => quest.status === "Completed" && (quest.selectedParticipant === recipientName || quest.teamParticipants?.some(([name]) => name === recipientName)))
+    .filter((quest) => quest.questState === "QUEST_COMPLETED" && (quest.selectedParticipant === recipientName || quest.teamParticipants?.some(([name]) => name === recipientName)))
     .reduce((total: number, quest: LegacyRecord) => {
       const workerCount = quest.teamParticipants?.length || Number(quest.teamSize) || 1;
       return total + Math.round(Number(quest.amount || 0) / workerCount);
@@ -433,14 +463,23 @@ const generatedPayouts: LegacyRecord[] = Array.from({ length: 240 }, (_, index: 
     person: `${["Kasikorn", "SCB", "Krungthai", "Bangkok Bank"][index % 4]} · •••• ${String(1200 + ((index * 137) % 8800)).slice(-4)}`,
     other: `Quest ${quest.id}`,
     amount,
-    status,
+    status: payoutStatusFor(
+      status === "Needs approval"
+        ? "PENDING_ADMIN_APPROVAL"
+        : status === "Processing"
+          ? "PROVIDER_PENDING"
+          : status === "Completed"
+            ? "SUCCEEDED"
+            : "CANCELLED",
+    ),
     payoutStatus: status === "Needs approval"
       ? "PENDING_ADMIN_APPROVAL"
       : status === "Processing"
         ? "PROVIDER_PENDING"
         : status === "Completed"
           ? "SUCCEEDED"
-          : "CANCELLED",
+            : "CANCELLED",
+    version: 1,
     tone: statusTone(status),
     age: `${240 - index} days`,
     requestedAt,
@@ -469,12 +508,14 @@ if (savedFreshDemo?.version === freshDemoVersion) {
 }
 
 function expirePenaltyIfDue(user: LegacyRecord): boolean {
-  const expiry = user.status === "Red Flag" ? user.redFlagExpiresAt : user.status === "Temp ban" ? user.banExpiresAt : "";
+  const penaltyLabel = user.penalty?.label;
+  const expiry = penaltyLabel === "Red Flag" ? user.redFlagExpiresAt : penaltyLabel === "Temporary ban" ? user.banExpiresAt : "";
   const expiryTimestamp = Date.parse(String(expiry || "").replace(" ยท ", " "));
   if (!expiry || !Number.isFinite(expiryTimestamp) || expiryTimestamp > Date.now()) return false;
-  const previousStatus = user.status;
+  const previousStatus = walletStatusFor(user.walletStatus ?? user.status);
   const changedAt = adminDateTime();
-  user.status = "Normal";
+  user.status = "ACTIVE";
+  user.walletStatus = "ACTIVE";
   user.tone = "success";
   user.statusReason = "No active moderation action.";
   user.statusAppliedAt = changedAt;
@@ -483,14 +524,14 @@ function expirePenaltyIfDue(user: LegacyRecord): boolean {
   delete user.redFlagExpiresAt;
   delete user.banExpiresAt;
   delete user.penalty;
-  if (previousStatus === "Temp ban") user.postBanExemptionRemaining = penaltyPolicy.postBanExemptionCount;
+  if (penaltyLabel === "Temporary ban") user.postBanExemptionRemaining = penaltyPolicy.postBanExemptionCount;
   addUserHistory(user, {
-    event: `${previousStatus} expired`,
+    event: `${penaltyLabel || "Penalty"} expired`,
     at: changedAt,
     by: "System",
-    reason: previousStatus === "Temp ban" ? `The ${penaltyPolicy.temporaryBanDays}-day temporary ban ended.` : `The ${penaltyPolicy.redFlagDays}-day Red Flag period ended.`,
+    reason: penaltyLabel === "Temporary ban" ? `The ${penaltyPolicy.temporaryBanDays}-day temporary ban ended.` : `The ${penaltyPolicy.redFlagDays}-day Red Flag period ended.`,
     previousStatus,
-    newStatus: "Normal",
+    newStatus: "ACTIVE",
   });
   return true;
 }
@@ -514,6 +555,6 @@ function setSeedCounter(view: string, count: number): void {
   if (counter) counter.textContent = String(count);
 }
 
-setSeedCounter("disputes", data.disputes.filter((record) => record.status === "Active").length);
-setSeedCounter("payouts", data.payouts.filter((record) => record.status === "Needs approval").length);
-setSeedCounter("reports", data.reports.filter((record) => record.status === "Active").length);
+setSeedCounter("disputes", data.disputes.filter((record) => disputeCaseStatusFor(record.disputeCaseStatus ?? record.status) === "DISPUTE_CASE_PENDING").length);
+setSeedCounter("payouts", data.payouts.filter((record) => payoutStatusFor(record.payoutStatus ?? record.status) === "PENDING_ADMIN_APPROVAL").length);
+setSeedCounter("reports", data.reports.filter((record) => reportCaseStatusFor(record.reportCaseStatus ?? record.status, record.decision) === "REPORT_CASE_PENDING").length);

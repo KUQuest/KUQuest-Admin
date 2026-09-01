@@ -1,5 +1,7 @@
 import type { LegacyRecord, LegacyRuntimeData } from "./runtime";
 import { disputeCaseStatusFor } from "../domain/rulebook";
+import type { AdminCommandPort } from "../api/admin-api";
+import { newAdminIdempotencyKey } from "./admin-command-port";
 
 export type ModerationRecord = LegacyRecord & {
   evidence: string[];
@@ -64,6 +66,7 @@ export type ModerationPageContext = {
     onConfirm: (reason: string) => void,
     options?: { keepDrawerOpen?: boolean },
   ) => void;
+  adminCommands: AdminCommandPort;
   persistAdminData: () => void;
   toast: (message: string) => void;
   renderHome: () => void;
@@ -116,6 +119,7 @@ export function initializeDisputeDetail(
     disputeTypeLabel,
     timeline,
     confirmAction,
+    adminCommands,
     persistAdminData,
     toast,
     renderHome,
@@ -261,21 +265,33 @@ function bindResolutionControls(root: HTMLElement, record: ModerationRecord): vo
     if (selected === "worker")
       detail = `Confirm decision for ${record.id}: Worker wins · ${hunterName}; release ฿${fmt(record.amount)} to the hunter.`;
     confirmAction("Confirm dispute resolution", record, detail, (reason) => {
-      record.status = "Closed";
-      record.tone = "neutral";
-      record.resolution = detail;
-      record.decisionReason = reason;
-      record.disputeCaseStatus = "DISPUTE_CASE_RESOLVED";
-      const quest = data.quests.find((item) => item.id === caseData.questId);
-      if (quest) {
-        quest.questState = "QUEST_FAILED";
+      const outcome: "REFUND_HIRER" | "RELEASE_TO_WORKER" = selected === "hirer" ? "REFUND_HIRER" : "RELEASE_TO_WORKER";
+      const workerId = record.workerId;
+      const amountSatang = record.amountSatang;
+      let allocations: Array<{ workerId: string; amountSatang: number }> | undefined;
+      if (outcome === "RELEASE_TO_WORKER") {
+        if (!workerId || !amountSatang || amountSatang <= 0) {
+          toast("This Dispute Case has no positive Worker allocation from the Admin API.");
+          return;
+        }
+        allocations = [{ workerId, amountSatang }];
       }
-      persistAdminData();
-      if (state.view === "home") renderHome();
-      else if (state.view === "disputes") render();
-      if (root === drawer) openDisputeDrawer(data.disputes.indexOf(record));
-      else if (root === main && typeof renderDisputePage === "function")
-        renderDisputePage();
+      const resolution = {
+        outcome,
+        reason,
+        idempotencyKey: newAdminIdempotencyKey("resolve-dispute", record.id),
+        ...(typeof record.version === "number" ? { expectedVersion: record.version } : {}),
+        ...(allocations ? { allocations } : {}),
+      };
+      void adminCommands.resolveDispute(caseData.questId, resolution).then(() => {
+        persistAdminData();
+        if (state.view === "home") renderHome();
+        else if (state.view === "disputes") render();
+        if (root === drawer) openDisputeDrawer(data.disputes.indexOf(record));
+        else if (root === main && typeof renderDisputePage === "function")
+          renderDisputePage();
+        return undefined;
+      });
     }, { keepDrawerOpen: root === drawer });
   });
 }

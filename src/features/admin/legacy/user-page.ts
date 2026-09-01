@@ -344,13 +344,14 @@ function userPageAccountInfo(user: UserRecord): string {
 
 function userPageModerationSummary(user: UserRecord): string {
   const reports = userReportsFor(user);
-  const activeWarnings = user.status === "Red Flag" ? 1 : 0;
-  const suspensions = ["Temp ban", "Perm ban"].includes(String(user.status)) ? 1 : 0;
+  const penaltyLabel = user.penalty?.label || "";
+  const activeWarnings = penaltyLabel === "Red Flag" ? 1 : 0;
+  const suspensions = ["Temporary ban", "Permanent ban"].includes(penaltyLabel) ? 1 : 0;
   const confirmedViolations = confirmedViolationCount(user);
   const nextOutcome = penaltyOutcomeFor(user);
   const exemption = redFlagExemptionFor(user);
-  const expiresAt = user.status === "Temp ban" ? user.banExpiresAt : user.status === "Red Flag" ? user.redFlagExpiresAt : "";
-  return `<section class="user-detail-panel"><h2>Moderation Summary</h2><div class="user-counter-list"><div><strong>${reports.length}</strong><span>Reports received</span></div><div><strong>${confirmedViolations}</strong><span>Confirmed violations</span></div><div><strong>${activeWarnings}</strong><span>Active Red Flags</span></div><div><strong>${suspensions}</strong><span>Suspensions</span></div></div><p class="audit-note">Next outcome: <strong>${userPageEscape(penaltyOutcomeLabel(nextOutcome))}</strong>${exemption ? ` · ${exemption.remaining} Red Flag exemption${exemption.remaining === 1 ? "" : "s"} remaining` : ""}${expiresAt ? ` · ${user.status === "Temp ban" ? "Temporary ban" : "Red Flag"} expires ${userPageDate(expiresAt)}` : ""}.</p><button class="btn full-width" type="button" data-user-tab="reports">View reports</button></section>`;
+  const expiresAt = penaltyLabel === "Temporary ban" ? user.banExpiresAt : penaltyLabel === "Red Flag" ? user.redFlagExpiresAt : "";
+  return `<section class="user-detail-panel"><h2>Moderation Summary</h2><div class="user-counter-list"><div><strong>${reports.length}</strong><span>Reports received</span></div><div><strong>${confirmedViolations}</strong><span>Confirmed violations</span></div><div><strong>${activeWarnings}</strong><span>Active Red Flags</span></div><div><strong>${suspensions}</strong><span>Suspensions</span></div></div><p class="audit-note">Next outcome: <strong>${userPageEscape(penaltyOutcomeLabel(nextOutcome))}</strong>${exemption ? ` · ${exemption.remaining} Red Flag exemption${exemption.remaining === 1 ? "" : "s"} remaining` : ""}${expiresAt ? ` · ${penaltyLabel === "Temporary ban" ? "Temporary ban" : "Red Flag"} expires ${userPageDate(expiresAt)}` : ""}.</p><button class="btn full-width" type="button" data-user-tab="reports">View reports</button></section>`;
 }
 
 function userPageRecentReports(user: UserRecord): string {

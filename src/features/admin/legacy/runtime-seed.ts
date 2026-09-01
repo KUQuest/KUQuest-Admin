@@ -134,7 +134,10 @@ export const penaltyPolicy = Object.freeze({
 });
 
 export function confirmedViolationCount(user: LegacyRecord): number {
-  const fallback = user.status === "Red Flag" ? 1 : user.status === "Temp ban" ? 2 : user.status === "Perm ban" ? 3 : 0;
+  const penaltyLabel = typeof user.penalty === "object" && user.penalty && "label" in user.penalty
+    ? String(user.penalty.label)
+    : "";
+  const fallback = penaltyLabel === "Red Flag" ? 1 : penaltyLabel === "Temporary ban" ? 2 : penaltyLabel === "Permanent ban" ? 3 : 0;
   return Math.max(0, Number(user.confirmedViolationCount ?? fallback) || 0);
 }
 
@@ -148,9 +151,9 @@ export function redFlagExemptionFor(user: LegacyRecord): PenaltyExemption | null
 
 export function penaltyOutcomeFor(user: LegacyRecord): PenaltyOutcome {
   const violationNumber = confirmedViolationCount(user) + 1;
-  if (violationNumber === 1) return { key: "red-flag", label: "Red Flag", status: "Red Flag", tone: "warning", durationDays: penaltyPolicy.redFlagDays };
-  if (violationNumber === 2) return { key: "temporary-ban", label: "Temporary ban", status: "Temp ban", tone: "danger", durationDays: penaltyPolicy.temporaryBanDays };
-  return { key: "permanent-ban", label: "Permanent ban", status: "Perm ban", tone: "danger" };
+  if (violationNumber === 1) return { key: "red-flag", label: "Red Flag", status: "ACTIVE", tone: "warning", durationDays: penaltyPolicy.redFlagDays };
+  if (violationNumber === 2) return { key: "temporary-ban", label: "Temporary ban", status: "FROZEN", tone: "danger", durationDays: penaltyPolicy.temporaryBanDays };
+  return { key: "permanent-ban", label: "Permanent ban", status: "FROZEN", tone: "danger" };
 }
 
 export function penaltyOutcomeLabel(outcome: PenaltyOutcome | null): string {
@@ -168,13 +171,13 @@ function consumeRedFlagExemption(user: LegacyRecord, exemption: PenaltyExemption
 }
 
 export function recordConfirmedViolation(user: LegacyRecord, reason: string, note: string): PenaltyOutcome {
-  const previousStatus = user.status;
+  const previousStatus = walletStatusFor(user.walletStatus ?? user.status);
   const appliedAt = adminDateTime();
   const appliedBy = currentAdminName();
   const violationNumber = confirmedViolationCount(user) + 1;
   const nextOutcome = penaltyOutcomeFor(user);
   const exemption = nextOutcome.key === "red-flag" ? redFlagExemptionFor(user) : null;
-  const outcome = exemption ? { ...nextOutcome, key: "red-flag-exempted", status: "Normal", tone: "success", durationDays: null } : nextOutcome;
+  const outcome = exemption ? { ...nextOutcome, key: "red-flag-exempted", status: "ACTIVE", tone: "success", durationDays: null } : nextOutcome;
   user.confirmedViolationCount = violationNumber;
   consumeRedFlagExemption(user, exemption);
   let expiresAt = "";
@@ -197,7 +200,7 @@ export function recordConfirmedViolation(user: LegacyRecord, reason: string, not
     if (outcome.key === "temporary-ban") user.banExpiresAt = expiresAt;
     user.penalty = { label: outcome.label, reason, recordedAt: appliedAt, appliedBy, ...(outcome.durationDays ? { durationDays: outcome.durationDays } : {}), ...(expiresAt ? { expiresAt } : {}) };
   }
-  user.age = outcome.key === "red-flag-exempted" ? "Violation recorded · Red Flag exempted" : expiresAt ? `${outcome.status} · expires ${expiresAt}` : outcome.status;
+  user.age = outcome.key === "red-flag-exempted" ? "Violation recorded · Red Flag exempted" : expiresAt ? `${outcome.label} · expires ${expiresAt}` : outcome.label;
   addUserHistory(user, { event: outcome.key === "red-flag-exempted" ? "Violation recorded (Red Flag exempted)" : `${outcome.label} applied`, at: appliedAt, by: appliedBy, reason, previousStatus, newStatus: outcome.status, violationNumber, outcome: penaltyOutcomeLabel(outcome) });
   if (note) user.adminNotes = [{ at: appliedAt, by: appliedBy, note }, ...(user.adminNotes || [])];
   return outcome;
@@ -217,19 +220,19 @@ export function applyDemoAction(action: string, record: LegacyRecord): boolean {
     return true;
   }
   const transitions: Record<string, [string, string]> = {
-    "Restrict user": ["Temp ban", "danger"],
-    "Set normal": ["Normal", "success"],
-    "Lift penalty": ["Normal", "success"],
-    "Reject payout": ["Rejected", "danger"],
-    "Approve payout": ["Processing", "info"],
-    "Close report": ["Closed", "neutral"],
-    "Terminate quest": ["Cancelled", "cancelled"],
+    "Restrict user": ["FROZEN", "danger"],
+    "Set normal": ["ACTIVE", "success"],
+    "Lift penalty": ["ACTIVE", "success"],
+    "Reject payout": ["CANCELLED", "danger"],
+    "Approve payout": ["SUBMITTED_TO_PROVIDER", "info"],
+    "Close report": ["REPORT_CASE_DISMISSED", "neutral"],
+    "Terminate quest": ["QUEST_CANCELLED", "cancelled"],
   };
   const next = transitions[action];
   if (!next) return false;
   [record.status, record.tone] = next;
   if (["Restrict user", "Set normal", "Lift penalty"].includes(action)) {
-    record.walletStatus = walletStatusFor(record.status);
+    record.walletStatus = record.status;
   }
   if (action === "Lift penalty") delete record.penalty;
   if (action === "Reject payout") record.payoutStatus = "CANCELLED";
@@ -246,7 +249,9 @@ export function applyReportDecision(report: LegacyRecord, decision: string, reas
   const resolvedAt = adminDateTime();
   const resolvedBy = currentAdminName();
   const outcome = decision === "confirmed-violation" && user ? recordConfirmedViolation(user, reason, "") : null;
-  report.status = "Closed";
+  report.status = decision === "confirmed-violation"
+    ? "REPORT_CASE_HIDDEN"
+    : "REPORT_CASE_DISMISSED";
   report.reportCaseStatus = decision === "confirmed-violation"
     ? "REPORT_CASE_HIDDEN"
     : "REPORT_CASE_DISMISSED";

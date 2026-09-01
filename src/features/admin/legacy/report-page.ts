@@ -4,6 +4,7 @@ import type {
   TimelineEntry,
 } from "./dispute-detail";
 import { isReportCasePending, reportCaseStatusFor } from "../domain/rulebook";
+import { newAdminIdempotencyKey } from "./admin-command-port";
 
 export type ReportPageContext = ModerationPageContext & {
   recordId?: string;
@@ -17,11 +18,6 @@ export type ReportPageContext = ModerationPageContext & {
     user: LegacyRecord,
   ) => { key: string; remaining: number } | null;
   confirmedViolationCount: (user: LegacyRecord) => number;
-  applyReportDecision: (
-    report: LegacyRecord,
-    decision: string,
-    reason: string,
-  ) => void;
 };
 
 function query<T extends Element>(root: ParentNode, selector: string): T | null {
@@ -53,7 +49,7 @@ export function initializeReportPage(
     penaltyOutcomeLabel,
     redFlagExemptionFor,
     confirmedViolationCount,
-    applyReportDecision,
+    adminCommands,
   } = context;
   const reportId =
     context.recordId ||
@@ -162,9 +158,19 @@ function renderReportPage(): void {
           reportRecord,
           `This will close ${reportRecord.id} with the decision: ${decisionLabel}.`,
           (reason) => {
-            applyReportDecision(reportRecord, selectedDecision, reason);
-            persistAdminData();
-            renderReportPage();
+            const decision = selectedDecision === "no-violation"
+              ? "REPORT_CASE_DISMISSED"
+              : "REPORT_CASE_HIDDEN";
+            void adminCommands.decideReport(reportRecord.id, {
+              decision,
+              reason,
+              idempotencyKey: newAdminIdempotencyKey("decide-report", reportRecord.id),
+              ...(typeof reportRecord.version === "number" ? { expectedVersion: reportRecord.version } : {}),
+            }).then(() => {
+              persistAdminData();
+              renderReportPage();
+              return undefined;
+            });
           },
         );
       }),

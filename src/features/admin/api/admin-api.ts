@@ -235,6 +235,7 @@ export type DisputeAllocation = {
 
 export type DisputeResolution = AdminCommandOptions & {
   outcome: "REFUND_HIRER" | "RELEASE_TO_WORKER";
+  reason: string;
   allocations?: DisputeAllocation[];
 };
 
@@ -496,6 +497,41 @@ export const adminApi = {
     );
   },
 };
+
+export type AdminReadPort = Pick<
+  typeof adminApi,
+  | "getOverview"
+  | "listActivityLogs"
+  | "listQuests"
+  | "getQuest"
+  | "listDisputes"
+  | "getDispute"
+  | "listPayouts"
+  | "getPayout"
+  | "getPayoutHistory"
+  | "listReports"
+  | "getReport"
+  | "getEvidence"
+  | "listMembers"
+  | "getMember"
+>;
+
+export type AdminCommandPort = Pick<
+  typeof adminApi,
+  | "hideQuest"
+  | "restoreQuest"
+  | "terminateQuest"
+  | "resolveDispute"
+  | "approvePayout"
+  | "rejectPayout"
+  | "decideReport"
+  | "setWalletStatus"
+>;
+
+// These typed ports are the only application boundary required when the live
+// Admin API is enabled. They do not make a request until a screen calls them.
+export const adminApiReadPort: AdminReadPort = adminApi;
+export const adminApiCommandPort: AdminCommandPort = adminApi;
 
 export type AdminEventSubscription = {
   close: () => void;

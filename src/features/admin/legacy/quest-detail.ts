@@ -4,6 +4,8 @@ import {
   questStateFor,
   walletStatusFor,
 } from "../domain/rulebook";
+import type { AdminCommandPort } from "../api/admin-api";
+import { newAdminIdempotencyKey } from "./admin-command-port";
 
 export type QuestTone = string;
 
@@ -28,6 +30,8 @@ export type QuestRecord = {
   tone: QuestTone;
   amount: number;
   age: string;
+  version?: number;
+  editRequestStatus?: string;
   questState?: string;
   hiddenAt?: string | null;
   hiddenByAdminId?: string | null;
@@ -144,7 +148,7 @@ export type QuestDetailDependencies = {
     decisionDetail?: string,
     onConfirm?: (reason: string) => void,
   ) => void;
-  applyDemoAction: (action: string, record: QuestRecord) => void;
+  adminCommands: AdminCommandPort;
   persistAdminData: () => void;
   refresh: () => void;
   badge: (status: string, tone: string) => string;
@@ -200,7 +204,7 @@ function createPendingQuestChanges(
   const { data } = dependencies;
   const pending: Record<string, PendingQuestChange> = {};
   data.quests
-    .filter((record) => record.status === "Change pending")
+    .filter((record) => record.editRequestStatus === "EDIT_REQUEST_PENDING")
     .forEach((record, index) => {
       const participants: ChangeResponse[] = record.teamParticipants?.map(
         ([name, role]) => [name, "Pending", role],
@@ -245,7 +249,7 @@ export function createQuestDetailModule(
     showDrawerLayer,
     closeDrawer,
     confirmAction,
-    applyDemoAction,
+    adminCommands,
     persistAdminData,
     refresh,
     badge,
@@ -467,9 +471,19 @@ export function createQuestDetailModule(
       button.addEventListener("click", () => {
         const action = button.dataset.action ?? "";
         confirmAction(action, record, "", () => {
-          applyDemoAction(action, record);
-          persistAdminData();
-          refresh();
+          const options = {
+            idempotencyKey: newAdminIdempotencyKey(action, record.id),
+            reason: "Quest moderation action recorded by Admin.",
+            ...(typeof record.version === "number" ? { expectedVersion: record.version } : {}),
+          };
+          const command = action === "Hide quest"
+            ? adminCommands.hideQuest(record.id, options)
+            : adminCommands.restoreQuest(record.id, { expectedVersion: options.expectedVersion, idempotencyKey: options.idempotencyKey });
+          void command.then(() => {
+            persistAdminData();
+            refresh();
+            return undefined;
+          });
         });
       });
     });

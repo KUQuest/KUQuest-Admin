@@ -12,13 +12,13 @@ import {
   questStateFor,
 } from "../domain/rulebook";
 import { questSatangLabel } from "./quest-detail";
+import { newAdminIdempotencyKey } from "./admin-command-port";
 
 export type QuestPageDependencies = QuestDetailDependencies & {
   main: HTMLElement;
   recordId?: string;
   locationSearch?: string;
   detail: QuestDetailModule;
-  applyDemoAction: (action: string, record: QuestRecord) => void;
   persistAdminData: () => void;
   setActiveNavigation: (view: string) => void;
 };
@@ -57,7 +57,7 @@ export function createQuestPageModule(
     timeline,
     disputeTypeLabel,
     confirmAction,
-    applyDemoAction,
+    adminCommands,
     persistAdminData,
     setActiveNavigation,
   } = dependencies;
@@ -133,10 +133,14 @@ export function createQuestPageModule(
         const action = button.dataset.pageAction;
         if (action === "Terminate quest") {
           confirmAction(action, quest, "This will cancel the quest, stop further progression, and preserve the record in the admin audit trail.", (reason) => {
-            applyDemoAction(action, quest);
-            quest.terminationReason = reason;
-            persistAdminData();
-            renderQuestPage();
+            void adminCommands.terminateQuest(quest.id, {
+              idempotencyKey: newAdminIdempotencyKey("terminate-quest", quest.id),
+              reason,
+            }).then(() => {
+              persistAdminData();
+              renderQuestPage();
+              return undefined;
+            });
           });
           return;
         }
