@@ -36,6 +36,14 @@ import {
   type ResourceView,
 } from "./resource-controls-model";
 import type { LegacyDomElement, LegacyRecord } from "./runtime";
+import {
+  disputeCaseStatusFor,
+  hasHiddenQuestOverlay,
+  payoutStatusFor,
+  questStateFor,
+  reportCaseStatusFor,
+  walletStatusFor,
+} from "../domain/rulebook";
 
 const resourceCollections: Record<ResourceView, LegacyRecord[]> = data;
 state.filters = {};
@@ -128,12 +136,12 @@ function controlledTable(view: ResourceView, rows: LegacyRecord[]): string {
   const activeSort = sortSpec(view, state.orderBy[view]);
   return `<div class="table-wrap" tabindex="0" role="region" aria-label="${view} table"><table class="data"><thead><tr>${columns.map(([key, label]: ResourceColumn) => { const active = activeSort?.key === key; return `<th scope="col" aria-sort="${active ? (activeSort.direction === "asc" ? "ascending" : "descending") : "none"}"><span class="table-sort${active ? " is-active" : ""}" data-sort-key="${key}">${label}<span class="sort-indicator" aria-hidden="true">${active ? (activeSort.direction === "asc" ? "↑" : "↓") : "↕"}</span></span></th>`; }).join("")}</tr></thead><tbody>${rows.map((record: LegacyRecord) => {
     const target = `${view}:${resourceCollections[view].indexOf(record)}`;
-    return `<tr class="${view === "disputes" && record.status === "Active" ? "dispute-active-row" : ""}" data-open="${target}">${columns.map(([key]) => tableCell(view, record, key, target)).join("")}</tr>`;
+    return `<tr class="${view === "disputes" && disputeCaseStatusFor(record.disputeCaseStatus ?? record.status) === "DISPUTE_CASE_PENDING" ? "dispute-active-row" : ""}" data-open="${target}">${columns.map(([key]) => tableCell(view, record, key, target)).join("")}</tr>`;
   }).join("")}</tbody></table></div>`;
 }
 
 function disputeCaseIdForQuest(record: LegacyRecord): string | undefined {
-  if (record.status !== "Disputed") return undefined;
+  if (questStateFor(record.questState ?? record.status) !== "QUEST_FAILED") return undefined;
   return Object.entries(disputeCases).find(
     ([, caseData]) => String(caseData.questId || "") === record.id,
   )?.[0];
@@ -152,7 +160,19 @@ function tableCell(view: ResourceView, record: LegacyRecord, key: string, target
   if (key === "requestedAt") return `<td>${escapeActivityText(record.requestedAt || "—")}</td>`;
   if (key === "status") {
     const disputeCaseId = view === "quests" ? disputeCaseIdForQuest(record) : undefined;
-    return `<td>${badge(record.status, record.tone)}${disputeCaseId ? `<a class="link quest-dispute-link" href="/disputes/${encodeURIComponent(disputeCaseId)}">View dispute case</a>` : ""}</td>`;
+    const status = view === "quests"
+      ? questStateFor(record.questState ?? record.status)
+      : view === "disputes"
+        ? disputeCaseStatusFor(record.disputeCaseStatus ?? record.status)
+        : view === "payouts"
+          ? payoutStatusFor(record.payoutStatus ?? record.status)
+          : view === "reports"
+            ? reportCaseStatusFor(record.reportCaseStatus ?? record.conductReportStatus ?? record.status, record.decision)
+            : walletStatusFor(record.walletStatus ?? record.status);
+    const hiddenOverlay = view === "quests" && hasHiddenQuestOverlay(record)
+      ? '<span class="badge neutral quest-hidden-overlay">Hidden</span>'
+      : "";
+    return `<td>${badge(status, record.tone)}${hiddenOverlay}${disputeCaseId ? `<a class="link quest-dispute-link" href="/disputes/${encodeURIComponent(disputeCaseId)}">View dispute case</a>` : ""}</td>`;
   }
   if (key === "disputeDate") return `<td>${escapeActivityText(record.disputeDate || "—")}</td>`;
   if (key === "disputeType")

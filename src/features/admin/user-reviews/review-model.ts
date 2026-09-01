@@ -41,19 +41,3 @@ export function changeReviewVisibility(
     };
   });
 }
-
-export function hasValidRemovalReason(reason: string): boolean {
-  return reason.trim().length >= 8;
-}
-
-export function removeReview(
-  reviews: AdminReview[],
-  reviewIndex: number,
-): { reviews: AdminReview[]; removed: AdminReview | undefined } {
-  if (reviewIndex < 0 || reviewIndex >= reviews.length)
-    return { reviews, removed: undefined };
-  return {
-    reviews: reviews.filter((_, index) => index !== reviewIndex),
-    removed: reviews[reviewIndex],
-  };
-}

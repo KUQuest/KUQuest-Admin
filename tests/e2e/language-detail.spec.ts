@@ -51,18 +51,13 @@ test.describe("Thai translation for full records and overlays", () => {
     await expect(page.getByRole("button", { name: "Export log", exact: true })).toHaveCount(0);
   });
 
-  test("translates dispute chat content inserted after Thai is active", async ({ page }) => {
+  test("does not show an Admin Chat composer when Thai is active", async ({ page }) => {
     await signIn(page);
     await switchToThai(page);
     await page.goto("/disputes/DSP-5201");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    await page.locator('[data-chat-role="hirer"]').click();
-
-    const chat = page.getByRole("dialog", { name: "แชทกับผู้ว่าจ้าง" });
-    await expect(chat).toBeVisible();
-    await expect(chat.getByText("ส่งข้อความถึงผู้ว่าจ้าง", { exact: true })).toBeVisible();
-    await expect(chat.getByText("แนบไฟล์", { exact: true })).toBeVisible();
-    await expect(chat.getByText("Send message", { exact: true })).toHaveCount(0);
+    await expect(page.locator(".chat-compose")).toHaveCount(0);
+    await expect(page.locator('[data-chat-role], [data-report-chat-role]')).toHaveCount(0);
   });
 
   test("translates dispute search placeholder and table headers", async ({ page }) => {
@@ -78,7 +73,7 @@ test.describe("Thai translation for full records and overlays", () => {
     await expect(firstHeader).not.toHaveText(/Case/);
   });
 
-  test("translates report decision and reporter chat content", async ({ page }) => {
+  test("translates report decision without an Admin Chat composer", async ({ page }) => {
     await signIn(page);
     await switchToThai(page);
     await page.goto("/reports/RPT-8201");
@@ -89,11 +84,8 @@ test.describe("Thai translation for full records and overlays", () => {
     ).toBeVisible();
     await expect(page.getByText("Temporary ban · 7 days", { exact: true })).toHaveCount(0);
 
-    await page.locator('[data-report-chat-role="reporter"]').click();
-    const chat = page.getByRole("dialog", { name: /แชทกับ/ });
-    await expect(chat).toBeVisible();
-    await expect(chat.getByText("ส่งข้อความถึง Mek Ariyawat", { exact: true })).toBeVisible();
-    await expect(chat.getByText("Attach file", { exact: true })).toHaveCount(0);
+    await expect(page.locator(".chat-compose")).toHaveCount(0);
+    await expect(page.locator('[data-chat-role], [data-report-chat-role]')).toHaveCount(0);
   });
 
   test("translates report drawer action links", async ({ page }) => {

@@ -30,9 +30,6 @@ type SharedRuntimeCore = Pick<
   | "toneClass"
   | "disputeTypeLabel"
   | "timeline"
-  | "chatMessage"
-  | "chatTimeLabel"
-  | "bindChatAttachment"
   | "confirmAction"
   | "toast"
   | "renderHome"
@@ -146,9 +143,6 @@ async function initializeHomePage(
     toneClass: core.toneClass,
     disputeTypeLabel: core.disputeTypeLabel,
     timeline: core.timeline,
-    chatMessage: core.chatMessage,
-    chatTimeLabel: core.chatTimeLabel,
-    bindChatAttachment: core.bindChatAttachment,
     confirmAction: core.confirmAction,
     persistAdminData: mockData.persistAdminData,
     toast: core.toast,
@@ -239,9 +233,6 @@ export async function initializeTypedLegacyPage(
     toneClass: core.toneClass,
     disputeTypeLabel: core.disputeTypeLabel,
     timeline: core.timeline,
-    chatMessage: core.chatMessage,
-    chatTimeLabel: core.chatTimeLabel,
-    bindChatAttachment: core.bindChatAttachment,
     confirmAction: core.confirmAction,
     persistAdminData: mockData.persistAdminData,
     toast: core.toast,

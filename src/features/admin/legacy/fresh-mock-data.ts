@@ -1,17 +1,17 @@
 import {
   addUserHistory,
   adminDateTime,
-  autoRejectUnavailablePayout,
   penaltyPolicy,
   recordActivity,
   seedGeneratedActivity,
 } from "./runtime-seed";
 import { data, disputeCases } from "./runtime-data";
 import type { LegacyDomElement, LegacyHistoryEntry, LegacyRecord, LegacyRuntimeData } from "./runtime";
+import { questStateFor } from "../domain/rulebook";
 
 // Deterministic high-volume demo data. Versioning resets browser-local records
 // whenever the synthetic marketplace scenario changes.
-const freshDemoVersion = "2026-08-30-v50-dispute-role-eligibility";
+const freshDemoVersion = "2026-09-01-v51-admin-contract-alignment";
 const freshDemoKey = "kuquest-admin-demo-data";
 const seedBaseDate = new Date("2026-08-28T08:00:00Z");
 
@@ -212,7 +212,9 @@ const campusLocations = [
 ];
 
 function createQuest(index: number): LegacyRecord {
-  const status = questStatuses[index % questStatuses.length];
+  const seededStatus = questStatuses[index % questStatuses.length];
+  const hidden = seededStatus === "Hidden";
+  const status = hidden ? "Open" : seededStatus;
   const eligibleQuestUsers = data.users.filter(
     (candidate: LegacyRecord) => !["Temp ban", "Perm ban"].includes(candidate.status),
   );
@@ -224,6 +226,9 @@ function createQuest(index: number): LegacyRecord {
     eligibleParticipants[(index * 13 + participantIndex * 17 + 5) % eligibleParticipants.length],
   ).filter((candidate: LegacyRecord | undefined, participantIndex: number, all: Array<LegacyRecord | undefined>) => candidate && candidate.id !== hirer.id && all.findIndex((item) => item?.id === candidate.id) === participantIndex) as LegacyRecord[];
   const amount = 1400 + ((index * 719) % 10_600);
+  const fundingTotalSatang = amount * 100;
+  const platformFeeBps = 200;
+  const platformFeeSatang = Math.ceil((fundingTotalSatang * platformFeeBps) / 10_000);
   const createdDaysAgo = index < 12 ? index % 3 : 3 + ((index * 17) % 180);
   const createdAt = seedDateLabel(createdDaysAgo, 8 + (index % 9), (index * 13) % 60);
   const startsAt = seedDateLabel(Math.max(0, createdDaysAgo - 1), 8 + (index % 3), 30);
@@ -247,12 +252,19 @@ function createQuest(index: number): LegacyRecord {
     person: hirer.title,
     other: tag,
     amount,
+    fundingTotalSatang,
+    questRewardSatang: fundingTotalSatang - platformFeeSatang,
+    platformFeeSatang,
+    platformFeeBps,
+    feeRoundingMode: "UP",
     createdAt,
     startsAt,
     dueAt,
     status,
     tone: statusTone(status),
     age: relativeAge(createdDaysAgo),
+    questState: questStateFor(seededStatus),
+    ...(hidden ? { hiddenAt: seedDateLabel(createdDaysAgo, 17, 20), hiddenByAdminId: adminNames[index % adminNames.length] } : {}),
     description: `Complete the ${title.toLowerCase()} brief and submit a clear, verifiable record for the university marketplace team.`,
     giver: [hirer.title, hirer.id, hirer.other, `${4.4 + (index % 6) / 10} from ${4 + (index % 18)} quests`],
     location: [location, `${["Indoor and outdoor checkpoints", "Three campus zones", "Reference route confirmed"][index % 3]}`, `${13.84 + (index % 9) / 1000}, 100.${56 + (index % 20)}`],
@@ -292,36 +304,29 @@ data.disputes = disputableQuests.map((quest: LegacyRecord, index: number) => {
   const worker = data.users.find((user) => user.title === workerName) || data.users[(index + 1) % data.users.length];
   const category = disputeCategories[index % disputeCategories.length];
   const status = index % 3 === 2 ? "Closed" : "Active";
-  const resolvedQuestStatus = index % 2 ? "Completed" : "Cancelled";
-  if (status === "Closed") {
-    quest.status = resolvedQuestStatus;
-    quest.tone = statusTone(resolvedQuestStatus);
-    const activity = quest.activity;
-    if (Array.isArray(activity) && activity.every((event): event is string => typeof event === "string")) {
-      quest.activity = activity.map((event) =>
-        event.startsWith("Disputed ·")
-          ? `${resolvedQuestStatus}${event.slice("Disputed".length)}`
-          : event,
-      );
-    }
-    if (resolvedQuestStatus === "Cancelled") {
-      quest.terminationReason = "The dispute was resolved in the hirer's favor.";
-    }
-  }
+  quest.questState = "QUEST_FAILED";
+  const disputeCaseStatus = status === "Closed" ? "DISPUTE_CASE_RESOLVED" : "DISPUTE_CASE_PENDING";
+  const disputeId = `DSP-${String(5201 + index).padStart(4, "0")}`;
   const record = {
-    id: `DSP-${String(5201 + index).padStart(4, "0")}`,
+    id: disputeId,
     questId: quest.id,
     title: quest.title,
     person: hirer.title,
     other: worker.title,
     amount: quest.amount,
     status,
+    disputeCaseStatus,
     tone: status === "Active" ? "danger" : "neutral",
     disputeDate: seedDateLabel((index % 30) + 1, 9 + (index % 8), (index * 7) % 60),
     disputeType: category,
     age: index < 2 ? `${18 + index * 24} min` : `${(index % 12) + 1} days`,
     detail: `The submitted record for ${quest.title.toLowerCase()} does not fully match the accepted quest conditions and requires an accountable review.`,
     evidence: [`${quest.title} submission · PDF · ${3 + (index % 8)} pages`, "Accepted quest conditions · PDF", "Participant message export · PDF"],
+    evidenceRefs: [
+      `evidence:${disputeId}:submission`,
+      `evidence:${disputeId}:conditions`,
+      `evidence:${disputeId}:messages`,
+    ],
     ...(status === "Closed" ? {
       resolution: index % 2 ? "Worker wins; the accepted delivery remains on record." : "Hirer wins; the held amount was returned after review.",
       decisionReason: "The accepted quest terms and submitted evidence were compared before recording this outcome.",
@@ -337,7 +342,7 @@ data.disputes = disputableQuests.map((quest: LegacyRecord, index: number) => {
     response: "The responding party has acknowledged the case and is preparing supporting evidence.",
     recommended: "Review the accepted conditions and submitted evidence before resolving the held funds.",
     policy: ["Published quest condition controls scope", "Evidence timestamps are authoritative", "Administrative reason required"],
-    signals: [["Evidence coverage", `${58 + (index % 38)}%`, "warning"], ["Account risk", index % 5 === 0 ? "High" : "Low", index % 5 === 0 ? "danger" : "success"], ["Response state", status, status === "Active" ? "info" : "neutral"]],
+    signals: [["Evidence coverage", `${58 + (index % 38)}%`, "warning"], ["Account risk", index % 5 === 0 ? "High" : "Low", index % 5 === 0 ? "danger" : "success"], ["Response state", disputeCaseStatus, status === "Active" ? "info" : "neutral"]],
   };
   return record as LegacyRecord;
 });
@@ -351,6 +356,10 @@ data.reports = Array.from({ length: 180 }, (_, index: number) => {
   const status = index % 5 === 0 ? "Active" : "Closed";
   const category = reportCategories[index % reportCategories.length];
   const reportedAt = seedDateLabel((index % 80) + 1, 8 + (index % 8), (index * 11) % 60);
+  const decision = status === "Closed"
+    ? (index % 3 === 0 ? "no-violation" : "confirmed-violation")
+    : undefined;
+  const evidence = index % 7 === 0 ? [] : [`${category} evidence · PDF`];
   return {
     id: `RPT-${String(8201 + index).padStart(4, "0")}`,
     reporterId: reporter.id,
@@ -361,14 +370,20 @@ data.reports = Array.from({ length: 180 }, (_, index: number) => {
     relatedQuestId: quest.id,
     relatedQuestTitle: quest.title,
     details: `The report concerns activity connected to ${quest.title}. The submitted record is retained for admin review and audit testing.`,
-    evidence: index % 7 === 0 ? ["No attachment provided"] : [`${category} evidence · PDF`],
+    evidence,
+    evidenceRefs: evidence.length ? [`evidence:RPT-${String(8201 + index).padStart(4, "0")}:message`] : [],
     status,
+    reportCaseStatus: status === "Active"
+      ? "REPORT_CASE_PENDING"
+      : decision === "confirmed-violation"
+        ? "REPORT_CASE_HIDDEN"
+        : "REPORT_CASE_DISMISSED",
     tone: status === "Active" ? "warning" : "neutral",
     reportedAt,
     ...(status === "Closed" ? {
       closedAt: seedDateLabel((index % 70) + 1, 15, 30),
-      decision: index % 3 === 0 ? "no-violation" : "confirmed-violation",
-      decisionLabel: index % 3 === 0 ? "No violation" : "Violation confirmed",
+      decision,
+      decisionLabel: decision === "no-violation" ? "No violation" : "Violation confirmed",
       decisionReason: "The submitted activity and related quest history were reviewed before closing this report.",
       resolution: index % 3 === 0 ? "Report dismissed; no policy violation found." : "Violation confirmed; the account penalty ladder was applied.",
       resolvedBy: adminNames[index % adminNames.length],
@@ -419,6 +434,13 @@ const generatedPayouts: LegacyRecord[] = Array.from({ length: 240 }, (_, index: 
     other: `Quest ${quest.id}`,
     amount,
     status,
+    payoutStatus: status === "Needs approval"
+      ? "PENDING_ADMIN_APPROVAL"
+      : status === "Processing"
+        ? "PROVIDER_PENDING"
+        : status === "Completed"
+          ? "SUCCEEDED"
+          : "CANCELLED",
     tone: statusTone(status),
     age: `${240 - index} days`,
     requestedAt,
@@ -479,10 +501,7 @@ export function persistAdminData(): void {
   localStorage.setItem(freshDemoKey, JSON.stringify({ version: freshDemoVersion, collections: data }));
 }
 
-const autoRejectedPayouts = typeof autoRejectUnavailablePayout === "function"
-  ? data.payouts.filter((record) => autoRejectUnavailablePayout(record))
-  : [];
-if (!savedFreshDemo || savedFreshDemo.version !== freshDemoVersion || autoRejectedPayouts.length || expiredPenalties.length) persistAdminData();
+if (!savedFreshDemo || savedFreshDemo.version !== freshDemoVersion || expiredPenalties.length) persistAdminData();
 
 if (typeof seedGeneratedActivity === "function") seedGeneratedActivity(data);
 

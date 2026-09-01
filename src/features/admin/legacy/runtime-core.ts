@@ -1,5 +1,6 @@
 import type { LegacyRecord } from "./runtime";
 import { data, disputeCases } from "./runtime-data";
+import { payoutStatusFor } from "../domain/rulebook";
 
 export { data, disputeCases };
 export {
@@ -7,7 +8,6 @@ export {
   adminDateTime,
   applyDemoAction,
   applyReportDecision,
-  autoRejectUnavailablePayout,
   completedPayoutQuests,
   confirmedViolationCount,
   currentAdminName,
@@ -30,7 +30,7 @@ export {
   userReportsFor,
 } from "./runtime-seed";
 
-type IconName = "home" | "scale" | "quest" | "users" | "wallet" | "settings" | "history" | "menu" | "search" | "filter" | "paperclip" | "check" | "user" | "flag";
+type IconName = "home" | "scale" | "quest" | "users" | "wallet" | "settings" | "history" | "menu" | "search" | "filter" | "check" | "user" | "flag";
 type Tone = "warning" | "danger" | "success" | "info" | "neutral" | "assigned" | "cancelled";
 type TimelineEntry = string | { title: string; detail?: string; time?: string; showDetails?: boolean };
 type TimelineOptions = { showDetails?: boolean };
@@ -46,7 +46,6 @@ const paths: Record<IconName, string> = {
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
   filter: '<path d="M4 5h16M7 12h10M10 19h4"/>',
-  paperclip: '<path d="m21.4 11.6-8.5 8.5a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/>',
   check: '<path d="m4 12 5 5L20 6"/>',
   user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
   flag: '<path d="M5 21V4m0 0h12l-2 4 2 4H5"/>',
@@ -84,47 +83,45 @@ function questStatusClass(status: string): string {
 export const badge = (status: string, tone: string): string =>
   `<span class="badge ${toneClass(tone)}${questStatusClass(status)}">${escapeActivityText(status)}</span>`;
 
-export function chatTimeLabel(date = new Date()): string {
-  return `Today · ${date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`;
-}
-
 export function disputeTypeLabel(record: Pick<LegacyRecord, "disputeType">): string {
   return record.disputeType || "Other";
 }
 
 export function payoutDecisionContext(record: LegacyRecord): { heading: string; copy: string; next: string } {
   const contexts: Record<string, { heading: string; copy: string; next: string }> = {
-    "Needs approval": {
+    PENDING_ADMIN_APPROVAL: {
       heading: "Why your approval is needed",
       copy: "This payout is ready for release, but it cannot move to the bank until an admin approves it.",
-      next: "Approve payout → status changes to Processing. Funds are not yet transferred.",
+      next: "Approve payout → status changes to SUBMITTED_TO_PROVIDER. Funds are not yet transferred.",
     },
-    Processing: {
+    SUBMITTED_TO_PROVIDER: {
+      heading: "Transfer submitted",
+      copy: "The payout was approved and submitted to the payment provider.",
+      next: "The provider will report the final transfer result.",
+    },
+    PROVIDER_PENDING: {
       heading: "Transfer in progress",
       copy: "The payout has been approved and is moving to the recipient’s bank. No action is needed unless the transfer fails.",
-      next: "The record will become Completed after the bank confirms the transfer.",
+      next: "The record will become SUCCEEDED after the provider confirms the transfer.",
     },
-    Completed: {
+    SUCCEEDED: {
       heading: "Transfer completed",
       copy: "The recipient’s bank transfer completed successfully. This record is retained for audit.",
       next: "No further admin action is available.",
     },
-    Rejected: {
+    CANCELLED: {
       heading: "Payout rejected",
       copy: "This payout was rejected before funds were released. Review the recorded reason before creating a new payout request.",
       next: "No retry is available from this record.",
     },
-    Failed: {
+    FAILED: {
       heading: "Transfer failed",
       copy: "The payment provider could not complete this transfer.",
       next: "Review the failure reason before creating a new payout request.",
     },
   };
-  return contexts[record.status] || contexts["Needs approval"];
-}
-
-export function chatMessage(sender: string, time: string, message: string, variant: string): string {
-  return `<article class="chat-message ${variant}"><div class="chat-message-meta"><strong>${escapeActivityText(sender)}</strong><time>${escapeActivityText(time)}</time></div><p>${escapeActivityText(message)}</p></article>`;
+  const status = payoutStatusFor(record.payoutStatus ?? record.status);
+  return contexts[status] || contexts.PENDING_ADMIN_APPROVAL;
 }
 
 function timelineDetail(title: string, index: number): string {
@@ -155,15 +152,4 @@ export function timeline(items: TimelineEntry[], options: TimelineOptions = {}):
     const detail = entry.time ? entry.detail : parts.slice(timeParts).join(" · ") || timelineDetail(entry.title, index);
     return `<li><strong>${escapeActivityText(entry.title)}</strong>${time ? `<time>${escapeActivityText(time)}</time>` : ""}${options.showDetails === false || entry.showDetails === false ? "" : `<span>${escapeActivityText(detail)}</span>`}</li>`;
   }).join("")}</ul>`;
-}
-
-export function bindChatAttachment(form: HTMLFormElement): void {
-  const input = form.querySelector<HTMLElement & { files?: FileList }>("[data-chat-attachment]");
-  const label = form.querySelector<HTMLElement>("[data-chat-attachment-name]");
-  if (!input || !label) return;
-  input.addEventListener("change", () => {
-    const file = input.files?.[0];
-    label.textContent = file?.name || "No file attached";
-    label.title = file?.name || "";
-  });
 }

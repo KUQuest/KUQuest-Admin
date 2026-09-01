@@ -1,3 +1,10 @@
+import {
+  disputeCaseStatusFor,
+  hasHiddenQuestOverlay,
+  questStateFor,
+  walletStatusFor,
+} from "../domain/rulebook";
+
 export type QuestTone = string;
 
 export type QuestParticipant = [name: string, status: string, role: string];
@@ -21,6 +28,14 @@ export type QuestRecord = {
   tone: QuestTone;
   amount: number;
   age: string;
+  questState?: string;
+  hiddenAt?: string | null;
+  hiddenByAdminId?: string | null;
+  fundingTotalSatang?: number;
+  questRewardSatang?: number;
+  platformFeeSatang?: number;
+  platformFeeBps?: number;
+  feeRoundingMode?: "UP";
   createdAt?: string;
   dueAt?: string;
   description?: string;
@@ -42,6 +57,7 @@ export type QuestUser = {
   id: string;
   title: string;
   status?: string;
+  walletStatus?: string;
   tone?: string;
 };
 
@@ -56,6 +72,7 @@ export type QuestDispute = {
   tone: string;
   detail: string;
   disputeType?: string;
+  disputeCaseStatus?: string;
 };
 
 export type QuestPayout = {
@@ -171,6 +188,12 @@ export type QuestDetailModule = {
   openQuestDrawer: (index: number) => void;
 };
 
+export function questSatangLabel(value: unknown): string {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0
+    ? `${new Intl.NumberFormat("en-US").format(value)} Satang`
+    : "Not provided by the Admin API";
+}
+
 function createPendingQuestChanges(
   dependencies: QuestDetailDependencies,
 ): Record<string, PendingQuestChange> {
@@ -236,7 +259,7 @@ export function createQuestDetailModule(
   const pendingQuestChanges = createPendingQuestChanges(dependencies);
 
   const submissionFilesFor = (record: QuestRecord): QuestFile[] => {
-    if (!["Submitted", "Disputed", "Completed"].includes(record.status)) return [];
+    if (!["QUEST_IN_PROGRESS", "QUEST_COMPLETED", "QUEST_FAILED"].includes(questStateFor(record.questState ?? record.status))) return [];
     return [`Completed work package · ZIP · submitted ${record.age.toLowerCase()}`];
   };
 
@@ -258,7 +281,7 @@ export function createQuestDetailModule(
     return [
       `Quest published · ${date}, 09:10 · The quest became available under its published terms`,
       `Applications received · ${date}, 12:30 · Applications were recorded for review`,
-      `${record.status} · ${date}, 16:45 · The current quest state was recorded in the audit trail`,
+      `${questStateFor(record.questState ?? record.status)} · ${date}, 16:45 · The current quest state was recorded in the audit trail`,
     ];
   };
 
@@ -286,7 +309,7 @@ export function createQuestDetailModule(
       "30 Aug 2026 · 18:00",
       "Applications closed · 25 Aug 2026 · 18:00",
     ];
-    const applications = record.applications ?? (record.status === "Draft"
+    const applications = record.applications ?? (questStateFor(record.questState ?? record.status) === "QUEST_DRAFT"
       ? []
       : record.teamQuest && record.teamParticipants?.length
         ? record.teamParticipants.map(([name, role]) => [name, "Selected", role] as QuestParticipant)
@@ -312,15 +335,8 @@ export function createQuestDetailModule(
   };
 
   const questHasStarted = (record: QuestRecord): boolean =>
-    [
-      "Assigned",
-      "Change pending",
-      "In progress",
-      "Submitted",
-      "Approved",
-      "Completed",
-      "Disputed",
-    ].includes(record.status);
+    ["QUEST_ASSIGNED", "QUEST_IN_PROGRESS", "QUEST_COMPLETED", "QUEST_FAILED"]
+      .includes(questStateFor(record.questState ?? record.status));
 
   const participantsForQuest = (record: QuestRecord, detail: QuestDetails): QuestParticipant[] =>
     questHasStarted(record) ? detail.applications.filter((participant) => participant[1] === "Selected") : detail.applications;
@@ -336,8 +352,8 @@ export function createQuestDetailModule(
 
   const giverProfile = (detail: QuestDetails): string => {
     const hirer = data.users.find((user) => user.title === detail.giver[0]);
-    const status = hirer?.status ?? "Normal";
-    const statusTone = hirer?.tone ?? (status === "Normal" ? "success" : status === "Red Flag" ? "warning" : "danger");
+    const status = walletStatusFor(hirer?.walletStatus ?? hirer?.status);
+    const statusTone = hirer?.tone ?? (status === "ACTIVE" ? "success" : status === "FROZEN" ? "warning" : "danger");
     return `<div class="hirer-profile"><div class="hirer-profile-summary"><strong>${escapeActivityText(detail.giver[0])}</strong>${badge(status, statusTone)}</div></div>`;
   };
 
@@ -354,7 +370,7 @@ export function createQuestDetailModule(
     `<div class="related-list">${rows.map((row) => {
       const user = data.users.find((candidate) => candidate.title === row[0]);
       const isSelected = row[1] === "Selected";
-      const status = isSelected ? user?.status ?? row[1] : row[1];
+      const status = isSelected ? walletStatusFor(user?.walletStatus ?? user?.status) : row[1];
       const statusTone = isSelected ? user?.tone ?? "success" : row[1] === "Not selected" ? "neutral" : "warning";
       return `<div class="related-row"><strong>${escapeActivityText(row[0])}</strong><span>${badge(status, statusTone)}</span>${user ? `<a class="link related-profile-link" href="/users/${encodeURIComponent(user.id)}">View profile</a>` : ""}</div>`;
     }).join("")}</div>`;
@@ -413,6 +429,8 @@ export function createQuestDetailModule(
   const openQuestDrawer = (index: number): void => {
     const record = data.quests[index];
     if (!record) return;
+    const questState = questStateFor(record.questState ?? record.status);
+    const hidden = hasHiddenQuestOverlay(record);
     const detail = questDetails(record);
     const participants = participantsForQuest(record, detail);
     const started = questHasStarted(record);
@@ -423,21 +441,21 @@ export function createQuestDetailModule(
     <div class="drawer-body quest-record">
       <div class="drawer-title"><span class="att-icon info">${ico("quest")}</span><div><h2>${escapeActivityText(record.title)}</h2><p>${record.teamQuest ? "Team quest · " : ""}${escapeActivityText(record.other)} · created by ${escapeActivityText(record.person)}</p></div></div>
       <div class="facts quest-summary">
-        <div class="fact"><span>Status</span>${badge(record.status, record.tone)}</div><div class="fact"><span>Funded wage</span><strong>฿${fmt(record.amount)}</strong></div>
-        <div class="fact"><span>Participant mode</span><strong>${record.teamQuest ? "Team" : "Single"}</strong></div><div class="fact"><span>Candidate mode</span><strong>${escapeActivityText(record.candidateMode ?? (record.status === "Open" ? "FCFS" : "CANDIDATE"))}</strong></div><div class="fact"><span>Tag</span><strong>${escapeActivityText(record.other)}</strong></div>
+        <div class="fact"><span>Status</span>${badge(questState, record.tone)}${hidden ? '<span class="badge neutral quest-hidden-overlay">Hidden</span>' : ""}</div><div class="fact"><span>Quest Funding Total</span><strong>${questSatangLabel(record.fundingTotalSatang)}</strong></div>
+        <div class="fact"><span>Participant mode</span><strong>${record.teamQuest ? "Team" : "Single"}</strong></div><div class="fact"><span>Candidate mode</span><strong>${escapeActivityText(record.candidateMode ?? (questState === "QUEST_OPEN" ? "FCFS" : "CANDIDATE"))}</strong></div><div class="fact"><span>Tag</span><strong>${escapeActivityText(record.other)}</strong></div>
       </div>
-      ${record.status === "Disputed" ? `<section class="section quest-dispute-reason"><div class="section-title"><h3>Why this quest is disputed</h3>${relatedDispute ? badge(relatedDispute.status, relatedDispute.tone) : badge("Needs case review", "warning")}</div>${relatedDispute ? `<dl class="dispute-summary-context"><div><dt>Case</dt><dd>${escapeActivityText(relatedDispute.id)}</dd></div><div><dt>Category</dt><dd>${escapeActivityText(disputeTypeLabel(relatedDispute))}</dd></div><div><dt>Description</dt><dd>${escapeActivityText(relatedDispute.detail)}</dd></div></dl><a class="btn full-width" href="/disputes/${encodeURIComponent(relatedDispute.id)}">Open full dispute</a>` : '<p class="audit-note">This quest is marked as disputed, but no active dispute record is linked. Review the record relationship before taking action.</p>'}</section>` : ""}
+      ${questState === "QUEST_FAILED" ? `<section class="section quest-dispute-reason"><div class="section-title"><h3>Why this quest is failed</h3>${relatedDispute ? badge(disputeCaseStatusFor(relatedDispute.disputeCaseStatus ?? relatedDispute.status), relatedDispute.tone) : badge("DISPUTE_CASE_PENDING", "warning")}</div>${relatedDispute ? `<dl class="dispute-summary-context"><div><dt>Case</dt><dd>${escapeActivityText(relatedDispute.id)}</dd></div><div><dt>Category</dt><dd>${escapeActivityText(disputeTypeLabel(relatedDispute))}</dd></div><div><dt>Description</dt><dd>${escapeActivityText(relatedDispute.detail)}</dd></div></dl><a class="btn full-width" href="/disputes/${encodeURIComponent(relatedDispute.id)}">Open full dispute</a>` : '<p class="audit-note">This Quest is in QUEST_FAILED, but no Dispute Case record is linked. Review the record relationship before taking action.</p>'}</section>` : ""}
       <section class="section"><h3>Quest description</h3><p>${escapeActivityText(detail.description)}</p><div class="requirement-box"><strong>Completion requirements</strong><ul><li>Submit work before the recorded deadline</li><li>Attach verifiable proof files</li><li>Keep all payment inside KuQuest</li></ul></div></section>
       ${detail.giverAttachments.length ? `<section class="section"><div class="section-title"><h3>Files from hirer</h3><span class="section-count">${detail.giverAttachments.length}</span></div>${fileRows(detail.giverAttachments)}</section>` : ""}
-      ${pendingQuestChanges[record.id] ? `<section class="section change-review"><div class="section-title"><h3>Pending hirer changes</h3>${badge(pendingQuestChanges[record.id].status, "warning")}</div><div class="change-warning">${ico("history")}<div><strong>Current accepted terms remain active</strong><p>This proposal does not change the participant’s agreement until both parties consent.</p></div></div><div class="change-meta"><div><span>Requested by</span><strong>${escapeActivityText(pendingQuestChanges[record.id].requestedBy)}</strong></div><div><span>Reason</span><strong>${escapeActivityText(pendingQuestChanges[record.id].reason)}</strong></div></div><div class="change-table"><div class="change-row change-head"><span>Field</span><span>Accepted value</span><span>Proposed value</span></div>${pendingQuestChanges[record.id].changes.map((change) => `<div class="change-row"><strong>${escapeActivityText(change[0])}</strong><span>${escapeActivityText(change[1])}</span><span>${escapeActivityText(change[2])}</span></div>`).join("")}</div><div class="response-block"><h3>Participant consent</h3>${participantConsentRows(pendingQuestChanges[record.id].responses)}</div><div class="change-oversight"><strong>Admin oversight only</strong><p>Do not approve or reject this edit. Intervene only if a participant files a dispute or the proposed terms violate marketplace policy.</p></div></section>` : ""}
+      ${pendingQuestChanges[record.id] ? `<section class="section change-review"><div class="section-title"><h3>Pending hirer changes</h3>${badge("EDIT_REQUEST_PENDING", "warning")}</div><div class="change-warning">${ico("history")}<div><strong>Current accepted terms remain active</strong><p>This proposal does not change the participant’s agreement until both parties consent.</p></div></div><div class="change-meta"><div><span>Requested by</span><strong>${escapeActivityText(pendingQuestChanges[record.id].requestedBy)}</strong></div><div><span>Reason</span><strong>${escapeActivityText(pendingQuestChanges[record.id].reason)}</strong></div></div><div class="change-table"><div class="change-row change-head"><span>Field</span><span>Accepted value</span><span>Proposed value</span></div>${pendingQuestChanges[record.id].changes.map((change) => `<div class="change-row"><strong>${escapeActivityText(change[0])}</strong><span>${escapeActivityText(change[1])}</span><span>${escapeActivityText(change[2])}</span></div>`).join("")}</div><div class="response-block"><h3>Participant consent</h3>${participantConsentRows(pendingQuestChanges[record.id].responses)}</div><div class="change-oversight"><strong>Admin oversight only</strong><p>Do not approve or reject this edit. Intervene only if a participant files a dispute or the proposed terms violate marketplace policy.</p></div></section>` : ""}
       <section class="section"><div class="section-title"><h3>Hirer</h3>${giverProfileLink(detail, "View profile", "link")}</div>${giverProfile(detail)}</section>
       <section class="section"><h3>Schedule and location</h3><div class="facts"><div class="fact"><span>Starts</span><strong>${escapeActivityText(detail.schedule[0])}</strong></div><div class="fact"><span>Due</span><strong>${escapeActivityText(detail.schedule[1])}</strong></div><div class="fact"><span>Application window</span><strong>${escapeActivityText(detail.schedule[2])}</strong></div><div class="fact"><span>Location</span><strong>${escapeActivityText(detail.location[0])}</strong><small>${escapeActivityText(detail.location[1])}</small></div></div></section>
       <section class="section"><div class="section-title"><h3>${participantSectionTitle(record, participants, started)}</h3><span class="section-count">${participants.length}</span></div>${relatedRows(participants)}</section>
       ${proofSubmissionsPanel(detail.proof, record)}
-      <section class="section"><h3>Financial record</h3><div class="financial-line"><span>Funded by hirer</span><strong>฿${fmt(record.amount)}</strong></div><div class="financial-line"><span>Platform fee on completion</span><strong>฿${fmt(Math.round(record.amount * 0.05))}</strong></div><div class="financial-line total"><span>${record.teamQuest ? "Team receives (total)" : "Worker receives"}</span><strong>฿${fmt(Math.round(record.amount * 0.95))}</strong></div><p class="audit-note">Funds are held in the quest ledger until approval or dispute resolution.</p></section>
+      <section class="section"><h3>Financial record</h3><div class="financial-line"><span>Quest Funding Total</span><strong>${questSatangLabel(record.fundingTotalSatang)}</strong></div><div class="financial-line"><span>Quest Reward</span><strong>${questSatangLabel(record.questRewardSatang)}</strong></div><div class="financial-line"><span>Platform Fee</span><strong>${questSatangLabel(record.platformFeeSatang)}</strong></div><div class="financial-line"><span>Platform Fee policy</span><strong>${typeof record.platformFeeBps === "number" ? `${record.platformFeeBps} bps · rounding ${record.feeRoundingMode ?? "UP"}` : "Not provided by the Admin API"}</strong></div><p class="audit-note">Funds are held in the Funding Reservation until approval or Dispute Case resolution.</p></section>
       <section class="section"><h3>Overall quest timeline</h3>${timeline(detail.activity, { showDetails: false })}</section>
     </div>
-    <div class="drawer-actions"><button class="btn" data-action="Hide quest">Hide quest</button><a class="btn" href="/quests/${encodeURIComponent(record.id)}">Full quest detail</a>${record.status === "Disputed" && relatedDispute ? `<a class="btn primary" href="/disputes/${encodeURIComponent(relatedDispute.id)}">Review dispute</a>` : ""}</div>`;
+    <div class="drawer-actions"><button class="btn" data-action="${hidden ? "Restore quest" : "Hide quest"}">${hidden ? "Restore quest" : "Hide quest"}</button><a class="btn" href="/quests/${encodeURIComponent(record.id)}">Full quest detail</a>${questState === "QUEST_FAILED" && relatedDispute ? `<a class="btn primary" href="/disputes/${encodeURIComponent(relatedDispute.id)}">Review dispute</a>` : ""}</div>`;
     const closeButton = drawer.querySelector<HTMLButtonElement>("#close");
     closeButton?.addEventListener("click", closeDrawer);
     scrim.addEventListener("click", closeDrawer, { once: true });

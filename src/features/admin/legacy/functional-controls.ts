@@ -1,4 +1,5 @@
 import type { LegacyAdminRuntime } from "./runtime";
+import { openEvidenceReference } from "./evidence-viewer";
 
 const initializedDocuments = new WeakSet<Document>();
 
@@ -40,7 +41,22 @@ export function initializeFunctionalControls(document: Document, runtime: Legacy
     if (!button || button.disabled || button.dataset.action || button.dataset.chatUser) return;
 
     const action = button.dataset.functionalAction;
-    if (button.matches(".file-row, .evidence-item")) {
+    if (button.matches(".evidence-item")) {
+      event.preventDefault();
+      const reference = button.dataset.evidenceRef;
+      if (!reference) {
+        runtime.toast("This record has no Evidence Reference.");
+        return;
+      }
+      void openEvidenceReference(
+        document,
+        runtime,
+        reference,
+        button.querySelector("strong")?.textContent || "Evidence",
+      );
+      return;
+    }
+    if (button.matches(".file-row")) {
       event.preventDefault();
       const previewImage = button.querySelector("img");
       openUtilityPreview(

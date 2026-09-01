@@ -3,6 +3,7 @@ import type {
   LegacyRecord,
 } from "./runtime";
 import type { ModerationPageContext } from "./dispute-detail";
+import { payoutStatusFor, questStateFor, reportCaseStatusFor, walletStatusFor } from "../domain/rulebook";
 
 export type UserReview = {
   reviewer: string;
@@ -107,8 +108,6 @@ export function initializeUserPage(context: UserPageContext): UserPageApi {
   const {
     data,
     main,
-    closeActiveLayer,
-    showModalLayer,
     openDrawer,
     icon: ico,
     escapeActivityText,
@@ -131,7 +130,6 @@ export function initializeUserPage(context: UserPageContext): UserPageApi {
     adminDateTime,
     currentAdminName,
   } = context;
-  const activeCustomLayerClose = closeActiveLayer;
   const userPageId =
     context.recordId ||
     new URLSearchParams(context.search).get("id") ||
@@ -248,7 +246,7 @@ function userPageInitials(name: unknown): string {
 }
 
 function userPageStatus(user: UserRecord): string {
-  return user.status === "Normal" ? "Active" : String(user.status);
+  return walletStatusFor(user.walletStatus ?? user.status);
 }
 
 function userPageFaculty(user: UserRecord): string {
@@ -277,7 +275,7 @@ function userPageHistory(user: UserRecord): LegacyHistoryEntry[] {
 }
 
 function userPageActionButtons(user: UserRecord): string {
-  if (["Temp ban", "Perm ban"].includes(String(user.status))) return '<p class="audit-note">No manual penalty override is available. The SRS duration or permanent ban rule applies.</p>';
+  if (["FROZEN", "SUSPENDED", "CLOSED"].includes(userPageStatus(user))) return '<p class="audit-note">No manual penalty override is available. The SRS duration or permanent ban rule applies.</p>';
   return '<button class="btn primary" data-user-page-penalty="apply">Record violation</button>';
 }
 
@@ -292,10 +290,10 @@ function userPageExperience(user: UserRecord): string {
 }
 
 function userPageWorks(user: UserRecord): string {
-  const quests = userQuestRecords(user).filter((quest) => quest.status === "Completed").slice(0, 2);
+  const quests = userQuestRecords(user).filter((quest) => questStateFor(quest.questState ?? quest.status) === "QUEST_COMPLETED").slice(0, 2);
   const works: LegacyRecord[] = quests.length
     ? quests
-    : [{ id: "—", title: "Marketplace contribution", person: "", other: "University project", status: "Completed", tone: "success", amount: null, age: "" }];
+    : [{ id: "—", title: "Marketplace contribution", person: "", other: "University project", status: "QUEST_COMPLETED", tone: "success", amount: null, age: "" }];
   return `<section class="user-detail-panel"><div class="user-panel-heading"><h2>My Works</h2><span class="section-count">${works.length}</span></div><div class="user-work-grid">${works.map((work, index) => `<article class="user-work-item"><span class="user-work-thumb" aria-hidden="true">${index === 0 ? "▦" : "◈"}</span><strong>${userPageEscape(work.title)}</strong><span>${userPageEscape(work.other || "University project")} · ${userPageEscape(work.teamQuest ? "Team quest" : "Individual quest")}</span></article>`).join("")}</div></section>`;
 }
 
@@ -309,13 +307,13 @@ function userPagePayoutRecords(user: UserRecord): Array<{ record: LegacyRecord; 
 function userPagePayoutHistory(user: UserRecord, compact = false): string {
   const payoutRecords = userPagePayoutRecords(user),
     totalEarned = completedPayoutQuests(user).reduce((total, quest) => total + payoutEarningForQuest(quest), 0),
-    completed = payoutRecords.filter(({ record }) => record.status === "Completed"),
-    inFlight = payoutRecords.filter(({ record }) => ["Needs approval", "Processing"].includes(record.status)),
+    completed = payoutRecords.filter(({ record }) => payoutStatusFor(record.payoutStatus ?? record.status) === "SUCCEEDED"),
+    inFlight = payoutRecords.filter(({ record }) => ["PENDING_ADMIN_APPROVAL", "SUBMITTED_TO_PROVIDER", "PROVIDER_PENDING"].includes(payoutStatusFor(record.payoutStatus ?? record.status))),
     shownRecords = compact ? payoutRecords.slice(0, 5) : payoutRecords,
     headingAction = compact && payoutRecords.length > shownRecords.length
       ? '<button class="link" type="button" data-user-tab="payouts">View all</button>'
       : "";
-  return `<section class="user-detail-panel${compact ? " user-payout-preview" : " user-tab-panel"}"><div class="user-panel-heading"><div><h2>Payout history</h2>${compact ? `<p>Total earned ฿${fmt(totalEarned)} · Recent requests and transfer outcomes for this account.</p>` : `<p>${payoutRecords.length} payout records · ${completed.length} completed.</p>`}</div><div class="user-panel-heading-actions">${headingAction}<span class="section-count">${payoutRecords.length}</span></div></div>${!compact && payoutRecords.length ? `<div class="user-payout-stat-list"><div><strong>฿${fmt(totalEarned)}</strong><span>Total earned</span></div><div><strong>฿${fmt(completed.reduce((total, entry) => total + Number(entry.record.amount || 0), 0))}</strong><span>Paid out</span></div><div><strong>฿${fmt(inFlight.reduce((total, entry) => total + Number(entry.record.amount || 0), 0))}</strong><span>In progress</span></div><div><strong>${payoutRecords.length}</strong><span>Total requests</span></div></div>` : ""}${shownRecords.length ? `<div class="user-payout-list">${shownRecords.map(({ record, index }) => `<button class="user-payout-row" type="button" data-user-payout="${index}" aria-label="Open payout ${userPageEscape(record.id)}"><span class="user-payout-primary"><strong>${userPageEscape(record.id)}</strong><small>${userPageDate(record.requestedAt)}</small><small>${userPageEscape(record.questId || record.other || "Quest")}</small></span><span class="user-payout-secondary"><strong>฿${fmt(record.amount)}</strong>${badge(record.status, record.tone)}</span></button>`).join("")}</div>` : '<div class="empty"><h3>No payout history</h3><p>This account has no payout records.</p></div>'}</section>`;
+  return `<section class="user-detail-panel${compact ? " user-payout-preview" : " user-tab-panel"}"><div class="user-panel-heading"><div><h2>Payout history</h2>${compact ? `<p>Total earned ฿${fmt(totalEarned)} · Recent requests and transfer outcomes for this account.</p>` : `<p>${payoutRecords.length} payout records · ${completed.length} completed.</p>`}</div><div class="user-panel-heading-actions">${headingAction}<span class="section-count">${payoutRecords.length}</span></div></div>${!compact && payoutRecords.length ? `<div class="user-payout-stat-list"><div><strong>฿${fmt(totalEarned)}</strong><span>Total earned</span></div><div><strong>฿${fmt(completed.reduce((total, entry) => total + Number(entry.record.amount || 0), 0))}</strong><span>Paid out</span></div><div><strong>฿${fmt(inFlight.reduce((total, entry) => total + Number(entry.record.amount || 0), 0))}</strong><span>In progress</span></div><div><strong>${payoutRecords.length}</strong><span>Total requests</span></div></div>` : ""}${shownRecords.length ? `<div class="user-payout-list">${shownRecords.map(({ record, index }) => `<button class="user-payout-row" type="button" data-user-payout="${index}" aria-label="Open payout ${userPageEscape(record.id)}"><span class="user-payout-primary"><strong>${userPageEscape(record.id)}</strong><small>${userPageDate(record.requestedAt)}</small><small>${userPageEscape(record.questId || record.other || "Quest")}</small></span><span class="user-payout-secondary"><strong>฿${fmt(record.amount)}</strong>${badge(payoutStatusFor(record.payoutStatus ?? record.status), record.tone)}</span></button>`).join("")}</div>` : '<div class="empty"><h3>No payout history</h3><p>This account has no payout records.</p></div>'}</section>`;
 }
 
 function userPageCertificates(user: UserRecord): string {
@@ -357,7 +355,7 @@ function userPageModerationSummary(user: UserRecord): string {
 
 function userPageRecentReports(user: UserRecord): string {
   const reports = userReportsFor(user).slice(0, 3);
-  return `<section class="user-detail-panel"><div class="user-panel-heading"><h2>Recent Reports</h2><span class="section-count">${reports.length}</span></div>${reports.length ? `<div class="user-recent-reports">${reports.map((report) => `<a href="/reports/${encodeURIComponent(report.id)}"><span><strong>${userPageEscape(report.id)}</strong><small>${userPageEscape(report.category)}</small></span>${badge(report.status, report.tone)}</a>`).join("")}</div>` : '<p class="audit-note">No reports have been filed against this account.</p>'}</section>`;
+  return `<section class="user-detail-panel"><div class="user-panel-heading"><h2>Recent Reports</h2><span class="section-count">${reports.length}</span></div>${reports.length ? `<div class="user-recent-reports">${reports.map((report) => `<a href="/reports/${encodeURIComponent(report.id)}"><span><strong>${userPageEscape(report.id)}</strong><small>${userPageEscape(report.category)}</small></span>${badge(reportCaseStatusFor(report.reportCaseStatus ?? report.conductReportStatus ?? report.status, report.decision), report.tone)}</a>`).join("")}</div>` : '<p class="audit-note">No reports have been filed against this account.</p>'}</section>`;
 }
 
 function userPageAdminNotes(user: UserRecord): string {
@@ -377,7 +375,7 @@ function userPageQuestRole(quest: LegacyRecord, user: UserRecord): { label: stri
 }
 
 function userPageQuestStatus(quest: LegacyRecord): { label: string; tone: string } {
-  return { label: quest.status || "Unknown", tone: quest.tone || "neutral" };
+  return { label: questStateFor(quest.questState ?? quest.status), tone: quest.tone || "neutral" };
 }
 
 function userPageQuestDates(quest: LegacyRecord, index: number): { created: string; starts: string; due: string; timestamp: number } {
@@ -397,7 +395,7 @@ function userPageQuestAmount(quest: LegacyRecord, role: { isHirer: boolean }): {
 
 function userPageActivity(user: UserRecord): string {
   const questRecords = userQuestRecords(user);
-  const completedQuests = questRecords.filter((quest) => quest.status === "Completed").length;
+  const completedQuests = questRecords.filter((quest) => questStateFor(quest.questState ?? quest.status) === "QUEST_COMPLETED").length;
   const quests = questRecords.map((quest, index) => {
     const role = userPageQuestRole(quest, user);
     const status = userPageQuestStatus(quest);
@@ -426,7 +424,7 @@ function userPageReviews(user: UserRecord): string {
   });
   const sorted = userPageSortedTableRows("reviews", filtered);
   const pagination = userPagePaginateTable("reviews", sorted);
-  return `<section class="user-detail-panel user-tab-panel"><div class="user-panel-heading"><div><h2>Reviews</h2>${userPageReviewSummary(user)}</div></div><div class="user-review-toolbar"><div class="inline-search search-field">${ico("search")}<input type="search" data-review-search value="${userPageEscape(userPageState.reviewQuery)}" placeholder="Search reviews…" aria-label="Search reviews"></div><div class="user-review-filters" role="group" aria-label="Review filters">${["all", "reported", "hidden"].map((filter) => `<button class="tab ${userPageState.reviewFilter === filter ? "active" : ""}" type="button" data-review-filter="${filter}">${filter[0].toUpperCase() + filter.slice(1)}</button>`).join("")}</div></div>${pagination.total ? `<div class="table-wrap"><table class="data user-detail-table"><thead><tr>${userPageTableSortHeader("reviews", "reviewer", "Reviewer")}${userPageTableSortHeader("reviews", "rating", "Rating")}${userPageTableSortHeader("reviews", "review", "Review")}${userPageTableSortHeader("reviews", "date", "Date")}${userPageTableSortHeader("reviews", "reports", "Reports")}${userPageTableSortHeader("reviews", "status", "Status")}<th scope="col">Action</th></tr></thead><tbody>${pagination.rows.map((review) => `<tr><td><strong>${userPageEscape(review.reviewer)}</strong></td><td>${"★".repeat(review.rating)}</td><td>${userPageEscape(review.review)}</td><td>${userPageEscape(review.date)}</td><td>${review.reports}</td><td>${badge(review.status, review.tone)}</td><td><button class="link" type="button" data-review-action="View" data-review-name="${userPageEscape(review.reviewer)}">View</button> <button class="link" type="button" data-review-action="${review.status === "Hidden" ? "Unhide" : "Hide"}" data-review-index="${reviews.indexOf(review)}" data-review-name="${userPageEscape(review.reviewer)}">${review.status === "Hidden" ? "Unhide" : "Hide"}</button> <button class="link danger-link" type="button" data-review-action="Remove" data-review-index="${reviews.indexOf(review)}" data-review-name="${userPageEscape(review.reviewer)}">Remove</button></td></tr>`).join("")}</tbody></table></div>${userPageTablePagination("reviews", pagination)}` : '<div class="empty"><h3>No matching reviews</h3><p>Try another filter or search term.</p></div>'}</section>`;
+  return `<section class="user-detail-panel user-tab-panel"><div class="user-panel-heading"><div><h2>Reviews</h2>${userPageReviewSummary(user)}</div></div><div class="user-review-toolbar"><div class="inline-search search-field">${ico("search")}<input type="search" data-review-search value="${userPageEscape(userPageState.reviewQuery)}" placeholder="Search reviews…" aria-label="Search reviews"></div><div class="user-review-filters" role="group" aria-label="Review filters">${["all", "reported", "hidden"].map((filter) => `<button class="tab ${userPageState.reviewFilter === filter ? "active" : ""}" type="button" data-review-filter="${filter}">${filter[0].toUpperCase() + filter.slice(1)}</button>`).join("")}</div></div>${pagination.total ? `<div class="table-wrap"><table class="data user-detail-table"><thead><tr>${userPageTableSortHeader("reviews", "reviewer", "Reviewer")}${userPageTableSortHeader("reviews", "rating", "Rating")}${userPageTableSortHeader("reviews", "review", "Review")}${userPageTableSortHeader("reviews", "date", "Date")}${userPageTableSortHeader("reviews", "reports", "Reports")}${userPageTableSortHeader("reviews", "status", "Status")}<th scope="col">Action</th></tr></thead><tbody>${pagination.rows.map((review) => `<tr><td><strong>${userPageEscape(review.reviewer)}</strong></td><td>${"★".repeat(review.rating)}</td><td>${userPageEscape(review.review)}</td><td>${userPageEscape(review.date)}</td><td>${review.reports}</td><td>${badge(review.status, review.tone)}</td><td><button class="link" type="button" data-review-action="View" data-review-name="${userPageEscape(review.reviewer)}">View</button> <button class="link" type="button" data-review-action="${review.status === "Hidden" ? "Unhide" : "Hide"}" data-review-index="${reviews.indexOf(review)}" data-review-name="${userPageEscape(review.reviewer)}">${review.status === "Hidden" ? "Unhide" : "Hide"}</button></td></tr>`).join("")}</tbody></table></div>${userPageTablePagination("reviews", pagination)}` : '<div class="empty"><h3>No matching reviews</h3><p>Try another filter or search term.</p></div>'}</section>`;
 }
 
 function userPageReviewsData(user: UserRecord): UserReview[] {
@@ -454,60 +452,11 @@ function toggleReviewVisibility(user: UserRecord, reviewIndex: number): void {
   toast(isHidden ? "Review unhidden" : "Review hidden");
 }
 
-function openReviewRemovalDialog(user: UserRecord, reviewIndex: number): void {
-  const review = userPageReviewsData(user)[reviewIndex];
-  if (!review) return;
-  activeCustomLayerClose?.();
-  const overlay = document.createElement("div");
-  overlay.className = "party-chat-overlay";
-  overlay.innerHTML = `<section class="party-chat-modal penalty-modal review-remove-modal" role="dialog" aria-modal="true" aria-labelledby="review-remove-title" aria-describedby="review-remove-copy"><div class="chat-modal-head"><div><strong id="review-remove-title">Remove review</strong><small>${userPageEscape(review.reviewer)}</small></div><button class="icon close-review-remove" type="button" aria-label="Close remove review confirmation"><span class="close-lines"></span></button></div><div class="review-remove-content"><p id="review-remove-copy">This review will be permanently removed from the user's profile.</p><label for="review-remove-reason">Reason for removing this review <span aria-hidden="true">*</span><textarea id="review-remove-reason" rows="3" minlength="8" maxlength="500" required aria-describedby="review-remove-reason-help review-remove-reason-error" placeholder="Explain why this review should be removed…"></textarea><span class="field-help" id="review-remove-reason-help"><span>Required for the permanent audit trail</span><span data-review-remove-count>0 / 500</span></span></label><p class="field-error" id="review-remove-reason-error" role="alert" hidden>Enter at least 8 characters before confirming.</p><div class="review-remove-actions"><button class="btn review-remove-cancel" type="button">Cancel</button><button class="btn danger review-remove-confirm" type="button" disabled>Confirm remove</button></div></div></section>`;
-  const close = showModalLayer(overlay, { initialFocus: "#review-remove-reason" });
-  const closeButton = query<HTMLElement>(overlay, ".close-review-remove");
-  if (closeButton) closeButton.onclick = close;
-  overlay.addEventListener("click", (event) => {
-    if (event.target === overlay) close();
-  });
-  const cancelButton = query<HTMLElement>(overlay, ".review-remove-cancel");
-  if (cancelButton) cancelButton.onclick = close;
-  const reason = query<HTMLTextAreaElement>(overlay, "#review-remove-reason");
-  const reasonError = query<HTMLElement>(overlay, "#review-remove-reason-error");
-  const reasonCount = query<HTMLElement>(overlay, "[data-review-remove-count]");
-  const confirmButton = query<HTMLButtonElement>(overlay, ".review-remove-confirm");
-  if (!reason || !reasonError || !reasonCount || !confirmButton) return;
-  const validateReason = () => {
-    const valid = reason.value.trim().length >= 8;
-    confirmButton.disabled = !valid;
-    reason.setAttribute("aria-invalid", String(!valid && reason.value.length > 0));
-    reasonError.hidden = true;
-    reasonCount.textContent = `${reason.value.length} / 500`;
-    return valid;
-  };
-  reason.oninput = validateReason;
-  confirmButton.onclick = () => {
-    if (!validateReason()) {
-      reason.setAttribute("aria-invalid", "true");
-      reasonError.hidden = false;
-      reason.focus();
-      return;
-    }
-    const reviews = userPageReviewsData(user);
-    const removed = reviews.splice(reviewIndex, 1)[0];
-    if (!removed) return close();
-    const decisionReason = reason.value.trim();
-    persistAdminData();
-    recordActivity("Review removed", `${user.id} · ${user.title} · ${removed.reviewer} · Reason: ${decisionReason}`);
-    close();
-    userPageState.tab = "reviews";
-    renderUserPage();
-    toast("Review removed");
-  };
-}
-
 function userPageReports(user: UserRecord): string {
   const reports = userReportsFor(user);
   const sorted = userPageSortedTableRows("reports", reports);
   const pagination = userPagePaginateTable("reports", sorted);
-  return `<section class="user-detail-panel user-tab-panel"><div class="user-panel-heading"><div><h2>Reports</h2><p>Reports filed against this account.</p></div><span class="section-count">${reports.length}</span></div>${pagination.total ? `<div class="table-wrap"><table class="data user-detail-table"><thead><tr>${userPageTableSortHeader("reports", "id", "Report")}${userPageTableSortHeader("reports", "category", "Type")}${userPageTableSortHeader("reports", "reporterName", "Reported by")}${userPageTableSortHeader("reports", "details", "Reason")}${userPageTableSortHeader("reports", "status", "Status")}${userPageTableSortHeader("reports", "reportedAt", "Reported")}<th scope="col">Action</th></tr></thead><tbody>${pagination.rows.map((report) => `<tr><td><strong>${userPageEscape(report.id)}</strong></td><td>${userPageEscape(report.category)}</td><td>${userPageEscape(report.reporterName)}</td><td>${userPageEscape(report.details)}</td><td>${badge(report.status, report.tone)}</td><td>${userPageDate(report.reportedAt)}</td><td><a class="link" href="/reports/${encodeURIComponent(report.id)}">View</a></td></tr>`).join("")}</tbody></table></div>${userPageTablePagination("reports", pagination)}` : '<div class="empty"><h3>No reports received</h3><p>This account has no report records.</p></div>'}</section>`;
+  return `<section class="user-detail-panel user-tab-panel"><div class="user-panel-heading"><div><h2>Reports</h2><p>Reports filed against this account.</p></div><span class="section-count">${reports.length}</span></div>${pagination.total ? `<div class="table-wrap"><table class="data user-detail-table"><thead><tr>${userPageTableSortHeader("reports", "id", "Report")}${userPageTableSortHeader("reports", "category", "Type")}${userPageTableSortHeader("reports", "reporterName", "Reported by")}${userPageTableSortHeader("reports", "details", "Reason")}${userPageTableSortHeader("reports", "status", "Status")}${userPageTableSortHeader("reports", "reportedAt", "Reported")}<th scope="col">Action</th></tr></thead><tbody>${pagination.rows.map((report) => `<tr><td><strong>${userPageEscape(report.id)}</strong></td><td>${userPageEscape(report.category)}</td><td>${userPageEscape(report.reporterName)}</td><td>${userPageEscape(report.details)}</td><td>${badge(reportCaseStatusFor(report.reportCaseStatus ?? report.conductReportStatus ?? report.status, report.decision), report.tone)}</td><td>${userPageDate(report.reportedAt)}</td><td><a class="link" href="/reports/${encodeURIComponent(report.id)}">View</a></td></tr>`).join("")}</tbody></table></div>${userPageTablePagination("reports", pagination)}` : '<div class="empty"><h3>No reports received</h3><p>This account has no report records.</p></div>'}</section>`;
 }
 
 function userPagePenaltyHistory(user: UserRecord): string {
@@ -529,7 +478,7 @@ function userPageTabContent(user: UserRecord): string {
 function userPageSummary(user: UserRecord): string {
   const profile = userPageProfile(user);
   const quests = userQuestRecords(user);
-  const completed = quests.filter((quest) => quest.status === "Completed").length;
+  const completed = quests.filter((quest) => questStateFor(quest.questState ?? quest.status) === "QUEST_COMPLETED").length;
   const reviews = userPageReviewsData(user);
   const rating = reviews.length
     ? (reviews.reduce((total, review) => total + Number(review.rating || 0), 0) / reviews.length).toFixed(1)
@@ -632,10 +581,6 @@ function bindUserPage(user: UserRecord): void {
   queryAll<HTMLElement>(document, "[data-review-action]").forEach((button) => (button.onclick = () => {
     if (["Hide", "Unhide"].includes(button.dataset.reviewAction || "")) {
       toggleReviewVisibility(user, Number(button.dataset.reviewIndex));
-      return;
-    }
-    if (button.dataset.reviewAction === "Remove") {
-      openReviewRemovalDialog(user, Number(button.dataset.reviewIndex));
       return;
     }
     toast(`${button.dataset.reviewAction} review by ${button.dataset.reviewName}.`);

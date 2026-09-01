@@ -1,4 +1,12 @@
 import type { PersistedAdminData } from "../data/admin-records";
+import {
+  QUEST_STATES,
+  disputeCaseStatusFor,
+  payoutStatusFor,
+  questStateFor,
+  isReportCasePending,
+  walletStatusFor,
+} from "../domain/rulebook";
 
 type LegacyRecord = Record<string, unknown>;
 
@@ -50,18 +58,7 @@ export type DashboardModel = {
   activity: DashboardActivity[];
 };
 
-const questStatuses = [
-  "Draft",
-  "Open",
-  "Assigned",
-  "In progress",
-  "Submitted",
-  "Change pending",
-  "Approved",
-  "Disputed",
-  "Completed",
-  "Cancelled",
-] as const;
+const questStatuses = QUEST_STATES;
 
 function isRecord(value: unknown): value is LegacyRecord {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -90,6 +87,12 @@ function tone(record: LegacyRecord, fallback: DashboardTone): DashboardTone {
 }
 
 function statusTone(status: string): DashboardTone {
+  if (["ACTIVE", "QUEST_OPEN", "QUEST_COMPLETED", "SUCCEEDED"].includes(status)) return "success";
+  if (["FROZEN", "REPORT_CASE_PENDING", "CONDUCT_REPORT_PENDING", "DISPUTE_CASE_PENDING", "PENDING_ADMIN_APPROVAL"].includes(status)) return "warning";
+  if (["QUEST_IN_PROGRESS", "SUBMITTED_TO_PROVIDER", "PROVIDER_PENDING"].includes(status)) return "info";
+  if (status === "QUEST_ASSIGNED") return "assigned";
+  if (["QUEST_CANCELLED", "CANCELLED"].includes(status)) return "cancelled";
+  if (["QUEST_DRAFT", "DISPUTE_CASE_DISMISSED", "DISPUTE_CASE_RESOLVED", "REPORT_CASE_DISMISSED", "REPORT_CASE_HIDDEN", "REPORT_CASE_RESTORED", "CONDUCT_REPORT_DISMISSED", "CONDUCT_REPORT_UPHELD", "CLOSED"].includes(status)) return "neutral";
   if (["Normal", "Completed", "Approved", "Open"].includes(status)) return "success";
   if (["Red Flag", "Submitted", "Change pending", "Needs approval"].includes(status)) return "warning";
   if (["In progress", "Processing"].includes(status)) return "info";
@@ -117,10 +120,18 @@ export function dashboardModel(
   const users = records(data, "users");
   const reports = records(data, "reports");
   const quests = records(data, "quests");
-  const activeDisputes = disputes.filter((record) => text(record, "status") === "Active");
-  const pendingPayouts = payouts.filter((record) => text(record, "status") === "Needs approval");
-  const openReports = reports.filter((record) => text(record, "status") === "Active");
-  const reviewUsers = users.filter((record) => ["Red Flag", "Temp ban", "Perm ban"].includes(text(record, "status")));
+  const activeDisputes = disputes.filter((record) => disputeCaseStatusFor(text(record, "disputeCaseStatus") || text(record, "status")) === "DISPUTE_CASE_PENDING");
+  const pendingPayouts = payouts.filter((record) => payoutStatusFor(text(record, "payoutStatus") || text(record, "status")) === "PENDING_ADMIN_APPROVAL");
+  const openReports = reports.filter((record) => isReportCasePending(
+    text(record, "reportCaseStatus") || text(record, "conductReportStatus") || text(record, "status"),
+    text(record, "decision"),
+  ));
+  const reviewUsers = users.filter((record) => {
+    const legacyStatus = text(record, "status");
+    const walletStatus = walletStatusFor(text(record, "walletStatus") || legacyStatus);
+    return ["Red Flag", "Temp ban", "Perm ban"].includes(legacyStatus)
+      || ["FROZEN", "SUSPENDED", "CLOSED"].includes(walletStatus);
+  });
   const decisions = [
     ...activeDisputes.map((record): DashboardDecision => ({
       id: text(record, "id"),
@@ -152,23 +163,23 @@ export function dashboardModel(
     decisions,
     questStatusCounts: questStatuses.map((status) => ({
       status,
-      count: quests.filter((record) => text(record, "status") === status).length,
+      count: quests.filter((record) => questStateFor(text(record, "questState") || text(record, "status")) === status).length,
       tone: statusTone(status),
     })),
     payouts: pendingPayouts.slice(0, 3).map((record) => ({
       id: text(record, "id"),
       title: text(record, "title"),
-      detail: text(record, "status"),
+      detail: payoutStatusFor(text(record, "payoutStatus") || text(record, "status")),
       amount: number(record, "amount"),
-      status: text(record, "status"),
+      status: payoutStatusFor(text(record, "payoutStatus") || text(record, "status")),
       tone: tone(record, "warning"),
     })),
     users: reviewUsers.slice(0, 3).map((record) => ({
       id: text(record, "id"),
       title: text(record, "title"),
       detail: text(record, "age"),
-      status: text(record, "status"),
-      tone: tone(record, statusTone(text(record, "status"))),
+      status: walletStatusFor(text(record, "walletStatus") || text(record, "status")),
+      tone: tone(record, statusTone(walletStatusFor(text(record, "walletStatus") || text(record, "status")))),
     })),
     activity: activity.slice(0, 3),
   };

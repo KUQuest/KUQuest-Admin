@@ -24,14 +24,16 @@ import {
 } from "./runtime-core";
 import { createOverlayRuntime } from "./overlay-runtime";
 import { setActiveNavigation as setActiveNavigationCore } from "./navigation-state";
+import {
+  disputeCaseStatusFor,
+  isReportCasePending,
+  payoutStatusFor,
+} from "../domain/rulebook";
 
 export {
   addUserHistory,
   adminDateTime,
   badge,
-  bindChatAttachment,
-  chatMessage,
-  chatTimeLabel,
   completedPayoutQuests,
   confirmedViolationCount,
   currentAdminName,
@@ -137,9 +139,9 @@ export const showDrawerLayer = overlayRuntime.showDrawerLayer;
 export const showModalLayer = overlayRuntime.showModalLayer;
 function refreshNavigationCounts(): void {
   const counts = {
-    disputes: data.disputes.filter((record) => record.status === "Active").length,
-    payouts: data.payouts.filter((record) => record.status === "Needs approval").length,
-    reports: data.reports.filter((record) => record.status === "Active").length,
+    disputes: data.disputes.filter((record) => disputeCaseStatusFor(record.disputeCaseStatus ?? record.status) === "DISPUTE_CASE_PENDING").length,
+    payouts: data.payouts.filter((record) => payoutStatusFor(record.payoutStatus ?? record.status) === "PENDING_ADMIN_APPROVAL").length,
+    reports: data.reports.filter((record) => isReportCasePending(record.reportCaseStatus ?? record.conductReportStatus ?? record.status, record.decision)).length,
   };
   Object.entries(counts).forEach(([view, count]) => {
     const counter = document.querySelector<HTMLElement>(`[data-view="${view}"] b`);
@@ -205,8 +207,9 @@ function openPayoutDrawer(index: number): void {
   const record = data.payouts[index];
   if (!record) return;
   const context = payoutDecisionContext(record);
+  const status = payoutStatusFor(record.payoutStatus ?? record.status);
   showDrawerLayer();
-  drawer.innerHTML = `<div class="drawer-top"><strong>${escapeActivityText(record.id)}</strong><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div><div class="drawer-body"><div class="drawer-title"><span class="att-icon neutral">${ico("wallet")}</span><div><h2>${escapeActivityText(record.title)}</h2><p>${escapeActivityText(record.person)} · ${escapeActivityText(record.other)}</p></div></div><div class="facts"><div class="fact"><span>Status</span>${badge(record.status, record.tone)}</div><div class="fact"><span>Payout amount</span><strong>฿${fmt(record.amount)}</strong></div><div class="fact"><span>Record</span><strong>${escapeActivityText(record.id)}</strong></div></div><section class="section"><h3>${escapeActivityText(context.heading)}</h3><p>${escapeActivityText(context.copy)}</p><p class="audit-note">${escapeActivityText(context.next)}</p></section><section class="section"><h3>Financial summary</h3><div class="facts"><div class="fact"><span>Available to withdraw</span><strong>฿${fmt(payoutFinancials(record).available)}</strong></div><div class="fact"><span>Remaining after payout</span><strong>฿${fmt(payoutFinancials(record).remaining)}</strong></div></div></section></div><div class="drawer-actions">${record.status === "Needs approval" ? '<button class="btn" data-action="Reject payout">Reject payout</button><button class="btn primary" data-action="Approve payout">Approve payout</button>' : '<button class="btn" id="close-payout-record">Close record</button>'}</div>`;
+  drawer.innerHTML = `<div class="drawer-top"><strong>${escapeActivityText(record.id)}</strong><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div><div class="drawer-body"><div class="drawer-title"><span class="att-icon neutral">${ico("wallet")}</span><div><h2>${escapeActivityText(record.title)}</h2><p>${escapeActivityText(record.person)} · ${escapeActivityText(record.other)}</p></div></div><div class="facts"><div class="fact"><span>Status</span>${badge(status, record.tone)}</div><div class="fact"><span>Payout amount</span><strong>฿${fmt(record.amount)}</strong></div><div class="fact"><span>Record</span><strong>${escapeActivityText(record.id)}</strong></div></div><section class="section"><h3>${escapeActivityText(context.heading)}</h3><p>${escapeActivityText(context.copy)}</p><p class="audit-note">${escapeActivityText(context.next)}</p></section><section class="section"><h3>Financial summary</h3><div class="facts"><div class="fact"><span>Available to withdraw</span><strong>฿${fmt(payoutFinancials(record).available)}</strong></div><div class="fact"><span>Remaining after payout</span><strong>฿${fmt(payoutFinancials(record).remaining)}</strong></div></div></section></div><div class="drawer-actions">${status === "PENDING_ADMIN_APPROVAL" ? '<button class="btn" data-action="Reject payout">Reject payout</button><button class="btn primary" data-action="Approve payout">Approve payout</button>' : '<button class="btn" id="close-payout-record">Close record</button>'}</div>`;
   drawer.querySelector<HTMLElement>("#close")?.addEventListener("click", closeDrawer);
   drawer.querySelector<HTMLElement>("#close-payout-record")?.addEventListener("click", closeDrawer);
   scrim.onclick = closeDrawer;

@@ -4,7 +4,6 @@ import {
   adminDateTime,
   applyDemoAction as applyDemoActionCore,
   applyReportDecision as applyReportDecisionCore,
-  autoRejectUnavailablePayout as autoRejectUnavailablePayoutCore,
   badge,
   completedPayoutQuests,
   confirmedViolationCount,
@@ -34,14 +33,21 @@ import {
 import { createOverlayRuntime } from "./overlay-runtime";
 import { setActiveNavigation as setActiveNavigationCore } from "./navigation-state";
 import { recordsFor } from "./runtime-data";
+import {
+  QUEST_STATES,
+  disputeCaseStatusFor,
+  hasHiddenQuestOverlay,
+  isReportCasePending,
+  payoutStatusFor,
+  questStateFor,
+  reportCaseStatusFor,
+  walletStatusFor,
+} from "../domain/rulebook";
 
 export {
   addUserHistory,
   adminDateTime,
   badge,
-  bindChatAttachment,
-  chatMessage,
-  chatTimeLabel,
   completedPayoutQuests,
   confirmedViolationCount,
   currentAdminName,
@@ -70,11 +76,37 @@ export {
 } from "./runtime-core";
 
 type LegacyView = "home" | "disputes" | "quests" | "users" | "payouts" | "reports" | "policies" | "activity";
-type IconName = "home" | "scale" | "quest" | "users" | "wallet" | "settings" | "history" | "menu" | "search" | "filter" | "paperclip" | "check" | "user" | "flag";
+type IconName = "home" | "scale" | "quest" | "users" | "wallet" | "settings" | "history" | "menu" | "search" | "filter" | "check" | "user" | "flag";
 type LegacyForm = HTMLFormElement & {
   elements: HTMLFormControlsCollection & Record<string, LegacyDomElement>;
 };
 type ConfirmActionOptions = LegacyModalOptions;
+
+function statusForView(view: string, record: LegacyRecord): string {
+  if (view === "quests") return questStateFor(record.questState ?? record.status);
+  if (view === "disputes") return disputeCaseStatusFor(record.disputeCaseStatus ?? record.status);
+  if (view === "payouts") return payoutStatusFor(record.payoutStatus ?? record.status);
+  if (view === "reports") return reportCaseStatusFor(record.reportCaseStatus ?? record.conductReportStatus ?? record.status, record.decision);
+  if (view === "users") return walletStatusFor(record.walletStatus ?? record.status);
+  return record.status;
+}
+
+function questStatusTone(status: string): string {
+  if (status === "QUEST_FAILED") return "danger";
+  if (status === "QUEST_CANCELLED") return "cancelled";
+  if (status === "QUEST_COMPLETED") return "success";
+  if (status === "QUEST_IN_PROGRESS") return "info";
+  if (status === "QUEST_ASSIGNED") return "assigned";
+  if (status === "QUEST_DRAFT") return "neutral";
+  return "success";
+}
+
+function memberNeedsReview(record: LegacyRecord): boolean {
+  const legacyStatus = record.status;
+  const walletStatus = walletStatusFor(record.walletStatus ?? legacyStatus);
+  return ["Red Flag", "Temp ban", "Perm ban"].includes(legacyStatus)
+    || ["FROZEN", "SUSPENDED", "CLOSED"].includes(walletStatus);
+}
 
 const navItems: Array<[LegacyView, IconName, string, string]> = [
   ["home", "home", "Overview", ""],
@@ -137,7 +169,7 @@ export const pageHead = (t: string, p: string, a = ""): string =>
 function homeDecisions(): Array<{ view: keyof LegacyRuntimeData; record: LegacyRecord; priority: number; icon: string; title: string; detail: string; metric: string; age?: string }> {
   const decisions: Array<{ view: keyof LegacyRuntimeData; record: LegacyRecord; priority: number; icon: string; title: string; detail: string; metric: string; age?: string }> = [
     ...data.disputes
-      .filter((record) => record.status === "Active")
+      .filter((record) => disputeCaseStatusFor(record.disputeCaseStatus ?? record.status) === "DISPUTE_CASE_PENDING")
       .map((record) => ({
         view: "disputes" as const,
         record,
@@ -149,29 +181,29 @@ function homeDecisions(): Array<{ view: keyof LegacyRuntimeData; record: LegacyR
         age: record.disputeDate,
       })),
     ...data.payouts
-      .filter((record) => record.status === "Needs approval")
+      .filter((record) => payoutStatusFor(record.payoutStatus ?? record.status) === "PENDING_ADMIN_APPROVAL")
       .map((record) => ({
         view: "payouts" as const,
         record,
         priority: 300 + Number(record.amount || 0),
         icon: "฿",
-        title: `${record.status} payout`,
+        title: `${payoutStatusFor(record.payoutStatus ?? record.status)} payout`,
         detail: `${record.id} · ${record.title}`,
         metric: `฿${fmt(record.amount)}`,
       })),
     ...data.users
-      .filter((record) => ["Red Flag", "Temp ban", "Perm ban"].includes(record.status))
+      .filter(memberNeedsReview)
       .map((record) => ({
         view: "users" as const,
         record,
         priority: record.status === "Perm ban" ? 400 : record.status === "Temp ban" ? 350 : 250,
         icon: "♙",
-        title: `${record.status} account`,
+        title: `${walletStatusFor(record.walletStatus ?? record.status)} account`,
         detail: `${record.title} · ${record.age}`,
         metric: "Open review",
       })),
     ...data.reports
-      .filter((record) => record.status === "Active")
+      .filter((record) => isReportCasePending(record.reportCaseStatus ?? record.conductReportStatus ?? record.status, record.decision))
       .map((record) => ({
         view: "reports" as const,
         record,
@@ -211,17 +243,17 @@ function reviewTimestamp(record: LegacyRecord): number {
 
 export function renderHome() {
   const decisions = homeDecisions();
-  const activeDisputes = data.disputes.filter((record) => record.status === "Active"),
-    pendingPayouts = data.payouts.filter((record) => record.status === "Needs approval"),
-    reviewUsers = data.users.filter((record) => ["Red Flag", "Temp ban", "Perm ban"].includes(record.status)),
-    openReports = data.reports.filter((record) => record.status === "Active"),
+  const activeDisputes = data.disputes.filter((record) => disputeCaseStatusFor(record.disputeCaseStatus ?? record.status) === "DISPUTE_CASE_PENDING"),
+    pendingPayouts = data.payouts.filter((record) => payoutStatusFor(record.payoutStatus ?? record.status) === "PENDING_ADMIN_APPROVAL"),
+    reviewUsers = data.users.filter(memberNeedsReview),
+    openReports = data.reports.filter((record) => isReportCasePending(record.reportCaseStatus ?? record.conductReportStatus ?? record.status, record.decision)),
     workLeft = [
       ...activeDisputes,
       ...openReports,
       ...pendingPayouts,
     ],
-    statusCounts: Array<[string, number]> = ["Draft", "Open", "Assigned", "In progress", "Submitted", "Change pending", "Approved", "Disputed", "Completed", "Cancelled"].map((status): [string, number] => [status, data.quests.filter((record) => record.status === status).length]);
-  main.innerHTML = `${pageHead("Overview", "A live snapshot of marketplace risk, money, and work in progress.", '<button class="btn primary" data-jump="disputes">Open review queue</button>')}<section class="dashboard-stats"><div class="stat"><span>Total work left</span><strong>${workLeft.length}</strong><small>Items requiring admin action</small></div></section><div class="grid dashboard-grid"><section class="panel"><div class="panel-head"><div><h2>Needs a decision</h2><p>Showing ${decisions.length} latest dispute/report records</p></div><button class="link" data-jump="activity">View activity</button></div>${decisions.length ? decisions.map((item) => attention(item.view, recordsFor(item.view).indexOf(item.record), item.record.tone, item.icon, item.title, item.detail, item.metric, String(item.age || item.record.age))).join("") : '<div class="empty"><h3>No decisions waiting</h3><p>All current records are clear or processing normally.</p></div>'}</section><aside><section class="panel"><div class="panel-head"><div><h2>Quest flow</h2><p>Current marketplace distribution</p></div><button class="link" data-jump="quests">Open quests</button></div><div class="dashboard-status-list">${statusCounts.map(([status, count]) => `<div><span>${badge(status, status === "Disputed" ? "danger" : ["Submitted", "Change pending"].includes(status) ? "warning" : status === "In progress" ? "info" : "success")}</span><strong>${count}</strong></div>`).join("")}</div></section><section class="panel dashboard-activity"><div class="panel-head"><div><h2>Recent activity</h2><p>Latest administrative trail</p></div></div>${activityList().slice(0, 3).join("")}</section></aside></div><div class="dashboard-lower"><section class="panel"><div class="panel-head"><div><h2>Payout watch</h2><p>Money movement requiring a closer look</p></div><button class="link" data-jump="payouts">Open payouts</button></div>${pendingPayouts.slice(0, 3).map((record) => `<button class="dashboard-row" data-open="payouts:${data.payouts.indexOf(record)}"><span><strong>${record.id}</strong><small>${record.title} · ${record.status}</small></span><strong>฿${fmt(record.amount)}</strong><span>${badge(record.status, record.tone)}</span></button>`).join("") || '<div class="empty"><h3>No payouts need review</h3><p>Processing and completed payouts are moving normally.</p></div>'}</section><section class="panel"><div class="panel-head"><div><h2>User watch</h2><p>Accounts that may need a moderator</p></div><button class="link" data-jump="users">Open users</button></div>${reviewUsers.slice(0, 3).map((record) => `<button class="dashboard-row" data-open="users:${data.users.indexOf(record)}"><span><strong>${record.title}</strong><small>${record.id} · ${record.age}</small></span><span>${badge(record.status, record.tone)}</span></button>`).join("") || '<div class="empty"><h3>No user reviews</h3><p>All accounts are currently in good standing.</p></div>'}</section></div>`;
+    statusCounts: Array<[string, number]> = QUEST_STATES.map((status): [string, number] => [status, data.quests.filter((record) => questStateFor(record.questState ?? record.status) === status).length]);
+  main.innerHTML = `${pageHead("Overview", "A live snapshot of marketplace risk, money, and work in progress.", '<button class="btn primary" data-jump="disputes">Open review queue</button>')}<section class="dashboard-stats"><div class="stat"><span>Total work left</span><strong>${workLeft.length}</strong><small>Items requiring admin action</small></div></section><div class="grid dashboard-grid"><section class="panel"><div class="panel-head"><div><h2>Needs a decision</h2><p>Showing ${decisions.length} latest dispute/report records</p></div><button class="link" data-jump="activity">View activity</button></div>${decisions.length ? decisions.map((item) => attention(item.view, recordsFor(item.view).indexOf(item.record), item.record.tone, item.icon, item.title, item.detail, item.metric, String(item.age || item.record.age))).join("") : '<div class="empty"><h3>No decisions waiting</h3><p>All current records are clear or processing normally.</p></div>'}</section><aside><section class="panel"><div class="panel-head"><div><h2>Quest flow</h2><p>Current marketplace distribution</p></div><button class="link" data-jump="quests">Open quests</button></div><div class="dashboard-status-list">${statusCounts.map(([status, count]) => `<div><span>${badge(status, questStatusTone(status))}</span><strong>${count}</strong></div>`).join("")}</div></section><section class="panel dashboard-activity"><div class="panel-head"><div><h2>Recent activity</h2><p>Latest administrative trail</p></div></div>${activityList().slice(0, 3).join("")}</section></aside></div><div class="dashboard-lower"><section class="panel"><div class="panel-head"><div><h2>Payout watch</h2><p>Money movement requiring a closer look</p></div><button class="link" data-jump="payouts">Open payouts</button></div>${pendingPayouts.slice(0, 3).map((record) => `<button class="dashboard-row" data-open="payouts:${data.payouts.indexOf(record)}"><span><strong>${record.id}</strong><small>${record.title} · ${payoutStatusFor(record.payoutStatus ?? record.status)}</small></span><strong>฿${fmt(record.amount)}</strong><span>${badge(payoutStatusFor(record.payoutStatus ?? record.status), record.tone)}</span></button>`).join("") || '<div class="empty"><h3>No payouts need review</h3><p>Processing and completed payouts are moving normally.</p></div>'}</section><section class="panel"><div class="panel-head"><div><h2>User watch</h2><p>Accounts that may need a moderator</p></div><button class="link" data-jump="users">Open users</button></div>${reviewUsers.slice(0, 3).map((record) => `<button class="dashboard-row" data-open="users:${data.users.indexOf(record)}"><span><strong>${record.title}</strong><small>${record.id} · ${record.age}</small></span><span>${badge(walletStatusFor(record.walletStatus ?? record.status), record.tone)}</span></button>`).join("") || '<div class="empty"><h3>No user reviews</h3><p>All accounts are currently in good standing.</p></div>'}</section></div>`;
   main.querySelector<LegacyDomElement>(".page-head > div > p")?.remove();
   const dashboardStats = main.querySelector<LegacyDomElement>(".dashboard-stats");
   if (dashboardStats) {
@@ -271,20 +303,20 @@ export let renderResource = function renderResource(v: string): void {
   const rows = recordsFor(v),
     tabs =
       v === "disputes"
-        ? ["All", "Active", "Closed"]
+        ? ["All", "DISPUTE_CASE_PENDING", "DISPUTE_CASE_DISMISSED", "DISPUTE_CASE_RESOLVED"]
         : v === "payouts"
-          ? ["All", "Needs approval", "Processing", "Completed", "Rejected"]
+          ? ["All", "PENDING_ADMIN_APPROVAL", "SUBMITTED_TO_PROVIDER", "PROVIDER_PENDING", "SUCCEEDED", "FAILED", "CANCELLED"]
           : v === "quests"
-            ? ["All", "Draft", "Open", "Assigned", "In progress", "Submitted", "Change pending", "Approved", "Disputed", "Completed", "Cancelled", "Hidden"]
+            ? ["All", ...QUEST_STATES]
             : v === "reports"
-              ? ["All", "Active", "Closed"]
-              : ["All", "Normal", "Red Flag", "Temp ban", "Perm ban"];
+              ? ["All", "REPORT_CASE_PENDING", "REPORT_CASE_DISMISSED", "REPORT_CASE_HIDDEN", "REPORT_CASE_RESTORED", "CONDUCT_REPORT_PENDING", "CONDUCT_REPORT_UPHELD", "CONDUCT_REPORT_DISMISSED"]
+              : ["All", "ACTIVE", "FROZEN", "SUSPENDED", "CLOSED"];
   const filtered = rows.filter(
     (r) =>
       `${r.id} ${r.title || ""} ${r.person || ""} ${r.reportedUserName || ""} ${r.reporterName || ""} ${r.category || ""}`
         .toLowerCase()
         .includes(state.query.toLowerCase()) &&
-      (state.tab === "all" || r.status.toLowerCase().includes(state.tab)),
+      (state.tab === "all" || statusForView(v, r).toLowerCase() === state.tab || r.status.toLowerCase().includes(state.tab)),
   );
   const header = heads[v as keyof typeof heads] || [v, ""];
   main.innerHTML = `${pageHead(header[0], header[1])}<section class="panel resource"><div class="tabs">${tabs.map((t) => `<button class="tab ${state.tab === t.toLowerCase() ? "active" : ""}" data-tab="${t.toLowerCase()}">${t}${t === "All" ? ` (${rows.length})` : ""}</button>`).join("")}</div><div class="toolbar"><div class="inline-search"><input id="resource-search" value="${state.query}" placeholder="⌕  Search ${v}…"></div><span class="count">${filtered.length} results</span></div>${filtered.length ? table(v, filtered) : '<div class="empty"><h3>No matching records</h3><p>Try changing your search or selected view.</p></div>'}</section>`;
@@ -295,7 +327,7 @@ export function setRenderResource(renderer: (view: string) => void): void {
 }
 function table(v: string, rows: LegacyRecord[]): string {
   if (v === "reports") {
-    return `<div class="table-wrap"><table class="data report-table"><thead><tr><th>Report</th><th>Reported user</th><th>Submitted by</th><th>Report type</th><th>Status</th></tr></thead><tbody>${rows.map((r) => `<tr data-open="reports:${data.reports.indexOf(r)}"><td><strong>${escapeActivityText(r.id)}</strong><small>${escapeActivityText(r.reportedAt)}</small></td><td><strong>${escapeActivityText(r.reportedUserName)}</strong><small>${escapeActivityText(r.reportedUserId)}</small></td><td><strong>${escapeActivityText(r.reporterName)}</strong><small>${escapeActivityText(r.reporterId)}</small></td><td>${escapeActivityText(r.category)}</td><td>${badge(r.status, r.tone || (r.status === "Closed" ? "neutral" : "warning"))}</td></tr>`).join("")}</tbody></table></div>`;
+    return `<div class="table-wrap"><table class="data report-table"><thead><tr><th>Report</th><th>Reported user</th><th>Submitted by</th><th>Report type</th><th>Status</th></tr></thead><tbody>${rows.map((r) => `<tr data-open="reports:${data.reports.indexOf(r)}"><td><strong>${escapeActivityText(r.id)}</strong><small>${escapeActivityText(r.reportedAt)}</small></td><td><strong>${escapeActivityText(r.reportedUserName)}</strong><small>${escapeActivityText(r.reportedUserId)}</small></td><td><strong>${escapeActivityText(r.reporterName)}</strong><small>${escapeActivityText(r.reporterId)}</small></td><td>${escapeActivityText(r.category)}</td><td>${badge(statusForView("reports", r), r.tone || "warning")}</td></tr>`).join("")}</tbody></table></div>`;
   }
   const h =
     v === "disputes"
@@ -313,10 +345,10 @@ function table(v: string, rows: LegacyRecord[]): string {
           ? ["Student ID", "User", "Email", "Academic profile", "Status"]
           : ["Payout", "Recipient", "Account", "Amount", "Status"];
   const collection = recordsFor(v);
-  return `<div class="table-wrap"><table class="data"><thead><tr>${h.map((x) => `<th>${escapeActivityText(x)}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr data-open="${v}:${collection.indexOf(r)}"><td><strong>${escapeActivityText(r.id)}</strong></td><td><strong>${escapeActivityText(r.title)}</strong>${v === "disputes" ? `<small>${escapeActivityText(r.detail).slice(0, 45)}…</small>` : ""}</td>${v === "disputes" ? "" : `<td><strong>${escapeActivityText(r.person)}</strong></td>`}${v === "disputes" || v === "payouts" ? "" : `<td>${escapeActivityText(r.other)}</td>`}${r.amount !== null ? `<td class="money">฿${fmt(r.amount)}</td>` : ""}<td>${badge(r.status, r.tone)}</td>${v === "disputes" ? `<td>${escapeActivityText(r.disputeDate || "—")}</td><td><strong>${escapeActivityText(disputeTypeLabel(r))}</strong></td>` : ""}</tr>`).join("")}</tbody></table></div>`;
+  return `<div class="table-wrap"><table class="data"><thead><tr>${h.map((x) => `<th>${escapeActivityText(x)}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr data-open="${v}:${collection.indexOf(r)}"><td><strong>${escapeActivityText(r.id)}</strong></td><td><strong>${escapeActivityText(r.title)}</strong>${v === "disputes" ? `<small>${escapeActivityText(r.detail).slice(0, 45)}…</small>` : ""}</td>${v === "disputes" ? "" : `<td><strong>${escapeActivityText(r.person)}</strong></td>`}${v === "disputes" || v === "payouts" ? "" : `<td>${escapeActivityText(r.other)}</td>`}${r.amount !== null ? `<td class="money">฿${fmt(r.amount)}</td>` : ""}<td>${badge(statusForView(v, r), r.tone)}${v === "quests" && hasHiddenQuestOverlay(r) ? '<span class="badge neutral quest-hidden-overlay">Hidden</span>' : ""}</td>${v === "disputes" ? `<td>${escapeActivityText(r.disputeDate || "—")}</td><td><strong>${escapeActivityText(disputeTypeLabel(r))}</strong></td>` : ""}</tr>`).join("")}</tbody></table></div>`;
 }
 export function renderPolicies() {
-  main.innerHTML = `${pageHead(...heads.policies, '<button class="btn">Revision history</button>')}<section class="panel"><div class="panel-head"><div><h2>Current policy · Revision 12</h2><p>Effective 18 July 2026 · authored by Nicha P.</p></div>${badge("Active", "success")}</div><div class="health"><div class="stat"><span>Platform fee</span><strong>5.0%</strong><small>500 basis points</small></div><div class="stat"><span>Funded quest range</span><strong>฿100–50k</strong><small>Per quest</small></div><div class="stat"><span>Payout range</span><strong>฿200–30k</strong><small>Per request</small></div></div><div class="drawer-body"><div class="facts">${[
+  main.innerHTML = `${pageHead(...heads.policies, '<button class="btn">Revision history</button>')}<section class="panel"><div class="panel-head"><div><h2>Current policy · Revision 12</h2><p>Effective 18 July 2026 · authored by Nicha P.</p></div>${badge("ACTIVE", "success")}</div><div class="health"><div class="stat"><span>Platform fee</span><strong>2.00%</strong><small>200 basis points · rounding UP</small></div><div class="stat"><span>Funded quest range</span><strong>฿100–50k</strong><small>Per quest</small></div><div class="stat"><span>Payout range</span><strong>฿200–30k</strong><small>Per request</small></div></div><div class="drawer-body"><div class="facts">${[
     ["Minimum top-up", "฿100"],
     ["Maximum top-up", "฿50,000"],
     ["Review window", "72 hours"],
@@ -440,16 +472,17 @@ function payoutSummarySection(record: LegacyRecord): string {
 function payoutTimingSection(record: LegacyRecord): string {
   const events: Array<[string, string]> = [["Requested", String(record.requestedAt || "Not recorded")]];
   if (record.approvedAt) {
-    events.push(["Approved", String(record.approvedAt)], ["By", String(record.approvedBy || "Admin")]);
+    events.push(["Status", "SUBMITTED_TO_PROVIDER"], ["Approved at", String(record.approvedAt)], ["Approved by", String(record.approvedBy || "Admin")]);
     if (record.approvalReason) events.push(["Approval reason", String(record.approvalReason)]);
   }
-  if (record.rejectedAt) events.push(["Rejected", String(record.rejectedAt)], ["By", String(record.rejectedBy || "Admin")]);
+  if (record.rejectedAt) events.push(["Status", "CANCELLED"], ["Rejected at", String(record.rejectedAt)], ["Rejected by", String(record.rejectedBy || "Admin")]);
   return `<section class="section payout-timing"><h3>Payout timing</h3><div class="payout-audit-list">${events.map(([label, value]) => `<div><span>${escapeActivityText(label)}</span><strong>${escapeActivityText(value)}</strong></div>`).join("")}</div></section>`;
 }
 function payoutOutcomeSection(record: LegacyRecord): string {
   const reason = record.rejectionReason || record.failureReason;
-  if (!reason || !["Rejected", "Failed"].includes(record.status)) return "";
-  return `<section class="section payout-outcome"><h3>${record.status === "Failed" ? "Transfer failure reason" : "Rejection reason"}</h3><p>${escapeActivityText(reason)}</p>${record.rejectionNote ? `<p class="payout-admin-note"><strong>Admin note:</strong> ${escapeActivityText(record.rejectionNote)}</p>` : ""}</section>`;
+  const status = payoutStatusFor(record.payoutStatus ?? record.status);
+  if (!reason || !["CANCELLED", "FAILED"].includes(status)) return "";
+  return `<section class="section payout-outcome"><h3>${status === "FAILED" ? "Transfer failure reason" : "Rejection reason"}</h3><p>${escapeActivityText(reason)}</p>${record.rejectionNote ? `<p class="payout-admin-note"><strong>Admin note:</strong> ${escapeActivityText(record.rejectionNote)}</p>` : ""}</section>`;
 }
 function payoutQuestHistory(record: LegacyRecord): string {
   const quests = completedPayoutQuests(record);
@@ -458,7 +491,7 @@ function payoutQuestHistory(record: LegacyRecord): string {
   return `<div class="payout-quest-history-list">${quests
     .map(
       (quest) =>
-        `<a class="payout-quest-history-row" href="/quests/${encodeURIComponent(quest.id)}"><span><strong>${escapeActivityText(quest.id)} · ${escapeActivityText(quest.title)}</strong><small>${quest.teamQuest ? "Team quest" : "Individual quest"} · Completion status: Completed</small></span><span class="payout-earning-amount"><small>Amount earned</small><strong>฿${fmt(payoutEarningForQuest(quest))}</strong></span></a>`,
+        `<a class="payout-quest-history-row" href="/quests/${encodeURIComponent(quest.id)}"><span><strong>${escapeActivityText(quest.id)} · ${escapeActivityText(quest.title)}</strong><small>${quest.teamQuest ? "Team quest" : "Individual quest"} · Quest State: QUEST_COMPLETED</small></span><span class="payout-earning-amount"><small>Amount earned</small><strong>฿${fmt(payoutEarningForQuest(quest))}</strong></span></a>`,
     )
     .join("")}</div>`;
 }
@@ -466,21 +499,20 @@ function payoutPreviousHistory(record: LegacyRecord): string {
   const previous = payoutPreviousRecords(record);
   if (!previous.length)
     return '<p class="audit-note">No previous payouts are connected to this recipient.</p>';
-  return `<div class="payout-previous-list">${previous.map((payout) => `<div class="payout-previous-row"><span><strong>${escapeActivityText(payout.id)}</strong><small>${escapeActivityText(payout.requestedAt || "Date not recorded")}</small></span><span><strong>฿${fmt(payout.amount)}</strong>${badge(payout.status, payout.tone)}</span></div>`).join("")}</div>`;
+  return `<div class="payout-previous-list">${previous.map((payout) => `<div class="payout-previous-row"><span><strong>${escapeActivityText(payout.id)}</strong><small>${escapeActivityText(payout.requestedAt || "Date not recorded")}</small></span><span><strong>฿${fmt(payout.amount)}</strong>${badge(payoutStatusFor(payout.payoutStatus ?? payout.status), payout.tone)}</span></div>`).join("")}</div>`;
 }
 function reportStatusLabel(report: LegacyRecord): string {
-  if (report.status === "Active") return "Open";
-  return "Closed";
+  return reportCaseStatusFor(report.reportCaseStatus ?? report.conductReportStatus ?? report.status, report.decision);
 }
 function reportStatusTone(report: LegacyRecord): string {
   const label = reportStatusLabel(report);
-  return label === "Open" ? "warning" : "neutral";
+  return isReportCasePending(label) ? "warning" : "neutral";
 }
 function userReportCounts(reports: LegacyRecord[]): { open: number; closed: number } {
   return reports.reduce(
     (counts, report) => {
-      const label = reportStatusLabel(report).toLowerCase();
-      if (label === "open") counts.open += 1;
+      const label = reportStatusLabel(report);
+      if (isReportCasePending(label)) counts.open += 1;
       else counts.closed += 1;
       return counts;
     },
@@ -495,26 +527,28 @@ function userModerationSection(user: LegacyRecord): string {
   const appliedAt = user.statusAppliedAt || user.penalty?.recordedAt || "Not recorded";
   const appliedBy = user.statusAppliedBy || user.penalty?.appliedBy || "Not recorded";
   const expiresAt = user.banExpiresAt || user.penalty?.expiresAt;
-  const activeModeration = user.status !== "Normal";
+  const walletStatus = walletStatusFor(user.walletStatus ?? user.status);
+  const activeModeration = ["Red Flag", "Temp ban", "Perm ban"].includes(user.status)
+    || walletStatus !== "ACTIVE";
   const confirmedViolations = confirmedViolationCount(user);
   const nextOutcome = penaltyOutcomeFor(user);
   const exemption = redFlagExemptionFor(user);
-  return `<section class="section user-moderation"><h3>Moderation</h3><div class="user-context-list"><div><span>Status</span>${badge(user.status, user.tone)}</div><div><span>Confirmed violations</span><strong>${confirmedViolations}</strong></div><div><span>Next outcome</span><strong>${escapeActivityText(penaltyOutcomeLabel(nextOutcome))}</strong></div>${exemption ? `<div><span>Red Flag exemption</span><strong>${exemption.remaining} remaining (${escapeActivityText(exemption.label)})</strong></div>` : ""}<div><span>Reason</span><strong>${escapeActivityText(reason)}</strong></div>${activeModeration ? `<div><span>Applied</span><strong>${escapeActivityText(appliedAt)}</strong></div><div><span>By</span><strong>${escapeActivityText(appliedBy)}</strong></div>${(user.status === "Temp ban" || user.status === "Red Flag") && expiresAt ? `<div><span>Expires</span><strong>${escapeActivityText(expiresAt)}</strong></div>` : ""}` : ""}</div></section>`;
+  return `<section class="section user-moderation"><h3>Moderation</h3><div class="user-context-list"><div><span>Status</span>${badge(walletStatusFor(user.walletStatus ?? user.status), user.tone)}</div><div><span>Confirmed violations</span><strong>${confirmedViolations}</strong></div><div><span>Next outcome</span><strong>${escapeActivityText(penaltyOutcomeLabel(nextOutcome))}</strong></div>${exemption ? `<div><span>Red Flag exemption</span><strong>${exemption.remaining} remaining (${escapeActivityText(exemption.label)})</strong></div>` : ""}<div><span>Reason</span><strong>${escapeActivityText(reason)}</strong></div>${activeModeration ? `<div><span>Applied</span><strong>${escapeActivityText(appliedAt)}</strong></div><div><span>By</span><strong>${escapeActivityText(appliedBy)}</strong></div>${(user.status === "Temp ban" || user.status === "Red Flag") && expiresAt ? `<div><span>Expires</span><strong>${escapeActivityText(expiresAt)}</strong></div>` : ""}` : ""}</div></section>`;
 }
 function userReportsSection(user: LegacyRecord): string {
   const reports = userReportsFor(user);
   const counts = userReportCounts(reports);
-  const summary = `Open ${counts.open} · Closed ${counts.closed}`;
+  const summary = `REPORT_CASE_PENDING ${counts.open} · Closed cases ${counts.closed}`;
   return `<section class="section user-reports"><div class="section-title"><h3>Reports · ${reports.length}</h3><span class="section-count">${reports.length}</span></div><p class="user-report-summary">${summary}</p>${reports.length ? `<div class="user-report-list">${reports.map((report) => `<button type="button" class="user-report-card" data-user-report="${data.reports.indexOf(report)}"><span><strong>${escapeActivityText(report.category)}</strong><small>Reported by ${escapeActivityText(report.reporterName)} · ${escapeActivityText(report.reportedAt || "Date not recorded").replace(/\s+ICT$/, "")}</small></span><span>${badge(reportStatusLabel(report), reportStatusTone(report))}</span></button>`).join("")}</div>` : '<p class="audit-note">No reports have been filed against this account.</p>'}</section>`;
 }
 function userActivitySection(user: LegacyRecord): string {
   const quests = userQuestRecords(user);
-  const count = (status: string) => quests.filter((quest) => quest.status === status).length;
-  return `<section class="section user-activity"><h3>Activity summary</h3><div class="user-activity-list"><div><span>Completed quests</span><strong>${count("Completed")}</strong></div><div><span>Cancelled quests</span><strong>${count("Cancelled")}</strong></div><div><span>Disputed quests</span><strong>${count("Disputed")}</strong></div><div><span>Reports received</span><strong>${userReportsFor(user).length}</strong></div></div></section>`;
+  const count = (status: string) => quests.filter((quest) => questStateFor(quest.questState ?? quest.status) === status).length;
+  return `<section class="section user-activity"><h3>Activity summary</h3><div class="user-activity-list"><div><span>Completed quests</span><strong>${count("QUEST_COMPLETED")}</strong></div><div><span>Cancelled quests</span><strong>${count("QUEST_CANCELLED")}</strong></div><div><span>Failed quests</span><strong>${count("QUEST_FAILED")}</strong></div><div><span>Reports received</span><strong>${userReportsFor(user).length}</strong></div></div></section>`;
 }
 function userPayoutSection(user: LegacyRecord): string {
   const pending = data.payouts.filter(
-    (payout) => payout.title === user.title && ["Needs approval", "Processing"].includes(payout.status),
+    (payout) => payout.title === user.title && ["PENDING_ADMIN_APPROVAL", "SUBMITTED_TO_PROVIDER", "PROVIDER_PENDING"].includes(payoutStatusFor(payout.payoutStatus ?? payout.status)),
   );
   if (!pending.length) return "";
   const amount = pending.reduce((total, payout) => total + Number(payout.amount || 0), 0);
@@ -524,7 +558,7 @@ function userHistorySection(user: LegacyRecord): string {
   const history: LegacyHistoryEntry[] = Array.isArray(user.moderationHistory) && user.moderationHistory.length
     ? user.moderationHistory
     : [{ event: "Account created", at: String(user.accountCreatedAt || "Not recorded"), by: "System", note: "Account created." }];
-  return `<section class="section user-history"><h3>History</h3><div class="user-history-list">${history.map((entry) => `<article class="user-history-entry"><div><strong>${escapeActivityText(entry.event)}</strong><time>${escapeActivityText(entry.at || "Date not recorded")}</time></div>${entry.by ? `<small>By ${escapeActivityText(entry.by)}</small>` : ""}${entry.previousStatus || entry.newStatus ? `<small>Status: ${escapeActivityText(entry.previousStatus || "—")} → ${escapeActivityText(entry.newStatus || "—")}</small>` : ""}${entry.reason ? `<p>Reason: ${escapeActivityText(entry.reason)}</p>` : entry.note ? `<p>${escapeActivityText(entry.note)}</p>` : ""}</article>`).join("")}</div></section>`;
+  return `<section class="section user-history"><h3>History</h3><div class="user-history-list">${history.map((entry) => `<article class="user-history-entry"><div><strong>${escapeActivityText(entry.event)}</strong><time>${escapeActivityText(entry.at || "Date not recorded")}</time></div>${entry.by ? `<small>By ${escapeActivityText(entry.by)}</small>` : ""}${entry.previousStatus || entry.newStatus ? `<small>Status: ${escapeActivityText(entry.previousStatus ? walletStatusFor(entry.previousStatus) : "—")} → ${escapeActivityText(entry.newStatus ? walletStatusFor(entry.newStatus) : "—")}</small>` : ""}${entry.reason ? `<p>Reason: ${escapeActivityText(entry.reason)}</p>` : entry.note ? `<p>${escapeActivityText(entry.note)}</p>` : ""}</article>`).join("")}</div></section>`;
 }
 function userNotesSection(user: LegacyRecord): string {
   const notes = Array.isArray(user.adminNotes) ? user.adminNotes : [];
@@ -532,21 +566,21 @@ function userNotesSection(user: LegacyRecord): string {
 }
 function userDrawerActions(user: LegacyRecord): string {
   const reportButton = '<button class="btn" type="button" data-report-user>Report user</button>';
-  if (["Temp ban", "Perm ban"].includes(user.status)) return reportButton;
+  if (["FROZEN", "SUSPENDED", "CLOSED"].includes(walletStatusFor(user.walletStatus ?? user.status))) return reportButton;
   return `${reportButton}<button class="btn primary" data-penalty-user>Record violation</button>`;
 }
 function userReportDetailStatus(report: LegacyRecord): string {
   return badge(reportStatusLabel(report), reportStatusTone(report));
 }
 function reportPenaltySummary(report: LegacyRecord): string {
-  if (report.status === "Active") return "Pending moderator resolution";
+  if (isReportCasePending(reportStatusLabel(report))) return "Pending moderator resolution";
   if (report.decision === "no-violation" || report.decision === "do-nothing") return "No penalty applied";
   const label = report.decisionLabel || "Penalty applied";
   return report.decisionDays ? `${String(label)} · ${report.decisionDays} days` : String(label);
 }
 function openUserReportDetails(user: LegacyRecord, report: LegacyRecord): void {
-  const isOpen = reportStatusLabel(report) === "Open";
-  drawer.innerHTML = `<div class="drawer-top"><div><strong>${escapeActivityText(report.id)}</strong><small>Report details</small></div><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div><div class="drawer-body user-report-detail"><div class="drawer-title"><span class="att-icon ${isOpen ? "warning" : "neutral"}">${ico("flag")}</span><div><h2>${escapeActivityText(report.category)}</h2><p>Reported user: ${escapeActivityText(user.title)}</p></div></div><section class="section"><h3>Report overview</h3><div class="user-context-list"><div><span>Status</span>${userReportDetailStatus(report)}</div><div><span>Reporter</span><strong>${escapeActivityText(report.reporterName)}</strong></div><div><span>Reported</span><strong>${escapeActivityText(report.reportedAt || "Date not recorded").replace(/\s+ICT$/, "")}</strong></div><div><span>Category</span><strong>${escapeActivityText(report.category)}</strong></div></div></section><section class="section"><h3>Description</h3><p>${escapeActivityText(report.details)}</p></section><section class="section"><h3>Evidence</h3>${report.evidence ? `<button class="evidence-item" data-report-evidence><span class="evidence-state">${ico("check")}</span><span><strong>${escapeActivityText(report.evidence)}</strong><small>Attached by ${escapeActivityText(report.reporterName)}</small></span><span>Open</span></button>` : '<p class="audit-note">No evidence or attachment was provided.</p>'}</section><section class="section"><h3>Resolution</h3>${isOpen ? '<div class="user-context-list"><div><span>Penalty</span><strong>Pending moderator resolution</strong></div></div>' : `<div class="user-context-list"><div><span>Outcome</span><strong>${escapeActivityText(report.resolution || report.decisionLabel || "Closed")}</strong></div><div><span>Penalty applied</span><strong>${escapeActivityText(reportPenaltySummary(report))}</strong></div><div><span>Resolved by</span><strong>${escapeActivityText(report.resolvedBy || "Admin")}</strong></div><div><span>Resolved</span><strong>${escapeActivityText(report.resolutionAt || report.closedAt || "Date not recorded").replace(/\s+ICT$/, "")}</strong></div></div>`}</section></div><div class="drawer-actions"><button class="btn" id="back-to-user">Back to user</button><a class="btn" href="/users/${encodeURIComponent(user.id)}">See full user profile</a><a class="btn primary" href="/reports/${encodeURIComponent(report.id)}">Open full report</a><button class="btn" id="close-user-report">Close record</button></div>`;
+  const isOpen = isReportCasePending(reportStatusLabel(report));
+  drawer.innerHTML = `<div class="drawer-top"><div><strong>${escapeActivityText(report.id)}</strong><small>Report details</small></div><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div><div class="drawer-body user-report-detail"><div class="drawer-title"><span class="att-icon ${isOpen ? "warning" : "neutral"}">${ico("flag")}</span><div><h2>${escapeActivityText(report.category)}</h2><p>Reported user: ${escapeActivityText(user.title)}</p></div></div><section class="section"><h3>Report overview</h3><div class="user-context-list"><div><span>Status</span>${userReportDetailStatus(report)}</div><div><span>Reporter</span><strong>${escapeActivityText(report.reporterName)}</strong></div><div><span>Reported</span><strong>${escapeActivityText(report.reportedAt || "Date not recorded").replace(/\s+ICT$/, "")}</strong></div><div><span>Category</span><strong>${escapeActivityText(report.category)}</strong></div></div></section><section class="section"><h3>Description</h3><p>${escapeActivityText(report.details)}</p></section><section class="section"><h3>Evidence</h3>${report.evidence?.[0] && report.evidenceRefs?.[0] ? `<button class="evidence-item" data-report-evidence data-evidence-ref="${escapeActivityText(report.evidenceRefs[0])}"><span class="evidence-state">${ico("check")}</span><span><strong>${escapeActivityText(report.evidence[0])}</strong><small>Attached by ${escapeActivityText(report.reporterName)}</small></span><span>Open</span></button>` : '<p class="audit-note">No Evidence Reference was provided.</p>'}</section><section class="section"><h3>Resolution</h3>${isOpen ? '<div class="user-context-list"><div><span>Penalty</span><strong>Pending moderator resolution</strong></div></div>' : `<div class="user-context-list"><div><span>Outcome</span><strong>${escapeActivityText(report.resolution || report.decisionLabel || "Closed")}</strong></div><div><span>Penalty applied</span><strong>${escapeActivityText(reportPenaltySummary(report))}</strong></div><div><span>Resolved by</span><strong>${escapeActivityText(report.resolvedBy || "Admin")}</strong></div><div><span>Resolved</span><strong>${escapeActivityText(report.resolutionAt || report.closedAt || "Date not recorded").replace(/\s+ICT$/, "")}</strong></div></div>`}</section></div><div class="drawer-actions"><button class="btn" id="back-to-user">Back to user</button><a class="btn" href="/users/${encodeURIComponent(user.id)}">See full user profile</a><a class="btn primary" href="/reports/${encodeURIComponent(report.id)}">Open full report</a><button class="btn" id="close-user-report">Close record</button></div>`;
   drawer.querySelector<LegacyDomElement>("#close")?.addEventListener("click", closeDrawer);
   drawer.querySelector<LegacyDomElement>("#close-user-report")?.addEventListener("click", closeDrawer);
   drawer.querySelector<LegacyDomElement>("#back-to-user")?.addEventListener("click", () => {
@@ -557,8 +591,9 @@ function openReportDrawer(index: number): void {
   const report = data.reports[index];
   if (!report) return;
   showDrawerLayer();
-  const isClosed = report.status === "Closed";
-  drawer.innerHTML = `<div class="drawer-top"><div><strong>${report.id}</strong><small>User report</small></div><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div><div class="drawer-body report-record ${isClosed ? "closed-record" : "open-record"}"><div class="drawer-title"><span class="att-icon ${isClosed ? "neutral" : "warning"}">${ico("flag")}</span><div><h2>Report against ${escapeActivityText(report.reportedUserName)}</h2><p>Submitted by ${escapeActivityText(report.reporterName)}</p></div></div><div class="case-alert"><span>${ico("flag")}</span><div><strong>${isClosed ? "Report closed — record retained" : "Open report — review is required"}</strong><p>${isClosed ? "This report is closed and retained as a read-only audit record." : "Review the submitted details and evidence before closing this report."}</p></div></div><section class="section"><h3>Report overview</h3><div class="facts"><div class="fact"><span>Status</span>${badge(report.status, report.tone || (isClosed ? "neutral" : "warning"))}</div><div class="fact"><span>Report type</span><strong>${escapeActivityText(report.category)}</strong></div><div class="fact"><span>Reported</span><strong>${escapeActivityText(report.reportedAt)}</strong></div></div></section><section class="section"><h3>Report detail</h3><p>${escapeActivityText(report.details)}</p></section><section class="section"><h3>People involved</h3><div class="facts"><div class="fact"><span>Reported user</span><strong>${escapeActivityText(report.reportedUserName)}</strong><small>${escapeActivityText(report.reportedUserId)}</small></div><div class="fact"><span>Reporting user</span><strong>${escapeActivityText(report.reporterName)}</strong><small>${escapeActivityText(report.reporterId)}</small></div></div></section><section class="section"><h3>Evidence</h3>${report.evidence ? `<button class="evidence-item" data-report-evidence><span class="evidence-state">${ico("check")}</span><span><strong>${escapeActivityText(report.evidence)}</strong><small>Attached by ${escapeActivityText(report.reporterName)}</small></span><span>Open</span></button>` : '<p class="audit-note">No evidence file attached.</p>'}</section>${isClosed && report.decisionReason ? `<section class="section"><h3>Closing note</h3><p>${escapeActivityText(report.decisionReason)}</p></section>` : ""}</div><div class="drawer-actions"><a class="btn" href="/reports/${encodeURIComponent(report.id)}">Full report detail</a><button class="btn" id="close-report-record">Close record</button>${isClosed ? "" : '<a class="btn primary" href="/reports/' + encodeURIComponent(report.id) + '">Review report</a>'}</div>`;
+  const status = reportCaseStatusFor(report.reportCaseStatus ?? report.conductReportStatus ?? report.status, report.decision),
+    isClosed = !isReportCasePending(status);
+  drawer.innerHTML = `<div class="drawer-top"><div><strong>${report.id}</strong><small>User report</small></div><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div><div class="drawer-body report-record ${isClosed ? "closed-record" : "open-record"}"><div class="drawer-title"><span class="att-icon ${isClosed ? "neutral" : "warning"}">${ico("flag")}</span><div><h2>Report against ${escapeActivityText(report.reportedUserName)}</h2><p>Submitted by ${escapeActivityText(report.reporterName)}</p></div></div><div class="case-alert"><span>${ico("flag")}</span><div><strong>${isClosed ? "Report decision recorded" : "Open report — review is required"}</strong><p>${isClosed ? "This report is retained as a read-only audit record." : "Review the submitted details and evidence before closing this report."}</p></div></div><section class="section"><h3>Report overview</h3><div class="facts"><div class="fact"><span>Status</span>${badge(status, report.tone || (isClosed ? "neutral" : "warning"))}</div><div class="fact"><span>Report type</span><strong>${escapeActivityText(report.category)}</strong></div><div class="fact"><span>Reported</span><strong>${escapeActivityText(report.reportedAt)}</strong></div></div></section><section class="section"><h3>Report detail</h3><p>${escapeActivityText(report.details)}</p></section><section class="section"><h3>People involved</h3><div class="facts"><div class="fact"><span>Reported user</span><strong>${escapeActivityText(report.reportedUserName)}</strong><small>${escapeActivityText(report.reportedUserId)}</small></div><div class="fact"><span>Reporting user</span><strong>${escapeActivityText(report.reporterName)}</strong><small>${escapeActivityText(report.reporterId)}</small></div></div></section><section class="section"><h3>Evidence</h3>${report.evidence?.[0] && report.evidenceRefs?.[0] ? `<button class="evidence-item" data-report-evidence data-evidence-ref="${escapeActivityText(report.evidenceRefs[0])}"><span class="evidence-state">${ico("check")}</span><span><strong>${escapeActivityText(report.evidence[0])}</strong><small>Attached by ${escapeActivityText(report.reporterName)}</small></span><span>Open</span></button>` : '<p class="audit-note">No Evidence Reference was provided.</p>'}</section>${isClosed && report.decisionReason ? `<section class="section"><h3>Closing note</h3><p>${escapeActivityText(report.decisionReason)}</p></section>` : ""}</div><div class="drawer-actions"><a class="btn" href="/reports/${encodeURIComponent(report.id)}">Full report detail</a><button class="btn" id="close-report-record">Close record</button>${isClosed ? "" : '<a class="btn primary" href="/reports/' + encodeURIComponent(report.id) + '">Review report</a>'}</div>`;
   if (!isClosed)
     requiredQuery<LegacyDomElement>(drawer, ".case-alert strong").textContent =
       "Active report — review is required";
@@ -577,23 +612,23 @@ export function openDrawer(v: string, i: number): void {
     isD = v === "disputes";
   showDrawerLayer();
   const payoutContext = isP ? payoutDecisionContext(r) : null,
-    payoutNeedsDecision = isP && r.status === "Needs approval",
+    payoutNeedsDecision = isP && payoutStatusFor(r.payoutStatus ?? r.status) === "PENDING_ADMIN_APPROVAL",
     drawerContent =
       v === "users"
         ? `${userAccountSection(r)}${userModerationSection(r)}${userReportsSection(r)}${userActivitySection(r)}${userPayoutSection(r)}${userHistorySection(r)}${userNotesSection(r)}`
         : isD
-          ? `<section class="section"><h3>Issue summary</h3><p>${escapeActivityText(r.detail)}</p></section><section class="section"><h3>Evidence on record</h3>${(r.evidence || []).map((e) => { const parts = String(e).split(" · "); return `<div class="evidence"><strong>${escapeActivityText(parts[0])}</strong><small>${escapeActivityText(parts.slice(1).join(" · "))}</small></div>`; }).join("")}</section>`
+          ? `<section class="section"><h3>Issue summary</h3><p>${escapeActivityText(r.detail)}</p></section><section class="section"><h3>Evidence on record</h3>${(r.evidence || []).map((e, evidenceIndex) => { const parts = String(e).split(" · "); const reference = r.evidenceRefs?.[evidenceIndex]; return reference ? `<button class="evidence-item" data-evidence-ref="${escapeActivityText(reference)}"><strong>${escapeActivityText(parts[0])}</strong><small>${escapeActivityText(parts.slice(1).join(" · "))}</small><span>Open</span></button>` : `<div class="evidence"><strong>${escapeActivityText(parts[0])}</strong><small>Evidence Reference not available</small></div>`; }).join("")}</section>`
           : isP
           ? `<section class="section"><h3>${escapeActivityText(payoutContext?.heading || "Payout")}</h3><p>${escapeActivityText(payoutContext?.copy || "")}</p><p class="audit-note">${escapeActivityText(payoutContext?.next || "")}</p></section>`
-            : `<section class="section"><h3>Audit trail</h3>${timeline([r.status, "Record created"])}</section>`;
+            : `<section class="section"><h3>Audit trail</h3>${timeline([statusForView(v, r), "Record created"])}</section>`;
   const drawerActions = isP
       ? payoutNeedsDecision
         ? '<button class="btn" data-action="Reject payout">Reject payout</button><button class="btn primary" data-action="Approve payout">Approve payout</button>'
         : '<button class="btn" id="close-payout-record">Close record</button>'
       : v === "users"
         ? `${userDrawerActions(r)}<a class="btn" href="/users/${encodeURIComponent(r.id)}">See full user profile</a>`
-        : '<button class="btn" data-action="Hide quest">Hide quest</button>';
-  drawer.innerHTML = `<div class="drawer-top"><strong>${escapeActivityText(r.id)}</strong><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div><div class="drawer-body"><div class="drawer-title"><span class="att-icon ${toneClass(r.tone)}">${ico(v === "payouts" ? "wallet" : v === "users" ? "user" : v === "quests" ? "quest" : "scale")}</span><div><h2>${escapeActivityText(r.title)}</h2><p>${escapeActivityText(r.person)} · ${escapeActivityText(r.other)}</p></div></div><div class="facts"><div class="fact"><span>Status</span>${badge(r.status, r.tone)}</div>${r.amount ? `<div class="fact"><span>${isP ? "Payout amount" : "Amount held"}</span><strong>฿${fmt(r.amount)}</strong></div>` : ""}<div class="fact"><span>Record</span><strong>${escapeActivityText(r.id)}</strong></div>${!isP && v !== "users" ? `<div class="fact"><span>Last activity</span><strong>${escapeActivityText(r.age)}</strong></div>` : ""}</div>${drawerContent}</div><div class="drawer-actions">${drawerActions}</div>`;
+        : `<button class="btn" data-action="${hasHiddenQuestOverlay(r) ? "Restore quest" : "Hide quest"}">${hasHiddenQuestOverlay(r) ? "Restore quest" : "Hide quest"}</button>`;
+  drawer.innerHTML = `<div class="drawer-top"><strong>${escapeActivityText(r.id)}</strong><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div><div class="drawer-body"><div class="drawer-title"><span class="att-icon ${toneClass(r.tone)}">${ico(v === "payouts" ? "wallet" : v === "users" ? "user" : v === "quests" ? "quest" : "scale")}</span><div><h2>${escapeActivityText(r.title)}</h2><p>${escapeActivityText(r.person)} · ${escapeActivityText(r.other)}</p></div></div><div class="facts"><div class="fact"><span>Status</span>${badge(statusForView(v, r), r.tone)}${v === "quests" && hasHiddenQuestOverlay(r) ? '<span class="badge neutral quest-hidden-overlay">Hidden</span>' : ""}</div>${r.amount ? `<div class="fact"><span>${isP ? "Payout amount" : "Amount held"}</span><strong>฿${fmt(r.amount)}</strong></div>` : ""}<div class="fact"><span>Record</span><strong>${escapeActivityText(r.id)}</strong></div>${!isP && v !== "users" ? `<div class="fact"><span>Last activity</span><strong>${escapeActivityText(r.age)}</strong></div>` : ""}</div>${drawerContent}</div><div class="drawer-actions">${drawerActions}</div>`;
   if (isP) {
     drawer.querySelector<LegacyDomElement>(".facts")?.insertAdjacentHTML(
       "afterend",
@@ -799,9 +834,9 @@ function openAdminNoteDialog(user: LegacyRecord): void {
 }
 function refreshNavigationCounts(): void {
   const counts = {
-    disputes: data.disputes.filter((record) => record.status === "Active").length,
-    payouts: data.payouts.filter((record) => record.status === "Needs approval").length,
-    reports: data.reports.filter((record) => record.status === "Active").length,
+    disputes: data.disputes.filter((record) => disputeCaseStatusFor(record.disputeCaseStatus ?? record.status) === "DISPUTE_CASE_PENDING").length,
+    payouts: data.payouts.filter((record) => payoutStatusFor(record.payoutStatus ?? record.status) === "PENDING_ADMIN_APPROVAL").length,
+    reports: data.reports.filter((record) => isReportCasePending(record.reportCaseStatus ?? record.conductReportStatus ?? record.status, record.decision)).length,
   };
   Object.entries(counts).forEach(([view, count]) => {
     const counter = document.querySelector<LegacyDomElement>(`[data-view="${view}"] b`);
@@ -820,9 +855,6 @@ export function applyDemoAction(action: string, record: LegacyRecord): void {
 export function applyReportDecision(report: LegacyRecord, decision: string, reason: string): void {
   applyReportDecisionCore(report, decision, reason);
   refreshNavigationCounts();
-}
-export function autoRejectUnavailablePayout(record: LegacyRecord): boolean {
-  return autoRejectUnavailablePayoutCore(record);
 }
 const dialog = document.querySelector<LegacyDomElement>("#confirm");
 export function confirmAction(a: string, r: LegacyRecord, decisionDetail = "", onConfirm?: (reason: string) => void, options: ConfirmActionOptions = {}): void {
@@ -891,7 +923,7 @@ function payoutAdminName() {
 }
 function payoutConfirmationSummary(record: LegacyRecord): string {
   const financials = payoutFinancials(record);
-  return `<div class="payout-confirm-summary"><div><span>Recipient</span><strong>${escapeActivityText(record.title)}</strong></div><div><span>Payout amount</span><strong>฿${fmt(record.amount)}</strong></div><div><span>Bank / payout destination</span><strong>${escapeActivityText(record.person)}</strong></div><div><span>Available balance</span><strong>฿${fmt(financials.available)}</strong></div><div><span>Remaining after payout</span><strong>฿${fmt(financials.remaining)}</strong></div></div><p class="payout-confirm-note">Approving this payout changes its status to Processing. Funds are not transferred immediately.</p>`;
+  return `<div class="payout-confirm-summary"><div><span>Recipient</span><strong>${escapeActivityText(record.title)}</strong></div><div><span>Payout amount</span><strong>฿${fmt(record.amount)}</strong></div><div><span>Bank / payout destination</span><strong>${escapeActivityText(record.person)}</strong></div><div><span>Available balance</span><strong>฿${fmt(financials.available)}</strong></div><div><span>Remaining after payout</span><strong>฿${fmt(financials.remaining)}</strong></div></div><p class="payout-confirm-note">Approving this Payout changes its status to SUBMITTED_TO_PROVIDER. Funds are not transferred immediately.</p>`;
 }
 function resetConfirmationDialog() {
   const context = document.querySelector<LegacyDomElement>("#confirm-context"),
@@ -938,10 +970,6 @@ function finishPayoutAction(record: LegacyRecord, action: string, onComplete?: (
 }
 function confirmPayoutApproval(record: LegacyRecord): void {
   if (!dialog) return;
-  if (autoRejectUnavailablePayout(record)) {
-    finishPayoutAction(record, "Auto-reject payout");
-    return;
-  }
   const form = requiredQuery<LegacyForm>(document, "#confirm-form"),
     reason = requiredQuery<LegacyDomElement>(document, "#confirm-reason"),
     reasonLabel = reason.closest("label"),
@@ -994,6 +1022,7 @@ function confirmPayoutApproval(record: LegacyRecord): void {
       if (dialog.returnValue !== "confirm") return;
       const approvalReason = reason.value.trim();
       record.status = "Processing";
+      record.payoutStatus = "SUBMITTED_TO_PROVIDER";
       record.tone = "info";
       record.approvedAt = payoutDateTime();
       record.approvedBy = payoutAdminName();
@@ -1060,6 +1089,7 @@ function confirmPayoutRejection(record: LegacyRecord): void {
       if (dialog.returnValue !== "confirm") return;
       const adminNote = reason.value.trim();
       record.status = "Rejected";
+      record.payoutStatus = "CANCELLED";
       record.tone = "danger";
       record.rejectedAt = payoutDateTime();
       record.rejectedBy = payoutAdminName();

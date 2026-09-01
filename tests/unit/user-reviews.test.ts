@@ -3,8 +3,6 @@ import { describe, expect, it } from "bun:test";
 import {
   changeReviewVisibility,
   filterReviews,
-  hasValidRemovalReason,
-  removeReview,
 } from "../../src/features/admin/user-reviews/review-model";
 import {
   ADMIN_DEMO_DATA_KEY,
@@ -74,14 +72,6 @@ describe("user review model", () => {
     expect(restored[1]).toEqual(reviews[1]);
   });
 
-  it("requires an audit reason before removing a review", () => {
-    expect(hasValidRemovalReason("short")).toBe(false);
-    expect(hasValidRemovalReason("Review contains inaccurate claims.")).toBe(true);
-    expect(removeReview(reviews, 0)).toEqual({
-      removed: reviews[0],
-      reviews: [reviews[1]],
-    });
-  });
 });
 
 describe("legacy admin data adapter", () => {

@@ -20,9 +20,10 @@ describe("dashboard model", () => {
 
     expect(model.totalWorkLeft).toBe(3);
     expect(model.decisions.map((decision) => decision.id)).toEqual(["RPT-1", "DSP-1"]);
-    expect(model.questStatusCounts.find((entry) => entry.status === "Draft")?.count).toBe(1);
+    expect(model.questStatusCounts.find((entry) => entry.status === "QUEST_DRAFT")?.count).toBe(1);
     expect(model.payouts[0]?.amount).toBe(850);
-    expect(model.users[0]?.status).toBe("Temp ban");
+    expect(model.payouts[0]?.status).toBe("PENDING_ADMIN_APPROVAL");
+    expect(model.users[0]?.status).toBe("FROZEN");
     expect(model.activity).toHaveLength(1);
   });
 });
