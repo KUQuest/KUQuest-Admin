@@ -2,6 +2,8 @@ import type { DisputeCase as ModerationDisputeCase, ModerationPageContext } from
 import type { QuestData, QuestDetailDependencies } from "./quest-detail";
 import type { LegacyDisputeCase, LegacyRecord, LegacyRuntimeData } from "./runtime";
 import type { UserPageContext, UserRecord } from "./user-page";
+import { isAdminApiEnabled } from "../api/admin-provider";
+import { refreshLiveDisputes, refreshLivePayouts } from "./live-review-data";
 
 export type TypedLegacyPage = "home" | "quest" | "dispute" | "report" | "user";
 
@@ -207,12 +209,18 @@ export async function initializeTypedLegacyPage(
   if (options.page === "home") {
     const core = await import("./script");
     const mockData = await import("./fresh-mock-data");
+    if (isAdminApiEnabled()) {
+      const view = new URLSearchParams(options.search).get("view");
+      if (view === "payouts") await refreshLivePayouts();
+      if (view === "disputes") await refreshLiveDisputes();
+    }
     await initializeHomePage(core, mockData);
     return;
   }
 
   const core = await import("./detail-runtime");
   const mockData = await import("./fresh-mock-data");
+  if (isAdminApiEnabled() && options.page === "dispute") await refreshLiveDisputes();
   window.__KUQUEST_LEGACY_RUNTIME__ = core.legacyRuntime;
   core.initializeDetailRuntime();
   core.initializeDetailSearch();

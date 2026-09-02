@@ -64,29 +64,76 @@ describe("Admin API boundary", () => {
     mockFetch(async (input, init) => {
       request = new Request(input, init);
       return jsonResponse({
-        success: true,
-        data: {
-          authAdmin: {
-            id: "admin-1",
-            email: "admin@ku.th",
-            firstName: "Nicha",
-            lastName: "Prasert",
-            disabledAt: null,
-          },
-          session: { id: "session-1", expiresAt: "2026-09-02T00:00:00Z" },
+        redirect: false,
+        token: "session-token",
+        user: {
+          id: "admin-1",
+          email: "admin@ku.th",
+          firstName: "Nicha",
+          lastName: "Prasert",
+          disabledAt: null,
         },
       });
     });
 
     const session = await adminApi.signInEmail("admin@ku.th", "password123");
 
-    expect(session.authAdmin.id).toBe("admin-1");
+    expect(session.user.id).toBe("admin-1");
     expect(request?.method).toBe("POST");
     expect(request?.url).toBe("https://api.example.test/api/admin/auth/sign-in/email");
     expect(await request?.json()).toEqual({
       email: "admin@ku.th",
       password: "password123",
     });
+  });
+
+  it("uses the API Server Admin sign-out route", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    let request: Request | undefined;
+
+    mockFetch(async (input, init) => {
+      request = new Request(input, init);
+      return jsonResponse({ success: true });
+    });
+
+    await adminApi.signOut();
+
+    expect(request?.method).toBe("POST");
+    expect(request?.url).toBe("https://api.example.test/api/admin/auth/sign-out");
+    expect(request?.credentials).toBe("include");
+  });
+
+  it("reads the current Admin session without the shared envelope", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    let request: Request | undefined;
+
+    mockFetch(async (input, init) => {
+      request = new Request(input, init);
+      return jsonResponse({
+        session: {
+          id: "session-1",
+          userId: "admin-1",
+          expiresAt: "2026-09-03T00:00:00Z",
+          createdAt: "2026-09-02T00:00:00Z",
+          updatedAt: "2026-09-02T00:00:00Z",
+        },
+        user: {
+          id: "admin-1",
+          email: "admin@ku.th",
+          firstName: "Nicha",
+          lastName: "Prasert",
+          disabledAt: null,
+        },
+      });
+    });
+
+    const session = await adminApi.getSession();
+
+    expect(session?.user.email).toBe("admin@ku.th");
+    expect(request?.method).toBe("GET");
+    expect(request?.url).toBe("https://api.example.test/api/admin/auth/get-session");
+    expect(request?.credentials).toBe("include");
+    expect(request?.cache).toBe("no-store");
   });
 
   it("sends command identity in the header and leaves the reason in the body", async () => {

@@ -24,6 +24,7 @@ import {
 import { createOverlayRuntime } from "./overlay-runtime";
 import { setActiveNavigation as setActiveNavigationCore } from "./navigation-state";
 import { newAdminIdempotencyKey } from "./admin-command-port";
+import { isAdminApiEnabled } from "../api/admin-provider";
 import {
   disputeCaseStatusFor,
   isReportCasePending,
@@ -198,6 +199,10 @@ export function openPenaltyDialog(user: LegacyRecord): void {
 function openPayoutDrawer(index: number): void {
   const record = data.payouts[index];
   if (!record) return;
+  if (isAdminApiEnabled() && !record.apiBacked) {
+    toast("This Payout is not available from the Admin API.");
+    return;
+  }
   const context = payoutDecisionContext(record);
   const status = payoutStatusFor(record.payoutStatus ?? record.status);
   showDrawerLayer();

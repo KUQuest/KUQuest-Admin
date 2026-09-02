@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { MouseEvent } from "react";
@@ -11,9 +11,12 @@ import "../../app/theme.css";
 
 import { readAdminData } from "./data/legacy-admin-data-adapter";
 import type { PersistedAdminData } from "./data/admin-records";
+import { adminApi, type AdminIdentity } from "./api/admin-api";
+import { isAdminApiEnabled } from "./api/admin-provider";
 import { hardNavigate } from "./navigation";
 import { AdminThemeControl } from "./theme/admin-theme-control";
 import type { LegacyPage } from "./legacy/legacy-runtime-loader";
+import { ADMIN_SESSION_KEY, requireAdminSession } from "./legacy/auth";
 
 const LegacyRuntimeLoader = dynamic(
   () => import("./legacy/legacy-runtime-loader").then(({ LegacyRuntimeLoader: RuntimeLoader }) => RuntimeLoader),
@@ -158,8 +161,62 @@ function DashboardGlobalSearch({ open, onClose }: { open: boolean; onClose: () =
 }
 
 function handleLogout() {
-  localStorage.removeItem("kuquest-admin-session");
-  window.location.assign("/login");
+  const finishLogout = () => {
+    localStorage.removeItem(ADMIN_SESSION_KEY);
+    window.location.assign("/login");
+  };
+
+  if (!isAdminApiEnabled()) {
+    finishLogout();
+    return;
+  }
+
+  void adminApi.signOut()
+    .catch((error: unknown) => console.error("Admin sign-out failed", error))
+    .finally(finishLogout);
+}
+
+function AdminSessionGate({ children, onAdminSession }: { children: ReactNode; onAdminSession?: (identity: AdminIdentity) => void }) {
+  const [authorized, setAuthorized] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const redirectToLogin = () => {
+      window.localStorage.removeItem(ADMIN_SESSION_KEY);
+      window.location.replace("/login");
+    };
+
+    const checkSession = async () => {
+      if (!isAdminApiEnabled()) {
+        if (!requireAdminSession(window.localStorage, window.location)) return;
+        if (!cancelled) setAuthorized(true);
+        return;
+      }
+
+      try {
+        const session = await adminApi.getSession();
+        if (cancelled) return;
+        if (!session) {
+          redirectToLogin();
+          return;
+        }
+        onAdminSession?.(session.user);
+        setAuthorized(true);
+      } catch (error: unknown) {
+        if (cancelled) return;
+        console.error("Admin session check failed", error);
+        redirectToLogin();
+      }
+    };
+
+    void checkSession();
+    return () => {
+      cancelled = true;
+    };
+  }, [onAdminSession]);
+
+  return authorized ? children : null;
 }
 
 function LanguageControl({ className = "", disabled = false }: { className?: string; disabled?: boolean }) {
@@ -187,9 +244,10 @@ function LanguageControl({ className = "", disabled = false }: { className?: str
   );
 }
 
-function LegacyOverlays({ detailSearch = false, includeCommand = true }: { detailSearch?: boolean; includeCommand?: boolean }) {
+function LegacyOverlays({ detailSearch = false, includeCommand = true, onAdminSession }: { detailSearch?: boolean; includeCommand?: boolean; onAdminSession?: (identity: AdminIdentity) => void }) {
   return (
-    <>
+    <AdminSessionGate onAdminSession={onAdminSession}>
+      <>
       <div id="scrim" className="scrim" hidden />
       {/* eslint-disable-next-line jsx-a11y/prefer-tag-over-role -- the source shell uses an aside drawer */}
       <aside
@@ -268,7 +326,8 @@ function LegacyOverlays({ detailSearch = false, includeCommand = true }: { detai
         </div>
       </div>}
       <div id="toasts" className="toasts" aria-live="polite" />
-    </>
+      </>
+    </AdminSessionGate>
   );
 }
 
@@ -283,7 +342,14 @@ export function LegacyAdminPage({
 }) {
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [dashboardSearchOpen, setDashboardSearchOpen] = useState(false);
+  const [adminIdentity, setAdminIdentity] = useState<AdminIdentity | null>(null);
   const detailPage = page !== "home" && page !== "user";
+  const adminName = adminIdentity
+    ? `${adminIdentity.firstName} ${adminIdentity.lastName}`.trim() || adminIdentity.email
+    : isAdminApiEnabled() ? "Loading…" : "Nicha P.";
+  const adminInitials = adminIdentity
+    ? `${adminIdentity.firstName.trim().charAt(0)}${adminIdentity.lastName.trim().charAt(0)}`.trim() || "AD"
+    : isAdminApiEnabled() ? "…" : "NP";
   const navigateFromDashboard = useCallback((event: MouseEvent<HTMLElement>) => {
     const target = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-view]") : null;
     const view = target?.dataset.view;
@@ -311,8 +377,8 @@ export function LegacyAdminPage({
           <AdminThemeControl />
           <LanguageControl />
           <div className="profile">
-            <span>NP</span>
-            <div><strong>Nicha P.</strong><small>Administrator</small></div>
+            <span>{adminInitials}</span>
+            <div><strong>{adminName}</strong><small>Administrator</small></div>
             <button className="logout-button" type="button" onClick={handleLogout}>Log out</button>
           </div>
         </aside>
@@ -356,7 +422,7 @@ export function LegacyAdminPage({
         <main id="main" tabIndex={-1} hidden={reactDashboard} />
         {reactDashboard && <AdminDashboard />}
       </div>
-      <LegacyOverlays detailSearch={detailPage} includeCommand={!reactDashboard} />
+      <LegacyOverlays detailSearch={detailPage} includeCommand={!reactDashboard} onAdminSession={setAdminIdentity} />
       {reactDashboard && <DashboardGlobalSearch open={dashboardSearchOpen} onClose={() => setDashboardSearchOpen(false)} />}
       {!reactDashboard && <LegacyRuntimeLoader page={page} recordId={recordId} />}
     </>

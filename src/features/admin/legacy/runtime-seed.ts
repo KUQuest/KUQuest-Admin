@@ -293,7 +293,10 @@ export function payoutPreviousRecords(record: LegacyRecord): LegacyRecord[] {
   const currentTimestamp = payoutTimestamp(record);
   return data.payouts
     .filter((payout) => {
-      if (payout.title !== record.title || payout.id === record.id) return false;
+      const sameRecipient = record.studentId && payout.studentId
+        ? record.studentId === payout.studentId
+        : payout.title === record.title;
+      if (!sameRecipient || payout.id === record.id) return false;
       const timestamp = payoutTimestamp(payout);
       return timestamp < currentTimestamp || (!timestamp && !currentTimestamp);
     })

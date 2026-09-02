@@ -1,4 +1,4 @@
-import { apiRequest, getApiUrl } from "../../../lib/api/client";
+import { apiClient, apiRequest, getApiUrl } from "../../../lib/api/client";
 import type {
   ConductReportStatus,
   DisputeCaseStatus,
@@ -17,11 +17,23 @@ export type AdminIdentity = {
 };
 
 export type AdminAuthSession = {
-  authAdmin: AdminIdentity;
+  redirect: boolean;
+  token: string;
+  url?: string | null;
+  user: AdminIdentity;
+};
+
+export type AdminAuthSessionDetails = {
   session: {
     id: string;
+    userId: string;
     expiresAt: string;
+    createdAt: string;
+    updatedAt: string;
+    ipAddress?: string | null;
+    userAgent?: string | null;
   };
+  user: AdminIdentity;
 };
 
 export type AdminPage<T> = {
@@ -152,7 +164,7 @@ export type AdminPayout = {
   maskedRoutingValue: string;
   providerReference: string | null;
   providerStatus: string | null;
-  payoutStatus: PayoutStatus;
+  payoutStatus: AdminApiPayoutStatus;
   rejectionReason: string | null;
   createdAt: string;
   updatedAt: string;
@@ -161,8 +173,8 @@ export type AdminPayout = {
 
 export type AdminPayoutHistoryEntry = {
   id: string;
-  fromStatus: PayoutStatus | null;
-  toStatus: PayoutStatus;
+  fromStatus: AdminApiPayoutStatus | null;
+  toStatus: AdminApiPayoutStatus;
   providerStatus: string | null;
   actorUserId: string | null;
   actorAdminId: string | null;
@@ -171,13 +183,23 @@ export type AdminPayoutHistoryEntry = {
   occurredAt: string;
 };
 
+export const ADMIN_API_PAYOUT_STATUSES = [
+  "PENDING_ADMIN_APPROVAL",
+  "CREATING",
+  "PENDING",
+  "AWAITING_RECONCILIATION",
+  "COMPLETED",
+  "FAILED",
+  "CANCELLED",
+] as const;
+export type AdminApiPayoutStatus = (typeof ADMIN_API_PAYOUT_STATUSES)[number];
+
 export type AdminPayoutDetail = AdminPayout & {
   history: AdminPayoutHistoryEntry[];
 };
 
 export type AdminPayoutListQuery = {
-  status?: PayoutStatus;
-  query?: string;
+  status?: AdminApiPayoutStatus;
   limit?: number;
   cursor?: string;
   sort?: "newest" | "oldest";
@@ -239,6 +261,13 @@ export type DisputeResolution = AdminCommandOptions & {
   allocations?: DisputeAllocation[];
 };
 
+export type AdminDisputeResolutionResult = {
+  questStatus: "QUEST_CANCELLED" | "QUEST_COMPLETED";
+  outcome: "REFUNDED" | "RELEASED_TO_WORKER";
+  paidSatang: number;
+  refundedSatang: number;
+};
+
 export type ReportDecision = AdminCommandOptions & {
   decision:
     | "REPORT_CASE_DISMISSED"
@@ -298,9 +327,15 @@ function commandBody<T extends AdminCommandOptions>(options: T): Omit<T, "idempo
 
 export const adminApi = {
   signInEmail(email: string, password: string): Promise<AdminAuthSession> {
-    return apiRequest<AdminAuthSession>("/api/admin/auth/sign-in/email", {
+    return apiClient<AdminAuthSession>("/api/admin/auth/sign-in/email", {
       method: "POST",
       body: { email, password },
+    });
+  },
+
+  getSession(): Promise<AdminAuthSessionDetails | null> {
+    return apiClient<AdminAuthSessionDetails | null>("/api/admin/auth/get-session", {
+      cache: "no-store",
     });
   },
 
@@ -386,8 +421,8 @@ export const adminApi = {
     );
   },
 
-  resolveDispute(questId: string, options: DisputeResolution): Promise<AdminDisputeCase> {
-    return apiRequest<AdminDisputeCase>(
+  resolveDispute(questId: string, options: DisputeResolution): Promise<AdminDisputeResolutionResult> {
+    return apiRequest<AdminDisputeResolutionResult>(
       `/api/v1/admin/quests/${encode(questId)}/dispute/resolve`,
       {
         method: "POST",

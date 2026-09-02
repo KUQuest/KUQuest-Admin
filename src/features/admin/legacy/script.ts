@@ -34,6 +34,13 @@ import { setActiveNavigation as setActiveNavigationCore } from "./navigation-sta
 import { recordsFor } from "./runtime-data";
 import { newAdminIdempotencyKey } from "./admin-command-port";
 import {
+  hydrateLivePayout,
+  payoutServerValue,
+  refreshLiveDisputes,
+  refreshLivePayouts,
+} from "./live-review-data";
+import { isAdminApiEnabled } from "../api/admin-provider";
+import {
   QUEST_STATES,
   disputeCaseStatusFor,
   hasHiddenQuestOverlay,
@@ -479,7 +486,15 @@ export function navigate(v: string): void {
   state.view = v;
   state.tab = "all";
   state.query = "";
-  render();
+  if (isAdminApiEnabled() && (v === "payouts" || v === "disputes")) {
+    const refresh = v === "payouts" ? refreshLivePayouts() : refreshLiveDisputes();
+    render();
+    void refresh.then(() => {
+      if (state.view === v) render();
+    });
+  } else {
+    render();
+  }
   setMobileNavigation(false);
 }
 document
@@ -498,10 +513,25 @@ export const closeDrawer = overlayRuntime.closeDrawer;
 export const showDrawerLayer = overlayRuntime.showDrawerLayer;
 export const showModalLayer = overlayRuntime.showModalLayer;
 function payoutSummarySection(record: LegacyRecord): string {
+  if (record.apiBacked) {
+    const value = (field: "principalSatang" | "receiptSatang" | "maximumFeeSatang" | "maximumTaxSatang" | "maximumDebitSatang"): string => {
+      const amount = payoutServerValue(record, field);
+      return amount === null ? "Not provided" : `฿${fmt(amount)}`;
+    };
+    return `<section class="section payout-summary"><h3>Payout summary</h3><div class="payout-summary-grid"><div><span>Principal</span><strong>${value("principalSatang")}</strong></div><div><span>Recipient receipt</span><strong>${value("receiptSatang")}</strong></div><div><span>Maximum fee</span><strong>${value("maximumFeeSatang")}</strong></div><div><span>Maximum tax</span><strong>${value("maximumTaxSatang")}</strong></div><div><span>Maximum debit</span><strong>${value("maximumDebitSatang")}</strong></div></div><p class="audit-note">Amounts are supplied by the Payout API. The Admin client does not calculate fees.</p></section>`;
+  }
   const financials = payoutFinancials(record);
   return `<section class="section payout-summary"><h3>Payout summary</h3><div class="payout-summary-grid"><div><span>Available to withdraw</span><strong>฿${fmt(financials.available)}</strong></div><div><span>Payout amount</span><strong>฿${fmt(record.amount)}</strong></div><div><span>Remaining after payout</span><strong>฿${fmt(financials.remaining)}</strong></div><div><span>Previously paid out</span><strong>฿${fmt(financials.previousPaidOut)}</strong></div></div></section>`;
 }
 function payoutTimingSection(record: LegacyRecord): string {
+  if (record.apiBacked && record.payoutHistory?.length) {
+    const events = record.payoutHistory.flatMap((entry) => [
+      ["Status", String(entry.newStatus || entry.event || "Not recorded")],
+      ["Occurred at", String(entry.at)],
+      ...(entry.reason ? [["Reason", entry.reason] as [string, string]] : []),
+    ] as Array<[string, string]>);
+    return `<section class="section payout-timing"><h3>Payout timing</h3><div class="payout-audit-list">${events.map(([label, value]) => `<div><span>${escapeActivityText(label)}</span><strong>${escapeActivityText(value)}</strong></div>`).join("")}</div></section>`;
+  }
   const events: Array<[string, string]> = [["Requested", String(record.requestedAt || "Not recorded")]];
   if (record.approvedAt) {
     events.push(["Status", "SUBMITTED_TO_PROVIDER"], ["Approved at", String(record.approvedAt)], ["Approved by", String(record.approvedBy || "Admin")]);
@@ -517,6 +547,7 @@ function payoutOutcomeSection(record: LegacyRecord): string {
   return `<section class="section payout-outcome"><h3>${status === "FAILED" ? "Transfer failure reason" : "Rejection reason"}</h3><p>${escapeActivityText(reason)}</p>${record.rejectionNote ? `<p class="payout-admin-note"><strong>Admin note:</strong> ${escapeActivityText(record.rejectionNote)}</p>` : ""}</section>`;
 }
 function payoutQuestHistory(record: LegacyRecord): string {
+  if (record.apiBacked) return '<p class="audit-note">Quest earning sources are not provided by the Payout API.</p>';
   const quests = completedPayoutQuests(record);
   if (!quests.length)
     return '<p class="audit-note">No completed quests are connected to this recipient yet.</p>';
@@ -528,6 +559,7 @@ function payoutQuestHistory(record: LegacyRecord): string {
     .join("")}</div>`;
 }
 function payoutPreviousHistory(record: LegacyRecord): string {
+  if (record.apiBacked && !record.payoutHistoryLoaded) return '<p class="audit-note">Previous Payout records are loading from the Admin API.</p>';
   const previous = payoutPreviousRecords(record);
   if (!previous.length)
     return '<p class="audit-note">No previous payouts are connected to this recipient.</p>';
@@ -682,6 +714,11 @@ export function openDrawer(v: string, i: number): void {
       `<section class="section payout-previous"><h3>Previous payouts</h3>${payoutPreviousHistory(r)}</section>`,
       payoutOutcomeSection(r),
     ].forEach((section) => decisionSection?.insertAdjacentHTML("beforebegin", section));
+    if (r.apiBacked && !r.payoutHistoryLoaded) {
+      void hydrateLivePayout(r).then(() => {
+        if (drawer.classList.contains("open") && data.payouts[i] === r) openDrawer(v, i);
+      });
+    }
   }
   document.querySelector<LegacyDomElement>("#close")?.addEventListener("click", closeDrawer);
   scrim.onclick = closeDrawer;
@@ -945,6 +982,11 @@ export function confirmAction(a: string, r: LegacyRecord, decisionDetail = "", o
   );
 }
 function payoutConfirmationSummary(record: LegacyRecord): string {
+  if (record.apiBacked) {
+    const amount = payoutServerValue(record, "principalSatang");
+    const maximumDebit = payoutServerValue(record, "maximumDebitSatang");
+    return `<div class="payout-confirm-summary"><div><span>Recipient</span><strong>${escapeActivityText(record.title)}</strong></div><div><span>Payout amount</span><strong>${amount === null ? "Not provided" : `฿${fmt(amount)}`}</strong></div><div><span>Bank / payout destination</span><strong>${escapeActivityText(record.person)}</strong></div><div><span>Maximum debit</span><strong>${maximumDebit === null ? "Not provided" : `฿${fmt(maximumDebit)}`}</strong></div></div><p class="payout-confirm-note">The amount and maximum debit come from the Payout API. Approving this Payout changes its status to SUBMITTED_TO_PROVIDER.</p>`;
+  }
   const financials = payoutFinancials(record);
   return `<div class="payout-confirm-summary"><div><span>Recipient</span><strong>${escapeActivityText(record.title)}</strong></div><div><span>Payout amount</span><strong>฿${fmt(record.amount)}</strong></div><div><span>Bank / payout destination</span><strong>${escapeActivityText(record.person)}</strong></div><div><span>Available balance</span><strong>฿${fmt(financials.available)}</strong></div><div><span>Remaining after payout</span><strong>฿${fmt(financials.remaining)}</strong></div></div><p class="payout-confirm-note">Approving this Payout changes its status to SUBMITTED_TO_PROVIDER. Funds are not transferred immediately.</p>`;
 }
@@ -1053,6 +1095,8 @@ function confirmPayoutApproval(record: LegacyRecord): void {
           recordActivity("Payout approval reason", `${record.id} · ${approvalReason}`);
         });
         return undefined;
+      }).catch((error: unknown) => {
+        toast(`Approve payout failed: ${error instanceof Error ? error.message : "Request failed."}`);
       });
     },
     { once: true },
@@ -1118,11 +1162,13 @@ function confirmPayoutRejection(record: LegacyRecord): void {
         reason: choice.value,
       }).then(() => {
         record.rejectionNote = adminNote;
-        record.remainingBalance = payoutFinancials(record).available;
+        if (!record.apiBacked) record.remainingBalance = payoutFinancials(record).available;
         finishPayoutAction(record, "Reject payout", () => {
           recordActivity("Payout rejection reason", `${record.id} · ${choice.value}${adminNote ? ` · ${adminNote}` : ""}`);
         });
         return undefined;
+      }).catch((error: unknown) => {
+        toast(`Reject payout failed: ${error instanceof Error ? error.message : "Request failed."}`);
       });
     },
     { once: true },

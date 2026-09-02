@@ -36,6 +36,7 @@ import {
   type ResourceView,
 } from "./resource-controls-model";
 import type { LegacyDomElement, LegacyRecord } from "./runtime";
+import { liveResourceState } from "./live-review-data";
 import {
   disputeCaseStatusFor,
   hasHiddenQuestOverlay,
@@ -115,8 +116,16 @@ setRenderResource(function resourceRender(view: string): void {
   const rows = matchingRows(resourceView),
     pagination = paginateRows(resourceView, rows),
     tabs = resourceTabs[resourceView],
-    hasQuery = Boolean(state.query);
-  main.innerHTML = `${pageHead(...heads[resourceView])}<section class="panel resource"><div class="tabs" aria-label="Filter ${view} records">${tabs.map((tab: string) => `<button class="tab ${state.tab === tab.toLowerCase() ? "active" : ""}" data-tab="${tab.toLowerCase()}" aria-pressed="${state.tab === tab.toLowerCase()}">${escapeActivityText(tab)}${tab === "All" ? ` (${resourceCollections[resourceView].length})` : ""}</button>`).join("")}</div><div class="toolbar resource-toolbar"><div class="inline-search search-field">${ico("search")}<input id="resource-search" value="${escapeActivityText(state.query)}" placeholder="Search ${view}…" aria-label="Search ${view}" autocomplete="off">${hasQuery ? '<button class="clear-search" aria-label="Clear search"><span class="close-lines"></span></button>' : ""}</div><span class="sort-help">Click a column to sort</span>${pageSizeControls(resourceView)}<span class="count" aria-live="polite">${resultCount(resourceView, pagination)}</span></div>${rows.length ? `${controlledTable(resourceView, pagination.rows)}${paginationControls(resourceView, pagination)}` : `<div class="empty"><h3>No matching records</h3><p>${hasQuery ? "Clear your search to see more results." : "There are no records in this view."}</p><button class="btn reset-results">Reset view</button></div>`}</section>`;
+    hasQuery = Boolean(state.query),
+    liveState = resourceView === "payouts" || resourceView === "disputes" ? liveResourceState[resourceView] : null,
+    resultContent = liveState?.loading
+      ? '<div class="empty"><h3>Loading records</h3><p>Reading the Admin API.</p></div>'
+      : liveState?.error
+        ? `<div class="empty"><h3>Records are not available</h3><p>${escapeActivityText(liveState.error)}</p></div>`
+        : rows.length
+          ? `${controlledTable(resourceView, pagination.rows)}${paginationControls(resourceView, pagination)}`
+          : `<div class="empty"><h3>No matching records</h3><p>${hasQuery ? "Clear your search to see more results." : "There are no records in this view."}</p><button class="btn reset-results">Reset view</button></div>`;
+  main.innerHTML = `${pageHead(...heads[resourceView])}<section class="panel resource"><div class="tabs" aria-label="Filter ${view} records">${tabs.map((tab: string) => `<button class="tab ${state.tab === tab.toLowerCase() ? "active" : ""}" data-tab="${tab.toLowerCase()}" aria-pressed="${state.tab === tab.toLowerCase()}">${escapeActivityText(tab)}${tab === "All" ? ` (${resourceCollections[resourceView].length})` : ""}</button>`).join("")}</div><div class="toolbar resource-toolbar"><div class="inline-search search-field">${ico("search")}<input id="resource-search" value="${escapeActivityText(state.query)}" placeholder="Search ${view}…" aria-label="Search ${view}" autocomplete="off">${hasQuery ? '<button class="clear-search" aria-label="Clear search"><span class="close-lines"></span></button>' : ""}</div><span class="sort-help">Click a column to sort</span>${pageSizeControls(resourceView)}<span class="count" aria-live="polite">${resultCount(resourceView, pagination)}</span></div>${resultContent}</section>`;
   main.querySelectorAll<LegacyDomElement>("[data-tab]").forEach((button) => {
     const tab = button.textContent.trim().replace(/\s+\(\d+\)$/, ""),
       kind = resourceView === "quests" ? questFilterKind(tab) : "status",

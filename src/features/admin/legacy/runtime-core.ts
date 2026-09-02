@@ -2,14 +2,39 @@ import type { LegacyRecord } from "./runtime";
 import { data, disputeCases } from "./runtime-data";
 import { payoutStatusFor } from "../domain/rulebook";
 import { mockAdminCommandPort } from "./admin-command-port";
+import { adminApiCommandPort } from "../api/admin-api";
 import type { AdminCommandPort } from "../api/admin-api";
+import { isAdminApiEnabled } from "../api/admin-provider";
+import { payoutRecordFromApi } from "./live-review-data";
 
 export { data, disputeCases };
 export { mockAdminCommandPort };
 export type { AdminCommandPort };
-// The demo runtime selects the local adapter. Replace this one binding with
-// adminApiProvider.commands when the Admin API is enabled.
-export const adminCommands: AdminCommandPort = mockAdminCommandPort;
+
+function mergeLivePayout(id: string, payout: Awaited<ReturnType<typeof adminApiCommandPort.approvePayout>>): void {
+  const record = data.payouts.find((candidate) => candidate.id === id);
+  if (record) Object.assign(record, payoutRecordFromApi(payout));
+}
+
+const livePayoutCommands: AdminCommandPort = {
+  ...mockAdminCommandPort,
+  approvePayout: async (payoutId, options) => {
+    const payout = await adminApiCommandPort.approvePayout(payoutId, options);
+    mergeLivePayout(payoutId, payout);
+    return payout;
+  },
+  rejectPayout: async (payoutId, options) => {
+    const payout = await adminApiCommandPort.rejectPayout(payoutId, options);
+    mergeLivePayout(payoutId, payout);
+    return payout;
+  },
+};
+
+// Keep unsupported resources on the demo adapter until their API routes are
+// available. Payout commands use the live API when the API data source is on.
+export const adminCommands: AdminCommandPort = isAdminApiEnabled()
+  ? livePayoutCommands
+  : mockAdminCommandPort;
 export {
   addUserHistory,
   adminDateTime,

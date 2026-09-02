@@ -11,6 +11,10 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 
+import { adminApi } from "../api/admin-api";
+import { isAdminApiEnabled } from "../api/admin-provider";
+import { ADMIN_SESSION_KEY } from "../legacy/auth";
+
 type AdminLanguage = "en" | "th";
 
 const copy = {
@@ -55,6 +59,8 @@ export function AdminLoginPage() {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [formError, setFormError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const emailInputRef = useRef<HTMLInputElement>(null);
   const text = copy[language];
 
@@ -94,8 +100,9 @@ export function AdminLoginPage() {
     [],
   );
 
-  const submit = useCallback((event: FormEvent<HTMLFormElement>) => {
+  const submit = useCallback(async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setFormError("");
     const normalizedEmail = email.trim().toLowerCase();
     const nextEmailError = /^[^\s@]+@ku\.th$/i.test(normalizedEmail)
       ? ""
@@ -108,11 +115,28 @@ export function AdminLoginPage() {
     setPasswordError(nextPasswordError);
     if (nextEmailError || nextPasswordError) return;
 
-    localStorage.setItem(
-      "kuquest-admin-session",
-      JSON.stringify({ email: normalizedEmail, signedInAt: new Date().toISOString() }),
-    );
-    window.location.assign("/");
+    if (!isAdminApiEnabled()) {
+      localStorage.setItem(
+        ADMIN_SESSION_KEY,
+        JSON.stringify({ email: normalizedEmail, signedInAt: new Date().toISOString() }),
+      );
+      window.location.assign("/");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const session = await adminApi.signInEmail(normalizedEmail, password);
+      localStorage.setItem(
+        ADMIN_SESSION_KEY,
+        JSON.stringify({ email: session.user.email, signedInAt: new Date().toISOString() }),
+      );
+      window.location.assign("/");
+    } catch (error: unknown) {
+      setFormError(error instanceof Error ? error.message : "Admin sign-in failed. Try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }, [email, password]);
 
   return (
@@ -168,7 +192,8 @@ export function AdminLoginPage() {
             required
           />
           <p className="login-error" id="password-error" role="alert" hidden={!passwordError}>{passwordError}</p>
-          <button className="btn primary login-submit" type="submit">{text.signIn}</button>
+          <p className="login-error" id="login-form-error" role="alert" hidden={!formError}>{formError}</p>
+          <button className="btn primary login-submit" type="submit" disabled={isSubmitting}>{text.signIn}</button>
         </form>
         <div className="language-control login-language">
           <fieldset className="login-language-options" aria-label={text.languageOptions}>
