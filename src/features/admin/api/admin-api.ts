@@ -298,14 +298,14 @@ function commandBody<T extends AdminCommandOptions>(options: T): Omit<T, "idempo
 
 export const adminApi = {
   signInEmail(email: string, password: string): Promise<AdminAuthSession> {
-    return apiRequest<AdminAuthSession>("/api/auth/admin/sign-in/email", {
+    return apiRequest<AdminAuthSession>("/api/admin/auth/sign-in/email", {
       method: "POST",
       body: { email, password },
     });
   },
 
   signOut(): Promise<null> {
-    return apiRequest<null | undefined>("/api/auth/admin/sign-out", {
+    return apiRequest<null | undefined>("/api/admin/auth/sign-out", {
       method: "POST",
     }).then(() => null);
   },

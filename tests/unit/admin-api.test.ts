@@ -57,7 +57,7 @@ describe("Admin API boundary", () => {
     expect(request?.headers.get("content-type")).toBeNull();
   });
 
-  it("uses the Issue 67 Admin sign-in route", async () => {
+  it("uses the API Server Admin sign-in route", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     let request: Request | undefined;
 
@@ -82,7 +82,7 @@ describe("Admin API boundary", () => {
 
     expect(session.authAdmin.id).toBe("admin-1");
     expect(request?.method).toBe("POST");
-    expect(request?.url).toBe("https://api.example.test/api/auth/admin/sign-in/email");
+    expect(request?.url).toBe("https://api.example.test/api/admin/auth/sign-in/email");
     expect(await request?.json()).toEqual({
       email: "admin@ku.th",
       password: "password123",
