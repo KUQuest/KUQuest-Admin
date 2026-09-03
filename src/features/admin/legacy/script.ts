@@ -37,6 +37,7 @@ import { newAdminIdempotencyKey } from "./admin-command-port";
 import {
   hydrateLivePayout,
   payoutServerValue,
+  refreshLiveQuests,
   refreshLivePayouts,
 } from "./live-review-data";
 import { isAdminApiEnabled } from "../api/admin-provider";
@@ -498,8 +499,8 @@ export function navigate(v: string): void {
   state.view = v;
   state.tab = "all";
   state.query = "";
-  if (isAdminApiEnabled() && v === "payouts") {
-    const refresh = refreshLivePayouts();
+  if (isAdminApiEnabled() && (v === "payouts" || v === "quests")) {
+    const refresh = v === "quests" ? refreshLiveQuests() : refreshLivePayouts();
     render();
     void refresh.then(() => {
       if (state.view === v) render();

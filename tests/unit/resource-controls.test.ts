@@ -58,6 +58,11 @@ function record(
 }
 
 describe("active resource controls model", () => {
+  it("uses Created At instead of Tag for Quest rows", () => {
+    expect(resourceColumns.quests).toContainEqual(["createdAt", "Created At"]);
+    expect(resourceColumns.quests).not.toContainEqual(["other", "Tag"]);
+  });
+
   it("keeps canonical status values when visible tab labels are human-readable", () => {
     expect(resourceTabValue("quest_open")).toBe("QUEST_OPEN");
     expect(resourceTabValue("all")).toBe("All");
@@ -118,6 +123,22 @@ describe("active resource controls model", () => {
       "DSP-2",
       "DSP-1",
       "DSP-3",
+    ]);
+  });
+
+  it("sorts Quest rows by creation time", () => {
+    const state = createState();
+    const collections = createCollections({
+      quests: [
+        record("QST-2", { createdAt: "2026-09-02T08:00:00Z" }),
+        record("QST-1", { createdAt: "2026-09-01T08:00:00Z" }),
+      ],
+    });
+    state.orderBy.quests = "createdAt-asc";
+
+    expect(matchingRows(collections, state, "quests").map((item) => item.id)).toEqual([
+      "QST-1",
+      "QST-2",
     ]);
   });
 

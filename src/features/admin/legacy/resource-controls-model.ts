@@ -39,7 +39,7 @@ export const resourceColumns: Record<ResourceView, ResourceColumn[]> = {
     ["id", "Quest"],
     ["title", "Title"],
     ["person", "Hirer"],
-    ["other", "Tag"],
+    ["createdAt", "Created At"],
     ["amount", "Wage"],
     ["status", "Status"],
   ],
@@ -140,6 +140,7 @@ export function matchingRows(
       record.details || "",
       record.reportedAt || "",
       record.requestedAt || "",
+      record.createdAt || "",
       record.detail || "",
     ]
       .join(" ")
@@ -228,6 +229,7 @@ function sortValue(record: LegacyRecord, key: string): string | number | null {
   if (key === "disputeDate") return dateSortValue(record.disputeDate);
   if (key === "requestedAt") return dateSortValue(record.requestedAt);
   if (key === "reportedAt") return dateSortValue(record.reportedAt);
+  if (key === "createdAt") return dateSortValue(record.createdAt);
   const value = record[key];
   if (typeof value === "string" || typeof value === "number") return value;
   if (value == null) return null;

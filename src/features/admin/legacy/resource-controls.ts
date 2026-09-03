@@ -2,6 +2,7 @@ import {
   badge,
   bind,
   data,
+  adminDateTime,
   disputeCases,
   disputeTypeLabel,
   escapeActivityText,
@@ -170,6 +171,7 @@ function tableCell(view: ResourceView, record: LegacyRecord, key: string, target
   }
   if (key === "person") return `<td><strong>${escapeActivityText(record.person)}</strong></td>`;
   if (key === "other") return `<td>${escapeActivityText(record.other)}</td>`;
+  if (key === "createdAt") return `<td>${escapeActivityText(createdAtLabel(record.createdAt))}</td>`;
   if (key === "amount") return `<td class="money">฿${fmt(record.amount)}</td>`;
   if (key === "requestedAt") return `<td>${escapeActivityText(record.requestedAt || "—")}</td>`;
   if (key === "status") {
@@ -199,6 +201,13 @@ function tableCell(view: ResourceView, record: LegacyRecord, key: string, target
   if (key === "reportedAt") return `<td>${escapeActivityText(record.reportedAt)}</td>`;
   if (key === "age") return `<td>${escapeActivityText(record.age)}</td>`;
   return "<td>—</td>";
+}
+
+function createdAtLabel(value: unknown): string {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "—";
+  const date = new Date(raw.replace(" · ", " "));
+  return Number.isNaN(date.getTime()) ? raw : adminDateTime(date);
 }
 
 const originalBind = bind;

@@ -199,9 +199,20 @@ export type QuestDetailModule = {
   openQuestDrawer: (index: number) => void;
 };
 
-export function questSatangLabel(value: unknown): string {
+export function questBahtLabel(value: unknown): string {
   return typeof value === "number" && Number.isInteger(value) && value >= 0
-    ? `${new Intl.NumberFormat("en-US").format(value)} Satang`
+    ? `฿${new Intl.NumberFormat("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value / 100)}`
+    : "Not provided by the Admin API";
+}
+
+export function questPercentLabel(value: unknown): string {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0
+    ? `${new Intl.NumberFormat("en-US", {
+      maximumFractionDigits: 2,
+    }).format(value / 100)}%`
     : "Not provided by the Admin API";
 }
 
@@ -456,9 +467,9 @@ export function createQuestDetailModule(
     drawer.innerHTML = `
     <div class="drawer-top"><div><strong>${escapeActivityText(record.id)}</strong><small>Full quest record</small></div><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div>
     <div class="drawer-body quest-record">
-      <div class="drawer-title"><span class="att-icon info">${ico("quest")}</span><div><h2>${escapeActivityText(record.title)}</h2><p>${record.teamQuest ? "Team quest · " : ""}${escapeActivityText(record.other)} · created by ${escapeActivityText(record.person)}</p></div></div>
+      <div class="drawer-title"><span class="att-icon info">${ico("quest")}</span><div><h2>${escapeActivityText(record.title)}</h2><p>${record.teamQuest ? "Team quest · " : ""}created by ${escapeActivityText(record.person)}</p></div></div>
       <div class="facts quest-summary">
-        <div class="fact"><span>Status</span>${badge(questState, record.tone)}${hidden ? '<span class="badge neutral quest-hidden-overlay">Hidden</span>' : ""}</div><div class="fact"><span>Quest Funding Total</span><strong>${questSatangLabel(record.fundingTotalSatang)}</strong></div>
+        <div class="fact"><span>Status</span>${badge(questState, record.tone)}${hidden ? '<span class="badge neutral quest-hidden-overlay">Hidden</span>' : ""}</div><div class="fact"><span>Quest Funding Total</span><strong>${questBahtLabel(record.fundingTotalSatang)}</strong></div>
         <div class="fact"><span>Participant mode</span><strong>${record.teamQuest ? "Team" : "Single"}</strong></div><div class="fact"><span>Candidate mode</span><strong>${escapeActivityText(record.candidateMode ?? (questState === "QUEST_OPEN" ? "FCFS" : "CANDIDATE"))}</strong></div><div class="fact"><span>Tag</span><strong>${escapeActivityText(record.other)}</strong></div>
       </div>
       ${questState === "QUEST_FAILED" ? `<section class="section quest-dispute-reason"><div class="section-title"><h3>Why this quest is failed</h3>${relatedDispute ? badge(disputeCaseStatusFor(relatedDispute.disputeCaseStatus ?? relatedDispute.status), relatedDispute.tone) : badge("DISPUTE_CASE_PENDING", "warning")}</div>${relatedDispute ? `<dl class="dispute-summary-context"><div><dt>Case</dt><dd>${escapeActivityText(relatedDispute.id)}</dd></div><div><dt>Category</dt><dd>${escapeActivityText(disputeTypeLabel(relatedDispute))}</dd></div><div><dt>Description</dt><dd>${escapeActivityText(relatedDispute.detail)}</dd></div></dl><a class="btn full-width" href="/disputes/${encodeURIComponent(relatedDispute.id)}">Open full dispute</a>` : '<p class="audit-note">This Quest is in QUEST_FAILED, but no Dispute Case record is linked. Review the record relationship before taking action.</p>'}</section>` : ""}
@@ -466,10 +477,10 @@ export function createQuestDetailModule(
       ${detail.giverAttachments.length ? `<section class="section"><div class="section-title"><h3>Files from hirer</h3><span class="section-count">${detail.giverAttachments.length}</span></div>${fileRows(detail.giverAttachments)}</section>` : ""}
       ${pendingQuestChanges[record.id] ? `<section class="section change-review"><div class="section-title"><h3>Pending hirer changes</h3>${badge("EDIT_REQUEST_PENDING", "warning")}</div><div class="change-warning">${ico("history")}<div><strong>Current accepted terms remain active</strong><p>This proposal does not change the participant’s agreement until both parties consent.</p></div></div><div class="change-meta"><div><span>Requested by</span><strong>${escapeActivityText(pendingQuestChanges[record.id].requestedBy)}</strong></div><div><span>Reason</span><strong>${escapeActivityText(pendingQuestChanges[record.id].reason)}</strong></div></div><div class="change-table"><div class="change-row change-head"><span>Field</span><span>Accepted value</span><span>Proposed value</span></div>${pendingQuestChanges[record.id].changes.map((change) => `<div class="change-row"><strong>${escapeActivityText(change[0])}</strong><span>${escapeActivityText(change[1])}</span><span>${escapeActivityText(change[2])}</span></div>`).join("")}</div><div class="response-block"><h3>Participant consent</h3>${participantConsentRows(pendingQuestChanges[record.id].responses)}</div><div class="change-oversight"><strong>Admin oversight only</strong><p>Do not approve or reject this edit. Intervene only if a participant files a dispute or the proposed terms violate marketplace policy.</p></div></section>` : ""}
       <section class="section"><div class="section-title"><h3>Hirer</h3>${giverProfileLink(detail, "View profile", "link")}</div>${giverProfile(detail)}</section>
-      <section class="section"><h3>Schedule and location</h3><div class="facts"><div class="fact"><span>Starts</span><strong>${escapeActivityText(detail.schedule[0])}</strong></div><div class="fact"><span>Due</span><strong>${escapeActivityText(detail.schedule[1])}</strong></div><div class="fact"><span>Application window</span><strong>${escapeActivityText(detail.schedule[2])}</strong></div><div class="fact"><span>Location</span><strong>${escapeActivityText(detail.location[0])}</strong><small>${escapeActivityText(detail.location[1])}</small></div></div></section>
+      <section class="section"><h3>Schedule and location</h3><div class="facts"><div class="fact"><span>Starts</span><strong>${escapeActivityText(detail.schedule[0])}</strong></div><div class="fact"><span>Due</span><strong>${escapeActivityText(detail.schedule[1])}</strong></div><div class="fact"><span>Location</span><strong>${escapeActivityText(detail.location[0])}</strong><small>${escapeActivityText(detail.location[1])}</small></div></div></section>
       <section class="section"><div class="section-title"><h3>${participantSectionTitle(record, participants, started)}</h3><span class="section-count">${participants.length}</span></div>${relatedRows(participants)}</section>
       ${proofSubmissionsPanel(detail.proof, record)}
-      <section class="section"><h3>Financial record</h3><div class="financial-line"><span>Quest Funding Total</span><strong>${questSatangLabel(record.fundingTotalSatang)}</strong></div><div class="financial-line"><span>Quest Reward</span><strong>${questSatangLabel(record.questRewardSatang)}</strong></div><div class="financial-line"><span>Platform Fee per Worker</span><strong>${questSatangLabel(record.platformFeeSatang)}</strong></div><div class="financial-line"><span>Platform Fee policy</span><strong>${typeof record.platformFeeBps === "number" ? `${record.platformFeeBps} bps · rounding ${record.feeRoundingMode ?? "not provided by the Admin API"}` : "Not provided by the Admin API"}</strong></div><p class="audit-note">Funds are held in the Funding Reservation until approval or Dispute Case resolution.</p></section>
+      <section class="section"><h3>Financial record</h3><div class="financial-line"><span>Quest Funding Total</span><strong>${questBahtLabel(record.fundingTotalSatang)}</strong></div><div class="financial-line"><span>Quest Reward</span><strong>${questBahtLabel(record.questRewardSatang)}</strong></div><div class="financial-line"><span>Platform Fee per Worker</span><strong>${questBahtLabel(record.platformFeeSatang)}</strong></div><div class="financial-line"><span>Platform Fee policy</span><strong>${typeof record.platformFeeBps === "number" ? questPercentLabel(record.platformFeeBps) : "Not provided by the Admin API"}</strong></div><p class="audit-note">Funds are held in the Funding Reservation until approval or Dispute Case resolution.</p></section>
       <section class="section"><h3>Overall quest timeline</h3>${timeline(detail.activity, { showDetails: false })}</section>
     </div>
     <div class="drawer-actions"><button class="btn" data-action="${hidden ? "Restore quest" : "Hide quest"}">${hidden ? "Restore quest" : "Hide quest"}</button><a class="btn" href="/quests/${encodeURIComponent(record.id)}">Full quest detail</a>${questState === "QUEST_FAILED" && relatedDispute ? `<a class="btn primary" href="/disputes/${encodeURIComponent(relatedDispute.id)}">Review dispute</a>` : ""}</div>`;

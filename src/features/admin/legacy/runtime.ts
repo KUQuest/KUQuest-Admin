@@ -73,6 +73,10 @@ export type LegacyRecord = {
   platformFeeSatang?: number;
   platformFeeBps?: number;
   feeRoundingMode?: "UP";
+  questEscrowSatang?: number;
+  fundingReservationId?: string;
+  policyRevisionId?: string;
+  headcount?: number;
   detail?: string;
   details?: string;
   category?: string;

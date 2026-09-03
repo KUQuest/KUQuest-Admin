@@ -18,7 +18,7 @@ import {
 
 // Deterministic high-volume demo data. Versioning resets browser-local records
 // whenever the synthetic marketplace scenario changes.
-const freshDemoVersion = "2026-09-03-v53-canonical-quest-state-fixtures";
+const freshDemoVersion = "2026-09-03-v54-realistic-quest-finance-fixtures";
 const freshDemoKey = "kuquest-admin-demo-data";
 const seedBaseDate = new Date("2026-08-28T08:00:00Z");
 
@@ -78,18 +78,18 @@ const adminNames = ["Nicha P.", "Pimchanok R.", "Worawut K."];
 // These values represent the server-calculated financial fields. The demo
 // client selects a complete record; it does not calculate the fee.
 const questFinancialFixtures = [
-  { amount: 1400, fundingTotalSatang: 140000, questRewardSatang: 137200, platformFeeSatang: 2800 },
-  { amount: 2119, fundingTotalSatang: 211900, questRewardSatang: 207662, platformFeeSatang: 4238 },
-  { amount: 2838, fundingTotalSatang: 283800, questRewardSatang: 278124, platformFeeSatang: 5676 },
-  { amount: 3557, fundingTotalSatang: 355700, questRewardSatang: 348586, platformFeeSatang: 7114 },
-  { amount: 4276, fundingTotalSatang: 427600, questRewardSatang: 419048, platformFeeSatang: 8552 },
-  { amount: 4995, fundingTotalSatang: 499500, questRewardSatang: 489510, platformFeeSatang: 9990 },
-  { amount: 5714, fundingTotalSatang: 571400, questRewardSatang: 559972, platformFeeSatang: 11428 },
-  { amount: 6433, fundingTotalSatang: 643300, questRewardSatang: 630434, platformFeeSatang: 12866 },
-  { amount: 7152, fundingTotalSatang: 715200, questRewardSatang: 700896, platformFeeSatang: 14304 },
-  { amount: 7871, fundingTotalSatang: 787100, questRewardSatang: 771358, platformFeeSatang: 15742 },
-  { amount: 8590, fundingTotalSatang: 859000, questRewardSatang: 841820, platformFeeSatang: 17180 },
-  { amount: 9309, fundingTotalSatang: 930900, questRewardSatang: 912282, platformFeeSatang: 18618 },
+  { amount: 1200, fundingTotalSatang: 120000, questRewardSatang: 117600, platformFeeSatang: 2400, singleEscrowSatang: 120000, teamEscrowSatang: 360000 },
+  { amount: 1850, fundingTotalSatang: 185000, questRewardSatang: 181300, platformFeeSatang: 3700, singleEscrowSatang: 185000, teamEscrowSatang: 555000 },
+  { amount: 2750, fundingTotalSatang: 275000, questRewardSatang: 269500, platformFeeSatang: 5500, singleEscrowSatang: 275000, teamEscrowSatang: 825000 },
+  { amount: 4200, fundingTotalSatang: 420000, questRewardSatang: 411600, platformFeeSatang: 8400, singleEscrowSatang: 420000, teamEscrowSatang: 1260000 },
+  { amount: 6800, fundingTotalSatang: 680000, questRewardSatang: 666400, platformFeeSatang: 13600, singleEscrowSatang: 680000, teamEscrowSatang: 2040000 },
+  { amount: 9500, fundingTotalSatang: 950000, questRewardSatang: 931000, platformFeeSatang: 19000, singleEscrowSatang: 950000, teamEscrowSatang: 2850000 },
+  { amount: 12800, fundingTotalSatang: 1280000, questRewardSatang: 1254400, platformFeeSatang: 25600, singleEscrowSatang: 1280000, teamEscrowSatang: 3840000 },
+  { amount: 17500, fundingTotalSatang: 1750000, questRewardSatang: 1715000, platformFeeSatang: 35000, singleEscrowSatang: 1750000, teamEscrowSatang: 5250000 },
+  { amount: 24000, fundingTotalSatang: 2400000, questRewardSatang: 2352000, platformFeeSatang: 48000, singleEscrowSatang: 2400000, teamEscrowSatang: 7200000 },
+  { amount: 32500, fundingTotalSatang: 3250000, questRewardSatang: 3185000, platformFeeSatang: 65000, singleEscrowSatang: 3250000, teamEscrowSatang: 9750000 },
+  { amount: 48000, fundingTotalSatang: 4800000, questRewardSatang: 4704000, platformFeeSatang: 96000, singleEscrowSatang: 4800000, teamEscrowSatang: 14400000 },
+  { amount: 75000, fundingTotalSatang: 7500000, questRewardSatang: 7350000, platformFeeSatang: 150000, singleEscrowSatang: 7500000, teamEscrowSatang: 22500000 },
 ] as const;
 
 function statusTone(status: string): string {
@@ -262,7 +262,14 @@ function createQuest(index: number, forcedState?: (typeof QUEST_STATES)[number])
     eligibleParticipants[(index * 13 + participantIndex * 17 + 5) % eligibleParticipants.length],
   ).filter((candidate: LegacyRecord | undefined, participantIndex: number, all: Array<LegacyRecord | undefined>) => candidate && candidate.id !== hirer.id && all.findIndex((item) => item?.id === candidate.id) === participantIndex) as LegacyRecord[];
   const financialFixture = questFinancialFixtures[index % questFinancialFixtures.length];
-  const { amount, fundingTotalSatang, questRewardSatang, platformFeeSatang } = financialFixture;
+  const {
+    amount,
+    fundingTotalSatang,
+    questRewardSatang,
+    platformFeeSatang,
+    singleEscrowSatang,
+    teamEscrowSatang,
+  } = financialFixture;
   const platformFeeBps = 200;
   const createdDaysAgo = index < 12 ? index % 3 : 3 + ((index * 17) % 180);
   const createdAt = seedDateLabel(createdDaysAgo, 8 + (index % 9), (index * 13) % 60);
@@ -292,6 +299,12 @@ function createQuest(index: number, forcedState?: (typeof QUEST_STATES)[number])
     platformFeeSatang,
     platformFeeBps,
     feeRoundingMode: "UP",
+    headcount: participantCount,
+    ...(canonicalState !== "QUEST_DRAFT" ? {
+      questEscrowSatang: teamQuest ? teamEscrowSatang : singleEscrowSatang,
+      fundingReservationId: `00000000-0000-4000-9000-${String(670000000000 + index).padStart(12, "0")}`,
+      policyRevisionId: "00000000-0000-4000-a067-000000000001",
+    } : {}),
     createdAt,
     startsAt,
     dueAt,
@@ -305,7 +318,7 @@ function createQuest(index: number, forcedState?: (typeof QUEST_STATES)[number])
     description: `Complete the ${title.toLowerCase()} brief and submit a clear, verifiable record for the university marketplace team.`,
     giver: [hirer.title, hirer.id, hirer.other, `${4.4 + (index % 6) / 10} from ${4 + (index % 18)} quests`],
     location: [location, `${["Indoor and outdoor checkpoints", "Three campus zones", "Reference route confirmed"][index % 3]}`, `${13.84 + (index % 9) / 1000}, 100.${56 + (index % 20)}`],
-    schedule: [startsAt, dueAt, status === "Draft" ? "Not published" : `Applications closed · ${activityDate}`],
+    schedule: [startsAt, dueAt],
     activity: [
       `Quest ${status === "Draft" ? "saved as draft" : "published"} · ${activityDate}, 09:10`,
       hasApplicants ? `Applications received · ${activityDate}, 12:30` : `Quest record created · ${activityDate}, 12:30`,

@@ -174,7 +174,6 @@ function questRecordFromApi(quest: AdminQuest, detail?: AdminQuestDetail): Legac
     schedule: [
       dateTimeLabel(quest.startTime),
       quest.dueAt ? dateTimeLabel(quest.dueAt) : "Due date not provided by the Admin API",
-      "Application window not provided by the Admin API",
     ],
     activity,
     editHistory,
