@@ -85,19 +85,119 @@ export type AdminActivityLog = {
   detail?: string;
 };
 
+export const ADMIN_API_QUEST_STATUSES = [
+  "QUEST_DRAFT",
+  "QUEST_OPEN",
+  "QUEST_AWAITING_CONSENT",
+  "QUEST_ASSIGNED",
+  "QUEST_IN_PROGRESS",
+  "QUEST_SUBMITTED",
+  "QUEST_APPROVED",
+  "QUEST_REWORK",
+  "QUEST_COMPLETED",
+  "QUEST_CANCELLED",
+  "QUEST_DISPUTED",
+  "QUEST_FAILED",
+] as const;
+export type AdminApiQuestStatus = (typeof ADMIN_API_QUEST_STATUSES)[number];
+export type AdminQuestMode = "FIRST_COME_FIRST_SERVED" | "CANDIDATE";
+export type AdminQuestParticipation = "SINGLE" | "GROUP";
+
+export type AdminQuestMember = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+};
+
 export type AdminQuest = {
   id: string;
+  apiVersion: "v1" | "v2";
+  version: number;
   title: string;
-  questState: QuestState;
+  questStatus: AdminApiQuestStatus;
+  mode: AdminQuestMode;
+  participation: AdminQuestParticipation;
+  headcount: number;
+  rewardSatang: number | null;
+  questFundingTotalSatang: number | null;
+  startTime: string;
+  dueAt: string | null;
   hiddenAt: string | null;
-  hiddenByAdminId: string | null;
-  fundingTotalSatang?: number;
-  questRewardSatang?: number;
-  platformFeeSatang?: number;
-  platformFeeBps?: number;
-  feeRoundingMode?: "UP";
-  version?: number;
-  [key: string]: unknown;
+  hiddenByAdminId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  hirer: AdminQuestMember;
+};
+
+export type AdminQuestDetail = AdminQuest & {
+  description: string | null;
+  condition: { text: string; items: Array<{ position: number; text: string }> };
+  locations: Array<{ label: string | null }>;
+  proofRequired: boolean;
+  tagId: string | null;
+  fundingReservationId: string | null;
+  policyRevisionId: string | null;
+  platformFeeBps: number | null;
+  platformFeePerWorkerSatang: number | null;
+  questEscrowSatang: number | null;
+  cancelledAt: string | null;
+  cancelledByUserId: string | null;
+  cancelledByAdminId: string | null;
+  candidates: {
+    applications: Array<{
+      id: string;
+      worker: AdminQuestMember;
+      applicationStatus: string;
+      reworkLimit: number;
+      appliedAt: string;
+    }>;
+    teams: Array<{
+      id: string;
+      name: string;
+      teamStatus: string;
+      reworkLimit: number;
+      leaderId: string;
+      createdAt: string;
+      members: Array<{ member: AdminQuestMember; joinedAt: string }>;
+    }>;
+  };
+  assignments: Array<{
+    id: string;
+    worker: AdminQuestMember;
+    assignmentStatus: string;
+    startedAt: string | null;
+    createdAt: string;
+  }>;
+  proofSubmissions: Array<{
+    id: string;
+    worker: AdminQuestMember | null;
+    team: { id: string; name: string } | null;
+    submittedBy: AdminQuestMember;
+    content: string;
+    submissionStatus: string;
+    reviewNote: string | null;
+    submittedAt: string;
+    reviewedAt: string | null;
+    files: Array<{ fileId: string; contentType: string; sizeBytes: number; position: number }>;
+  }>;
+  editHistory: Array<{
+    kind: "FIELD_EDIT" | "EDIT_REQUEST";
+    id: string;
+    fieldName?: string;
+    requestStatus?: string;
+    failureCode?: string | null;
+    createdAt?: string;
+    editedAt?: string;
+    resolvedAt?: string | null;
+  }>;
+  adminActions: Array<{
+    id: string;
+    admin: { id: string; firstName: string; lastName: string };
+    action: string;
+    reasonCode: string | null;
+    createdAt: string;
+  }>;
 };
 
 export type AdminDisputeCase = {
@@ -206,9 +306,10 @@ export type AdminPayoutListQuery = {
 };
 
 export type AdminQuestListQuery = {
-  questState?: QuestState;
+  status?: AdminApiQuestStatus;
+  mode?: AdminQuestMode;
+  participation?: AdminQuestParticipation;
   hidden?: boolean;
-  query?: string;
   limit?: number;
   cursor?: string;
   sort?: "newest" | "oldest";
@@ -242,12 +343,18 @@ export type AdminCommandOptions = {
   expectedVersion?: number;
 };
 
+export type AdminQuestReasonCode = "POLICY_REVIEW" | "SAFETY_REVIEW";
+
 export type QuestHideCommand = AdminCommandOptions & {
   reason: string;
+  reasonCode: AdminQuestReasonCode;
 };
-export type QuestRestoreCommand = AdminCommandOptions;
+export type QuestRestoreCommand = AdminCommandOptions & {
+  reasonCode?: AdminQuestReasonCode;
+};
 export type QuestTerminateCommand = AdminCommandOptions & {
   reason: string;
+  reasonCode: AdminQuestReasonCode;
 };
 
 export type DisputeAllocation = {
@@ -262,10 +369,16 @@ export type DisputeResolution = AdminCommandOptions & {
 };
 
 export type AdminDisputeResolutionResult = {
-  questStatus: "QUEST_CANCELLED" | "QUEST_COMPLETED";
+  questStatus: AdminApiQuestStatus;
   outcome: "REFUNDED" | "RELEASED_TO_WORKER";
   paidSatang: number;
   refundedSatang: number;
+};
+
+export type AdminQuestCommandResult = {
+  resourceSummary: AdminQuest;
+  resourceVersion: number;
+  adminActionId: string;
 };
 
 export type ReportDecision = AdminCommandOptions & {
@@ -320,9 +433,26 @@ function commandHeaders(options: AdminCommandOptions): HeadersInit {
   return { "Idempotency-Key": options.idempotencyKey };
 }
 
-function commandBody<T extends AdminCommandOptions>(options: T): Omit<T, "idempotencyKey"> {
-  const { idempotencyKey: _idempotencyKey, ...body } = options;
+function questCommandHeaders(options: AdminCommandOptions): HeadersInit {
+  if (typeof options.expectedVersion !== "number") {
+    throw new Error("Quest command requires the current resource version.");
+  }
+  return {
+    ...commandHeaders(options),
+    "If-Match": String(options.expectedVersion),
+  };
+}
+
+function commandBody<T extends AdminCommandOptions>(options: T): Omit<T, "idempotencyKey" | "expectedVersion"> {
+  const { idempotencyKey: _idempotencyKey, expectedVersion: _expectedVersion, ...body } = options;
   return body;
+}
+
+function disputeCommandBody(options: DisputeResolution): Pick<DisputeResolution, "outcome" | "allocations"> {
+  return {
+    outcome: options.outcome,
+    ...(options.allocations ? { allocations: options.allocations } : {}),
+  };
 }
 
 export const adminApi = {
@@ -367,42 +497,42 @@ export const adminApi = {
     );
   },
 
-  getQuest(questId: string): Promise<AdminQuest> {
-    return apiRequest<AdminQuest>(
+  getQuest(questId: string): Promise<AdminQuestDetail> {
+    return apiRequest<AdminQuestDetail>(
       `/api/v1/admin/quests/${encode(questId)}`,
       { cache: "no-store" },
     );
   },
 
-  hideQuest(questId: string, options: QuestHideCommand): Promise<AdminQuest> {
-    return apiRequest<AdminQuest>(
+  hideQuest(questId: string, options: QuestHideCommand): Promise<AdminQuestCommandResult> {
+    return apiRequest<AdminQuestCommandResult>(
       `/api/v1/admin/quests/${encode(questId)}/hide`,
       {
         method: "POST",
-        headers: commandHeaders(options),
-        body: commandBody(options),
+        headers: questCommandHeaders(options),
+        body: { reasonCode: options.reasonCode },
       },
     );
   },
 
-  restoreQuest(questId: string, options: QuestRestoreCommand): Promise<AdminQuest> {
-    return apiRequest<AdminQuest>(
+  restoreQuest(questId: string, options: QuestRestoreCommand): Promise<AdminQuestCommandResult> {
+    return apiRequest<AdminQuestCommandResult>(
       `/api/v1/admin/quests/${encode(questId)}/restore`,
       {
         method: "POST",
-        headers: commandHeaders(options),
-        body: commandBody(options),
+        headers: questCommandHeaders(options),
+        body: options.reasonCode ? { reasonCode: options.reasonCode } : {},
       },
     );
   },
 
-  terminateQuest(questId: string, options: QuestTerminateCommand): Promise<AdminQuest> {
-    return apiRequest<AdminQuest>(
+  terminateQuest(questId: string, options: QuestTerminateCommand): Promise<AdminQuestCommandResult> {
+    return apiRequest<AdminQuestCommandResult>(
       `/api/v1/admin/quests/${encode(questId)}/terminate`,
       {
         method: "POST",
-        headers: commandHeaders(options),
-        body: commandBody(options),
+        headers: questCommandHeaders(options),
+        body: { reasonCode: options.reasonCode },
       },
     );
   },
@@ -427,7 +557,7 @@ export const adminApi = {
       {
         method: "POST",
         headers: commandHeaders(options),
-        body: commandBody(options),
+        body: disputeCommandBody(options),
       },
     );
   },

@@ -8,6 +8,7 @@ import {
 import { data, disputeCases } from "./runtime-data";
 import type { LegacyDomElement, LegacyHistoryEntry, LegacyRecord, LegacyRuntimeData } from "./runtime";
 import {
+  QUEST_STATES,
   disputeCaseStatusFor,
   payoutStatusFor,
   questStateFor,
@@ -17,7 +18,7 @@ import {
 
 // Deterministic high-volume demo data. Versioning resets browser-local records
 // whenever the synthetic marketplace scenario changes.
-const freshDemoVersion = "2026-09-01-v52-api-ready-contract-fixtures";
+const freshDemoVersion = "2026-09-03-v53-canonical-quest-state-fixtures";
 const freshDemoKey = "kuquest-admin-demo-data";
 const seedBaseDate = new Date("2026-08-28T08:00:00Z");
 
@@ -231,13 +232,23 @@ const questTags = [
 const questStatuses = [
   "Open", "Assigned", "In progress", "Submitted", "Change pending", "Completed", "Completed", "Cancelled", "Hidden", "Disputed", "Draft", "Approved",
 ];
+const canonicalQuestStatusLabels: Record<(typeof QUEST_STATES)[number], string> = {
+  QUEST_DRAFT: "Draft",
+  QUEST_OPEN: "Open",
+  QUEST_ASSIGNED: "Assigned",
+  QUEST_IN_PROGRESS: "In progress",
+  QUEST_COMPLETED: "Completed",
+  QUEST_CANCELLED: "Cancelled",
+  QUEST_FAILED: "Failed",
+};
 const campusLocations = [
   "Kasetsart University, Bangkhen", "Central Library", "Student Activity Centre", "Faculty of Engineering", "Chalermphrakiat Building",
   "Kasetsart Innovation Centre", "Bangkhen Sports Complex", "Faculty of Agriculture", "Learning Resource Centre", "International College",
 ];
 
-function createQuest(index: number): LegacyRecord {
-  const seededStatus = questStatuses[index % questStatuses.length];
+function createQuest(index: number, forcedState?: (typeof QUEST_STATES)[number]): LegacyRecord {
+  const seededStatus = forcedState ? canonicalQuestStatusLabels[forcedState] : questStatuses[index % questStatuses.length];
+  const canonicalState = forcedState ?? questStateFor(seededStatus);
   const hidden = seededStatus === "Hidden";
   const status = hidden ? "Open" : seededStatus;
   const eligibleQuestUsers = data.users.filter(
@@ -284,10 +295,10 @@ function createQuest(index: number): LegacyRecord {
     createdAt,
     startsAt,
     dueAt,
-    status: questStateFor(seededStatus),
+    status: canonicalState,
     tone: statusTone(status),
     age: relativeAge(createdDaysAgo),
-    questState: questStateFor(seededStatus),
+    questState: canonicalState,
     version: 1,
     ...(seededStatus === "Change pending" ? { editRequestStatus: "EDIT_REQUEST_PENDING" } : {}),
     ...(hidden ? { hiddenAt: seedDateLabel(createdDaysAgo, 17, 20), hiddenByAdminId: adminNames[index % adminNames.length] } : {}),
@@ -318,7 +329,11 @@ function createQuest(index: number): LegacyRecord {
   } as unknown as LegacyRecord;
 }
 
-data.quests = Array.from({ length: 480 }, (_, index: number) => createQuest(index));
+const canonicalQuestFixtures = QUEST_STATES.map((state, index) => createQuest(index, state));
+data.quests = [
+  ...canonicalQuestFixtures,
+  ...Array.from({ length: 480 }, (_, index: number) => createQuest(index + canonicalQuestFixtures.length)),
+];
 
 const disputeCategories = ["Evidence", "Quality", "Scope", "Delivery", "Timing", "Rights", "Payment", "Completion"];
 Object.keys(disputeCases).forEach((key) => delete disputeCases[key]);

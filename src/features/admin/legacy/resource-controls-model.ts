@@ -306,6 +306,14 @@ export function questFilterKind(tab: string): "all" | "mode" | "status" {
   return "status";
 }
 
+export function resourceTabValue(tab: string): string {
+  const normalized = tab.trim().toLowerCase();
+  if (normalized === "all") return "All";
+  if (normalized === "team") return "Team";
+  if (normalized === "solo") return "Solo";
+  return tab.trim().toUpperCase();
+}
+
 export function resourceTabIsActive(
   state: ResourceState,
   view: ResourceView,
@@ -327,7 +335,7 @@ function legacyStatusForTab(tab: string): string {
     QUEST_IN_PROGRESS: "In progress",
     QUEST_COMPLETED: "Completed",
     QUEST_CANCELLED: "Cancelled",
-    QUEST_FAILED: "Disputed",
+    QUEST_FAILED: "Failed",
   };
   return values[tab] || tab;
 }

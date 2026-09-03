@@ -4,6 +4,7 @@ import {
   canHideQuest,
   canResolveDispute,
   disputeCaseStatusFor,
+  disputeCaseStatusLabel,
   hasHiddenQuestOverlay,
   isReportCasePending,
   isPayoutPendingApproval,
@@ -11,11 +12,14 @@ import {
   isQuestState,
   isQuestTerminal,
   payoutStatusFor,
+  payoutStatusLabel,
+  questStateLabel,
   questStateFor,
   reportCaseStatusFor,
   isWalletStatus,
   walletStatusFor,
 } from "../../src/features/admin/domain/rulebook";
+import { statusBadgeClass } from "../../src/features/admin/status-badge";
 
 describe("Admin Rulebook status boundary", () => {
   it("accepts the canonical Quest State values", () => {
@@ -59,5 +63,40 @@ describe("Admin Rulebook status boundary", () => {
     expect(isPayoutStatus("COMPLETED")).toBe(false);
     expect(isWalletStatus("FROZEN")).toBe(true);
     expect(isWalletStatus("BANNED")).toBe(false);
+  });
+
+  it("uses concise Payout labels without changing canonical statuses", () => {
+    expect(payoutStatusLabel("PENDING_ADMIN_APPROVAL")).toBe("Needs review");
+    expect(payoutStatusLabel("SUBMITTED_TO_PROVIDER")).toBe("Sent");
+    expect(payoutStatusLabel("PROVIDER_PENDING")).toBe("Processing");
+    expect(payoutStatusLabel("SUCCEEDED")).toBe("Paid");
+    expect(payoutStatusLabel("FAILED")).toBe("Failed");
+    expect(payoutStatusLabel("CANCELLED")).toBe("Cancelled");
+    expect(payoutStatusFor("PENDING_ADMIN_APPROVAL")).toBe("PENDING_ADMIN_APPROVAL");
+  });
+
+  it("uses concise Quest and Dispute Case labels without changing canonical statuses", () => {
+    expect(questStateLabel("QUEST_DRAFT")).toBe("Draft");
+    expect(questStateLabel("QUEST_OPEN")).toBe("Open");
+    expect(questStateLabel("QUEST_ASSIGNED")).toBe("Assigned");
+    expect(questStateLabel("QUEST_IN_PROGRESS")).toBe("In progress");
+    expect(questStateLabel("QUEST_COMPLETED")).toBe("Completed");
+    expect(questStateLabel("QUEST_CANCELLED")).toBe("Cancelled");
+    expect(questStateLabel("QUEST_FAILED")).toBe("Failed");
+    expect(disputeCaseStatusLabel("DISPUTE_CASE_PENDING")).toBe("Open");
+    expect(disputeCaseStatusLabel("DISPUTE_CASE_DISMISSED")).toBe("Dismissed");
+    expect(disputeCaseStatusLabel("DISPUTE_CASE_RESOLVED")).toBe("Resolved");
+    expect(questStateFor("QUEST_FAILED")).toBe("QUEST_FAILED");
+    expect(disputeCaseStatusFor("DISPUTE_CASE_RESOLVED")).toBe("DISPUTE_CASE_RESOLVED");
+  });
+
+  it("assigns separate badge classes to canonical feature statuses", () => {
+    expect(statusBadgeClass("QUEST_OPEN")).toBe("status-quest-open");
+    expect(statusBadgeClass("DISPUTE_CASE_PENDING")).toBe("status-dispute-pending");
+    expect(statusBadgeClass("PENDING_ADMIN_APPROVAL")).toBe("status-payout-pending-admin-approval");
+    expect(statusBadgeClass("REPORT_CASE_HIDDEN")).toBe("status-report-hidden");
+    expect(statusBadgeClass("CONDUCT_REPORT_UPHELD")).toBe("status-conduct-upheld");
+    expect(statusBadgeClass("FROZEN")).toBe("status-wallet-frozen");
+    expect(statusBadgeClass("Unknown")).toBe("");
   });
 });

@@ -10,6 +10,7 @@ import {
   ico,
   main,
   pageHead,
+  payoutBadge,
   renderActivity,
   renderPolicies,
   renderResource,
@@ -29,6 +30,7 @@ import {
   resourceTabIsActive as resourceTabIsActiveModel,
   resourceTabs,
   resultCount as getResultCount,
+  resourceTabValue,
   sortSpec,
   type Pagination,
   type PaginationResult,
@@ -39,8 +41,11 @@ import type { LegacyDomElement, LegacyRecord } from "./runtime";
 import { liveResourceState } from "./live-review-data";
 import {
   disputeCaseStatusFor,
+  disputeCaseStatusLabel,
   hasHiddenQuestOverlay,
   payoutStatusFor,
+  payoutStatusLabel,
+  questStateLabel,
   questStateFor,
   reportCaseStatusFor,
   walletStatusFor,
@@ -117,7 +122,7 @@ setRenderResource(function resourceRender(view: string): void {
     pagination = paginateRows(resourceView, rows),
     tabs = resourceTabs[resourceView],
     hasQuery = Boolean(state.query),
-    liveState = resourceView === "payouts" || resourceView === "disputes" ? liveResourceState[resourceView] : null,
+    liveState = resourceView === "payouts" || resourceView === "disputes" || resourceView === "quests" ? liveResourceState[resourceView] : null,
     resultContent = liveState?.loading
       ? '<div class="empty"><h3>Loading records</h3><p>Reading the Admin API.</p></div>'
       : liveState?.error
@@ -125,9 +130,9 @@ setRenderResource(function resourceRender(view: string): void {
         : rows.length
           ? `${controlledTable(resourceView, pagination.rows)}${paginationControls(resourceView, pagination)}`
           : `<div class="empty"><h3>No matching records</h3><p>${hasQuery ? "Clear your search to see more results." : "There are no records in this view."}</p><button class="btn reset-results">Reset view</button></div>`;
-  main.innerHTML = `${pageHead(...heads[resourceView])}<section class="panel resource"><div class="tabs" aria-label="Filter ${view} records">${tabs.map((tab: string) => `<button class="tab ${state.tab === tab.toLowerCase() ? "active" : ""}" data-tab="${tab.toLowerCase()}" aria-pressed="${state.tab === tab.toLowerCase()}">${escapeActivityText(tab)}${tab === "All" ? ` (${resourceCollections[resourceView].length})` : ""}</button>`).join("")}</div><div class="toolbar resource-toolbar"><div class="inline-search search-field">${ico("search")}<input id="resource-search" value="${escapeActivityText(state.query)}" placeholder="Search ${view}…" aria-label="Search ${view}" autocomplete="off">${hasQuery ? '<button class="clear-search" aria-label="Clear search"><span class="close-lines"></span></button>' : ""}</div><span class="sort-help">Click a column to sort</span>${pageSizeControls(resourceView)}<span class="count" aria-live="polite">${resultCount(resourceView, pagination)}</span></div>${resultContent}</section>`;
+  main.innerHTML = `${pageHead(...heads[resourceView])}<section class="panel resource"><div class="tabs" aria-label="Filter ${view} records">${tabs.map((tab: string) => { const label = tab === "All" || tab === "Team" || tab === "Solo" ? tab : resourceView === "payouts" ? payoutStatusLabel(tab) : resourceView === "disputes" ? disputeCaseStatusLabel(tab) : resourceView === "quests" ? questStateLabel(tab) : tab; return `<button class="tab ${state.tab === tab.toLowerCase() ? "active" : ""}" data-tab="${tab.toLowerCase()}" aria-pressed="${state.tab === tab.toLowerCase()}">${escapeActivityText(label)}${tab === "All" ? ` (${resourceCollections[resourceView].length})` : ""}</button>`; }).join("")}</div><div class="toolbar resource-toolbar"><div class="inline-search search-field">${ico("search")}<input id="resource-search" value="${escapeActivityText(state.query)}" placeholder="Search ${view}…" aria-label="Search ${view}" autocomplete="off">${hasQuery ? '<button class="clear-search" aria-label="Clear search"><span class="close-lines"></span></button>' : ""}</div><span class="sort-help">Click a column to sort</span>${pageSizeControls(resourceView)}<span class="count" aria-live="polite">${resultCount(resourceView, pagination)}</span></div>${resultContent}</section>`;
   main.querySelectorAll<LegacyDomElement>("[data-tab]").forEach((button) => {
-    const tab = button.textContent.trim().replace(/\s+\(\d+\)$/, ""),
+    const tab = resourceTabValue(button.dataset.tab || "all"),
       kind = resourceView === "quests" ? questFilterKind(tab) : "status",
       active = resourceTabIsActive(resourceView, tab);
     button.setAttribute("type", "button");
@@ -181,7 +186,7 @@ function tableCell(view: ResourceView, record: LegacyRecord, key: string, target
     const hiddenOverlay = view === "quests" && hasHiddenQuestOverlay(record)
       ? '<span class="badge neutral quest-hidden-overlay">Hidden</span>'
       : "";
-    return `<td>${badge(status, record.tone)}${hiddenOverlay}${disputeCaseId ? `<a class="link quest-dispute-link" href="/disputes/${encodeURIComponent(disputeCaseId)}">View dispute case</a>` : ""}</td>`;
+    return `<td>${view === "payouts" ? payoutBadge(status, record.tone) : badge(status, record.tone)}${hiddenOverlay}${disputeCaseId ? `<a class="link quest-dispute-link" href="/disputes/${encodeURIComponent(disputeCaseId)}">View dispute case</a>` : ""}</td>`;
   }
   if (key === "disputeDate") return `<td>${escapeActivityText(record.disputeDate || "—")}</td>`;
   if (key === "disputeType")

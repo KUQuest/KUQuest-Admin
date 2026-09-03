@@ -154,7 +154,6 @@ describe("Admin API boundary", () => {
     expect(request?.url).toBe("https://api.example.test/api/v1/admin/payouts/payout%2F1/reject");
     expect(request?.headers.get("idempotency-key")).toBe("reject-payout-1");
     expect(await request?.json()).toEqual({
-      expectedVersion: 4,
       reason: "The destination details could not be verified.",
     });
   });
@@ -179,11 +178,37 @@ describe("Admin API boundary", () => {
     expect(request?.url).toBe("https://api.example.test/api/v1/admin/quests/quest-1/dispute/resolve");
     expect(request?.headers.get("idempotency-key")).toBe("resolve-case-1");
     expect(await request?.json()).toEqual({
-      expectedVersion: 2,
       outcome: "RELEASE_TO_WORKER",
-      reason: "The accepted evidence supports the worker.",
       allocations: [{ workerId: "member-1", amountSatang: 12501 }],
     });
+  });
+
+  it("uses the API Server Quest command contract", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    let request: Request | undefined;
+
+    mockFetch(async (input, init) => {
+      request = new Request(input, init);
+      return jsonResponse({
+        success: true,
+        data: {
+          resourceSummary: { id: "quest-1" },
+          resourceVersion: 3,
+          adminActionId: "action-1",
+        },
+      });
+    });
+
+    await adminApi.hideQuest("quest-1", {
+      idempotencyKey: "hide-quest-1",
+      expectedVersion: 2,
+      reason: "The Quest needs policy review.",
+      reasonCode: "POLICY_REVIEW",
+    });
+
+    expect(request?.headers.get("idempotency-key")).toBe("hide-quest-1");
+    expect(request?.headers.get("if-match")).toBe("2");
+    expect(await request?.json()).toEqual({ reasonCode: "POLICY_REVIEW" });
   });
 
   it("maps an API error envelope to ApiError", async () => {
@@ -226,9 +251,9 @@ describe("Admin API boundary", () => {
     await adminApi.listActivityLogs();
     await adminApi.listQuests();
     await adminApi.getQuest("quest-1");
-    await adminApi.hideQuest("quest-1", { idempotencyKey: "hide-1", reason: "Policy review." });
-    await adminApi.restoreQuest("quest-1", { idempotencyKey: "restore-1" });
-    await adminApi.terminateQuest("quest-1", { idempotencyKey: "terminate-1", reason: "Policy violation." });
+    await adminApi.hideQuest("quest-1", { idempotencyKey: "hide-1", expectedVersion: 1, reason: "Policy review.", reasonCode: "POLICY_REVIEW" });
+    await adminApi.restoreQuest("quest-1", { idempotencyKey: "restore-1", expectedVersion: 1 });
+    await adminApi.terminateQuest("quest-1", { idempotencyKey: "terminate-1", expectedVersion: 1, reason: "Policy violation.", reasonCode: "SAFETY_REVIEW" });
     await adminApi.listDisputes();
     await adminApi.getDispute("case-1");
     await adminApi.resolveDispute("quest-1", { idempotencyKey: "resolve-1", outcome: "REFUND_HIRER", reason: "The evidence supports a refund." });

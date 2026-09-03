@@ -13,6 +13,7 @@ import {
   ico,
   penaltyOutcomeFor,
   penaltyOutcomeLabel,
+  payoutBadge,
   payoutEarningForQuest,
   payoutFinancials,
   payoutPreviousRecords,
@@ -36,16 +37,20 @@ import { newAdminIdempotencyKey } from "./admin-command-port";
 import {
   hydrateLivePayout,
   payoutServerValue,
-  refreshLiveDisputes,
   refreshLivePayouts,
 } from "./live-review-data";
 import { isAdminApiEnabled } from "../api/admin-provider";
+import { isQuestModerationAction, setupQuestReasonCode } from "./quest-admin-reason";
+import type { AdminQuestReasonCode } from "../api/admin-api";
 import {
   QUEST_STATES,
   disputeCaseStatusFor,
+  disputeCaseStatusLabel,
   hasHiddenQuestOverlay,
   isReportCasePending,
   payoutStatusFor,
+  payoutStatusLabel,
+  questStateLabel,
   questStateFor,
   reportCaseStatusFor,
   walletStatusFor,
@@ -64,6 +69,7 @@ export {
   ico,
   penaltyOutcomeFor,
   penaltyOutcomeLabel,
+  payoutBadge,
   payoutEarningForQuest,
   payoutFinancials,
   payoutPreviousRecords,
@@ -99,6 +105,12 @@ function statusForView(view: string, record: LegacyRecord): string {
   return record.status;
 }
 
+function statusBadgeForView(view: string, record: LegacyRecord): string {
+  return view === "payouts"
+    ? payoutBadge(record.payoutStatus ?? record.status, record.tone)
+    : badge(statusForView(view, record), record.tone);
+}
+
 function questStatusTone(status: string): string {
   if (status === "QUEST_FAILED") return "danger";
   if (status === "QUEST_CANCELLED") return "cancelled";
@@ -128,17 +140,17 @@ function persistAdminData(): void {
   window.persistAdminData?.();
 }
 
-function runAdminAction(record: LegacyRecord, action: string, reason: string): Promise<void> {
+function runAdminAction(record: LegacyRecord, action: string, reason: string, reasonCode?: AdminQuestReasonCode): Promise<void> {
   const idempotencyKey = newAdminIdempotencyKey(action, record.id);
   const expectedVersion = typeof record.version === "number" ? { expectedVersion: record.version } : {};
   if (action === "Hide quest") {
-    return adminCommands.hideQuest(record.id, { ...expectedVersion, idempotencyKey, reason }).then(() => undefined);
+    return adminCommands.hideQuest(record.id, { ...expectedVersion, idempotencyKey, reason, reasonCode: reasonCode ?? "POLICY_REVIEW" }).then(() => undefined);
   }
   if (action === "Restore quest") {
     return adminCommands.restoreQuest(record.id, { ...expectedVersion, idempotencyKey }).then(() => undefined);
   }
   if (action === "Terminate quest") {
-    return adminCommands.terminateQuest(record.id, { ...expectedVersion, idempotencyKey, reason }).then(() => undefined);
+    return adminCommands.terminateQuest(record.id, { ...expectedVersion, idempotencyKey, reason, reasonCode: reasonCode ?? "POLICY_REVIEW" }).then(() => undefined);
   }
   if (action === "Restrict user" || action === "Set normal" || action === "Lift penalty") {
     return adminCommands.setWalletStatus(record.id, {
@@ -226,7 +238,7 @@ function homeDecisions(): Array<{ view: keyof LegacyRuntimeData; record: LegacyR
         record,
         priority: 300 + Number(record.amount || 0),
         icon: "฿",
-        title: `${payoutStatusFor(record.payoutStatus ?? record.status)} payout`,
+        title: `${payoutStatusLabel(record.payoutStatus ?? record.status)} payout`,
         detail: `${record.id} · ${record.title}`,
         metric: `฿${fmt(record.amount)}`,
       })),
@@ -292,7 +304,7 @@ export function renderHome() {
       ...pendingPayouts,
     ],
     statusCounts: Array<[string, number]> = QUEST_STATES.map((status): [string, number] => [status, data.quests.filter((record) => questStateFor(record.questState ?? record.status) === status).length]);
-  main.innerHTML = `${pageHead("Overview", "A live snapshot of marketplace risk, money, and work in progress.", '<button class="btn primary" data-jump="disputes">Open review queue</button>')}<section class="dashboard-stats"><div class="stat"><span>Total work left</span><strong>${workLeft.length}</strong><small>Items requiring admin action</small></div></section><div class="grid dashboard-grid"><section class="panel"><div class="panel-head"><div><h2>Needs a decision</h2><p>Showing ${decisions.length} latest dispute/report records</p></div><button class="link" data-jump="activity">View activity</button></div>${decisions.length ? decisions.map((item) => attention(item.view, recordsFor(item.view).indexOf(item.record), item.record.tone, item.icon, item.title, item.detail, item.metric, String(item.age || item.record.age))).join("") : '<div class="empty"><h3>No decisions waiting</h3><p>All current records are clear or processing normally.</p></div>'}</section><aside><section class="panel"><div class="panel-head"><div><h2>Quest flow</h2><p>Current marketplace distribution</p></div><button class="link" data-jump="quests">Open quests</button></div><div class="dashboard-status-list">${statusCounts.map(([status, count]) => `<div><span>${badge(status, questStatusTone(status))}</span><strong>${count}</strong></div>`).join("")}</div></section><section class="panel dashboard-activity"><div class="panel-head"><div><h2>Recent activity</h2><p>Latest administrative trail</p></div></div>${activityList().slice(0, 3).join("")}</section></aside></div><div class="dashboard-lower"><section class="panel"><div class="panel-head"><div><h2>Payout watch</h2><p>Money movement requiring a closer look</p></div><button class="link" data-jump="payouts">Open payouts</button></div>${pendingPayouts.slice(0, 3).map((record) => `<button class="dashboard-row" data-open="payouts:${data.payouts.indexOf(record)}"><span><strong>${record.id}</strong><small>${record.title} · ${payoutStatusFor(record.payoutStatus ?? record.status)}</small></span><strong>฿${fmt(record.amount)}</strong><span>${badge(payoutStatusFor(record.payoutStatus ?? record.status), record.tone)}</span></button>`).join("") || '<div class="empty"><h3>No payouts need review</h3><p>Processing and completed payouts are moving normally.</p></div>'}</section><section class="panel"><div class="panel-head"><div><h2>User watch</h2><p>Accounts that may need a moderator</p></div><button class="link" data-jump="users">Open users</button></div>${reviewUsers.slice(0, 3).map((record) => `<button class="dashboard-row" data-open="users:${data.users.indexOf(record)}"><span><strong>${record.title}</strong><small>${record.id} · ${record.age}</small></span><span>${badge(walletStatusFor(record.walletStatus ?? record.status), record.tone)}</span></button>`).join("") || '<div class="empty"><h3>No user reviews</h3><p>All accounts are currently in good standing.</p></div>'}</section></div>`;
+  main.innerHTML = `${pageHead("Overview", "A live snapshot of marketplace risk, money, and work in progress.", '<button class="btn primary" data-jump="disputes">Open review queue</button>')}<section class="dashboard-stats"><div class="stat"><span>Total work left</span><strong>${workLeft.length}</strong><small>Items requiring admin action</small></div></section><div class="grid dashboard-grid"><section class="panel"><div class="panel-head"><div><h2>Needs a decision</h2><p>Showing ${decisions.length} latest dispute/report records</p></div><button class="link" data-jump="activity">View activity</button></div>${decisions.length ? decisions.map((item) => attention(item.view, recordsFor(item.view).indexOf(item.record), item.record.tone, item.icon, item.title, item.detail, item.metric, String(item.age || item.record.age))).join("") : '<div class="empty"><h3>No decisions waiting</h3><p>All current records are clear or processing normally.</p></div>'}</section><aside><section class="panel"><div class="panel-head"><div><h2>Quest flow</h2><p>Current marketplace distribution</p></div><button class="link" data-jump="quests">Open quests</button></div><div class="dashboard-status-list">${statusCounts.map(([status, count]) => `<div><span>${badge(status, questStatusTone(status))}</span><strong>${count}</strong></div>`).join("")}</div></section><section class="panel dashboard-activity"><div class="panel-head"><div><h2>Recent activity</h2><p>Latest administrative trail</p></div></div>${activityList().slice(0, 3).join("")}</section></aside></div><div class="dashboard-lower"><section class="panel"><div class="panel-head"><div><h2>Payout watch</h2><p>Money movement requiring a closer look</p></div><button class="link" data-jump="payouts">Open payouts</button></div>${pendingPayouts.slice(0, 3).map((record) => `<button class="dashboard-row" data-open="payouts:${data.payouts.indexOf(record)}"><span><strong>${record.id}</strong><small>${record.title} · ${payoutStatusLabel(record.payoutStatus ?? record.status)}</small></span><strong>฿${fmt(record.amount)}</strong><span>${payoutBadge(record.payoutStatus ?? record.status, record.tone)}</span></button>`).join("") || '<div class="empty"><h3>No payouts need review</h3><p>Processing and completed payouts are moving normally.</p></div>'}</section><section class="panel"><div class="panel-head"><div><h2>User watch</h2><p>Accounts that may need a moderator</p></div><button class="link" data-jump="users">Open users</button></div>${reviewUsers.slice(0, 3).map((record) => `<button class="dashboard-row" data-open="users:${data.users.indexOf(record)}"><span><strong>${record.title}</strong><small>${record.id} · ${record.age}</small></span><span>${badge(walletStatusFor(record.walletStatus ?? record.status), record.tone)}</span></button>`).join("") || '<div class="empty"><h3>No user reviews</h3><p>All accounts are currently in good standing.</p></div>'}</section></div>`;
   main.querySelector<LegacyDomElement>(".page-head > div > p")?.remove();
   const dashboardStats = main.querySelector<LegacyDomElement>(".dashboard-stats");
   if (dashboardStats) {
@@ -358,7 +370,7 @@ export let renderResource = function renderResource(v: string): void {
       (state.tab === "all" || statusForView(v, r).toLowerCase() === state.tab || r.status.toLowerCase().includes(state.tab)),
   );
   const header = heads[v as keyof typeof heads] || [v, ""];
-  main.innerHTML = `${pageHead(header[0], header[1])}<section class="panel resource"><div class="tabs">${tabs.map((t) => `<button class="tab ${state.tab === t.toLowerCase() ? "active" : ""}" data-tab="${t.toLowerCase()}">${t}${t === "All" ? ` (${rows.length})` : ""}</button>`).join("")}</div><div class="toolbar"><div class="inline-search"><input id="resource-search" value="${state.query}" placeholder="⌕  Search ${v}…"></div><span class="count">${filtered.length} results</span></div>${filtered.length ? table(v, filtered) : '<div class="empty"><h3>No matching records</h3><p>Try changing your search or selected view.</p></div>'}</section>`;
+  main.innerHTML = `${pageHead(header[0], header[1])}<section class="panel resource"><div class="tabs">${tabs.map((t) => { const label = t === "All" || t === "Team" || t === "Solo" ? t : v === "payouts" ? payoutStatusLabel(t) : v === "disputes" ? disputeCaseStatusLabel(t) : v === "quests" ? questStateLabel(t) : t; return `<button class="tab ${state.tab === t.toLowerCase() ? "active" : ""}" data-tab="${t.toLowerCase()}" data-filter-value="${escapeActivityText(t)}">${escapeActivityText(label)}${t === "All" ? ` (${rows.length})` : ""}</button>`; }).join("")}</div><div class="toolbar"><div class="inline-search"><input id="resource-search" value="${state.query}" placeholder="⌕  Search ${v}…"></div><span class="count">${filtered.length} results</span></div>${filtered.length ? table(v, filtered) : '<div class="empty"><h3>No matching records</h3><p>Try changing your search or selected view.</p></div>'}</section>`;
   bind();
 };
 export function setRenderResource(renderer: (view: string) => void): void {
@@ -384,7 +396,7 @@ function table(v: string, rows: LegacyRecord[]): string {
           ? ["Student ID", "User", "Email", "Academic profile", "Status"]
           : ["Payout", "Recipient", "Account", "Amount", "Status"];
   const collection = recordsFor(v);
-  return `<div class="table-wrap"><table class="data"><thead><tr>${h.map((x) => `<th>${escapeActivityText(x)}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr data-open="${v}:${collection.indexOf(r)}"><td><strong>${escapeActivityText(r.id)}</strong></td><td><strong>${escapeActivityText(r.title)}</strong>${v === "disputes" ? `<small>${escapeActivityText(r.detail).slice(0, 45)}…</small>` : ""}</td>${v === "disputes" ? "" : `<td><strong>${escapeActivityText(r.person)}</strong></td>`}${v === "disputes" || v === "payouts" ? "" : `<td>${escapeActivityText(r.other)}</td>`}${r.amount !== null ? `<td class="money">฿${fmt(r.amount)}</td>` : ""}<td>${badge(statusForView(v, r), r.tone)}${v === "quests" && hasHiddenQuestOverlay(r) ? '<span class="badge neutral quest-hidden-overlay">Hidden</span>' : ""}</td>${v === "disputes" ? `<td>${escapeActivityText(r.disputeDate || "—")}</td><td><strong>${escapeActivityText(disputeTypeLabel(r))}</strong></td>` : ""}</tr>`).join("")}</tbody></table></div>`;
+  return `<div class="table-wrap"><table class="data"><thead><tr>${h.map((x) => `<th>${escapeActivityText(x)}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr data-open="${v}:${collection.indexOf(r)}"><td><strong>${escapeActivityText(r.id)}</strong></td><td><strong>${escapeActivityText(r.title)}</strong>${v === "disputes" ? `<small>${escapeActivityText(r.detail).slice(0, 45)}…</small>` : ""}</td>${v === "disputes" ? "" : `<td><strong>${escapeActivityText(r.person)}</strong></td>`}${v === "disputes" || v === "payouts" ? "" : `<td>${escapeActivityText(r.other)}</td>`}${r.amount !== null ? `<td class="money">฿${fmt(r.amount)}</td>` : ""}<td>${statusBadgeForView(v, r)}${v === "quests" && hasHiddenQuestOverlay(r) ? '<span class="badge neutral quest-hidden-overlay">Hidden</span>' : ""}</td>${v === "disputes" ? `<td>${escapeActivityText(r.disputeDate || "—")}</td><td><strong>${escapeActivityText(disputeTypeLabel(r))}</strong></td>` : ""}</tr>`).join("")}</tbody></table></div>`;
 }
 export function renderPolicies() {
   main.innerHTML = `${pageHead(...heads.policies, '<button class="btn">Revision history</button>')}<section class="panel"><div class="panel-head"><div><h2>Current policy · Revision 12</h2><p>Effective 18 July 2026 · authored by Nicha P.</p></div>${badge("ACTIVE", "success")}</div><div class="health"><div class="stat"><span>Platform fee</span><strong>2.00%</strong><small>200 basis points · rounding UP</small></div><div class="stat"><span>Funded quest range</span><strong>฿100–50k</strong><small>Per quest</small></div><div class="stat"><span>Payout range</span><strong>฿200–30k</strong><small>Per request</small></div></div><div class="drawer-body"><div class="facts">${[
@@ -486,8 +498,8 @@ export function navigate(v: string): void {
   state.view = v;
   state.tab = "all";
   state.query = "";
-  if (isAdminApiEnabled() && (v === "payouts" || v === "disputes")) {
-    const refresh = v === "payouts" ? refreshLivePayouts() : refreshLiveDisputes();
+  if (isAdminApiEnabled() && v === "payouts") {
+    const refresh = refreshLivePayouts();
     render();
     void refresh.then(() => {
       if (state.view === v) render();
@@ -563,7 +575,7 @@ function payoutPreviousHistory(record: LegacyRecord): string {
   const previous = payoutPreviousRecords(record);
   if (!previous.length)
     return '<p class="audit-note">No previous payouts are connected to this recipient.</p>';
-  return `<div class="payout-previous-list">${previous.map((payout) => `<div class="payout-previous-row"><span><strong>${escapeActivityText(payout.id)}</strong><small>${escapeActivityText(payout.requestedAt || "Date not recorded")}</small></span><span><strong>฿${fmt(payout.amount)}</strong>${badge(payoutStatusFor(payout.payoutStatus ?? payout.status), payout.tone)}</span></div>`).join("")}</div>`;
+  return `<div class="payout-previous-list">${previous.map((payout) => `<div class="payout-previous-row"><span><strong>${escapeActivityText(payout.id)}</strong><small>${escapeActivityText(payout.requestedAt || "Date not recorded")}</small></span><span><strong>฿${fmt(payout.amount)}</strong>${payoutBadge(payout.payoutStatus ?? payout.status, payout.tone)}</span></div>`).join("")}</div>`;
 }
 function reportStatusLabel(report: LegacyRecord): string {
   return reportCaseStatusFor(report.reportCaseStatus ?? report.conductReportStatus ?? report.status, report.decision);
@@ -693,7 +705,7 @@ export function openDrawer(v: string, i: number): void {
       : v === "users"
         ? `${userDrawerActions(r)}<a class="btn" href="/users/${encodeURIComponent(r.id)}">See full user profile</a>`
         : `<button class="btn" data-action="${hasHiddenQuestOverlay(r) ? "Restore quest" : "Hide quest"}">${hasHiddenQuestOverlay(r) ? "Restore quest" : "Hide quest"}</button>`;
-  drawer.innerHTML = `<div class="drawer-top"><strong>${escapeActivityText(r.id)}</strong><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div><div class="drawer-body"><div class="drawer-title"><span class="att-icon ${toneClass(r.tone)}">${ico(v === "payouts" ? "wallet" : v === "users" ? "user" : v === "quests" ? "quest" : "scale")}</span><div><h2>${escapeActivityText(r.title)}</h2><p>${escapeActivityText(r.person)} · ${escapeActivityText(r.other)}</p></div></div><div class="facts"><div class="fact"><span>Status</span>${badge(statusForView(v, r), r.tone)}${v === "quests" && hasHiddenQuestOverlay(r) ? '<span class="badge neutral quest-hidden-overlay">Hidden</span>' : ""}</div>${r.amount ? `<div class="fact"><span>${isP ? "Payout amount" : "Amount held"}</span><strong>฿${fmt(r.amount)}</strong></div>` : ""}<div class="fact"><span>Record</span><strong>${escapeActivityText(r.id)}</strong></div>${!isP && v !== "users" ? `<div class="fact"><span>Last activity</span><strong>${escapeActivityText(r.age)}</strong></div>` : ""}</div>${drawerContent}</div><div class="drawer-actions">${drawerActions}</div>`;
+  drawer.innerHTML = `<div class="drawer-top"><strong>${escapeActivityText(r.id)}</strong><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div><div class="drawer-body"><div class="drawer-title"><span class="att-icon ${toneClass(r.tone)}">${ico(v === "payouts" ? "wallet" : v === "users" ? "user" : v === "quests" ? "quest" : "scale")}</span><div><h2>${escapeActivityText(r.title)}</h2><p>${escapeActivityText(r.person)} · ${escapeActivityText(r.other)}</p></div></div><div class="facts"><div class="fact"><span>Status</span>${statusBadgeForView(v, r)}${v === "quests" && hasHiddenQuestOverlay(r) ? '<span class="badge neutral quest-hidden-overlay">Hidden</span>' : ""}</div>${r.amount ? `<div class="fact"><span>${isP ? "Payout amount" : "Amount held"}</span><strong>฿${fmt(r.amount)}</strong></div>` : ""}<div class="fact"><span>Record</span><strong>${escapeActivityText(r.id)}</strong></div>${!isP && v !== "users" ? `<div class="fact"><span>Last activity</span><strong>${escapeActivityText(r.age)}</strong></div>` : ""}</div>${drawerContent}</div><div class="drawer-actions">${drawerActions}</div>`;
   if (isP) {
     drawer.querySelector<LegacyDomElement>(".facts")?.insertAdjacentHTML(
       "afterend",
@@ -732,12 +744,15 @@ export function openDrawer(v: string, i: number): void {
           return confirmPayoutApproval(r);
         if (action === "Reject payout")
           return confirmPayoutRejection(r);
-        confirmAction(action, r, "", (reason) => {
-          void runAdminAction(r, action, reason).then(() => {
+        confirmAction(action, r, "", (reason, reasonCode) => {
+          void runAdminAction(r, action, reason, reasonCode).then(() => {
             persistAdminData();
             if (state.view === "home") renderHome();
             else render();
+            if (isAdminApiEnabled() && isQuestModerationAction(action)) toast(`${action} completed for ${r.id}.`);
             return undefined;
+          }).catch((error: unknown) => {
+            toast(`${action} failed: ${error instanceof Error ? error.message : "Request failed."}`);
           });
         });
       }),
@@ -923,7 +938,7 @@ export function ensureDetailDrawer(view: string, index: number): void {
   if (open) open(index);
 }
 const dialog = document.querySelector<LegacyDomElement>("#confirm");
-export function confirmAction(a: string, r: LegacyRecord, decisionDetail = "", onConfirm?: (reason: string) => void, options: ConfirmActionOptions = {}): void {
+export function confirmAction(a: string, r: LegacyRecord, decisionDetail = "", onConfirm?: (reason: string, reasonCode?: AdminQuestReasonCode) => void, options: ConfirmActionOptions = {}): void {
   if (!dialog) return;
   const form = requiredQuery<LegacyForm>(document, "#confirm-form"),
     reason = requiredQuery<LegacyDomElement>(document, "#confirm-reason"),
@@ -931,6 +946,8 @@ export function confirmAction(a: string, r: LegacyRecord, decisionDetail = "", o
     count = requiredQuery<LegacyDomElement>(document, "#confirm-reason-count"),
     confirmButton = requiredQuery<LegacyDomElement>(document, "#confirm-btn");
   resetConfirmationDialog();
+  const reasonCode = setupQuestReasonCode(document, a, isAdminApiEnabled());
+  reason.required = !reasonCode;
   requiredQuery<LegacyDomElement>(document, "#confirm-title").textContent = a;
   requiredQuery<LegacyDomElement>(document, "#confirm-copy").textContent =
     decisionDetail ||
@@ -942,7 +959,8 @@ export function confirmAction(a: string, r: LegacyRecord, decisionDetail = "", o
   error.hidden = true;
   count.textContent = "0 / 500";
   const validate = () => {
-    const valid = reason.value.trim().length >= 8;
+    const reasonValid = !reasonCode || !reasonCode.required || reasonCode.value.length > 0;
+    const valid = reasonCode ? reasonValid : reason.value.trim().length >= 8;
     confirmButton.disabled = !valid;
     reason.setAttribute(
       "aria-invalid",
@@ -950,19 +968,23 @@ export function confirmAction(a: string, r: LegacyRecord, decisionDetail = "", o
     );
     error.hidden = true;
     count.textContent = `${reason.value.length} / 500`;
+    error.textContent = reasonCode && !reasonValid
+      ? "Select a reason code before confirming."
+      : "Enter at least 8 characters before confirming.";
     return valid;
   };
   reason.oninput = validate;
+  reasonCode?.addEventListener("change", validate);
   form.onsubmit = (event) => {
     if ((event.submitter as HTMLButtonElement | null)?.value === "confirm" && !validate()) {
       event.preventDefault();
       reason.setAttribute("aria-invalid", "true");
       error.hidden = false;
-      reason.focus();
+      (reasonCode && !reasonCode.value ? reasonCode : reason).focus();
     }
   };
   dialog.showModal();
-  requestAnimationFrame(() => reason.focus());
+  requestAnimationFrame(() => (reasonCode && reasonCode.required ? reasonCode : reason).focus());
   dialog.addEventListener(
     "close",
     () => {
@@ -970,12 +992,15 @@ export function confirmAction(a: string, r: LegacyRecord, decisionDetail = "", o
         if (!options.keepDrawerOpen && drawer?.classList.contains("open"))
           closeDrawer();
         const decisionReason = reason.value.trim();
-        onConfirm?.(decisionReason);
-        recordActivity(
-          a,
-          `${r.id} · ${r.title || r.reportedUserName || "Record"}${decisionReason ? ` · ${decisionReason}` : ""}`,
-        );
-        toast(`${a} recorded for ${r.id}. Audit reason saved.`);
+        onConfirm?.(decisionReason, reasonCode?.value as AdminQuestReasonCode | undefined);
+        const localAudit = !isAdminApiEnabled() || !isQuestModerationAction(a) && a !== "Confirm dispute resolution";
+        if (localAudit) {
+          recordActivity(
+            a,
+            `${r.id} · ${r.title || r.reportedUserName || "Record"}${decisionReason ? ` · ${decisionReason}` : ""}`,
+          );
+          toast(`${a} recorded for ${r.id}. Audit reason saved.`);
+        }
       }
     },
     { once: true },
@@ -1002,6 +1027,7 @@ function resetConfirmationDialog() {
     context.hidden = true;
     context.innerHTML = "";
   }
+  document.querySelector<HTMLElement>("#quest-reason-code-field")?.remove();
   if (reasonLabel) {
     reasonLabel.hidden = false;
     if (reasonLabel.firstChild) reasonLabel.firstChild.textContent = "Reason for this decision ";

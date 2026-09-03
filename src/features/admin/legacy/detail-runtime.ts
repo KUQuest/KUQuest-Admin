@@ -5,7 +5,6 @@ import type {
   LegacyRecord,
 } from "./runtime";
 import {
-  badge,
   confirmedViolationCount,
   escapeActivityText,
   fmt,
@@ -13,6 +12,7 @@ import {
   penaltyOutcomeFor,
   penaltyOutcomeLabel,
   payoutFinancials,
+  payoutBadge,
   payoutDecisionContext,
   redFlagExemptionFor,
   recordActivity,
@@ -25,6 +25,8 @@ import { createOverlayRuntime } from "./overlay-runtime";
 import { setActiveNavigation as setActiveNavigationCore } from "./navigation-state";
 import { newAdminIdempotencyKey } from "./admin-command-port";
 import { isAdminApiEnabled } from "../api/admin-provider";
+import { isQuestModerationAction, setupQuestReasonCode } from "./quest-admin-reason";
+import type { AdminQuestReasonCode } from "../api/admin-api";
 import {
   disputeCaseStatusFor,
   isReportCasePending,
@@ -45,6 +47,7 @@ export {
   penaltyOutcomeFor,
   penaltyOutcomeLabel,
   payoutEarningForQuest,
+  payoutBadge,
   payoutFinancials,
   payoutPreviousRecords,
   payoutQuestId,
@@ -206,7 +209,7 @@ function openPayoutDrawer(index: number): void {
   const context = payoutDecisionContext(record);
   const status = payoutStatusFor(record.payoutStatus ?? record.status);
   showDrawerLayer();
-  drawer.innerHTML = `<div class="drawer-top"><strong>${escapeActivityText(record.id)}</strong><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div><div class="drawer-body"><div class="drawer-title"><span class="att-icon neutral">${ico("wallet")}</span><div><h2>${escapeActivityText(record.title)}</h2><p>${escapeActivityText(record.person)} · ${escapeActivityText(record.other)}</p></div></div><div class="facts"><div class="fact"><span>Status</span>${badge(status, record.tone)}</div><div class="fact"><span>Payout amount</span><strong>฿${fmt(record.amount)}</strong></div><div class="fact"><span>Record</span><strong>${escapeActivityText(record.id)}</strong></div></div><section class="section"><h3>${escapeActivityText(context.heading)}</h3><p>${escapeActivityText(context.copy)}</p><p class="audit-note">${escapeActivityText(context.next)}</p></section><section class="section"><h3>Financial summary</h3><div class="facts"><div class="fact"><span>Available to withdraw</span><strong>฿${fmt(payoutFinancials(record).available)}</strong></div><div class="fact"><span>Remaining after payout</span><strong>฿${fmt(payoutFinancials(record).remaining)}</strong></div></div></section></div><div class="drawer-actions">${status === "PENDING_ADMIN_APPROVAL" ? '<button class="btn" data-action="Reject payout">Reject payout</button><button class="btn primary" data-action="Approve payout">Approve payout</button>' : '<button class="btn" id="close-payout-record">Close record</button>'}</div>`;
+  drawer.innerHTML = `<div class="drawer-top"><strong>${escapeActivityText(record.id)}</strong><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div><div class="drawer-body"><div class="drawer-title"><span class="att-icon neutral">${ico("wallet")}</span><div><h2>${escapeActivityText(record.title)}</h2><p>${escapeActivityText(record.person)} · ${escapeActivityText(record.other)}</p></div></div><div class="facts"><div class="fact"><span>Status</span>${payoutBadge(status, record.tone)}</div><div class="fact"><span>Payout amount</span><strong>฿${fmt(record.amount)}</strong></div><div class="fact"><span>Record</span><strong>${escapeActivityText(record.id)}</strong></div></div><section class="section"><h3>${escapeActivityText(context.heading)}</h3><p>${escapeActivityText(context.copy)}</p><p class="audit-note">${escapeActivityText(context.next)}</p></section><section class="section"><h3>Financial summary</h3><div class="facts"><div class="fact"><span>Available to withdraw</span><strong>฿${fmt(payoutFinancials(record).available)}</strong></div><div class="fact"><span>Remaining after payout</span><strong>฿${fmt(payoutFinancials(record).remaining)}</strong></div></div></section></div><div class="drawer-actions">${status === "PENDING_ADMIN_APPROVAL" ? '<button class="btn" data-action="Reject payout">Reject payout</button><button class="btn primary" data-action="Approve payout">Approve payout</button>' : '<button class="btn" id="close-payout-record">Close record</button>'}</div>`;
   drawer.querySelector<HTMLElement>("#close")?.addEventListener("click", closeDrawer);
   drawer.querySelector<HTMLElement>("#close-payout-record")?.addEventListener("click", closeDrawer);
   scrim.onclick = closeDrawer;
@@ -245,7 +248,7 @@ export function ensureDetailDrawer(view: string, index: number): void {
 }
 
 const dialog = document.querySelector<HTMLDialogElement>("#confirm");
-export function confirmAction(action: string, record: LegacyRecord, decisionDetail = "", onConfirm?: (reason: string) => void, options: Pick<LegacyModalOptions, "keepDrawerOpen"> = {}): void {
+export function confirmAction(action: string, record: LegacyRecord, decisionDetail = "", onConfirm?: (reason: string, reasonCode?: AdminQuestReasonCode) => void, options: Pick<LegacyModalOptions, "keepDrawerOpen"> = {}): void {
   if (!dialog) return;
   const form = requiredQuery<LegacyForm>(document, "#confirm-form");
   const reason = requiredQuery<HTMLTextAreaElement>(document, "#confirm-reason");
@@ -255,6 +258,8 @@ export function confirmAction(action: string, record: LegacyRecord, decisionDeta
   const context = document.querySelector<HTMLElement>("#confirm-context");
   if (context) { context.hidden = true; context.innerHTML = ""; }
   reason.value = "";
+  const reasonCode = setupQuestReasonCode(document, action, isAdminApiEnabled());
+  reason.required = !reasonCode;
   error.hidden = true;
   count.textContent = "0 / 500";
   confirmButton.textContent = action;
@@ -262,30 +267,38 @@ export function confirmAction(action: string, record: LegacyRecord, decisionDeta
   requiredQuery<HTMLElement>(document, "#confirm-title").textContent = action;
   requiredQuery<HTMLElement>(document, "#confirm-copy").textContent = decisionDetail || `This will update ${record.id} and add your decision to the permanent admin audit trail.`;
   const validate = () => {
-    const valid = reason.value.trim().length >= 8;
+    const reasonValid = !reasonCode || !reasonCode.required || reasonCode.value.length > 0;
+    const valid = reasonCode ? reasonValid : reason.value.trim().length >= 8;
     confirmButton.disabled = !valid;
     reason.setAttribute("aria-invalid", String(!valid && reason.value.length > 0));
     count.textContent = `${reason.value.length} / 500`;
+    error.textContent = reasonCode && !reasonValid
+      ? "Select a reason code before confirming."
+      : "Enter at least 8 characters before confirming.";
     return valid;
   };
   reason.oninput = validate;
+  reasonCode?.addEventListener("change", validate);
   form.onsubmit = (event) => {
     if ((event.submitter as HTMLButtonElement | null)?.value === "confirm" && !validate()) {
       event.preventDefault();
       reason.setAttribute("aria-invalid", "true");
       error.hidden = false;
-      reason.focus();
+      (reasonCode && !reasonCode.value ? reasonCode : reason).focus();
     }
   };
   dialog.showModal();
-  requestAnimationFrame(() => reason.focus());
+  requestAnimationFrame(() => (reasonCode && reasonCode.required ? reasonCode : reason).focus());
   dialog.addEventListener("close", () => {
     if (dialog.returnValue !== "confirm") return;
     if (!options.keepDrawerOpen && drawer.classList.contains("open")) closeDrawer();
     const decisionReason = reason.value.trim();
-    onConfirm?.(decisionReason);
-    recordActivity(action, `${record.id} · ${record.title || record.reportedUserName || "Record"}${decisionReason ? ` · ${decisionReason}` : ""}`);
-    toast(`${action} recorded for ${record.id}. Audit reason saved.`);
+    onConfirm?.(decisionReason, reasonCode?.value as AdminQuestReasonCode | undefined);
+    const localAudit = !isAdminApiEnabled() || !isQuestModerationAction(action) && action !== "Confirm dispute resolution";
+    if (localAudit) {
+      recordActivity(action, `${record.id} · ${record.title || record.reportedUserName || "Record"}${decisionReason ? ` · ${decisionReason}` : ""}`);
+      toast(`${action} recorded for ${record.id}. Audit reason saved.`);
+    }
   }, { once: true });
 }
 

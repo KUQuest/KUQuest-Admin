@@ -1,13 +1,17 @@
 import {
   adminApi,
   ADMIN_API_PAYOUT_STATUSES,
+  type AdminQuest,
+  type AdminQuestCommandResult,
+  type AdminQuestDetail,
+  type AdminApiQuestStatus,
   type AdminDisputeCase,
   type AdminPayout,
   type AdminPayoutDetail,
   type AdminApiPayoutStatus,
 } from "../api/admin-api";
 import { ApiError } from "../../../lib/api/client";
-import type { PayoutStatus } from "../domain/rulebook";
+import type { PayoutStatus, QuestState } from "../domain/rulebook";
 import type { LegacyHistoryEntry, LegacyRecord } from "./runtime";
 import { data } from "./runtime-data";
 
@@ -16,9 +20,10 @@ type LiveResourceState = {
   error: string | null;
 };
 
-export const liveResourceState: Record<"payouts" | "disputes", LiveResourceState> = {
+export const liveResourceState: Record<"payouts" | "disputes" | "quests", LiveResourceState> = {
   payouts: { loading: false, error: null },
   disputes: { loading: false, error: null },
+  quests: { loading: false, error: null },
 };
 
 function apiErrorMessage(error: unknown, resource: string): string {
@@ -67,6 +72,168 @@ function dateTimeLabel(value: string): string {
 
 function satangToBaht(value: number): number {
   return value / 100;
+}
+
+function memberName(member: { firstName: string; lastName: string; email: string }): string {
+  return `${member.firstName} ${member.lastName}`.trim() || member.email;
+}
+
+function questTone(status: QuestState): string {
+  if (status === "QUEST_FAILED") return "danger";
+  if (status === "QUEST_CANCELLED") return "cancelled";
+  if (status === "QUEST_COMPLETED") return "success";
+  if (status === "QUEST_IN_PROGRESS") return "info";
+  if (status === "QUEST_ASSIGNED") return "assigned";
+  if (status === "QUEST_DRAFT") return "neutral";
+  return "success";
+}
+
+export function canonicalQuestStateForApi(status: AdminApiQuestStatus): QuestState {
+  switch (status) {
+    case "QUEST_AWAITING_CONSENT":
+      return "QUEST_ASSIGNED";
+    case "QUEST_SUBMITTED":
+    case "QUEST_REWORK":
+      return "QUEST_IN_PROGRESS";
+    case "QUEST_APPROVED":
+      return "QUEST_COMPLETED";
+    case "QUEST_DISPUTED":
+      return "QUEST_FAILED";
+    default:
+      return status as QuestState;
+  }
+}
+
+function questActivityFromSummary(quest: AdminQuest): string[] {
+  const status = canonicalQuestStateForApi(quest.questStatus);
+  return [`${status} · ${dateTimeLabel(quest.updatedAt)} · Current Quest State recorded by the Admin API.`];
+}
+
+function questRecordFromApi(quest: AdminQuest, detail?: AdminQuestDetail): LegacyRecord {
+  const status = canonicalQuestStateForApi(quest.questStatus);
+  const fundingTotalSatang = detail?.questFundingTotalSatang ?? quest.questFundingTotalSatang;
+  const rewardSatang = detail?.rewardSatang ?? quest.rewardSatang;
+  const hirer = memberName(quest.hirer);
+  const applications = detail?.candidates.applications.map((application) => [
+    memberName(application.worker),
+    application.applicationStatus,
+    "Worker",
+  ] as [string, string, string]) ?? [];
+  const assignedParticipants = detail?.assignments.map((assignment) => [
+    memberName(assignment.worker),
+    assignment.assignmentStatus,
+    "Worker",
+  ] as [string, string, string]) ?? [];
+  const selectedParticipant = detail?.assignments[0]
+    ? memberName(detail.assignments[0].worker)
+    : applications.find((application) => application[1] === "APPLICATION_SELECTED")?.[0];
+  const activity = detail?.adminActions.length
+    ? detail.adminActions.map((action) => `${action.action} · ${dateTimeLabel(action.createdAt)} · ${action.reasonCode ?? "No reason code"}`)
+    : questActivityFromSummary(quest);
+  const proof = detail?.proofSubmissions.flatMap((submission) => {
+    const submitted = dateTimeLabel(submission.submittedAt);
+    if (submission.files.length) {
+      return submission.files.map((file) => `${file.fileId} · ${file.contentType} · ${file.sizeBytes} bytes · submitted ${submitted}`);
+    }
+    return [`${submission.content || "Proof submission"} · ${submission.submissionStatus} · submitted ${submitted}`];
+  });
+  const latestEditRequest = detail?.editHistory.findLast((entry) => entry.kind === "EDIT_REQUEST");
+  const editHistory = detail?.editHistory.map((entry) => entry.kind === "EDIT_REQUEST"
+    ? `${entry.requestStatus ?? "EDIT_REQUEST"} · ${dateTimeLabel(entry.createdAt ?? quest.updatedAt)}`
+    : `${entry.fieldName ?? "Quest field"} edited · ${dateTimeLabel(entry.editedAt ?? quest.updatedAt)}`);
+  const locationLabels = detail?.locations
+    .map(({ label }) => label?.trim())
+    .filter((label): label is string => Boolean(label)) ?? [];
+
+  return {
+    id: quest.id,
+    title: quest.title,
+    person: hirer,
+    other: detail?.tagId ? `Tag ${detail.tagId}` : "Tag not provided by the Admin API",
+    status,
+    questState: status,
+    tone: questTone(status),
+    amount: fundingTotalSatang === null ? 0 : satangToBaht(fundingTotalSatang),
+    age: dateTimeLabel(quest.updatedAt),
+    version: detail?.version ?? quest.version,
+    hiddenAt: detail?.hiddenAt ?? quest.hiddenAt,
+    hiddenByAdminId: detail?.hiddenByAdminId ?? quest.hiddenByAdminId,
+    fundingTotalSatang: fundingTotalSatang ?? undefined,
+    questRewardSatang: rewardSatang ?? undefined,
+    platformFeeSatang: detail?.platformFeePerWorkerSatang ?? undefined,
+    platformFeeBps: detail?.platformFeeBps ?? undefined,
+    createdAt: quest.createdAt,
+    dueAt: quest.dueAt ?? undefined,
+    requestedAt: dateTimeLabel(quest.createdAt),
+    apiBacked: true,
+    description: detail?.description ?? "No Quest description recorded by the Admin API.",
+    giver: [hirer, quest.hirer.email, `Member ID · ${quest.hirer.id}`],
+    location: locationLabels.length
+      ? [locationLabels.join(" · "), "Loaded from the Admin API."]
+      : ["Location not provided by the Admin API", "Review the Quest record for available location data."],
+    schedule: [
+      dateTimeLabel(quest.startTime),
+      quest.dueAt ? dateTimeLabel(quest.dueAt) : "Due date not provided by the Admin API",
+      "Application window not provided by the Admin API",
+    ],
+    activity,
+    editHistory,
+    applications: applications.length ? applications : assignedParticipants,
+    selectedParticipant,
+    teamQuest: quest.participation === "GROUP",
+    teamSize: detail?.candidates.teams[0]?.members.length ?? quest.headcount,
+    teamParticipants: detail?.candidates.teams[0]?.members.map(({ member }) => [memberName(member), "Member"] as [string, string]),
+    candidateMode: quest.mode,
+    giverAttachments: [],
+    proof: proof ?? [],
+    editRequestStatus: latestEditRequest?.kind === "EDIT_REQUEST" ? latestEditRequest.requestStatus : undefined,
+    tagId: detail?.tagId ?? undefined,
+    condition: detail?.condition.text,
+    proofRequired: detail?.proofRequired,
+    fundingReservationId: detail?.fundingReservationId ?? undefined,
+    policyRevisionId: detail?.policyRevisionId ?? undefined,
+    questEscrowSatang: detail?.questEscrowSatang ?? undefined,
+    cancelledAt: detail?.cancelledAt ?? undefined,
+    cancelledByUserId: detail?.cancelledByUserId ?? undefined,
+    cancelledByAdminId: detail?.cancelledByAdminId ?? undefined,
+  };
+}
+
+export function questRecordFromApiSummary(quest: AdminQuest): LegacyRecord {
+  return questRecordFromApi(quest);
+}
+
+export function mergeLiveQuestCommand(id: string, result: AdminQuestCommandResult): void {
+  const record = data.quests.find((candidate) => candidate.id === id);
+  if (!record) return;
+  const detailFields = {
+    description: record.description,
+    giver: record.giver,
+    location: record.location,
+    schedule: record.schedule,
+    activity: record.activity,
+    editHistory: record.editHistory,
+    applications: record.applications,
+    selectedParticipant: record.selectedParticipant,
+    teamQuest: record.teamQuest,
+    teamParticipants: record.teamParticipants,
+    teamSize: record.teamSize,
+    candidateMode: record.candidateMode,
+    giverAttachments: record.giverAttachments,
+    proof: record.proof,
+    condition: record.condition,
+    proofRequired: record.proofRequired,
+    fundingReservationId: record.fundingReservationId,
+    policyRevisionId: record.policyRevisionId,
+    questEscrowSatang: record.questEscrowSatang,
+    cancelledAt: record.cancelledAt,
+    cancelledByUserId: record.cancelledByUserId,
+    cancelledByAdminId: record.cancelledByAdminId,
+    tagId: record.tagId,
+  };
+  Object.assign(record, questRecordFromApi(result.resourceSummary), detailFields, {
+    version: result.resourceVersion,
+  });
 }
 
 export function payoutRecordFromApi(payout: AdminPayout): LegacyRecord {
@@ -169,6 +336,58 @@ export async function refreshLivePayouts(status?: PayoutStatus): Promise<void> {
   }
 }
 
+async function listAllQuests(): Promise<AdminQuest[]> {
+  const items: AdminQuest[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await adminApi.listQuests({ limit: 50, cursor, sort: "newest" });
+    items.push(...page.items);
+    if (!page.nextCursor || page.nextCursor === cursor) break;
+    cursor = page.nextCursor;
+  } while (cursor);
+  return items;
+}
+
+export async function refreshLiveQuests(): Promise<void> {
+  const state = liveResourceState.quests;
+  state.loading = true;
+  state.error = null;
+  data.quests = [];
+  try {
+    data.quests = (await listAllQuests()).map(questRecordFromApiSummary);
+  } catch (error) {
+    state.error = apiErrorMessage(error, "Quest");
+  } finally {
+    state.loading = false;
+  }
+}
+
+export async function loadLiveQuest(questId: string): Promise<void> {
+  const state = liveResourceState.quests;
+  state.loading = true;
+  state.error = null;
+  data.quests = [];
+  try {
+    const detail = await adminApi.getQuest(questId);
+    data.quests = [questRecordFromApi(detail, detail)];
+  } catch (error) {
+    state.error = apiErrorMessage(error, "Quest detail");
+  } finally {
+    state.loading = false;
+  }
+}
+
+export async function hydrateLiveQuest(record: LegacyRecord): Promise<void> {
+  if (!record.apiBacked || record.questDetailLoaded) return;
+  record.questDetailLoaded = true;
+  try {
+    const detail = await adminApi.getQuest(record.id);
+    Object.assign(record, questRecordFromApi(detail, detail));
+  } catch (error) {
+    record.questDetailError = apiErrorMessage(error, "Quest detail");
+  }
+}
+
 export async function refreshLiveDisputes(): Promise<void> {
   const state = liveResourceState.disputes;
   state.loading = true;
@@ -214,6 +433,6 @@ export function payoutServerValue(record: LegacyRecord, field: "principalSatang"
   return typeof value === "number" ? satangToBaht(value) : null;
 }
 
-export function liveResourceError(view: "payouts" | "disputes"): string | null {
+export function liveResourceError(view: "payouts" | "disputes" | "quests"): string | null {
   return liveResourceState[view].error;
 }

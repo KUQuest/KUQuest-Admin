@@ -3,7 +3,12 @@ import type { QuestData, QuestDetailDependencies } from "./quest-detail";
 import type { LegacyDisputeCase, LegacyRecord, LegacyRuntimeData } from "./runtime";
 import type { UserPageContext, UserRecord } from "./user-page";
 import { isAdminApiEnabled } from "../api/admin-provider";
-import { refreshLiveDisputes, refreshLivePayouts } from "./live-review-data";
+import {
+  hydrateLiveQuest,
+  loadLiveQuest,
+  refreshLivePayouts,
+  refreshLiveQuests,
+} from "./live-review-data";
 
 export type TypedLegacyPage = "home" | "quest" | "dispute" | "report" | "user";
 
@@ -110,7 +115,9 @@ function createQuestDetailDependencies(
     showDrawerLayer: core.showDrawerLayer,
     closeDrawer: core.closeDrawer,
     confirmAction: core.confirmAction,
+    hydrateQuest: isAdminApiEnabled() ? hydrateLiveQuest : undefined,
     adminCommands: core.adminCommands,
+    toast: core.toast,
     persistAdminData,
     refresh: core.render,
     badge: core.badge,
@@ -127,6 +134,7 @@ async function initializeHomePage(
   core: SharedRuntimeCore,
   mockData: typeof import("./fresh-mock-data"),
 ): Promise<void> {
+  const persistAdminData = isAdminApiEnabled() ? () => undefined : mockData.persistAdminData;
   const common = {
     document,
     main: core.main,
@@ -145,7 +153,7 @@ async function initializeHomePage(
     disputeTypeLabel: core.disputeTypeLabel,
     timeline: core.timeline,
     confirmAction: core.confirmAction,
-    persistAdminData: mockData.persistAdminData,
+    persistAdminData,
     toast: core.toast,
     renderHome: core.renderHome,
     render: core.render,
@@ -158,7 +166,7 @@ async function initializeHomePage(
   if (isQuestData(runtimeData)) {
     const questData = runtimeData;
     const { createQuestDetailModule } = await import("./quest-detail");
-    const detail = createQuestDetailModule(createQuestDetailDependencies(core, questData, mockData.persistAdminData));
+    const detail = createQuestDetailModule(createQuestDetailDependencies(core, questData, persistAdminData));
     window.openQuestDrawer = detail.openQuestDrawer;
   }
   if (isModerationData(runtimeData)) {
@@ -211,8 +219,8 @@ export async function initializeTypedLegacyPage(
     const mockData = await import("./fresh-mock-data");
     if (isAdminApiEnabled()) {
       const view = new URLSearchParams(options.search).get("view");
+      if (view === "quests") await refreshLiveQuests();
       if (view === "payouts") await refreshLivePayouts();
-      if (view === "disputes") await refreshLiveDisputes();
     }
     await initializeHomePage(core, mockData);
     return;
@@ -220,7 +228,8 @@ export async function initializeTypedLegacyPage(
 
   const core = await import("./detail-runtime");
   const mockData = await import("./fresh-mock-data");
-  if (isAdminApiEnabled() && options.page === "dispute") await refreshLiveDisputes();
+  const persistAdminData = isAdminApiEnabled() ? () => undefined : mockData.persistAdminData;
+  if (isAdminApiEnabled() && options.page === "quest" && options.recordId) await loadLiveQuest(options.recordId);
   window.__KUQUEST_LEGACY_RUNTIME__ = core.legacyRuntime;
   core.initializeDetailRuntime();
   core.initializeDetailSearch();
@@ -242,7 +251,7 @@ export async function initializeTypedLegacyPage(
     disputeTypeLabel: core.disputeTypeLabel,
     timeline: core.timeline,
     confirmAction: core.confirmAction,
-    persistAdminData: mockData.persistAdminData,
+    persistAdminData,
     toast: core.toast,
     renderHome: core.renderHome,
     render: core.render,
@@ -259,7 +268,7 @@ export async function initializeTypedLegacyPage(
       import("./quest-page"),
       import("./quest-change-review"),
     ]);
-    const detail = createQuestDetailModule(createQuestDetailDependencies(core, questData, mockData.persistAdminData));
+    const detail = createQuestDetailModule(createQuestDetailDependencies(core, questData, persistAdminData));
     window.openQuestDrawer = detail.openQuestDrawer;
     const questPage = createQuestPageModule({
       document,
@@ -282,7 +291,8 @@ export async function initializeTypedLegacyPage(
       locationSearch: options.search,
       detail,
       adminCommands: core.adminCommands,
-      persistAdminData: mockData.persistAdminData,
+      toast: core.toast,
+      persistAdminData,
       refresh: core.render,
       setActiveNavigation: core.setActiveNavigation,
     });
@@ -362,6 +372,7 @@ export async function initializeTypedLegacyPage(
     userReportsFor: core.userReportsFor,
     completedPayoutQuests: core.completedPayoutQuests,
     payoutEarningForQuest: core.payoutEarningForQuest,
+    payoutBadge: core.payoutBadge,
     payoutTimestamp: core.payoutTimestamp,
     penaltyOutcomeFor: (user) => {
       const outcome = core.penaltyOutcomeFor(user);

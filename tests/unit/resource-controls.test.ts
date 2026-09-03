@@ -4,6 +4,7 @@ import {
   paginateRows,
   resourceColumns,
   resetResourceState,
+  resourceTabValue,
   resultCount,
   type ResourceState,
 } from "../../src/features/admin/legacy/resource-controls-model";
@@ -57,6 +58,12 @@ function record(
 }
 
 describe("active resource controls model", () => {
+  it("keeps canonical status values when visible tab labels are human-readable", () => {
+    expect(resourceTabValue("quest_open")).toBe("QUEST_OPEN");
+    expect(resourceTabValue("all")).toBe("All");
+    expect(resourceTabValue("team")).toBe("Team");
+  });
+
   it("keeps the original order until a column is selected", () => {
     const state = createState();
     const collections = createCollections({

@@ -3,6 +3,7 @@ import {
   QUEST_STATES,
   disputeCaseStatusFor,
   payoutStatusFor,
+  payoutStatusLabel,
   questStateFor,
   isReportCasePending,
   walletStatusFor,
@@ -168,7 +169,7 @@ export function dashboardModel(
     payouts: pendingPayouts.slice(0, 3).map((record) => ({
       id: text(record, "id"),
       title: text(record, "title"),
-      detail: payoutStatusFor(text(record, "payoutStatus") || text(record, "status")),
+      detail: payoutStatusLabel(text(record, "payoutStatus") || text(record, "status")),
       amount: number(record, "amount"),
       status: payoutStatusFor(text(record, "payoutStatus") || text(record, "status")),
       tone: tone(record, "warning"),

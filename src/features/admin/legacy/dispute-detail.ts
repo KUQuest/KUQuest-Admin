@@ -290,7 +290,10 @@ function bindResolutionControls(root: HTMLElement, record: ModerationRecord): vo
         if (root === drawer) openDisputeDrawer(data.disputes.indexOf(record));
         else if (root === main && typeof renderDisputePage === "function")
           renderDisputePage();
+        toast(`Dispute Case ${record.id} resolved.`);
         return undefined;
+      }).catch((error: unknown) => {
+        toast(`Dispute Case resolution failed: ${error instanceof Error ? error.message : "Request failed."}`);
       });
     }, { keepDrawerOpen: root === drawer });
   });

@@ -11,6 +11,8 @@ import {
   type DashboardModel,
   type DashboardTone,
 } from "./dashboard-model";
+import { payoutStatusLabel, questStateLabel } from "../domain/rulebook";
+import { statusBadgeClass } from "../status-badge";
 
 const ACTIVITY_STORAGE_KEY = "kuquest-admin-activity-v2";
 
@@ -43,9 +45,9 @@ function relativeTime(timestamp: number): string {
   return `${days} day${days === 1 ? "" : "s"} ago`;
 }
 
-function Badge({ status, tone }: { status: string; tone: DashboardTone }) {
+function Badge({ status, tone, canonicalStatus = status }: { status: string; tone: DashboardTone; canonicalStatus?: string }) {
   const slug = status.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  return <span className={`badge ${tone} quest-status-${slug}`}>{status}</span>;
+  return <span className={`badge ${tone} quest-status-${slug} ${statusBadgeClass(canonicalStatus)}`} title={canonicalStatus} aria-label={`${status} (${canonicalStatus})`}>{status}</span>;
 }
 
 function dashboardHref(view: "disputes" | "reports", id: string): string {
@@ -105,7 +107,7 @@ export function AdminDashboard() {
                   <Link className="link" href="/?view=quests">Open quests</Link>
                 </div>
                 <div className="dashboard-status-list">
-                  {model.questStatusCounts.map((entry) => <div key={entry.status}><Badge status={entry.status} tone={entry.tone} /><strong>{entry.count}</strong></div>)}
+                  {model.questStatusCounts.map((entry) => <div key={entry.status}><Badge status={questStateLabel(entry.status)} canonicalStatus={entry.status} tone={entry.tone} /><strong>{entry.count}</strong></div>)}
                 </div>
               </section>
             </aside>
@@ -120,7 +122,7 @@ export function AdminDashboard() {
                 <Link className="dashboard-row" href="/?view=payouts" key={record.id}>
                   <span><strong>{record.id}</strong><small>{record.title} · {record.detail}</small></span>
                   <strong>฿{new Intl.NumberFormat("en-US").format(record.amount ?? 0)}</strong>
-                  <Badge status={record.status} tone={record.tone} />
+                  <Badge status={payoutStatusLabel(record.status)} canonicalStatus={record.status} tone={record.tone} />
                 </Link>
               )) : <div className="empty"><h3>No payouts need review</h3><p>Processing and completed payouts are moving normally.</p></div>}
             </section>

@@ -5,6 +5,7 @@ import {
   walletStatusFor,
 } from "../domain/rulebook";
 import type { AdminCommandPort } from "../api/admin-api";
+import type { AdminQuestReasonCode } from "../api/admin-api";
 import { newAdminIdempotencyKey } from "./admin-command-port";
 
 export type QuestTone = string;
@@ -31,6 +32,9 @@ export type QuestRecord = {
   amount: number;
   age: string;
   version?: number;
+  apiBacked?: boolean;
+  questDetailLoaded?: boolean;
+  questDetailError?: string;
   editRequestStatus?: string;
   questState?: string;
   hiddenAt?: string | null;
@@ -47,6 +51,7 @@ export type QuestRecord = {
   location?: string[];
   schedule?: string[];
   activity?: string[];
+  editHistory?: string[];
   applications?: QuestParticipant[];
   selectedParticipant?: string;
   teamQuest?: boolean;
@@ -146,10 +151,12 @@ export type QuestDetailDependencies = {
     action: string,
     record: QuestRecord,
     decisionDetail?: string,
-    onConfirm?: (reason: string) => void,
+    onConfirm?: (reason: string, reasonCode?: AdminQuestReasonCode) => void,
   ) => void;
+  hydrateQuest?: (record: QuestRecord) => Promise<void>;
   adminCommands: AdminCommandPort;
   persistAdminData: () => void;
+  toast: (message: string) => void;
   refresh: () => void;
   badge: (status: string, tone: string) => string;
   fmt: (amount: number | null | undefined) => string;
@@ -251,6 +258,7 @@ export function createQuestDetailModule(
     confirmAction,
     adminCommands,
     persistAdminData,
+    toast,
     refresh,
     badge,
     fmt,
@@ -343,7 +351,9 @@ export function createQuestDetailModule(
       .includes(questStateFor(record.questState ?? record.status));
 
   const participantsForQuest = (record: QuestRecord, detail: QuestDetails): QuestParticipant[] =>
-    questHasStarted(record) ? detail.applications.filter((participant) => participant[1] === "Selected") : detail.applications;
+    questHasStarted(record)
+      ? detail.applications.filter((participant) => participant[1] === "Selected" || participant[1] === "APPLICATION_SELECTED")
+      : detail.applications;
 
   const participantSectionTitle = (
     record: QuestRecord,
@@ -373,7 +383,7 @@ export function createQuestDetailModule(
   const relatedRows = (rows: QuestParticipant[]): string =>
     `<div class="related-list">${rows.map((row) => {
       const user = data.users.find((candidate) => candidate.title === row[0]);
-      const isSelected = row[1] === "Selected";
+      const isSelected = row[1] === "Selected" || row[1] === "APPLICATION_SELECTED";
       const status = isSelected ? walletStatusFor(user?.walletStatus ?? user?.status) : row[1];
       const statusTone = isSelected ? user?.tone ?? "success" : row[1] === "Not selected" ? "neutral" : "warning";
       return `<div class="related-row"><strong>${escapeActivityText(row[0])}</strong><span>${badge(status, statusTone)}</span>${user ? `<a class="link related-profile-link" href="/users/${encodeURIComponent(user.id)}">View profile</a>` : ""}</div>`;
@@ -424,6 +434,9 @@ export function createQuestDetailModule(
 
   const renderQuestEditHistory = (record: QuestRecord): string => {
     const entries = questEditHistory(record);
+    if (!entries.length && record.editHistory?.length) {
+      return `<section class="record-panel edit-history-panel"><div class="record-panel-head"><div><h2>Edit history</h2><p>Changes read from the Admin API.</p></div><span class="section-count">${record.editHistory.length}</span></div><ol class="edit-history-list">${record.editHistory.map((entry) => `<li class="edit-history-entry"><div class="edit-history-content"><strong>${escapeActivityText(entry.split(" · ")[0])}</strong><span>${escapeActivityText(entry.split(" · ").slice(1).join(" · "))}</span></div></li>`).join("")}</ol></section>`;
+    }
     if (!entries.length) {
       return `<section class="record-panel edit-history-panel"><div class="record-panel-head"><div><h2>Edit history</h2><p>Changes to the quest description, wage, schedule, location, or deliverables appear here.</p></div></div><div class="edit-history-empty"><strong>No edits recorded</strong><p>${escapeActivityText(record.person)} has not changed the quest details since publication.</p></div></section>`;
     }
@@ -456,7 +469,7 @@ export function createQuestDetailModule(
       <section class="section"><h3>Schedule and location</h3><div class="facts"><div class="fact"><span>Starts</span><strong>${escapeActivityText(detail.schedule[0])}</strong></div><div class="fact"><span>Due</span><strong>${escapeActivityText(detail.schedule[1])}</strong></div><div class="fact"><span>Application window</span><strong>${escapeActivityText(detail.schedule[2])}</strong></div><div class="fact"><span>Location</span><strong>${escapeActivityText(detail.location[0])}</strong><small>${escapeActivityText(detail.location[1])}</small></div></div></section>
       <section class="section"><div class="section-title"><h3>${participantSectionTitle(record, participants, started)}</h3><span class="section-count">${participants.length}</span></div>${relatedRows(participants)}</section>
       ${proofSubmissionsPanel(detail.proof, record)}
-      <section class="section"><h3>Financial record</h3><div class="financial-line"><span>Quest Funding Total</span><strong>${questSatangLabel(record.fundingTotalSatang)}</strong></div><div class="financial-line"><span>Quest Reward</span><strong>${questSatangLabel(record.questRewardSatang)}</strong></div><div class="financial-line"><span>Platform Fee</span><strong>${questSatangLabel(record.platformFeeSatang)}</strong></div><div class="financial-line"><span>Platform Fee policy</span><strong>${typeof record.platformFeeBps === "number" ? `${record.platformFeeBps} bps · rounding ${record.feeRoundingMode ?? "UP"}` : "Not provided by the Admin API"}</strong></div><p class="audit-note">Funds are held in the Funding Reservation until approval or Dispute Case resolution.</p></section>
+      <section class="section"><h3>Financial record</h3><div class="financial-line"><span>Quest Funding Total</span><strong>${questSatangLabel(record.fundingTotalSatang)}</strong></div><div class="financial-line"><span>Quest Reward</span><strong>${questSatangLabel(record.questRewardSatang)}</strong></div><div class="financial-line"><span>Platform Fee per Worker</span><strong>${questSatangLabel(record.platformFeeSatang)}</strong></div><div class="financial-line"><span>Platform Fee policy</span><strong>${typeof record.platformFeeBps === "number" ? `${record.platformFeeBps} bps · rounding ${record.feeRoundingMode ?? "not provided by the Admin API"}` : "Not provided by the Admin API"}</strong></div><p class="audit-note">Funds are held in the Funding Reservation until approval or Dispute Case resolution.</p></section>
       <section class="section"><h3>Overall quest timeline</h3>${timeline(detail.activity, { showDetails: false })}</section>
     </div>
     <div class="drawer-actions"><button class="btn" data-action="${hidden ? "Restore quest" : "Hide quest"}">${hidden ? "Restore quest" : "Hide quest"}</button><a class="btn" href="/quests/${encodeURIComponent(record.id)}">Full quest detail</a>${questState === "QUEST_FAILED" && relatedDispute ? `<a class="btn primary" href="/disputes/${encodeURIComponent(relatedDispute.id)}">Review dispute</a>` : ""}</div>`;
@@ -470,23 +483,37 @@ export function createQuestDetailModule(
     drawer.querySelectorAll<HTMLButtonElement>("[data-action]").forEach((button) => {
       button.addEventListener("click", () => {
         const action = button.dataset.action ?? "";
-        confirmAction(action, record, "", () => {
+        confirmAction(action, record, "", (reason, reasonCode) => {
           const options = {
             idempotencyKey: newAdminIdempotencyKey(action, record.id),
-            reason: "Quest moderation action recorded by Admin.",
+            reason,
+            reasonCode: reasonCode ?? "POLICY_REVIEW",
             ...(typeof record.version === "number" ? { expectedVersion: record.version } : {}),
           };
           const command = action === "Hide quest"
             ? adminCommands.hideQuest(record.id, options)
-            : adminCommands.restoreQuest(record.id, { expectedVersion: options.expectedVersion, idempotencyKey: options.idempotencyKey });
+            : adminCommands.restoreQuest(record.id, {
+              expectedVersion: options.expectedVersion,
+              idempotencyKey: options.idempotencyKey,
+              ...(reasonCode ? { reasonCode } : {}),
+            });
           void command.then(() => {
             persistAdminData();
             refresh();
+            toast(`${action} completed for ${record.id}.`);
             return undefined;
+          }).catch((error: unknown) => {
+            toast(`${action} failed: ${error instanceof Error ? error.message : "Request failed."}`);
           });
         });
       });
     });
+    if (record.apiBacked && !record.questDetailLoaded && dependencies.hydrateQuest) {
+      void dependencies.hydrateQuest(record).then(() => {
+        if (drawer.classList.contains("open") && data.quests[index] === record) openQuestDrawer(index);
+        return undefined;
+      });
+    }
   };
 
   return {

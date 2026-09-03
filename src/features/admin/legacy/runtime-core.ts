@@ -1,11 +1,20 @@
 import type { LegacyRecord } from "./runtime";
 import { data, disputeCases } from "./runtime-data";
-import { payoutStatusFor } from "../domain/rulebook";
+import {
+  disputeCaseStatusLabel,
+  isDisputeCaseStatus,
+  isPayoutStatus,
+  isQuestState,
+  payoutStatusFor,
+  payoutStatusLabel,
+  questStateLabel,
+} from "../domain/rulebook";
 import { mockAdminCommandPort } from "./admin-command-port";
 import { adminApiCommandPort } from "../api/admin-api";
 import type { AdminCommandPort } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
-import { payoutRecordFromApi } from "./live-review-data";
+import { mergeLiveQuestCommand, payoutRecordFromApi } from "./live-review-data";
+import { statusBadgeClass } from "../status-badge";
 
 export { data, disputeCases };
 export { mockAdminCommandPort };
@@ -30,10 +39,41 @@ const livePayoutCommands: AdminCommandPort = {
   },
 };
 
-// Keep unsupported resources on the demo adapter until their API routes are
-// available. Payout commands use the live API when the API data source is on.
+const liveQuestCommands: AdminCommandPort = {
+  ...mockAdminCommandPort,
+  hideQuest: async (questId, options) => {
+    const result = await adminApiCommandPort.hideQuest(questId, options);
+    mergeLiveQuestCommand(questId, result);
+    return result;
+  },
+  restoreQuest: async (questId, options) => {
+    const result = await adminApiCommandPort.restoreQuest(questId, options);
+    mergeLiveQuestCommand(questId, result);
+    return result;
+  },
+  terminateQuest: async (questId, options) => {
+    const result = await adminApiCommandPort.terminateQuest(questId, options);
+    mergeLiveQuestCommand(questId, result);
+    return result;
+  },
+  resolveDispute: async () => {
+    throw new Error(
+      "Conflict with Issue 67: Dispute Case resolution is blocked because the API Server changes the Quest to QUEST_CANCELLED or QUEST_COMPLETED instead of keeping QUEST_FAILED.",
+    );
+  },
+};
+
+// The live adapter uses the API for Quest moderation, Dispute Case resolution,
+// and Payout commands. Other resources remain on the demo adapter until their
+// API routes are available.
 export const adminCommands: AdminCommandPort = isAdminApiEnabled()
-  ? livePayoutCommands
+  ? {
+    ...livePayoutCommands,
+    hideQuest: liveQuestCommands.hideQuest,
+    restoreQuest: liveQuestCommands.restoreQuest,
+    terminateQuest: liveQuestCommands.terminateQuest,
+    resolveDispute: liveQuestCommands.resolveDispute,
+  }
   : mockAdminCommandPort;
 export {
   addUserHistory,
@@ -105,13 +145,28 @@ export function escapeActivityText(value: unknown): string {
 
 function questStatusClass(status: string): string {
   const slug = String(status ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  return ["open", "assigned", "in-progress", "submitted", "change-pending", "approved", "disputed", "completed", "hidden", "draft", "cancelled"].includes(slug)
+  return ["open", "assigned", "in-progress", "submitted", "change-pending", "approved", "disputed", "completed", "hidden", "draft", "cancelled", "failed"].includes(slug)
     ? ` quest-status-${slug}`
     : "";
 }
 
-export const badge = (status: string, tone: string): string =>
-  `<span class="badge ${toneClass(tone)}${questStatusClass(status)}">${escapeActivityText(status)}</span>`;
+function statusLabel(status: string): string {
+  if (isPayoutStatus(status)) return payoutStatusLabel(status);
+  if (isQuestState(status)) return questStateLabel(status);
+  if (isDisputeCaseStatus(status)) return disputeCaseStatusLabel(status);
+  return status;
+}
+
+export const badge = (status: string, tone: string): string => {
+  const label = statusLabel(status);
+  const metadata = label === status
+    ? ""
+    : ` title="${escapeActivityText(status)}" aria-label="${escapeActivityText(`${label} (${status})`)}"`;
+  return `<span class="badge ${toneClass(tone)}${questStatusClass(status)} ${statusBadgeClass(status)}"${metadata}>${escapeActivityText(label)}</span>`;
+};
+
+export const payoutBadge = (value: unknown, tone: string): string =>
+  badge(payoutStatusFor(value), tone);
 
 export function disputeTypeLabel(record: Pick<LegacyRecord, "disputeType">): string {
   return record.disputeType || "Other";

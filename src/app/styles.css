@@ -51,6 +51,60 @@
   --quest-draft-soft: #f3e8ff;
   --quest-cancelled: #8f2d56;
   --quest-cancelled-soft: #faeaf0;
+  --status-quest-draft: #6b21a8;
+  --status-quest-draft-soft: #f3e8ff;
+  --status-quest-open: #0f766e;
+  --status-quest-open-soft: #ccfbf1;
+  --status-quest-assigned: #0369a1;
+  --status-quest-assigned-soft: #e0f2fe;
+  --status-quest-in-progress: #1d4ed8;
+  --status-quest-in-progress-soft: #dbeafe;
+  --status-quest-completed: #166534;
+  --status-quest-completed-soft: #dcfce7;
+  --status-quest-cancelled: #be123c;
+  --status-quest-cancelled-soft: #ffe4e6;
+  --status-quest-failed: #b42318;
+  --status-quest-failed-soft: #fee2e2;
+  --status-dispute-pending: #c2410c;
+  --status-dispute-pending-soft: #ffedd5;
+  --status-dispute-dismissed: #475569;
+  --status-dispute-dismissed-soft: #f1f5f9;
+  --status-dispute-resolved: #4338ca;
+  --status-dispute-resolved-soft: #e0e7ff;
+  --status-payout-pending-admin-approval: #a16207;
+  --status-payout-pending-admin-approval-soft: #fef3c7;
+  --status-payout-submitted-to-provider: #7e22ce;
+  --status-payout-submitted-to-provider-soft: #f3e8ff;
+  --status-payout-provider-pending: #0369a1;
+  --status-payout-provider-pending-soft: #e0f2fe;
+  --status-payout-succeeded: #15803d;
+  --status-payout-succeeded-soft: #dcfce7;
+  --status-payout-failed: #b42318;
+  --status-payout-failed-soft: #fee2e2;
+  --status-payout-cancelled: #475569;
+  --status-payout-cancelled-soft: #f1f5f9;
+  --status-report-pending: #a16207;
+  --status-report-pending-soft: #fef3c7;
+  --status-report-dismissed: #475569;
+  --status-report-dismissed-soft: #f1f5f9;
+  --status-report-hidden: #b42318;
+  --status-report-hidden-soft: #fee2e2;
+  --status-report-restored: #0f766e;
+  --status-report-restored-soft: #ccfbf1;
+  --status-conduct-pending: #a16207;
+  --status-conduct-pending-soft: #fef3c7;
+  --status-conduct-upheld: #b42318;
+  --status-conduct-upheld-soft: #fee2e2;
+  --status-conduct-dismissed: #475569;
+  --status-conduct-dismissed-soft: #f1f5f9;
+  --status-wallet-active: #176b43;
+  --status-wallet-active-soft: #e8f5ee;
+  --status-wallet-frozen: #a16207;
+  --status-wallet-frozen-soft: #fef3c7;
+  --status-wallet-suspended: #c2410c;
+  --status-wallet-suspended-soft: #ffedd5;
+  --status-wallet-closed: #475569;
+  --status-wallet-closed-soft: #f1f5f9;
   --shadow-low: 0 1px 2px #1f21231f;
   --shadow-card: 0 1px 2px #1f21231f, 0 0 0 1px #1f212312;
   --shadow: 0 12px 34px #1f212323, 0 2px 7px #1f212314;
@@ -1019,6 +1073,114 @@ main {
 .badge.quest-status-cancelled {
   color: var(--quest-cancelled);
   background: var(--quest-cancelled-soft);
+}
+.badge.status-quest-draft {
+  color: var(--status-quest-draft);
+  background: var(--status-quest-draft-soft);
+}
+.badge.status-quest-open {
+  color: var(--status-quest-open);
+  background: var(--status-quest-open-soft);
+}
+.badge.status-quest-assigned {
+  color: var(--status-quest-assigned);
+  background: var(--status-quest-assigned-soft);
+}
+.badge.status-quest-in-progress {
+  color: var(--status-quest-in-progress);
+  background: var(--status-quest-in-progress-soft);
+}
+.badge.status-quest-completed {
+  color: var(--status-quest-completed);
+  background: var(--status-quest-completed-soft);
+}
+.badge.status-quest-cancelled {
+  color: var(--status-quest-cancelled);
+  background: var(--status-quest-cancelled-soft);
+}
+.badge.status-quest-failed {
+  color: var(--status-quest-failed);
+  background: var(--status-quest-failed-soft);
+}
+.badge.status-dispute-pending {
+  color: var(--status-dispute-pending);
+  background: var(--status-dispute-pending-soft);
+}
+.badge.status-dispute-dismissed {
+  color: var(--status-dispute-dismissed);
+  background: var(--status-dispute-dismissed-soft);
+}
+.badge.status-dispute-resolved {
+  color: var(--status-dispute-resolved);
+  background: var(--status-dispute-resolved-soft);
+}
+.badge.status-payout-pending-admin-approval {
+  color: var(--status-payout-pending-admin-approval);
+  background: var(--status-payout-pending-admin-approval-soft);
+}
+.badge.status-payout-submitted-to-provider {
+  color: var(--status-payout-submitted-to-provider);
+  background: var(--status-payout-submitted-to-provider-soft);
+}
+.badge.status-payout-provider-pending {
+  color: var(--status-payout-provider-pending);
+  background: var(--status-payout-provider-pending-soft);
+}
+.badge.status-payout-succeeded {
+  color: var(--status-payout-succeeded);
+  background: var(--status-payout-succeeded-soft);
+}
+.badge.status-payout-failed {
+  color: var(--status-payout-failed);
+  background: var(--status-payout-failed-soft);
+}
+.badge.status-payout-cancelled {
+  color: var(--status-payout-cancelled);
+  background: var(--status-payout-cancelled-soft);
+}
+.badge.status-report-pending {
+  color: var(--status-report-pending);
+  background: var(--status-report-pending-soft);
+}
+.badge.status-report-dismissed {
+  color: var(--status-report-dismissed);
+  background: var(--status-report-dismissed-soft);
+}
+.badge.status-report-hidden {
+  color: var(--status-report-hidden);
+  background: var(--status-report-hidden-soft);
+}
+.badge.status-report-restored {
+  color: var(--status-report-restored);
+  background: var(--status-report-restored-soft);
+}
+.badge.status-conduct-pending {
+  color: var(--status-conduct-pending);
+  background: var(--status-conduct-pending-soft);
+}
+.badge.status-conduct-upheld {
+  color: var(--status-conduct-upheld);
+  background: var(--status-conduct-upheld-soft);
+}
+.badge.status-conduct-dismissed {
+  color: var(--status-conduct-dismissed);
+  background: var(--status-conduct-dismissed-soft);
+}
+.badge.status-wallet-active {
+  color: var(--status-wallet-active);
+  background: var(--status-wallet-active-soft);
+}
+.badge.status-wallet-frozen {
+  color: var(--status-wallet-frozen);
+  background: var(--status-wallet-frozen-soft);
+}
+.badge.status-wallet-suspended {
+  color: var(--status-wallet-suspended);
+  background: var(--status-wallet-suspended-soft);
+}
+.badge.status-wallet-closed {
+  color: var(--status-wallet-closed);
+  background: var(--status-wallet-closed-soft);
 }
 .empty {
   padding: 60px 24px;

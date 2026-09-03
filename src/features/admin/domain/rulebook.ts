@@ -125,9 +125,39 @@ export function questStateFor(value: unknown): QuestState {
   }
 }
 
+export function questStateLabel(value: unknown): string {
+  switch (questStateFor(value)) {
+    case "QUEST_DRAFT":
+      return "Draft";
+    case "QUEST_OPEN":
+      return "Open";
+    case "QUEST_ASSIGNED":
+      return "Assigned";
+    case "QUEST_IN_PROGRESS":
+      return "In progress";
+    case "QUEST_COMPLETED":
+      return "Completed";
+    case "QUEST_CANCELLED":
+      return "Cancelled";
+    case "QUEST_FAILED":
+      return "Failed";
+  }
+}
+
 export function disputeCaseStatusFor(value: unknown): DisputeCaseStatus {
   if (isDisputeCaseStatus(value)) return value;
   return value === "Closed" ? "DISPUTE_CASE_RESOLVED" : "DISPUTE_CASE_PENDING";
+}
+
+export function disputeCaseStatusLabel(value: unknown): string {
+  switch (disputeCaseStatusFor(value)) {
+    case "DISPUTE_CASE_PENDING":
+      return "Open";
+    case "DISPUTE_CASE_DISMISSED":
+      return "Dismissed";
+    case "DISPUTE_CASE_RESOLVED":
+      return "Resolved";
+  }
 }
 
 export function reportCaseStatusFor(value: unknown, decision?: unknown): ModerationCaseStatus {
@@ -157,6 +187,23 @@ export function payoutStatusFor(value: unknown): PayoutStatus {
       return "CANCELLED";
     default:
       return "PENDING_ADMIN_APPROVAL";
+  }
+}
+
+export function payoutStatusLabel(value: unknown): string {
+  switch (payoutStatusFor(value)) {
+    case "PENDING_ADMIN_APPROVAL":
+      return "Needs review";
+    case "SUBMITTED_TO_PROVIDER":
+      return "Sent";
+    case "PROVIDER_PENDING":
+      return "Processing";
+    case "SUCCEEDED":
+      return "Paid";
+    case "FAILED":
+      return "Failed";
+    case "CANCELLED":
+      return "Cancelled";
   }
 }
 
