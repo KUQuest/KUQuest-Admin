@@ -1,5 +1,5 @@
 function kebabCase(value: string): string {
-  return value.toLowerCase().replace(/_/g, "-");
+  return value.toLowerCase().replace(/[_\s]+/g, "-");
 }
 
 export function statusBadgeClass(status: string): string {
@@ -17,5 +17,6 @@ export function statusBadgeClass(status: string): string {
     "CANCELLED",
   ].includes(value)) return `status-payout-${kebabCase(value)}`;
   if (["ACTIVE", "FROZEN", "SUSPENDED", "CLOSED"].includes(value)) return `status-wallet-${kebabCase(value)}`;
+  if (["NORMAL", "FLAG", "TEMP BAN", "PERM BAN"].includes(value)) return `status-member-${kebabCase(value)}`;
   return "";
 }

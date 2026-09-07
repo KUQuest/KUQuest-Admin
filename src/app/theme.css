@@ -130,6 +130,14 @@ html[data-theme="dark"] {
   --status-wallet-suspended-soft: #4b2e1d;
   --status-wallet-closed: #cbd5e1;
   --status-wallet-closed-soft: #303d42;
+  --status-member-normal: #72d6a4;
+  --status-member-normal-soft: #1b3b2d;
+  --status-member-flag: #c4b5fd;
+  --status-member-flag-soft: #352043;
+  --status-member-temp-ban: #fdba74;
+  --status-member-temp-ban-soft: #4b2e1d;
+  --status-member-perm-ban: #ff968c;
+  --status-member-perm-ban-soft: #452725;
   --shadow-low: 0 1px 2px #00000066;
   --shadow-card: 0 1px 2px #00000066, 0 0 0 1px #00000033;
   --shadow: 0 12px 34px #00000066, 0 2px 7px #00000040;

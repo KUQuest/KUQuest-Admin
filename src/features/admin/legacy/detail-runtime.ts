@@ -62,7 +62,7 @@ export {
   userReportsFor,
 } from "./runtime-core";
 
-type LegacyView = "home" | "disputes" | "quests" | "users" | "payouts" | "reports" | "policies" | "activity";
+type LegacyView = "home" | "disputes" | "quests" | "users" | "wallets" | "payouts" | "reports" | "conduct-reports" | "policies" | "activity";
 type IconName = "home" | "scale" | "quest" | "users" | "wallet" | "settings" | "history" | "menu" | "search" | "filter" | "paperclip" | "check" | "user" | "flag";
 type LegacyForm = HTMLFormElement & {
   elements: HTMLFormControlsCollection & Record<string, LegacyDomElement>;
@@ -72,9 +72,11 @@ const navItems: Array<[LegacyView, IconName, string, string]> = [
   ["home", "home", "Overview", ""],
   ["quests", "quest", "Quests", ""],
   ["disputes", "scale", "Disputes", "7"],
-  ["reports", "flag", "Reports", "0"],
+  ["reports", "flag", "Report Cases", "0"],
+  ["conduct-reports", "flag", "Conduct Reports", "0"],
   ["payouts", "wallet", "Payouts", "4"],
   ["users", "users", "Users", ""],
+  ["wallets", "wallet", "Wallets", ""],
 ];
 
 function requiredQuery<T extends Element>(root: ParentNode, selector: string): T {
@@ -84,7 +86,7 @@ function requiredQuery<T extends Element>(root: ParentNode, selector: string): T
 }
 
 const requestedView = new URLSearchParams(location.search).get("view");
-const initialView: LegacyView = ["home", "disputes", "quests", "users", "payouts", "reports", "policies", "activity"].includes(requestedView as LegacyView)
+const initialView: LegacyView = ["home", "disputes", "quests", "users", "wallets", "payouts", "reports", "conduct-reports", "policies", "activity"].includes(requestedView as LegacyView)
   ? requestedView as LegacyView
   : "home";
 export const state: LegacyPageState = {

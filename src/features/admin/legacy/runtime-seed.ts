@@ -81,10 +81,15 @@ export function seedGeneratedActivity(records: LegacyRuntimeData): void {
   const add = (actor: string, title: string, detail: string, at: unknown, fallback: number): void => {
     events.push({ actor, title, detail, timestamp: activityTimestamp(at, fallback) });
   };
-  (records.reports || []).slice(0, 14).forEach((record, index) => {
+  (records.reports || []).filter((record) => !record.conductReportStatus).slice(0, 14).forEach((record, index) => {
     const fallback = now - (index + 1) * 38 * 60 * 1000;
     add(activityInitials(record.reporterName, "US"), "User report received", `${record.id} · ${record.reporterName} reported ${record.reportedUserName}`, record.reportedAt, fallback);
     if (!isReportCasePending(record.reportCaseStatus ?? record.conductReportStatus ?? record.status, record.decision)) add("NP", "Report resolved", `${record.id} · ${record.decisionLabel || "Report closed"}`, record.resolutionAt || record.closedAt, fallback + 47 * 60 * 1000);
+  });
+  (records.reports || []).filter((record) => Boolean(record.conductReportStatus)).slice(0, 14).forEach((record, index) => {
+    const fallback = now - (index + 2) * 41 * 60 * 1000;
+    add(activityInitials(record.reporterName, "US"), "Conduct report received", `${record.id} · ${record.reporterName} reported ${record.reportedUserName}`, record.reportedAt, fallback);
+    if (!isReportCasePending(record.conductReportStatus ?? record.status, record.decision)) add("NP", "Conduct report resolved", `${record.id} · ${record.decisionLabel || "Conduct report closed"}`, record.resolutionAt || record.closedAt, fallback + 51 * 60 * 1000);
   });
   (records.disputes || []).slice(0, 12).forEach((record, index) => {
     const fallback = now - (index + 2) * 17 * 60 * 60 * 1000;

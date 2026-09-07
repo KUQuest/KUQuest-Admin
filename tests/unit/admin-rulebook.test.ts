@@ -15,9 +15,11 @@ import {
   payoutStatusLabel,
   questStateLabel,
   questStateFor,
+  reportCaseStatusLabel,
   reportCaseStatusFor,
   isWalletStatus,
   walletStatusFor,
+  walletStatusLabel,
 } from "../../src/features/admin/domain/rulebook";
 import { statusBadgeClass } from "../../src/features/admin/status-badge";
 
@@ -88,6 +90,24 @@ describe("Admin Rulebook status boundary", () => {
     expect(disputeCaseStatusLabel("DISPUTE_CASE_RESOLVED")).toBe("Resolved");
     expect(questStateFor("QUEST_FAILED")).toBe("QUEST_FAILED");
     expect(disputeCaseStatusFor("DISPUTE_CASE_RESOLVED")).toBe("DISPUTE_CASE_RESOLVED");
+  });
+
+  it("uses concise Report labels without changing canonical statuses", () => {
+    expect(reportCaseStatusLabel("REPORT_CASE_PENDING")).toBe("Open");
+    expect(reportCaseStatusLabel("REPORT_CASE_DISMISSED")).toBe("Dismissed");
+    expect(reportCaseStatusLabel("REPORT_CASE_HIDDEN")).toBe("Hidden");
+    expect(reportCaseStatusLabel("REPORT_CASE_RESTORED")).toBe("Restored");
+    expect(reportCaseStatusLabel("CONDUCT_REPORT_PENDING")).toBe("Open");
+    expect(reportCaseStatusLabel("CONDUCT_REPORT_UPHELD")).toBe("Confirmed");
+    expect(reportCaseStatusLabel("CONDUCT_REPORT_DISMISSED")).toBe("Dismissed");
+    expect(reportCaseStatusFor("CONDUCT_REPORT_UPHELD")).toBe("CONDUCT_REPORT_UPHELD");
+  });
+
+  it("uses concise Wallet labels without changing canonical statuses", () => {
+    expect(walletStatusLabel("ACTIVE")).toBe("Active");
+    expect(walletStatusLabel("FROZEN")).toBe("Frozen");
+    expect(walletStatusLabel("SUSPENDED")).toBe("Suspended");
+    expect(walletStatusLabel("CLOSED")).toBe("Closed");
   });
 
   it("assigns separate badge classes to canonical feature statuses", () => {

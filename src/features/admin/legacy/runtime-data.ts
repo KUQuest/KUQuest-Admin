@@ -10,5 +10,14 @@ export const data: LegacyRuntimeData = {
 };
 
 export function recordsFor(view: string): LegacyRecord[] {
+  if (view === "reports") {
+    return data.reports.filter((record) => !record.conductReportStatus);
+  }
+  if (view === "conduct-reports") {
+    return data.reports.filter((record) => Boolean(record.conductReportStatus));
+  }
+  if (view === "wallets") {
+    return data.users;
+  }
   return data[view as keyof LegacyRuntimeData] || [];
 }

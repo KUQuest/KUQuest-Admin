@@ -11,7 +11,7 @@ import {
   type DashboardModel,
   type DashboardTone,
 } from "./dashboard-model";
-import { payoutStatusLabel, questStateLabel } from "../domain/rulebook";
+import { payoutStatusLabel, questStateLabel, walletStatusLabel } from "../domain/rulebook";
 import { statusBadgeClass } from "../status-badge";
 
 const ACTIVITY_STORAGE_KEY = "kuquest-admin-activity-v2";
@@ -69,6 +69,14 @@ export function AdminDashboard() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!model) return;
+    void import("../legacy/language").then(() => {
+      const language = window.__KUQUEST_LANGUAGE__;
+      if (language) language.set(language.current());
+    });
+  }, [model]);
 
   if (!model) {
     return <main id="dashboard-main" tabIndex={-1}><section className="panel"><p>Loading marketplace overview…</p></section></main>;
@@ -134,7 +142,7 @@ export function AdminDashboard() {
               {model.users.length ? model.users.map((record) => (
                 <Link className="dashboard-row" href={`/?view=users&user=${encodeURIComponent(record.id)}`} key={record.id}>
                   <span><strong>{record.title}</strong><small>{record.id} · {record.detail}</small></span>
-                  <Badge status={record.status} tone={record.tone} />
+                  <Badge status={walletStatusLabel(record.status)} canonicalStatus={record.status} tone={record.tone} />
                 </Link>
               )) : <div className="empty"><h3>No user reviews</h3><p>All accounts are currently in good standing.</p></div>}
             </section>

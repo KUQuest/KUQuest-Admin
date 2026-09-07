@@ -3,7 +3,7 @@ import type {
   LegacyRecord,
 } from "./runtime";
 import type { ModerationPageContext } from "./dispute-detail";
-import { payoutStatusFor, questStateFor, reportCaseStatusFor, walletStatusFor } from "../domain/rulebook";
+import { memberStatusFor, payoutStatusFor, questStateFor, reportCaseStatusFor, walletStatusFor } from "../domain/rulebook";
 
 export type UserReview = {
   reviewer: string;
@@ -248,7 +248,7 @@ function userPageInitials(name: unknown): string {
 }
 
 function userPageStatus(user: UserRecord): string {
-  return walletStatusFor(user.walletStatus ?? user.status);
+  return memberStatusFor(user.memberStatus);
 }
 
 function userPageFaculty(user: UserRecord): string {
@@ -341,7 +341,7 @@ function userPageOverview(user: UserRecord): string {
 
 function userPageAccountInfo(user: UserRecord): string {
   const [faculty, year] = String(user.other || "Student").split(" · ");
-  return `<section class="user-detail-panel"><h2>Account Information</h2><dl class="user-facts"><div><dt>Account status</dt><dd>${badge(userPageStatus(user), String(user.tone))}</dd></div><div><dt>Email verified</dt><dd>Yes</dd></div><div><dt>Created</dt><dd>${userPageDate(user.accountCreatedAt)}</dd></div><div><dt>Last active</dt><dd>${userPageDate(user.lastActiveAt)}</dd></div><div><dt>Role</dt><dd>Student</dd></div><div><dt>University</dt><dd>Kasetsart University</dd></div><div><dt>Faculty</dt><dd>${userPageEscape(faculty || "Not recorded")}${year ? ` · ${userPageEscape(year)}` : ""}</dd></div></dl></section>`;
+  return `<section class="user-detail-panel"><h2>Account Information</h2><dl class="user-facts"><div><dt>Member status</dt><dd>${badge(userPageStatus(user), String(user.tone))}</dd></div><div><dt>Wallet status</dt><dd>${badge(walletStatusFor(user.walletStatus ?? user.status), String(user.tone))}</dd></div><div><dt>Email verified</dt><dd>Yes</dd></div><div><dt>Created</dt><dd>${userPageDate(user.accountCreatedAt)}</dd></div><div><dt>Last active</dt><dd>${userPageDate(user.lastActiveAt)}</dd></div><div><dt>Role</dt><dd>Student</dd></div><div><dt>University</dt><dd>Kasetsart University</dd></div><div><dt>Faculty</dt><dd>${userPageEscape(faculty || "Not recorded")}${year ? ` · ${userPageEscape(year)}` : ""}</dd></div></dl></section>`;
 }
 
 function userPageModerationSummary(user: UserRecord): string {

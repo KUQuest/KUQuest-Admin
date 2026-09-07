@@ -6,11 +6,10 @@ import {
   resetResourceState,
   resourceTabValue,
   resultCount,
+  type ResourceCollections,
   type ResourceState,
 } from "../../src/features/admin/legacy/resource-controls-model";
-import type { LegacyRecord, LegacyRuntimeData } from "../../src/features/admin/legacy/runtime";
-
-type ResourceCollections = LegacyRuntimeData;
+import type { LegacyRecord } from "../../src/features/admin/legacy/runtime";
 
 function createState(): ResourceState {
   return {
@@ -34,8 +33,10 @@ function createCollections(
     disputes: [],
     quests: [],
     users: [],
+    wallets: [],
     payouts: [],
     reports: [],
+    "conduct-reports": [],
     ...overrides,
   };
 }
@@ -61,6 +62,12 @@ describe("active resource controls model", () => {
   it("uses Created At instead of Tag for Quest rows", () => {
     expect(resourceColumns.quests).toContainEqual(["createdAt", "Created At"]);
     expect(resourceColumns.quests).not.toContainEqual(["other", "Tag"]);
+  });
+
+  it("keeps Member fields separate from Wallet status fields", () => {
+    expect(resourceColumns.users).toContainEqual(["memberStatus", "Status"]);
+    expect(resourceColumns.users).not.toContainEqual(["walletStatus", "Wallet status"]);
+    expect(resourceColumns.wallets).toContainEqual(["status", "Wallet status"]);
   });
 
   it("keeps canonical status values when visible tab labels are human-readable", () => {

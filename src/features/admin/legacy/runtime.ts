@@ -63,6 +63,7 @@ export type LegacyRecord = {
   conductReportStatus?: string;
   payoutStatus?: string;
   walletStatus?: string;
+  memberStatus?: string;
   hiddenAt?: string | null;
   hiddenByAdminId?: string | null;
   evidenceRefs?: string[];

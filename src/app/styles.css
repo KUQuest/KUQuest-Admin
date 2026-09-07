@@ -105,6 +105,14 @@
   --status-wallet-suspended-soft: #ffedd5;
   --status-wallet-closed: #475569;
   --status-wallet-closed-soft: #f1f5f9;
+  --status-member-normal: #176b43;
+  --status-member-normal-soft: #e8f5ee;
+  --status-member-flag: #6d28d9;
+  --status-member-flag-soft: #f3e8ff;
+  --status-member-temp-ban: #c2410c;
+  --status-member-temp-ban-soft: #ffedd5;
+  --status-member-perm-ban: #b42318;
+  --status-member-perm-ban-soft: #fee2e2;
   --shadow-low: 0 1px 2px #1f21231f;
   --shadow-card: 0 1px 2px #1f21231f, 0 0 0 1px #1f212312;
   --shadow: 0 12px 34px #1f212323, 0 2px 7px #1f212314;
@@ -1181,6 +1189,22 @@ main {
 .badge.status-wallet-closed {
   color: var(--status-wallet-closed);
   background: var(--status-wallet-closed-soft);
+}
+.badge.status-member-normal {
+  color: var(--status-member-normal);
+  background: var(--status-member-normal-soft);
+}
+.badge.status-member-flag {
+  color: var(--status-member-flag);
+  background: var(--status-member-flag-soft);
+}
+.badge.status-member-temp-ban {
+  color: var(--status-member-temp-ban);
+  background: var(--status-member-temp-ban-soft);
+}
+.badge.status-member-perm-ban {
+  color: var(--status-member-perm-ban);
+  background: var(--status-member-perm-ban-soft);
 }
 .empty {
   padding: 60px 24px;

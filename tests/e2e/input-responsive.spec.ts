@@ -6,8 +6,8 @@ async function signIn(page: Page) {
   await page.goto("/login");
   const email = page.getByLabel("University email");
   await expect(email).toBeFocused();
-  await email.fill("admin@ku.th");
-  await page.getByLabel("Password").fill("password123");
+  await email.fill("youtube@ku.th");
+  await page.getByLabel("Password").fill("Qwerty123!");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(
@@ -76,11 +76,11 @@ test.describe("input fields and responsive layouts", () => {
     const email = page.getByLabel("University email");
     const password = page.getByLabel("Password");
     await expect(email).toBeFocused();
-    await email.fill("admin@ku.th");
-    await password.fill("password123");
+    await email.fill("youtube@ku.th");
+    await password.fill("Qwerty123!");
 
-    await expect(email).toHaveValue("admin@ku.th");
-    await expect(password).toHaveValue("password123");
+    await expect(email).toHaveValue("youtube@ku.th");
+    await expect(password).toHaveValue("Qwerty123!");
     await expectResponsiveInput(page, email);
     await expectResponsiveInput(page, password);
   });

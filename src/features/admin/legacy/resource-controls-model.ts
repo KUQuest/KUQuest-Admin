@@ -1,16 +1,22 @@
-import type { LegacyPageState, LegacyRecord, LegacyRuntimeData } from "./runtime";
+import type { LegacyPageState, LegacyRecord } from "./runtime";
 import {
   disputeCaseStatusFor,
+  memberStatusFor,
   payoutStatusFor,
   questStateFor,
   reportCaseStatusFor,
   walletStatusFor,
 } from "../domain/rulebook";
 
-export type ResourceView = keyof Pick<
-  LegacyRuntimeData,
-  "disputes" | "quests" | "users" | "payouts" | "reports"
->;
+export type ResourceView =
+  | "disputes"
+  | "quests"
+  | "users"
+  | "wallets"
+  | "payouts"
+  | "reports"
+  | "conduct-reports";
+export type ResourceCollections = Record<ResourceView, LegacyRecord[]>;
 export type ResourceColumn = [string, string];
 export type Pagination = { page: number; size: number | "all" };
 export type PaginationResult = {
@@ -48,7 +54,14 @@ export const resourceColumns: Record<ResourceView, ResourceColumn[]> = {
     ["title", "User"],
     ["person", "Email"],
     ["other", "Academic profile"],
-    ["status", "Status"],
+    ["memberStatus", "Status"],
+  ],
+  wallets: [
+    ["id", "Wallet / Member ID"],
+    ["title", "Member"],
+    ["person", "Email"],
+    ["status", "Wallet status"],
+    ["accountCreatedAt", "Created"],
   ],
   payouts: [
     ["id", "Payout"],
@@ -63,6 +76,15 @@ export const resourceColumns: Record<ResourceView, ResourceColumn[]> = {
     ["reportedUserName", "Reported user"],
     ["reporterName", "Reported by"],
     ["category", "Type"],
+    ["status", "Status"],
+    ["reportedAt", "Reported"],
+  ],
+  "conduct-reports": [
+    ["id", "Conduct report"],
+    ["relatedQuestTitle", "Quest"],
+    ["reportedUserName", "Reported member"],
+    ["reporterName", "Reported by"],
+    ["category", "Reason"],
     ["status", "Status"],
     ["reportedAt", "Reported"],
   ],
@@ -83,8 +105,10 @@ export const resourceTabs: Record<ResourceView, string[]> = {
     "QUEST_CANCELLED",
     "QUEST_FAILED",
   ],
-  users: ["All", "ACTIVE", "FROZEN", "SUSPENDED", "CLOSED"],
-  reports: ["All", "REPORT_CASE_PENDING", "REPORT_CASE_DISMISSED", "REPORT_CASE_HIDDEN", "REPORT_CASE_RESTORED", "CONDUCT_REPORT_PENDING", "CONDUCT_REPORT_UPHELD", "CONDUCT_REPORT_DISMISSED"],
+  users: ["All", "Normal", "Flag", "Temp Ban", "Perm Ban"],
+  wallets: ["All", "ACTIVE", "FROZEN", "SUSPENDED", "CLOSED"],
+  reports: ["All", "REPORT_CASE_PENDING", "REPORT_CASE_DISMISSED", "REPORT_CASE_HIDDEN", "REPORT_CASE_RESTORED"],
+  "conduct-reports": ["All", "CONDUCT_REPORT_PENDING", "CONDUCT_REPORT_UPHELD", "CONDUCT_REPORT_DISMISSED"],
 };
 
 export const pageSizeOptions: Array<[number | "all", string]> = [
@@ -115,7 +139,7 @@ export function resetResourceState(state: ResourceState): void {
 }
 
 export function matchingRows(
-  collections: Pick<LegacyRuntimeData, ResourceView>,
+  collections: ResourceCollections,
   state: ResourceState,
   view: ResourceView,
 ): LegacyRecord[] {
@@ -131,6 +155,8 @@ export function matchingRows(
       record.person,
       record.other,
       record.status,
+      record.memberStatus || "",
+      record.walletStatus || "",
       displayStatus,
       record.disputeDate || "",
       record.disputeType || "",
@@ -192,7 +218,9 @@ function statusForView(view: ResourceView, record: LegacyRecord): string {
   if (view === "quests") return questStateFor(record.questState ?? record.status);
   if (view === "disputes") return disputeCaseStatusFor(record.disputeCaseStatus ?? record.status);
   if (view === "payouts") return payoutStatusFor(record.payoutStatus ?? record.status);
-  if (view === "reports") return reportCaseStatusFor(record.reportCaseStatus ?? record.conductReportStatus ?? record.status, record.decision);
+  if (view === "reports") return reportCaseStatusFor(record.reportCaseStatus ?? record.status, record.decision);
+  if (view === "conduct-reports") return reportCaseStatusFor(record.conductReportStatus ?? record.status, record.decision);
+  if (view === "users") return memberStatusFor(record.memberStatus);
   return walletStatusFor(record.walletStatus ?? record.status);
 }
 

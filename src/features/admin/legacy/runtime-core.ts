@@ -2,12 +2,18 @@ import type { LegacyRecord } from "./runtime";
 import { data, disputeCases } from "./runtime-data";
 import {
   disputeCaseStatusLabel,
+  isConductReportStatus,
   isDisputeCaseStatus,
   isPayoutStatus,
   isQuestState,
+  isReportCaseStatus,
+  isWalletStatus,
+  memberStatusLabel,
   payoutStatusFor,
   payoutStatusLabel,
   questStateLabel,
+  reportCaseStatusLabel,
+  walletStatusLabel,
 } from "../domain/rulebook";
 import { mockAdminCommandPort } from "./admin-command-port";
 import { adminApiCommandPort } from "../api/admin-api";
@@ -154,6 +160,11 @@ function statusLabel(status: string): string {
   if (isPayoutStatus(status)) return payoutStatusLabel(status);
   if (isQuestState(status)) return questStateLabel(status);
   if (isDisputeCaseStatus(status)) return disputeCaseStatusLabel(status);
+  if (isReportCaseStatus(status) || isConductReportStatus(status)) return reportCaseStatusLabel(status);
+  if (isWalletStatus(status)) return walletStatusLabel(status);
+  if (["Normal", "Flag", "Temp Ban", "Perm Ban", "Temp ban", "Perm ban", "Red Flag"].includes(status)) {
+    return memberStatusLabel(status);
+  }
   return status;
 }
 

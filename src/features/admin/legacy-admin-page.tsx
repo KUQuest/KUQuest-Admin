@@ -33,15 +33,17 @@ const AdminDashboard = dynamic(
 
 /* oxlint-disable jsx-a11y/prefer-tag-over-role */
 
-type DashboardView = "home" | "quests" | "disputes" | "reports" | "payouts" | "users";
+type DashboardView = "home" | "quests" | "disputes" | "reports" | "conduct-reports" | "payouts" | "users" | "wallets";
 
 const dashboardNavItems: Array<{ view: DashboardView; label: string; icon: DashboardView }> = [
   { view: "home", label: "Overview", icon: "home" },
   { view: "quests", label: "Quests", icon: "quests" },
   { view: "disputes", label: "Disputes", icon: "disputes" },
-  { view: "reports", label: "Reports", icon: "reports" },
+  { view: "reports", label: "Report Cases", icon: "reports" },
+  { view: "conduct-reports", label: "Conduct Reports", icon: "conduct-reports" },
   { view: "payouts", label: "Payouts", icon: "payouts" },
   { view: "users", label: "Users", icon: "users" },
+  { view: "wallets", label: "Wallets", icon: "wallets" },
 ];
 
 function DashboardIcon({ name }: { name: DashboardView | "menu" | "search" }) {
@@ -50,8 +52,10 @@ function DashboardIcon({ name }: { name: DashboardView | "menu" | "search" }) {
     quests: <><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4V3h6v1M8 9h8M8 13h8M8 17h5" /></>,
     disputes: <path d="M12 3v18M5 7h14M5 7l-3 6h6L5 7Zm14 0-3 6h6l-3-6ZM8 21h8" />,
     reports: <path d="M5 21V4m0 0h12l-2 4 2 4H5" />,
+    "conduct-reports": <><path d="M5 21V4m0 0h12l-2 4 2 4H5" /><path d="m9 16 2 2 4-4" /></>,
     payouts: <><path d="M3 6h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Zm0 0 12-3v3" /><path d="M16 12h5v4h-5a2 2 0 0 1 0-4Z" /></>,
     users: <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.8" />,
+    wallets: <><path d="M3 6h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Zm0 0 12-3v3" /><path d="M16 12h5v4h-5a2 2 0 0 1 0-4Z" /></>,
     menu: <path d="M4 7h16M4 12h16M4 17h16" />,
     search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></>,
   } as const;

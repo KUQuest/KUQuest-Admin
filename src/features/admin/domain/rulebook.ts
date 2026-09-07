@@ -50,6 +50,9 @@ export const WALLET_STATUSES = [
 ] as const;
 export type WalletStatus = (typeof WALLET_STATUSES)[number];
 
+export const MEMBER_STATUSES = ["Normal", "Flag", "Temp Ban", "Perm Ban"] as const;
+export type MemberStatus = (typeof MEMBER_STATUSES)[number];
+
 export const TERMINAL_QUEST_STATES: readonly QuestState[] = [
   "QUEST_COMPLETED",
   "QUEST_CANCELLED",
@@ -81,6 +84,27 @@ export function isPayoutStatus(value: unknown): value is PayoutStatus {
 
 export function isWalletStatus(value: unknown): value is WalletStatus {
   return typeof value === "string" && WALLET_STATUSES.includes(value as WalletStatus);
+}
+
+export function memberStatusFor(value: unknown): MemberStatus {
+  switch (value) {
+    case "Flag":
+    case "Red Flag":
+      return "Flag";
+    case "Temp Ban":
+    case "Temp ban":
+      return "Temp Ban";
+    case "Perm Ban":
+    case "Perm ban":
+      return "Perm Ban";
+    case "Normal":
+    default:
+      return "Normal";
+  }
+}
+
+export function memberStatusLabel(value: unknown): MemberStatus {
+  return memberStatusFor(value);
 }
 
 export function isQuestTerminal(state: QuestState): boolean {
@@ -170,6 +194,23 @@ export function reportCaseStatusFor(value: unknown, decision?: unknown): Moderat
   return "REPORT_CASE_PENDING";
 }
 
+export function reportCaseStatusLabel(value: unknown, decision?: unknown): string {
+  switch (reportCaseStatusFor(value, decision)) {
+    case "REPORT_CASE_PENDING":
+    case "CONDUCT_REPORT_PENDING":
+      return "Open";
+    case "REPORT_CASE_DISMISSED":
+    case "CONDUCT_REPORT_DISMISSED":
+      return "Dismissed";
+    case "REPORT_CASE_HIDDEN":
+      return "Hidden";
+    case "REPORT_CASE_RESTORED":
+      return "Restored";
+    case "CONDUCT_REPORT_UPHELD":
+      return "Confirmed";
+  }
+}
+
 export function payoutStatusFor(value: unknown): PayoutStatus {
   if (isPayoutStatus(value)) return value;
   switch (value) {
@@ -224,6 +265,19 @@ export function walletStatusFor(value: unknown): WalletStatus {
     case "Active":
     default:
       return "ACTIVE";
+  }
+}
+
+export function walletStatusLabel(value: unknown): string {
+  switch (walletStatusFor(value)) {
+    case "ACTIVE":
+      return "Active";
+    case "FROZEN":
+      return "Frozen";
+    case "SUSPENDED":
+      return "Suspended";
+    case "CLOSED":
+      return "Closed";
   }
 }
 

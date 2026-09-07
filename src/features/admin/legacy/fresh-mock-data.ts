@@ -18,7 +18,7 @@ import {
 
 // Deterministic high-volume demo data. Versioning resets browser-local records
 // whenever the synthetic marketplace scenario changes.
-const freshDemoVersion = "2026-09-03-v54-realistic-quest-finance-fixtures";
+const freshDemoVersion = "2026-09-08-v57-balanced-member-statuses";
 const freshDemoKey = "kuquest-admin-demo-data";
 const seedBaseDate = new Date("2026-08-28T08:00:00Z");
 
@@ -70,8 +70,8 @@ const faculties = [
   "Information Studies", "Landscape Architecture", "Liberal Arts", "Mathematics", "Political Science",
 ];
 const accountStatuses = [
-  "Normal", "Normal", "Normal", "Normal", "Normal", "Normal", "Normal", "Red Flag", "Normal", "Normal",
-  "Temp ban", "Normal", "Normal", "Normal", "Perm ban", "Normal", "Normal", "Red Flag", "Normal", "Normal",
+  "Normal", "Red Flag", "Temp ban", "Perm ban", "Normal", "Red Flag", "Temp ban", "Perm ban", "Normal", "Red Flag",
+  "Temp ban", "Normal", "Perm ban", "Normal", "Red Flag", "Normal", "Temp ban", "Normal", "Perm ban", "Normal",
 ];
 const adminNames = ["Nicha P.", "Pimchanok R.", "Worawut K."];
 
@@ -161,6 +161,7 @@ const generatedUsers: LegacyRecord[] = Array.from({ length: 280 }, (_, index: nu
     other: `${faculties[index % faculties.length]} · Year ${(index % 4) + 1}`,
     status: walletStatusFor(status),
     walletStatus: walletStatusFor(status),
+    memberStatus: status === "Red Flag" ? "Flag" : status === "Temp ban" ? "Temp Ban" : status === "Perm ban" ? "Perm Ban" : "Normal",
     tone: statusTone(status),
     age: status === "Normal"
       ? `Joined ${2022 + (index % 5)}`
@@ -401,17 +402,31 @@ data.disputes = disputableQuests.map((quest: LegacyRecord, index: number) => {
 });
 
 const reportCategories = ["Harassment or abuse", "Fraud or payment issue", "Misleading quest activity", "Other"];
+const conductReportReasons = ["No show", "Abandoned work", "Out of scope work"];
 data.reports = Array.from({ length: 180 }, (_, index: number) => {
   const reporter = data.users[(index * 5 + 13) % data.users.length];
   let reported = data.users[(index * 7 + 31) % data.users.length];
   if (reported.id === reporter.id) reported = data.users[(index * 7 + 32) % data.users.length];
   const quest = data.quests[(index * 3 + 19) % data.quests.length];
-  const status = index % 5 === 0 ? "Active" : "Closed";
-  const category = reportCategories[index % reportCategories.length];
+  const isConductReport = index % 5 === 0;
+  const status = index % 5 === 1 ? "Active" : "Closed";
+  const category = isConductReport
+    ? conductReportReasons[index % conductReportReasons.length]
+    : reportCategories[index % reportCategories.length];
   const reportedAt = seedDateLabel((index % 80) + 1, 8 + (index % 8), (index * 11) % 60);
-  const decision = status === "Closed"
+  const decision = !isConductReport && status === "Closed"
     ? (index % 3 === 0 ? "no-violation" : "confirmed-violation")
     : undefined;
+  const reportCaseStatus = status === "Active"
+    ? "REPORT_CASE_PENDING"
+    : decision === "confirmed-violation"
+      ? "REPORT_CASE_HIDDEN"
+      : "REPORT_CASE_DISMISSED";
+  const conductReportStatus = index % 3 === 0
+    ? "CONDUCT_REPORT_PENDING"
+    : index % 3 === 1
+      ? "CONDUCT_REPORT_UPHELD"
+      : "CONDUCT_REPORT_DISMISSED";
   const evidence = index % 7 === 0 ? [] : [`${category} evidence · PDF`];
   return {
     id: `RPT-${String(8201 + index).padStart(4, "0")}`,
@@ -419,31 +434,33 @@ data.reports = Array.from({ length: 180 }, (_, index: number) => {
     reporterName: reporter.title,
     reportedUserId: reported.id,
     reportedUserName: reported.title,
+    title: quest.title,
     category,
     relatedQuestId: quest.id,
     relatedQuestTitle: quest.title,
-    details: `The report concerns activity connected to ${quest.title}. The submitted record is retained for admin review and audit testing.`,
+    questId: quest.id,
+    details: isConductReport
+      ? `The Conduct Report concerns ${category.toLowerCase()} during ${quest.title}. The Quest record is retained for Admin review and audit testing.`
+      : `The Report Case concerns activity connected to ${quest.title}. The submitted Message record is retained for Admin review and audit testing.`,
     evidence,
     evidenceRefs: [],
-    status: status === "Active"
-      ? "REPORT_CASE_PENDING"
-      : decision === "confirmed-violation"
-        ? "REPORT_CASE_HIDDEN"
-        : "REPORT_CASE_DISMISSED",
-    reportCaseStatus: status === "Active"
-      ? "REPORT_CASE_PENDING"
-      : decision === "confirmed-violation"
-        ? "REPORT_CASE_HIDDEN"
-        : "REPORT_CASE_DISMISSED",
+    status: isConductReport ? conductReportStatus : reportCaseStatus,
+    ...(isConductReport ? { conductReportStatus } : { reportCaseStatus }),
     version: 1,
-    tone: status === "Active" ? "warning" : "neutral",
+    tone: isConductReport
+      ? conductReportStatus === "CONDUCT_REPORT_PENDING" ? "warning" : "neutral"
+      : status === "Active" ? "warning" : "neutral",
     reportedAt,
-    ...(status === "Closed" ? {
+    ...((isConductReport && conductReportStatus !== "CONDUCT_REPORT_PENDING") || (!isConductReport && status === "Closed") ? {
       closedAt: seedDateLabel((index % 70) + 1, 15, 30),
       decision,
-      decisionLabel: decision === "no-violation" ? "No violation" : "Violation confirmed",
+      decisionLabel: isConductReport
+        ? conductReportStatus === "CONDUCT_REPORT_UPHELD" ? "Violation confirmed" : "No violation"
+        : decision === "no-violation" ? "No violation" : "Violation confirmed",
       decisionReason: "The submitted activity and related quest history were reviewed before closing this report.",
-      resolution: index % 3 === 0 ? "Report dismissed; no policy violation found." : "Violation confirmed; the account penalty ladder was applied.",
+      resolution: isConductReport
+        ? conductReportStatus === "CONDUCT_REPORT_UPHELD" ? "Violation confirmed; the account penalty ladder was applied." : "Conduct Report dismissed; no policy violation found."
+        : index % 3 === 0 ? "Report dismissed; no policy violation found." : "Violation confirmed; the account penalty ladder was applied.",
       resolvedBy: adminNames[index % adminNames.length],
       resolutionAt: seedDateLabel((index % 70) + 1, 15, 47),
     } : {}),
@@ -585,4 +602,5 @@ function setSeedCounter(view: string, count: number): void {
 
 setSeedCounter("disputes", data.disputes.filter((record) => disputeCaseStatusFor(record.disputeCaseStatus ?? record.status) === "DISPUTE_CASE_PENDING").length);
 setSeedCounter("payouts", data.payouts.filter((record) => payoutStatusFor(record.payoutStatus ?? record.status) === "PENDING_ADMIN_APPROVAL").length);
-setSeedCounter("reports", data.reports.filter((record) => reportCaseStatusFor(record.reportCaseStatus ?? record.status, record.decision) === "REPORT_CASE_PENDING").length);
+setSeedCounter("reports", data.reports.filter((record) => !record.conductReportStatus && reportCaseStatusFor(record.reportCaseStatus ?? record.status, record.decision) === "REPORT_CASE_PENDING").length);
+setSeedCounter("conduct-reports", data.reports.filter((record) => record.conductReportStatus === "CONDUCT_REPORT_PENDING").length);

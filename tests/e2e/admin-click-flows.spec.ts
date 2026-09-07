@@ -5,8 +5,8 @@ async function signIn(page: Page) {
   await page.goto("/login");
   const email = page.getByLabel("University email");
   await expect(email).toBeFocused();
-  await email.fill("admin@ku.th");
-  await page.getByLabel("Password").fill("password123");
+  await email.fill("youtube@ku.th");
+  await page.getByLabel("Password").fill("Qwerty123!");
   await page.getByRole("button", { name: "Sign in" }).click();
 
   await expect(page).toHaveURL(/\/$/);
