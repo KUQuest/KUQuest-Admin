@@ -1,4 +1,5 @@
 import type { PersistedAdminData } from "../data/admin-records";
+import type { AdminActivityLog, AdminOverview } from "../api/admin-api";
 import {
   QUEST_STATES,
   disputeCaseStatusFor,
@@ -50,8 +51,9 @@ export type DashboardActivity = {
 export type DashboardModel = {
   activeDisputes: number;
   payoutsNeedingReview: number;
-  openReports: number;
+  openReports: number | null;
   totalWorkLeft: number;
+  summaryOnly: boolean;
   decisions: DashboardDecision[];
   questStatusCounts: Array<{ status: string; count: number; tone: DashboardTone }>;
   payouts: DashboardRow[];
@@ -112,6 +114,52 @@ function formatAmount(amount: number): string {
   return new Intl.NumberFormat("en-US").format(amount);
 }
 
+function activityInitials(entry: AdminActivityLog): string {
+  const initials = `${entry.admin.firstName.trim().charAt(0)}${entry.admin.lastName.trim().charAt(0)}`.toUpperCase();
+  return initials || "AD";
+}
+
+export function dashboardActivityFromApi(entry: AdminActivityLog): DashboardActivity {
+  return {
+    actor: activityInitials(entry),
+    title: entry.action,
+    detail: `${entry.resourceType} · ${entry.resourceId}${entry.reasonCode ? ` · ${entry.reasonCode}` : ""}`,
+    timestamp: Date.parse(entry.createdAt) || 0,
+  };
+}
+
+export function dashboardModelFromApi(
+  overview: AdminOverview,
+  activity: DashboardActivity[] = [],
+  disputeFallback?: Pick<DashboardModel, "activeDisputes" | "decisions">,
+): DashboardModel {
+  const questCounts = new Map<string, number>(questStatuses.map((status) => [status, 0]));
+  Object.entries(overview.quests.byStatus).forEach(([status, count]) => {
+    const canonicalStatus = questStateFor(status);
+    questCounts.set(canonicalStatus, (questCounts.get(canonicalStatus) ?? 0) + count);
+  });
+  const activeDisputes = disputeFallback?.activeDisputes ?? overview.disputes.awaitingResolution;
+  const payoutsNeedingReview = overview.payouts.pendingAdminApproval;
+  const decisions = disputeFallback?.decisions.filter((decision) => decision.view === "disputes") ?? [];
+
+  return {
+    activeDisputes,
+    payoutsNeedingReview,
+    openReports: null,
+    totalWorkLeft: activeDisputes + payoutsNeedingReview,
+    summaryOnly: true,
+    decisions,
+    questStatusCounts: questStatuses.map((status) => ({
+      status,
+      count: questCounts.get(status) ?? 0,
+      tone: statusTone(status),
+    })),
+    payouts: [],
+    users: [],
+    activity: activity.slice(0, 3),
+  };
+}
+
 export function dashboardModel(
   data: PersistedAdminData,
   activity: DashboardActivity[] = [],
@@ -160,6 +208,7 @@ export function dashboardModel(
     payoutsNeedingReview: pendingPayouts.length,
     openReports: openReports.length,
     totalWorkLeft: activeDisputes.length + pendingPayouts.length + openReports.length,
+    summaryOnly: false,
     decisions,
     questStatusCounts: questStatuses.map((status) => ({
       status,

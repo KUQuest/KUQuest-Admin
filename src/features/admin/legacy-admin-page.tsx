@@ -13,6 +13,8 @@ import { readAdminData } from "./data/legacy-admin-data-adapter";
 import type { PersistedAdminData } from "./data/admin-records";
 import { adminApi, type AdminIdentity } from "./api/admin-api";
 import { isAdminApiEnabled } from "./api/admin-provider";
+import { adminNavigationCountsFromMockData, adminNavigationCountsFromOverview } from "./admin-navigation";
+import { loadDashboardData } from "./dashboard/dashboard-bootstrap";
 import { hardNavigate } from "./navigation";
 import { AdminThemeControl } from "./theme/admin-theme-control";
 import type { LegacyPage } from "./legacy/legacy-runtime-loader";
@@ -46,6 +48,8 @@ const dashboardNavItems: Array<{ view: DashboardView; label: string; icon: Dashb
   { view: "wallets", label: "Wallets", icon: "wallets" },
 ];
 
+type DashboardNavigationCounts = Partial<Record<DashboardView, number>>;
+
 function DashboardIcon({ name }: { name: DashboardView | "menu" | "search" }) {
   const paths = {
     home: <><path d="M3 11.5 12 4l9 7.5" /><path d="M5.5 10v10h13V10M9 20v-6h6v6" /></>,
@@ -63,11 +67,38 @@ function DashboardIcon({ name }: { name: DashboardView | "menu" | "search" }) {
 }
 
 function DashboardNavigation() {
+  const [counts, setCounts] = useState<DashboardNavigationCounts>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadNavigationCounts = async (): Promise<void> => {
+      if (isAdminApiEnabled()) await import("./legacy/fresh-mock-data");
+      const mockCounts = adminNavigationCountsFromMockData(loadDashboardData(localStorage).collections);
+      if (cancelled) return;
+      setCounts({
+        disputes: mockCounts.disputes,
+        reports: mockCounts.reports,
+        "conduct-reports": mockCounts.conductReports,
+      });
+      if (!isAdminApiEnabled()) return;
+      try {
+        const apiCounts = adminNavigationCountsFromOverview(await adminApi.getOverview());
+        if (!cancelled) setCounts((current) => ({ ...current, payouts: apiCounts.payouts }));
+      } catch (error: unknown) {
+        if (!cancelled) console.error("Admin navigation counts failed", error);
+      }
+    };
+    void loadNavigationCounts();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <nav id="nav" aria-label="Primary navigation">
       {dashboardNavItems.map(({ view, label, icon }) => (
         <button key={view} data-view={view} type="button">
-          <span><DashboardIcon name={icon} /></span>{label}
+          <span><DashboardIcon name={icon} /></span>{label}{typeof counts[view] === "number" && <b>{counts[view]}</b>}
         </button>
       ))}
     </nav>

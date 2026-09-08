@@ -1,6 +1,7 @@
 # Missing Admin API
 
-Checked on 4 September 2026 against:
+Checked on 8 September 2026 against API Server branch `feat/admin-overview`
+at commit `b70f893`, and against:
 
 - Issue 67: the Admin API specification.
 - The Admin client contract in `src/features/admin/api/admin-api.ts`.
@@ -33,86 +34,6 @@ For list endpoints, use this page shape:
 
 Unless stated otherwise, `limit` is optional and must be an integer from 1 to
 50. `cursor` is optional and is the cursor returned by the previous page.
-
-## Overview
-
-### `GET /api/v1/admin/overview`
-
-Functionality: return the Admin dashboard counters and recent operational
-records.
-
-Request fields: none.
-
-Response fields:
-
-```ts
-{
-  activeDisputes: number;
-  payoutsNeedingReview: number;
-  openReports: number;
-  totalWorkLeft: number;
-  questStateCounts: Partial<Record<QuestState, number>>;
-  recentDecisions?: Array<{
-    id: string;
-    kind: "DISPUTE_CASE" | "REPORT_CASE" | "CONDUCT_REPORT";
-    title: string;
-    detail: string;
-    amountSatang?: number;
-    occurredAt: string;
-  }>;
-  recentPayouts?: Array<{
-    id: string;
-    memberName: string;
-    amountSatang: number;
-    payoutStatus: string;
-  }>;
-  recentMemberPenalties?: Array<{
-    memberId: string;
-    memberName: string;
-    status: "ACTIVE" | "FROZEN" | "SUSPENDED" | "CLOSED";
-    occurredAt: string;
-  }>;
-}
-```
-
-Requirements:
-
-- Calculate the counters from current API data.
-- Do not use browser-local data.
-- Use canonical Quest, Dispute Case, Report Case, Conduct Report, Payout,
-  Wallet, and Penalty values.
-
-## Activity Log
-
-### `GET /api/v1/admin/activity-logs`
-
-Functionality: return the cursor-paginated audit trail of Admin actions.
-
-Query fields:
-
-```ts
-{
-  limit?: number;
-  cursor?: string;
-}
-```
-
-Response fields:
-
-```ts
-{
-  items: Array<{
-    id: string;
-    action: string;
-    actorAdminId: string;
-    occurredAt: string;
-    subjectType: string;
-    subjectId: string;
-    detail?: string;
-  }>;
-  nextCursor: string | null;
-}
-```
 
 ## Dispute Cases
 

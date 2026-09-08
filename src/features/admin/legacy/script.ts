@@ -40,9 +40,16 @@ import {
   refreshLiveQuests,
   refreshLivePayouts,
 } from "./live-review-data";
+import { adminApi, type AdminQuestReasonCode } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
+import {
+  adminNavigationCountsFromMockData,
+  adminNavigationCountsFromOverview,
+  type AdminNavigationCounts,
+  type MockNavigationCounts,
+} from "../admin-navigation";
 import { isQuestModerationAction, setupQuestReasonCode } from "./quest-admin-reason";
-import type { AdminQuestReasonCode } from "../api/admin-api";
+import { dashboardActivityFromApi, type DashboardActivity } from "../dashboard/dashboard-model";
 import {
   QUEST_STATES,
   disputeCaseStatusFor,
@@ -135,15 +142,15 @@ function memberNeedsReview(record: LegacyRecord): boolean {
     || ["FROZEN", "SUSPENDED", "CLOSED"].includes(walletStatus);
 }
 
-const navItems: Array<[LegacyView, IconName, string, string]> = [
-  ["home", "home", "Overview", ""],
-  ["quests", "quest", "Quests", ""],
-  ["disputes", "scale", "Disputes", "7"],
-  ["reports", "flag", "Report Cases", "0"],
-  ["conduct-reports", "flag", "Conduct Reports", "0"],
-  ["payouts", "wallet", "Payouts", "4"],
-  ["users", "users", "Users", ""],
-  ["wallets", "wallet", "Wallets", ""],
+const navItems: Array<[LegacyView, IconName, string]> = [
+  ["home", "home", "Overview"],
+  ["quests", "quest", "Quests"],
+  ["disputes", "scale", "Disputes"],
+  ["reports", "flag", "Report Cases"],
+  ["conduct-reports", "flag", "Conduct Reports"],
+  ["payouts", "wallet", "Payouts"],
+  ["users", "users", "Users"],
+  ["wallets", "wallet", "Wallets"],
 ];
 function persistAdminData(): void {
   window.persistAdminData?.();
@@ -205,12 +212,41 @@ if (!mainElement) throw new Error("Legacy admin main element is required");
 export const main: HTMLElement = mainElement;
 const nav = document.querySelector<LegacyDomElement>("#nav");
 if (!nav) throw new Error("Legacy admin navigation element is required");
-nav.innerHTML = navItems
+const navigation = nav;
+navigation.innerHTML = navItems
   .map(
-    ([v, i, l, c]) =>
-      `<button data-view="${v}"><span>${ico(i)}</span>${l}${c ? `<b>${c}</b>` : ""}</button>`,
+    ([v, i, l]) =>
+      `<button data-view="${v}"><span>${ico(i)}</span>${l}</button>`,
   )
   .join("");
+
+function setNavigationCount(view: string, count: number): void {
+  const button = navigation.querySelector<LegacyDomElement>(`[data-view="${view}"]`);
+  if (!button) return;
+  let counter = button.querySelector<HTMLElement>("b");
+  if (!counter) {
+    counter = document.createElement("b");
+    button.append(counter);
+  }
+  counter.textContent = String(count);
+}
+
+function removeNavigationCount(view: string): void {
+  navigation.querySelector<HTMLElement>(`[data-view="${view}"] b`)?.remove();
+}
+
+export function setNavigationCounts(counts: AdminNavigationCounts): void {
+  setNavigationCount("disputes", counts.disputes);
+  setNavigationCount("payouts", counts.payouts);
+  removeNavigationCount("reports");
+  removeNavigationCount("conduct-reports");
+}
+
+export function setMockNavigationCounts(counts: MockNavigationCounts): void {
+  if (typeof counts.disputes === "number") setNavigationCount("disputes", counts.disputes);
+  setNavigationCount("reports", counts.reports);
+  setNavigationCount("conduct-reports", counts.conductReports);
+}
 document
   .querySelectorAll<LegacyDomElement>("[data-static-icon]")
   .forEach((x) => (x.innerHTML = ico(x.dataset.staticIcon || "")));
@@ -361,17 +397,28 @@ function attention(v: string, i: number, t: string, ic: string, title: string, s
           : "quest";
   return `<button class="attention" data-open="${v}:${i}"><span class="att-icon ${toneClass(t)}">${ico(name)}</span><span><strong>${escapeActivityText(title)}</strong><small>${escapeActivityText(sub)}</small></span><span><strong>${escapeActivityText(x)}</strong><small>${escapeActivityText(y)}</small></span></button>`;
 }
-export function activityList() {
-  const saved = readActivityEvents().map((event) => [
-    event.actor || "NP",
-    event.title,
-    event.detail,
-    formatActivityTime(event.timestamp),
-  ]);
+function activityListFor(events: DashboardActivity[], query = "") {
+  const normalizedQuery = query.trim().toLowerCase();
+  const saved = events
+    .filter((event) => !normalizedQuery || [event.actor, event.title, event.detail].some((value) => value.toLowerCase().includes(normalizedQuery)))
+    .map((event) => [
+      event.actor || "NP",
+      event.title,
+      event.detail,
+      formatActivityTime(event.timestamp),
+    ]);
   return saved.length ? saved.map(
     (a) =>
       `<ul class="activity"><li><span class="avatar">${escapeActivityText(a[0])}</span><span><strong>${escapeActivityText(a[1])}</strong><p>${escapeActivityText(a[2])}</p><time>${escapeActivityText(a[3])}</time></span></li></ul>`,
   ) : ['<div class="empty"><h3>No activity recorded</h3><p>Administrative activity will appear here as actions are taken.</p></div>'];
+}
+export function activityList() {
+  return activityListFor(readActivityEvents().map((event) => ({
+    actor: event.actor || "NP",
+    title: event.title,
+    detail: event.detail,
+    timestamp: event.timestamp,
+  })));
 }
 export let renderResource = function renderResource(v: string): void {
   if (v === "policies") return renderPolicies();
@@ -452,9 +499,43 @@ export function renderPolicies() {
     .join("")}</div></div></section>`;
   bind();
 }
+let activityRequestId = 0;
+
 export function renderActivity() {
-  main.innerHTML = `${pageHead(...heads.activity, '<button class="btn">Export CSV</button>')}<section class="panel resource"><div class="toolbar"><div class="inline-search"><input id="activity-search" type="search" placeholder="Search activity…" aria-label="Search activity"></div></div>${activityList().join("")}</section>`;
+  const useApi = isAdminApiEnabled();
+  main.innerHTML = `${pageHead(...heads.activity, '<button class="btn">Export CSV</button>')}<section class="panel resource"><div class="toolbar"><div class="inline-search"><input id="activity-search" type="search" placeholder="Search activity…" aria-label="Search activity"></div></div><div id="activity-records">${useApi ? '<div class="empty"><h3>Loading activity</h3><p>Reading the Admin API.</p></div>' : activityList().join("")}</div></section>`;
   bind();
+  const activitySearch = main.querySelector<HTMLInputElement>("#activity-search");
+  const records = main.querySelector<HTMLElement>("#activity-records");
+  if (!activitySearch || !records) return;
+
+  if (!useApi) {
+    activitySearch.addEventListener("input", () => {
+      records.innerHTML = activityListFor(readActivityEvents().map((event) => ({
+        actor: event.actor || "NP",
+        title: event.title,
+        detail: event.detail,
+        timestamp: event.timestamp,
+      })), activitySearch.value).join("");
+    });
+    return;
+  }
+
+  const requestId = ++activityRequestId;
+  let apiEvents: DashboardActivity[] = [];
+  activitySearch.addEventListener("input", () => {
+    records.innerHTML = activityListFor(apiEvents, activitySearch.value).join("");
+  });
+  void adminApi.listActivityLogs({ limit: 50, sort: "newest" }).then((page) => {
+    if (requestId !== activityRequestId || state.view !== "activity") return undefined;
+    apiEvents = page.items.map(dashboardActivityFromApi);
+    records.innerHTML = activityListFor(apiEvents, activitySearch.value).join("");
+    return undefined;
+  }).catch((error: unknown) => {
+    if (requestId !== activityRequestId || state.view !== "activity") return undefined;
+    records.innerHTML = `<div class="empty"><h3>Activity log is not available</h3><p>${escapeActivityText(error instanceof Error ? error.message : "The Admin API is unavailable.")}</p></div>`;
+    return undefined;
+  });
 }
 export function render() {
   if (state.view === "home") renderHome();
@@ -529,6 +610,10 @@ export function navigate(v: string): void {
     state.questFilters = { mode: "all", status: "all" };
   }
   if (/^\/(quests|disputes|reports|users)\//.test(location.pathname)) {
+    location.assign(nextUrl);
+    return;
+  }
+  if (v === "home") {
     location.assign(nextUrl);
     return;
   }
@@ -961,16 +1046,29 @@ function openAdminNoteDialog(user: LegacyRecord): void {
     toast(`Admin note saved for ${user.title}.`);
   });
 }
-function refreshNavigationCounts(): void {
+export async function refreshNavigationCounts(): Promise<void> {
+  if (isAdminApiEnabled()) {
+    try {
+      const apiCounts = adminNavigationCountsFromOverview(await adminApi.getOverview());
+      const mockCounts = adminNavigationCountsFromMockData(data);
+      setNavigationCounts({ ...apiCounts, disputes: mockCounts.disputes ?? apiCounts.disputes });
+      setMockNavigationCounts(mockCounts);
+    } catch (error: unknown) {
+      removeNavigationCount("disputes");
+      removeNavigationCount("payouts");
+      setMockNavigationCounts(adminNavigationCountsFromMockData(data));
+      console.error("Admin navigation counts failed", error);
+    }
+    return;
+  }
+
   const counts = {
     disputes: data.disputes.filter((record) => disputeCaseStatusFor(record.disputeCaseStatus ?? record.status) === "DISPUTE_CASE_PENDING").length,
     payouts: data.payouts.filter((record) => payoutStatusFor(record.payoutStatus ?? record.status) === "PENDING_ADMIN_APPROVAL").length,
-    reports: data.reports.filter((record) => isReportCasePending(record.reportCaseStatus ?? record.conductReportStatus ?? record.status, record.decision)).length,
   };
-  Object.entries(counts).forEach(([view, count]) => {
-    const counter = document.querySelector<LegacyDomElement>(`[data-view="${view}"] b`);
-    if (counter) counter.textContent = String(count);
-  });
+  setNavigationCount("disputes", counts.disputes);
+  setNavigationCount("payouts", counts.payouts);
+  setMockNavigationCounts(adminNavigationCountsFromMockData(data));
 }
 export function ensureDetailDrawer(view: string, index: number): void {
   if (view !== "quests" && view !== "disputes") return;

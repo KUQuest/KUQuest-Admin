@@ -7,6 +7,7 @@ import {
 } from "./runtime-seed";
 import { data, disputeCases } from "./runtime-data";
 import type { LegacyDomElement, LegacyHistoryEntry, LegacyRecord, LegacyRuntimeData } from "./runtime";
+import { isAdminApiEnabled } from "../api/admin-provider";
 import {
   QUEST_STATES,
   disputeCaseStatusFor,
@@ -600,7 +601,9 @@ function setSeedCounter(view: string, count: number): void {
   if (counter) counter.textContent = String(count);
 }
 
-setSeedCounter("disputes", data.disputes.filter((record) => disputeCaseStatusFor(record.disputeCaseStatus ?? record.status) === "DISPUTE_CASE_PENDING").length);
-setSeedCounter("payouts", data.payouts.filter((record) => payoutStatusFor(record.payoutStatus ?? record.status) === "PENDING_ADMIN_APPROVAL").length);
-setSeedCounter("reports", data.reports.filter((record) => !record.conductReportStatus && reportCaseStatusFor(record.reportCaseStatus ?? record.status, record.decision) === "REPORT_CASE_PENDING").length);
-setSeedCounter("conduct-reports", data.reports.filter((record) => record.conductReportStatus === "CONDUCT_REPORT_PENDING").length);
+if (!isAdminApiEnabled()) {
+  setSeedCounter("disputes", data.disputes.filter((record) => disputeCaseStatusFor(record.disputeCaseStatus ?? record.status) === "DISPUTE_CASE_PENDING").length);
+  setSeedCounter("payouts", data.payouts.filter((record) => payoutStatusFor(record.payoutStatus ?? record.status) === "PENDING_ADMIN_APPROVAL").length);
+  setSeedCounter("reports", data.reports.filter((record) => !record.conductReportStatus && reportCaseStatusFor(record.reportCaseStatus ?? record.status, record.decision) === "REPORT_CASE_PENDING").length);
+  setSeedCounter("conduct-reports", data.reports.filter((record) => record.conductReportStatus === "CONDUCT_REPORT_PENDING").length);
+}

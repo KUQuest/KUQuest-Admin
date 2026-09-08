@@ -64,6 +64,19 @@ test.describe("admin click flows", () => {
     ).toBeVisible();
   });
 
+  test("admin loads the API Overview from the Quest board", async ({ page }) => {
+    await signIn(page);
+
+    await page.getByRole("button", { name: /^Quests/ }).click();
+    await expect(page).toHaveURL(/\/\?view=quests$/);
+
+    await page.getByRole("button", { name: "Overview", exact: true }).click();
+
+    await expect(page).toHaveURL(/\/$/);
+    const workLeft = Number(await page.locator(".dashboard-stat-work-left strong").textContent());
+    expect(workLeft).toBeGreaterThan(3);
+  });
+
   test("admin can export a quest log after switching to Thai", async ({ page }) => {
     await signIn(page);
     await page.getByRole("button", { name: /^Quests/ }).click();
@@ -533,9 +546,9 @@ test.describe("admin click flows", () => {
   test("closed disputes leave their linked quest in a final status", async ({ page }) => {
     await signIn(page);
     await page.goto("/?view=disputes");
-    await page.getByRole("button", { name: "DISPUTE_CASE_RESOLVED", exact: true }).click();
+    await page.getByRole("button", { name: "Resolved", exact: true }).click();
 
-    const closedCase = page.locator("#main .table-wrap[aria-label='disputes table'] tbody tr").first();
+    const closedCase = page.locator("#main .table-wrap[aria-label='Disputes table'] tbody tr").first();
     await expect(closedCase).toBeVisible();
     await closedCase.getByRole("button").first().click();
 
@@ -547,7 +560,7 @@ test.describe("admin click flows", () => {
     await page.goto(questHref);
 
     await expect(page.locator(".record-status-bar .badge")).not.toHaveText("Disputed");
-    await expect(page.locator(".record-status-bar .badge")).toHaveText("QUEST_FAILED");
+    await expect(page.locator(".record-status-bar .badge")).toHaveAttribute("title", "QUEST_FAILED");
   });
 
   test("banned users are never assigned as quest hirers or workers", async ({ page }) => {

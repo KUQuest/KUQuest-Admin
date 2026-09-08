@@ -2,8 +2,6 @@ import { apiClient, apiRequest, getApiUrl } from "../../../lib/api/client";
 import type {
   ConductReportStatus,
   DisputeCaseStatus,
-  PayoutStatus,
-  QuestState,
   ReportCaseStatus,
   WalletStatus,
 } from "../domain/rulebook";
@@ -42,47 +40,50 @@ export type AdminPage<T> = {
 };
 
 export type AdminOverview = {
-  activeDisputes: number;
-  payoutsNeedingReview: number;
-  openReports: number;
-  totalWorkLeft: number;
-  questStateCounts: Partial<Record<QuestState, number>>;
-  recentDecisions?: AdminOverviewDecision[];
-  recentPayouts?: AdminOverviewPayout[];
-  recentMemberPenalties?: AdminOverviewMemberPenalty[];
-};
-
-export type AdminOverviewDecision = {
-  id: string;
-  kind: "DISPUTE_CASE" | "REPORT_CASE" | "CONDUCT_REPORT";
-  title: string;
-  detail: string;
-  amountSatang?: number;
-  occurredAt: string;
-};
-
-export type AdminOverviewPayout = {
-  id: string;
-  memberName: string;
-  amountSatang: number;
-  payoutStatus: PayoutStatus;
-};
-
-export type AdminOverviewMemberPenalty = {
-  memberId: string;
-  memberName: string;
-  status: WalletStatus;
-  occurredAt: string;
+  quests: {
+    total: number;
+    hidden: number;
+    byStatus: Record<string, number>;
+  };
+  disputes: {
+    total: number;
+    awaitingResolution: number;
+  };
+  payouts: {
+    pendingAdminApproval: number;
+    inFlight: number;
+  };
+  members: {
+    frozenWallets: number;
+    suspendedWallets: number;
+  };
 };
 
 export type AdminActivityLog = {
   id: string;
+  admin: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  };
   action: string;
-  actorAdminId: string;
-  occurredAt: string;
-  subjectType: string;
-  subjectId: string;
-  detail?: string;
+  resourceType: string;
+  resourceId: string;
+  reasonCode: string | null;
+  reasonCatalogVersion: number;
+  resultVersion: number | null;
+  resultTimestamp: string | null;
+  createdAt: string;
+};
+
+export type AdminActivityListQuery = {
+  action?: string;
+  resourceType?: string;
+  resourceId?: string;
+  adminId?: string;
+  limit?: number;
+  cursor?: string;
+  sort?: "newest" | "oldest";
 };
 
 export const ADMIN_API_QUEST_STATUSES = [
@@ -482,10 +483,10 @@ export const adminApi = {
   },
 
   listActivityLogs(
-    query: { limit?: number; cursor?: string } = {},
+    query: AdminActivityListQuery = {},
   ): Promise<AdminPage<AdminActivityLog>> {
     return apiRequest<AdminPage<AdminActivityLog>>(
-      `/api/v1/admin/activity-logs${queryString(query)}`,
+      `/api/v1/admin/activity-log${queryString(query)}`,
       { cache: "no-store" },
     );
   },

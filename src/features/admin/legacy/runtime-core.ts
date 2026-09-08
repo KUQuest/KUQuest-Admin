@@ -62,16 +62,21 @@ const liveQuestCommands: AdminCommandPort = {
     mergeLiveQuestCommand(questId, result);
     return result;
   },
-  resolveDispute: async () => {
+  resolveDispute: async (questId, options) => {
+    const mockDispute = data.disputes.find((record) =>
+      !record.apiBacked
+      && (record.questId === questId || record.id === questId || disputeCases[record.id]?.questId === questId),
+    );
+    if (mockDispute) return mockAdminCommandPort.resolveDispute(questId, options);
     throw new Error(
-      "Conflict with Issue 67: Dispute Case resolution is blocked because the API Server changes the Quest to QUEST_CANCELLED or QUEST_COMPLETED instead of keeping QUEST_FAILED.",
+      "Conflict with Issue 67: API-backed Dispute Case resolution is blocked because the API Server changes the Quest to QUEST_CANCELLED or QUEST_COMPLETED instead of keeping QUEST_FAILED.",
     );
   },
 };
 
-// The live adapter uses the API for Quest moderation, Dispute Case resolution,
-// and Payout commands. Other resources remain on the demo adapter until their
-// API routes are available.
+// The live adapter uses the API for Quest moderation and Payout commands. It
+// uses the mock command for fallback Dispute Cases; API-backed resolution
+// remains blocked until the API follows the Issue 67 Quest State contract.
 export const adminCommands: AdminCommandPort = isAdminApiEnabled()
   ? {
     ...livePayoutCommands,

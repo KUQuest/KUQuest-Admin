@@ -129,17 +129,22 @@ export function questStateFor(value: unknown): QuestState {
   switch (value) {
     case "Draft":
       return "QUEST_DRAFT";
+    case "QUEST_AWAITING_CONSENT":
     case "Assigned":
     case "Change pending":
       return "QUEST_ASSIGNED";
+    case "QUEST_SUBMITTED":
+    case "QUEST_REWORK":
     case "In progress":
     case "Submitted":
       return "QUEST_IN_PROGRESS";
+    case "QUEST_APPROVED":
     case "Approved":
     case "Completed":
       return "QUEST_COMPLETED";
     case "Cancelled":
       return "QUEST_CANCELLED";
+    case "QUEST_DISPUTED":
     case "Disputed":
       return "QUEST_FAILED";
     case "Hidden":

@@ -7,10 +7,14 @@ import { loadDashboardData } from "./dashboard-bootstrap";
 import { hardNavigate } from "../navigation";
 import {
   dashboardModel,
+  dashboardModelFromApi,
+  dashboardActivityFromApi,
   type DashboardActivity,
   type DashboardModel,
   type DashboardTone,
 } from "./dashboard-model";
+import { adminApi } from "../api/admin-api";
+import { isAdminApiEnabled } from "../api/admin-provider";
 import { payoutStatusLabel, questStateLabel, walletStatusLabel } from "../domain/rulebook";
 import { statusBadgeClass } from "../status-badge";
 
@@ -56,15 +60,36 @@ function dashboardHref(view: "disputes" | "reports", id: string): string {
 
 export function AdminDashboard() {
   const [model, setModel] = useState<DashboardModel | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     const loadDashboard = async () => {
+      if (isAdminApiEnabled()) {
+        await import("../legacy/fresh-mock-data");
+        const [overview, activityPage] = await Promise.all([
+          adminApi.getOverview(),
+          adminApi.listActivityLogs({ limit: 3, sort: "newest" }),
+        ]);
+        if (!cancelled) {
+          const mockDisputeModel = dashboardModel(loadDashboardData(localStorage));
+          setModel(dashboardModelFromApi(
+            overview,
+            activityPage.items.map(dashboardActivityFromApi),
+            mockDisputeModel,
+          ));
+        }
+        await import("../legacy/language");
+        return;
+      }
       const data = loadDashboardData(localStorage);
       if (!cancelled) setModel(dashboardModel(data, activityEvents()));
       await import("../legacy/language");
     };
-    void loadDashboard().catch((error: unknown) => console.error(error));
+    void loadDashboard().catch((error: unknown) => {
+      console.error(error);
+      if (!cancelled) setLoadError(error instanceof Error ? error.message : "The Admin API is unavailable.");
+    });
     return () => {
       cancelled = true;
     };
@@ -75,11 +100,12 @@ export function AdminDashboard() {
     void import("../legacy/language").then(() => {
       const language = window.__KUQUEST_LANGUAGE__;
       if (language) language.set(language.current());
+      return undefined;
     });
   }, [model]);
 
   if (!model) {
-    return <main id="dashboard-main" tabIndex={-1}><section className="panel"><p>Loading marketplace overview…</p></section></main>;
+    return <main id="dashboard-main" tabIndex={-1}><section className="panel"><p>{loadError ?? "Loading marketplace overview…"}</p></section></main>;
   }
 
   return (
@@ -91,8 +117,8 @@ export function AdminDashboard() {
       <section className="dashboard-stats" aria-label="Marketplace overview">
             <div className="stat"><span>Active disputes</span><strong>{model.activeDisputes}</strong></div>
             <div className="stat"><span>Payouts needing review</span><strong>{model.payoutsNeedingReview}</strong></div>
-            <div className="stat"><span>Open report</span><strong>{model.openReports}</strong></div>
-            <div className="stat dashboard-stat-work-left"><span>Total work left</span><strong>{model.totalWorkLeft}</strong></div>
+            <div className="stat"><span>Open report</span><strong>{model.openReports ?? "—"}</strong>{model.openReports === null && <small>Not provided by the Admin API</small>}</div>
+            <div className="stat dashboard-stat-work-left"><span>Total work left</span><strong>{model.totalWorkLeft}</strong>{model.summaryOnly && <small>Available queue counts only</small>}</div>
           </section>
           <div className="grid dashboard-grid">
             <section className="panel">
@@ -106,7 +132,7 @@ export function AdminDashboard() {
                   <span><strong>{decision.title}</strong><small>{decision.detail}</small></span>
                   <span><strong>{decision.metric}</strong><small>{decision.age}</small></span>
                 </Link>
-              )) : <div className="empty"><h3>No decisions waiting</h3><p>All current records are clear or processing normally.</p></div>}
+              )) : <div className="empty"><h3>{model.summaryOnly ? "Queue summary only" : "No decisions waiting"}</h3><p>{model.summaryOnly ? "Detailed review records are not provided by the Admin API." : "All current records are clear or processing normally."}</p></div>}
             </section>
             <aside>
               <section className="panel">
@@ -132,7 +158,7 @@ export function AdminDashboard() {
                   <strong>฿{new Intl.NumberFormat("en-US").format(record.amount ?? 0)}</strong>
                   <Badge status={payoutStatusLabel(record.status)} canonicalStatus={record.status} tone={record.tone} />
                 </Link>
-              )) : <div className="empty"><h3>No payouts need review</h3><p>Processing and completed payouts are moving normally.</p></div>}
+              )) : <div className="empty"><h3>{model.summaryOnly ? "Queue summary only" : "No payouts need review"}</h3><p>{model.summaryOnly ? "Detailed payout records are not provided by the Admin API." : "Processing and completed payouts are moving normally."}</p></div>}
             </section>
             <section className="panel">
               <div className="panel-head">
@@ -144,7 +170,7 @@ export function AdminDashboard() {
                   <span><strong>{record.title}</strong><small>{record.id} · {record.detail}</small></span>
                   <Badge status={walletStatusLabel(record.status)} canonicalStatus={record.status} tone={record.tone} />
                 </Link>
-              )) : <div className="empty"><h3>No user reviews</h3><p>All accounts are currently in good standing.</p></div>}
+              )) : <div className="empty"><h3>{model.summaryOnly ? "Queue summary only" : "No user reviews"}</h3><p>{model.summaryOnly ? "Detailed member records are not provided by the Admin API." : "All accounts are currently in good standing."}</p></div>}
             </section>
           </div>
       <section className="panel dashboard-activity">

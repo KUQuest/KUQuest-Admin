@@ -6,6 +6,7 @@ import { isAdminApiEnabled } from "../api/admin-provider";
 import {
   hydrateLiveQuest,
   loadLiveQuest,
+  refreshLiveDisputes,
   refreshLivePayouts,
   refreshLiveQuests,
 } from "./live-review-data";
@@ -42,6 +43,7 @@ type SharedRuntimeCore = Pick<
   | "renderHome"
   | "render"
   | "setActiveNavigation"
+  | "refreshNavigationCounts"
   | "payoutQuestId"
   | "penaltyOutcomeFor"
   | "penaltyOutcomeLabel"
@@ -220,8 +222,10 @@ export async function initializeTypedLegacyPage(
     if (isAdminApiEnabled()) {
       const view = new URLSearchParams(options.search).get("view");
       if (view === "quests") await refreshLiveQuests();
+      if (view === "disputes") await refreshLiveDisputes();
       if (view === "payouts") await refreshLivePayouts();
     }
+    await core.refreshNavigationCounts();
     await initializeHomePage(core, mockData);
     return;
   }
@@ -232,6 +236,7 @@ export async function initializeTypedLegacyPage(
   if (isAdminApiEnabled() && options.page === "quest" && options.recordId) await loadLiveQuest(options.recordId);
   window.__KUQUEST_LEGACY_RUNTIME__ = core.legacyRuntime;
   core.initializeDetailRuntime();
+  await core.refreshNavigationCounts();
   core.initializeDetailSearch();
   const common = {
     document,

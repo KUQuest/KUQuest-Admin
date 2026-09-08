@@ -25,11 +25,16 @@ import { createOverlayRuntime } from "./overlay-runtime";
 import { setActiveNavigation as setActiveNavigationCore } from "./navigation-state";
 import { newAdminIdempotencyKey } from "./admin-command-port";
 import { isAdminApiEnabled } from "../api/admin-provider";
+import { adminApi, type AdminQuestReasonCode } from "../api/admin-api";
+import {
+  adminNavigationCountsFromMockData,
+  adminNavigationCountsFromOverview,
+  type AdminNavigationCounts,
+  type MockNavigationCounts,
+} from "../admin-navigation";
 import { isQuestModerationAction, setupQuestReasonCode } from "./quest-admin-reason";
-import type { AdminQuestReasonCode } from "../api/admin-api";
 import {
   disputeCaseStatusFor,
-  isReportCasePending,
   payoutStatusFor,
 } from "../domain/rulebook";
 
@@ -68,15 +73,15 @@ type LegacyForm = HTMLFormElement & {
   elements: HTMLFormControlsCollection & Record<string, LegacyDomElement>;
 };
 
-const navItems: Array<[LegacyView, IconName, string, string]> = [
-  ["home", "home", "Overview", ""],
-  ["quests", "quest", "Quests", ""],
-  ["disputes", "scale", "Disputes", "7"],
-  ["reports", "flag", "Report Cases", "0"],
-  ["conduct-reports", "flag", "Conduct Reports", "0"],
-  ["payouts", "wallet", "Payouts", "4"],
-  ["users", "users", "Users", ""],
-  ["wallets", "wallet", "Wallets", ""],
+const navItems: Array<[LegacyView, IconName, string]> = [
+  ["home", "home", "Overview"],
+  ["quests", "quest", "Quests"],
+  ["disputes", "scale", "Disputes"],
+  ["reports", "flag", "Report Cases"],
+  ["conduct-reports", "flag", "Conduct Reports"],
+  ["payouts", "wallet", "Payouts"],
+  ["users", "users", "Users"],
+  ["wallets", "wallet", "Wallets"],
 ];
 
 function requiredQuery<T extends Element>(root: ParentNode, selector: string): T {
@@ -117,8 +122,8 @@ export { data, disputeCases };
 export { adminCommands };
 
 export function initializeDetailRuntime(): void {
-  navigation.innerHTML = navItems.map(([view, icon, label, count]) =>
-    `<button data-view="${view}" type="button"><span>${ico(icon)}</span>${label}${count ? `<b>${count}</b>` : ""}</button>`).join("");
+  navigation.innerHTML = navItems.map(([view, icon, label]) =>
+    `<button data-view="${view}" type="button"><span>${ico(icon)}</span>${label}</button>`).join("");
   document.querySelectorAll<HTMLElement>("[data-static-icon]").forEach((element) => {
     element.innerHTML = ico(element.dataset.staticIcon || "");
   });
@@ -144,16 +149,57 @@ export const closeActiveLayer = overlayRuntime.closeActiveLayer;
 export const closeDrawer = overlayRuntime.closeDrawer;
 export const showDrawerLayer = overlayRuntime.showDrawerLayer;
 export const showModalLayer = overlayRuntime.showModalLayer;
-function refreshNavigationCounts(): void {
+function setNavigationCount(view: string, count: number): void {
+  const button = navigation.querySelector<HTMLElement>(`[data-view="${view}"]`);
+  if (!button) return;
+  let counter = button.querySelector<HTMLElement>("b");
+  if (!counter) {
+    counter = document.createElement("b");
+    button.append(counter);
+  }
+  counter.textContent = String(count);
+}
+
+function removeNavigationCount(view: string): void {
+  navigation.querySelector<HTMLElement>(`[data-view="${view}"] b`)?.remove();
+}
+
+export function setNavigationCounts(counts: AdminNavigationCounts): void {
+  setNavigationCount("disputes", counts.disputes);
+  setNavigationCount("payouts", counts.payouts);
+  removeNavigationCount("reports");
+  removeNavigationCount("conduct-reports");
+}
+
+export function setMockNavigationCounts(counts: MockNavigationCounts): void {
+  if (typeof counts.disputes === "number") setNavigationCount("disputes", counts.disputes);
+  setNavigationCount("reports", counts.reports);
+  setNavigationCount("conduct-reports", counts.conductReports);
+}
+
+export async function refreshNavigationCounts(): Promise<void> {
+  if (isAdminApiEnabled()) {
+    try {
+      const apiCounts = adminNavigationCountsFromOverview(await adminApi.getOverview());
+      const mockCounts = adminNavigationCountsFromMockData(data);
+      setNavigationCounts({ ...apiCounts, disputes: mockCounts.disputes ?? apiCounts.disputes });
+      setMockNavigationCounts(mockCounts);
+    } catch (error: unknown) {
+      removeNavigationCount("disputes");
+      removeNavigationCount("payouts");
+      setMockNavigationCounts(adminNavigationCountsFromMockData(data));
+      console.error("Admin navigation counts failed", error);
+    }
+    return;
+  }
+
   const counts = {
     disputes: data.disputes.filter((record) => disputeCaseStatusFor(record.disputeCaseStatus ?? record.status) === "DISPUTE_CASE_PENDING").length,
     payouts: data.payouts.filter((record) => payoutStatusFor(record.payoutStatus ?? record.status) === "PENDING_ADMIN_APPROVAL").length,
-    reports: data.reports.filter((record) => isReportCasePending(record.reportCaseStatus ?? record.conductReportStatus ?? record.status, record.decision)).length,
   };
-  Object.entries(counts).forEach(([view, count]) => {
-    const counter = document.querySelector<HTMLElement>(`[data-view="${view}"] b`);
-    if (counter) counter.textContent = String(count);
-  });
+  setNavigationCount("disputes", counts.disputes);
+  setNavigationCount("payouts", counts.payouts);
+  setMockNavigationCounts(adminNavigationCountsFromMockData(data));
 }
 
 function persistAdminData(): void {

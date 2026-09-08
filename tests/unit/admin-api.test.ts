@@ -39,18 +39,18 @@ describe("Admin API boundary", () => {
       return jsonResponse({
         success: true,
         data: {
-          activeDisputes: 1,
-          payoutsNeedingReview: 2,
-          openReports: 3,
-          totalWorkLeft: 6,
-          questStateCounts: {},
+          quests: { total: 6, hidden: 1, byStatus: { QUEST_OPEN: 4, QUEST_COMPLETED: 2 } },
+          disputes: { total: 3, awaitingResolution: 1 },
+          payouts: { pendingAdminApproval: 2, inFlight: 4 },
+          members: { frozenWallets: 1, suspendedWallets: 2 },
         },
       });
     });
 
     const overview = await adminApi.getOverview();
 
-    expect(overview.totalWorkLeft).toBe(6);
+    expect(overview.quests.total).toBe(6);
+    expect(overview.payouts.pendingAdminApproval).toBe(2);
     expect(request?.url).toBe("https://api.example.test/api/v1/admin/overview");
     expect(request?.credentials).toBe("include");
     expect(request?.headers.get("accept")).toBe("application/json");
@@ -101,6 +101,28 @@ describe("Admin API boundary", () => {
     expect(request?.method).toBe("POST");
     expect(request?.url).toBe("https://api.example.test/api/admin/auth/sign-out");
     expect(request?.credentials).toBe("include");
+  });
+
+  it("uses the new singular Activity Log route and filters", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    let request: Request | undefined;
+
+    mockFetch(async (input, init) => {
+      request = new Request(input, init);
+      return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
+    });
+
+    await adminApi.listActivityLogs({
+      action: "QUEST_HIDDEN",
+      resourceType: "QUEST",
+      resourceId: "quest-1",
+      adminId: "admin-1",
+      limit: 50,
+      cursor: "next-page",
+      sort: "oldest",
+    });
+
+    expect(request?.url).toBe("https://api.example.test/api/v1/admin/activity-log?action=QUEST_HIDDEN&resourceType=QUEST&resourceId=quest-1&adminId=admin-1&limit=50&cursor=next-page&sort=oldest");
   });
 
   it("reads the current Admin session without the shared envelope", async () => {
@@ -279,7 +301,7 @@ describe("Admin API boundary", () => {
     });
 
     expect(paths).toEqual([
-      "/api/v1/admin/activity-logs",
+      "/api/v1/admin/activity-log",
       "/api/v1/admin/quests",
       "/api/v1/admin/quests/quest-1",
       "/api/v1/admin/quests/quest-1/hide",

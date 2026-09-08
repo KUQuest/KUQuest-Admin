@@ -26,6 +26,9 @@ export const liveResourceState: Record<"payouts" | "disputes" | "quests", LiveRe
   quests: { loading: false, error: null },
 };
 
+let mockDisputesFallback: LegacyRecord[] | null = null;
+let mockQuestsFallback: LegacyRecord[] | null = null;
+
 function apiErrorMessage(error: unknown, resource: string): string {
   if (error instanceof ApiError) {
     return `${resource} API unavailable (HTTP ${error.status}). ${error.message}`;
@@ -351,6 +354,7 @@ export async function refreshLiveQuests(): Promise<void> {
   const state = liveResourceState.quests;
   state.loading = true;
   state.error = null;
+  if (!mockQuestsFallback) mockQuestsFallback = [...data.quests];
   data.quests = [];
   try {
     data.quests = (await listAllQuests()).map(questRecordFromApiSummary);
@@ -365,12 +369,15 @@ export async function loadLiveQuest(questId: string): Promise<void> {
   const state = liveResourceState.quests;
   state.loading = true;
   state.error = null;
+  if (!mockQuestsFallback) mockQuestsFallback = [...data.quests];
   data.quests = [];
   try {
     const detail = await adminApi.getQuest(questId);
     data.quests = [questRecordFromApi(detail, detail)];
   } catch (error) {
-    state.error = apiErrorMessage(error, "Quest detail");
+    const mockQuest = mockQuestsFallback.find((quest) => quest.id === questId);
+    if (mockQuest) data.quests = [mockQuest];
+    else state.error = apiErrorMessage(error, "Quest detail");
   } finally {
     state.loading = false;
   }
@@ -391,12 +398,14 @@ export async function refreshLiveDisputes(): Promise<void> {
   const state = liveResourceState.disputes;
   state.loading = true;
   state.error = null;
-  data.disputes = [];
+  if (!mockDisputesFallback) mockDisputesFallback = [...data.disputes];
   try {
     const page = await adminApi.listDisputes({ limit: 50 });
     data.disputes = page.items.map(disputeRecordFromApi);
-  } catch (error) {
-    state.error = apiErrorMessage(error, "Dispute Case");
+  } catch {
+    // The Admin API does not expose Dispute Case list/detail routes yet.
+    // Keep the seeded Dispute Case records usable until those routes exist.
+    data.disputes = mockDisputesFallback;
   } finally {
     state.loading = false;
   }
