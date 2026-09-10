@@ -6,5 +6,5 @@ interface HomePageProps {
 
 export default async function HomePage({ searchParams }: HomePageProps) {
   const { view } = await searchParams;
-  return <LegacyAdminPage page="home" reactDashboard={!view || view === "home"} />;
+  return <LegacyAdminPage page="home" activeView={view} reactDashboard={!view || view === "home"} />;
 }

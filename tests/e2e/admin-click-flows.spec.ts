@@ -64,6 +64,48 @@ test.describe("admin click flows", () => {
     ).toBeVisible();
   });
 
+  test("admin keeps primary navigation when the session check is slow", async ({
+    page,
+  }) => {
+    let sessionRequests = 0;
+    await page.route("**/api/admin/auth/get-session", async (route) => {
+      sessionRequests += 1;
+      if (sessionRequests === 1) await new Promise((resolve) => setTimeout(resolve, 1200));
+      await route.continue();
+    });
+
+    await signIn(page);
+    await page.getByRole("button", { name: /^Disputes/ }).click();
+
+    await expect(page).toHaveURL(/\/\?view=disputes$/);
+    expect(await page.locator("#nav [data-view]").count()).toBe(8);
+    await expect(page.locator("#nav [data-view]")).toHaveCount(8, { timeout: 5000 });
+    await expect(page.getByRole("heading", { level: 1, name: "Disputes" })).toBeVisible({ timeout: 5000 });
+    await expect(page.locator("#main .data tbody tr").first()).toBeVisible({ timeout: 5000 });
+
+    await page.getByRole("button", { name: "Quests", exact: true }).click();
+    await expect(page).toHaveURL(/\/\?view=quests$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Quests" })).toBeVisible({ timeout: 5000 });
+  });
+
+  test("active navigation follows the current board", async ({ page }) => {
+    await signIn(page);
+
+    const navigation = page.locator("#nav");
+    const overview = navigation.getByRole("button", { name: "Overview", exact: true });
+    const disputes = navigation.getByRole("button", { name: /^Disputes/ });
+
+    await disputes.click();
+    await expect(page.getByRole("heading", { level: 1, name: "Disputes" })).toBeVisible();
+    await expect(disputes).toHaveAttribute("aria-current", "page");
+
+    await overview.click();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Overview" })).toBeVisible();
+    await expect(overview).toHaveAttribute("aria-current", "page");
+    await expect(disputes).not.toHaveAttribute("aria-current", "page");
+  });
+
   test("admin loads the API Overview from the Quest board", async ({ page }) => {
     await signIn(page);
 

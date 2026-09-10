@@ -75,8 +75,21 @@ function DashboardIcon({ name }: { name: DashboardView | "menu" | "search" }) {
   return <svg className="ui-icon" viewBox="0 0 24 24" aria-hidden="true">{paths[name]}</svg>;
 }
 
-function DashboardNavigation() {
+function normalizeDashboardView(view: string | undefined, fallback: DashboardView = "home"): DashboardView {
+  return dashboardNavItems.some((item) => item.view === view) ? view as DashboardView : fallback;
+}
+
+function defaultDashboardView(page: LegacyPage): DashboardView {
+  if (page === "quest") return "quests";
+  if (page === "dispute") return "disputes";
+  if (page === "report") return "reports";
+  if (page === "user") return "users";
+  return "home";
+}
+
+function DashboardNavigation({ activeView = "home" }: { activeView?: string }) {
   const [counts, setCounts] = useState<DashboardNavigationCounts>({});
+  const selectedView = normalizeDashboardView(activeView);
 
   useEffect(() => {
     let cancelled = false;
@@ -109,7 +122,7 @@ function DashboardNavigation() {
   return (
     <nav id="nav" aria-label="Primary navigation">
       {dashboardNavItems.map(({ view, label, icon }) => (
-        <button key={view} data-view={view} type="button">
+        <button key={view} className={view === selectedView ? "active" : undefined} aria-current={view === selectedView ? "page" : undefined} data-view={view} type="button">
           <span><DashboardIcon name={icon} /></span>{label}{typeof counts[view] === "number" && <b>{counts[view]}</b>}
         </button>
       ))}
@@ -291,7 +304,7 @@ function LanguageControl({ className = "", disabled = false }: { className?: str
   );
 }
 
-function LegacyOverlays({ detailSearch = false, includeCommand = true, onAdminSession }: { detailSearch?: boolean; includeCommand?: boolean; onAdminSession?: (identity: AdminIdentity) => void }) {
+function LegacyOverlays({ detailSearch = false, includeCommand = true, onAdminSession, children }: { detailSearch?: boolean; includeCommand?: boolean; onAdminSession?: (identity: AdminIdentity) => void; children?: ReactNode }) {
   return (
     <AdminSessionGate onAdminSession={onAdminSession}>
       <>
@@ -373,6 +386,7 @@ function LegacyOverlays({ detailSearch = false, includeCommand = true, onAdminSe
         </div>
       </div>}
       <div id="toasts" className="toasts" aria-live="polite" />
+      {children}
       </>
     </AdminSessionGate>
   );
@@ -383,11 +397,13 @@ export function LegacyAdminPage({
   recordId,
   reactDashboard = false,
   dashboardVariant = "current",
+  activeView,
 }: {
   page: LegacyPage;
   recordId?: string;
   reactDashboard?: boolean;
   dashboardVariant?: "current" | "clone";
+  activeView?: string;
 }) {
   const router = useRouter();
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
@@ -407,24 +423,35 @@ export function LegacyAdminPage({
   const adminInitials = adminIdentity
     ? `${adminIdentity.firstName.trim().charAt(0)}${adminIdentity.lastName.trim().charAt(0)}`.trim() || "AD"
     : isAdminApiEnabled() ? "…" : "NP";
+  const selectedView = normalizeDashboardView(activeView, defaultDashboardView(page));
   const navigateFromDashboard = useCallback((event: MouseEvent<HTMLElement>) => {
     const target = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-view]") : null;
     const view = target?.dataset.view;
     if (!view) return;
     event.preventDefault();
     event.stopPropagation();
-    router.push(view === "home" ? "/" : `/?view=${encodeURIComponent(view)}`);
-  }, [router]);
+    const nextUrl = view === "home" ? "/" : `/?view=${encodeURIComponent(view)}`;
+    if (!reactDashboard) {
+      const runtime = window.__KUQUEST_LEGACY_RUNTIME__;
+      if (runtime) {
+        runtime.navigate(view);
+        return;
+      }
+      window.location.assign(nextUrl);
+      return;
+    }
+    router.push(nextUrl);
+  }, [reactDashboard, router]);
 
   return (
     <>
       <div className="shell">
-        <aside className={`sidebar${reactDashboard && mobileNavigationOpen ? " open" : ""}`} id="site-navigation" onClickCapture={reactDashboard ? navigateFromDashboard : undefined}>
+        <aside className={`sidebar${reactDashboard && mobileNavigationOpen ? " open" : ""}`} id="site-navigation" onClickCapture={navigateFromDashboard}>
           <div className="brand">
             <Image src="/kuquest-logo.png?v=2" alt="" width={101} height={51} priority unoptimized />
             <span>KuQuest</span>
           </div>
-          {reactDashboard ? <DashboardNavigation /> : <nav id="nav" aria-label="Primary navigation" />}
+          <DashboardNavigation activeView={selectedView} />
           <div className="nav-group">
             <small>SYSTEM</small>
             <button data-view="activity" type="button">
@@ -479,9 +506,10 @@ export function LegacyAdminPage({
         <main id="main" tabIndex={-1} hidden={reactDashboard} />
         {reactDashboard && (dashboardVariant === "clone" ? <OverviewClone /> : <AdminDashboard />)}
       </div>
-      <LegacyOverlays detailSearch={detailPage} includeCommand={!reactDashboard} onAdminSession={setAdminIdentity} />
+      <LegacyOverlays detailSearch={detailPage} includeCommand={!reactDashboard} onAdminSession={setAdminIdentity}>
+        {!reactDashboard && <LegacyRuntimeLoader page={page} recordId={recordId} />}
+      </LegacyOverlays>
       {reactDashboard && <DashboardGlobalSearch open={dashboardSearchOpen} onClose={() => setDashboardSearchOpen(false)} />}
-      {!reactDashboard && <LegacyRuntimeLoader page={page} recordId={recordId} />}
     </>
   );
 }

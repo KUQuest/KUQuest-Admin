@@ -614,6 +614,8 @@ export function navigate(v: string): void {
     return;
   }
   if (v === "home") {
+    state.view = "home";
+    setActiveNavigation(state.view);
     if (window.__KUQUEST_NEXT_NAVIGATE__) {
       window.__KUQUEST_NEXT_NAVIGATE__(nextUrl);
       return;
