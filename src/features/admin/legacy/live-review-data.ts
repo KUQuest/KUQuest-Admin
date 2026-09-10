@@ -11,6 +11,7 @@ import {
   type AdminApiPayoutStatus,
 } from "../api/admin-api";
 import { ApiError } from "../../../lib/api/client";
+import { isPayoutStatus } from "../domain/rulebook";
 import type { PayoutStatus, QuestState } from "../domain/rulebook";
 import type { LegacyHistoryEntry, LegacyRecord } from "./runtime";
 import { data } from "./runtime-data";
@@ -31,7 +32,6 @@ export const liveResourceState: Record<"payouts" | "disputes" | "quests", LiveRe
 };
 
 let mockDisputesFallback: LegacyRecord[] | null = null;
-let mockQuestsFallback: LegacyRecord[] | null = null;
 
 function apiErrorMessage(error: unknown, resource: string): string {
   if (error instanceof ApiError) {
@@ -57,17 +57,14 @@ function toneForPayout(status: PayoutStatus): string {
   return "info";
 }
 
-export function canonicalPayoutStatusForApi(status: AdminApiPayoutStatus): PayoutStatus {
+export function canonicalPayoutStatusForApi(status: unknown): PayoutStatus {
   if (status === "CREATING") return "SUBMITTED_TO_PROVIDER";
   if (status === "PENDING" || status === "AWAITING_RECONCILIATION") return "PROVIDER_PENDING";
   if (status === "COMPLETED") return "SUCCEEDED";
-  return status;
+  return isPayoutStatus(status) ? status : "PENDING_ADMIN_APPROVAL";
 }
 
 function apiPayoutStatusesForCanonical(status: PayoutStatus): AdminApiPayoutStatus[] {
-  if (status === "SUBMITTED_TO_PROVIDER") return ["CREATING"];
-  if (status === "PROVIDER_PENDING") return ["PENDING", "AWAITING_RECONCILIATION"];
-  if (status === "SUCCEEDED") return ["COMPLETED"];
   return [status];
 }
 
@@ -410,7 +407,6 @@ async function refreshLiveQuestsInternal(): Promise<void> {
   state.loading = true;
   state.error = null;
   state.backgroundLoading = false;
-  if (!mockQuestsFallback) mockQuestsFallback = [...data.quests];
   replaceCollection("quests", []);
   try {
     const firstPage = await adminApi.listQuests({ limit: 50, sort: "newest" });
@@ -452,15 +448,12 @@ export async function loadLiveQuest(questId: string): Promise<void> {
   state.loading = true;
   state.error = null;
   state.backgroundLoading = false;
-  if (!mockQuestsFallback) mockQuestsFallback = [...data.quests];
   replaceCollection("quests", []);
   try {
     const detail = await adminApi.getQuest(questId);
     replaceCollection("quests", [questRecordFromApi(detail, detail)]);
   } catch (error) {
-    const mockQuest = mockQuestsFallback.find((quest) => quest.id === questId);
-    if (mockQuest) replaceCollection("quests", [mockQuest]);
-    else state.error = apiErrorMessage(error, "Quest detail");
+    state.error = apiErrorMessage(error, "Quest detail");
   } finally {
     state.loading = false;
   }

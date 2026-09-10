@@ -286,10 +286,9 @@ export type AdminPayoutHistoryEntry = {
 
 export const ADMIN_API_PAYOUT_STATUSES = [
   "PENDING_ADMIN_APPROVAL",
-  "CREATING",
-  "PENDING",
-  "AWAITING_RECONCILIATION",
-  "COMPLETED",
+  "SUBMITTED_TO_PROVIDER",
+  "PROVIDER_PENDING",
+  "SUCCEEDED",
   "FAILED",
   "CANCELLED",
 ] as const;

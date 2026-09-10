@@ -4,6 +4,7 @@ import {
   canonicalQuestStateForApi,
   loadLiveQuest,
   payoutRecordFromApi,
+  refreshLivePayouts,
   refreshLiveQuests,
   questRecordFromApiSummary,
 } from "../../src/features/admin/legacy/live-review-data";
@@ -11,10 +12,12 @@ import { data } from "../../src/features/admin/legacy/runtime-data";
 
 const originalFetch = globalThis.fetch;
 const originalQuests = data.quests;
+const originalPayouts = data.payouts;
 
 afterEach(() => {
   globalThis.fetch = originalFetch;
   data.quests = originalQuests;
+  data.payouts = originalPayouts;
   delete process.env.NEXT_PUBLIC_API_URL;
 });
 
@@ -90,6 +93,30 @@ describe("live review data", () => {
     expect(calls).toBe(1);
   });
 
+  it("uses canonical Payout statuses in every API filter request", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    const requestedStatuses: string[] = [];
+    globalThis.fetch = (async (input, init) => {
+      const url = new URL(new Request(input, init).url);
+      requestedStatuses.push(url.searchParams.get("status") || "missing");
+      return new Response(JSON.stringify({
+        success: true,
+        data: { items: [], nextCursor: null },
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    }) as typeof globalThis.fetch;
+
+    await refreshLivePayouts();
+
+    expect(requestedStatuses).toEqual([
+      "PENDING_ADMIN_APPROVAL",
+      "SUBMITTED_TO_PROVIDER",
+      "PROVIDER_PENDING",
+      "SUCCEEDED",
+      "FAILED",
+      "CANCELLED",
+    ]);
+  });
+
   it("maps the Payout API DTO without calculating financial values", () => {
     const record = payoutRecordFromApi({
       id: "payout-1",
@@ -115,7 +142,7 @@ describe("live review data", () => {
       maskedRoutingValue: "••••",
       providerReference: null,
       providerStatus: null,
-      payoutStatus: "CREATING",
+      payoutStatus: "SUBMITTED_TO_PROVIDER",
       rejectionReason: null,
       createdAt: "2026-09-02T01:00:00.000Z",
       updatedAt: "2026-09-02T01:00:00.000Z",
