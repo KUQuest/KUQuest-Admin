@@ -216,6 +216,19 @@ export function questPercentLabel(value: unknown): string {
     : "Not provided by the Admin API";
 }
 
+export function questCandidateModeLabel(value: unknown, questState?: unknown): string {
+  const mode = String(value ?? (questState === "QUEST_OPEN" ? "FCFS" : "CANDIDATE"));
+  switch (mode) {
+    case "FIRST_COME_FIRST_SERVED":
+    case "FCFS":
+      return "First come, first served";
+    case "CANDIDATE":
+      return "Candidate selection";
+    default:
+      return mode;
+  }
+}
+
 function createPendingQuestChanges(
   dependencies: QuestDetailDependencies,
 ): Record<string, PendingQuestChange> {
@@ -470,7 +483,7 @@ export function createQuestDetailModule(
       <div class="drawer-title"><span class="att-icon info">${ico("quest")}</span><div><h2>${escapeActivityText(record.title)}</h2><p>${record.teamQuest ? "Team quest · " : ""}created by ${escapeActivityText(record.person)}</p></div></div>
       <div class="facts quest-summary">
         <div class="fact"><span>Status</span>${badge(questState, record.tone)}${hidden ? '<span class="badge neutral quest-hidden-overlay">Hidden</span>' : ""}</div><div class="fact"><span>Quest Funding Total</span><strong>${questBahtLabel(record.fundingTotalSatang)}</strong></div>
-        <div class="fact"><span>Participant mode</span><strong>${record.teamQuest ? "Team" : "Single"}</strong></div><div class="fact"><span>Candidate mode</span><strong>${escapeActivityText(record.candidateMode ?? (questState === "QUEST_OPEN" ? "FCFS" : "CANDIDATE"))}</strong></div><div class="fact"><span>Tag</span><strong>${escapeActivityText(record.other)}</strong></div>
+        <div class="fact"><span>Participant mode</span><strong>${record.teamQuest ? "Team" : "Single"}</strong></div><div class="fact"><span>Candidate mode</span><strong>${escapeActivityText(questCandidateModeLabel(record.candidateMode, questState))}</strong></div><div class="fact"><span>Quest ID</span><strong>${escapeActivityText(record.id)}</strong></div>
       </div>
       ${questState === "QUEST_FAILED" ? `<section class="section quest-dispute-reason"><div class="section-title"><h3>Why this quest is failed</h3>${relatedDispute ? badge(disputeCaseStatusFor(relatedDispute.disputeCaseStatus ?? relatedDispute.status), relatedDispute.tone) : badge("DISPUTE_CASE_PENDING", "warning")}</div>${relatedDispute ? `<dl class="dispute-summary-context"><div><dt>Case</dt><dd>${escapeActivityText(relatedDispute.id)}</dd></div><div><dt>Category</dt><dd>${escapeActivityText(disputeTypeLabel(relatedDispute))}</dd></div><div><dt>Description</dt><dd>${escapeActivityText(relatedDispute.detail)}</dd></div></dl><a class="btn full-width" href="/disputes/${encodeURIComponent(relatedDispute.id)}">Open full dispute</a>` : '<p class="audit-note">This Quest is in QUEST_FAILED, but no Dispute Case record is linked. Review the record relationship before taking action.</p>'}</section>` : ""}
       <section class="section"><h3>Quest description</h3><p>${escapeActivityText(detail.description)}</p><div class="requirement-box"><strong>Completion requirements</strong><ul><li>Submit work before the recorded deadline</li><li>Attach verifiable proof files</li><li>Keep all payment inside KuQuest</li></ul></div></section>

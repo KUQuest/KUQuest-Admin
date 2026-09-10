@@ -18,12 +18,16 @@ import { data } from "./runtime-data";
 type LiveResourceState = {
   loading: boolean;
   error: string | null;
+  backgroundLoading: boolean;
 };
 
+export type LiveResourceView = "payouts" | "disputes" | "quests";
+export const LIVE_RESOURCE_UPDATED_EVENT = "kuquest-live-resource-updated";
+
 export const liveResourceState: Record<"payouts" | "disputes" | "quests", LiveResourceState> = {
-  payouts: { loading: false, error: null },
-  disputes: { loading: false, error: null },
-  quests: { loading: false, error: null },
+  payouts: { loading: false, error: null, backgroundLoading: false },
+  disputes: { loading: false, error: null, backgroundLoading: false },
+  quests: { loading: false, error: null, backgroundLoading: false },
 };
 
 let mockDisputesFallback: LegacyRecord[] | null = null;
@@ -34,6 +38,15 @@ function apiErrorMessage(error: unknown, resource: string): string {
     return `${resource} API unavailable (HTTP ${error.status}). ${error.message}`;
   }
   return `${resource} API unavailable. ${error instanceof Error ? error.message : "Request failed."}`;
+}
+
+function replaceCollection(view: "quests" | "payouts", records: LegacyRecord[]): void {
+  data[view].splice(0, data[view].length, ...records);
+}
+
+function notifyLiveResourceUpdated(view: LiveResourceView): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(LIVE_RESOURCE_UPDATED_EVENT, { detail: { view } }));
 }
 
 function toneForPayout(status: PayoutStatus): string {
@@ -304,63 +317,132 @@ function disputeRecordFromApi(dispute: AdminDisputeCase): LegacyRecord {
   };
 }
 
-async function listAllPayoutsForStatus(status: AdminApiPayoutStatus): Promise<AdminPayout[]> {
-  const items: AdminPayout[] = [];
-  let cursor: string | undefined;
-  do {
-    const page = await adminApi.listPayouts({ status, limit: 50, cursor, sort: "newest" });
-    items.push(...page.items);
-    if (!page.nextCursor || page.nextCursor === cursor) break;
-    cursor = page.nextCursor;
-  } while (cursor);
-  return items;
+function mergePayouts(items: AdminPayout[]): LegacyRecord[] {
+  const uniquePayouts = new Map<string, AdminPayout>();
+  items.forEach((payout) => uniquePayouts.set(payout.id, payout));
+  return [...uniquePayouts.values()]
+    .toSorted((first, second) => Date.parse(second.createdAt) - Date.parse(first.createdAt))
+    .map(payoutRecordFromApi);
 }
 
-export async function refreshLivePayouts(status?: PayoutStatus): Promise<void> {
+let payoutsRefreshId = 0;
+let payoutsRefreshInFlight: Promise<void> | null = null;
+
+export function refreshLivePayouts(status?: PayoutStatus): Promise<void> {
+  if (payoutsRefreshInFlight || liveResourceState.payouts.backgroundLoading) {
+    return payoutsRefreshInFlight || Promise.resolve();
+  }
+  const refresh = refreshLivePayoutsInternal(status);
+  const sharedRefresh = refresh.finally(() => {
+    if (payoutsRefreshInFlight === sharedRefresh) payoutsRefreshInFlight = null;
+  });
+  payoutsRefreshInFlight = sharedRefresh;
+  return sharedRefresh;
+}
+
+async function refreshLivePayoutsInternal(status?: PayoutStatus): Promise<void> {
+  const refreshId = ++payoutsRefreshId;
   const state = liveResourceState.payouts;
   state.loading = true;
   state.error = null;
-  data.payouts = [];
+  state.backgroundLoading = false;
+  replaceCollection("payouts", []);
   try {
     const statuses = status
       ? apiPayoutStatusesForCanonical(status)
       : ADMIN_API_PAYOUT_STATUSES;
-    const payoutLists = await Promise.all(statuses.map(listAllPayoutsForStatus));
-    const uniquePayouts = new Map<string, AdminPayout>();
-    payoutLists.flat().forEach((payout) => uniquePayouts.set(payout.id, payout));
-    data.payouts = [...uniquePayouts.values()]
-      .toSorted((first, second) => Date.parse(second.createdAt) - Date.parse(first.createdAt))
-      .map(payoutRecordFromApi);
+    const firstPages = await Promise.all(statuses.map(async (payoutStatus) => ({
+      payoutStatus,
+      page: await adminApi.listPayouts({ status: payoutStatus, limit: 50, sort: "newest" }),
+    })));
+    if (refreshId !== payoutsRefreshId) return;
+    const firstItems = firstPages.flatMap(({ page }) => page.items);
+    replaceCollection("payouts", mergePayouts(firstItems));
+    state.loading = false;
+
+    if (firstPages.some(({ page }) => page.nextCursor)) {
+      state.backgroundLoading = true;
+      void (async () => {
+        const laterPages = await Promise.all(firstPages.map(async ({ payoutStatus, page }) => {
+          const items: AdminPayout[] = [];
+          let cursor = page.nextCursor || undefined;
+          while (cursor) {
+            const nextPage = await adminApi.listPayouts({ status: payoutStatus, limit: 50, cursor, sort: "newest" });
+            items.push(...nextPage.items);
+            if (!nextPage.nextCursor || nextPage.nextCursor === cursor) break;
+            cursor = nextPage.nextCursor;
+          }
+          return items;
+        }));
+        if (refreshId !== payoutsRefreshId) return;
+        replaceCollection("payouts", mergePayouts([...firstItems, ...laterPages.flat()]));
+        state.backgroundLoading = false;
+        notifyLiveResourceUpdated("payouts");
+      })().catch(() => {
+        if (refreshId === payoutsRefreshId) state.backgroundLoading = false;
+      });
+    }
   } catch (error) {
+    if (refreshId !== payoutsRefreshId) return;
     state.error = apiErrorMessage(error, "Payout");
-  } finally {
     state.loading = false;
   }
 }
 
-async function listAllQuests(): Promise<AdminQuest[]> {
-  const items: AdminQuest[] = [];
-  let cursor: string | undefined;
-  do {
-    const page = await adminApi.listQuests({ limit: 50, cursor, sort: "newest" });
-    items.push(...page.items);
-    if (!page.nextCursor || page.nextCursor === cursor) break;
-    cursor = page.nextCursor;
-  } while (cursor);
-  return items;
+let questsRefreshId = 0;
+let questsRefreshInFlight: Promise<void> | null = null;
+
+export function refreshLiveQuests(): Promise<void> {
+  if (questsRefreshInFlight || liveResourceState.quests.backgroundLoading) {
+    return questsRefreshInFlight || Promise.resolve();
+  }
+  const refresh = refreshLiveQuestsInternal();
+  const sharedRefresh = refresh.finally(() => {
+    if (questsRefreshInFlight === sharedRefresh) questsRefreshInFlight = null;
+  });
+  questsRefreshInFlight = sharedRefresh;
+  return sharedRefresh;
 }
 
-export async function refreshLiveQuests(): Promise<void> {
+async function refreshLiveQuestsInternal(): Promise<void> {
+  const refreshId = ++questsRefreshId;
   const state = liveResourceState.quests;
   state.loading = true;
   state.error = null;
+  state.backgroundLoading = false;
   if (!mockQuestsFallback) mockQuestsFallback = [...data.quests];
-  data.quests = [];
+  replaceCollection("quests", []);
   try {
-    data.quests = (await listAllQuests()).map(questRecordFromApiSummary);
+    const firstPage = await adminApi.listQuests({ limit: 50, sort: "newest" });
+    if (refreshId !== questsRefreshId) return;
+    replaceCollection("quests", firstPage.items.map(questRecordFromApiSummary));
+    state.loading = false;
+
+    if (firstPage.nextCursor) {
+      state.backgroundLoading = true;
+      void (async () => {
+        const items: AdminQuest[] = [];
+        let cursor = firstPage.nextCursor || undefined;
+        while (cursor) {
+          const page = await adminApi.listQuests({ limit: 50, cursor, sort: "newest" });
+          items.push(...page.items);
+          if (!page.nextCursor || page.nextCursor === cursor) break;
+          cursor = page.nextCursor;
+        }
+        if (refreshId !== questsRefreshId) return;
+        replaceCollection("quests", [
+          ...data.quests,
+          ...items.map(questRecordFromApiSummary),
+        ]);
+        state.backgroundLoading = false;
+        notifyLiveResourceUpdated("quests");
+      })().catch(() => {
+        if (refreshId === questsRefreshId) state.backgroundLoading = false;
+      });
+    }
   } catch (error) {
+    if (refreshId !== questsRefreshId) return;
     state.error = apiErrorMessage(error, "Quest");
-  } finally {
     state.loading = false;
   }
 }
@@ -369,14 +451,15 @@ export async function loadLiveQuest(questId: string): Promise<void> {
   const state = liveResourceState.quests;
   state.loading = true;
   state.error = null;
+  state.backgroundLoading = false;
   if (!mockQuestsFallback) mockQuestsFallback = [...data.quests];
-  data.quests = [];
+  replaceCollection("quests", []);
   try {
     const detail = await adminApi.getQuest(questId);
-    data.quests = [questRecordFromApi(detail, detail)];
+    replaceCollection("quests", [questRecordFromApi(detail, detail)]);
   } catch (error) {
     const mockQuest = mockQuestsFallback.find((quest) => quest.id === questId);
-    if (mockQuest) data.quests = [mockQuest];
+    if (mockQuest) replaceCollection("quests", [mockQuest]);
     else state.error = apiErrorMessage(error, "Quest detail");
   } finally {
     state.loading = false;

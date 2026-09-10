@@ -57,6 +57,32 @@ describe("Admin API boundary", () => {
     expect(request?.headers.get("content-type")).toBeNull();
   });
 
+  it("coalesces simultaneous Overview requests", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    let calls = 0;
+    mockFetch(async () => {
+      calls += 1;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      return jsonResponse({
+        success: true,
+        data: {
+          quests: { total: 0, hidden: 0, byStatus: {} },
+          disputes: { total: 0, awaitingResolution: 0 },
+          payouts: { pendingAdminApproval: 0, inFlight: 0 },
+          members: { frozenWallets: 0, suspendedWallets: 0 },
+        },
+      });
+    });
+
+    const [first, second] = await Promise.all([
+      adminApi.getOverview(),
+      adminApi.getOverview(),
+    ]);
+
+    expect(calls).toBe(1);
+    expect(first).toEqual(second);
+  });
+
   it("uses the API Server Admin sign-in route", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     let request: Request | undefined;

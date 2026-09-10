@@ -415,6 +415,27 @@ export type AdminEvent = {
   occurredAt?: string;
 };
 
+let overviewInFlight: Promise<AdminOverview> | null = null;
+let overviewCache: { value: AdminOverview; expiresAt: number } | null = null;
+
+function getOverview(): Promise<AdminOverview> {
+  if (typeof window !== "undefined" && overviewCache && overviewCache.expiresAt > Date.now()) {
+    return Promise.resolve(overviewCache.value);
+  }
+  if (overviewInFlight) return overviewInFlight;
+  const request = apiRequest<AdminOverview>("/api/v1/admin/overview", {
+    cache: "no-store",
+  });
+  const sharedRequest = request.then((value) => {
+    if (typeof window !== "undefined") overviewCache = { value, expiresAt: Date.now() + 1000 };
+    return value;
+  }).finally(() => {
+    if (overviewInFlight === sharedRequest) overviewInFlight = null;
+  });
+  overviewInFlight = sharedRequest;
+  return sharedRequest;
+}
+
 function encode(value: string): string {
   return encodeURIComponent(value);
 }
@@ -477,9 +498,7 @@ export const adminApi = {
   },
 
   getOverview(): Promise<AdminOverview> {
-    return apiRequest<AdminOverview>("/api/v1/admin/overview", {
-      cache: "no-store",
-    });
+    return getOverview();
   },
 
   listActivityLogs(

@@ -614,6 +614,10 @@ export function navigate(v: string): void {
     return;
   }
   if (v === "home") {
+    if (window.__KUQUEST_NEXT_NAVIGATE__) {
+      window.__KUQUEST_NEXT_NAVIGATE__(nextUrl);
+      return;
+    }
     location.assign(nextUrl);
     return;
   }

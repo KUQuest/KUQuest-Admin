@@ -66,8 +66,8 @@ export function AdminDashboard() {
     let cancelled = false;
     const loadDashboard = async () => {
       if (isAdminApiEnabled()) {
-        await import("../legacy/fresh-mock-data");
-        const [overview, activityPage] = await Promise.all([
+        const [_, overview, activityPage] = await Promise.all([
+          import("../legacy/fresh-mock-data"),
           adminApi.getOverview(),
           adminApi.listActivityLogs({ limit: 3, sort: "newest" }),
         ]);

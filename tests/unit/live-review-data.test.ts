@@ -4,6 +4,7 @@ import {
   canonicalQuestStateForApi,
   loadLiveQuest,
   payoutRecordFromApi,
+  refreshLiveQuests,
   questRecordFromApiSummary,
 } from "../../src/features/admin/legacy/live-review-data";
 import { data } from "../../src/features/admin/legacy/runtime-data";
@@ -18,6 +19,77 @@ afterEach(() => {
 });
 
 describe("live review data", () => {
+  it("resolves Quest refresh after the first API page while later pages load in the background", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    let releaseSecondPage!: () => void;
+    const secondPage = new Promise<Response>((resolve) => {
+      releaseSecondPage = () => resolve(new Response(JSON.stringify({
+        success: true,
+        data: { items: [], nextCursor: null },
+      }), { status: 200, headers: { "content-type": "application/json" } }));
+    });
+
+    globalThis.fetch = (async (input, init) => {
+      const url = new URL(new Request(input, init).url);
+      if (url.searchParams.get("cursor") === "next") return secondPage;
+      return new Response(JSON.stringify({
+        success: true,
+        data: {
+          items: [{
+            id: "quest-1",
+            apiVersion: "v1",
+            version: 1,
+            title: "Campus survey",
+            questStatus: "QUEST_OPEN",
+            mode: "FIRST_COME_FIRST_SERVED",
+            participation: "SINGLE",
+            headcount: 1,
+            rewardSatang: 12000,
+            questFundingTotalSatang: 12240,
+            startTime: "2026-09-05T01:00:00.000Z",
+            dueAt: null,
+            hiddenAt: null,
+            createdAt: "2026-09-01T01:00:00.000Z",
+            updatedAt: "2026-09-02T01:00:00.000Z",
+            hirer: {
+              id: "member-1",
+              firstName: "Ari",
+              lastName: "Wattanakul",
+              email: "ari@ku.th",
+            },
+          }],
+          nextCursor: "next",
+        },
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    }) as typeof globalThis.fetch;
+
+    const refresh = refreshLiveQuests();
+    const result = await Promise.race([
+      refresh.then(() => "first-page-ready"),
+      new Promise<string>((resolve) => setTimeout(() => resolve("blocked"), 50)),
+    ]);
+
+    expect(result).toBe("first-page-ready");
+    releaseSecondPage();
+    await refresh;
+  });
+
+  it("coalesces simultaneous Quest refreshes", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    let calls = 0;
+    globalThis.fetch = (async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      calls += 1;
+      return new Response(JSON.stringify({
+        success: true,
+        data: { items: [], nextCursor: null },
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    }) as unknown as typeof globalThis.fetch;
+
+    await Promise.all([refreshLiveQuests(), refreshLiveQuests()]);
+
+    expect(calls).toBe(1);
+  });
+
   it("maps the Payout API DTO without calculating financial values", () => {
     const record = payoutRecordFromApi({
       id: "payout-1",

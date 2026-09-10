@@ -218,14 +218,21 @@ export async function initializeTypedLegacyPage(
 ): Promise<void> {
   if (options.page === "home") {
     const core = await import("./script");
-    const mockData = await import("./fresh-mock-data");
+    const mockDataPromise = import("./fresh-mock-data");
     if (isAdminApiEnabled()) {
       const view = new URLSearchParams(options.search).get("view");
-      if (view === "quests") await refreshLiveQuests();
-      if (view === "disputes") await refreshLiveDisputes();
-      if (view === "payouts") await refreshLivePayouts();
+      const liveRefresh = view === "quests"
+        ? refreshLiveQuests()
+        : view === "disputes"
+          ? refreshLiveDisputes()
+          : view === "payouts"
+            ? refreshLivePayouts()
+            : Promise.resolve();
+      await Promise.all([liveRefresh, core.refreshNavigationCounts(), mockDataPromise]);
+    } else {
+      await Promise.all([core.refreshNavigationCounts(), mockDataPromise]);
     }
-    await core.refreshNavigationCounts();
+    const mockData = await mockDataPromise;
     await initializeHomePage(core, mockData);
     return;
   }

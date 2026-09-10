@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -30,6 +31,14 @@ const AdminDashboard = dynamic(
   {
     ssr: false,
     loading: () => <main id="dashboard-main" tabIndex={-1}><section className="panel"><p>Loading marketplace overview…</p></section></main>,
+  },
+);
+
+const OverviewClone = dynamic(
+  () => import("./dashboard/overview-clone").then(({ OverviewClone: Dashboard }) => Dashboard),
+  {
+    ssr: false,
+    loading: () => <main id="dashboard-main" tabIndex={-1}><section className="panel"><p>Loading overview preview…</p></section></main>,
   },
 );
 
@@ -72,7 +81,10 @@ function DashboardNavigation() {
   useEffect(() => {
     let cancelled = false;
     const loadNavigationCounts = async (): Promise<void> => {
-      if (isAdminApiEnabled()) await import("./legacy/fresh-mock-data");
+      const useApi = isAdminApiEnabled();
+      const mockDataPromise = useApi ? import("./legacy/fresh-mock-data") : Promise.resolve();
+      const overviewPromise = useApi ? adminApi.getOverview() : null;
+      if (useApi) await mockDataPromise;
       const mockCounts = adminNavigationCountsFromMockData(loadDashboardData(localStorage).collections);
       if (cancelled) return;
       setCounts({
@@ -80,9 +92,9 @@ function DashboardNavigation() {
         reports: mockCounts.reports,
         "conduct-reports": mockCounts.conductReports,
       });
-      if (!isAdminApiEnabled()) return;
+      if (!useApi || !overviewPromise) return;
       try {
-        const apiCounts = adminNavigationCountsFromOverview(await adminApi.getOverview());
+        const apiCounts = adminNavigationCountsFromOverview(await overviewPromise);
         if (!cancelled) setCounts((current) => ({ ...current, payouts: apiCounts.payouts }));
       } catch (error: unknown) {
         if (!cancelled) console.error("Admin navigation counts failed", error);
@@ -370,14 +382,24 @@ export function LegacyAdminPage({
   page,
   recordId,
   reactDashboard = false,
+  dashboardVariant = "current",
 }: {
   page: LegacyPage;
   recordId?: string;
   reactDashboard?: boolean;
+  dashboardVariant?: "current" | "clone";
 }) {
+  const router = useRouter();
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [dashboardSearchOpen, setDashboardSearchOpen] = useState(false);
   const [adminIdentity, setAdminIdentity] = useState<AdminIdentity | null>(null);
+  useEffect(() => {
+    const navigate = (url: string) => router.push(url);
+    window.__KUQUEST_NEXT_NAVIGATE__ = navigate;
+    return () => {
+      if (window.__KUQUEST_NEXT_NAVIGATE__ === navigate) delete window.__KUQUEST_NEXT_NAVIGATE__;
+    };
+  }, [router]);
   const detailPage = page !== "home" && page !== "user";
   const adminName = adminIdentity
     ? `${adminIdentity.firstName} ${adminIdentity.lastName}`.trim() || adminIdentity.email
@@ -391,8 +413,8 @@ export function LegacyAdminPage({
     if (!view) return;
     event.preventDefault();
     event.stopPropagation();
-    window.location.assign(view === "home" ? "/" : `/?view=${encodeURIComponent(view)}`);
-  }, []);
+    router.push(view === "home" ? "/" : `/?view=${encodeURIComponent(view)}`);
+  }, [router]);
 
   return (
     <>
@@ -455,7 +477,7 @@ export function LegacyAdminPage({
           )}
         </header>
         <main id="main" tabIndex={-1} hidden={reactDashboard} />
-        {reactDashboard && <AdminDashboard />}
+        {reactDashboard && (dashboardVariant === "clone" ? <OverviewClone /> : <AdminDashboard />)}
       </div>
       <LegacyOverlays detailSearch={detailPage} includeCommand={!reactDashboard} onAdminSession={setAdminIdentity} />
       {reactDashboard && <DashboardGlobalSearch open={dashboardSearchOpen} onClose={() => setDashboardSearchOpen(false)} />}
@@ -468,6 +490,7 @@ declare global {
   interface Window {
     __KUQUEST_RECORD_ID__?: string;
     __KUQUEST_PAGE__?: LegacyPage;
+    __KUQUEST_NEXT_NAVIGATE__?: (url: string) => void;
     openDisputeDrawer?: (index: number) => void;
   }
 }

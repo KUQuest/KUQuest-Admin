@@ -181,6 +181,7 @@ declare global {
     recordActivity?: (title: string, detail: string, actor?: string) => void;
     toast?: (message: string) => void;
     ico?: (name: string) => string;
+    __KUQUEST_NEXT_NAVIGATE__?: (url: string) => void;
     __KUQUEST_RESET_RESOURCE_STATE__?: () => void;
   }
 }

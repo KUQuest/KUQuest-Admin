@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import {
   questBahtLabel,
+  questCandidateModeLabel,
   questPercentLabel,
 } from "../../src/features/admin/legacy/quest-detail";
 
@@ -18,5 +19,10 @@ describe("Quest financial display labels", () => {
   it("does not display missing financial values as zero", () => {
     expect(questBahtLabel(null)).toBe("Not provided by the Admin API");
     expect(questPercentLabel(undefined)).toBe("Not provided by the Admin API");
+  });
+
+  it("uses readable Candidate mode labels", () => {
+    expect(questCandidateModeLabel("FIRST_COME_FIRST_SERVED")).toBe("First come, first served");
+    expect(questCandidateModeLabel("CANDIDATE")).toBe("Candidate selection");
   });
 });
