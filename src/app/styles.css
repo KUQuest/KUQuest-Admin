@@ -890,6 +890,17 @@ main {
   border-collapse: collapse;
   min-width: 820px;
 }
+.data caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 .data th {
   height: 41px;
   padding: 0 12px;
@@ -1901,6 +1912,20 @@ svg.ui-icon {
   border-radius: 8px;
   background: var(--soft);
   font-size: 11px;
+}
+.api-data-notice {
+  border-left: 3px solid var(--info);
+  background: var(--info-soft);
+  color: var(--text);
+}
+.api-data-notice p {
+  margin: 4px 0 6px !important;
+  color: var(--muted);
+}
+.api-data-notice ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
 }
 .fact small {
   display: block;

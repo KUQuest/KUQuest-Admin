@@ -248,7 +248,9 @@ function userPageInitials(name: unknown): string {
 }
 
 function userPageStatus(user: UserRecord): string {
-  return memberStatusFor(user.memberStatus);
+  return user.memberStatus
+    ? memberStatusFor(user.memberStatus)
+    : "Not provided by the Admin API";
 }
 
 function userPageFaculty(user: UserRecord): string {
@@ -277,7 +279,7 @@ function userPageHistory(user: UserRecord): LegacyHistoryEntry[] {
 }
 
 function userPageActionButtons(user: UserRecord): string {
-  if (["FROZEN", "SUSPENDED", "CLOSED"].includes(userPageStatus(user))) return '<p class="audit-note">No manual penalty override is available. The SRS duration or permanent ban rule applies.</p>';
+  if (["FROZEN", "SUSPENDED", "CLOSED"].includes(walletStatusFor(user.walletStatus ?? user.status))) return '<p class="audit-note">No manual penalty override is available. The SRS duration or permanent ban rule applies.</p>';
   return '<button class="btn primary" data-user-page-penalty="apply">Record violation</button>';
 }
 
@@ -490,7 +492,7 @@ function userPageSummary(user: UserRecord): string {
 }
 
 function renderUserPage(): void {
-  const user = data.users.find((candidate) => candidate.id === userPageId);
+  const user = data.users.find((candidate) => candidate.id === userPageId || candidate.memberId === userPageId);
   const detail = window.__KUQUEST_USER_DETAIL__;
   if (!user) {
     if (detail) detail.user = null;

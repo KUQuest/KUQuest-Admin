@@ -39,7 +39,7 @@ describe("Admin API boundary", () => {
       return jsonResponse({
         success: true,
         data: {
-          quests: { total: 6, hidden: 1, byStatus: { QUEST_OPEN: 4, QUEST_COMPLETED: 2 } },
+          quests: { total: 6, hidden: 1, byState: { QUEST_OPEN: 4, QUEST_COMPLETED: 2 } },
           disputes: { total: 3, awaitingResolution: 1 },
           payouts: { pendingAdminApproval: 2, inFlight: 4 },
           members: { frozenWallets: 1, suspendedWallets: 2 },
@@ -66,7 +66,7 @@ describe("Admin API boundary", () => {
       return jsonResponse({
         success: true,
         data: {
-          quests: { total: 0, hidden: 0, byStatus: {} },
+          quests: { total: 0, hidden: 0, byState: {} },
           disputes: { total: 0, awaitingResolution: 0 },
           payouts: { pendingAdminApproval: 0, inFlight: 0 },
           members: { frozenWallets: 0, suspendedWallets: 0 },
@@ -184,7 +184,7 @@ describe("Admin API boundary", () => {
     expect(request?.cache).toBe("no-store");
   });
 
-  it("sends command identity in the header and leaves the reason in the body", async () => {
+  it("sends the Payout cancellation contract", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     let request: Request | undefined;
 
@@ -196,17 +196,41 @@ describe("Admin API boundary", () => {
     await adminApi.rejectPayout("payout/1", {
       idempotencyKey: "reject-payout-1",
       expectedVersion: 4,
-      reason: "The destination details could not be verified.",
+      reasonCode: "PAYOUT_INVALID_DESTINATION",
     });
 
-    expect(request?.url).toBe("https://api.example.test/api/v1/admin/payouts/payout%2F1/reject");
+    expect(request?.url).toBe("https://api.example.test/api/v1/admin/payouts/payout%2F1/cancel");
     expect(request?.headers.get("idempotency-key")).toBe("reject-payout-1");
+    expect(request?.headers.get("if-match")).toBe("4");
     expect(await request?.json()).toEqual({
-      reason: "The destination details could not be verified.",
+      reasonCode: "PAYOUT_INVALID_DESTINATION",
     });
   });
 
-  it("uses Satang allocations for Dispute resolution", async () => {
+  it("uses the Wallet API status command contract", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    let request: Request | undefined;
+
+    mockFetch(async (input, init) => {
+      request = new Request(input, init);
+      return jsonResponse({ success: true, data: { wallet: { walletStatus: "FROZEN" } } });
+    });
+
+    await adminApi.setWalletStatus("wallet-1", {
+      idempotencyKey: "wallet-status-1",
+      status: "FROZEN",
+      reason: "Temporary administrative hold.",
+    });
+
+    expect(request?.url).toBe("https://api.example.test/api/v1/admin/wallets/wallet-1/status");
+    expect(request?.headers.get("idempotency-key")).toBe("wallet-status-1");
+    expect(await request?.json()).toEqual({
+      toStatus: "FROZEN",
+      reason: "Temporary administrative hold.",
+    });
+  });
+
+  it("uses the API Server Dispute Case resolution contract", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     let request: Request | undefined;
 
@@ -215,19 +239,23 @@ describe("Admin API boundary", () => {
       return jsonResponse({ success: true, data: { id: "case-1" } });
     });
 
-    await adminApi.resolveDispute("quest-1", {
+    await adminApi.resolveDispute("case-1", {
       idempotencyKey: "resolve-case-1",
       expectedVersion: 2,
-      outcome: "RELEASE_TO_WORKER",
-      reason: "The accepted evidence supports the worker.",
-      allocations: [{ workerId: "member-1", amountSatang: 12501 }],
+      outcome: "DISPUTE_CASE_RESOLVED",
+      reasonCode: "DISPUTE_EVIDENCE_REVIEW",
+      workerId: "member-1",
+      amountSatang: 12501,
     });
 
-    expect(request?.url).toBe("https://api.example.test/api/v1/admin/quests/quest-1/dispute/resolve");
+    expect(request?.url).toBe("https://api.example.test/api/v1/admin/disputes/case-1/resolve");
     expect(request?.headers.get("idempotency-key")).toBe("resolve-case-1");
+    expect(request?.headers.get("if-match")).toBe("2");
     expect(await request?.json()).toEqual({
-      outcome: "RELEASE_TO_WORKER",
-      allocations: [{ workerId: "member-1", amountSatang: 12501 }],
+      outcome: "DISPUTE_CASE_RESOLVED",
+      reasonCode: "DISPUTE_EVIDENCE_REVIEW",
+      workerId: "member-1",
+      amountSatang: 12501,
     });
   });
 
@@ -271,6 +299,8 @@ describe("Admin API boundary", () => {
 
     await expect(adminApi.approvePayout("payout-1", {
       idempotencyKey: "approve-payout-1",
+      expectedVersion: 2,
+      reasonCode: "PAYOUT_POLICY_REVIEW",
     })).rejects.toMatchObject({
       status: 409,
       code: "PAYOUT_ALREADY_DECIDED",
@@ -304,12 +334,14 @@ describe("Admin API boundary", () => {
     await adminApi.terminateQuest("quest-1", { idempotencyKey: "terminate-1", expectedVersion: 1, reason: "Policy violation.", reasonCode: "SAFETY_REVIEW" });
     await adminApi.listDisputes();
     await adminApi.getDispute("case-1");
-    await adminApi.resolveDispute("quest-1", { idempotencyKey: "resolve-1", outcome: "REFUND_HIRER", reason: "The evidence supports a refund." });
+    await adminApi.resolveDispute("case-1", { idempotencyKey: "resolve-1", expectedVersion: 1, outcome: "DISPUTE_CASE_DISMISSED", reasonCode: "DISPUTE_POLICY_REVIEW" });
     await adminApi.listPayouts();
     await adminApi.getPayout("payout-1");
     await adminApi.getPayoutHistory("payout-1");
-    await adminApi.approvePayout("payout-1", { idempotencyKey: "approve-1" });
-    await adminApi.rejectPayout("payout-1", { idempotencyKey: "reject-1", reason: "Not valid." });
+    await adminApi.approvePayout("payout-1", { idempotencyKey: "approve-1", expectedVersion: 1, reasonCode: "PAYOUT_POLICY_REVIEW" });
+    await adminApi.rejectPayout("payout-1", { idempotencyKey: "reject-1", expectedVersion: 1, reasonCode: "PAYOUT_RISK_REVIEW" });
+    await adminApi.reconcilePayout("payout-1");
+    await adminApi.retryPayoutProviderEvent("event-1");
     await adminApi.listReports();
     await adminApi.getReport("report-1");
     await adminApi.decideReport("report-1", {
@@ -320,11 +352,16 @@ describe("Admin API boundary", () => {
     await adminApi.getEvidence("evidence-1");
     await adminApi.listMembers();
     await adminApi.getMember("member-1");
+    await adminApi.listWallets();
+    await adminApi.getWallet("wallet-1");
+    await adminApi.getWalletStatusHistory("wallet-1");
+    await adminApi.verifyWalletProjection("wallet-1");
     await adminApi.setWalletStatus("member-1", {
       idempotencyKey: "wallet-1",
       status: "FROZEN",
       reason: "Temporary administrative hold.",
     });
+    await adminApi.rebuildWalletProjection("wallet-1");
 
     expect(paths).toEqual([
       "/api/v1/admin/activity-log",
@@ -335,20 +372,76 @@ describe("Admin API boundary", () => {
       "/api/v1/admin/quests/quest-1/terminate",
       "/api/v1/admin/disputes",
       "/api/v1/admin/disputes/case-1",
-      "/api/v1/admin/quests/quest-1/dispute/resolve",
+      "/api/v1/admin/disputes/case-1/resolve",
       "/api/v1/admin/payouts",
       "/api/v1/admin/payouts/payout-1",
       "/api/v1/admin/payouts/payout-1/status-history",
       "/api/v1/admin/payouts/payout-1/approve",
-      "/api/v1/admin/payouts/payout-1/reject",
+      "/api/v1/admin/payouts/payout-1/cancel",
+      "/api/v1/admin/payouts/payout-1/reconcile",
+      "/api/v1/admin/payouts/events/event-1/retry",
       "/api/v1/admin/reports",
       "/api/v1/admin/reports/report-1",
       "/api/v1/admin/reports/report-1/decide",
       "/api/v1/admin/evidence/evidence-1",
       "/api/v1/admin/members",
       "/api/v1/admin/members/member-1",
+      "/api/v1/admin/wallets",
+      "/api/v1/admin/wallets/wallet-1",
+      "/api/v1/admin/wallets/wallet-1/status-history",
+      "/api/v1/admin/wallets/wallet-1/verification",
       "/api/v1/admin/wallets/member-1/status",
+      "/api/v1/admin/wallets/wallet-1/rebuild-projection",
     ]);
+  });
+
+  it("uses the API Member search query name", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    let request: Request | undefined;
+    mockFetch(async (input, init) => {
+      request = new Request(input, init);
+      return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
+    });
+
+    await adminApi.listMembers({ search: "youtube@ku.th", limit: 100 });
+
+    expect(new URL(request?.url || "https://api.example.test").search).toBe("?search=youtube%40ku.th&limit=100");
+  });
+
+  it("loads Dispute Evidence through the case-scoped route", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    let request: Request | undefined;
+    mockFetch(async (input, init) => {
+      request = new Request(input, init);
+      return jsonResponse({
+        success: true,
+        data: {
+          caseId: "case-1",
+          questId: "quest-1",
+          truncated: false,
+          quest: {
+            id: "quest-1",
+            questStatus: "QUEST_FAILED",
+            version: 1,
+            hirerId: "hirer-1",
+            failedAt: null,
+          },
+          assignments: [],
+          proofSubmissions: [],
+          adminActionId: "action-1",
+        },
+      });
+    });
+
+    const evidence = await adminApi.getDisputeEvidence("case-1", {
+      idempotencyKey: "evidence-read-1",
+    });
+
+    expect(evidence.caseId).toBe("case-1");
+    expect(request?.method).toBe("GET");
+    expect(request?.url).toBe("https://api.example.test/api/v1/admin/disputes/case-1/evidence");
+    expect(request?.credentials).toBe("include");
+    expect(request?.headers.get("idempotency-key")).toBe("evidence-read-1");
   });
 
   it("opens one credentialed SSE invalidation stream and parses metadata", () => {

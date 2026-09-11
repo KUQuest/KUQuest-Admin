@@ -5,10 +5,14 @@ import type { UserPageContext, UserRecord } from "./user-page";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import {
   hydrateLiveQuest,
+  loadLiveDispute,
+  loadLiveMember,
   loadLiveQuest,
   refreshLiveDisputes,
+  refreshLiveMembers,
   refreshLivePayouts,
   refreshLiveQuests,
+  refreshLiveWallets,
 } from "./live-review-data";
 
 export type TypedLegacyPage = "home" | "quest" | "dispute" | "report" | "user";
@@ -218,7 +222,7 @@ export async function initializeTypedLegacyPage(
 ): Promise<void> {
   if (options.page === "home") {
     const core = await import("./script");
-    const mockDataPromise = import("./fresh-mock-data");
+    const mockData = await import("./fresh-mock-data");
     if (isAdminApiEnabled()) {
       const view = new URLSearchParams(options.search).get("view");
       const liveRefresh = view === "quests"
@@ -227,12 +231,15 @@ export async function initializeTypedLegacyPage(
           ? refreshLiveDisputes()
           : view === "payouts"
             ? refreshLivePayouts()
-            : Promise.resolve();
-      await Promise.all([liveRefresh, core.refreshNavigationCounts(), mockDataPromise]);
+            : view === "users"
+              ? refreshLiveMembers()
+              : view === "wallets"
+                ? refreshLiveWallets()
+                : Promise.resolve();
+      await Promise.all([liveRefresh, core.refreshNavigationCounts()]);
     } else {
-      await Promise.all([core.refreshNavigationCounts(), mockDataPromise]);
+      await core.refreshNavigationCounts();
     }
-    const mockData = await mockDataPromise;
     await initializeHomePage(core, mockData);
     return;
   }
@@ -241,6 +248,8 @@ export async function initializeTypedLegacyPage(
   const mockData = await import("./fresh-mock-data");
   const persistAdminData = isAdminApiEnabled() ? () => undefined : mockData.persistAdminData;
   if (isAdminApiEnabled() && options.page === "quest" && options.recordId) await loadLiveQuest(options.recordId);
+  if (isAdminApiEnabled() && options.page === "dispute" && options.recordId) await loadLiveDispute(options.recordId);
+  if (isAdminApiEnabled() && options.page === "user" && options.recordId) await loadLiveMember(options.recordId);
   window.__KUQUEST_LEGACY_RUNTIME__ = core.legacyRuntime;
   core.initializeDetailRuntime();
   await core.refreshNavigationCounts();

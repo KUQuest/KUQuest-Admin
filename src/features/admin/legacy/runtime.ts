@@ -16,6 +16,20 @@ export type LegacyHistoryEntry = {
   [key: string]: string | number | undefined;
 };
 
+export type LegacyWalletBalanceSnapshot = {
+  spendingBalanceSatang: number;
+  earningsBalanceSatang: number;
+  fundingReservedSatang: number;
+  reservedForPayoutsSatang: number;
+};
+
+export type LegacyWalletVerification = {
+  matches: boolean;
+  projected: LegacyWalletBalanceSnapshot;
+  ledger: LegacyWalletBalanceSnapshot;
+  activityCountMatches: boolean;
+};
+
 export type LegacyPenalty = {
   label: string;
   reason: string;
@@ -23,6 +37,18 @@ export type LegacyPenalty = {
   appliedBy?: string;
   durationDays?: number;
   expiresAt?: string;
+};
+
+export type LegacyDisputeMockData = {
+  amountBaht: number;
+  category: string;
+  openedBy: string;
+  respondent: string;
+  summary: string;
+  claim: string;
+  response: string;
+  policy: string[];
+  recommended: string;
 };
 
 export type LegacyRecordValue =
@@ -39,7 +65,9 @@ export type LegacyRecordValue =
   | LegacyRecord[]
   | Array<[string, string]>
   | LegacyHistoryEntry[]
-  | LegacyPenalty;
+  | LegacyPenalty
+  | LegacyDisputeMockData
+  | LegacyWalletVerification;
 
 export type LegacyDisputeCase = {
   [key: string]: string | string[] | Array<[string, string, string]>;
@@ -68,7 +96,9 @@ export type LegacyRecord = {
   hiddenByAdminId?: string | null;
   evidenceRefs?: string[];
   workerId?: string;
+  filerUserId?: string;
   amountSatang?: number;
+  resolvedAmountSatang?: number | null;
   fundingTotalSatang?: number;
   questRewardSatang?: number;
   platformFeeSatang?: number;
@@ -83,6 +113,8 @@ export type LegacyRecord = {
   category?: string;
   disputeDate?: string;
   disputeType?: string;
+  mockDisputeData?: LegacyDisputeMockData;
+  apiMissingFields?: string[];
   evidence?: string[];
   failureReason?: string;
   questId?: string;
@@ -110,11 +142,20 @@ export type LegacyRecord = {
   providerReference?: string | null;
   providerStatus?: string | null;
   rejectionReason?: string | null;
+  walletProjectionMatchesLedger?: boolean;
+  walletVerification?: LegacyWalletVerification;
+  walletVerificationLoaded?: boolean;
+  walletVerificationError?: string;
   payoutHistory?: LegacyHistoryEntry[];
   payoutHistoryLoaded?: boolean;
   payoutHistoryError?: string;
   resolution?: string;
   resolutionAt?: string;
+  disputeDetailLoaded?: boolean;
+  disputeDetailError?: string;
+  disputeEvidenceLoaded?: boolean;
+  disputeEvidenceError?: string;
+  questFailedAt?: string | null;
   selectedParticipant?: string;
   teamParticipants?: Array<[string, string]>;
   teamQuest?: boolean;
@@ -131,6 +172,7 @@ export type LegacyRuntimeData = {
   disputes: LegacyRecord[];
   quests: LegacyRecord[];
   users: LegacyRecord[];
+  wallets: LegacyRecord[];
   payouts: LegacyRecord[];
   reports: LegacyRecord[];
 };

@@ -1,9 +1,9 @@
-import { LegacyAdminPage } from "@/features/admin/legacy-admin-page";
+import { notFound } from "next/navigation";
 
 export const metadata = {
   title: "Overview preview",
 };
 
 export default function OverviewClonePage() {
-  return <LegacyAdminPage page="home" reactDashboard dashboardVariant="clone" />;
+  notFound();
 }

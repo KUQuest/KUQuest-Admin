@@ -9,6 +9,7 @@ function runtime(): LegacyAdminRuntime {
       disputes: [{ id: "DSP-1" } as LegacyRecord],
       quests: [],
       users: [{ id: "USR-1" } as LegacyRecord],
+      wallets: [],
       payouts: [],
       reports: [],
     },

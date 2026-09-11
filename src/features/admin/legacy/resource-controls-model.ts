@@ -180,7 +180,9 @@ export function matchingRows(
           (questFilters.status === "all" ||
             displayStatus === questFilters.status ||
             record.status === questFilters.status)
-        : state.tab === "all" || displayStatus.toLowerCase() === state.tab || rawStatus.includes(state.tab);
+        : view === "users" && !record.memberStatus
+          ? state.tab === "all"
+          : state.tab === "all" || displayStatus.toLowerCase() === state.tab || rawStatus.includes(state.tab);
     return (
       (!query || searchable.includes(query)) &&
       matchesTab &&

@@ -134,7 +134,7 @@ export function dashboardModelFromApi(
   disputeFallback?: Pick<DashboardModel, "activeDisputes" | "decisions">,
 ): DashboardModel {
   const questCounts = new Map<string, number>(questStatuses.map((status) => [status, 0]));
-  Object.entries(overview.quests.byStatus).forEach(([status, count]) => {
+  Object.entries(overview.quests.byState).forEach(([status, count]) => {
     const canonicalStatus = questStateFor(status);
     questCounts.set(canonicalStatus, (questCounts.get(canonicalStatus) ?? 0) + count);
   });

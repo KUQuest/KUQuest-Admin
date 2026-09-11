@@ -9,7 +9,7 @@ function apiOverview() {
     quests: {
       total: 8,
       hidden: 1,
-      byStatus: {
+      byState: {
         QUEST_OPEN: 2,
         QUEST_IN_PROGRESS: 3,
         QUEST_FAILED: 1,

@@ -75,9 +75,9 @@ function countValue(value: unknown): number {
   return Number.isFinite(count) && count >= 0 ? count : 0;
 }
 
-function questStatesFromCounts(byStatus: Record<string, number>, total: number): OverviewCloneQuestState[] {
+function questStatesFromCounts(byState: Record<string, number>, total: number): OverviewCloneQuestState[] {
   const counts = new Map<QuestState, number>(QUEST_STATES.map((status) => [status, 0]));
-  Object.entries(byStatus).forEach(([status, count]) => {
+  Object.entries(byState).forEach(([status, count]) => {
     const canonicalStatus = questStateFor(status);
     counts.set(canonicalStatus, (counts.get(canonicalStatus) ?? 0) + countValue(count));
   });
@@ -128,7 +128,7 @@ export function overviewCloneModelFromApi(
     totalWorkLeft: queues.reduce((sum, item) => sum + item.count, 0),
     queues,
     questTotal: countValue(overview.quests.total),
-    questStates: questStatesFromCounts(overview.quests.byStatus, overview.quests.total),
+    questStates: questStatesFromCounts(overview.quests.byState, overview.quests.total),
     memberSignals: reports + conductReports,
     reportCases: reports,
     conductReports,

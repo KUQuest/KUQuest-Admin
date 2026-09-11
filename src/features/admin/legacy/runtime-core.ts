@@ -19,16 +19,49 @@ import { mockAdminCommandPort } from "./admin-command-port";
 import { adminApiCommandPort } from "../api/admin-api";
 import type { AdminCommandPort } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
-import { mergeLiveQuestCommand, payoutRecordFromApi } from "./live-review-data";
+import { mergeLiveDisputeSummary, mergeLiveQuestCommand, mergeLiveWalletProjection, payoutRecordFromApi } from "./live-review-data";
 import { statusBadgeClass } from "../status-badge";
 
 export { data, disputeCases };
 export { mockAdminCommandPort };
 export type { AdminCommandPort };
 
-function mergeLivePayout(id: string, payout: Awaited<ReturnType<typeof adminApiCommandPort.approvePayout>>): void {
+function mergeLivePayout(
+  id: string,
+  result: Awaited<ReturnType<typeof adminApiCommandPort.approvePayout>>,
+): void {
   const record = data.payouts.find((candidate) => candidate.id === id);
-  if (record) Object.assign(record, payoutRecordFromApi(payout));
+  if (record) Object.assign(record, payoutRecordFromApi(result.resourceSummary), {
+    version: result.resourceVersion,
+  });
+}
+
+function mergeLiveWalletStatus(
+  walletId: string,
+  result: Awaited<ReturnType<typeof adminApiCommandPort.setWalletStatus>>,
+): void {
+  const wallet = result.wallet;
+  const totalBalanceSatang = wallet.spendingBalanceSatang
+    + wallet.earningsBalanceSatang
+    + wallet.fundingReservedSatang
+    + wallet.reservedForPayoutsSatang;
+  const fields = {
+    status: wallet.walletStatus,
+    walletStatus: wallet.walletStatus,
+    tone: wallet.walletStatus === "ACTIVE" ? "success" : wallet.walletStatus === "FROZEN" ? "warning" : wallet.walletStatus === "CLOSED" ? "cancelled" : "danger",
+    amount: totalBalanceSatang / 100,
+    walletTotalBalanceSatang: totalBalanceSatang,
+    walletSpendingBalanceSatang: wallet.spendingBalanceSatang,
+    walletEarningsBalanceSatang: wallet.earningsBalanceSatang,
+    walletFundingReservedSatang: wallet.fundingReservedSatang,
+    walletReservedForPayoutsSatang: wallet.reservedForPayoutsSatang,
+  };
+  [
+    data.wallets.find((record) => record.walletId === walletId || record.id === walletId),
+    data.users.find((record) => record.walletId === walletId),
+  ].forEach((record) => {
+    if (record) Object.assign(record, fields);
+  });
 }
 
 const livePayoutCommands: AdminCommandPort = {
@@ -39,9 +72,25 @@ const livePayoutCommands: AdminCommandPort = {
     return payout;
   },
   rejectPayout: async (payoutId, options) => {
-    const payout = await adminApiCommandPort.rejectPayout(payoutId, options);
-    mergeLivePayout(payoutId, payout);
-    return payout;
+    const result = await adminApiCommandPort.rejectPayout(payoutId, options);
+    mergeLivePayout(payoutId, result);
+    return result;
+  },
+  reconcilePayout: async (payoutId) => adminApiCommandPort.reconcilePayout(payoutId),
+  retryPayoutProviderEvent: async (eventId) => adminApiCommandPort.retryPayoutProviderEvent(eventId),
+};
+
+const liveWalletCommands: AdminCommandPort = {
+  ...mockAdminCommandPort,
+  setWalletStatus: async (walletId, options) => {
+    const result = await adminApiCommandPort.setWalletStatus(walletId, options);
+    mergeLiveWalletStatus(walletId, result);
+    return result;
+  },
+  rebuildWalletProjection: async (walletId) => {
+    const result = await adminApiCommandPort.rebuildWalletProjection(walletId);
+    mergeLiveWalletProjection(walletId, result);
+    return result;
   },
 };
 
@@ -62,24 +111,26 @@ const liveQuestCommands: AdminCommandPort = {
     mergeLiveQuestCommand(questId, result);
     return result;
   },
-  resolveDispute: async (questId, options) => {
+  resolveDispute: async (disputeCaseId, options) => {
     const mockDispute = data.disputes.find((record) =>
       !record.apiBacked
-      && (record.questId === questId || record.id === questId || disputeCases[record.id]?.questId === questId),
+      && (record.questId === disputeCaseId || record.id === disputeCaseId || disputeCases[record.id]?.questId === disputeCaseId),
     );
-    if (mockDispute) return mockAdminCommandPort.resolveDispute(questId, options);
-    throw new Error(
-      "Conflict with Issue 67: API-backed Dispute Case resolution is blocked because the API Server changes the Quest to QUEST_CANCELLED or QUEST_COMPLETED instead of keeping QUEST_FAILED.",
-    );
+    if (mockDispute) return mockAdminCommandPort.resolveDispute(disputeCaseId, options);
+    const result = await adminApiCommandPort.resolveDispute(disputeCaseId, options);
+    const liveDispute = data.disputes.find((record) => record.id === disputeCaseId);
+    if (liveDispute) mergeLiveDisputeSummary(liveDispute, result.resourceSummary);
+    return result;
   },
 };
 
-// The live adapter uses the API for Quest moderation and Payout commands. It
-// uses the mock command for fallback Dispute Cases; API-backed resolution
-// remains blocked until the API follows the Issue 67 Quest State contract.
+// The live adapter uses the API for Quest, Dispute Case, Wallet, and Payout commands.
+// Mock Dispute Cases remain available only when the Admin is not API-backed.
 export const adminCommands: AdminCommandPort = isAdminApiEnabled()
   ? {
     ...livePayoutCommands,
+    setWalletStatus: liveWalletCommands.setWalletStatus,
+    rebuildWalletProjection: liveWalletCommands.rebuildWalletProjection,
     hideQuest: liveQuestCommands.hideQuest,
     restoreQuest: liveQuestCommands.restoreQuest,
     terminateQuest: liveQuestCommands.terminateQuest,

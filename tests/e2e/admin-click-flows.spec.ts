@@ -124,7 +124,8 @@ test.describe("admin click flows", () => {
     await page.getByRole("button", { name: "Overview", exact: true }).click();
 
     await expect(page).toHaveURL(/\/$/);
-    const workLeft = Number(await page.locator(".dashboard-stat-work-left strong").textContent());
+    await expect(page.locator(".overview-command-center-updated")).toHaveCount(0);
+    const workLeft = Number(await page.locator(".overview-command-center-hero-copy strong").textContent());
     expect(workLeft).toBeGreaterThan(3);
   });
 

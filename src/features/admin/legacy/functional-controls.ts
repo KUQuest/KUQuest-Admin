@@ -53,6 +53,7 @@ export function initializeFunctionalControls(document: Document, runtime: Legacy
         runtime,
         reference,
         button.querySelector("strong")?.textContent || "Evidence",
+        { disputeCaseId: button.dataset.disputeCaseId },
       );
       return;
     }

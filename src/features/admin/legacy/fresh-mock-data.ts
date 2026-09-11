@@ -553,6 +553,8 @@ if (savedFreshDemo?.version === freshDemoVersion) {
   localStorage.removeItem(freshDemoKey);
 }
 
+data.wallets.splice(0, data.wallets.length, ...data.users.map((user) => ({ ...user })));
+
 function expirePenaltyIfDue(user: LegacyRecord): boolean {
   const penaltyLabel = user.penalty?.label;
   const expiry = penaltyLabel === "Red Flag" ? user.redFlagExpiresAt : penaltyLabel === "Temporary ban" ? user.banExpiresAt : "";

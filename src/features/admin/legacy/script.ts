@@ -35,10 +35,17 @@ import { setActiveNavigation as setActiveNavigationCore } from "./navigation-sta
 import { recordsFor } from "./runtime-data";
 import { newAdminIdempotencyKey } from "./admin-command-port";
 import {
+  hydrateLiveMember,
   hydrateLivePayout,
+  hydrateLiveWallet,
+  reconcileLivePayout,
   payoutServerValue,
+  refreshLiveDisputes,
+  refreshLiveMembers,
   refreshLiveQuests,
   refreshLivePayouts,
+  refreshLiveWallets,
+  verifyLiveWallet,
 } from "./live-review-data";
 import { adminApi, type AdminQuestReasonCode } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
@@ -48,7 +55,7 @@ import {
   type AdminNavigationCounts,
   type MockNavigationCounts,
 } from "../admin-navigation";
-import { isQuestModerationAction, setupQuestReasonCode } from "./quest-admin-reason";
+import { isQuestModerationAction, setupQuestReasonCode, type AdminReasonCode } from "./quest-admin-reason";
 import type { DashboardActivity } from "../dashboard/dashboard-model";
 import {
   activityLogEntryFromApi,
@@ -177,11 +184,12 @@ function runAdminAction(record: LegacyRecord, action: string, reason: string, re
     return adminCommands.terminateQuest(record.id, { ...expectedVersion, idempotencyKey, reason, reasonCode: reasonCode ?? "POLICY_REVIEW" }).then(() => undefined);
   }
   if (action === "Restrict user" || action === "Set normal" || action === "Lift penalty") {
-    return adminCommands.setWalletStatus(record.id, {
+    const walletId = typeof record.walletId === "string" ? record.walletId : record.id;
+    return adminCommands.setWalletStatus(walletId, {
       ...expectedVersion,
       idempotencyKey,
       reason,
-      status: action === "Restrict user" ? "FROZEN" : "ACTIVE",
+      toStatus: action === "Restrict user" ? "FROZEN" : "ACTIVE",
     }).then(() => undefined);
   }
   if (action === "Close report") {
@@ -285,7 +293,7 @@ function homeDecisions(): Array<{ view: string; record: LegacyRecord; priority: 
         icon: "⚖",
         title: `Resolve ${disputeTypeLabel(record)} dispute`,
         detail: `${record.id} · ${record.title}`,
-        metric: `฿${fmt(record.amount)} held`,
+        metric: `${disputeAmountText(record)} held`,
         age: record.disputeDate,
       })),
     ...data.payouts
@@ -489,7 +497,17 @@ function table(v: string, rows: LegacyRecord[]): string {
           ? ["Student ID", "User", "Email", "Academic profile", "Status"]
           : ["Payout", "Recipient", "Account", "Amount", "Status"];
   const collection = recordsFor(v);
-  return `<div class="table-wrap"><table class="data"><thead><tr>${h.map((x) => `<th>${escapeActivityText(x)}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr data-open="${v}:${collection.indexOf(r)}"><td><strong>${escapeActivityText(r.id)}</strong></td><td><strong>${escapeActivityText(r.title)}</strong>${v === "disputes" ? `<small>${escapeActivityText(r.detail).slice(0, 45)}…</small>` : ""}</td>${v === "disputes" ? "" : `<td><strong>${escapeActivityText(r.person)}</strong></td>`}${v === "disputes" || v === "payouts" ? "" : `<td>${escapeActivityText(r.other)}</td>`}${r.amount !== null ? `<td class="money">฿${fmt(r.amount)}</td>` : ""}<td>${statusBadgeForView(v, r)}${v === "quests" && hasHiddenQuestOverlay(r) ? '<span class="badge neutral quest-hidden-overlay">Hidden</span>' : ""}</td>${v === "disputes" ? `<td>${escapeActivityText(r.disputeDate || "—")}</td><td><strong>${escapeActivityText(disputeTypeLabel(r))}</strong></td>` : ""}</tr>`).join("")}</tbody></table></div>`;
+  return `<div class="table-wrap"><table class="data"><thead><tr>${h.map((x) => `<th>${escapeActivityText(x)}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr data-open="${v}:${collection.indexOf(r)}"><td><strong>${escapeActivityText(r.id)}</strong></td><td><strong>${escapeActivityText(r.title)}</strong>${v === "disputes" ? `<small>${escapeActivityText(r.detail).slice(0, 45)}…</small>` : ""}</td>${v === "disputes" ? "" : `<td><strong>${escapeActivityText(r.person)}</strong></td>`}${v === "disputes" || v === "payouts" ? "" : `<td>${escapeActivityText(r.other)}</td>`}${v === "disputes" ? `<td class="money">${disputeAmountCell(r)}</td>` : r.amount !== null ? `<td class="money">฿${fmt(r.amount)}</td>` : ""}<td>${statusBadgeForView(v, r)}${v === "quests" && hasHiddenQuestOverlay(r) ? '<span class="badge neutral quest-hidden-overlay">Hidden</span>' : ""}</td>${v === "disputes" ? `<td>${escapeActivityText(r.disputeDate || "—")}</td><td><strong>${escapeActivityText(disputeTypeLabel(r))}</strong></td>` : ""}</tr>`).join("")}</tbody></table></div>`;
+}
+
+function disputeAmountText(record: LegacyRecord): string {
+  if (typeof record.amount === "number") return `฿${fmt(record.amount)}`;
+  if (record.mockDisputeData) return `฿${fmt(record.mockDisputeData.amountBaht)} · Mock data`;
+  return "Not provided by the Admin API";
+}
+
+function disputeAmountCell(record: LegacyRecord): string {
+  return escapeActivityText(disputeAmountText(record));
 }
 export function renderPolicies() {
   main.innerHTML = `${pageHead(...heads.policies, '<button class="btn">Revision history</button>')}<section class="panel"><div class="panel-head"><div><h2>Current policy · Revision 12</h2><p>Effective 18 July 2026 · authored by Nicha P.</p></div>${badge("ACTIVE", "success")}</div><div class="health"><div class="stat"><span>Platform fee</span><strong>2.00%</strong><small>200 basis points · rounding UP</small></div><div class="stat"><span>Funded quest range</span><strong>฿100–50k</strong><small>Per quest</small></div><div class="stat"><span>Payout range</span><strong>฿200–30k</strong><small>Per request</small></div></div><div class="drawer-body"><div class="facts">${[
@@ -799,8 +817,16 @@ export function navigate(v: string): void {
   state.view = v;
   state.tab = "all";
   state.query = "";
-  if (isAdminApiEnabled() && (v === "payouts" || v === "quests")) {
-    const refresh = v === "quests" ? refreshLiveQuests() : refreshLivePayouts();
+  if (isAdminApiEnabled() && ["payouts", "quests", "disputes", "users", "wallets"].includes(v)) {
+    const refresh = v === "quests"
+      ? refreshLiveQuests()
+      : v === "payouts"
+        ? refreshLivePayouts()
+        : v === "disputes"
+          ? refreshLiveDisputes()
+        : v === "users"
+          ? refreshLiveMembers()
+          : refreshLiveWallets();
     render();
     void refresh.then(() => {
       if (state.view === v) render();
@@ -983,10 +1009,74 @@ function openReportDrawer(index: number, view: "reports" | "conduct-reports" = "
   scrim.onclick = closeDrawer;
   drawer.querySelector<LegacyDomElement>("#close-report-record")?.addEventListener("click", closeDrawer);
 }
+
+function walletAmount(value: unknown): string {
+  return typeof value === "number" ? `฿${fmt(value / 100)}` : "Not provided by the Admin API";
+}
+
+function walletHistorySection(wallet: LegacyRecord): string {
+  const history = Array.isArray(wallet.walletStatusHistory)
+    ? wallet.walletStatusHistory as LegacyHistoryEntry[]
+    : [];
+  if (!history.length) return "";
+  return `<section class="section"><h3>Status history</h3><div class="payout-audit-list">${history.map((entry) => `<div><span>${escapeActivityText(entry.at)}</span><strong>${escapeActivityText(entry.newStatus || entry.event || "Not recorded")}</strong>${entry.previousStatus ? `<small>${escapeActivityText(entry.previousStatus)} → ${escapeActivityText(entry.newStatus || "Not recorded")}</small>` : ""}${entry.reason ? `<small>${escapeActivityText(entry.reason)}</small>` : ""}</div>`).join("")}</div></section>`;
+}
+
+function walletVerificationSection(wallet: LegacyRecord): string {
+  const verification = wallet.walletVerification;
+  if (!verification) return "";
+  const snapshot = (label: string, balance: typeof verification.projected): string =>
+    `<div><strong>${escapeActivityText(label)}</strong><span>Spending ${walletAmount(balance.spendingBalanceSatang)} · Earnings ${walletAmount(balance.earningsBalanceSatang)} · Funding reserved ${walletAmount(balance.fundingReservedSatang)} · Payout reserved ${walletAmount(balance.reservedForPayoutsSatang)}</span></div>`;
+  return `<section class="section"><h3>Ledger verification</h3><p>${verification.matches ? "Wallet projection matches the Ledger." : "Wallet projection does not match the Ledger."}</p><p>${verification.activityCountMatches ? "Wallet activity count matches." : "Wallet activity count does not match."}</p><div class="user-context-list">${snapshot("Projected balance", verification.projected)}${snapshot("Ledger balance", verification.ledger)}</div></section>`;
+}
+
+function openWalletDrawer(index: number): void {
+  const wallet = recordsFor("wallets")[index];
+  if (!wallet) return;
+  showDrawerLayer();
+  const walletActions = wallet.apiBacked
+    ? `<button class="btn" data-wallet-action="verify">Verify Ledger</button><button class="btn primary" data-wallet-action="rebuild">Rebuild projection</button>`
+    : "";
+  drawer.innerHTML = `<div class="drawer-top"><strong>${escapeActivityText(wallet.id)}</strong><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div><div class="drawer-body"><div class="drawer-title"><span class="att-icon ${toneClass(wallet.tone)}">${ico("wallet")}</span><div><h2>${escapeActivityText(wallet.title)}</h2><p>${escapeActivityText(wallet.person)} · ${escapeActivityText(wallet.other)}</p></div></div><div class="facts"><div class="fact"><span>Status</span>${statusBadgeForView("wallets", wallet)}</div><div class="fact"><span>Total balance</span><strong>${walletAmount(wallet.walletTotalBalanceSatang ?? (wallet.amount === null ? undefined : Number(wallet.amount) * 100))}</strong></div><div class="fact"><span>Wallet record</span><strong>${escapeActivityText(wallet.id)}</strong></div></div><section class="section"><h3>Wallet balances</h3><div class="user-context-list"><div><span>Spending Balance</span><strong>${walletAmount(wallet.walletSpendingBalanceSatang)}</strong></div><div><span>Earnings Balance</span><strong>${walletAmount(wallet.walletEarningsBalanceSatang)}</strong></div><div><span>Funding Reserved</span><strong>${walletAmount(wallet.walletFundingReservedSatang)}</strong></div><div><span>Reserved For Payouts</span><strong>${walletAmount(wallet.walletReservedForPayoutsSatang)}</strong></div></div></section>${typeof wallet.walletProjectionMatchesLedger === "boolean" ? `<section class="section"><h3>Ledger check</h3><p>${wallet.walletProjectionMatchesLedger ? "Wallet projection matches the Ledger." : "Wallet projection does not match the Ledger."}</p></section>` : ""}${walletVerificationSection(wallet)}${walletHistorySection(wallet)}</div><div class="drawer-actions">${walletActions}<a class="btn" href="/users/${encodeURIComponent(String(wallet.memberId || ""))}">See full Member profile</a><button class="btn" id="close-wallet-record">Close record</button></div>`;
+  drawer.querySelector<LegacyDomElement>("#close")?.addEventListener("click", closeDrawer);
+  scrim.onclick = closeDrawer;
+  drawer.querySelector<LegacyDomElement>("#close-wallet-record")?.addEventListener("click", closeDrawer);
+  drawer.querySelector<LegacyDomElement>('[data-wallet-action="verify"]')?.addEventListener("click", () => {
+    const button = drawer.querySelector<HTMLButtonElement>('[data-wallet-action="verify"]');
+    if (button) button.disabled = true;
+    void verifyLiveWallet(wallet).then(() => {
+      if (drawer.classList.contains("open") && recordsFor("wallets")[index] === wallet) openWalletDrawer(index);
+      toast(`Ledger verification completed for ${wallet.id}.`);
+    }).catch((error: unknown) => {
+      wallet.walletVerificationError = error instanceof Error ? error.message : "Request failed.";
+      toast(`Ledger verification failed: ${wallet.walletVerificationError}`);
+      if (button) button.disabled = false;
+    });
+  });
+  drawer.querySelector<LegacyDomElement>('[data-wallet-action="rebuild"]')?.addEventListener("click", () => {
+    const walletId = typeof wallet.walletId === "string" ? wallet.walletId : wallet.id;
+    confirmAction("Rebuild wallet projection", wallet, "Rebuild this Wallet projection from the Ledger source of truth.", () => {
+      void adminCommands.rebuildWalletProjection(walletId).then(() => {
+        persistAdminData();
+        render();
+        openWalletDrawer(index);
+        toast(`Wallet projection rebuilt for ${wallet.id}.`);
+      }).catch((error: unknown) => {
+        toast(`Wallet projection rebuild failed: ${error instanceof Error ? error.message : "Request failed."}`);
+      });
+    });
+  });
+  if (wallet.apiBacked && !wallet.walletDetailLoaded) {
+    void hydrateLiveWallet(wallet).then(() => {
+      if (drawer.classList.contains("open") && recordsFor("wallets")[index] === wallet) openWalletDrawer(index);
+    });
+  }
+}
+
 export function openDrawer(v: string, i: number): void {
   if (v === "reports") return openReportDrawer(i);
   if (v === "conduct-reports") return openReportDrawer(i, "conduct-reports");
-  if (v === "wallets") return openDrawer("users", i);
+  if (v === "wallets") return openWalletDrawer(i);
   if (v === "quests" || v === "disputes") return ensureDetailDrawer(v, i);
   const r = recordsFor(v)[i],
     isP = v === "payouts",
@@ -994,17 +1084,20 @@ export function openDrawer(v: string, i: number): void {
   showDrawerLayer();
   const payoutContext = isP ? payoutDecisionContext(r) : null,
     payoutNeedsDecision = isP && payoutStatusFor(r.payoutStatus ?? r.status) === "PENDING_ADMIN_APPROVAL",
+    payoutCanReconcile = isP && r.apiBacked && ["SUBMITTED_TO_PROVIDER", "PROVIDER_PENDING", "FAILED"].includes(payoutStatusFor(r.payoutStatus ?? r.status)),
     drawerContent =
       v === "users"
         ? `${userAccountSection(r)}${userModerationSection(r)}${userReportsSection(r)}${userActivitySection(r)}${userPayoutSection(r)}${userHistorySection(r)}${userNotesSection(r)}`
         : isD
-          ? `<section class="section"><h3>Issue summary</h3><p>${escapeActivityText(r.detail)}</p></section><section class="section"><h3>Evidence on record</h3>${(r.evidence || []).map((e, evidenceIndex) => { const parts = String(e).split(" · "); const reference = r.evidenceRefs?.[evidenceIndex]; return reference ? `<button class="evidence-item" data-evidence-ref="${escapeActivityText(reference)}"><strong>${escapeActivityText(parts[0])}</strong><small>${escapeActivityText(parts.slice(1).join(" · "))}</small><span>Open</span></button>` : `<div class="evidence"><strong>${escapeActivityText(parts[0])}</strong><small>Evidence Reference not available</small></div>`; }).join("")}</section>`
+          ? `<section class="section"><h3>Issue summary</h3><p>${escapeActivityText(r.detail)}</p></section><section class="section"><h3>Evidence on record</h3>${(r.evidence || []).map((e, evidenceIndex) => { const parts = String(e).split(" · "); const reference = r.evidenceRefs?.[evidenceIndex]; const disputeCaseAttribute = r.apiBacked && r.id ? ` data-dispute-case-id="${escapeActivityText(r.id)}"` : ""; return reference ? `<button class="evidence-item" data-evidence-ref="${escapeActivityText(reference)}"${disputeCaseAttribute}><strong>${escapeActivityText(parts[0])}</strong><small>${escapeActivityText(parts.slice(1).join(" · "))}</small><span>Open</span></button>` : `<div class="evidence"><strong>${escapeActivityText(parts[0])}</strong><small>Evidence Reference not available</small></div>`; }).join("")}</section>`
           : isP
           ? `<section class="section"><h3>${escapeActivityText(payoutContext?.heading || "Payout")}</h3><p>${escapeActivityText(payoutContext?.copy || "")}</p><p class="audit-note">${escapeActivityText(payoutContext?.next || "")}</p></section>`
             : `<section class="section"><h3>Audit trail</h3>${timeline([statusForView(v, r), "Record created"])}</section>`;
   const drawerActions = isP
       ? payoutNeedsDecision
         ? '<button class="btn" data-action="Reject payout">Reject payout</button><button class="btn primary" data-action="Approve payout">Approve payout</button>'
+        : payoutCanReconcile
+          ? '<button class="btn" data-action="Reconcile payout">Reconcile with provider</button><button class="btn" id="close-payout-record">Close record</button>'
         : '<button class="btn" id="close-payout-record">Close record</button>'
       : v === "users"
         ? `${userDrawerActions(r)}<a class="btn" href="/users/${encodeURIComponent(r.id)}">See full user profile</a>`
@@ -1048,8 +1141,21 @@ export function openDrawer(v: string, i: number): void {
           return confirmPayoutApproval(r);
         if (action === "Reject payout")
           return confirmPayoutRejection(r);
+        if (action === "Reconcile payout") {
+          const button = b;
+          button.disabled = true;
+          void reconcileLivePayout(r).then(() => {
+            render();
+            openDrawer("payouts", data.payouts.indexOf(r));
+            toast(`Payout ${r.id} reconciled with the provider.`);
+          }).catch((error: unknown) => {
+            button.disabled = false;
+            toast(`Payout reconciliation failed: ${error instanceof Error ? error.message : "Request failed."}`);
+          });
+          return;
+        }
         confirmAction(action, r, "", (reason, reasonCode) => {
-          void runAdminAction(r, action, reason, reasonCode).then(() => {
+          void runAdminAction(r, action, reason, reasonCode as AdminQuestReasonCode | undefined).then(() => {
             persistAdminData();
             if (state.view === "home") renderHome();
             else render();
@@ -1078,6 +1184,11 @@ export function openDrawer(v: string, i: number): void {
   drawer
     .querySelector<LegacyDomElement>("[data-report-user]")
     ?.addEventListener("click", () => openUserReportDialog(r));
+  if (v === "users" && r.apiBacked && !r.memberDetailLoaded) {
+    void hydrateLiveMember(r).then(() => {
+      if (drawer.classList.contains("open") && data.users[i] === r) openDrawer(v, i);
+    });
+  }
 }
 
 function openUserReportDialog(user: LegacyRecord): void {
@@ -1229,7 +1340,7 @@ export async function refreshNavigationCounts(): Promise<void> {
     try {
       const apiCounts = adminNavigationCountsFromOverview(await adminApi.getOverview());
       const mockCounts = adminNavigationCountsFromMockData(data);
-      setNavigationCounts({ ...apiCounts, disputes: mockCounts.disputes ?? apiCounts.disputes });
+      setNavigationCounts(apiCounts);
       setMockNavigationCounts(mockCounts);
     } catch (error: unknown) {
       removeNavigationCount("disputes");
@@ -1255,7 +1366,7 @@ export function ensureDetailDrawer(view: string, index: number): void {
   if (open) open(index);
 }
 const dialog = document.querySelector<LegacyDomElement>("#confirm");
-export function confirmAction(a: string, r: LegacyRecord, decisionDetail = "", onConfirm?: (reason: string, reasonCode?: AdminQuestReasonCode) => void, options: ConfirmActionOptions = {}): void {
+export function confirmAction(a: string, r: LegacyRecord, decisionDetail = "", onConfirm?: (reason: string, reasonCode?: AdminReasonCode) => void, options: ConfirmActionOptions = {}): void {
   if (!dialog) return;
   const form = requiredQuery<LegacyForm>(document, "#confirm-form"),
     reason = requiredQuery<LegacyDomElement>(document, "#confirm-reason"),
@@ -1309,7 +1420,7 @@ export function confirmAction(a: string, r: LegacyRecord, decisionDetail = "", o
         if (!options.keepDrawerOpen && drawer?.classList.contains("open"))
           closeDrawer();
         const decisionReason = reason.value.trim();
-        onConfirm?.(decisionReason, reasonCode?.value as AdminQuestReasonCode | undefined);
+        onConfirm?.(decisionReason, reasonCode?.value as AdminReasonCode | undefined);
         const localAudit = !isAdminApiEnabled() || !isQuestModerationAction(a) && a !== "Confirm dispute resolution";
         if (localAudit) {
           recordActivity(
@@ -1332,6 +1443,12 @@ function payoutConfirmationSummary(record: LegacyRecord): string {
   const financials = payoutFinancials(record);
   return `<div class="payout-confirm-summary"><div><span>Recipient</span><strong>${escapeActivityText(record.title)}</strong></div><div><span>Payout amount</span><strong>฿${fmt(record.amount)}</strong></div><div><span>Bank / payout destination</span><strong>${escapeActivityText(record.person)}</strong></div><div><span>Available balance</span><strong>฿${fmt(financials.available)}</strong></div><div><span>Remaining after payout</span><strong>฿${fmt(financials.remaining)}</strong></div></div><p class="payout-confirm-note">Approving this Payout changes its status to SUBMITTED_TO_PROVIDER. Funds are not transferred immediately.</p>`;
 }
+function payoutReasonCodeField(action: "approve" | "cancel"): string {
+  const options = action === "approve"
+    ? '<option value="PAYOUT_POLICY_REVIEW">Policy review</option><option value="PAYOUT_RISK_REVIEW">Risk review</option>'
+    : '<option value="PAYOUT_POLICY_REVIEW">Policy review</option><option value="PAYOUT_RISK_REVIEW">Risk review</option><option value="PAYOUT_INVALID_DESTINATION">Invalid destination</option>';
+  return `<div class="payout-reason-code-fields" id="payout-reason-code-field"><label for="payout-reason-code">Reason code <span aria-hidden="true">*</span></label><select id="payout-reason-code"><option value="">Choose a reason</option>${options}</select></div>`;
+}
 function resetConfirmationDialog() {
   const context = document.querySelector<LegacyDomElement>("#confirm-context"),
     reason = document.querySelector<LegacyDomElement>("#confirm-reason"),
@@ -1345,6 +1462,8 @@ function resetConfirmationDialog() {
     context.innerHTML = "";
   }
   document.querySelector<HTMLElement>("#quest-reason-code-field")?.remove();
+  document.querySelector<HTMLElement>("#dispute-reason-code-field")?.remove();
+  document.querySelector<HTMLElement>("#payout-reason-code-field")?.remove();
   if (reasonLabel) {
     reasonLabel.hidden = false;
     if (reasonLabel.firstChild) reasonLabel.firstChild.textContent = "Reason for this decision ";
@@ -1392,7 +1511,7 @@ function confirmPayoutApproval(record: LegacyRecord): void {
   requiredQuery<LegacyDomElement>(document, "#confirm-copy").textContent =
     "Review the destination and balance before approving this payout.";
   context.hidden = false;
-  context.innerHTML = payoutConfirmationSummary(record);
+  context.innerHTML = `${payoutConfirmationSummary(record)}${payoutReasonCodeField("approve")}`;
   reasonLabel.hidden = false;
   reason.required = true;
   reason.disabled = false;
@@ -1400,8 +1519,9 @@ function confirmPayoutApproval(record: LegacyRecord): void {
   confirmButton.textContent = "Approve payout";
   confirmButton.className = "btn primary";
   confirmButton.disabled = true;
+  const reasonCode = requiredQuery<LegacyDomElement>(context, "#payout-reason-code");
   const validate = () => {
-    const valid = reason.value.trim().length >= 8;
+    const valid = reason.value.trim().length >= 8 && Boolean(reasonCode.value);
     confirmButton.disabled = !valid;
     reason.setAttribute(
       "aria-invalid",
@@ -1412,13 +1532,14 @@ function confirmPayoutApproval(record: LegacyRecord): void {
     return valid;
   };
   reason.oninput = validate;
+  reasonCode.onchange = validate;
   form.onsubmit = (event) => {
     if ((event.submitter as HTMLButtonElement | null)?.value !== "confirm") return;
     if (!validate()) {
       event.preventDefault();
       reason.setAttribute("aria-invalid", "true");
       error.hidden = false;
-      reason.focus();
+      (reasonCode.value ? reason : reasonCode).focus();
       return;
     }
     event.preventDefault();
@@ -1431,7 +1552,8 @@ function confirmPayoutApproval(record: LegacyRecord): void {
       const approvalReason = reason.value.trim();
       void adminCommands.approvePayout(record.id, {
         idempotencyKey: newAdminIdempotencyKey("approve-payout", record.id),
-        ...(typeof record.version === "number" ? { expectedVersion: record.version } : {}),
+        expectedVersion: record.version ?? 1,
+        reasonCode: reasonCode.value as "PAYOUT_POLICY_REVIEW" | "PAYOUT_RISK_REVIEW",
         note: approvalReason,
       }).then(() => {
         finishPayoutAction(record, "Approve payout", () => {
@@ -1445,7 +1567,7 @@ function confirmPayoutApproval(record: LegacyRecord): void {
     { once: true },
   );
   dialog.showModal();
-  requestAnimationFrame(() => reason.focus());
+  requestAnimationFrame(() => reasonCode.focus());
 }
 function confirmPayoutRejection(record: LegacyRecord): void {
   if (!dialog) return;
@@ -1463,7 +1585,7 @@ function confirmPayoutRejection(record: LegacyRecord): void {
   requiredQuery<LegacyDomElement>(document, "#confirm-copy").textContent =
     "Choose a reason for rejecting this payout. An admin note is optional.";
   context.hidden = false;
-  context.innerHTML = `<div class="payout-rejection-fields"><label for="payout-rejection-reason">Rejection reason <span aria-hidden="true">*</span></label><select id="payout-rejection-reason"><option value="">Choose a reason</option><option>Bank account name does not match the verified account holder.</option><option>Recipient account could not be verified.</option><option>Insufficient withdrawable balance.</option><option>Duplicate payout request.</option></select></div>`;
+  context.innerHTML = payoutReasonCodeField("cancel");
   if (reasonLabel.firstChild) reasonLabel.firstChild.textContent = "Admin note (optional)";
   reasonLabel.querySelector<LegacyDomElement>("span")?.remove();
   reason.required = false;
@@ -1474,7 +1596,7 @@ function confirmPayoutRejection(record: LegacyRecord): void {
   confirmButton.textContent = "Reject payout";
   confirmButton.className = "btn danger";
   confirmButton.disabled = true;
-  const choice = requiredQuery<LegacyDomElement>(context, "#payout-rejection-reason");
+  const choice = requiredQuery<LegacyDomElement>(context, "#payout-reason-code");
   const validate = () => {
     const valid = Boolean(choice.value);
     confirmButton.disabled = !valid;
@@ -1501,8 +1623,8 @@ function confirmPayoutRejection(record: LegacyRecord): void {
       const adminNote = reason.value.trim();
       void adminCommands.rejectPayout(record.id, {
         idempotencyKey: newAdminIdempotencyKey("reject-payout", record.id),
-        ...(typeof record.version === "number" ? { expectedVersion: record.version } : {}),
-        reason: choice.value,
+        expectedVersion: record.version ?? 1,
+        reasonCode: choice.value as "PAYOUT_POLICY_REVIEW" | "PAYOUT_RISK_REVIEW" | "PAYOUT_INVALID_DESTINATION",
       }).then(() => {
         record.rejectionNote = adminNote;
         if (!record.apiBacked) record.remainingBalance = payoutFinancials(record).available;

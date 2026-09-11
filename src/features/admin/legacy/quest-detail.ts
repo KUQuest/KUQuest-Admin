@@ -4,8 +4,8 @@ import {
   questStateFor,
   walletStatusFor,
 } from "../domain/rulebook";
-import type { AdminCommandPort } from "../api/admin-api";
-import type { AdminQuestReasonCode } from "../api/admin-api";
+import type { AdminCommandPort, AdminQuestReasonCode } from "../api/admin-api";
+import type { AdminReasonCode } from "./quest-admin-reason";
 import { newAdminIdempotencyKey } from "./admin-command-port";
 
 export type QuestTone = string;
@@ -151,7 +151,7 @@ export type QuestDetailDependencies = {
     action: string,
     record: QuestRecord,
     decisionDetail?: string,
-    onConfirm?: (reason: string, reasonCode?: AdminQuestReasonCode) => void,
+    onConfirm?: (reason: string, reasonCode?: AdminReasonCode) => void,
   ) => void;
   hydrateQuest?: (record: QuestRecord) => Promise<void>;
   adminCommands: AdminCommandPort;
@@ -508,10 +508,11 @@ export function createQuestDetailModule(
       button.addEventListener("click", () => {
         const action = button.dataset.action ?? "";
         confirmAction(action, record, "", (reason, reasonCode) => {
+          const questReasonCode = reasonCode as AdminQuestReasonCode | undefined;
           const options = {
             idempotencyKey: newAdminIdempotencyKey(action, record.id),
             reason,
-            reasonCode: reasonCode ?? "POLICY_REVIEW",
+            reasonCode: questReasonCode ?? "POLICY_REVIEW",
             ...(typeof record.version === "number" ? { expectedVersion: record.version } : {}),
           };
           const command = action === "Hide quest"
@@ -519,7 +520,7 @@ export function createQuestDetailModule(
             : adminCommands.restoreQuest(record.id, {
               expectedVersion: options.expectedVersion,
               idempotencyKey: options.idempotencyKey,
-              ...(reasonCode ? { reasonCode } : {}),
+              ...(questReasonCode ? { reasonCode: questReasonCode } : {}),
             });
           void command.then(() => {
             persistAdminData();

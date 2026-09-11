@@ -42,11 +42,12 @@ export function newAdminIdempotencyKey(action: string, recordId: string): string
 }
 
 function applyWalletStatus(user: LegacyRecord, options: WalletStatusCommand): void {
-  user.status = options.status;
-  user.walletStatus = options.status;
+  const status = options.toStatus ?? options.status ?? "ACTIVE";
+  user.status = status;
+  user.walletStatus = status;
   user.statusReason = options.reason;
   user.statusAppliedAt = adminDateTime();
-  user.tone = options.status === "ACTIVE" ? "success" : options.status === "FROZEN" ? "warning" : "danger";
+  user.tone = status === "ACTIVE" ? "success" : status === "FROZEN" ? "warning" : "danger";
   user.age = "Just now";
 }
 
@@ -84,10 +85,10 @@ export const mockAdminCommandPort: AdminCommandPort = {
     record.disputeCaseStatus = "DISPUTE_CASE_RESOLVED";
     record.tone = "neutral";
     record.disputeOutcome = options.outcome;
-    record.decisionReason = options.reason;
-    record.resolution = options.outcome === "REFUND_HIRER" ? "Refund to Hirer" : "Release to Worker";
+    record.decisionReason = options.reasonCode;
+    record.resolution = options.outcome === "DISPUTE_CASE_DISMISSED" ? "Dispute Case dismissed" : "Release to Worker";
     record.resolutionAt = adminDateTime();
-    if (options.allocations?.length) record.resolutionAmountSatang = options.allocations.reduce((total, allocation) => total + allocation.amountSatang, 0);
+    if (options.amountSatang !== undefined) record.resolutionAmountSatang = options.amountSatang;
     if (quest) {
       quest.status = "QUEST_FAILED";
       quest.questState = "QUEST_FAILED";
@@ -110,9 +111,19 @@ export const mockAdminCommandPort: AdminCommandPort = {
     applyDemoAction("Reject payout", record);
     record.status = "CANCELLED";
     record.payoutStatus = "CANCELLED";
-    record.rejectionReason = options.reason;
+    record.rejectionReason = options.reason || options.reasonCode;
     record.rejectedAt = adminDateTime();
     return commandResult("rejectPayout", record);
+  },
+
+  reconcilePayout(payoutId: string) {
+    const record = recordFor(payoutId, data.payouts, "Payout");
+    return commandResult("reconcilePayout", record);
+  },
+
+  retryPayoutProviderEvent(eventId: string) {
+    const record = recordFor(eventId, data.payouts, "Payout provider event");
+    return commandResult("retryPayoutProviderEvent", record);
   },
 
   decideReport(reportId: string, options: ReportDecision) {
@@ -138,5 +149,10 @@ export const mockAdminCommandPort: AdminCommandPort = {
     const user = recordFor(memberId, data.users, "Member");
     applyWalletStatus(user, options);
     return commandResult("setWalletStatus", user);
+  },
+
+  rebuildWalletProjection(walletId: string) {
+    const wallet = recordFor(walletId, data.wallets, "Wallet");
+    return commandResult("rebuildWalletProjection", wallet);
   },
 };

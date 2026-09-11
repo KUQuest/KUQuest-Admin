@@ -25,14 +25,14 @@ import { createOverlayRuntime } from "./overlay-runtime";
 import { setActiveNavigation as setActiveNavigationCore } from "./navigation-state";
 import { newAdminIdempotencyKey } from "./admin-command-port";
 import { isAdminApiEnabled } from "../api/admin-provider";
-import { adminApi, type AdminQuestReasonCode } from "../api/admin-api";
+import { adminApi } from "../api/admin-api";
 import {
   adminNavigationCountsFromMockData,
   adminNavigationCountsFromOverview,
   type AdminNavigationCounts,
   type MockNavigationCounts,
 } from "../admin-navigation";
-import { isQuestModerationAction, setupQuestReasonCode } from "./quest-admin-reason";
+import { isQuestModerationAction, setupQuestReasonCode, type AdminReasonCode } from "./quest-admin-reason";
 import {
   disputeCaseStatusFor,
   payoutStatusFor,
@@ -182,7 +182,7 @@ export async function refreshNavigationCounts(): Promise<void> {
     try {
       const apiCounts = adminNavigationCountsFromOverview(await adminApi.getOverview());
       const mockCounts = adminNavigationCountsFromMockData(data);
-      setNavigationCounts({ ...apiCounts, disputes: mockCounts.disputes ?? apiCounts.disputes });
+      setNavigationCounts(apiCounts);
       setMockNavigationCounts(mockCounts);
     } catch (error: unknown) {
       removeNavigationCount("disputes");
@@ -268,12 +268,14 @@ function openPayoutDrawer(index: number): void {
       const command = action === "Approve payout"
         ? adminCommands.approvePayout(record.id, {
           idempotencyKey: newAdminIdempotencyKey("approve-payout", record.id),
-          ...(typeof record.version === "number" ? { expectedVersion: record.version } : {}),
+          expectedVersion: record.version ?? 1,
+          reasonCode: "PAYOUT_POLICY_REVIEW",
           note: reason,
         })
         : adminCommands.rejectPayout(record.id, {
           idempotencyKey: newAdminIdempotencyKey("reject-payout", record.id),
-          ...(typeof record.version === "number" ? { expectedVersion: record.version } : {}),
+          expectedVersion: record.version ?? 1,
+          reasonCode: "PAYOUT_RISK_REVIEW",
           reason,
         });
       void command.then(() => {
@@ -296,7 +298,7 @@ export function ensureDetailDrawer(view: string, index: number): void {
 }
 
 const dialog = document.querySelector<HTMLDialogElement>("#confirm");
-export function confirmAction(action: string, record: LegacyRecord, decisionDetail = "", onConfirm?: (reason: string, reasonCode?: AdminQuestReasonCode) => void, options: Pick<LegacyModalOptions, "keepDrawerOpen"> = {}): void {
+export function confirmAction(action: string, record: LegacyRecord, decisionDetail = "", onConfirm?: (reason: string, reasonCode?: AdminReasonCode) => void, options: Pick<LegacyModalOptions, "keepDrawerOpen"> = {}): void {
   if (!dialog) return;
   const form = requiredQuery<LegacyForm>(document, "#confirm-form");
   const reason = requiredQuery<HTMLTextAreaElement>(document, "#confirm-reason");
@@ -341,7 +343,7 @@ export function confirmAction(action: string, record: LegacyRecord, decisionDeta
     if (dialog.returnValue !== "confirm") return;
     if (!options.keepDrawerOpen && drawer.classList.contains("open")) closeDrawer();
     const decisionReason = reason.value.trim();
-    onConfirm?.(decisionReason, reasonCode?.value as AdminQuestReasonCode | undefined);
+    onConfirm?.(decisionReason, reasonCode?.value as AdminReasonCode | undefined);
     const localAudit = !isAdminApiEnabled() || !isQuestModerationAction(action) && action !== "Confirm dispute resolution";
     if (localAudit) {
       recordActivity(action, `${record.id} · ${record.title || record.reportedUserName || "Record"}${decisionReason ? ` · ${decisionReason}` : ""}`);

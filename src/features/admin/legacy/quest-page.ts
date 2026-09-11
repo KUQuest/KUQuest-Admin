@@ -13,6 +13,7 @@ import {
 } from "../domain/rulebook";
 import { questBahtLabel, questCandidateModeLabel, questPercentLabel } from "./quest-detail";
 import { newAdminIdempotencyKey } from "./admin-command-port";
+import type { AdminQuestReasonCode } from "../api/admin-api";
 
 export type QuestPageDependencies = QuestDetailDependencies & {
   main: HTMLElement;
@@ -137,7 +138,7 @@ export function createQuestPageModule(
             void adminCommands.terminateQuest(quest.id, {
               idempotencyKey: newAdminIdempotencyKey("terminate-quest", quest.id),
               reason,
-              reasonCode: reasonCode ?? "POLICY_REVIEW",
+              reasonCode: (reasonCode as AdminQuestReasonCode | undefined) ?? "POLICY_REVIEW",
             }).then(() => {
               persistAdminData();
               renderQuestPage();

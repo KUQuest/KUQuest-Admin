@@ -48,7 +48,7 @@ describe("dashboard model", () => {
       quests: {
         total: 7,
         hidden: 1,
-        byStatus: {
+        byState: {
           QUEST_DRAFT: 1,
           QUEST_AWAITING_CONSENT: 2,
           QUEST_SUBMITTED: 1,
@@ -74,7 +74,7 @@ describe("dashboard model", () => {
 
   it("uses mock Dispute Cases when the Admin API has no Dispute Case resource", () => {
     const model = dashboardModelFromApi({
-      quests: { total: 7, hidden: 1, byStatus: {} },
+      quests: { total: 7, hidden: 1, byState: {} },
       disputes: { total: 0, awaitingResolution: 0 },
       payouts: { pendingAdminApproval: 4, inFlight: 1 },
       members: { frozenWallets: 1, suspendedWallets: 1 },

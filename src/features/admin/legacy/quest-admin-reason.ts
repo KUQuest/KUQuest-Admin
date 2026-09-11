@@ -1,8 +1,15 @@
-import type { AdminQuestReasonCode } from "../api/admin-api";
+import type { AdminDisputeReasonCode, AdminQuestReasonCode } from "../api/admin-api";
+
+export type AdminReasonCode = AdminQuestReasonCode | AdminDisputeReasonCode;
 
 const reasonCodes: Array<[AdminQuestReasonCode, string]> = [
   ["POLICY_REVIEW", "Policy review"],
   ["SAFETY_REVIEW", "Safety review"],
+];
+
+const disputeReasonCodes: Array<[AdminDisputeReasonCode, string]> = [
+  ["DISPUTE_POLICY_REVIEW", "Policy review"],
+  ["DISPUTE_EVIDENCE_REVIEW", "Evidence review"],
 ];
 
 export function isQuestModerationAction(action: string): boolean {
@@ -15,11 +22,18 @@ export function setupQuestReasonCode(
   liveApi: boolean,
 ): HTMLSelectElement | null {
   document.querySelector<HTMLElement>("#quest-reason-code-field")?.remove();
-  if (!liveApi || !isQuestModerationAction(action)) return null;
+  document.querySelector<HTMLElement>("#dispute-reason-code-field")?.remove();
+  const isDisputeResolution = action === "Confirm dispute resolution";
+  if (!liveApi || !isQuestModerationAction(action) && !isDisputeResolution) return null;
+
+  const fieldId = isDisputeResolution ? "dispute-reason-code-field" : "quest-reason-code-field";
+  const selectId = isDisputeResolution ? "dispute-reason-code" : "quest-reason-code";
+  const helpId = isDisputeResolution ? "dispute-reason-code-help" : "quest-reason-code-help";
+  const options = isDisputeResolution ? disputeReasonCodes : reasonCodes;
 
   const field = document.createElement("label");
-  field.id = "quest-reason-code-field";
-  field.htmlFor = "quest-reason-code";
+  field.id = fieldId;
+  field.htmlFor = selectId;
   field.append("Reason code ");
   if (action !== "Restore quest") {
     const requiredMark = document.createElement("span");
@@ -29,15 +43,15 @@ export function setupQuestReasonCode(
   }
 
   const select = document.createElement("select");
-  select.id = "quest-reason-code";
+  select.id = selectId;
   select.name = "reasonCode";
-  select.setAttribute("aria-describedby", "quest-reason-code-help");
-  select.required = action !== "Restore quest";
+  select.setAttribute("aria-describedby", helpId);
+  select.required = isDisputeResolution || action !== "Restore quest";
   const placeholder = document.createElement("option");
   placeholder.value = "";
   placeholder.textContent = action === "Restore quest" ? "No reason code" : "Select a reason code";
   select.append(placeholder);
-  reasonCodes.forEach(([value, label]) => {
+  options.forEach(([value, label]) => {
     const option = document.createElement("option");
     option.value = value;
     option.textContent = label;
@@ -46,8 +60,10 @@ export function setupQuestReasonCode(
   field.append(select);
 
   const help = document.createElement("small");
-  help.id = "quest-reason-code-help";
-  help.textContent = action === "Restore quest"
+  help.id = helpId;
+  help.textContent = isDisputeResolution
+    ? "Required by the API Server for Dispute Case resolution."
+    : action === "Restore quest"
     ? "Optional. This value is stored by the API Server when provided."
     : "Required by the API Server for Quest moderation.";
   field.append(help);

@@ -2,6 +2,8 @@ import type { LegacyRecord, LegacyRuntimeData } from "./runtime";
 import { disputeCaseStatusFor } from "../domain/rulebook";
 import type { AdminCommandPort } from "../api/admin-api";
 import { newAdminIdempotencyKey } from "./admin-command-port";
+import type { AdminReasonCode } from "./quest-admin-reason";
+import { hydrateLiveDispute } from "./live-review-data";
 
 export type ModerationRecord = LegacyRecord & {
   evidence: string[];
@@ -63,7 +65,7 @@ export type ModerationPageContext = {
     title: string,
     record: LegacyRecord,
     detail: string,
-    onConfirm: (reason: string) => void,
+    onConfirm: (reason: string, reasonCode?: AdminReasonCode) => void,
     options?: { keepDrawerOpen?: boolean },
   ) => void;
   adminCommands: AdminCommandPort;
@@ -100,6 +102,18 @@ export type DisputeDetailApi = {
   openDisputeDrawer: (index: number) => void;
 };
 
+export function disputeAmountLabel(record: Pick<LegacyRecord, "amount" | "mockDisputeData">, fmt: (value: number | null | undefined) => string): string {
+  if (typeof record.amount === "number") return `฿${fmt(record.amount)}`;
+  if (record.mockDisputeData) return `฿${fmt(record.mockDisputeData.amountBaht)} · Mock data`;
+  return "Not provided by the Admin API";
+}
+
+export function mockDataNotice(record: LegacyRecord, escapeActivityText: (value: unknown) => string): string {
+  const missing = record.apiMissingFields || [];
+  if (!record.apiBacked || missing.length === 0) return "";
+  return `<aside class="audit-note api-data-notice" role="note"><strong>Mock data shown for missing API fields</strong><p>The Admin API does not return these fields. The values below are for UI review only and are not sent to the API.</p><ul>${missing.map((field) => `<li>${escapeActivityText(field)}</li>`).join("")}</ul></aside>`;
+}
+
 export function initializeDisputeDetail(
   context: ModerationPageContext,
 ): DisputeDetailApi {
@@ -128,6 +142,21 @@ export function initializeDisputeDetail(
   } = context;
 
 function disputeCaseFor(record: ModerationRecord): DisputeCase {
+  if (record.apiBacked) {
+    const mockData = record.mockDisputeData;
+    return {
+      questId: record.questId || "",
+      category: mockData?.category || record.disputeType || "Dispute Case",
+      openedBy: mockData?.openedBy || record.person,
+      respondent: mockData?.respondent || record.other,
+      requested: "Admin review",
+      claim: mockData?.claim || "Claim not provided by the Admin API.",
+      response: mockData?.response || "Response not provided by the Admin API.",
+      policy: mockData?.policy || [],
+      signals: [],
+      recommended: mockData?.recommended || "Review the case-scoped Evidence before recording the decision.",
+    };
+  }
   return (
     disputeCases[record.id] || {
       questId: record.questId || "",
@@ -159,6 +188,30 @@ function disputeCaseFor(record: ModerationRecord): DisputeCase {
 }
 
 function questTimelineFor(record: ModerationRecord, caseData: DisputeCase, relatedQuest?: ModerationQuest): TimelineEntry[] {
+  if (record.apiBacked) {
+    const timelineItems: TimelineEntry[] = [
+      {
+        title: "Dispute Case opened",
+        detail: `${record.disputeDate} · ${caseData.category}`,
+      },
+      {
+        title: "Quest State recorded for review",
+        detail: `${record.questState || "Quest State not provided by the Admin API"}${record.questFailedAt ? ` · ${record.questFailedAt}` : ""}`,
+      },
+    ];
+    if (disputeCaseStatusFor(record.disputeCaseStatus ?? record.status) !== "DISPUTE_CASE_PENDING") {
+      timelineItems.push({
+        title: "Admin recorded the final resolution",
+        detail: `${record.resolutionAt || record.updatedAt || record.age} · Case closed`,
+      });
+    } else {
+      timelineItems.push({
+        title: "Dispute Case is awaiting resolution",
+        detail: `${record.updatedAt || record.age} · No resolution recorded by the Admin API`,
+      });
+    }
+    return timelineItems;
+  }
   const dateBefore = (daysBefore: number, time: string): string => {
     const disputeDay = String(record.disputeDate || "").split(" · ")[0];
     const date = new Date(`${disputeDay} 12:00:00 UTC`);
@@ -224,14 +277,20 @@ function closedDecisionSummary(record: ModerationRecord): string {
 }
 
 function evidenceRows(record: ModerationRecord): string {
+  if (record.evidence.length === 0) {
+    return `<div class="evidence-item evidence-unavailable"><span class="evidence-state unavailable">${ico("history")}</span><span><strong>No evidence records</strong><small>Evidence was not returned by the Admin API.</small></span></div>`;
+  }
   return record.evidence
     .map((evidence, index) => {
       const parts = String(evidence).split(" · ");
       const reference = record.evidenceRefs?.[index];
       const referenceAvailable = typeof reference === "string" && reference.trim().length > 0;
+      const disputeCaseAttribute = record.apiBacked && record.id
+        ? ` data-dispute-case-id="${escapeActivityText(record.id)}"`
+        : "";
       const content = `<span class="evidence-state ${referenceAvailable ? "complete" : "unavailable"}">${ico(referenceAvailable ? "check" : "history")}</span><span><strong>${escapeActivityText(parts[0])}</strong><small>${escapeActivityText(parts.slice(1).join(" · ") || "Verified record")}</small></span>`;
       return referenceAvailable
-        ? `<button class="evidence-item" data-evidence-ref="${escapeActivityText(reference)}">${content}<span>Open</span></button>`
+        ? `<button class="evidence-item" data-evidence-ref="${escapeActivityText(reference)}"${disputeCaseAttribute}>${content}<span>Open</span></button>`
         : `<div class="evidence-item evidence-unavailable">${content}<span>Evidence Reference not available</span></div>`;
     })
     .join("");
@@ -245,8 +304,8 @@ function bindResolutionControls(root: HTMLElement, record: ModerationRecord): vo
     resolve = query<InteractiveElement>(root, ".resolve-case, [data-dispute-action]");
   const hirerAllocation = query<HTMLElement>(root, '[data-allocation="hirer"] span');
   const workerAllocation = query<HTMLElement>(root, '[data-allocation="worker"] span');
-  if (hirerAllocation) hirerAllocation.textContent = `Hirer wins · ${giverName}`;
-  if (workerAllocation) workerAllocation.textContent = `Worker wins · ${hunterName}`;
+  if (hirerAllocation) hirerAllocation.textContent = `Dismiss Case · ${giverName}`;
+  if (workerAllocation) workerAllocation.textContent = `Release to Worker · ${hunterName}`;
   queryAll<InteractiveElement>(root, "[data-allocation]").forEach((button) =>
     button.addEventListener("click", () => {
       selected = button.dataset.allocation || "";
@@ -261,29 +320,35 @@ function bindResolutionControls(root: HTMLElement, record: ModerationRecord): vo
       return toast("Select a resolution before closing this dispute.");
     let detail = "";
     if (selected === "hirer")
-      detail = `Confirm decision for ${record.id}: Hirer wins · ${giverName}; refund ฿${fmt(record.amount)} to the giver.`;
+      detail = `Confirm decision for ${record.id}: dismiss the Dispute Case; held funds remain governed by the failed Quest settlement.`;
     if (selected === "worker")
-      detail = `Confirm decision for ${record.id}: Worker wins · ${hunterName}; release ฿${fmt(record.amount)} to the hunter.`;
-    confirmAction("Confirm dispute resolution", record, detail, (reason) => {
-      const outcome: "REFUND_HIRER" | "RELEASE_TO_WORKER" = selected === "hirer" ? "REFUND_HIRER" : "RELEASE_TO_WORKER";
+      detail = `Confirm decision for ${record.id}: release ${disputeAmountLabel(record, fmt)} to the Worker.`;
+    confirmAction("Confirm dispute resolution", record, detail, (_reason, reasonCode) => {
+      const outcome: "DISPUTE_CASE_DISMISSED" | "DISPUTE_CASE_RESOLVED" = selected === "hirer" ? "DISPUTE_CASE_DISMISSED" : "DISPUTE_CASE_RESOLVED";
       const workerId = record.workerId;
       const amountSatang = record.amountSatang;
-      let allocations: Array<{ workerId: string; amountSatang: number }> | undefined;
-      if (outcome === "RELEASE_TO_WORKER") {
+      const resolution: {
+        outcome: "DISPUTE_CASE_DISMISSED" | "DISPUTE_CASE_RESOLVED";
+        reasonCode: "DISPUTE_POLICY_REVIEW" | "DISPUTE_EVIDENCE_REVIEW";
+        idempotencyKey: string;
+        expectedVersion: number;
+        workerId?: string;
+        amountSatang?: number;
+      } = {
+        outcome,
+        reasonCode: reasonCode === "DISPUTE_POLICY_REVIEW" ? reasonCode : "DISPUTE_EVIDENCE_REVIEW",
+        idempotencyKey: newAdminIdempotencyKey("resolve-dispute", record.id),
+        expectedVersion: record.version ?? 1,
+      };
+      if (outcome === "DISPUTE_CASE_RESOLVED") {
         if (!workerId || !amountSatang || amountSatang <= 0) {
           toast("This Dispute Case has no positive Worker allocation from the Admin API.");
           return;
         }
-        allocations = [{ workerId, amountSatang }];
+        resolution.workerId = workerId;
+        resolution.amountSatang = amountSatang;
       }
-      const resolution = {
-        outcome,
-        reason,
-        idempotencyKey: newAdminIdempotencyKey("resolve-dispute", record.id),
-        ...(typeof record.version === "number" ? { expectedVersion: record.version } : {}),
-        ...(allocations ? { allocations } : {}),
-      };
-      void adminCommands.resolveDispute(caseData.questId, resolution).then(() => {
+      void adminCommands.resolveDispute(record.id, resolution).then(() => {
         persistAdminData();
         if (state.view === "home") renderHome();
         else if (state.view === "disputes") render();
@@ -313,14 +378,15 @@ function openDisputeDrawer(index: number): void {
   drawer.innerHTML = `
 <div class="drawer-top"><div><strong>${escapeActivityText(record.id)}</strong><small>Dispute resolution case</small></div><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div>
 <div class="drawer-body dispute-record ${isClosed ? "closed-case" : "active-case"}">
+ ${mockDataNotice(record, escapeActivityText)}
  <div class="case-heading"><div><h2>${escapeActivityText(record.title)}</h2><p>${escapeActivityText(disputeTypeLabel(record))} · disputed ${escapeActivityText(record.disputeDate)}</p></div>${badge(caseStatus, record.tone)}</div>
- <div class="case-alert"><span>${ico("scale")}</span><div><strong>${isClosed ? "Dispute decision recorded" : `฿${fmt(record.amount)} is held`}</strong><p>${isClosed ? "This case is closed and retained as a read-only audit record." : "No payout can settle until this case is resolved."}</p></div></div>
- <section class="section"><h3>Dispute overview</h3><div class="facts"><div class="fact"><span>Category</span><strong>${escapeActivityText(disputeTypeLabel(record))}</strong></div><div class="fact"><span>Dispute date</span><strong>${escapeActivityText(record.disputeDate)}</strong></div><div class="fact"><span>Amount at risk</span><strong>฿${fmt(record.amount)}</strong></div></div></section>
+ <div class="case-alert"><span>${ico("scale")}</span><div><strong>${isClosed ? "Dispute decision recorded" : `${escapeActivityText(disputeAmountLabel(record, fmt))} is held`}</strong><p>${isClosed ? "This case is closed and retained as a read-only audit record." : "No payout can settle until this case is resolved."}</p></div></div>
+ <section class="section"><h3>Dispute overview</h3><div class="facts"><div class="fact"><span>Category</span><strong>${escapeActivityText(disputeTypeLabel(record))}</strong></div><div class="fact"><span>Dispute date</span><strong>${escapeActivityText(record.disputeDate)}</strong></div><div class="fact"><span>Amount at risk</span><strong>${escapeActivityText(disputeAmountLabel(record, fmt))}</strong></div></div></section>
  <section class="section"><h3>Description</h3><p>${escapeActivityText(disputeDescriptionFor(record, caseData))}</p></section>
  <section class="section"><h3>Participants</h3><div class="party-grid"><div><span>Opened by</span><strong>${escapeActivityText(caseData.openedBy)}</strong></div><div><span>Respondent</span><strong>${escapeActivityText(caseData.respondent)}</strong></div></div></section>
  <section class="section"><div class="section-title"><h3>Related files</h3><span class="section-count">${record.evidence.length}</span></div><div class="evidence-stack">${evidenceRows(record)}</div></section>
  <section class="section"><div class="section-title"><h3>Related quest</h3>${questIndex >= 0 ? `<a class="link open-related-quest" href="/quests/${encodeURIComponent(caseData.questId)}">Open full quest</a>` : ""}</div><a class="quest-reference" href="/quests/${encodeURIComponent(caseData.questId)}"><span class="file-icon">${ico("quest")}</span><span><strong>${escapeActivityText(caseData.questId)} · ${escapeActivityText(record.title)}</strong><small>View conditions, assignment, proof, and edit history</small></span><span>›</span></a></section>
- ${isClosed ? closedDecisionSummary(record) : `<section class="section"><h3>Resolution decision</h3><div class="allocation"><button data-allocation="hirer"><span>Refund hirer</span><strong>฿${fmt(record.amount)}</strong></button><button data-allocation="worker"><span>Release to worker</span><strong>฿${fmt(record.amount)}</strong></button></div><p class="audit-note">Choose the outcome before resolving.</p></section>`}
+ ${isClosed ? closedDecisionSummary(record) : `<section class="section"><h3>Resolution decision</h3><div class="allocation"><button data-allocation="hirer"><span>Dismiss Case</span><strong>No money movement</strong></button><button data-allocation="worker"><span>Release to Worker</span><strong>${escapeActivityText(disputeAmountLabel(record, fmt))}</strong></button></div><p class="audit-note">Choose the outcome before resolving. A resolved case requires a Worker and a positive Satang amount.</p></section>`}
  <section class="section"><h3>Overall quest timeline</h3>${timeline(questTimeline, { showDetails: false })}</section>
 </div>
 ${isClosed ? `<div class="drawer-actions case-actions"><a class="btn" href="/disputes/${encodeURIComponent(record.id)}">Full dispute detail</a><button class="btn" id="close-case-record">Close record</button></div>` : `<div class="drawer-actions case-actions"><a class="btn" href="/disputes/${encodeURIComponent(record.id)}">Full dispute detail</a><button class="btn primary resolve-case">Resolve dispute</button></div>`}`;
@@ -332,6 +398,11 @@ ${isClosed ? `<div class="drawer-actions case-actions"><a class="btn" href="/dis
   drawer
     .querySelector("#close-case-record")
     ?.addEventListener("click", closeDrawer);
+  if (record.apiBacked && !record.disputeDetailLoaded) {
+    void hydrateLiveDispute(record).then(() => {
+      if (drawer.classList.contains("open") && data.disputes[index] === record) openDisputeDrawer(index);
+    });
+  }
 }
 
 

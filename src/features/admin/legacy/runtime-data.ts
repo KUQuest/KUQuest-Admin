@@ -5,6 +5,7 @@ export const data: LegacyRuntimeData = {
   disputes: [],
   quests: [],
   users: [],
+  wallets: [],
   payouts: [],
   reports: [],
 };
@@ -17,7 +18,7 @@ export function recordsFor(view: string): LegacyRecord[] {
     return data.reports.filter((record) => Boolean(record.conductReportStatus));
   }
   if (view === "wallets") {
-    return data.users;
+    return data.wallets;
   }
   return data[view as keyof LegacyRuntimeData] || [];
 }

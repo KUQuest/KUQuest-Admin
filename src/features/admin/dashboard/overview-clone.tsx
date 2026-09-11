@@ -102,10 +102,6 @@ export function OverviewClone() {
   if (!model) return <OverviewCloneLoading message={loadError ?? "Loading marketplace overview…"} />;
   if (loadError) return <OverviewCloneLoading message={loadError} />;
 
-  const sourceLabel = model.source === "Admin API"
-    ? model.hasFallbackQueues ? "Live Admin API · local fallback for missing queues" : "Live Admin API"
-    : "Local demo data";
-
   return (
     <main id="dashboard-main" className="overview-command-center" tabIndex={-1}>
       <header className="overview-command-center-header">
@@ -113,10 +109,6 @@ export function OverviewClone() {
           <span className="overview-command-center-kicker">KUQuest Admin</span>
           <h1>Overview</h1>
           <p>One view of marketplace work, risk, and money.</p>
-        </div>
-        <div className="overview-command-center-updated">
-          <span className="overview-command-center-dot" aria-hidden="true" />
-          <span>{sourceLabel} · Updated {relativeTime(model.loadedAt)}</span>
         </div>
       </header>
 

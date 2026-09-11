@@ -43,7 +43,7 @@ export type AdminOverview = {
   quests: {
     total: number;
     hidden: number;
-    byStatus: Record<string, number>;
+    byState: Record<string, number>;
   };
   disputes: {
     total: number;
@@ -213,6 +213,26 @@ export type AdminDisputeCase = {
   [key: string]: unknown;
 };
 
+export type AdminDisputeCaseDetail = AdminDisputeCase & {
+  filerUserId: string;
+  openedByAdminId: string | null;
+  resolvedWorkerId: string | null;
+  resolvedAmountSatang: number | null;
+  resolvedByAdminId: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  quest: {
+    id: string;
+    title: string;
+    hirerId: string;
+    questStatus: string;
+    version: number;
+    failedAt: string | null;
+    fundingReservationId: string | null;
+  };
+};
+
 export type AdminReportCase = {
   id: string;
   status: ReportCaseStatus | ConductReportStatus;
@@ -231,14 +251,153 @@ export type AdminEvidence = {
 
 export type EvidenceReference = string;
 
-export type AdminMember = {
+export type AdminDisputeEvidence = {
+  caseId: string;
+  questId: string;
+  truncated: boolean;
+  quest: {
+    id: string;
+    questStatus: string;
+    version: number;
+    hirerId: string;
+    failedAt: string | null;
+  };
+  assignments: Array<{
+    id: string;
+    workerId: string;
+    assignmentStatus: string;
+    startedAt: string | null;
+    createdAt: string;
+  }>;
+  proofSubmissions: Array<{
+    id: string;
+    workerId: string | null;
+    teamId: string | null;
+    submittedByUserId: string;
+    submissionStatus: string;
+    submittedAt: string | null;
+    files: Array<{
+      fileId: string;
+      contentType: string;
+      sizeBytes: number;
+      position: number;
+    }>;
+  }>;
+  adminActionId: string;
+};
+
+export type AdminDisputeEvidenceRequest = {
+  idempotencyKey: string;
+};
+
+export type AdminMemberWalletSummary = {
   id: string;
-  displayName: string;
-  email?: string;
-  walletStatus?: WalletStatus;
-  penaltyRecord?: unknown[];
-  version?: number;
-  [key: string]: unknown;
+  walletStatus: WalletStatus;
+  spendingBalanceSatang: number;
+  earningsBalanceSatang: number;
+  totalBalanceSatang: number;
+};
+
+export type AdminMemberListItem = {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  studentId: string | null;
+  telephone: string | null;
+  academicYear: number | null;
+  faculty: string | null;
+  department: string | null;
+  occupation: string | null;
+  wallet: AdminMemberWalletSummary | null;
+  createdAt: string;
+};
+
+export type AdminMemberDetail = {
+  member: Omit<AdminMemberListItem, "wallet" | "createdAt"> & {
+    bio: string | null;
+    createdAt: string;
+  };
+  wallet: {
+    id: string;
+    walletStatus: WalletStatus;
+    spendingBalanceSatang: number;
+    earningsBalanceSatang: number;
+    fundingReservedSatang: number;
+    reservedForPayoutsSatang: number;
+    totalBalanceSatang: number;
+    projectionMatchesLedger: boolean;
+  } | null;
+  stats: {
+    questsCreatedCount: number;
+    questsCompletedAsWorkerCount: number;
+    reviewsReceivedCount: number;
+    averageRating: number | null;
+    payoutsCount: number;
+    totalEarnedSatang: number;
+    totalPaidOutSatang: number;
+  };
+};
+
+export type AdminWallet = {
+  id: string;
+  userId: string;
+  member: {
+    firstName: string;
+    lastName: string;
+    studentId: string | null;
+    email: string;
+    telephone: string | null;
+  };
+  walletStatus: WalletStatus;
+  balances: {
+    spendingBalanceSatang: number;
+    earningsBalanceSatang: number;
+    fundingReservedSatang: number;
+    reservedForPayoutsSatang: number;
+    totalBalanceSatang: number;
+  };
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminWalletDetail = AdminWallet & {
+  projectionMatchesLedger: boolean;
+};
+
+export type AdminWalletStatusHistoryEntry = {
+  id: string;
+  walletId: string;
+  fromStatus: WalletStatus | null;
+  toStatus: WalletStatus;
+  reason: string;
+  actorUserId: string | null;
+  actorAdminId: string | null;
+  createdAt: string;
+};
+
+export type AdminWalletStatusResult = {
+  wallet: {
+    spendingBalanceSatang: number;
+    earningsBalanceSatang: number;
+    fundingReservedSatang: number;
+    reservedForPayoutsSatang: number;
+    walletStatus: WalletStatus;
+  };
+};
+
+export type AdminWalletBalanceSnapshot = {
+  spendingBalanceSatang: number;
+  earningsBalanceSatang: number;
+  fundingReservedSatang: number;
+  reservedForPayoutsSatang: number;
+};
+
+export type AdminWalletVerification = {
+  matches: boolean;
+  projected: AdminWalletBalanceSnapshot;
+  ledger: AdminWalletBalanceSnapshot;
+  activityCountMatches: boolean;
 };
 
 export type AdminPayout = {
@@ -266,10 +425,10 @@ export type AdminPayout = {
   providerReference: string | null;
   providerStatus: string | null;
   payoutStatus: AdminApiPayoutStatus;
-  rejectionReason: string | null;
+  cancellationReasonCode: string | null;
   createdAt: string;
   updatedAt: string;
-  version?: number;
+  version: number;
 };
 
 export type AdminPayoutHistoryEntry = {
@@ -296,6 +455,87 @@ export type AdminApiPayoutStatus = (typeof ADMIN_API_PAYOUT_STATUSES)[number];
 
 export type AdminPayoutDetail = AdminPayout & {
   history: AdminPayoutHistoryEntry[];
+};
+
+export type AdminPayoutCommandResult = {
+  resourceSummary: AdminPayout;
+  resourceVersion: number;
+  adminActionId: string;
+};
+
+export type AdminPayoutReconciliation = {
+  id: string;
+  internalReference: string;
+  principalUserId: string;
+  quoteId: string;
+  payoutDestinationId: string;
+  destinationRecipientType: string;
+  destinationGivenName: string;
+  destinationSurname: string;
+  destinationRelationship: string;
+  destinationAccountCountry: string;
+  destinationAccountCurrency: string;
+  destinationBankCode: string;
+  destinationAccountHolderName: string;
+  destinationRoutingType: string;
+  destinationMaskedLastFour: string;
+  destinationMaskedRoutingValue: string;
+  provider: string;
+  providerReference: string | null;
+  providerApiVersion: string | null;
+  providerStatus: string | null;
+  providerAmountSatang: number | null;
+  principalSatang: number;
+  receiptSatang: number;
+  maximumFeeSatang: number;
+  maximumTaxSatang: number;
+  maximumDebitSatang: number;
+  actualFeeSatang: number | null;
+  actualTaxSatang: number | null;
+  actualDebitSatang: number | null;
+  payoutStatus: AdminApiPayoutStatus;
+  version: number;
+  reserveLedgerTransactionId: string;
+  finalLedgerTransactionId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminPayoutReconcileResult = {
+  payout: AdminPayoutReconciliation;
+};
+
+export type AdminPayoutProviderEvent = {
+  id: string;
+  provider: string;
+  providerEventId: string;
+  eventType: string;
+  resourceType: string;
+  internalReference: string | null;
+  providerReference: string | null;
+  providerApiVersion: string | null;
+  providerStatus: string;
+  normalizedStatus: string;
+  providerAmountSatang: number | null;
+  actualFeeSatang: number | null;
+  actualTaxSatang: number | null;
+  actualDebitSatang: number | null;
+  providerChannelCode: string | null;
+  providerOccurredAt: string;
+  payloadHash: string;
+  rawPayloadAvailable: boolean;
+  rawPayloadExpiresAt: string;
+  processingStatus: string;
+  attemptCount: number;
+  claimedAt: string | null;
+  processedAt: string | null;
+  lastError: string | null;
+  receivedAt: string;
+  createdAt: string;
+};
+
+export type AdminPayoutProviderEventResult = {
+  event: AdminPayoutProviderEvent;
 };
 
 export type AdminPayoutListQuery = {
@@ -332,8 +572,16 @@ export type AdminReportListQuery = {
 };
 
 export type AdminMemberListQuery = {
-  query?: string;
+  search?: string;
   walletStatus?: WalletStatus;
+  limit?: number;
+  cursor?: string;
+};
+
+export type AdminWalletListQuery = {
+  status?: WalletStatus;
+  userId?: string;
+  search?: string;
   limit?: number;
   cursor?: string;
 };
@@ -362,17 +610,20 @@ export type DisputeAllocation = {
   amountSatang: number;
 };
 
-export type DisputeResolution = AdminCommandOptions & {
-  outcome: "REFUND_HIRER" | "RELEASE_TO_WORKER";
-  reason: string;
-  allocations?: DisputeAllocation[];
+export type AdminDisputeReasonCode = "DISPUTE_POLICY_REVIEW" | "DISPUTE_EVIDENCE_REVIEW";
+
+export type DisputeResolution = Omit<AdminCommandOptions, "expectedVersion"> & {
+  expectedVersion: number;
+  outcome: "DISPUTE_CASE_DISMISSED" | "DISPUTE_CASE_RESOLVED";
+  reasonCode: AdminDisputeReasonCode;
+  workerId?: string;
+  amountSatang?: number;
 };
 
 export type AdminDisputeResolutionResult = {
-  questStatus: AdminApiQuestStatus;
-  outcome: "REFUNDED" | "RELEASED_TO_WORKER";
-  paidSatang: number;
-  refundedSatang: number;
+  resourceSummary: AdminDisputeCase;
+  resourceVersion: number;
+  adminActionId: string;
 };
 
 export type AdminQuestCommandResult = {
@@ -392,15 +643,20 @@ export type ReportDecision = AdminCommandOptions & {
 };
 
 export type WalletStatusCommand = AdminCommandOptions & {
-  status: WalletStatus;
+  status?: WalletStatus;
+  toStatus?: WalletStatus;
   reason: string;
 };
 
-export type PayoutApproval = AdminCommandOptions & {
+export type PayoutApproval = Omit<AdminCommandOptions, "expectedVersion"> & {
+  expectedVersion: number;
+  reasonCode: "PAYOUT_POLICY_REVIEW" | "PAYOUT_RISK_REVIEW";
   note?: string;
 };
-export type PayoutRejection = AdminCommandOptions & {
-  reason: string;
+export type PayoutRejection = Omit<AdminCommandOptions, "expectedVersion"> & {
+  expectedVersion: number;
+  reasonCode: "PAYOUT_POLICY_REVIEW" | "PAYOUT_RISK_REVIEW" | "PAYOUT_INVALID_DESTINATION";
+  reason?: string;
 };
 
 export type AdminEvent = {
@@ -464,15 +720,31 @@ function questCommandHeaders(options: AdminCommandOptions): HeadersInit {
   };
 }
 
+function payoutCommandHeaders(options: PayoutApproval | PayoutRejection): HeadersInit {
+  return {
+    ...commandHeaders(options),
+    "If-Match": String(options.expectedVersion),
+  };
+}
+
 function commandBody<T extends AdminCommandOptions>(options: T): Omit<T, "idempotencyKey" | "expectedVersion"> {
   const { idempotencyKey: _idempotencyKey, expectedVersion: _expectedVersion, ...body } = options;
   return body;
 }
 
-function disputeCommandBody(options: DisputeResolution): Pick<DisputeResolution, "outcome" | "allocations"> {
+function disputeCommandHeaders(options: DisputeResolution): HeadersInit {
+  return {
+    ...commandHeaders(options),
+    "If-Match": String(options.expectedVersion),
+  };
+}
+
+function disputeCommandBody(options: DisputeResolution): Pick<DisputeResolution, "outcome" | "reasonCode" | "workerId" | "amountSatang"> {
   return {
     outcome: options.outcome,
-    ...(options.allocations ? { allocations: options.allocations } : {}),
+    reasonCode: options.reasonCode,
+    ...(options.workerId ? { workerId: options.workerId } : {}),
+    ...(options.amountSatang !== undefined ? { amountSatang: options.amountSatang } : {}),
   };
 }
 
@@ -563,19 +835,19 @@ export const adminApi = {
     );
   },
 
-  getDispute(disputeId: string): Promise<AdminDisputeCase> {
-    return apiRequest<AdminDisputeCase>(
+  getDispute(disputeId: string): Promise<AdminDisputeCaseDetail> {
+    return apiRequest<AdminDisputeCaseDetail>(
       `/api/v1/admin/disputes/${encode(disputeId)}`,
       { cache: "no-store" },
     );
   },
 
-  resolveDispute(questId: string, options: DisputeResolution): Promise<AdminDisputeResolutionResult> {
+  resolveDispute(disputeCaseId: string, options: DisputeResolution): Promise<AdminDisputeResolutionResult> {
     return apiRequest<AdminDisputeResolutionResult>(
-      `/api/v1/admin/quests/${encode(questId)}/dispute/resolve`,
+      `/api/v1/admin/disputes/${encode(disputeCaseId)}/resolve`,
       {
         method: "POST",
-        headers: commandHeaders(options),
+        headers: disputeCommandHeaders(options),
         body: disputeCommandBody(options),
       },
     );
@@ -602,25 +874,39 @@ export const adminApi = {
     );
   },
 
-  approvePayout(payoutId: string, options: PayoutApproval): Promise<AdminPayout> {
-    return apiRequest<AdminPayout>(
+  approvePayout(payoutId: string, options: PayoutApproval): Promise<AdminPayoutCommandResult> {
+    return apiRequest<AdminPayoutCommandResult>(
       `/api/v1/admin/payouts/${encode(payoutId)}/approve`,
       {
         method: "POST",
-        headers: commandHeaders(options),
-        body: commandBody(options),
+        headers: payoutCommandHeaders(options),
+        body: { reasonCode: options.reasonCode },
       },
     );
   },
 
-  rejectPayout(payoutId: string, options: PayoutRejection): Promise<AdminPayout> {
-    return apiRequest<AdminPayout>(
-      `/api/v1/admin/payouts/${encode(payoutId)}/reject`,
+  rejectPayout(payoutId: string, options: PayoutRejection): Promise<AdminPayoutCommandResult> {
+    return apiRequest<AdminPayoutCommandResult>(
+      `/api/v1/admin/payouts/${encode(payoutId)}/cancel`,
       {
         method: "POST",
-        headers: commandHeaders(options),
-        body: commandBody(options),
+        headers: payoutCommandHeaders(options),
+        body: { reasonCode: options.reasonCode },
       },
+    );
+  },
+
+  reconcilePayout(payoutId: string): Promise<AdminPayoutReconcileResult> {
+    return apiRequest<AdminPayoutReconcileResult>(
+      `/api/v1/admin/payouts/${encode(payoutId)}/reconcile`,
+      { method: "POST" },
+    );
+  },
+
+  retryPayoutProviderEvent(eventId: string): Promise<AdminPayoutProviderEventResult> {
+    return apiRequest<AdminPayoutProviderEventResult>(
+      `/api/v1/admin/payouts/events/${encode(eventId)}/retry`,
+      { method: "POST" },
     );
   },
 
@@ -656,28 +942,78 @@ export const adminApi = {
     );
   },
 
-  listMembers(query: AdminMemberListQuery = {}): Promise<AdminPage<AdminMember>> {
-    return apiRequest<AdminPage<AdminMember>>(
+  getDisputeEvidence(
+    disputeCaseId: string,
+    options: AdminDisputeEvidenceRequest,
+  ): Promise<AdminDisputeEvidence> {
+    return apiRequest<AdminDisputeEvidence>(
+      `/api/v1/admin/disputes/${encode(disputeCaseId)}/evidence`,
+      {
+        cache: "no-store",
+        headers: commandHeaders(options),
+      },
+    );
+  },
+
+  listMembers(query: AdminMemberListQuery = {}): Promise<AdminPage<AdminMemberListItem>> {
+    return apiRequest<AdminPage<AdminMemberListItem>>(
       `/api/v1/admin/members${queryString(query)}`,
       { cache: "no-store" },
     );
   },
 
-  getMember(memberId: string): Promise<AdminMember> {
-    return apiRequest<AdminMember>(
+  getMember(memberId: string): Promise<AdminMemberDetail> {
+    return apiRequest<AdminMemberDetail>(
       `/api/v1/admin/members/${encode(memberId)}`,
       { cache: "no-store" },
     );
   },
 
-  setWalletStatus(memberId: string, options: WalletStatusCommand): Promise<AdminMember> {
-    return apiRequest<AdminMember>(
-      `/api/v1/admin/wallets/${encode(memberId)}/status`,
+  listWallets(query: AdminWalletListQuery = {}): Promise<AdminPage<AdminWallet>> {
+    return apiRequest<AdminPage<AdminWallet>>(
+      `/api/v1/admin/wallets${queryString(query)}`,
+      { cache: "no-store" },
+    );
+  },
+
+  getWallet(walletId: string): Promise<{ wallet: AdminWalletDetail }> {
+    return apiRequest<{ wallet: AdminWalletDetail }>(
+      `/api/v1/admin/wallets/${encode(walletId)}`,
+      { cache: "no-store" },
+    );
+  },
+
+  getWalletStatusHistory(walletId: string): Promise<{ history: AdminWalletStatusHistoryEntry[] }> {
+    return apiRequest<{ history: AdminWalletStatusHistoryEntry[] }>(
+      `/api/v1/admin/wallets/${encode(walletId)}/status-history`,
+      { cache: "no-store" },
+    );
+  },
+
+  verifyWalletProjection(walletId: string): Promise<AdminWalletVerification> {
+    return apiRequest<AdminWalletVerification>(
+      `/api/v1/admin/wallets/${encode(walletId)}/verification`,
+      { cache: "no-store" },
+    );
+  },
+
+  setWalletStatus(walletId: string, options: WalletStatusCommand): Promise<AdminWalletStatusResult> {
+    const toStatus = options.toStatus ?? options.status;
+    if (!toStatus) throw new Error("Wallet status command requires a target status.");
+    return apiRequest<AdminWalletStatusResult>(
+      `/api/v1/admin/wallets/${encode(walletId)}/status`,
       {
         method: "POST",
         headers: commandHeaders(options),
-        body: commandBody(options),
+        body: { toStatus, reason: options.reason },
       },
+    );
+  },
+
+  rebuildWalletProjection(walletId: string): Promise<AdminWalletStatusResult> {
+    return apiRequest<AdminWalletStatusResult>(
+      `/api/v1/admin/wallets/${encode(walletId)}/rebuild-projection`,
+      { method: "POST" },
     );
   },
 };
@@ -693,11 +1029,18 @@ export type AdminReadPort = Pick<
   | "listPayouts"
   | "getPayout"
   | "getPayoutHistory"
+  | "reconcilePayout"
+  | "retryPayoutProviderEvent"
   | "listReports"
   | "getReport"
   | "getEvidence"
+  | "getDisputeEvidence"
   | "listMembers"
   | "getMember"
+  | "listWallets"
+  | "getWallet"
+  | "getWalletStatusHistory"
+  | "verifyWalletProjection"
 >;
 
 export type AdminCommandPort = Pick<
@@ -708,8 +1051,11 @@ export type AdminCommandPort = Pick<
   | "resolveDispute"
   | "approvePayout"
   | "rejectPayout"
+  | "reconcilePayout"
+  | "retryPayoutProviderEvent"
   | "decideReport"
   | "setWalletStatus"
+  | "rebuildWalletProjection"
 >;
 
 // These typed ports are the only application boundary required when the live

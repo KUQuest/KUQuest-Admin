@@ -6,15 +6,25 @@ import {
   type AdminQuestDetail,
   type AdminApiQuestStatus,
   type AdminDisputeCase,
+  type AdminDisputeCaseDetail,
+  type AdminMemberDetail,
+  type AdminMemberListItem,
   type AdminPayout,
   type AdminPayoutDetail,
+  type AdminPayoutReconcileResult,
   type AdminApiPayoutStatus,
+  type AdminWallet,
+  type AdminWalletDetail,
+  type AdminWalletStatusResult,
+  type AdminWalletVerification,
+  type AdminWalletStatusHistoryEntry,
 } from "../api/admin-api";
 import { ApiError } from "../../../lib/api/client";
-import { isPayoutStatus } from "../domain/rulebook";
+import { isPayoutStatus, walletStatusLabel } from "../domain/rulebook";
 import type { PayoutStatus, QuestState } from "../domain/rulebook";
-import type { LegacyHistoryEntry, LegacyRecord } from "./runtime";
+import type { LegacyDisputeMockData, LegacyHistoryEntry, LegacyRecord, LegacyWalletBalanceSnapshot } from "./runtime";
 import { data } from "./runtime-data";
+import { newAdminIdempotencyKey } from "./admin-command-port";
 
 type LiveResourceState = {
   loading: boolean;
@@ -22,16 +32,16 @@ type LiveResourceState = {
   backgroundLoading: boolean;
 };
 
-export type LiveResourceView = "payouts" | "disputes" | "quests";
+export type LiveResourceView = "payouts" | "disputes" | "quests" | "users" | "wallets";
 export const LIVE_RESOURCE_UPDATED_EVENT = "kuquest-live-resource-updated";
 
-export const liveResourceState: Record<"payouts" | "disputes" | "quests", LiveResourceState> = {
+export const liveResourceState: Record<LiveResourceView, LiveResourceState> = {
   payouts: { loading: false, error: null, backgroundLoading: false },
   disputes: { loading: false, error: null, backgroundLoading: false },
   quests: { loading: false, error: null, backgroundLoading: false },
+  users: { loading: false, error: null, backgroundLoading: false },
+  wallets: { loading: false, error: null, backgroundLoading: false },
 };
-
-let mockDisputesFallback: LegacyRecord[] | null = null;
 
 function apiErrorMessage(error: unknown, resource: string): string {
   if (error instanceof ApiError) {
@@ -40,7 +50,7 @@ function apiErrorMessage(error: unknown, resource: string): string {
   return `${resource} API unavailable. ${error instanceof Error ? error.message : "Request failed."}`;
 }
 
-function replaceCollection(view: "quests" | "payouts", records: LegacyRecord[]): void {
+function replaceCollection(view: "disputes" | "quests" | "payouts" | "users" | "wallets", records: LegacyRecord[]): void {
   data[view].splice(0, data[view].length, ...records);
 }
 
@@ -55,6 +65,70 @@ function toneForPayout(status: PayoutStatus): string {
   if (status === "FAILED") return "danger";
   if (status === "CANCELLED") return "cancelled";
   return "info";
+}
+
+function toneForWallet(status: string): string {
+  if (status === "ACTIVE") return "success";
+  if (status === "FROZEN") return "warning";
+  if (status === "CLOSED") return "cancelled";
+  return "danger";
+}
+
+const disputeMockScenarios: LegacyDisputeMockData[] = [
+  {
+    amountBaht: 1224,
+    category: "Evidence",
+    openedBy: "Kamonwan Lertwiroj",
+    respondent: "Payout Tester",
+    summary: "The submitted proof does not fully match the accepted Quest conditions.",
+    claim: "The delivery record is missing a required part of the accepted Quest brief.",
+    response: "The Worker states that the requested work was completed and the missing part was not clear.",
+    policy: [
+      "Published Quest conditions control the review scope",
+      "Evidence timestamps are authoritative",
+      "An Admin reason is required before resolution",
+    ],
+    recommended: "Compare the proof with the failed Quest record before resolving the held funds.",
+  },
+  {
+    amountBaht: 3250,
+    category: "Quality",
+    openedBy: "Aphinya Sukjai",
+    respondent: "Nalin Maneewan",
+    summary: "The delivered work quality is disputed against the accepted Quest conditions.",
+    claim: "The submitted result does not meet the quality requirement recorded for the Quest.",
+    response: "The Worker states that the result follows the visible instructions and requests payment.",
+    policy: [
+      "The accepted Quest condition is the primary review record",
+      "The Admin reviews retained proof before deciding",
+      "The final decision must use a controlled reason code",
+    ],
+    recommended: "Review the retained proof and Quest failure timing before recording the outcome.",
+  },
+  {
+    amountBaht: 875,
+    category: "Scope",
+    openedBy: "Mek Phanich",
+    respondent: "Chayut Ariyawat",
+    summary: "The parties disagree about whether the submitted work stayed within Quest scope.",
+    claim: "The submitted work changed the requested scope and cannot be accepted as submitted.",
+    response: "The Worker states that the change was necessary to complete the requested result.",
+    policy: [
+      "Scope is checked against the published Quest condition",
+      "Proof and recorded times support the Admin decision",
+      "A Dispute Case remains tied to the failed Quest",
+    ],
+    recommended: "Check the Quest condition, proof, and assignment record before resolving the case.",
+  },
+];
+
+function disputeMockDataFor(disputeId: string): LegacyDisputeMockData {
+  const seed = [...disputeId].reduce((total, character, index) => total + character.charCodeAt(0) * (index + 1), 0);
+  const scenario = disputeMockScenarios[seed % disputeMockScenarios.length];
+  return {
+    ...scenario,
+    policy: [...scenario.policy],
+  };
 }
 
 export function canonicalPayoutStatusForApi(status: unknown): PayoutStatus {
@@ -89,6 +163,165 @@ function satangToBaht(value: number): number {
 
 function memberName(member: { firstName: string; lastName: string; email: string }): string {
   return `${member.firstName} ${member.lastName}`.trim() || member.email;
+}
+
+function memberProfileLabel(member: AdminMemberListItem): string {
+  const academicYear = member.academicYear === null ? "" : `Year ${member.academicYear}`;
+  return [member.faculty, member.department, member.occupation, academicYear]
+    .filter((value): value is string => Boolean(value))
+    .join(" · ") || "Academic profile not provided by the Admin API";
+}
+
+export function memberRecordFromApi(member: AdminMemberListItem): LegacyRecord {
+  const wallet = member.wallet;
+  const name = memberName(member);
+  return {
+    id: member.studentId || member.id,
+    title: name,
+    person: member.email,
+    other: memberProfileLabel(member),
+    status: wallet?.walletStatus || "NOT_PROVIDED",
+    tone: wallet ? toneForWallet(wallet.walletStatus) : "neutral",
+    amount: wallet ? satangToBaht(wallet.totalBalanceSatang) : null,
+    age: dateTimeLabel(member.createdAt),
+    createdAt: member.createdAt,
+    accountCreatedAt: dateTimeLabel(member.createdAt),
+    apiBacked: true,
+    memberId: member.id,
+    studentId: member.studentId || undefined,
+    walletId: wallet?.id,
+    walletStatus: wallet?.walletStatus,
+    walletBalanceSatang: wallet?.totalBalanceSatang,
+    walletSpendingBalanceSatang: wallet?.spendingBalanceSatang,
+    walletEarningsBalanceSatang: wallet?.earningsBalanceSatang,
+    memberStatusSource: "NOT_PROVIDED_BY_API",
+  };
+}
+
+export function memberRecordFromApiDetail(detail: AdminMemberDetail): LegacyRecord {
+  const member = detail.member;
+  const summary: AdminMemberListItem = {
+    ...member,
+    wallet: detail.wallet
+      ? {
+        id: detail.wallet.id,
+        walletStatus: detail.wallet.walletStatus,
+        spendingBalanceSatang: detail.wallet.spendingBalanceSatang,
+        earningsBalanceSatang: detail.wallet.earningsBalanceSatang,
+        totalBalanceSatang: detail.wallet.totalBalanceSatang,
+      }
+      : null,
+  };
+  const record = memberRecordFromApi(summary);
+  return Object.assign(record, {
+    about: member.bio || undefined,
+    walletFundingReservedSatang: detail.wallet?.fundingReservedSatang,
+    walletReservedForPayoutsSatang: detail.wallet?.reservedForPayoutsSatang,
+    walletProjectionMatchesLedger: detail.wallet?.projectionMatchesLedger,
+    memberStats: detail.stats,
+    memberDetailLoaded: true,
+  });
+}
+
+export function walletRecordFromApi(wallet: AdminWallet): LegacyRecord {
+  const name = memberName(wallet.member);
+  return {
+    id: wallet.id,
+    title: name,
+    person: wallet.member.email,
+    other: wallet.member.studentId || "Student ID not provided by the Admin API",
+    status: wallet.walletStatus,
+    walletStatus: wallet.walletStatus,
+    tone: toneForWallet(wallet.walletStatus),
+    amount: satangToBaht(wallet.balances.totalBalanceSatang),
+    age: dateTimeLabel(wallet.updatedAt),
+    accountCreatedAt: dateTimeLabel(wallet.createdAt),
+    createdAt: wallet.createdAt,
+    updatedAt: wallet.updatedAt,
+    apiBacked: true,
+    memberId: wallet.userId,
+    walletId: wallet.id,
+    studentId: wallet.member.studentId || undefined,
+    walletTotalBalanceSatang: wallet.balances.totalBalanceSatang,
+    walletSpendingBalanceSatang: wallet.balances.spendingBalanceSatang,
+    walletEarningsBalanceSatang: wallet.balances.earningsBalanceSatang,
+    walletFundingReservedSatang: wallet.balances.fundingReservedSatang,
+    walletReservedForPayoutsSatang: wallet.balances.reservedForPayoutsSatang,
+  };
+}
+
+export function walletRecordFromApiDetail(detail: AdminWalletDetail): LegacyRecord {
+  return Object.assign(walletRecordFromApi(detail), {
+    walletProjectionMatchesLedger: detail.projectionMatchesLedger,
+    walletDetailLoaded: true,
+  });
+}
+
+function walletBalanceSnapshotFromApi(
+  balance: AdminWalletVerification["projected"],
+): LegacyWalletBalanceSnapshot {
+  return {
+    spendingBalanceSatang: balance.spendingBalanceSatang,
+    earningsBalanceSatang: balance.earningsBalanceSatang,
+    fundingReservedSatang: balance.fundingReservedSatang,
+    reservedForPayoutsSatang: balance.reservedForPayoutsSatang,
+  };
+}
+
+export async function verifyLiveWallet(record: LegacyRecord): Promise<void> {
+  const walletId = typeof record.walletId === "string" ? record.walletId : record.id;
+  const verification = await adminApi.verifyWalletProjection(walletId);
+  record.walletVerification = {
+    matches: verification.matches,
+    projected: walletBalanceSnapshotFromApi(verification.projected),
+    ledger: walletBalanceSnapshotFromApi(verification.ledger),
+    activityCountMatches: verification.activityCountMatches,
+  };
+  record.walletProjectionMatchesLedger = verification.matches;
+  record.walletVerificationLoaded = true;
+  delete record.walletVerificationError;
+}
+
+function mergeWalletProjection(record: LegacyRecord, result: AdminWalletStatusResult): void {
+  const wallet = result.wallet;
+  const totalBalanceSatang = wallet.spendingBalanceSatang
+    + wallet.earningsBalanceSatang
+    + wallet.fundingReservedSatang
+    + wallet.reservedForPayoutsSatang;
+  Object.assign(record, {
+    status: wallet.walletStatus,
+    walletStatus: wallet.walletStatus,
+    tone: toneForWallet(wallet.walletStatus),
+    amount: satangToBaht(totalBalanceSatang),
+    walletTotalBalanceSatang: totalBalanceSatang,
+    walletSpendingBalanceSatang: wallet.spendingBalanceSatang,
+    walletEarningsBalanceSatang: wallet.earningsBalanceSatang,
+    walletFundingReservedSatang: wallet.fundingReservedSatang,
+    walletReservedForPayoutsSatang: wallet.reservedForPayoutsSatang,
+    walletProjectionMatchesLedger: undefined,
+    walletVerification: undefined,
+    walletVerificationLoaded: false,
+  });
+}
+
+export function mergeLiveWalletProjection(walletId: string, result: AdminWalletStatusResult): void {
+  [
+    data.wallets.find((record) => record.walletId === walletId || record.id === walletId),
+    data.users.find((record) => record.walletId === walletId),
+  ].forEach((record) => {
+    if (record) mergeWalletProjection(record, result);
+  });
+}
+
+function walletHistoryEntryFromApi(entry: AdminWalletStatusHistoryEntry): LegacyHistoryEntry {
+  return {
+    event: walletStatusLabel(entry.toStatus),
+    at: dateTimeLabel(entry.createdAt),
+    by: entry.actorAdminId || entry.actorUserId || "System",
+    reason: entry.reason,
+    previousStatus: entry.fromStatus ? walletStatusLabel(entry.fromStatus) : undefined,
+    newStatus: walletStatusLabel(entry.toStatus),
+  };
 }
 
 function questTone(status: QuestState): string {
@@ -284,34 +517,121 @@ export function payoutRecordFromApi(payout: AdminPayout): LegacyRecord {
     maskedRoutingValue: payout.maskedRoutingValue,
     providerReference: payout.providerReference,
     providerStatus: payout.providerStatus,
-    rejectionReason: payout.rejectionReason,
+    rejectionReason: payout.cancellationReasonCode,
   };
 }
 
-function disputeRecordFromApi(dispute: AdminDisputeCase): LegacyRecord {
+function mergeReconciledPayout(record: LegacyRecord, payout: AdminPayoutReconcileResult["payout"]): void {
+  const status = canonicalPayoutStatusForApi(payout.payoutStatus);
+  Object.assign(record, {
+    status,
+    payoutStatus: status,
+    tone: toneForPayout(status),
+    amount: satangToBaht(payout.principalSatang),
+    amountSatang: payout.principalSatang,
+    principalSatang: payout.principalSatang,
+    receiptSatang: payout.receiptSatang,
+    maximumFeeSatang: payout.maximumFeeSatang,
+    maximumTaxSatang: payout.maximumTaxSatang,
+    maximumDebitSatang: payout.maximumDebitSatang,
+    actualFeeSatang: payout.actualFeeSatang,
+    actualTaxSatang: payout.actualTaxSatang,
+    actualDebitSatang: payout.actualDebitSatang,
+    providerReference: payout.providerReference,
+    providerStatus: payout.providerStatus,
+    version: payout.version,
+    updatedAt: payout.updatedAt,
+    age: dateTimeLabel(payout.updatedAt),
+  });
+}
+
+export async function reconcileLivePayout(record: LegacyRecord): Promise<void> {
+  const result = await adminApi.reconcilePayout(record.id);
+  mergeReconciledPayout(record, result.payout);
+}
+
+function disputeRecordFromApi(dispute: AdminDisputeCase | AdminDisputeCaseDetail): LegacyRecord {
+  const detail = "quest" in dispute ? dispute as AdminDisputeCaseDetail : null;
+  const mockDisputeData = disputeMockDataFor(dispute.id);
   const evidence = (dispute.evidenceRefs || []).map((reference) => `Evidence Reference · ${reference}`);
   const status = dispute.status;
+  const createdAt = typeof dispute.createdAt === "string" ? dispute.createdAt : undefined;
+  const resolvedAmountSatang = typeof dispute.resolvedAmountSatang === "number" ? dispute.resolvedAmountSatang : undefined;
+  const filerUserId = typeof dispute.filerUserId === "string" ? dispute.filerUserId : undefined;
+  const questId = detail?.quest.id || dispute.questId;
   return {
     id: dispute.id,
-    title: `Quest ${dispute.questId}`,
-    person: "Hirer not provided by API",
-    other: dispute.workerId ? `Worker ${dispute.workerId}` : "Worker not provided by API",
+    title: detail?.quest.title || `Quest ${questId}`,
+    person: detail?.quest.hirerId ? `Hirer ${detail.quest.hirerId}` : "Hirer not provided by API",
+    other: filerUserId ? `Filer ${filerUserId}` : "Filer not provided by API",
     status,
     disputeCaseStatus: status,
-    questState: dispute.questState,
-    questId: dispute.questId,
-    workerId: dispute.workerId,
-    amount: typeof dispute.amountSatang === "number" ? satangToBaht(dispute.amountSatang) : null,
-    amountSatang: dispute.amountSatang,
-    age: "Date not provided by API",
-    disputeDate: "Date not provided by API",
-    detail: "Dispute Case data was loaded from the Admin API.",
+    questState: detail?.quest.questStatus === "QUEST_FAILED" ? "QUEST_FAILED" : dispute.questState,
+    questId,
+    workerId: dispute.workerId || detail?.resolvedWorkerId || undefined,
+    filerUserId,
+    amount: typeof dispute.amountSatang === "number"
+      ? satangToBaht(dispute.amountSatang)
+      : resolvedAmountSatang === undefined ? null : satangToBaht(resolvedAmountSatang),
+    amountSatang: dispute.amountSatang ?? resolvedAmountSatang,
+    resolvedAmountSatang,
+    age: createdAt ? dateTimeLabel(createdAt) : "Date not provided by API",
+    disputeDate: createdAt ? dateTimeLabel(createdAt) : "Date not provided by API",
+    createdAt,
+    updatedAt: typeof dispute.updatedAt === "string" ? dispute.updatedAt : undefined,
+    detail: mockDisputeData.summary,
     evidence,
     evidenceRefs: dispute.evidenceRefs,
+    disputeType: mockDisputeData.category,
+    mockDisputeData,
+    apiMissingFields: [
+      ...(typeof dispute.amountSatang !== "number" && resolvedAmountSatang === undefined ? ["Pending resolution amount"] : []),
+      "Hirer and Worker display names",
+      "Dispute category",
+      "Participant claim and response",
+      "Applicable policy guidance",
+      "Admin review recommendation",
+    ],
+    resolution: status === "DISPUTE_CASE_DISMISSED"
+      ? "Dispute Case dismissed by Admin."
+      : status === "DISPUTE_CASE_RESOLVED" ? "Dispute Case resolved by Admin." : undefined,
+    decisionReason: typeof dispute.resolvedByAdminId === "string" ? `Resolved by Admin ${dispute.resolvedByAdminId}.` : undefined,
+    resolutionAt: detail?.resolvedAt || undefined,
+    questFailedAt: detail?.quest.failedAt || undefined,
     tone: status === "DISPUTE_CASE_PENDING" ? "warning" : "neutral",
     version: dispute.version,
     apiBacked: true,
   };
+}
+
+async function hydrateLiveDisputeEvidence(record: LegacyRecord): Promise<void> {
+  if (!record.apiBacked || record.disputeEvidenceLoaded) return;
+  record.disputeEvidenceLoaded = true;
+  try {
+    const evidence = await adminApi.getDisputeEvidence(record.id, {
+      idempotencyKey: newAdminIdempotencyKey("read-dispute-evidence", record.id),
+    });
+    const references = evidence.proofSubmissions.flatMap((submission) => [
+      { label: `Proof Submission · ${submission.id}`, reference: submission.id },
+      ...submission.files.map((file) => ({
+        label: `Attachment · ${file.fileId}`,
+        reference: file.fileId,
+      })),
+    ]);
+    const workers = new Set([
+      ...evidence.assignments.map((assignment) => assignment.workerId),
+      ...evidence.proofSubmissions.flatMap((submission) => submission.workerId ? [submission.workerId] : []),
+    ]);
+    Object.assign(record, {
+      evidence: references.map(({ label }) => label),
+      evidenceRefs: references.map(({ reference }) => reference),
+      workerId: record.workerId || (workers.size === 1 ? [...workers][0] : undefined),
+      questState: evidence.quest.questStatus === "QUEST_FAILED" ? "QUEST_FAILED" : record.questState,
+      questFailedAt: evidence.quest.failedAt || record.questFailedAt,
+    });
+  } catch (error) {
+    record.disputeEvidenceError = apiErrorMessage(error, "Dispute Case evidence");
+  }
 }
 
 function mergePayouts(items: AdminPayout[]): LegacyRecord[] {
@@ -470,21 +790,236 @@ export async function hydrateLiveQuest(record: LegacyRecord): Promise<void> {
   }
 }
 
+let membersRefreshId = 0;
+let membersRefreshInFlight: Promise<void> | null = null;
+
+export function refreshLiveMembers(): Promise<void> {
+  if (membersRefreshInFlight || liveResourceState.users.backgroundLoading) {
+    return membersRefreshInFlight || Promise.resolve();
+  }
+  const refresh = refreshLiveMembersInternal();
+  const sharedRefresh = refresh.finally(() => {
+    if (membersRefreshInFlight === sharedRefresh) membersRefreshInFlight = null;
+  });
+  membersRefreshInFlight = sharedRefresh;
+  return sharedRefresh;
+}
+
+async function refreshLiveMembersInternal(): Promise<void> {
+  const refreshId = ++membersRefreshId;
+  const state = liveResourceState.users;
+  state.loading = true;
+  state.error = null;
+  state.backgroundLoading = false;
+  replaceCollection("users", []);
+  try {
+    const firstPage = await adminApi.listMembers({ limit: 100 });
+    if (refreshId !== membersRefreshId) return;
+    replaceCollection("users", firstPage.items.map(memberRecordFromApi));
+    state.loading = false;
+
+    if (firstPage.nextCursor) {
+      state.backgroundLoading = true;
+      void (async () => {
+        const items: AdminMemberListItem[] = [];
+        let cursor = firstPage.nextCursor || undefined;
+        while (cursor) {
+          const page = await adminApi.listMembers({ limit: 100, cursor });
+          items.push(...page.items);
+          if (!page.nextCursor || page.nextCursor === cursor) break;
+          cursor = page.nextCursor;
+        }
+        if (refreshId !== membersRefreshId) return;
+        replaceCollection("users", [
+          ...firstPage.items,
+          ...items,
+        ].map(memberRecordFromApi));
+        state.backgroundLoading = false;
+        notifyLiveResourceUpdated("users");
+      })().catch((error: unknown) => {
+        if (refreshId !== membersRefreshId) return;
+        state.backgroundLoading = false;
+        state.error = apiErrorMessage(error, "Member");
+      });
+    }
+  } catch (error) {
+    if (refreshId !== membersRefreshId) return;
+    state.error = apiErrorMessage(error, "Member");
+    state.loading = false;
+  }
+}
+
+export async function loadLiveMember(memberId: string): Promise<void> {
+  const state = liveResourceState.users;
+  state.loading = true;
+  state.error = null;
+  state.backgroundLoading = false;
+  replaceCollection("users", []);
+  try {
+    const detail = await adminApi.getMember(memberId);
+    replaceCollection("users", [memberRecordFromApiDetail(detail)]);
+  } catch (error) {
+    state.error = apiErrorMessage(error, "Member detail");
+  } finally {
+    state.loading = false;
+  }
+}
+
+export async function hydrateLiveMember(record: LegacyRecord): Promise<void> {
+  const memberId = typeof record.memberId === "string" ? record.memberId : "";
+  if (!record.apiBacked || record.memberDetailLoaded || !memberId) return;
+  record.memberDetailLoaded = true;
+  try {
+    const detail = await adminApi.getMember(memberId);
+    Object.assign(record, memberRecordFromApiDetail(detail));
+  } catch (error) {
+    record.memberDetailError = apiErrorMessage(error, "Member detail");
+  }
+}
+
+let walletsRefreshId = 0;
+let walletsRefreshInFlight: Promise<void> | null = null;
+
+export function refreshLiveWallets(): Promise<void> {
+  if (walletsRefreshInFlight || liveResourceState.wallets.backgroundLoading) {
+    return walletsRefreshInFlight || Promise.resolve();
+  }
+  const refresh = refreshLiveWalletsInternal();
+  const sharedRefresh = refresh.finally(() => {
+    if (walletsRefreshInFlight === sharedRefresh) walletsRefreshInFlight = null;
+  });
+  walletsRefreshInFlight = sharedRefresh;
+  return sharedRefresh;
+}
+
+async function refreshLiveWalletsInternal(): Promise<void> {
+  const refreshId = ++walletsRefreshId;
+  const state = liveResourceState.wallets;
+  state.loading = true;
+  state.error = null;
+  state.backgroundLoading = false;
+  replaceCollection("wallets", []);
+  try {
+    const firstPage = await adminApi.listWallets({ limit: 100 });
+    if (refreshId !== walletsRefreshId) return;
+    replaceCollection("wallets", firstPage.items.map(walletRecordFromApi));
+    state.loading = false;
+
+    if (firstPage.nextCursor) {
+      state.backgroundLoading = true;
+      void (async () => {
+        const items: AdminWallet[] = [];
+        let cursor = firstPage.nextCursor || undefined;
+        while (cursor) {
+          const page = await adminApi.listWallets({ limit: 100, cursor });
+          items.push(...page.items);
+          if (!page.nextCursor || page.nextCursor === cursor) break;
+          cursor = page.nextCursor;
+        }
+        if (refreshId !== walletsRefreshId) return;
+        replaceCollection("wallets", [
+          ...firstPage.items,
+          ...items,
+        ].map(walletRecordFromApi));
+        state.backgroundLoading = false;
+        notifyLiveResourceUpdated("wallets");
+      })().catch((error: unknown) => {
+        if (refreshId !== walletsRefreshId) return;
+        state.backgroundLoading = false;
+        state.error = apiErrorMessage(error, "Wallet");
+      });
+    }
+  } catch (error) {
+    if (refreshId !== walletsRefreshId) return;
+    state.error = apiErrorMessage(error, "Wallet");
+    state.loading = false;
+  }
+}
+
+export async function hydrateLiveWallet(record: LegacyRecord): Promise<void> {
+  const walletId = typeof record.walletId === "string" ? record.walletId : "";
+  if (!record.apiBacked || record.walletDetailLoaded || !walletId) return;
+  record.walletDetailLoaded = true;
+  try {
+    const [detail, history] = await Promise.all([
+      adminApi.getWallet(walletId),
+      adminApi.getWalletStatusHistory(walletId),
+    ]);
+    Object.assign(record, walletRecordFromApiDetail(detail.wallet), {
+      walletStatusHistory: history.history.map(walletHistoryEntryFromApi),
+    });
+  } catch (error) {
+    record.walletDetailError = apiErrorMessage(error, "Wallet detail");
+  }
+}
+
+const disputeCaseStatuses = [
+  "DISPUTE_CASE_PENDING",
+  "DISPUTE_CASE_DISMISSED",
+  "DISPUTE_CASE_RESOLVED",
+] as const;
+
 export async function refreshLiveDisputes(): Promise<void> {
   const state = liveResourceState.disputes;
   state.loading = true;
   state.error = null;
-  if (!mockDisputesFallback) mockDisputesFallback = [...data.disputes];
   try {
-    const page = await adminApi.listDisputes({ limit: 50 });
-    data.disputes = page.items.map(disputeRecordFromApi);
-  } catch {
-    // The Admin API does not expose Dispute Case list/detail routes yet.
-    // Keep the seeded Dispute Case records usable until those routes exist.
-    data.disputes = mockDisputesFallback;
+    const pages = await Promise.all(
+      disputeCaseStatuses.map((status) => adminApi.listDisputes({ status, limit: 50 })),
+    );
+    const records = pages
+      .flatMap((page) => page.items)
+      .toSorted((left, right) => String(right.createdAt ?? "").localeCompare(String(left.createdAt ?? "")) || right.id.localeCompare(left.id));
+    replaceCollection("disputes", records.map(disputeRecordFromApi));
+  } catch (error) {
+    state.error = apiErrorMessage(error, "Dispute Case");
+    replaceCollection("disputes", []);
   } finally {
     state.loading = false;
   }
+}
+
+export async function loadLiveDispute(disputeCaseId: string): Promise<void> {
+  const state = liveResourceState.disputes;
+  state.loading = true;
+  state.error = null;
+  state.backgroundLoading = false;
+  replaceCollection("disputes", []);
+  try {
+    const detail = await adminApi.getDispute(disputeCaseId);
+    const record = disputeRecordFromApi(detail);
+    replaceCollection("disputes", [record]);
+    await hydrateLiveDisputeEvidence(record);
+  } catch (error) {
+    state.error = apiErrorMessage(error, "Dispute Case detail");
+  } finally {
+    state.loading = false;
+  }
+}
+
+export async function hydrateLiveDispute(record: LegacyRecord): Promise<void> {
+  if (!record.apiBacked || record.disputeDetailLoaded) return;
+  record.disputeDetailLoaded = true;
+  try {
+    const detail = await adminApi.getDispute(record.id);
+    Object.assign(record, disputeRecordFromApi(detail));
+  } catch (error) {
+    record.disputeDetailError = apiErrorMessage(error, "Dispute Case detail");
+  }
+  await hydrateLiveDisputeEvidence(record);
+}
+
+export function mergeLiveDisputeSummary(record: LegacyRecord, summary: AdminDisputeCase): void {
+  Object.assign(record, {
+    status: summary.status,
+    disputeCaseStatus: summary.status,
+    version: summary.version,
+    resolvedAmountSatang: summary.resolvedAmountSatang,
+    resolution: summary.status === "DISPUTE_CASE_DISMISSED"
+      ? "Dispute Case dismissed by Admin."
+      : summary.status === "DISPUTE_CASE_RESOLVED" ? "Dispute Case resolved by Admin." : undefined,
+    tone: summary.status === "DISPUTE_CASE_PENDING" ? "warning" : "neutral",
+  });
 }
 
 function historyEntryFromApi(entry: AdminPayoutDetail["history"][number]): LegacyHistoryEntry {
@@ -517,6 +1052,6 @@ export function payoutServerValue(record: LegacyRecord, field: "principalSatang"
   return typeof value === "number" ? satangToBaht(value) : null;
 }
 
-export function liveResourceError(view: "payouts" | "disputes" | "quests"): string | null {
+export function liveResourceError(view: LiveResourceView): string | null {
   return liveResourceState[view].error;
 }

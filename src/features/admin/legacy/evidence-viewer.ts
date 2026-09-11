@@ -1,4 +1,9 @@
-import { adminApi, type EvidenceReference } from "../api/admin-api";
+import {
+  adminApi,
+  type AdminDisputeEvidence,
+  type EvidenceReference,
+} from "../api/admin-api";
+import { newAdminIdempotencyKey } from "./admin-command-port";
 import type { LegacyAdminRuntime, LegacyRecord } from "./runtime";
 
 export function evidenceReferenceFor(
@@ -33,11 +38,40 @@ function contextText(context: unknown): string {
   }
 }
 
+function caseEvidenceForReference(
+  evidence: AdminDisputeEvidence,
+  reference: string,
+): { found: boolean; context: unknown } {
+  const proofSubmissions = evidence.proofSubmissions.flatMap((submission) => {
+    if (submission.id === reference) return [submission];
+    const files = submission.files.filter((file) => file.fileId === reference);
+    return files.length ? [{ ...submission, files }] : [];
+  });
+
+  return {
+    found: proofSubmissions.length > 0,
+    context: {
+      caseId: evidence.caseId,
+      questId: evidence.questId,
+      truncated: evidence.truncated,
+      quest: evidence.quest,
+      assignments: evidence.assignments,
+      proofSubmissions,
+      evidenceReference: reference,
+    },
+  };
+}
+
+type EvidenceViewerOptions = {
+  disputeCaseId?: string;
+};
+
 export async function openEvidenceReference(
   document: Document,
   runtime: LegacyAdminRuntime,
   reference: EvidenceReference,
   label = "Evidence",
+  options: EvidenceViewerOptions = {},
 ): Promise<void> {
   const cleanReference = reference.trim();
   if (!cleanReference) {
@@ -91,6 +125,23 @@ export async function openEvidenceReference(
   });
 
   try {
+    const disputeCaseId = options.disputeCaseId?.trim();
+    if (disputeCaseId) {
+      const evidence = await adminApi.getDisputeEvidence(disputeCaseId, {
+        idempotencyKey: newAdminIdempotencyKey("read-dispute-evidence", disputeCaseId),
+      });
+      const selected = caseEvidenceForReference(evidence, cleanReference);
+      const state = body.querySelector<HTMLElement>(".evidence-viewer-state");
+      if (state) {
+        state.textContent = selected.found
+          ? "Evidence loaded."
+          : "Evidence Reference was not found in this Dispute Case.";
+      }
+      context.textContent = contextText(selected.context);
+      if (!selected.found) runtime.toast("Evidence Reference was not found in this Dispute Case.");
+      return;
+    }
+
     const evidence = await adminApi.getEvidence(cleanReference);
     const state = body.querySelector<HTMLElement>(".evidence-viewer-state");
     if (state) state.textContent = "Evidence loaded.";

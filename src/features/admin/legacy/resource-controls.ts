@@ -40,7 +40,7 @@ import {
   type ResourceView,
 } from "./resource-controls-model";
 import type { LegacyDomElement, LegacyRecord } from "./runtime";
-import { LIVE_RESOURCE_UPDATED_EVENT, liveResourceState } from "./live-review-data";
+import { LIVE_RESOURCE_UPDATED_EVENT, liveResourceState, type LiveResourceView } from "./live-review-data";
 import {
   disputeCaseStatusFor,
   disputeCaseStatusLabel,
@@ -62,7 +62,7 @@ const resourceCollections: ResourceCollections = {
   disputes: data.disputes,
   quests: data.quests,
   users: data.users,
-  wallets: recordsFor("wallets"),
+  wallets: data.wallets,
   payouts: data.payouts,
   reports: recordsFor("reports"),
   "conduct-reports": recordsFor("conduct-reports"),
@@ -137,9 +137,15 @@ setRenderResource(function resourceRender(view: string): void {
   const resourceView = view as ResourceView;
   const rows = matchingRows(resourceView),
     pagination = paginateRows(resourceView, rows),
-    tabs = resourceTabs[resourceView],
+    tabs = resourceView === "users"
+      && resourceCollections.users.length > 0
+      && resourceCollections.users.every((record) => !record.memberStatus)
+      ? ["All"]
+      : resourceTabs[resourceView],
     hasQuery = Boolean(state.query),
-    liveState = resourceView === "payouts" || resourceView === "disputes" || resourceView === "quests" ? liveResourceState[resourceView] : null,
+    liveState = ["payouts", "disputes", "quests", "users", "wallets"].includes(resourceView)
+      ? liveResourceState[resourceView as LiveResourceView]
+      : null,
     resultLabel = liveState?.backgroundLoading
       ? `${resultCount(resourceView, pagination)} · Loading more records…`
       : resultCount(resourceView, pagination),
@@ -169,7 +175,7 @@ function controlledTable(view: ResourceView, rows: LegacyRecord[]): string {
     columns = resourceColumns[view].filter(([key]) => visible.includes(key));
   const activeSort = sortSpec(view, state.orderBy[view]);
   const tableLabel = view === "users" ? "Users" : view === "wallets" ? "Wallets" : view === "reports" ? "Report Cases" : view === "conduct-reports" ? "Conduct Reports" : view[0].toUpperCase() + view.slice(1);
-  return `<div class="table-wrap" tabindex="0" role="region" aria-label="${tableLabel} table"><table class="data"><caption>${tableLabel}</caption><thead><tr>${columns.map(([key, label]: ResourceColumn) => { const active = activeSort?.key === key; return `<th scope="col" aria-sort="${active ? (activeSort.direction === "asc" ? "ascending" : "descending") : "none"}"><span class="table-sort${active ? " is-active" : ""}" data-sort-key="${key}">${label}<span class="sort-indicator" aria-hidden="true">${active ? (activeSort.direction === "asc" ? "↑" : "↓") : "↕"}</span></span></th>`; }).join("")}</tr></thead><tbody>${rows.map((record: LegacyRecord) => {
+  return `<div class="table-wrap" role="region" aria-label="${tableLabel} table"><table class="data"><caption>${tableLabel}</caption><thead><tr>${columns.map(([key, label]: ResourceColumn) => { const active = activeSort?.key === key; return `<th scope="col" aria-sort="${active ? (activeSort.direction === "asc" ? "ascending" : "descending") : "none"}"><span class="table-sort${active ? " is-active" : ""}" data-sort-key="${key}">${label}<span class="sort-indicator" aria-hidden="true">${active ? (activeSort.direction === "asc" ? "↑" : "↓") : "↕"}</span></span></th>`; }).join("")}</tr></thead><tbody>${rows.map((record: LegacyRecord) => {
     const target = `${view}:${resourceCollections[view].indexOf(record)}`;
     return `<tr class="${view === "disputes" && disputeCaseStatusFor(record.disputeCaseStatus ?? record.status) === "DISPUTE_CASE_PENDING" ? "dispute-active-row" : ""}" data-open="${target}">${columns.map(([key]) => tableCell(view, record, key, target)).join("")}</tr>`;
   }).join("")}</tbody></table></div>`;
@@ -187,13 +193,21 @@ function tableCell(view: ResourceView, record: LegacyRecord, key: string, target
     return `<td><button class="row-record-button" data-open="${target}" aria-label="Open ${view.slice(0, -1)} ${escapeActivityText(record.id)}">${escapeActivityText(record.id)}</button></td>`;
   if (key === "title") {
     const title = `<strong>${escapeActivityText(record.title)}</strong>${view === "disputes" ? `<small>${escapeActivityText(record.detail).slice(0, 45)}…</small>` : view === "quests" && record.teamQuest ? `<small>${record.teamSize} selected participants · Team quest</small>` : ""}`;
-    return view === "users" || view === "wallets" ? `<td><a class="user-record-link" href="/users/${encodeURIComponent(record.id)}">${title}</a></td>` : `<td>${title}</td>`;
+    return view === "users" || view === "wallets" ? `<td><a class="user-record-link" href="/users/${encodeURIComponent(String(record.memberId || record.id))}">${title}</a></td>` : `<td>${title}</td>`;
   }
   if (key === "person") return `<td><strong>${escapeActivityText(record.person)}</strong></td>`;
   if (key === "other") return `<td>${escapeActivityText(record.other)}</td>`;
-  if (key === "memberStatus") return `<td>${badge(memberStatusLabel(record.memberStatus), record.tone)}</td>`;
+  if (key === "memberStatus") {
+    return record.memberStatus
+      ? `<td>${badge(memberStatusLabel(record.memberStatus), record.tone)}</td>`
+      : '<td><span class="audit-note">Not provided by the Admin API</span></td>';
+  }
   if (key === "createdAt") return `<td>${escapeActivityText(createdAtLabel(record.createdAt))}</td>`;
-  if (key === "amount") return `<td class="money">฿${fmt(record.amount)}</td>`;
+  if (key === "amount") {
+    return record.amount === null
+      ? '<td class="money"><span class="audit-note">Not provided by the Admin API</span></td>'
+      : `<td class="money">฿${fmt(record.amount)}</td>`;
+  }
   if (key === "requestedAt") return `<td>${escapeActivityText(record.requestedAt || "—")}</td>`;
   if (key === "accountCreatedAt") return `<td>${escapeActivityText(String(record.accountCreatedAt || "—"))}</td>`;
   if (key === "status") {

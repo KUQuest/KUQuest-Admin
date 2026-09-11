@@ -8,7 +8,7 @@ import {
 describe("Admin navigation counts", () => {
   it("uses API queue counters and does not invent Report counters", () => {
     expect(adminNavigationCountsFromOverview({
-      quests: { total: 488, hidden: 0, byStatus: {} },
+      quests: { total: 488, hidden: 0, byState: {} },
       disputes: { total: 4, awaitingResolution: 2 },
       payouts: { pendingAdminApproval: 3, inFlight: 12 },
       members: { frozenWallets: 1, suspendedWallets: 2 },
