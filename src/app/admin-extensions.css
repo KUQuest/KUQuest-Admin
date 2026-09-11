@@ -14,6 +14,138 @@
   color: var(--danger);
   font-size: 12px;
 }
+.activity-log-panel {
+  min-width: 0;
+}
+.activity-log-filters {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--soft);
+}
+.activity-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(130px, 1fr));
+  gap: 12px;
+}
+.activity-filter-grid label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+.activity-filter-grid input,
+.activity-filter-grid select {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+}
+.activity-filter-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.activity-log-status {
+  min-height: 17px;
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.activity-log-table-wrap {
+  overflow-x: auto;
+}
+.activity-log-table {
+  min-width: 980px;
+}
+.activity-log-table th,
+.activity-log-table td {
+  vertical-align: top;
+}
+.activity-log-table time,
+.activity-log-actor,
+.activity-log-target {
+  display: grid;
+  gap: 3px;
+}
+.activity-log-table time {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.activity-log-table time small,
+.activity-log-actor small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 400;
+}
+.activity-log-actor {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 150px;
+}
+.activity-log-actor > span:last-child {
+  display: grid;
+  gap: 2px;
+}
+.activity-log-action,
+.activity-log-target {
+  overflow-wrap: anywhere;
+}
+.activity-log-target {
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.35;
+}
+a.activity-log-target {
+  color: var(--accent);
+}
+.activity-log-detail-button {
+  white-space: nowrap;
+}
+.activity-log-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--danger);
+  border-radius: 8px;
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 12px;
+}
+.activity-log-error p {
+  flex: 1;
+  margin: 0;
+}
+.activity-log-pagination {
+  display: flex;
+  justify-content: center;
+  padding-top: 16px;
+}
+@media (max-width: 1100px) {
+  .activity-filter-grid {
+    grid-template-columns: repeat(3, minmax(150px, 1fr));
+  }
+}
+@media (max-width: 700px) {
+  .activity-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .activity-filter-actions {
+    justify-content: flex-start;
+  }
+}
 .dialog-body textarea[aria-invalid="true"] {
   border-color: var(--danger);
   outline: 3px solid var(--danger-soft);

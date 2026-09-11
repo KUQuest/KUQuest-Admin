@@ -106,6 +106,15 @@ test.describe("admin click flows", () => {
     await expect(disputes).not.toHaveAttribute("aria-current", "page");
   });
 
+  test("admin does not see local data in Activity Log when the Admin API is disabled", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/?view=activity");
+
+    await expect(page.getByRole("heading", { level: 1, name: "Activity log" })).toBeVisible();
+    await expect(page.locator(".activity-log-error")).toContainText("The Admin API is required to display this read-only log.");
+    await expect(page.locator("#activity-records table")).toHaveCount(0);
+  });
+
   test("admin loads the API Overview from the Quest board", async ({ page }) => {
     await signIn(page);
 

@@ -353,6 +353,10 @@ _Avoid_: Reporter Entry, Admin Action
 An immutable audit record of an Admin's Work Chat evidence access or moderation operation. It records the action and result for the affected domain records without storing Message text, file bytes, or signed URLs.
 _Avoid_: Reporter Entry, Moderation Decision
 
+**Admin Activity Log**:
+An Admin-only read view of authorized `Admin Action` and relevant `Audit Record` entries. It explains which Admin or system actor performed an operation, what record it affected, when it occurred, and the recorded result or reason where applicable; it is not a separate source of truth.
+_Avoid_: Member activity feed, System Message, Push Notification
+
 **Admin Review Item**:
 A system-created record for sending a confirmed `PROOF_NOT_APPROVED` decision to an Admin for review. It links the Quest, Assignment, Proof Submission, decision reason, and evidence references; it does not reopen the Quest or create Rework. It is one way an Admin learns a Dispute Case is warranted, but an Admin may open one without it; see `docs/rulebook/admin/admin-rulebook.md`.
 _Avoid_: Report Case, Admin override

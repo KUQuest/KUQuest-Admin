@@ -49,7 +49,15 @@ import {
   type MockNavigationCounts,
 } from "../admin-navigation";
 import { isQuestModerationAction, setupQuestReasonCode } from "./quest-admin-reason";
-import { dashboardActivityFromApi, type DashboardActivity } from "../dashboard/dashboard-model";
+import type { DashboardActivity } from "../dashboard/dashboard-model";
+import {
+  activityLogEntryFromApi,
+  activityLogMatchesSearch,
+  activityTargetHref,
+  formatActivityLogRelativeTime,
+  formatActivityLogTimestamp,
+  type ActivityLogEntry,
+} from "../activity-log/activity-log-model";
 import {
   QUEST_STATES,
   disputeCaseStatusFor,
@@ -501,41 +509,205 @@ export function renderPolicies() {
 }
 let activityRequestId = 0;
 
+type ActivityLogFilters = {
+  action: string;
+  resourceType: string;
+  resourceId: string;
+  adminId: string;
+  sort: "newest" | "oldest";
+};
+
+function emptyActivityLogFilters(): ActivityLogFilters {
+  return { action: "", resourceType: "", resourceId: "", adminId: "", sort: "newest" };
+}
+
+let activityLogEntries: ActivityLogEntry[] = [];
+let activityLogNextCursor: string | null = null;
+let activityLogLoading = false;
+let activityLogError = "";
+let activityLogSearch = "";
+let activityLogFilters = emptyActivityLogFilters();
+
+function activityLogDisplayValue(value: string | number | null | undefined): string {
+  return value === null || value === undefined || value === "" ? "Not provided" : String(value);
+}
+
+function activityLogMainValue(value: string | number | null | undefined): string {
+  return value === null || value === undefined || value === "" ? "" : String(value);
+}
+
+function activityLogTimestampAttribute(value: string | null): string {
+  return value ? ` datetime="${escapeActivityText(value)}"` : "";
+}
+
+function activityLogEntriesForDisplay(): ActivityLogEntry[] {
+  return activityLogEntries.filter((entry) => activityLogMatchesSearch(entry, activityLogSearch));
+}
+
+function activityLogTargetLabel(entry: ActivityLogEntry): string {
+  const resourceType = activityLogMainValue(entry.resourceType);
+  const resourceId = activityLogMainValue(entry.resourceId);
+  return !resourceType && !resourceId
+    ? ""
+    : [resourceType, resourceId].filter(Boolean).join(" · ");
+}
+
+function activityLogTable(): string {
+  const entries = activityLogEntriesForDisplay();
+  if (activityLogError) return "";
+  if (activityLogLoading && !entries.length) {
+    return '<div class="empty activity-log-empty"><h3>Loading activity</h3><p>Reading the Admin API.</p></div>';
+  }
+  if (!entries.length) {
+    return '<div class="empty activity-log-empty"><h3>No activity recorded</h3><p>Administrative activity will appear here as actions are taken.</p></div>';
+  }
+  return `<div class="table-wrap activity-log-table-wrap"><table class="data activity-log-table"><caption>Activity Log records</caption><thead><tr><th scope="col">Timestamp</th><th scope="col">Actor</th><th scope="col">Activity</th><th scope="col">Target</th><th scope="col">Reason</th><th scope="col">Details</th></tr></thead><tbody>${entries.map((entry) => {
+    const targetHref = activityTargetHref(entry.resourceType, entry.resourceId);
+    const target = activityLogTargetLabel(entry);
+    const targetMarkup = targetHref
+      ? `<a class="activity-log-target" href="${escapeActivityText(targetHref)}">${escapeActivityText(target)}</a>`
+      : `<span class="activity-log-target">${escapeActivityText(target)}</span>`;
+    const timestamp = activityLogMainValue(entry.createdAt);
+    const timestampMarkup = timestamp ? `<time${activityLogTimestampAttribute(entry.createdAt)}>${escapeActivityText(formatActivityLogTimestamp(entry.createdAt))}<small>${escapeActivityText(formatActivityLogRelativeTime(entry.createdAt))}</small></time>` : "";
+    const adminIdMarkup = entry.adminId ? `<small>${escapeActivityText(entry.adminId)}</small>` : "";
+    return `<tr><td>${timestampMarkup}</td><td><span class="activity-log-actor"><span class="avatar">${escapeActivityText(entry.adminInitials)}</span><span><strong>${escapeActivityText(entry.adminName)}</strong>${adminIdMarkup}</span></span></td><td><strong class="activity-log-action">${escapeActivityText(activityLogMainValue(entry.action))}</strong></td><td>${targetMarkup}</td><td>${escapeActivityText(activityLogMainValue(entry.reasonCode))}</td><td><button class="btn activity-log-detail-button" type="button" data-activity-open="${escapeActivityText(entry.id)}" aria-label="View activity details">View</button></td></tr>`;
+  }).join("")}</tbody></table></div>`;
+}
+
+function activityLogStatus(): string {
+  if (activityLogLoading) return '<p class="activity-log-status" role="status" aria-live="polite">Loading activity</p>';
+  if (activityLogError) return `<div class="activity-log-error" role="alert"><strong>Activity log is not available</strong><p>${escapeActivityText(activityLogError)}</p>${isAdminApiEnabled() ? '<button class="btn" type="button" id="activity-retry">Try again</button>' : ""}</div>`;
+  return `<p class="activity-log-status" role="status" aria-live="polite">${activityLogEntriesForDisplay().length} loaded entries</p>`;
+}
+
+function activityLogPagination(): string {
+  if (!activityLogNextCursor) return "";
+  return `<div class="activity-log-pagination"><button class="btn" type="button" id="activity-load-more"${activityLogLoading ? " disabled" : ""}>Load more</button></div>`;
+}
+
+function renderActivityLogRecords(): void {
+  const records = main.querySelector<HTMLElement>("#activity-records");
+  const status = main.querySelector<HTMLElement>("#activity-status");
+  const pagination = main.querySelector<HTMLElement>("#activity-pagination");
+  const count = main.querySelector<HTMLElement>("#activity-count");
+  if (records) records.innerHTML = activityLogTable();
+  if (status) status.innerHTML = activityLogStatus();
+  if (pagination) pagination.innerHTML = activityLogPagination();
+  if (count) count.textContent = `${activityLogEntriesForDisplay().length} loaded entries`;
+  main.querySelectorAll<HTMLButtonElement>("[data-activity-open]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const entry = activityLogEntries.find((candidate) => candidate.id === button.dataset.activityOpen);
+      if (entry) openActivityLogEntry(entry);
+    });
+  });
+  main.querySelector<HTMLButtonElement>("#activity-load-more")?.addEventListener("click", () => {
+    void loadActivityLogPage(true);
+  });
+  main.querySelector<HTMLButtonElement>("#activity-retry")?.addEventListener("click", () => {
+    void loadActivityLogPage(Boolean(activityLogEntries.length));
+  });
+}
+
+function activityLogDetailField(label: string, value: string | number | null | undefined): string {
+  return `<div class="fact"><span>${escapeActivityText(label)}</span><strong>${escapeActivityText(activityLogDisplayValue(value))}</strong></div>`;
+}
+
+function openActivityLogEntry(entry: ActivityLogEntry): void {
+  showDrawerLayer();
+  const targetHref = activityTargetHref(entry.resourceType, entry.resourceId);
+  const target = activityLogDisplayValue(activityLogTargetLabel(entry));
+  const targetMarkup = targetHref
+    ? `<a href="${escapeActivityText(targetHref)}">${escapeActivityText(target)}</a>`
+    : escapeActivityText(target);
+  drawer.innerHTML = `<div class="drawer-top"><div><strong>Activity log entry</strong><small>${escapeActivityText(activityLogDisplayValue(entry.action))}</small></div><button class="icon" id="close" aria-label="Close">×</button></div><div class="drawer-body activity-log-detail"><div class="drawer-title"><span class="att-icon neutral">${ico("history")}</span><div><h2>${escapeActivityText(activityLogDisplayValue(entry.action))}</h2><p>${targetMarkup}</p></div></div><div class="facts">${activityLogDetailField("Timestamp", formatActivityLogTimestamp(entry.createdAt))}${activityLogDetailField("Actor", entry.adminName)}${activityLogDetailField("Admin ID", entry.adminId)}${activityLogDetailField("Admin first name", entry.admin.firstName)}${activityLogDetailField("Admin last name", entry.admin.lastName)}${activityLogDetailField("Action", entry.action)}${activityLogDetailField("Target", target)}${activityLogDetailField("Reason code", entry.reasonCode)}</div><section class="section"><h3>Technical details</h3><div class="facts">${activityLogDetailField("Activity ID", entry.id)}${activityLogDetailField("Resource type", entry.resourceType)}${activityLogDetailField("Resource ID", entry.resourceId)}${activityLogDetailField("Reason catalog version", entry.reasonCatalogVersion)}${activityLogDetailField("Result version", entry.resultVersion)}${activityLogDetailField("Result timestamp", entry.resultTimestamp)}${activityLogDetailField("Created timestamp", entry.createdAt)}</div></section></div><div class="drawer-actions"><button class="btn" type="button" id="close-activity-log">Close</button></div>`;
+  drawer.querySelector<LegacyDomElement>("#close")?.addEventListener("click", closeDrawer);
+  drawer.querySelector<LegacyDomElement>("#close-activity-log")?.addEventListener("click", closeDrawer);
+  scrim.onclick = closeDrawer;
+}
+
+function activityLogQuery(): Parameters<typeof adminApi.listActivityLogs>[0] {
+  const query: Parameters<typeof adminApi.listActivityLogs>[0] = {
+    limit: 50,
+    sort: activityLogFilters.sort,
+  };
+  if (activityLogFilters.action) query.action = activityLogFilters.action;
+  if (activityLogFilters.resourceType) query.resourceType = activityLogFilters.resourceType;
+  if (activityLogFilters.resourceId) query.resourceId = activityLogFilters.resourceId;
+  if (activityLogFilters.adminId) query.adminId = activityLogFilters.adminId;
+  if (activityLogNextCursor) query.cursor = activityLogNextCursor;
+  return query;
+}
+
+async function loadActivityLogPage(append: boolean): Promise<void> {
+  const requestId = ++activityRequestId;
+  activityLogLoading = true;
+  activityLogError = "";
+  renderActivityLogRecords();
+  try {
+    const page = await adminApi.listActivityLogs(activityLogQuery());
+    if (requestId !== activityRequestId || state.view !== "activity") return;
+    const entries = page.items.map(activityLogEntryFromApi);
+    activityLogEntries = append ? [...activityLogEntries, ...entries] : entries;
+    activityLogNextCursor = page.nextCursor;
+    activityLogLoading = false;
+    renderActivityLogRecords();
+  } catch (error: unknown) {
+    if (requestId !== activityRequestId || state.view !== "activity") return;
+    activityLogLoading = false;
+    activityLogError = error instanceof Error ? error.message : "The Admin API is unavailable.";
+    renderActivityLogRecords();
+  }
+}
+
 export function renderActivity() {
   const useApi = isAdminApiEnabled();
-  main.innerHTML = `${pageHead(...heads.activity, '<button class="btn">Export CSV</button>')}<section class="panel resource"><div class="toolbar"><div class="inline-search"><input id="activity-search" type="search" placeholder="Search activity…" aria-label="Search activity"></div></div><div id="activity-records">${useApi ? '<div class="empty"><h3>Loading activity</h3><p>Reading the Admin API.</p></div>' : activityList().join("")}</div></section>`;
+  activityRequestId += 1;
+  activityLogEntries = [];
+  activityLogNextCursor = null;
+  activityLogLoading = useApi;
+  activityLogError = useApi ? "" : "The Admin API is required to display this read-only log.";
+  activityLogSearch = "";
+  activityLogFilters = emptyActivityLogFilters();
+  main.innerHTML = `${pageHead(...heads.activity, '<button class="btn">Export CSV</button>')}<section class="panel resource activity-log-panel"><form class="activity-log-filters" id="activity-log-filters"><div class="activity-filter-grid"><label for="activity-action-filter">Action filter<input id="activity-action-filter" type="search"></label><label for="activity-resource-type-filter">Resource type filter<input id="activity-resource-type-filter" type="search"></label><label for="activity-resource-id-filter">Resource ID filter<input id="activity-resource-id-filter" type="search"></label><label for="activity-admin-id-filter">Admin ID filter<input id="activity-admin-id-filter" type="search"></label><label for="activity-sort">Sort activity<select id="activity-sort"><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select></label></div><div class="activity-filter-actions"><button class="btn primary" type="submit">Apply filters</button><button class="btn" type="button" id="activity-clear-filters">Clear filters</button></div></form><div class="toolbar"><div class="inline-search"><label class="visually-hidden" for="activity-search">Search loaded activity</label><input id="activity-search" type="search" placeholder="Search loaded activity"></div><span class="count" id="activity-count"></span></div><div id="activity-status"></div><div id="activity-records"></div><div id="activity-pagination"></div></section>`;
   bind();
+  const filterForm = main.querySelector<HTMLFormElement>("#activity-log-filters");
   const activitySearch = main.querySelector<HTMLInputElement>("#activity-search");
-  const records = main.querySelector<HTMLElement>("#activity-records");
-  if (!activitySearch || !records) return;
-
-  if (!useApi) {
-    activitySearch.addEventListener("input", () => {
-      records.innerHTML = activityListFor(readActivityEvents().map((event) => ({
-        actor: event.actor || "NP",
-        title: event.title,
-        detail: event.detail,
-        timestamp: event.timestamp,
-      })), activitySearch.value).join("");
-    });
-    return;
-  }
-
-  const requestId = ++activityRequestId;
-  let apiEvents: DashboardActivity[] = [];
-  activitySearch.addEventListener("input", () => {
-    records.innerHTML = activityListFor(apiEvents, activitySearch.value).join("");
+  const count = main.querySelector<HTMLElement>("#activity-count");
+  const syncSearch = (): void => {
+    activityLogSearch = activitySearch?.value || "";
+    if (count) count.textContent = `${activityLogEntriesForDisplay().length} loaded entries`;
+    renderActivityLogRecords();
+  };
+  activitySearch?.addEventListener("input", syncSearch);
+  filterForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    activityLogFilters = {
+      action: main.querySelector<HTMLInputElement>("#activity-action-filter")?.value.trim() || "",
+      resourceType: main.querySelector<HTMLInputElement>("#activity-resource-type-filter")?.value.trim() || "",
+      resourceId: main.querySelector<HTMLInputElement>("#activity-resource-id-filter")?.value.trim() || "",
+      adminId: main.querySelector<HTMLInputElement>("#activity-admin-id-filter")?.value.trim() || "",
+      sort: main.querySelector<HTMLSelectElement>("#activity-sort")?.value === "oldest" ? "oldest" : "newest",
+    };
+    activityLogNextCursor = null;
+    activityLogEntries = [];
+    activityLogSearch = activitySearch?.value || "";
+    if (useApi) void loadActivityLogPage(false);
+    else {
+      activityLogLoading = false;
+      renderActivityLogRecords();
+    }
   });
-  void adminApi.listActivityLogs({ limit: 50, sort: "newest" }).then((page) => {
-    if (requestId !== activityRequestId || state.view !== "activity") return undefined;
-    apiEvents = page.items.map(dashboardActivityFromApi);
-    records.innerHTML = activityListFor(apiEvents, activitySearch.value).join("");
-    return undefined;
-  }).catch((error: unknown) => {
-    if (requestId !== activityRequestId || state.view !== "activity") return undefined;
-    records.innerHTML = `<div class="empty"><h3>Activity log is not available</h3><p>${escapeActivityText(error instanceof Error ? error.message : "The Admin API is unavailable.")}</p></div>`;
-    return undefined;
+  main.querySelector<HTMLButtonElement>("#activity-clear-filters")?.addEventListener("click", () => {
+    activityLogFilters = emptyActivityLogFilters();
+    filterForm?.reset();
+    activityLogNextCursor = null;
+    activityLogEntries = [];
+    if (useApi) void loadActivityLogPage(false);
+    else renderActivityLogRecords();
   });
+  activityLogEntries = [];
+  renderActivityLogRecords();
+  if (useApi) void loadActivityLogPage(false);
 }
 export function render() {
   if (state.view === "home") renderHome();
