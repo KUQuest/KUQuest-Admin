@@ -162,7 +162,7 @@ export type AdminQuestMember = {
 };
 
 export type AdminQuest = {
-  id: string;
+  displayId: string;
   apiVersion: "v1" | "v2";
   version: number;
   title: string;
@@ -306,6 +306,7 @@ export type AdminQuestFinance = {
 
 export type AdminDisputeCase = {
   id: string;
+  displayId: string;
   questId: string;
   status: DisputeCaseStatus;
   workerId?: string;

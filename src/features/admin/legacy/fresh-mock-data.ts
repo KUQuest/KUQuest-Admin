@@ -470,6 +470,7 @@ data.disputes = disputableQuests.map((quest: LegacyRecord, index: number) => {
   const disputeId = `DSP-${String(5201 + index).padStart(4, "0")}`;
   const record = {
     id: disputeId,
+    displayId: disputeId,
     questId: quest.id,
     title: quest.title,
     person: hirer.title,

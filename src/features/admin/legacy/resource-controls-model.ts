@@ -36,7 +36,7 @@ export type ResourceState = Pick<
 
 export const resourceColumns: Record<ResourceView, ResourceColumn[]> = {
   disputes: [
-    ["id", "Case"],
+    ["displayId", "Case"],
     ["title", "Quest"],
     ["amount", "Amount"],
     ["status", "Status"],

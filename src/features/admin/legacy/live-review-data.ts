@@ -486,7 +486,7 @@ function questRecordFromApi(quest: AdminQuest, detail?: AdminQuestDetail): Legac
     .filter((label): label is string => Boolean(label)) ?? [];
 
   return {
-    id: quest.id,
+    id: quest.displayId,
     title: quest.title,
     person: hirer,
     other: detail?.tagId ? `Tag ${detail.tagId}` : "Tag not provided by the Admin API",
@@ -756,6 +756,7 @@ function disputeRecordFromApi(dispute: AdminDisputeCase | AdminDisputeCaseDetail
   const questId = detail?.quest.id || dispute.questId;
   return {
     id: dispute.id,
+    displayId: dispute.displayId,
     title: detail?.quest.title || `Quest ${questId}`,
     person: detail?.quest.hirerId ? `Hirer ${detail.quest.hirerId}` : "Hirer not provided by API",
     other: filerUserId ? `Filer ${filerUserId}` : "Filer not provided by API",

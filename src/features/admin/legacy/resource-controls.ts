@@ -313,8 +313,8 @@ function disputeCaseIdForQuest(record: LegacyRecord): string | undefined {
 }
 
 function tableCell(view: ResourceView, record: LegacyRecord, key: string, target: string): string {
-  if (key === "id")
-    return `<td><button class="row-record-button" data-open="${target}" aria-label="Open ${view.slice(0, -1)} ${escapeActivityText(record.id)}">${escapeActivityText(record.id)}</button></td>`;
+  if (key === "displayId")
+    return `<td><button class="row-record-button" data-open="${target}" aria-label="Open ${view.slice(0, -1)} ${escapeActivityText(record.displayId)}">${escapeActivityText(record.displayId)}</button></td>`;
   if (key === "title") {
     const title = `<strong>${escapeActivityText(record.title)}</strong>${view === "disputes" ? `<small>${escapeActivityText(record.detail).slice(0, 45)}…</small>` : view === "quests" && record.teamQuest ? `<small>${record.teamSize} selected participants · Team quest</small>` : ""}`;
     return view === "users" || view === "wallets" ? `<td><a class="user-record-link" href="/users/${encodeURIComponent(String(record.memberId || record.id))}">${title}</a></td>` : `<td>${title}</td>`;
