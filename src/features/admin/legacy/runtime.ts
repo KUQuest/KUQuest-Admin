@@ -1,3 +1,5 @@
+import type { WalletStatementTransaction } from "./wallet-model";
+
 export type LegacyTone = "warning" | "danger" | "success" | "info" | "neutral" | "assigned" | "cancelled" | string;
 
 // The legacy shell reuses a small set of selectors for different controls. This
@@ -67,7 +69,8 @@ export type LegacyRecordValue =
   | LegacyHistoryEntry[]
   | LegacyPenalty
   | LegacyDisputeMockData
-  | LegacyWalletVerification;
+  | LegacyWalletVerification
+  | WalletStatementTransaction[];
 
 export type LegacyDisputeCase = {
   [key: string]: string | string[] | Array<[string, string, string]>;
@@ -82,6 +85,13 @@ export type LegacyRecord = {
   tone: LegacyTone;
   amount: number | null;
   age: string;
+  memberId?: string;
+  walletId?: string;
+  walletTotalBalanceSatang?: number;
+  walletSpendingBalanceSatang?: number;
+  walletEarningsBalanceSatang?: number;
+  walletFundingReservedSatang?: number;
+  walletReservedForPayoutsSatang?: number;
   version?: number;
   apiBacked?: boolean;
   studentId?: string;
@@ -146,6 +156,14 @@ export type LegacyRecord = {
   walletVerification?: LegacyWalletVerification;
   walletVerificationLoaded?: boolean;
   walletVerificationError?: string;
+  walletLatestTransactionAt?: string | null;
+  walletStatement?: WalletStatementTransaction[];
+  walletStatementBalanceTransactions?: WalletStatementTransaction[];
+  walletStatementBalanceNextCursor?: string | null;
+  walletStatementNextCursor?: string | null;
+  walletStatementLoaded?: boolean;
+  walletStatementLoading?: boolean;
+  walletStatementError?: string;
   payoutHistory?: LegacyHistoryEntry[];
   payoutHistoryLoaded?: boolean;
   payoutHistoryError?: string;

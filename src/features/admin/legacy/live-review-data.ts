@@ -18,11 +18,14 @@ import {
   type AdminWalletStatusResult,
   type AdminWalletVerification,
   type AdminWalletStatusHistoryEntry,
+  type AdminLedgerTransaction,
+  type AdminLedgerTransactionsQuery,
 } from "../api/admin-api";
 import { ApiError } from "../../../lib/api/client";
 import { isPayoutStatus, walletStatusLabel } from "../domain/rulebook";
 import type { PayoutStatus, QuestState } from "../domain/rulebook";
 import type { LegacyDisputeMockData, LegacyHistoryEntry, LegacyRecord, LegacyWalletBalanceSnapshot } from "./runtime";
+import type { WalletStatementTransaction } from "./wallet-model";
 import { data } from "./runtime-data";
 import { newAdminIdempotencyKey } from "./admin-command-port";
 
@@ -247,6 +250,36 @@ export function walletRecordFromApi(wallet: AdminWallet): LegacyRecord {
     walletEarningsBalanceSatang: wallet.balances.earningsBalanceSatang,
     walletFundingReservedSatang: wallet.balances.fundingReservedSatang,
     walletReservedForPayoutsSatang: wallet.balances.reservedForPayoutsSatang,
+    walletLatestTransactionAt: wallet.latestTransactionAt ?? null,
+  };
+}
+
+function walletStatementTransactionFromApi(
+  transaction: AdminLedgerTransaction,
+): WalletStatementTransaction {
+  return {
+    id: transaction.id,
+    businessReference: transaction.businessReference,
+    eventType: transaction.eventType,
+    description: transaction.description,
+    createdAt: transaction.createdAt,
+    sealedAt: transaction.sealedAt,
+    postings: transaction.postings.map((posting) => ({
+      accountType: posting.accountType,
+      walletId: posting.walletId,
+      amountSatang: posting.amountSatang,
+    })),
+  };
+}
+
+export async function loadLiveWalletStatement(
+  walletId: string,
+  query: Omit<AdminLedgerTransactionsQuery, "walletId"> = {},
+): Promise<{ items: WalletStatementTransaction[]; nextCursor: string | null }> {
+  const page = await adminApi.listLedgerTransactions({ ...query, walletId });
+  return {
+    items: page.items.map(walletStatementTransactionFromApi),
+    nextCursor: page.nextCursor,
   };
 }
 

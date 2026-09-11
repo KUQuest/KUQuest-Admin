@@ -408,6 +408,31 @@ describe("Admin API boundary", () => {
     expect(new URL(request?.url || "https://api.example.test").search).toBe("?search=youtube%40ku.th&limit=100");
   });
 
+  it("loads Wallet Statement rows through the Finance Ledger endpoint", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    let request: Request | undefined;
+    mockFetch(async (input, init) => {
+      request = new Request(input, init);
+      return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
+    });
+
+    await adminApi.listLedgerTransactions({
+      walletId: "wallet-1",
+      eventType: "TOP_UP",
+      from: "2026-09-01",
+      to: "2026-09-12",
+      limit: 25,
+    });
+
+    const url = new URL(request?.url || "https://api.example.test");
+    expect(url.pathname).toBe("/api/v1/admin/finance/ledger/transactions");
+    expect(url.searchParams.get("walletId")).toBe("wallet-1");
+    expect(url.searchParams.get("eventType")).toBe("TOP_UP");
+    expect(url.searchParams.get("from")).toBe("2026-09-01");
+    expect(url.searchParams.get("to")).toBe("2026-09-12");
+    expect(url.searchParams.get("limit")).toBe("25");
+  });
+
   it("loads Dispute Evidence through the case-scoped route", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     let request: Request | undefined;

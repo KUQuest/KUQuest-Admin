@@ -359,6 +359,7 @@ export type AdminWallet = {
   };
   createdAt: string;
   updatedAt: string;
+  latestTransactionAt?: string | null;
 };
 
 export type AdminWalletDetail = AdminWallet & {
@@ -582,6 +583,55 @@ export type AdminWalletListQuery = {
   status?: WalletStatus;
   userId?: string;
   search?: string;
+  limit?: number;
+  cursor?: string;
+};
+
+export const ADMIN_LEDGER_EVENT_TYPES = [
+  "TOP_UP",
+  "PAYOUT",
+  "FUNDING_RESERVE",
+  "FUNDING_RELEASE",
+  "FUNDING_SETTLEMENT",
+  "ADJUSTMENT",
+  "EARNINGS_CONVERSION",
+] as const;
+export type AdminLedgerEventType = (typeof ADMIN_LEDGER_EVENT_TYPES)[number];
+
+export type AdminLedgerPosting = {
+  id: string;
+  accountId: string;
+  accountType: string;
+  walletId: string | null;
+  amountSatang: number;
+  member: {
+    userId: string;
+    firstName: string;
+    lastName: string;
+    studentId: string | null;
+  } | null;
+};
+
+export type AdminLedgerTransaction = {
+  id: string;
+  businessReference: string;
+  eventType: AdminLedgerEventType;
+  description: string | null;
+  createdByUserId: string | null;
+  correctionOfTransactionId: string | null;
+  createdAt: string;
+  sealedAt: string | null;
+  isBalanced: boolean;
+  postings: AdminLedgerPosting[];
+};
+
+export type AdminLedgerTransactionsQuery = {
+  eventType?: AdminLedgerEventType;
+  userId?: string;
+  walletId?: string;
+  businessReference?: string;
+  from?: string;
+  to?: string;
   limit?: number;
   cursor?: string;
 };
@@ -972,6 +1022,15 @@ export const adminApi = {
   listWallets(query: AdminWalletListQuery = {}): Promise<AdminPage<AdminWallet>> {
     return apiRequest<AdminPage<AdminWallet>>(
       `/api/v1/admin/wallets${queryString(query)}`,
+      { cache: "no-store" },
+    );
+  },
+
+  listLedgerTransactions(
+    query: AdminLedgerTransactionsQuery = {},
+  ): Promise<AdminPage<AdminLedgerTransaction>> {
+    return apiRequest<AdminPage<AdminLedgerTransaction>>(
+      `/api/v1/admin/finance/ledger/transactions${queryString(query)}`,
       { cache: "no-store" },
     );
   },

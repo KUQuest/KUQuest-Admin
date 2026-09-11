@@ -46,8 +46,9 @@ import {
   refreshLivePayouts,
   refreshLiveWallets,
   verifyLiveWallet,
+  loadLiveWalletStatement,
 } from "./live-review-data";
-import { adminApi, type AdminQuestReasonCode } from "../api/admin-api";
+import { ADMIN_LEDGER_EVENT_TYPES, adminApi, type AdminLedgerEventType, type AdminQuestReasonCode } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import {
   adminNavigationCountsFromMockData,
@@ -82,6 +83,16 @@ import {
   walletStatusFor,
   walletStatusLabel,
 } from "../domain/rulebook";
+import {
+  currentWalletBalance,
+  filterWalletStatementTransactions,
+  latestWalletTransactionDate,
+  walletStatementRows,
+  type WalletBalances,
+  type WalletStatementFilters,
+  type WalletStatementRow,
+  type WalletStatementTransaction,
+} from "./wallet-model";
 
 export {
   addUserHistory,
@@ -1030,6 +1041,257 @@ function walletVerificationSection(wallet: LegacyRecord): string {
   return `<section class="section"><h3>Ledger verification</h3><p>${verification.matches ? "Wallet projection matches the Ledger." : "Wallet projection does not match the Ledger."}</p><p>${verification.activityCountMatches ? "Wallet activity count matches." : "Wallet activity count does not match."}</p><div class="user-context-list">${snapshot("Projected balance", verification.projected)}${snapshot("Ledger balance", verification.ledger)}</div></section>`;
 }
 
+type WalletStatementViewState = {
+  transactions: WalletStatementTransaction[];
+  balanceTransactions: WalletStatementTransaction[];
+  balanceNextCursor: string | null;
+  nextCursor: string | null;
+  visibleCount: number;
+  loading: boolean;
+  error: string;
+  filters: WalletStatementFilters;
+  requestId: number;
+};
+
+function walletStatementMoney(value: number): string {
+  const sign = value < 0 ? "−" : value > 0 ? "+" : "";
+  return `${sign}฿${new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Math.abs(value) / 100)}`;
+}
+
+function walletStatementBalance(value: number): string {
+  return `฿${new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value / 100)}`;
+}
+
+function walletBalancesFromRecord(wallet: LegacyRecord): WalletBalances {
+  const numberOrZero = (value: unknown): number => typeof value === "number" ? value : 0;
+  return {
+    spendingBalanceSatang: numberOrZero(wallet.walletSpendingBalanceSatang),
+    earningsBalanceSatang: numberOrZero(wallet.walletEarningsBalanceSatang),
+    fundingReservedSatang: numberOrZero(wallet.walletFundingReservedSatang),
+    reservedForPayoutsSatang: numberOrZero(wallet.walletReservedForPayoutsSatang),
+  };
+}
+
+function walletStatementDateTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Date not recorded";
+  return `${date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "Asia/Bangkok",
+  })} · ${date.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Bangkok",
+  })} ICT`;
+}
+
+function walletStatementApiDate(value: string, endOfDay: boolean): string | undefined {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
+  return `${value}T${endOfDay ? "23:59:59.999" : "00:00:00.000"}+07:00`;
+}
+
+function walletCompartmentLabel(accountType: string): string {
+  const labels: Record<string, string> = {
+    SPENDING: "Spending Balance",
+    EARNINGS: "Earnings Balance",
+    FUNDING_RESERVED: "Funding Reserved",
+    RESERVED_FOR_PAYOUTS: "Reserved For Payouts",
+  };
+  return labels[accountType] || accountType;
+}
+
+function walletStatementRowsFor(
+  wallet: LegacyRecord,
+  statementState: WalletStatementViewState,
+): WalletStatementRow[] {
+  const visibleTransactions = filterWalletStatementTransactions(
+    statementState.transactions,
+    statementState.filters,
+  );
+  const visibleIds = new Set(visibleTransactions.map((transaction) => transaction.id));
+  return walletStatementRows(
+    statementState.balanceTransactions,
+    typeof wallet.walletId === "string" ? wallet.walletId : wallet.id,
+    walletBalancesFromRecord(wallet),
+  ).filter((row) => visibleIds.has(row.transaction.id)).slice(0, statementState.visibleCount);
+}
+
+function walletStatementTable(rows: WalletStatementRow[]): string {
+  if (!rows.length) {
+    return '<div class="empty"><h4>No Ledger Transactions</h4><p>No sealed Ledger Transactions match these filters.</p></div>';
+  }
+  return `<div class="table-wrap" role="region" aria-label="Wallet Statement table"><table class="data wallet-statement-table"><caption>Wallet Statement</caption><thead><tr><th scope="col">Date</th><th scope="col">Event type</th><th scope="col">Signed amount</th><th scope="col">Compartment movement</th><th scope="col">Resulting Wallet balance</th></tr></thead><tbody>${rows.map((row) => {
+    const dateLabel = walletStatementDateTime(row.transaction.createdAt);
+    const movement = row.movement.map((item) => `<span>${escapeActivityText(walletCompartmentLabel(item.accountType))}: ${escapeActivityText(walletStatementMoney(item.amountSatang))}</span>`).join("");
+    return `<tr><td><time datetime="${escapeActivityText(row.transaction.createdAt)}">${escapeActivityText(dateLabel)}</time>${row.transaction.description ? `<small>${escapeActivityText(row.transaction.description)}</small>` : ""}</td><td><strong>${escapeActivityText(row.transaction.eventType)}</strong>${row.transaction.businessReference ? `<small>${escapeActivityText(row.transaction.businessReference)}</small>` : ""}</td><td class="money">${escapeActivityText(walletStatementMoney(row.signedAmountSatang))}</td><td class="wallet-statement-movement">${movement}</td><td class="money">${escapeActivityText(walletStatementBalance(row.resultingWalletBalanceSatang))}</td></tr>`;
+  }).join("")}</tbody></table></div>`;
+}
+
+function walletStatementHasBalanceCoverage(
+  transactions: readonly WalletStatementTransaction[],
+  oldestCreatedAt: string,
+): boolean {
+  const cutoff = Date.parse(oldestCreatedAt);
+  return !Number.isFinite(cutoff) || transactions.some((transaction) => {
+    const timestamp = Date.parse(transaction.createdAt);
+    return Number.isFinite(timestamp) && timestamp <= cutoff;
+  });
+}
+
+async function loadWalletStatementBalanceCoverage(
+  walletId: string,
+  statementState: WalletStatementViewState,
+  oldestCreatedAt: string | undefined,
+  requestId: number,
+): Promise<void> {
+  if (!oldestCreatedAt || walletStatementHasBalanceCoverage(statementState.balanceTransactions, oldestCreatedAt)) return;
+  while (statementState.balanceNextCursor && requestId === statementState.requestId) {
+    const page = await loadLiveWalletStatement(walletId, {
+      limit: 25,
+      cursor: statementState.balanceNextCursor,
+    });
+    if (requestId !== statementState.requestId) return;
+    const unique = new Map([...statementState.balanceTransactions, ...page.items].map((transaction) => [transaction.id, transaction]));
+    statementState.balanceTransactions = [...unique.values()];
+    statementState.balanceNextCursor = page.nextCursor;
+    if (walletStatementHasBalanceCoverage(statementState.balanceTransactions, oldestCreatedAt)) return;
+  }
+}
+
+function walletStatementSection(
+  wallet: LegacyRecord,
+  statementState: WalletStatementViewState,
+): string {
+  const rows = walletStatementRowsFor(wallet, statementState);
+  const eventOptions = ADMIN_LEDGER_EVENT_TYPES.map((eventType) => `<option value="${eventType}"${statementState.filters.eventType === eventType ? " selected" : ""}>${eventType}</option>`).join("");
+  const canLoadMore = wallet.apiBacked
+    ? Boolean(statementState.nextCursor)
+    : filterWalletStatementTransactions(statementState.transactions, statementState.filters).length > statementState.visibleCount;
+  return `<section class="section wallet-statement" data-wallet-statement><h3>Wallet Statement</h3><p>Committed and sealed Ledger Transactions, newest first.</p><form class="wallet-statement-filters" data-wallet-statement-filter><label>Event type<select name="eventType"><option value="">All event types</option>${eventOptions}</select></label><label>From ICT date<input name="from" type="date" value="${escapeActivityText(statementState.filters.from)}"></label><label>To ICT date<input name="to" type="date" value="${escapeActivityText(statementState.filters.to)}"></label><button class="btn primary" type="submit">Apply filters</button><button class="btn" type="button" data-wallet-statement-action="clear">Clear</button></form><div aria-live="polite" data-wallet-statement-content>${statementState.loading ? '<div class="empty"><h4>Loading Wallet Statement</h4><p>Reading sealed Ledger Transactions.</p></div>' : walletStatementTable(rows)}${statementState.error ? `<p class="audit-note">${escapeActivityText(statementState.error)}</p>` : ""}</div>${canLoadMore ? `<button class="btn wallet-statement-load-more" type="button" data-wallet-statement-action="load-more"${statementState.loading ? " disabled" : ""}>Load more</button>` : ""}</section>`;
+}
+
+function bindWalletStatement(
+  wallet: LegacyRecord,
+  statementState: WalletStatementViewState,
+): (append: boolean) => Promise<void> {
+  const renderStatement = (): void => {
+    const current = drawer.querySelector<LegacyDomElement>("[data-wallet-statement]");
+    if (!current) return;
+    current.outerHTML = walletStatementSection(wallet, statementState);
+    bindWalletStatement(wallet, statementState);
+  };
+  const loadPage = async (append: boolean): Promise<void> => {
+    if (!wallet.apiBacked) return;
+    const requestId = ++statementState.requestId;
+    statementState.loading = true;
+    statementState.error = "";
+    wallet.walletStatementLoading = true;
+    renderStatement();
+    try {
+      const page = await loadLiveWalletStatement(wallet.walletId || wallet.id, {
+        eventType: statementState.filters.eventType
+          ? statementState.filters.eventType as AdminLedgerEventType
+          : undefined,
+        from: walletStatementApiDate(statementState.filters.from, false),
+        to: walletStatementApiDate(statementState.filters.to, true),
+        limit: 25,
+        cursor: append ? statementState.nextCursor || undefined : undefined,
+      });
+      if (requestId !== statementState.requestId) return;
+      const existing = append ? statementState.transactions : [];
+      const unique = new Map([...existing, ...page.items].map((transaction) => [transaction.id, transaction]));
+      statementState.transactions = [...unique.values()];
+      const balanceUnique = new Map([...statementState.balanceTransactions, ...page.items].map((transaction) => [transaction.id, transaction]));
+      statementState.balanceTransactions = [...balanceUnique.values()];
+      const unfiltered = !statementState.filters.eventType && !statementState.filters.from && !statementState.filters.to;
+      if (unfiltered) statementState.balanceNextCursor = page.nextCursor;
+      const oldestCreatedAt = statementState.transactions
+        .toSorted((first, second) => Date.parse(first.createdAt) - Date.parse(second.createdAt))
+        .at(0)?.createdAt;
+      if (!unfiltered) {
+        await loadWalletStatementBalanceCoverage(
+          wallet.walletId || wallet.id,
+          statementState,
+          oldestCreatedAt,
+          requestId,
+        );
+      }
+      statementState.nextCursor = page.nextCursor;
+      statementState.loading = false;
+      wallet.walletStatement = statementState.transactions;
+      wallet.walletStatementBalanceTransactions = statementState.balanceTransactions;
+      wallet.walletStatementBalanceNextCursor = statementState.balanceNextCursor;
+      wallet.walletStatementNextCursor = statementState.nextCursor;
+      wallet.walletStatementLoaded = true;
+      delete wallet.walletStatementError;
+      if (!wallet.walletLatestTransactionAt
+        && !statementState.filters.eventType
+        && !statementState.filters.from
+        && !statementState.filters.to) {
+        wallet.walletLatestTransactionAt = latestWalletTransactionDate(statementState.transactions);
+      }
+    } catch (error: unknown) {
+      if (requestId !== statementState.requestId) return;
+      statementState.loading = false;
+      statementState.error = error instanceof Error ? error.message : "Wallet Statement is not available.";
+      wallet.walletStatementError = statementState.error;
+    } finally {
+      if (requestId === statementState.requestId) {
+        wallet.walletStatementLoading = false;
+        renderStatement();
+      }
+    }
+  };
+  const section = drawer.querySelector<LegacyDomElement>("[data-wallet-statement]");
+  const form = section?.querySelector<HTMLFormElement>("[data-wallet-statement-filter]");
+  form?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const formData = new FormData(form);
+    statementState.filters = {
+      eventType: String(formData.get("eventType") || ""),
+      from: String(formData.get("from") || ""),
+      to: String(formData.get("to") || ""),
+    };
+    statementState.visibleCount = 25;
+    statementState.error = "";
+    if (wallet.apiBacked) {
+      statementState.transactions = [];
+      statementState.nextCursor = null;
+      wallet.walletStatementLoaded = false;
+      void loadPage(false);
+    } else {
+      renderStatement();
+    }
+  });
+  section?.querySelector<LegacyDomElement>('[data-wallet-statement-action="clear"]')?.addEventListener("click", () => {
+    statementState.filters = { eventType: "", from: "", to: "" };
+    statementState.visibleCount = 25;
+    statementState.error = "";
+    if (wallet.apiBacked) {
+      statementState.transactions = [];
+      statementState.nextCursor = null;
+      wallet.walletStatementLoaded = false;
+      void loadPage(false);
+    } else {
+      renderStatement();
+    }
+  });
+  section?.querySelector<LegacyDomElement>('[data-wallet-statement-action="load-more"]')?.addEventListener("click", () => {
+    statementState.visibleCount += 25;
+    if (wallet.apiBacked) void loadPage(true);
+    else renderStatement();
+  });
+  return loadPage;
+}
+
 function openWalletDrawer(index: number): void {
   const wallet = recordsFor("wallets")[index];
   if (!wallet) return;
@@ -1037,7 +1299,37 @@ function openWalletDrawer(index: number): void {
   const walletActions = wallet.apiBacked
     ? `<button class="btn" data-wallet-action="verify">Verify Ledger</button><button class="btn primary" data-wallet-action="rebuild">Rebuild projection</button>`
     : "";
+  const statementState: WalletStatementViewState = {
+    transactions: Array.isArray(wallet.walletStatement) ? wallet.walletStatement : [],
+    balanceTransactions: Array.isArray(wallet.walletStatementBalanceTransactions)
+      ? wallet.walletStatementBalanceTransactions
+      : Array.isArray(wallet.walletStatement)
+        ? wallet.walletStatement
+        : [],
+    balanceNextCursor: wallet.walletStatementBalanceNextCursor || null,
+    nextCursor: wallet.walletStatementNextCursor || null,
+    visibleCount: 25,
+    loading: Boolean(wallet.walletStatementLoading),
+    error: wallet.walletStatementError || "",
+    filters: { eventType: "", from: "", to: "" },
+    requestId: 0,
+  };
   drawer.innerHTML = `<div class="drawer-top"><strong>${escapeActivityText(wallet.id)}</strong><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div><div class="drawer-body"><div class="drawer-title"><span class="att-icon ${toneClass(wallet.tone)}">${ico("wallet")}</span><div><h2>${escapeActivityText(wallet.title)}</h2><p>${escapeActivityText(wallet.person)} · ${escapeActivityText(wallet.other)}</p></div></div><div class="facts"><div class="fact"><span>Status</span>${statusBadgeForView("wallets", wallet)}</div><div class="fact"><span>Total balance</span><strong>${walletAmount(wallet.walletTotalBalanceSatang ?? (wallet.amount === null ? undefined : Number(wallet.amount) * 100))}</strong></div><div class="fact"><span>Wallet record</span><strong>${escapeActivityText(wallet.id)}</strong></div></div><section class="section"><h3>Wallet balances</h3><div class="user-context-list"><div><span>Spending Balance</span><strong>${walletAmount(wallet.walletSpendingBalanceSatang)}</strong></div><div><span>Earnings Balance</span><strong>${walletAmount(wallet.walletEarningsBalanceSatang)}</strong></div><div><span>Funding Reserved</span><strong>${walletAmount(wallet.walletFundingReservedSatang)}</strong></div><div><span>Reserved For Payouts</span><strong>${walletAmount(wallet.walletReservedForPayoutsSatang)}</strong></div></div></section>${typeof wallet.walletProjectionMatchesLedger === "boolean" ? `<section class="section"><h3>Ledger check</h3><p>${wallet.walletProjectionMatchesLedger ? "Wallet projection matches the Ledger." : "Wallet projection does not match the Ledger."}</p></section>` : ""}${walletVerificationSection(wallet)}${walletHistorySection(wallet)}</div><div class="drawer-actions">${walletActions}<a class="btn" href="/users/${encodeURIComponent(String(wallet.memberId || ""))}">See full Member profile</a><button class="btn" id="close-wallet-record">Close record</button></div>`;
+  const currentBalances = walletBalancesFromRecord(wallet);
+  const currentBalanceSatang = currentWalletBalance(currentBalances);
+  const currentBalanceFact = [...drawer.querySelectorAll<LegacyDomElement>(".fact")].find((fact) => fact.querySelector("span")?.textContent === "Total balance");
+  if (currentBalanceFact) {
+    const label = currentBalanceFact.querySelector("span");
+    const value = currentBalanceFact.querySelector("strong");
+    if (label) label.textContent = "Current Wallet Balance";
+    if (value) value.textContent = walletStatementBalance(currentBalanceSatang);
+  }
+  const statementHost = document.createElement("div");
+  statementHost.innerHTML = walletStatementSection(wallet, statementState);
+  const statementSection = statementHost.firstElementChild;
+  if (statementSection) drawer.querySelector<LegacyDomElement>(".drawer-body")?.append(statementSection);
+  const loadStatementPage = bindWalletStatement(wallet, statementState);
+  if (wallet.apiBacked && !wallet.walletStatementLoaded && !wallet.walletStatementLoading) void loadStatementPage(false);
   drawer.querySelector<LegacyDomElement>("#close")?.addEventListener("click", closeDrawer);
   scrim.onclick = closeDrawer;
   drawer.querySelector<LegacyDomElement>("#close-wallet-record")?.addEventListener("click", closeDrawer);

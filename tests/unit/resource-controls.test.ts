@@ -67,6 +67,8 @@ describe("active resource controls model", () => {
   it("keeps Member fields separate from Wallet status fields", () => {
     expect(resourceColumns.users).toContainEqual(["memberStatus", "Status"]);
     expect(resourceColumns.users).not.toContainEqual(["walletStatus", "Wallet status"]);
+    expect(resourceColumns.wallets).toContainEqual(["walletTotalBalanceSatang", "Current Wallet Balance"]);
+    expect(resourceColumns.wallets).toContainEqual(["walletLatestTransactionAt", "Latest Wallet Transaction Date"]);
     expect(resourceColumns.wallets).toContainEqual(["status", "Wallet status"]);
   });
 

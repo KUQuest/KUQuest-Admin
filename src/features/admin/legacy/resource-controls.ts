@@ -41,6 +41,7 @@ import {
 } from "./resource-controls-model";
 import type { LegacyDomElement, LegacyRecord } from "./runtime";
 import { LIVE_RESOURCE_UPDATED_EVENT, liveResourceState, type LiveResourceView } from "./live-review-data";
+import { totalWalletFunds, type WalletBalances } from "./wallet-model";
 import {
   disputeCaseStatusFor,
   disputeCaseStatusLabel,
@@ -116,6 +117,39 @@ function resourceTabIsActive(view: ResourceView, tab: string): boolean {
   return resourceTabIsActiveModel(state, view, tab);
 }
 
+function walletBalancesFor(record: LegacyRecord): WalletBalances {
+  const numberOrZero = (value: unknown): number => typeof value === "number" ? value : 0;
+  return {
+    spendingBalanceSatang: numberOrZero(record.walletSpendingBalanceSatang),
+    earningsBalanceSatang: numberOrZero(record.walletEarningsBalanceSatang),
+    fundingReservedSatang: numberOrZero(record.walletFundingReservedSatang),
+    reservedForPayoutsSatang: numberOrZero(record.walletReservedForPayoutsSatang),
+  };
+}
+
+function walletMoneyFromSatang(value: unknown): string {
+  if (typeof value !== "number") return "Not provided by the Admin API";
+  return `฿${new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value / 100)}`;
+}
+
+function walletDateTimeLabel(value: unknown): string {
+  const date = new Date(String(value ?? ""));
+  if (Number.isNaN(date.getTime())) return "Not provided by the Admin API";
+  return `${date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "Asia/Bangkok",
+  })} · ${date.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Bangkok",
+  })} ICT`;
+}
+
 function pageSizeControls(view: ResourceView): string {
   const pagination = paginationFor(view);
   return `<div class="page-size-controls" aria-label="Rows per page">${pageSizeOptions
@@ -157,6 +191,12 @@ setRenderResource(function resourceRender(view: string): void {
           ? `${controlledTable(resourceView, pagination.rows)}${paginationControls(resourceView, pagination)}`
           : `<div class="empty"><h3>No matching records</h3><p>${hasQuery ? "Clear your search to see more results." : "There are no records in this view."}</p><button class="btn reset-results">Reset view</button></div>`;
   main.innerHTML = `${pageHead(...heads[resourceView])}<section class="panel resource"><div class="tabs" aria-label="Filter ${view} records">${tabs.map((tab: string) => { const label = tab === "All" || tab === "Team" || tab === "Solo" ? tab : resourceView === "payouts" ? payoutStatusLabel(tab) : resourceView === "disputes" ? disputeCaseStatusLabel(tab) : resourceView === "quests" ? questStateLabel(tab) : resourceView === "reports" || resourceView === "conduct-reports" ? reportCaseStatusLabel(tab) : resourceView === "users" ? memberStatusLabel(tab) : resourceView === "wallets" ? walletStatusLabel(tab) : tab; return `<button class="tab ${state.tab === tab.toLowerCase() ? "active" : ""}" data-tab="${tab.toLowerCase()}" aria-pressed="${state.tab === tab.toLowerCase()}">${escapeActivityText(label)}${tab === "All" ? ` (${resourceCollections[resourceView].length})` : ""}</button>`; }).join("")}</div><div class="toolbar resource-toolbar"><div class="inline-search search-field">${ico("search")}<input id="resource-search" value="${escapeActivityText(state.query)}" placeholder="Search ${view}…" aria-label="Search ${view}" autocomplete="off">${hasQuery ? '<button class="clear-search" aria-label="Clear search"><span class="close-lines"></span></button>' : ""}</div><span class="sort-help">Click a column to sort</span>${pageSizeControls(resourceView)}<span class="count" aria-live="polite">${resultLabel}</span></div>${resultContent}</section>`;
+  if (resourceView === "wallets") {
+    const summary = document.createElement("div");
+    summary.className = "wallet-funds-summary";
+    summary.innerHTML = `<span>Total Wallet Funds</span><strong>${walletMoneyFromSatang(totalWalletFunds(resourceCollections.wallets.map(walletBalancesFor)))}</strong><small>All Wallets · all statuses</small>`;
+    main.querySelector<LegacyDomElement>(".panel.resource")?.prepend(summary);
+  }
   main.querySelectorAll<LegacyDomElement>("[data-tab]").forEach((button) => {
     const tab = resourceTabValue(button.dataset.tab || "all"),
       kind = resourceView === "quests" ? questFilterKind(tab) : "status",
@@ -203,6 +243,11 @@ function tableCell(view: ResourceView, record: LegacyRecord, key: string, target
       : '<td><span class="audit-note">Not provided by the Admin API</span></td>';
   }
   if (key === "createdAt") return `<td>${escapeActivityText(createdAtLabel(record.createdAt))}</td>`;
+  if (key === "walletTotalBalanceSatang") return `<td class="money">${walletMoneyFromSatang(totalWalletFunds([walletBalancesFor(record)]))}</td>`;
+  if (key === "walletLatestTransactionAt") {
+    const label = walletDateTimeLabel(record.walletLatestTransactionAt);
+    return `<td>${label === "Not provided by the Admin API" ? `<span class="audit-note">${label}</span>` : escapeActivityText(label)}</td>`;
+  }
   if (key === "amount") {
     return record.amount === null
       ? '<td class="money"><span class="audit-note">Not provided by the Admin API</span></td>'

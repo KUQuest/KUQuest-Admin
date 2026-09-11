@@ -211,6 +211,7 @@ describe("live review data", () => {
       },
       createdAt: "2026-09-02T01:00:00.000Z",
       updatedAt: "2026-09-02T02:00:00.000Z",
+      latestTransactionAt: "2026-09-02T01:30:00.000Z",
     });
 
     expect(member).toMatchObject({
@@ -227,6 +228,7 @@ describe("live review data", () => {
       memberId: "member-1",
       walletStatus: "FROZEN",
       walletTotalBalanceSatang: 15000,
+      walletLatestTransactionAt: "2026-09-02T01:30:00.000Z",
       apiBacked: true,
     });
   });

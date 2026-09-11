@@ -51,6 +51,35 @@ test.describe("admin click flows", () => {
     ).toBeVisible();
   });
 
+  test("admin can review Wallet funds and the Wallet Statement", async ({ page }) => {
+    await signIn(page);
+    await page.getByRole("button", { name: "Wallets", exact: true }).click();
+
+    await expect(page).toHaveURL(/\/\?view=wallets$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Wallets" })).toBeVisible();
+    await expect(page.locator(".wallet-funds-summary")).toContainText("Total Wallet Funds");
+    await expect(page.locator(".wallet-funds-summary strong")).toContainText("฿");
+    await expect(page.locator("#main thead")).toContainText("Current Wallet Balance");
+    await expect(page.locator("#main thead")).toContainText("Latest Wallet Transaction Date");
+
+    await page.locator("#main .data tbody tr").first().locator(".row-record-button").click();
+    const drawer = page.locator("#drawer");
+    await expect(drawer).toHaveClass(/open/);
+    await expect(drawer.getByRole("heading", { level: 3, name: "Wallet Statement" })).toBeVisible();
+    await expect(drawer.locator(".wallet-statement-table tbody tr")).toHaveCount(25);
+    await expect(drawer.getByRole("button", { name: "Load more" })).toBeVisible();
+    await expect(drawer.getByLabel("Event type")).toBeVisible();
+    await expect(drawer.getByLabel("From ICT date")).toBeVisible();
+    await expect(drawer.getByLabel("To ICT date")).toBeVisible();
+
+    await drawer.getByRole("button", { name: "Load more" }).click();
+    await expect(drawer.locator(".wallet-statement-table tbody tr")).toHaveCount(50);
+
+    await drawer.getByLabel("Event type").selectOption("TOP_UP");
+    await drawer.getByRole("button", { name: "Apply filters" }).click();
+    await expect(drawer.locator(".wallet-statement-table tbody tr")).toHaveCount(11);
+  });
+
   test("admin can sign in and open Users from primary navigation", async ({
     page,
   }) => {

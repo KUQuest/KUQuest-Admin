@@ -60,6 +60,8 @@ export const resourceColumns: Record<ResourceView, ResourceColumn[]> = {
     ["id", "Wallet / Member ID"],
     ["title", "Member"],
     ["person", "Email"],
+    ["walletTotalBalanceSatang", "Current Wallet Balance"],
+    ["walletLatestTransactionAt", "Latest Wallet Transaction Date"],
     ["status", "Wallet status"],
     ["accountCreatedAt", "Created"],
   ],
@@ -260,6 +262,7 @@ function sortValue(record: LegacyRecord, key: string): string | number | null {
   if (key === "requestedAt") return dateSortValue(record.requestedAt);
   if (key === "reportedAt") return dateSortValue(record.reportedAt);
   if (key === "createdAt") return dateSortValue(record.createdAt);
+  if (key === "walletLatestTransactionAt") return dateSortValue(record.walletLatestTransactionAt);
   const value = record[key];
   if (typeof value === "string" || typeof value === "number") return value;
   if (value == null) return null;

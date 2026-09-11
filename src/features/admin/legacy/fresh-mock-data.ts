@@ -16,10 +16,17 @@ import {
   reportCaseStatusFor,
   walletStatusFor,
 } from "../domain/rulebook";
+import {
+  currentWalletBalance,
+  latestWalletTransactionDate,
+  type WalletBalances,
+  type WalletStatementPosting,
+  type WalletStatementTransaction,
+} from "./wallet-model";
 
 // Deterministic high-volume demo data. Versioning resets browser-local records
 // whenever the synthetic marketplace scenario changes.
-const freshDemoVersion = "2026-09-08-v57-balanced-member-statuses";
+const freshDemoVersion = "2026-09-12-v58-wallet-statements";
 const freshDemoKey = "kuquest-admin-demo-data";
 const seedBaseDate = new Date("2026-08-28T08:00:00Z");
 
@@ -217,6 +224,101 @@ const generatedUsers: LegacyRecord[] = Array.from({ length: 280 }, (_, index: nu
 });
 
 data.users = generatedUsers;
+
+function mockWalletStatementFor(userIndex: number, walletId = generatedUsers[userIndex].id): { balances: WalletBalances; transactions: WalletStatementTransaction[] } {
+  const openingBalances: WalletBalances = {
+    spendingBalanceSatang: 180000 + userIndex * 1000,
+    earningsBalanceSatang: 50000,
+    fundingReservedSatang: 20000,
+    reservedForPayoutsSatang: 10000,
+  };
+  let balances: WalletBalances = {
+    spendingBalanceSatang: 0,
+    earningsBalanceSatang: 0,
+    fundingReservedSatang: 0,
+    reservedForPayoutsSatang: 0,
+  };
+  const transactions: WalletStatementTransaction[] = [];
+
+  const addTransaction = (
+    index: number,
+    eventType: WalletStatementTransaction["eventType"],
+    movements: Array<[WalletStatementPosting["accountType"], number]>,
+    description: string,
+  ): void => {
+    const walletPostings: WalletStatementPosting[] = movements.map(([accountType, amountSatang]) => ({
+      accountType,
+      walletId,
+      amountSatang,
+    }));
+    const walletDelta = movements.reduce((total, [, amountSatang]) => total + amountSatang, 0);
+    for (const [accountType, amountSatang] of movements) {
+      if (accountType === "SPENDING") balances.spendingBalanceSatang += amountSatang;
+      if (accountType === "EARNINGS") balances.earningsBalanceSatang += amountSatang;
+      if (accountType === "FUNDING_RESERVED") balances.fundingReservedSatang += amountSatang;
+      if (accountType === "RESERVED_FOR_PAYOUTS") balances.reservedForPayoutsSatang += amountSatang;
+    }
+    const createdAt = seedDate(80 - index, 8 + (index % 10), (userIndex * 13 + index * 7) % 60).toISOString();
+    transactions.push({
+      id: `LGR-${String(userIndex + 1).padStart(3, "0")}-${String(index).padStart(3, "0")}`,
+      businessReference: `wallet-demo-${userIndex + 1}-${index}`,
+      eventType,
+      description,
+      createdAt,
+      sealedAt: createdAt,
+      postings: [
+        ...walletPostings,
+        {
+          accountType: eventType === "FUNDING_SETTLEMENT" ? "PLATFORM_REVENUE" : "PLATFORM_SUSPENSE",
+          walletId: null,
+          amountSatang: -walletDelta,
+        },
+      ],
+      balanceAfter: { ...balances },
+    });
+  };
+
+  addTransaction(0, "ADJUSTMENT", [
+    ["SPENDING", openingBalances.spendingBalanceSatang],
+    ["EARNINGS", openingBalances.earningsBalanceSatang],
+    ["FUNDING_RESERVED", openingBalances.fundingReservedSatang],
+    ["RESERVED_FOR_PAYOUTS", openingBalances.reservedForPayoutsSatang],
+  ], "Initial Wallet balance recorded from the sealed Ledger.");
+
+  for (let index = 1; index <= 64; index += 1) {
+    const cycle = index % 6;
+    if (cycle === 1) {
+      addTransaction(index, "TOP_UP", [["SPENDING", 500 + (userIndex % 5) * 100]], "Top-up confirmed by the payment provider.");
+    } else if (cycle === 2) {
+      addTransaction(index, "FUNDING_RESERVE", [["SPENDING", -1200], ["FUNDING_RESERVED", 1200]], "Funding Reservation created for a Quest.");
+    } else if (cycle === 3) {
+      addTransaction(index, "FUNDING_SETTLEMENT", [["FUNDING_RESERVED", -700], ["EARNINGS", 600]], "Quest funding settled to the Worker and Platform Revenue.");
+    } else if (cycle === 4) {
+      addTransaction(index, "FUNDING_RELEASE", [["FUNDING_RESERVED", -500], ["SPENDING", 500]], "Unused Funding Reservation released to Spending Balance.");
+    } else if (cycle === 5) {
+      addTransaction(index, "EARNINGS_CONVERSION", [["EARNINGS", -500], ["SPENDING", 500]], "Earnings converted to Spending Balance.");
+    } else {
+      addTransaction(index, "PAYOUT", [["RESERVED_FOR_PAYOUTS", -100]], "Payout sent to the selected Payout Destination.");
+    }
+  }
+
+  return { balances, transactions };
+}
+
+function attachMockWalletStatement(user: LegacyRecord, index: number): void {
+  const statement = mockWalletStatementFor(index, user.id);
+  Object.assign(user, {
+    walletSpendingBalanceSatang: statement.balances.spendingBalanceSatang,
+    walletEarningsBalanceSatang: statement.balances.earningsBalanceSatang,
+    walletFundingReservedSatang: statement.balances.fundingReservedSatang,
+    walletReservedForPayoutsSatang: statement.balances.reservedForPayoutsSatang,
+    walletTotalBalanceSatang: currentWalletBalance(statement.balances),
+    walletLatestTransactionAt: latestWalletTransactionDate(statement.transactions),
+    walletStatement: statement.transactions,
+  });
+}
+
+generatedUsers.forEach(attachMockWalletStatement);
 
 const questTitles = [
   "Audit campus laboratory signage", "Map bicycle parking capacity", "Transcribe oral history interviews", "Test library room booking flow",
@@ -553,6 +655,9 @@ if (savedFreshDemo?.version === freshDemoVersion) {
   localStorage.removeItem(freshDemoKey);
 }
 
+data.users.forEach((user, index) => {
+  if (!Array.isArray(user.walletStatement)) attachMockWalletStatement(user, index);
+});
 data.wallets.splice(0, data.wallets.length, ...data.users.map((user) => ({ ...user })));
 
 function expirePenaltyIfDue(user: LegacyRecord): boolean {
@@ -587,7 +692,21 @@ function expirePenaltyIfDue(user: LegacyRecord): boolean {
 const expiredPenalties = data.users.filter(expirePenaltyIfDue);
 
 export function persistAdminData(): void {
-  localStorage.setItem(freshDemoKey, JSON.stringify({ version: freshDemoVersion, collections: data }));
+  const withoutWalletStatements = (record: LegacyRecord): LegacyRecord => {
+    const copy = { ...record };
+    delete copy.walletStatement;
+    delete copy.walletStatementBalanceTransactions;
+    delete copy.walletStatementBalanceNextCursor;
+    delete copy.walletStatementLoading;
+    delete copy.walletStatementError;
+    return copy;
+  };
+  const collections = {
+    ...data,
+    users: data.users.map(withoutWalletStatements),
+    wallets: data.wallets.map(withoutWalletStatements),
+  };
+  localStorage.setItem(freshDemoKey, JSON.stringify({ version: freshDemoVersion, collections }));
 }
 
 if (!savedFreshDemo || savedFreshDemo.version !== freshDemoVersion || expiredPenalties.length) persistAdminData();
