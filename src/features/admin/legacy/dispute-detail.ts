@@ -102,8 +102,9 @@ export type DisputeDetailApi = {
   openDisputeDrawer: (index: number) => void;
 };
 
-export function disputeAmountLabel(record: Pick<LegacyRecord, "amount" | "mockDisputeData">, fmt: (value: number | null | undefined) => string): string {
+export function disputeAmountLabel(record: Pick<LegacyRecord, "amount" | "mockDisputeData" | "apiBacked">, fmt: (value: number | null | undefined) => string): string {
   if (typeof record.amount === "number") return `฿${fmt(record.amount)}`;
+  if (record.apiBacked) return "Not provided by the Admin API";
   if (record.mockDisputeData) return `฿${fmt(record.mockDisputeData.amountBaht)} · Mock data`;
   return "Not provided by the Admin API";
 }

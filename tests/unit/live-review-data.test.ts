@@ -452,7 +452,8 @@ describe("live review data", () => {
     }];
     globalThis.fetch = (async (input: RequestInfo | URL) => {
       const url = new URL(new Request(input).url);
-      const items = url.searchParams.get("status") === "DISPUTE_CASE_DISMISSED" ? [{
+      const status = url.searchParams.get("status");
+      const items = status === "DISPUTE_CASE_DISMISSED" ? [{
         id: "case-api",
         questId: "quest-api",
         filerUserId: "worker-api",
@@ -465,6 +466,19 @@ describe("live review data", () => {
         resolvedAt: "2026-09-02T02:00:00.000Z",
         createdAt: "2026-09-02T01:00:00.000Z",
         updatedAt: "2026-09-02T02:00:00.000Z",
+      }] : status === "DISPUTE_CASE_RESOLVED" ? [{
+        id: "case-resolved",
+        questId: "quest-resolved",
+        filerUserId: "worker-resolved",
+        openedByAdminId: "admin-1",
+        status: "DISPUTE_CASE_RESOLVED",
+        version: 2,
+        resolvedWorkerId: "worker-resolved",
+        resolvedAmountSatang: 10000,
+        resolvedByAdminId: "admin-1",
+        resolvedAt: "2026-09-02T03:00:00.000Z",
+        createdAt: "2026-09-02T01:30:00.000Z",
+        updatedAt: "2026-09-02T03:00:00.000Z",
       }] : [];
       return new Response(JSON.stringify({
         success: true,
@@ -477,11 +491,18 @@ describe("live review data", () => {
 
     await refreshLiveDisputes();
 
-    expect(data.disputes).toHaveLength(1);
-    expect(data.disputes[0]).toMatchObject({
+    expect(data.disputes).toHaveLength(2);
+    expect(data.disputes.find((record) => record.id === "case-api")).toMatchObject({
       id: "case-api",
       apiBacked: true,
       status: "DISPUTE_CASE_DISMISSED",
+    });
+    expect(data.disputes.find((record) => record.id === "case-resolved")).toMatchObject({
+      id: "case-resolved",
+      apiBacked: true,
+      amount: 100,
+      amountSatang: 10000,
+      resolvedAmountSatang: 10000,
     });
   });
 });

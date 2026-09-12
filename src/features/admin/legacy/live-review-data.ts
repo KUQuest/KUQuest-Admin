@@ -603,10 +603,8 @@ function disputeRecordFromApi(dispute: AdminDisputeCase | AdminDisputeCaseDetail
     questId,
     workerId: dispute.workerId || detail?.resolvedWorkerId || undefined,
     filerUserId,
-    amount: typeof dispute.amountSatang === "number"
-      ? satangToBaht(dispute.amountSatang)
-      : resolvedAmountSatang === undefined ? null : satangToBaht(resolvedAmountSatang),
-    amountSatang: dispute.amountSatang ?? resolvedAmountSatang,
+    amount: resolvedAmountSatang === undefined ? null : satangToBaht(resolvedAmountSatang),
+    amountSatang: resolvedAmountSatang,
     resolvedAmountSatang,
     age: createdAt ? dateTimeLabel(createdAt) : "Date not provided by API",
     disputeDate: createdAt ? dateTimeLabel(createdAt) : "Date not provided by API",
@@ -618,7 +616,7 @@ function disputeRecordFromApi(dispute: AdminDisputeCase | AdminDisputeCaseDetail
     disputeType: mockDisputeData.category,
     mockDisputeData,
     apiMissingFields: [
-      ...(typeof dispute.amountSatang !== "number" && resolvedAmountSatang === undefined ? ["Pending resolution amount"] : []),
+      ...(resolvedAmountSatang === undefined ? ["Pending resolution amount"] : []),
       "Hirer and Worker display names",
       "Dispute category",
       "Participant claim and response",
