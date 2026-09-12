@@ -94,6 +94,22 @@ _Avoid_: deducting the Platform Fee from a Worker's displayed Quest Reward.
 A Student's KUQuest funds, separated by whether they can be spent, paid out, or are temporarily committed to a Quest or Payout.
 _Avoid_: Bank account, Account (auth), treating the Wallet as one undifferentiated balance.
 
+**Current Wallet Balance**:
+The sum of a Wallet's Spending Balance, Earnings Balance, Funding Reserved balance, and Reserved For Payouts balance.
+_Avoid_: spendable balance, treating reserved compartments as absent from the current balance.
+
+**Total Wallet Funds**:
+The sum of the Current Wallet Balance for every Wallet in the system, regardless of Wallet Status.
+_Avoid_: Held amount, treating this as only Funding Reserved or only Reserved For Payouts.
+
+**Latest Wallet Transaction Date**:
+The ICT date and time of the newest committed and sealed Ledger Transaction that affects a selected Wallet.
+_Avoid_: Wallet updated date, Member activity date.
+
+**Wallet Statement**:
+An Admin view of every committed and sealed Ledger Transaction that affects a selected Wallet's four compartments, shown newest first.
+_Avoid_: bank statement, provider statement, corporate general ledger.
+
 **Wallet Status**:
 The Wallet's permission state: Active permits Student-initiated operations, Frozen is a temporary administrative hold, Suspended is a policy hold requiring review, and Closed is terminal. Non-active Wallets still receive or release money required to reconcile commitments already in progress.
 _Avoid_: treating a hold as permission to discard confirmed inbound money or existing obligations.
