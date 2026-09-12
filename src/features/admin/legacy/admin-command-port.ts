@@ -1,5 +1,6 @@
 import type {
   AdminCommandPort,
+  AdminDisputeOpenCommand,
   DisputeResolution,
   PayoutApproval,
   PayoutRejection,
@@ -71,6 +72,10 @@ export const mockAdminCommandPort: AdminCommandPort = {
     record.questState = "QUEST_CANCELLED";
     record.terminationReason = options.reason;
     return commandResult("terminateQuest", record);
+  },
+
+  async openDispute(_questId: string, _options: AdminDisputeOpenCommand) {
+    throw new Error("Opening a Dispute Case requires the Admin API.");
   },
 
   resolveDispute(questId: string, options: DisputeResolution) {

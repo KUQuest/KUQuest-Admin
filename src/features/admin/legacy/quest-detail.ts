@@ -62,6 +62,7 @@ export type QuestRecord = {
   editHistory?: string[];
   applications?: QuestParticipant[];
   selectedParticipant?: string;
+  assignedWorkers?: Array<[id: string, name: string, status: string]>;
   teamQuest?: boolean;
   teamParticipants?: TeamParticipant[];
   candidateMode?: string;
@@ -84,12 +85,13 @@ export type QuestDispute = {
   title: string;
   person: string;
   other: string;
-  amount: number;
+  amount: number | null;
   status: string;
   tone: string;
   detail: string;
   disputeType?: string;
   disputeCaseStatus?: string;
+  apiBacked?: boolean;
 };
 
 export type QuestPayout = {
@@ -235,6 +237,22 @@ export function questCandidateModeLabel(value: unknown, questState?: unknown): s
     default:
       return mode;
   }
+}
+
+export function openDisputeForm(
+  record: Pick<QuestRecord, "apiBacked" | "assignedWorkers">,
+  escapeActivityText: (value: unknown) => string,
+): string {
+  if (!record.apiBacked) return "";
+  const workers = record.assignedWorkers ?? [];
+  if (!workers.length) {
+    return '<div class="dispute-open-form"><p class="audit-note">No assigned Worker was returned by the Admin API. The Admin API requires a Worker ID.</p></div>';
+  }
+  const placeholder = workers.length > 1
+    ? '<option value="">Select a Worker</option>'
+    : "";
+  const options = workers.map(([workerId, workerName]) => `<option value="${escapeActivityText(workerId)}">${escapeActivityText(workerName)}</option>`).join("");
+  return `<div class="dispute-open-form"><div class="dispute-open-form-head"><strong>Open a Dispute Case</strong><span>Select the assigned Worker for this failed Quest.</span></div><label for="open-dispute-worker">Worker<select id="open-dispute-worker" name="workerId" data-open-dispute-worker required>${placeholder}${options}</select></label><button class="btn primary dispute-open-submit" type="button" data-page-action="Open Dispute Case" data-open-dispute-case>Open Dispute Case</button><p class="audit-note">The API checks the failed Quest state, Worker Assignment, and five-day filing window.</p></div>`;
 }
 
 function createPendingQuestChanges(
@@ -483,7 +501,10 @@ export function createQuestDetailModule(
     const detail = questDetails(record);
     const participants = participantsForQuest(record, detail);
     const started = questHasStarted(record);
-    const relatedDispute = data.disputes.find((dispute) => (disputeCases[dispute.id]?.questId ?? "") === record.id);
+    const relatedDispute = data.disputes.find((dispute) =>
+      (!record.apiBacked || dispute.apiBacked)
+      && (dispute.questId ?? disputeCases[dispute.id]?.questId ?? "") === record.id,
+    );
     showDrawerLayer();
     drawer.innerHTML = `
     <div class="drawer-top"><div><strong>${escapeActivityText(record.id)}</strong><small>Full quest record</small></div><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div>
@@ -493,7 +514,7 @@ export function createQuestDetailModule(
         <div class="fact"><span>Status</span>${badge(questState, record.tone)}${hidden ? '<span class="badge neutral quest-hidden-overlay">Hidden</span>' : ""}</div><div class="fact"><span>Quest Funding Total</span><strong>${questBahtLabel(record.fundingTotalSatang)}</strong></div>
         <div class="fact"><span>Participant mode</span><strong>${record.teamQuest ? "Team" : "Single"}</strong></div><div class="fact"><span>Candidate mode</span><strong>${escapeActivityText(questCandidateModeLabel(record.candidateMode, questState))}</strong></div><div class="fact"><span>Quest ID</span><strong>${escapeActivityText(record.id)}</strong></div>
       </div>
-      ${questState === "QUEST_FAILED" ? `<section class="section quest-dispute-reason"><div class="section-title"><h3>Why this quest is failed</h3>${relatedDispute ? badge(disputeCaseStatusFor(relatedDispute.disputeCaseStatus ?? relatedDispute.status), relatedDispute.tone) : badge("DISPUTE_CASE_PENDING", "warning")}</div>${relatedDispute ? `<dl class="dispute-summary-context"><div><dt>Case</dt><dd>${escapeActivityText(relatedDispute.id)}</dd></div><div><dt>Category</dt><dd>${escapeActivityText(disputeTypeLabel(relatedDispute))}</dd></div><div><dt>Description</dt><dd>${escapeActivityText(relatedDispute.detail)}</dd></div></dl><a class="btn full-width" href="/disputes/${encodeURIComponent(relatedDispute.id)}">Open full dispute</a>` : '<p class="audit-note">This Quest is in QUEST_FAILED, but no Dispute Case record is linked. Review the record relationship before taking action.</p>'}</section>` : ""}
+      ${questState === "QUEST_FAILED" ? `<section class="section quest-dispute-reason"><div class="section-title"><h3>Why this quest is failed</h3>${relatedDispute ? badge(disputeCaseStatusFor(relatedDispute.disputeCaseStatus ?? relatedDispute.status), relatedDispute.tone) : ""}</div>${relatedDispute ? `<dl class="dispute-summary-context"><div><dt>Case</dt><dd>${escapeActivityText(relatedDispute.id)}</dd></div><div><dt>Category</dt><dd>${escapeActivityText(disputeTypeLabel(relatedDispute))}</dd></div><div><dt>Description</dt><dd>${escapeActivityText(relatedDispute.detail)}</dd></div></dl><a class="btn full-width" href="/disputes/${encodeURIComponent(relatedDispute.id)}">Open full dispute</a>` : `<p class="audit-note">This Quest is in QUEST_FAILED, but no Dispute Case record is linked.</p>${openDisputeForm(record, escapeActivityText)}`}</section>` : ""}
       <section class="section"><h3>Quest description</h3><p>${escapeActivityText(detail.description)}</p><div class="requirement-box"><strong>Completion requirements</strong><ul><li>Submit work before the recorded deadline</li><li>Attach verifiable proof files</li><li>Keep all payment inside KuQuest</li></ul></div></section>
       ${detail.giverAttachments.length ? `<section class="section"><div class="section-title"><h3>Files from hirer</h3><span class="section-count">${detail.giverAttachments.length}</span></div>${fileRows(detail.giverAttachments)}</section>` : ""}
       ${pendingQuestChanges[record.id] ? `<section class="section change-review"><div class="section-title"><h3>Pending hirer changes</h3>${badge("EDIT_REQUEST_PENDING", "warning")}</div><div class="change-warning">${ico("history")}<div><strong>Current accepted terms remain active</strong><p>This proposal does not change the participant’s agreement until both parties consent.</p></div></div><div class="change-meta"><div><span>Requested by</span><strong>${escapeActivityText(pendingQuestChanges[record.id].requestedBy)}</strong></div><div><span>Reason</span><strong>${escapeActivityText(pendingQuestChanges[record.id].reason)}</strong></div></div><div class="change-table"><div class="change-row change-head"><span>Field</span><span>Accepted value</span><span>Proposed value</span></div>${pendingQuestChanges[record.id].changes.map((change) => `<div class="change-row"><strong>${escapeActivityText(change[0])}</strong><span>${escapeActivityText(change[1])}</span><span>${escapeActivityText(change[2])}</span></div>`).join("")}</div><div class="response-block"><h3>Participant consent</h3>${participantConsentRows(pendingQuestChanges[record.id].responses)}</div><div class="change-oversight"><strong>Admin oversight only</strong><p>Do not approve or reject this edit. Intervene only if a participant files a dispute or the proposed terms violate marketplace policy.</p></div></section>` : ""}
@@ -539,6 +560,35 @@ export function createQuestDetailModule(
             toast(`${action} failed: ${error instanceof Error ? error.message : "Request failed."}`);
           });
         });
+      });
+    });
+    drawer.querySelector<HTMLButtonElement>("[data-open-dispute-case]")?.addEventListener("click", () => {
+      const workerSelect = drawer.querySelector<HTMLSelectElement>("[data-open-dispute-worker]");
+      const workerId = workerSelect?.value ?? "";
+      if (!workerId) {
+        toast("Select an assigned Worker before opening the Dispute Case.");
+        return;
+      }
+      const worker = record.assignedWorkers?.find(([id]) => id === workerId);
+      const button = drawer.querySelector<HTMLButtonElement>("[data-open-dispute-case]");
+      if (!window.confirm(`Open a Dispute Case for ${worker?.[1] ?? workerId}?`)) return;
+      if (button) {
+        button.disabled = true;
+        button.setAttribute("aria-busy", "true");
+        button.textContent = "Opening Dispute Case…";
+      }
+      void adminCommands.openDispute(record.id, { workerId }).then((result) => {
+        persistAdminData();
+        openQuestDrawer(index);
+        toast(`Dispute Case ${result.id} is ready for review.`);
+        return undefined;
+      }).catch((error: unknown) => {
+        if (button) {
+          button.disabled = false;
+          button.removeAttribute("aria-busy");
+          button.textContent = "Open Dispute Case";
+        }
+        toast(`Open Dispute Case failed: ${error instanceof Error ? error.message : "Request failed."}`);
       });
     });
     if (record.apiBacked && !record.questDetailLoaded && dependencies.hydrateQuest) {

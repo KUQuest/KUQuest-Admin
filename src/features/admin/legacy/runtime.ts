@@ -191,6 +191,7 @@ export type LegacyRecord = {
   disputeEvidenceError?: string;
   questFailedAt?: string | null;
   selectedParticipant?: string;
+  assignedWorkers?: Array<[string, string, string]>;
   teamParticipants?: Array<[string, string]>;
   teamQuest?: boolean;
   teamSize?: number;

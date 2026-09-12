@@ -772,6 +772,25 @@ export type DisputeAllocation = {
 
 export type AdminDisputeReasonCode = "DISPUTE_POLICY_REVIEW" | "DISPUTE_EVIDENCE_REVIEW";
 
+export type AdminDisputeOpenCommand = {
+  workerId: string;
+};
+
+export type AdminDisputeOpenResult = {
+  id: string;
+  questId: string;
+  filerUserId: string;
+  openedByAdminId: string | null;
+  status: DisputeCaseStatus;
+  version: number;
+  resolvedWorkerId: string | null;
+  resolvedAmountSatang: number | null;
+  resolvedByAdminId: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type DisputeResolution = Omit<AdminCommandOptions, "expectedVersion"> & {
   expectedVersion: number;
   outcome: "DISPUTE_CASE_DISMISSED" | "DISPUTE_CASE_RESOLVED";
@@ -1016,6 +1035,16 @@ export const adminApi = {
     );
   },
 
+  openDispute(questId: string, options: AdminDisputeOpenCommand): Promise<AdminDisputeOpenResult> {
+    return apiRequest<AdminDisputeOpenResult>(
+      `/api/v1/admin/disputes/open/${encode(questId)}`,
+      {
+        method: "POST",
+        body: { workerId: options.workerId },
+      },
+    );
+  },
+
   resolveDispute(disputeCaseId: string, options: DisputeResolution): Promise<AdminDisputeResolutionResult> {
     return apiRequest<AdminDisputeResolutionResult>(
       `/api/v1/admin/disputes/${encode(disputeCaseId)}/resolve`,
@@ -1241,6 +1270,7 @@ export type AdminCommandPort = Pick<
   | "hideQuest"
   | "restoreQuest"
   | "terminateQuest"
+  | "openDispute"
   | "resolveDispute"
   | "approvePayout"
   | "rejectPayout"

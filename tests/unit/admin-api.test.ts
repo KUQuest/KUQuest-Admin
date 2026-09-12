@@ -448,6 +448,7 @@ describe("Admin API boundary", () => {
     await adminApi.terminateQuest("quest-1", { idempotencyKey: "terminate-1", expectedVersion: 1, reason: "Policy violation.", reasonCode: "SAFETY_REVIEW" });
     await adminApi.listDisputes();
     await adminApi.getDispute("case-1");
+    await adminApi.openDispute("quest-1", { workerId: "worker-1" });
     await adminApi.resolveDispute("case-1", { idempotencyKey: "resolve-1", expectedVersion: 1, outcome: "DISPUTE_CASE_DISMISSED", reasonCode: "DISPUTE_POLICY_REVIEW" });
     await adminApi.listPayouts();
     await adminApi.getPayout("payout-1");
@@ -486,6 +487,7 @@ describe("Admin API boundary", () => {
       "/api/v1/admin/quests/quest-1/terminate",
       "/api/v1/admin/disputes",
       "/api/v1/admin/disputes/case-1",
+      "/api/v1/admin/disputes/open/quest-1",
       "/api/v1/admin/disputes/case-1/resolve",
       "/api/v1/admin/payouts",
       "/api/v1/admin/payouts/payout-1",
@@ -507,6 +509,39 @@ describe("Admin API boundary", () => {
       "/api/v1/admin/wallets/member-1/status",
       "/api/v1/admin/wallets/wallet-1/rebuild-projection",
     ]);
+  });
+
+  it("opens a Dispute Case for an assigned Worker without an idempotency header", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    let request: Request | undefined;
+    mockFetch(async (input, init) => {
+      request = new Request(input, init);
+      return jsonResponse({
+        success: true,
+        data: {
+          id: "case-1",
+          questId: "quest-1",
+          filerUserId: "worker-1",
+          openedByAdminId: "admin-1",
+          status: "DISPUTE_CASE_PENDING",
+          version: 1,
+          resolvedWorkerId: null,
+          resolvedAmountSatang: null,
+          resolvedByAdminId: null,
+          resolvedAt: null,
+          createdAt: "2026-09-13T01:00:00.000Z",
+          updatedAt: "2026-09-13T01:00:00.000Z",
+        },
+      });
+    });
+
+    const result = await adminApi.openDispute("quest-1", { workerId: "worker-1" });
+
+    expect(result.status).toBe("DISPUTE_CASE_PENDING");
+    expect(request?.method).toBe("POST");
+    expect(request?.url).toBe("https://api.example.test/api/v1/admin/disputes/open/quest-1");
+    expect(request?.headers.get("idempotency-key")).toBeNull();
+    expect(await request?.json()).toEqual({ workerId: "worker-1" });
   });
 
   it("uses the API Member search query name", async () => {

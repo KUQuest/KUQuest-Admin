@@ -19,7 +19,7 @@ import { mockAdminCommandPort } from "./admin-command-port";
 import { adminApiCommandPort } from "../api/admin-api";
 import type { AdminCommandPort } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
-import { mergeLiveDisputeSummary, mergeLiveQuestCommand, mergeLiveWalletProjection, payoutRecordFromApi } from "./live-review-data";
+import { mergeLiveDisputeSummary, mergeLiveOpenedDispute, mergeLiveQuestCommand, mergeLiveWalletProjection, payoutRecordFromApi } from "./live-review-data";
 import { statusBadgeClass } from "../status-badge";
 
 export { data, disputeCases };
@@ -111,6 +111,12 @@ const liveQuestCommands: AdminCommandPort = {
     mergeLiveQuestCommand(questId, result);
     return result;
   },
+  openDispute: async (questId, options) => {
+    const result = await adminApiCommandPort.openDispute(questId, options);
+    const quest = data.quests.find((record) => record.id === questId);
+    if (quest) mergeLiveOpenedDispute(quest, result);
+    return result;
+  },
   resolveDispute: async (disputeCaseId, options) => {
     const mockDispute = data.disputes.find((record) =>
       !record.apiBacked
@@ -134,6 +140,7 @@ export const adminCommands: AdminCommandPort = isAdminApiEnabled()
     hideQuest: liveQuestCommands.hideQuest,
     restoreQuest: liveQuestCommands.restoreQuest,
     terminateQuest: liveQuestCommands.terminateQuest,
+    openDispute: liveQuestCommands.openDispute,
     resolveDispute: liveQuestCommands.resolveDispute,
   }
   : mockAdminCommandPort;

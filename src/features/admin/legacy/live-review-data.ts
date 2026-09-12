@@ -8,6 +8,7 @@ import {
   type AdminApiQuestStatus,
   type AdminDisputeCase,
   type AdminDisputeCaseDetail,
+  type AdminDisputeOpenResult,
   type AdminMemberDetail,
   type AdminMemberFinance,
   type AdminMemberListItem,
@@ -448,6 +449,11 @@ function questRecordFromApi(quest: AdminQuest, detail?: AdminQuestDetail): Legac
     assignment.assignmentStatus,
     "Worker",
   ] as [string, string, string]) ?? [];
+  const assignedWorkers = detail?.assignments.map((assignment) => [
+    assignment.worker.id,
+    memberName(assignment.worker),
+    assignment.assignmentStatus,
+  ] as [string, string, string]) ?? [];
   const selectedParticipant = detail?.assignments[0]
     ? memberName(detail.assignments[0].worker)
     : applications.find((application) => application[1] === "APPLICATION_SELECTED")?.[0];
@@ -503,6 +509,7 @@ function questRecordFromApi(quest: AdminQuest, detail?: AdminQuestDetail): Legac
     editHistory,
     applications: applications.length ? applications : assignedParticipants,
     selectedParticipant,
+    assignedWorkers,
     teamQuest: quest.participation === "GROUP",
     teamSize: detail?.candidates.teams[0]?.members.length ?? quest.headcount,
     teamParticipants: detail?.candidates.teams[0]?.members.map(({ member }) => [memberName(member), "Member"] as [string, string]),
@@ -574,6 +581,7 @@ export function mergeLiveQuestCommand(id: string, result: AdminQuestCommandResul
     editHistory: record.editHistory,
     applications: record.applications,
     selectedParticipant: record.selectedParticipant,
+    assignedWorkers: record.assignedWorkers,
     teamQuest: record.teamQuest,
     teamParticipants: record.teamParticipants,
     teamSize: record.teamSize,
@@ -1179,6 +1187,35 @@ export function mergeLiveDisputeSummary(record: LegacyRecord, summary: AdminDisp
       : summary.status === "DISPUTE_CASE_RESOLVED" ? "Dispute Case resolved by Admin." : undefined,
     tone: summary.status === "DISPUTE_CASE_PENDING" ? "warning" : "neutral",
   });
+}
+
+export function mergeLiveOpenedDispute(quest: LegacyRecord, result: AdminDisputeOpenResult): void {
+  const assignedWorker = quest.assignedWorkers?.find(([workerId]) => workerId === result.filerUserId);
+  const record: LegacyRecord = {
+    id: result.id,
+    title: quest.title,
+    person: quest.person,
+    other: assignedWorker?.[1] ?? `Worker ${result.filerUserId}`,
+    status: result.status,
+    tone: "warning",
+    amount: null,
+    age: dateTimeLabel(result.createdAt),
+    questId: result.questId,
+    workerId: result.filerUserId,
+    filerUserId: result.filerUserId,
+    disputeCaseStatus: result.status,
+    questState: "QUEST_FAILED",
+    detail: "Dispute Case opened by Admin for Worker review.",
+    disputeDate: dateTimeLabel(result.createdAt),
+    createdAt: result.createdAt,
+    updatedAt: result.updatedAt,
+    version: result.version,
+    apiBacked: true,
+    evidence: [],
+  };
+  const existing = data.disputes.find((candidate) => candidate.id === result.id);
+  if (existing) Object.assign(existing, record);
+  else data.disputes.unshift(record);
 }
 
 function historyEntryFromApi(entry: AdminPayoutDetail["history"][number]): LegacyHistoryEntry {

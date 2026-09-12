@@ -371,7 +371,18 @@ describe("live review data", () => {
             email: "ari@ku.th",
           },
           candidates: { applications: [], teams: [] },
-          assignments: [],
+          assignments: [{
+            id: "assignment-1",
+            worker: {
+              id: "worker-1",
+              firstName: "Ari",
+              lastName: "Wattanakul",
+              email: "ari@ku.th",
+            },
+            assignmentStatus: "ASSIGNMENT_ACTIVE",
+            startedAt: "2026-09-05T02:00:00.000Z",
+            createdAt: "2026-09-05T01:00:00.000Z",
+          }],
           proofSubmissions: [],
           editHistory: [],
           adminActions: [],
@@ -395,6 +406,7 @@ describe("live review data", () => {
       questFinanceReservationStatus: "ACTIVE",
       questFinanceTotalReservedSatang: 12240,
       questFinanceRemainingSatang: 12240,
+      assignedWorkers: [["worker-1", "Ari Wattanakul", "ASSIGNMENT_ACTIVE"]],
     });
   });
 
