@@ -146,6 +146,14 @@ export function walletStatementRows(
   });
 }
 
+export function latestWalletStatementRows(
+  transactions: readonly WalletStatementTransaction[],
+  walletId: string,
+  currentBalances: WalletBalances,
+): WalletStatementRow[] {
+  return walletStatementRows(transactions, walletId, currentBalances).slice(0, 5);
+}
+
 export function latestWalletTransactionDate(
   transactions: readonly WalletStatementTransaction[],
 ): string | null {

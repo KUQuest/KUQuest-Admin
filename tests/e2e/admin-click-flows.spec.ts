@@ -66,18 +66,44 @@ test.describe("admin click flows", () => {
     const drawer = page.locator("#drawer");
     await expect(drawer).toHaveClass(/open/);
     await expect(drawer.getByRole("heading", { level: 3, name: "Wallet Statement" })).toBeVisible();
-    await expect(drawer.locator(".wallet-statement-table tbody tr")).toHaveCount(25);
-    await expect(drawer.getByRole("button", { name: "Load more" })).toBeVisible();
-    await expect(drawer.getByLabel("Event type")).toBeVisible();
-    await expect(drawer.getByLabel("From ICT date")).toBeVisible();
-    await expect(drawer.getByLabel("To ICT date")).toBeVisible();
+    await expect(drawer.locator(".wallet-statement-table tbody tr")).toHaveCount(5);
+    await expect(drawer.getByRole("button", { name: "Load more" })).toHaveCount(0);
+    await expect(drawer.getByLabel("Event type")).toHaveCount(0);
+    await expect(drawer.getByLabel("From ICT date")).toHaveCount(0);
+    await expect(drawer.getByLabel("To ICT date")).toHaveCount(0);
+    const memberProfileLink = drawer.getByRole("link", { name: "See full Member profile" });
+    const memberProfileHref = await memberProfileLink.getAttribute("href");
+    const walletRecordId = await drawer.locator(".fact").filter({ hasText: "Wallet record" }).locator("strong").textContent();
+    expect(memberProfileHref).toMatch(/^\/users\/[^?]+$/);
+    expect(memberProfileHref).not.toBe(`/users/${walletRecordId}`);
 
-    await drawer.getByRole("button", { name: "Load more" }).click();
-    await expect(drawer.locator(".wallet-statement-table tbody tr")).toHaveCount(50);
+    await drawer.getByRole("link", { name: "View full Wallet Statement" }).click();
+    await expect(page).toHaveURL(/\/users\/[^?]+\?tab=wallet-statement$/);
+    const profileStatement = page.locator("[data-user-wallet-statement]");
+    await expect(profileStatement.getByRole("heading", { level: 2, name: "Wallet Statement" })).toBeVisible();
+    await expect(profileStatement.locator(".wallet-statement-table tbody tr")).toHaveCount(25);
+    await expect(profileStatement.getByLabel("Event type")).toBeVisible();
+    await expect(profileStatement.getByLabel("From ICT date")).toBeVisible();
+    await expect(profileStatement.getByLabel("To ICT date")).toBeVisible();
+    await expect(profileStatement.getByRole("button", { name: "Load more" })).toBeVisible();
 
-    await drawer.getByLabel("Event type").selectOption("TOP_UP");
-    await drawer.getByRole("button", { name: "Apply filters" }).click();
-    await expect(drawer.locator(".wallet-statement-table tbody tr")).toHaveCount(11);
+    await profileStatement.getByRole("button", { name: "Load more" }).click();
+    await expect(profileStatement.locator(".wallet-statement-table tbody tr")).toHaveCount(50);
+
+    await profileStatement.getByLabel("Event type").selectOption("TOP_UP");
+    await profileStatement.getByRole("button", { name: "Apply filters" }).click();
+    await expect(profileStatement.locator(".wallet-statement-table tbody tr")).toHaveCount(11);
+
+    const profileTabs = page.getByRole("navigation", { name: "User detail sections" });
+    await profileTabs.getByRole("button", { name: "Overview", exact: true }).click();
+    await expect(page).toHaveURL(/\/users\/[^?]+$/);
+    await profileTabs.getByRole("button", { name: "Wallet Statement", exact: true }).click();
+    await expect(page).toHaveURL(/\/users\/[^?]+\?tab=wallet-statement$/);
+    await page.goBack();
+    await expect(page).toHaveURL(/\/users\/[^?]+$/);
+    await page.goForward();
+    await expect(page).toHaveURL(/\/users\/[^?]+\?tab=wallet-statement$/);
+    await expect(page.locator("[data-user-wallet-statement]")).toBeVisible();
   });
 
   test("admin can sign in and open Users from primary navigation", async ({

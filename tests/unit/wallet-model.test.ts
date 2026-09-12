@@ -4,6 +4,7 @@ import {
   currentWalletBalance,
   filterWalletStatementTransactions,
   latestWalletTransactionDate,
+  latestWalletStatementRows,
   totalWalletFunds,
   walletStatementRows,
   type WalletStatementTransaction,
@@ -102,5 +103,16 @@ describe("Wallet model", () => {
       transaction("tx-2", "2026-09-03T01:00:00.000Z"),
       transaction("tx-open", "2026-09-05T01:00:00.000Z", [], null),
     ])).toBe("2026-09-03T01:00:00.000Z");
+  });
+
+  it("returns the five latest sealed Ledger Transactions for a Wallet preview", () => {
+    const transactions = Array.from({ length: 6 }, (_, index) => transaction(
+      `tx-${index + 1}`,
+      `2026-09-${String(index + 1).padStart(2, "0")}T01:00:00.000Z`,
+      [{ accountType: "SPENDING", walletId: "wallet-1", amountSatang: 100 }],
+    ));
+
+    expect(latestWalletStatementRows(transactions, "wallet-1", walletBalances).map((row) => row.transaction.id))
+      .toEqual(["tx-6", "tx-5", "tx-4", "tx-3", "tx-2"]);
   });
 });

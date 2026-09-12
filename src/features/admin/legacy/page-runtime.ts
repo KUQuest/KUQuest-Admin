@@ -13,6 +13,7 @@ import {
   refreshLivePayouts,
   refreshLiveQuests,
   refreshLiveWallets,
+  loadLiveWalletStatement,
 } from "./live-review-data";
 
 export type TypedLegacyPage = "home" | "quest" | "dispute" | "report" | "user";
@@ -389,6 +390,7 @@ export async function initializeTypedLegacyPage(
     setActiveNavigation: core.setActiveNavigation,
     openDrawer: core.openDrawer,
     openPenaltyDialog: core.openPenaltyDialog,
+    loadWalletStatement: loadLiveWalletStatement,
     userQuestRecords: core.userQuestRecords,
     userReportsFor: core.userReportsFor,
     completedPayoutQuests: core.completedPayoutQuests,

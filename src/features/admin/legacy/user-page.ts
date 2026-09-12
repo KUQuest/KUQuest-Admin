@@ -4,6 +4,20 @@ import type {
 } from "./runtime";
 import type { ModerationPageContext } from "./dispute-detail";
 import { memberStatusFor, payoutStatusFor, questStateFor, reportCaseStatusFor, walletStatusFor } from "../domain/rulebook";
+import {
+  loadWalletStatementBalanceCoverage,
+  walletBalancesFromRecord,
+  walletStatementApiDate,
+  walletStatementFiltersMarkup,
+  walletStatementRowsFor,
+  walletStatementTable,
+  isWalletStatementEventType,
+  walletStatementFormValue,
+  type WalletStatementLoader,
+  type WalletStatementViewState,
+} from "./wallet-statement-view";
+import { ADMIN_LEDGER_EVENT_TYPES } from "../api/admin-api";
+import { filterWalletStatementTransactions } from "./wallet-model";
 
 export type UserReview = {
   reviewer: string;
@@ -17,6 +31,33 @@ export type UserReview = {
   toneBeforeHidden?: string;
   [key: string]: unknown;
 };
+
+export type UserPageTab = "overview" | "activity" | "payouts" | "wallet-statement" | "reviews" | "reports" | "penalty-history";
+
+const userPageTabs = new Set<string>([
+  "overview",
+  "activity",
+  "payouts",
+  "wallet-statement",
+  "reviews",
+  "reports",
+  "penalty-history",
+]);
+
+export function userPageTabFromSearch(search: string): UserPageTab {
+  const tab = new URLSearchParams(search).get("tab");
+  return isUserPageTab(tab) ? tab : "overview";
+}
+
+function isUserPageTab(value: string | null | undefined): value is UserPageTab {
+  return typeof value === "string" && userPageTabs.has(value);
+}
+
+export function userPageUrlForTab(memberId: string | undefined, tab: UserPageTab): string | null {
+  if (!memberId) return null;
+  const path = `/users/${encodeURIComponent(memberId)}`;
+  return tab === "overview" ? path : `${path}?tab=${encodeURIComponent(tab)}`;
+}
 
 type UserNote = Omit<LegacyHistoryEntry, "event"> & { event?: string };
 
@@ -58,6 +99,7 @@ export type UserPageContext = Omit<ModerationPageContext, "data"> & {
   setActiveNavigation: (view: string) => void;
   openDrawer: (view: string, index: number) => void;
   openPenaltyDialog: (user: UserRecord) => void;
+  loadWalletStatement: WalletStatementLoader;
   userQuestRecords: (user: UserRecord) => LegacyRecord[];
   userReportsFor: (user: UserRecord) => LegacyRecord[];
   completedPayoutQuests: (user: UserRecord) => LegacyRecord[];
@@ -119,6 +161,7 @@ export function initializeUserPage(context: UserPageContext): UserPageApi {
     toast,
     setActiveNavigation,
     openPenaltyDialog,
+    loadWalletStatement,
     userQuestRecords,
     userReportsFor,
     completedPayoutQuests,
@@ -137,12 +180,12 @@ export function initializeUserPage(context: UserPageContext): UserPageApi {
     new URLSearchParams(context.search).get("id") ||
     "";
   const userPageState: {
-    tab: "overview" | "activity" | "payouts" | "reviews" | "reports" | "penalty-history";
+    tab: UserPageTab;
     reviewFilter: string;
     reviewQuery: string;
     reviewRating: number | null;
   } = {
-    tab: "overview",
+    tab: userPageTabFromSearch(context.search),
     reviewFilter: "all",
     reviewQuery: "",
     reviewRating: null,
@@ -152,6 +195,40 @@ export function initializeUserPage(context: UserPageContext): UserPageApi {
     reports: { page: 1, size: 10, sortKey: "reportedAt", direction: "desc" },
     penalties: { page: 1, size: 10, sortKey: "at", direction: "desc" },
   };
+  const walletStatementState: WalletStatementViewState = {
+    transactions: [],
+    balanceTransactions: [],
+    balanceNextCursor: null,
+    nextCursor: null,
+    visibleCount: 25,
+    loading: false,
+    error: "",
+    filters: { eventType: "", from: "", to: "" },
+    requestId: 0,
+    loaded: false,
+  };
+  let walletStatementMemberId = "";
+
+  function resetWalletStatementState(user: UserRecord): void {
+    const memberId = user.memberId || user.id;
+    if (walletStatementMemberId === memberId) return;
+    walletStatementMemberId = memberId;
+    const transactions = Array.isArray(user.walletStatement) ? user.walletStatement : [];
+    Object.assign(walletStatementState, {
+      transactions,
+      balanceTransactions: Array.isArray(user.walletStatementBalanceTransactions)
+        ? user.walletStatementBalanceTransactions
+        : transactions,
+      balanceNextCursor: user.walletStatementBalanceNextCursor || null,
+      nextCursor: user.walletStatementNextCursor || null,
+      visibleCount: 25,
+      loading: false,
+      error: "",
+      loaded: !user.apiBacked && transactions.length > 0,
+      filters: { eventType: "", from: "", to: "" },
+      requestId: 0,
+    });
+  }
 
 function userPageEscape(value: unknown): string {
   return escapeActivityText(value ?? "");
@@ -320,6 +397,86 @@ function userPagePayoutHistory(user: UserRecord, compact = false): string {
   return `<section class="user-detail-panel${compact ? " user-payout-preview" : " user-tab-panel"}"><div class="user-panel-heading"><div><h2>Payout history</h2>${compact ? `<p>Total earned ฿${fmt(totalEarned)} · Recent requests and transfer outcomes for this account.</p>` : `<p>${payoutRecords.length} payout records · ${completed.length} completed.</p>`}</div><div class="user-panel-heading-actions">${headingAction}<span class="section-count">${payoutRecords.length}</span></div></div>${!compact && payoutRecords.length ? `<div class="user-payout-stat-list"><div><strong>฿${fmt(totalEarned)}</strong><span>Total earned</span></div><div><strong>฿${fmt(completed.reduce((total, entry) => total + Number(entry.record.amount || 0), 0))}</strong><span>Paid out</span></div><div><strong>฿${fmt(inFlight.reduce((total, entry) => total + Number(entry.record.amount || 0), 0))}</strong><span>In progress</span></div><div><strong>${payoutRecords.length}</strong><span>Total requests</span></div></div>` : ""}${shownRecords.length ? `<div class="user-payout-list">${shownRecords.map(({ record, index }) => `<button class="user-payout-row" type="button" data-user-payout="${index}" aria-label="Open payout ${userPageEscape(record.id)}"><span class="user-payout-primary"><strong>${userPageEscape(record.id)}</strong><small>${userPageDate(record.requestedAt)}</small><small>${userPageEscape(record.questId || record.other || "Quest")}</small></span><span class="user-payout-secondary"><strong>฿${fmt(record.amount)}</strong>${payoutBadge(record.payoutStatus ?? record.status, record.tone)}</span></button>`).join("")}</div>` : '<div class="empty"><h3>No payout history</h3><p>This account has no payout records.</p></div>'}</section>`;
 }
 
+function userPageWalletStatement(user: UserRecord): string {
+  const walletId = typeof user.walletId === "string" && user.walletId ? user.walletId : null;
+  if (!walletId) {
+    return '<section class="user-detail-panel user-tab-panel wallet-statement" data-user-wallet-statement><h2>Wallet Statement</h2><p>This Member has no Wallet. No Wallet Statement is available.</p></section>';
+  }
+  const rows = walletStatementRowsFor(walletId, walletBalancesFromRecord(user), walletStatementState);
+  const filteredTransactionCount = filterWalletStatementTransactions(walletStatementState.transactions, walletStatementState.filters).length;
+  const canLoadMore = !walletStatementState.error && (user.apiBacked
+    ? Boolean(walletStatementState.nextCursor)
+    : filteredTransactionCount > walletStatementState.visibleCount);
+  const retry = walletStatementState.error
+    ? '<button class="btn" type="button" data-wallet-statement-action="retry">Retry</button>'
+    : "";
+  const statementContent = walletStatementState.loading
+    ? '<div class="empty"><h3>Loading Wallet Statement</h3><p>Reading sealed Ledger Transactions.</p></div>'
+    : walletStatementState.error
+      ? ""
+      : walletStatementTable(rows, userPageEscape);
+  return `<section class="user-detail-panel user-tab-panel wallet-statement" data-user-wallet-statement><div class="user-panel-heading"><div><h2>Wallet Statement</h2><p>Committed and sealed Ledger Transactions, newest first.</p></div></div>${walletStatementFiltersMarkup(walletStatementState.filters, ADMIN_LEDGER_EVENT_TYPES, userPageEscape)}<div aria-live="polite" data-wallet-statement-content>${statementContent}${walletStatementState.error ? `<p class="audit-note">${userPageEscape(walletStatementState.error)}</p>${retry}` : ""}</div>${canLoadMore ? `<button class="btn wallet-statement-load-more" type="button" data-wallet-statement-action="load-more"${walletStatementState.loading ? " disabled" : ""}>Load more</button>` : ""}</section>`;
+}
+
+async function loadUserWalletStatement(
+  user: UserRecord,
+  append: boolean,
+): Promise<void> {
+  const walletId = typeof user.walletId === "string" && user.walletId ? user.walletId : "";
+  if (!user.apiBacked || !walletId) return;
+  const requestId = ++walletStatementState.requestId;
+  walletStatementState.loading = true;
+  walletStatementState.error = "";
+  renderUserPage();
+  try {
+    const page = await loadWalletStatement(walletId, {
+      eventType: walletStatementState.filters.eventType
+        && isWalletStatementEventType(walletStatementState.filters.eventType)
+        ? walletStatementState.filters.eventType
+        : undefined,
+      from: walletStatementApiDate(walletStatementState.filters.from, false),
+      to: walletStatementApiDate(walletStatementState.filters.to, true),
+      limit: 25,
+      cursor: append ? walletStatementState.nextCursor || undefined : undefined,
+    });
+    if (requestId !== walletStatementState.requestId) return;
+    const existing = append ? walletStatementState.transactions : [];
+    const unique = new Map([...existing, ...page.items].map((transaction) => [transaction.id, transaction]));
+    walletStatementState.transactions = [...unique.values()];
+    const balanceUnique = new Map([...walletStatementState.balanceTransactions, ...page.items].map((transaction) => [transaction.id, transaction]));
+    walletStatementState.balanceTransactions = [...balanceUnique.values()];
+    const unfiltered = !walletStatementState.filters.eventType
+      && !walletStatementState.filters.from
+      && !walletStatementState.filters.to;
+    if (unfiltered) walletStatementState.balanceNextCursor = page.nextCursor;
+    const oldestCreatedAt = walletStatementState.transactions
+      .toSorted((first, second) => Date.parse(first.createdAt) - Date.parse(second.createdAt))
+      .at(0)?.createdAt;
+    if (!unfiltered) {
+      await loadWalletStatementBalanceCoverage(
+        walletId,
+        walletStatementState,
+        oldestCreatedAt,
+        requestId,
+        loadWalletStatement,
+      );
+    }
+    walletStatementState.nextCursor = page.nextCursor;
+    walletStatementState.loading = false;
+    walletStatementState.loaded = true;
+    user.walletStatement = walletStatementState.transactions;
+    user.walletStatementBalanceTransactions = walletStatementState.balanceTransactions;
+    user.walletStatementBalanceNextCursor = walletStatementState.balanceNextCursor;
+    user.walletStatementNextCursor = walletStatementState.nextCursor;
+  } catch (error: unknown) {
+    if (requestId !== walletStatementState.requestId) return;
+    walletStatementState.loading = false;
+    walletStatementState.error = error instanceof Error ? error.message : "Wallet Statement is not available.";
+  } finally {
+    if (requestId === walletStatementState.requestId) renderUserPage();
+  }
+}
+
 function userPageCertificates(user: UserRecord): string {
   const faculty = userPageFaculty(user);
   return `<section class="user-detail-panel"><h2>Certificates</h2><div class="user-certificate-list"><div><strong>University marketplace orientation</strong><span>KuQuest · ${userPageEscape(user.accountCreatedAt || "2026")}</span></div><div><strong>${userPageEscape(faculty)} project fundamentals</strong><span>University learning centre · 2025</span></div></div></section>`;
@@ -474,6 +631,7 @@ function userPagePenaltyHistory(user: UserRecord): string {
 function userPageTabContent(user: UserRecord): string {
   if (userPageState.tab === "activity") return userPageActivity(user);
   if (userPageState.tab === "payouts") return userPagePayoutHistory(user);
+  if (userPageState.tab === "wallet-statement") return userPageWalletStatement(user);
   if (userPageState.tab === "reviews") return userPageReviews(user);
   if (userPageState.tab === "reports") return userPageReports(user);
   if (userPageState.tab === "penalty-history") return userPagePenaltyHistory(user);
@@ -500,17 +658,26 @@ function renderUserPage(): void {
     return;
   }
   if (detail) detail.user = user;
+  resetWalletStatementState(user);
   setActiveNavigation("users");
-  main.innerHTML = `<div class="user-detail-breadcrumb"><a href="/?view=users">Users</a><span>›</span><span>${userPageEscape(user.title)}</span></div><div class="page-head user-detail-page-head"><div><h1>${userPageEscape(user.title)}</h1><p>Review user information, activity, payouts, and penalty history.</p></div></div>${userPageSummary(user)}<nav class="user-detail-tabs" aria-label="User detail sections">${[["overview", "Overview"], ["activity", "Activity"], ["payouts", "Payouts"], ["reviews", "Reviews"], ["reports", "Reports"], ["penalty-history", "Penalty History"]].map(([value, label]) => `<button class="${userPageState.tab === value ? "active" : ""}" type="button" data-user-tab="${value}" aria-current="${userPageState.tab === value ? "page" : "false"}">${label}</button>`).join("")}</nav><div class="user-detail-layout">${userPageTabContent(user)}</div>`;
+  main.innerHTML = `<div class="user-detail-breadcrumb"><a href="/?view=users">Users</a><span>›</span><span>${userPageEscape(user.title)}</span></div><div class="page-head user-detail-page-head"><div><h1>${userPageEscape(user.title)}</h1><p>Review user information, activity, payouts, and penalty history.</p></div></div>${userPageSummary(user)}<nav class="user-detail-tabs" aria-label="User detail sections">${[["overview", "Overview"], ["activity", "Activity"], ["payouts", "Payouts"], ["wallet-statement", "Wallet Statement"], ["reviews", "Reviews"], ["reports", "Reports"], ["penalty-history", "Penalty History"]].map(([value, label]) => `<button class="${userPageState.tab === value ? "active" : ""}" type="button" data-user-tab="${value}" aria-current="${userPageState.tab === value ? "page" : "false"}">${label}</button>`).join("")}</nav><div class="user-detail-layout">${userPageTabContent(user)}</div>`;
   bindUserPage(user);
+}
+
+function setUserPageTab(tab: UserPageTab): void {
+  userPageState.tab = tab;
+  const url = userPageUrlForTab(userPageId, tab);
+  if (url && `${window.location.pathname}${window.location.search}` !== url) {
+    window.history.pushState({}, "", url);
+  }
+  renderUserPage();
 }
 
 function bindUserPage(user: UserRecord): void {
   queryAll<HTMLElement>(document, "[data-user-tab]").forEach((button) => {
     button.onclick = () => {
       const tab = button.dataset.userTab;
-      if (tab === "overview" || tab === "activity" || tab === "payouts" || tab === "reviews" || tab === "reports" || tab === "penalty-history") userPageState.tab = tab;
-      renderUserPage();
+      if (isUserPageTab(tab)) setUserPageTab(tab);
     };
   });
   queryAll<HTMLElement>(document, "[data-user-page-penalty]").forEach((button) => {
@@ -519,8 +686,7 @@ function bindUserPage(user: UserRecord): void {
     };
   });
   queryAll<HTMLElement>(document, "[data-user-page-history]").forEach((button) => (button.onclick = () => {
-    userPageState.tab = "penalty-history";
-    renderUserPage();
+    setUserPageTab("penalty-history");
   }));
   queryAll<HTMLElement>(document, "[data-user-payout]").forEach((button) => (button.onclick = () => {
     openDrawer("payouts", Number(button.dataset.userPayout));
@@ -562,8 +728,7 @@ function bindUserPage(user: UserRecord): void {
     userPageTableState.reviews.sortKey = userPageState.reviewRating === null ? "date" : "rating";
     userPageTableState.reviews.direction = "desc";
     userPageTableState.reviews.page = 1;
-    userPageState.tab = "reviews";
-    renderUserPage();
+    setUserPageTab("reviews");
   }));
   queryAll<HTMLElement>(document, "[data-user-table-sort]").forEach((button) => (button.onclick = () => {
     const [tableValue, key = ""] = (button.dataset.userTableSort || "").split(":");
@@ -590,7 +755,70 @@ function bindUserPage(user: UserRecord): void {
     }
     toast(`${button.dataset.reviewAction} review by ${button.dataset.reviewName}.`);
   }));
-}
+  const walletStatement = query<HTMLElement>(document, "[data-user-wallet-statement]");
+  const walletStatementForm = walletStatement?.querySelector<HTMLFormElement>("[data-wallet-statement-filter]");
+  const loadUserWalletStatementPage = (append: boolean): void => {
+    if (user.apiBacked) {
+      if (append) walletStatementState.visibleCount += 25;
+      void loadUserWalletStatement(user, append);
+      return;
+    }
+    if (append) {
+      walletStatementState.visibleCount += 25;
+      renderUserPage();
+    }
+  };
+  walletStatementForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const formData = new FormData(walletStatementForm);
+    walletStatementState.filters = {
+      eventType: walletStatementFormValue(formData, "eventType"),
+      from: walletStatementFormValue(formData, "from"),
+      to: walletStatementFormValue(formData, "to"),
+    };
+    walletStatementState.visibleCount = 25;
+    walletStatementState.error = "";
+    if (user.apiBacked) {
+      walletStatementState.transactions = [];
+      walletStatementState.nextCursor = null;
+      walletStatementState.loaded = false;
+      loadUserWalletStatementPage(false);
+    } else {
+      renderUserPage();
+    }
+  });
+  walletStatement?.querySelector<HTMLElement>('[data-wallet-statement-action="clear"]')?.addEventListener("click", () => {
+    walletStatementState.filters = { eventType: "", from: "", to: "" };
+    walletStatementState.visibleCount = 25;
+    walletStatementState.error = "";
+    if (user.apiBacked) {
+      walletStatementState.transactions = [];
+      walletStatementState.nextCursor = null;
+      walletStatementState.loaded = false;
+      loadUserWalletStatementPage(false);
+    } else {
+      renderUserPage();
+    }
+  });
+  walletStatement?.querySelector<HTMLElement>('[data-wallet-statement-action="load-more"]')?.addEventListener("click", () => {
+    loadUserWalletStatementPage(true);
+  });
+  walletStatement?.querySelector<HTMLElement>('[data-wallet-statement-action="retry"]')?.addEventListener("click", () => {
+    walletStatementState.error = "";
+    walletStatementState.loaded = false;
+    loadUserWalletStatementPage(false);
+  });
+  if (userPageState.tab === "wallet-statement" && user.apiBacked && user.walletId && !walletStatementState.loaded && !walletStatementState.loading && !walletStatementState.error) {
+    loadUserWalletStatementPage(false);
+  }
+  }
+
+  window.addEventListener("popstate", () => {
+    const tab = userPageTabFromSearch(window.location.search);
+    if (tab === userPageState.tab) return;
+    userPageState.tab = tab;
+    renderUserPage();
+  });
 
 
 

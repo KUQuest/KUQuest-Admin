@@ -306,8 +306,11 @@ function mockWalletStatementFor(userIndex: number, walletId = generatedUsers[use
 }
 
 function attachMockWalletStatement(user: LegacyRecord, index: number): void {
-  const statement = mockWalletStatementFor(index, user.id);
+  const walletId = `WAL-${user.id}`;
+  const statement = mockWalletStatementFor(index, walletId);
   Object.assign(user, {
+    memberId: user.id,
+    walletId,
     walletSpendingBalanceSatang: statement.balances.spendingBalanceSatang,
     walletEarningsBalanceSatang: statement.balances.earningsBalanceSatang,
     walletFundingReservedSatang: statement.balances.fundingReservedSatang,
@@ -658,7 +661,7 @@ if (savedFreshDemo?.version === freshDemoVersion) {
 data.users.forEach((user, index) => {
   if (!Array.isArray(user.walletStatement)) attachMockWalletStatement(user, index);
 });
-data.wallets.splice(0, data.wallets.length, ...data.users.map((user) => ({ ...user })));
+data.wallets.splice(0, data.wallets.length, ...data.users.map((user) => ({ ...user, id: user.walletId || user.id })));
 
 function expirePenaltyIfDue(user: LegacyRecord): boolean {
   const penaltyLabel = user.penalty?.label;
