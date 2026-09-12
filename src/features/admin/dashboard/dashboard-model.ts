@@ -42,6 +42,7 @@ export type DashboardRow = {
 };
 
 export type DashboardActivity = {
+  id: string;
   actor: string;
   title: string;
   detail: string;
@@ -121,11 +122,18 @@ function activityInitials(entry: AdminActivityLog): string {
 
 export function dashboardActivityFromApi(entry: AdminActivityLog): DashboardActivity {
   return {
+    id: entry.id,
     actor: activityInitials(entry),
     title: entry.action,
     detail: `${entry.resourceType} · ${entry.resourceId}${entry.reasonCode ? ` · ${entry.reasonCode}` : ""}`,
     timestamp: Date.parse(entry.createdAt) || 0,
   };
+}
+
+export function dashboardActivityKey(entry: DashboardActivity, index: number): string {
+  const identity = typeof entry.id === "string" ? entry.id.trim() : "";
+  if (identity) return `activity-${identity}`;
+  return `activity-${entry.timestamp}-${entry.actor}-${entry.title}-${entry.detail}-${index}`;
 }
 
 export function dashboardModelFromApi(

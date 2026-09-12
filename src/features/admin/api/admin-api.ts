@@ -59,6 +59,30 @@ export type AdminOverview = {
   };
 };
 
+export type AdminFinanceOverview = {
+  platformBalances: {
+    revenueSatang: number;
+    suspenseSatang: number;
+  };
+  memberBalancesSummary: {
+    totalSpendingSatang: number;
+    totalEarningsSatang: number;
+    totalFundingReservedSatang: number;
+    totalPayoutReservedSatang: number;
+    totalCirculatingSatang: number;
+  };
+  volumeLifetime: {
+    totalTopUpDepositedSatang: number;
+    totalPayoutCompletedSatang: number;
+    totalPlatformFeesEarnedSatang: number;
+  };
+  integrity: {
+    subledgerBalanced: boolean;
+    totalPostingsDiscrepancySatang: number;
+    lastAuditedAt: string;
+  };
+};
+
 export type AdminActivityLog = {
   id: string;
   admin: {
@@ -201,6 +225,59 @@ export type AdminQuestDetail = AdminQuest & {
   }>;
 };
 
+export type AdminQuestFinance = {
+  quest: {
+    id: string;
+    title: string;
+    questStatus: string;
+    headcount: number;
+    rewardSatang: number | null;
+    platformFeePerWorkerSatang: number | null;
+    questFundingTotalSatang: number | null;
+    hirer: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      studentId: string | null;
+    };
+  };
+  reservation: {
+    id: string;
+    status: string;
+    totalReservedSatang: number;
+    remainingSatang: number;
+    createdAt: string;
+  } | null;
+  transfers: Array<{
+    id: string;
+    occurredAt: string;
+    type: "RESERVE" | "SETTLEMENT" | "RELEASE" | "DISPUTE_SETTLEMENT";
+    from: { type: string; id: string; displayName: string };
+    to: { type: string; id: string; displayName: string };
+    amountSatang: number;
+    platformFeeSatang: number;
+    description: string;
+    ledgerTransactionId: string;
+    businessReference: string;
+  }>;
+  ledgerTransactions: Array<{
+    id: string;
+    businessReference: string;
+    eventType: string;
+    description: string | null;
+    createdAt: string;
+    sealedAt: string | null;
+    postings: Array<{
+      id: string;
+      accountId: string;
+      accountType: string;
+      walletId: string | null;
+      ownerUserId: string | null;
+      amountSatang: number;
+    }>;
+  }>;
+};
+
 export type AdminDisputeCase = {
   id: string;
   questId: string;
@@ -337,6 +414,39 @@ export type AdminMemberDetail = {
     totalEarnedSatang: number;
     totalPaidOutSatang: number;
   };
+};
+
+export type AdminMemberFinance = {
+  member: {
+    userId: string;
+    firstName: string;
+    lastName: string;
+    studentId: string | null;
+    email: string;
+  };
+  wallet: {
+    id: string;
+    walletStatus: string;
+    spendingBalanceSatang: number;
+    earningsBalanceSatang: number;
+    fundingReservedSatang: number;
+    reservedForPayoutsSatang: number;
+    projectionMatchesLedger: boolean;
+  } | null;
+  lifetimeStats: {
+    totalToppedUpSatang: number;
+    totalEarnedFromQuestsSatang: number;
+    totalSpentOnQuestsSatang: number;
+    totalPaidOutSatang: number;
+    totalEarningsConvertedSatang: number;
+  };
+  activeFundingReservations: Array<{
+    id: string;
+    callerReference: string;
+    totalReservedSatang: number;
+    remainingSatang: number;
+    createdAt: string;
+  }>;
 };
 
 export type AdminWallet = {
@@ -822,6 +932,13 @@ export const adminApi = {
     return getOverview();
   },
 
+  getFinanceOverview(): Promise<AdminFinanceOverview> {
+    return apiRequest<AdminFinanceOverview>(
+      "/api/v1/admin/finance/overview",
+      { cache: "no-store" },
+    );
+  },
+
   listActivityLogs(
     query: AdminActivityListQuery = {},
   ): Promise<AdminPage<AdminActivityLog>> {
@@ -841,6 +958,13 @@ export const adminApi = {
   getQuest(questId: string): Promise<AdminQuestDetail> {
     return apiRequest<AdminQuestDetail>(
       `/api/v1/admin/quests/${encode(questId)}`,
+      { cache: "no-store" },
+    );
+  },
+
+  getQuestFinance(questId: string): Promise<AdminQuestFinance> {
+    return apiRequest<AdminQuestFinance>(
+      `/api/v1/admin/finance/quests/${encode(questId)}`,
       { cache: "no-store" },
     );
   },
@@ -1019,6 +1143,13 @@ export const adminApi = {
     );
   },
 
+  getMemberFinance(memberId: string): Promise<AdminMemberFinance> {
+    return apiRequest<AdminMemberFinance>(
+      `/api/v1/admin/finance/members/${encode(memberId)}`,
+      { cache: "no-store" },
+    );
+  },
+
   listWallets(query: AdminWalletListQuery = {}): Promise<AdminPage<AdminWallet>> {
     return apiRequest<AdminPage<AdminWallet>>(
       `/api/v1/admin/wallets${queryString(query)}`,
@@ -1080,9 +1211,11 @@ export const adminApi = {
 export type AdminReadPort = Pick<
   typeof adminApi,
   | "getOverview"
+  | "getFinanceOverview"
   | "listActivityLogs"
   | "listQuests"
   | "getQuest"
+  | "getQuestFinance"
   | "listDisputes"
   | "getDispute"
   | "listPayouts"
@@ -1096,6 +1229,7 @@ export type AdminReadPort = Pick<
   | "getDisputeEvidence"
   | "listMembers"
   | "getMember"
+  | "getMemberFinance"
   | "listWallets"
   | "getWallet"
   | "getWalletStatusHistory"

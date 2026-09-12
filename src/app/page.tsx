@@ -11,7 +11,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       page="home"
       activeView={view}
       reactDashboard={!view || view === "home"}
-      dashboardVariant="clone"
     />
   );
 }

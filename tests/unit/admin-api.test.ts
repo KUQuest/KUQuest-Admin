@@ -83,6 +83,120 @@ describe("Admin API boundary", () => {
     expect(first).toEqual(second);
   });
 
+  it("loads the Member Wallet summary from the Finance Overview API", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    let request: Request | undefined;
+
+    mockFetch(async (input, init) => {
+      request = new Request(input, init);
+      return jsonResponse({
+        success: true,
+        data: {
+          platformBalances: { revenueSatang: 0, suspenseSatang: 0 },
+          memberBalancesSummary: {
+            totalSpendingSatang: 100,
+            totalEarningsSatang: 200,
+            totalFundingReservedSatang: 300,
+            totalPayoutReservedSatang: 400,
+            totalCirculatingSatang: 1000,
+          },
+          volumeLifetime: {
+            totalTopUpDepositedSatang: 0,
+            totalPayoutCompletedSatang: 0,
+            totalPlatformFeesEarnedSatang: 0,
+          },
+          integrity: {
+            subledgerBalanced: true,
+            totalPostingsDiscrepancySatang: 0,
+            lastAuditedAt: "2026-09-12T00:00:00.000Z",
+          },
+        },
+      });
+    });
+
+    const overview = await adminApi.getFinanceOverview();
+
+    expect(overview.memberBalancesSummary.totalSpendingSatang).toBe(100);
+    expect(overview.memberBalancesSummary.totalCirculatingSatang).toBe(1000);
+    expect(request?.url).toBe("https://api.example.test/api/v1/admin/finance/overview");
+  });
+
+  it("uses the Member and Quest finance detail routes", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    const urls: string[] = [];
+
+    mockFetch(async (input, init) => {
+      const request = new Request(input, init);
+      urls.push(request.url);
+      if (request.url.endsWith("/finance/members/member-1")) {
+        return jsonResponse({
+          success: true,
+          data: {
+            member: {
+              userId: "member-1",
+              firstName: "Ari",
+              lastName: "Wattanakul",
+              studentId: "68000001",
+              email: "ari@ku.th",
+            },
+            wallet: {
+              id: "wallet-1",
+              walletStatus: "ACTIVE",
+              spendingBalanceSatang: 1000,
+              earningsBalanceSatang: 2000,
+              fundingReservedSatang: 3000,
+              reservedForPayoutsSatang: 4000,
+              projectionMatchesLedger: true,
+            },
+            lifetimeStats: {
+              totalToppedUpSatang: 5000,
+              totalEarnedFromQuestsSatang: 6000,
+              totalSpentOnQuestsSatang: 7000,
+              totalPaidOutSatang: 8000,
+              totalEarningsConvertedSatang: 9000,
+            },
+            activeFundingReservations: [],
+          },
+        });
+      }
+      return jsonResponse({
+        success: true,
+        data: {
+          quest: {
+            id: "quest-1",
+            title: "Campus survey",
+            questStatus: "QUEST_OPEN",
+            headcount: 1,
+            rewardSatang: 12000,
+            platformFeePerWorkerSatang: 240,
+            questFundingTotalSatang: 12240,
+            hirer: {
+              id: "member-1",
+              firstName: "Ari",
+              lastName: "Wattanakul",
+              studentId: "68000001",
+            },
+          },
+          reservation: null,
+          transfers: [],
+          ledgerTransactions: [],
+        },
+      });
+    });
+
+    const [memberFinance, questFinance] = await Promise.all([
+      adminApi.getMemberFinance("member-1"),
+      adminApi.getQuestFinance("quest-1"),
+    ]);
+
+    expect(memberFinance.wallet?.earningsBalanceSatang).toBe(2000);
+    expect(questFinance.quest.platformFeePerWorkerSatang).toBe(240);
+    expect(urls).toEqual([
+      "https://api.example.test/api/v1/admin/finance/members/member-1",
+      "https://api.example.test/api/v1/admin/finance/quests/quest-1",
+    ]);
+  });
+
   it("uses the API Server Admin sign-in route", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     let request: Request | undefined;

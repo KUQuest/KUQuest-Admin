@@ -43,6 +43,7 @@ const translations: TranslationMap = {
   "Wallet / Member ID": "รหัสกระเป๋าเงิน / สมาชิก",
   "Wallet status": "สถานะกระเป๋าเงิน",
   "Wallet Status": "สถานะกระเป๋าเงิน",
+  "User Status": "สถานะผู้ใช้",
   "Member status": "สถานะสมาชิก",
   "Activity log": "บันทึกกิจกรรม",
   "Admin API is required to display this read-only log.": "ต้องใช้ Admin API เพื่อแสดงบันทึกแบบอ่านอย่างเดียวนี้",

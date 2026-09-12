@@ -42,6 +42,8 @@ import {
 import type { LegacyDomElement, LegacyRecord } from "./runtime";
 import { LIVE_RESOURCE_UPDATED_EVENT, liveResourceState, type LiveResourceView } from "./live-review-data";
 import { totalWalletFunds, type WalletBalances } from "./wallet-model";
+import { adminApiReadPort, type AdminFinanceOverview } from "../api/admin-api";
+import { isAdminApiEnabled } from "../api/admin-provider";
 import {
   disputeCaseStatusFor,
   disputeCaseStatusLabel,
@@ -68,6 +70,21 @@ const resourceCollections: ResourceCollections = {
   reports: recordsFor("reports"),
   "conduct-reports": recordsFor("conduct-reports"),
 };
+
+type WalletFinanceSummaryState = {
+  attempted: boolean;
+  loading: boolean;
+  data: AdminFinanceOverview["memberBalancesSummary"] | null;
+  error: string | null;
+};
+
+const walletFinanceSummaryState: WalletFinanceSummaryState = {
+  attempted: false,
+  loading: false,
+  data: null,
+  error: null,
+};
+let walletFinanceSummaryRequest: Promise<void> | null = null;
 state.filters = {};
 state.questFilters = { mode: "all", status: "all" };
 state.orderBy = {
@@ -150,6 +167,63 @@ function walletDateTimeLabel(value: unknown): string {
   })} ICT`;
 }
 
+function walletFinanceMetric(label: string, value: unknown): string {
+  return `<div class="wallet-finance-summary-metric"><span>${label}</span><strong>${walletMoneyFromSatang(value)}</strong></div>`;
+}
+
+function walletFinanceSummaryMarkup(): string {
+  if (!isAdminApiEnabled()) {
+    return `<span>Total Wallet Funds</span><strong>${walletMoneyFromSatang(totalWalletFunds(resourceCollections.wallets.map(walletBalancesFor)))}</strong><small>All Wallets · all statuses</small>`;
+  }
+
+  if (walletFinanceSummaryState.loading || (!walletFinanceSummaryState.attempted && !walletFinanceSummaryState.data && !walletFinanceSummaryState.error)) {
+    return `<div class="wallet-finance-summary-heading"><strong>Member Wallet Summary</strong><small>Reading the Admin API…</small></div>`;
+  }
+
+  if (walletFinanceSummaryState.error || !walletFinanceSummaryState.data) {
+    return `<div class="wallet-finance-summary-heading"><div><strong>Member Wallet Summary</strong><small>${escapeActivityText(walletFinanceSummaryState.error || "Wallet summary is not available.")}</small></div><button class="btn" type="button" id="wallet-finance-summary-retry">Try again</button></div>`;
+  }
+
+  const summary = walletFinanceSummaryState.data;
+  return `<div class="wallet-finance-summary-heading"><div><strong>Member Wallet Summary</strong><small>Aggregate values from the Admin API</small></div></div><div class="wallet-finance-summary-grid">${walletFinanceMetric("Spending balance", summary.totalSpendingSatang)}${walletFinanceMetric("Earnings balance", summary.totalEarningsSatang)}${walletFinanceMetric("Funding reserved", summary.totalFundingReservedSatang)}${walletFinanceMetric("Payout reserved", summary.totalPayoutReservedSatang)}${walletFinanceMetric("Total circulating", summary.totalCirculatingSatang)}</div>`;
+}
+
+function renderWalletFinanceSummary(): void {
+  const summary = document.querySelector<LegacyDomElement>("#wallet-finance-summary");
+  if (!summary) return;
+  summary.innerHTML = walletFinanceSummaryMarkup();
+  summary.querySelector<HTMLButtonElement>("#wallet-finance-summary-retry")?.addEventListener("click", () => {
+    walletFinanceSummaryState.attempted = false;
+    walletFinanceSummaryState.error = null;
+    void loadWalletFinanceSummary();
+  });
+}
+
+function loadWalletFinanceSummary(): Promise<void> | undefined {
+  if (!isAdminApiEnabled() || walletFinanceSummaryState.attempted || walletFinanceSummaryRequest) return;
+  walletFinanceSummaryState.attempted = true;
+  walletFinanceSummaryState.loading = true;
+  walletFinanceSummaryState.error = null;
+  renderWalletFinanceSummary();
+
+  const request = adminApiReadPort.getFinanceOverview()
+    .then((overview) => {
+      walletFinanceSummaryState.data = overview.memberBalancesSummary;
+      return undefined;
+    })
+    .catch((error: unknown) => {
+      walletFinanceSummaryState.error = error instanceof Error ? error.message : "Request failed.";
+      return undefined;
+    })
+    .finally(() => {
+      walletFinanceSummaryState.loading = false;
+      if (walletFinanceSummaryRequest === request) walletFinanceSummaryRequest = null;
+      renderWalletFinanceSummary();
+    });
+  walletFinanceSummaryRequest = request;
+  return request;
+}
+
 function pageSizeControls(view: ResourceView): string {
   const pagination = paginationFor(view);
   return `<div class="page-size-controls" aria-label="Rows per page">${pageSizeOptions
@@ -193,9 +267,12 @@ setRenderResource(function resourceRender(view: string): void {
   main.innerHTML = `${pageHead(...heads[resourceView])}<section class="panel resource"><div class="tabs" aria-label="Filter ${view} records">${tabs.map((tab: string) => { const label = tab === "All" || tab === "Team" || tab === "Solo" ? tab : resourceView === "payouts" ? payoutStatusLabel(tab) : resourceView === "disputes" ? disputeCaseStatusLabel(tab) : resourceView === "quests" ? questStateLabel(tab) : resourceView === "reports" || resourceView === "conduct-reports" ? reportCaseStatusLabel(tab) : resourceView === "users" ? memberStatusLabel(tab) : resourceView === "wallets" ? walletStatusLabel(tab) : tab; return `<button class="tab ${state.tab === tab.toLowerCase() ? "active" : ""}" data-tab="${tab.toLowerCase()}" aria-pressed="${state.tab === tab.toLowerCase()}">${escapeActivityText(label)}${tab === "All" ? ` (${resourceCollections[resourceView].length})` : ""}</button>`; }).join("")}</div><div class="toolbar resource-toolbar"><div class="inline-search search-field">${ico("search")}<input id="resource-search" value="${escapeActivityText(state.query)}" placeholder="Search ${view}…" aria-label="Search ${view}" autocomplete="off">${hasQuery ? '<button class="clear-search" aria-label="Clear search"><span class="close-lines"></span></button>' : ""}</div><span class="sort-help">Click a column to sort</span>${pageSizeControls(resourceView)}<span class="count" aria-live="polite">${resultLabel}</span></div>${resultContent}</section>`;
   if (resourceView === "wallets") {
     const summary = document.createElement("div");
-    summary.className = "wallet-funds-summary";
-    summary.innerHTML = `<span>Total Wallet Funds</span><strong>${walletMoneyFromSatang(totalWalletFunds(resourceCollections.wallets.map(walletBalancesFor)))}</strong><small>All Wallets · all statuses</small>`;
+    summary.id = "wallet-finance-summary";
+    summary.className = "wallet-funds-summary wallet-finance-summary";
+    summary.innerHTML = walletFinanceSummaryMarkup();
     main.querySelector<LegacyDomElement>(".panel.resource")?.prepend(summary);
+    renderWalletFinanceSummary();
+    void loadWalletFinanceSummary();
   }
   main.querySelectorAll<LegacyDomElement>("[data-tab]").forEach((button) => {
     const tab = resourceTabValue(button.dataset.tab || "all"),

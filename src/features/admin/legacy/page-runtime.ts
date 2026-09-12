@@ -190,6 +190,27 @@ async function initializeHomePage(
   core.render();
 }
 
+const legacyBoardViews = new Set([
+  "home",
+  "disputes",
+  "quests",
+  "users",
+  "wallets",
+  "payouts",
+  "reports",
+  "conduct-reports",
+  "policies",
+  "activity",
+]);
+
+function resetLegacyBoardState(core: SharedRuntimeCore, search: string): void {
+  const requestedView = new URLSearchParams(search).get("view") ?? "home";
+  core.state.view = legacyBoardViews.has(requestedView) ? requestedView : "home";
+  core.state.tab = "all";
+  core.state.query = "";
+  core.state.questFilters = { mode: "all", status: "all" };
+}
+
 function moderationDisputeCases(
   disputeCases: Record<string, LegacyDisputeCase>,
 ): Record<string, ModerationDisputeCase> {
@@ -223,6 +244,8 @@ export async function initializeTypedLegacyPage(
 ): Promise<void> {
   if (options.page === "home") {
     const core = await import("./script");
+    resetLegacyBoardState(core, options.search);
+    core.main.replaceChildren();
     const mockData = await import("./fresh-mock-data");
     if (isAdminApiEnabled()) {
       const view = new URLSearchParams(options.search).get("view");

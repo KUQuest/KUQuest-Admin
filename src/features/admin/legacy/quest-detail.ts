@@ -7,6 +7,7 @@ import {
 import type { AdminCommandPort, AdminQuestReasonCode } from "../api/admin-api";
 import type { AdminReasonCode } from "./quest-admin-reason";
 import { newAdminIdempotencyKey } from "./admin-command-port";
+import type { LegacyHistoryEntry } from "./runtime";
 
 export type QuestTone = string;
 
@@ -46,6 +47,13 @@ export type QuestRecord = {
   feeRoundingMode?: "UP";
   createdAt?: string;
   dueAt?: string;
+  questFinanceLoaded?: boolean;
+  questFinanceError?: string;
+  questFinanceReservationStatus?: string;
+  questFinanceTotalReservedSatang?: number;
+  questFinanceRemainingSatang?: number;
+  questFinanceTransfers?: LegacyHistoryEntry[];
+  questFinanceLedgerTransactions?: LegacyHistoryEntry[];
   description?: string;
   giver?: string[];
   location?: string[];

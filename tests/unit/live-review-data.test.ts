@@ -3,12 +3,14 @@ import { afterEach, describe, expect, it } from "bun:test";
 import {
   canonicalQuestStateForApi,
   loadLiveDispute,
+  loadLiveMember,
   loadLiveQuest,
   memberRecordFromApi,
   payoutRecordFromApi,
   refreshLivePayouts,
   refreshLiveDisputes,
   refreshLiveQuests,
+  payoutServerValue,
   walletRecordFromApi,
   questRecordFromApiSummary,
 } from "../../src/features/admin/legacy/live-review-data";
@@ -18,12 +20,14 @@ const originalFetch = globalThis.fetch;
 const originalQuests = data.quests;
 const originalPayouts = data.payouts;
 const originalDisputes = data.disputes;
+const originalUsers = data.users;
 
 afterEach(() => {
   globalThis.fetch = originalFetch;
   data.quests = originalQuests;
   data.payouts = originalPayouts;
   data.disputes = originalDisputes;
+  data.users = originalUsers;
   delete process.env.NEXT_PUBLIC_API_URL;
 });
 
@@ -170,6 +174,26 @@ describe("live review data", () => {
     });
   });
 
+  it("converts API-provided actual Payout outcome amounts to Baht", () => {
+    const record = {
+      id: "payout-2",
+      title: "Ari Wattanakul",
+      person: "Kasikornbank · •••• 1234",
+      other: "BANK_ACCOUNT · student@ku.th",
+      status: "SUCCEEDED",
+      tone: "success",
+      amount: 125.01,
+      age: "02 Sept 2026 · 08:00 ICT",
+      actualFeeSatang: 25,
+      actualTaxSatang: 5,
+      actualDebitSatang: 12531,
+    };
+
+    expect(payoutServerValue(record, "actualFeeSatang")).toBe(0.25);
+    expect(payoutServerValue(record, "actualTaxSatang")).toBe(0.05);
+    expect(payoutServerValue(record, "actualDebitSatang")).toBe(125.31);
+  });
+
   it("maps Member and Wallet API records without inventing Member moderation status", () => {
     const member = memberRecordFromApi({
       id: "member-1",
@@ -275,7 +299,39 @@ describe("live review data", () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     const urls: string[] = [];
     globalThis.fetch = (async (input, init) => {
-      urls.push(new Request(input, init).url);
+      const request = new Request(input, init);
+      urls.push(request.url);
+      if (request.url.endsWith("/finance/quests/quest-1")) {
+        return new Response(JSON.stringify({
+          success: true,
+          data: {
+            quest: {
+              id: "quest-1",
+              title: "Campus survey",
+              questStatus: "QUEST_OPEN",
+              headcount: 1,
+              rewardSatang: 12000,
+              platformFeePerWorkerSatang: 240,
+              questFundingTotalSatang: 12240,
+              hirer: {
+                id: "member-1",
+                firstName: "Ari",
+                lastName: "Wattanakul",
+                studentId: "68000001",
+              },
+            },
+            reservation: {
+              id: "reservation-1",
+              status: "ACTIVE",
+              totalReservedSatang: 12240,
+              remainingSatang: 12240,
+              createdAt: "2026-09-01T01:00:00.000Z",
+            },
+            transfers: [],
+            ledgerTransactions: [],
+          },
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      }
       return new Response(JSON.stringify({
         success: true,
         data: {
@@ -325,13 +381,124 @@ describe("live review data", () => {
 
     await loadLiveQuest("quest-1");
 
-    expect(urls).toEqual(["https://api.example.test/api/v1/admin/quests/quest-1"]);
+    expect(urls).toEqual([
+      "https://api.example.test/api/v1/admin/quests/quest-1",
+      "https://api.example.test/api/v1/admin/finance/quests/quest-1",
+    ]);
     expect(data.quests).toHaveLength(1);
     expect(data.quests[0]).toMatchObject({
       id: "quest-1",
       title: "Campus survey",
       apiBacked: true,
       location: ["Central Library", "Loaded from the Admin API."],
+      questFinanceLoaded: true,
+      questFinanceReservationStatus: "ACTIVE",
+      questFinanceTotalReservedSatang: 12240,
+      questFinanceRemainingSatang: 12240,
+    });
+  });
+
+  it("loads Member finance data for the full Member profile", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    const urls: string[] = [];
+    globalThis.fetch = (async (input, init) => {
+      const request = new Request(input, init);
+      urls.push(request.url);
+      if (request.url.endsWith("/finance/members/member-1")) {
+        return new Response(JSON.stringify({
+          success: true,
+          data: {
+            member: {
+              userId: "member-1",
+              firstName: "Ari",
+              lastName: "Wattanakul",
+              studentId: "68000001",
+              email: "ari@ku.th",
+            },
+            wallet: {
+              id: "wallet-1",
+              walletStatus: "ACTIVE",
+              spendingBalanceSatang: 1000,
+              earningsBalanceSatang: 2000,
+              fundingReservedSatang: 3000,
+              reservedForPayoutsSatang: 4000,
+              projectionMatchesLedger: true,
+            },
+            lifetimeStats: {
+              totalToppedUpSatang: 5000,
+              totalEarnedFromQuestsSatang: 6000,
+              totalSpentOnQuestsSatang: 7000,
+              totalPaidOutSatang: 8000,
+              totalEarningsConvertedSatang: 9000,
+            },
+            activeFundingReservations: [{
+              id: "reservation-1",
+              callerReference: "quest-funding-1",
+              totalReservedSatang: 3000,
+              remainingSatang: 2500,
+              createdAt: "2026-09-01T01:00:00.000Z",
+            }],
+          },
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      return new Response(JSON.stringify({
+        success: true,
+        data: {
+          member: {
+            id: "member-1",
+            email: "ari@ku.th",
+            firstName: "Ari",
+            lastName: "Wattanakul",
+            studentId: "68000001",
+            telephone: null,
+            academicYear: 2,
+            faculty: "Engineering",
+            department: "Computer Engineering",
+            occupation: "Student",
+            bio: "A student contributor.",
+            createdAt: "2026-09-01T01:00:00.000Z",
+          },
+          wallet: {
+            id: "wallet-1",
+            walletStatus: "ACTIVE",
+            spendingBalanceSatang: 1000,
+            earningsBalanceSatang: 2000,
+            fundingReservedSatang: 3000,
+            reservedForPayoutsSatang: 4000,
+            totalBalanceSatang: 10000,
+            projectionMatchesLedger: true,
+          },
+          stats: {
+            questsCreatedCount: 1,
+            questsCompletedAsWorkerCount: 2,
+            reviewsReceivedCount: 3,
+            averageRating: 4.5,
+            payoutsCount: 1,
+            totalEarnedSatang: 6000,
+            totalPaidOutSatang: 8000,
+          },
+        },
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    }) as typeof globalThis.fetch;
+
+    await loadLiveMember("member-1");
+
+    expect(urls).toEqual([
+      "https://api.example.test/api/v1/admin/members/member-1",
+      "https://api.example.test/api/v1/admin/finance/members/member-1",
+    ]);
+    expect(data.users).toHaveLength(1);
+    expect(data.users[0]).toMatchObject({
+      id: "68000001",
+      memberId: "member-1",
+      memberFinanceLoaded: true,
+      memberTotalPaidOutSatang: 8000,
+      memberFinanceReservations: [{
+        id: "reservation-1",
+        totalReservedSatang: 3000,
+        remainingSatang: 2500,
+      }],
+      walletProjectionMatchesLedger: true,
     });
   });
 

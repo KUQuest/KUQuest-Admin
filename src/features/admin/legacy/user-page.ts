@@ -3,11 +3,12 @@ import type {
   LegacyRecord,
 } from "./runtime";
 import type { ModerationPageContext } from "./dispute-detail";
-import { memberStatusFor, payoutStatusFor, questStateFor, reportCaseStatusFor, walletStatusFor } from "../domain/rulebook";
+import { memberStatusFor, payoutStatusFor, questStateFor, reportCaseStatusFor, walletStatusFor, walletStatusLabel } from "../domain/rulebook";
 import {
   loadWalletStatementBalanceCoverage,
   walletBalancesFromRecord,
   walletStatementApiDate,
+  walletStatementBalance,
   walletStatementFiltersMarkup,
   walletStatementRowsFor,
   walletStatementTable,
@@ -397,10 +398,46 @@ function userPagePayoutHistory(user: UserRecord, compact = false): string {
   return `<section class="user-detail-panel${compact ? " user-payout-preview" : " user-tab-panel"}"><div class="user-panel-heading"><div><h2>Payout history</h2>${compact ? `<p>Total earned ฿${fmt(totalEarned)} · Recent requests and transfer outcomes for this account.</p>` : `<p>${payoutRecords.length} payout records · ${completed.length} completed.</p>`}</div><div class="user-panel-heading-actions">${headingAction}<span class="section-count">${payoutRecords.length}</span></div></div>${!compact && payoutRecords.length ? `<div class="user-payout-stat-list"><div><strong>฿${fmt(totalEarned)}</strong><span>Total earned</span></div><div><strong>฿${fmt(completed.reduce((total, entry) => total + Number(entry.record.amount || 0), 0))}</strong><span>Paid out</span></div><div><strong>฿${fmt(inFlight.reduce((total, entry) => total + Number(entry.record.amount || 0), 0))}</strong><span>In progress</span></div><div><strong>${payoutRecords.length}</strong><span>Total requests</span></div></div>` : ""}${shownRecords.length ? `<div class="user-payout-list">${shownRecords.map(({ record, index }) => `<button class="user-payout-row" type="button" data-user-payout="${index}" aria-label="Open payout ${userPageEscape(record.id)}"><span class="user-payout-primary"><strong>${userPageEscape(record.id)}</strong><small>${userPageDate(record.requestedAt)}</small><small>${userPageEscape(record.questId || record.other || "Quest")}</small></span><span class="user-payout-secondary"><strong>฿${fmt(record.amount)}</strong>${payoutBadge(record.payoutStatus ?? record.status, record.tone)}</span></button>`).join("")}</div>` : '<div class="empty"><h3>No payout history</h3><p>This account has no payout records.</p></div>'}</section>`;
 }
 
+function userPageWalletBalanceValue(value: unknown): string {
+  return typeof value === "number" ? walletStatementBalance(value) : "--";
+}
+
+function userPageWalletBalanceSummary(user: UserRecord): string {
+  const balances: Array<[string, unknown]> = [
+    ["Spending Balance", user.walletSpendingBalanceSatang],
+    ["Earnings Balance", user.walletEarningsBalanceSatang],
+    ["Funding Reserved", user.walletFundingReservedSatang],
+    ["Reserved For Payouts", user.walletReservedForPayoutsSatang],
+  ];
+  return `<div class="wallet-statement-balance-grid" aria-label="Current Wallet balances">${balances.map(([label, value]) => `<div class="wallet-statement-balance"><span>${label}</span><strong>${userPageWalletBalanceValue(value)}</strong></div>`).join("")}</div>`;
+}
+
+function userPageMemberFinance(user: UserRecord): string {
+  if (!user.apiBacked) return "";
+  if (user.memberFinanceError) {
+    return `<section class="user-detail-panel user-tab-panel" data-user-finance-profile><div class="user-panel-heading"><div><h2>Wallet</h2><p>Member finance data from the Admin API.</p></div></div><p class="audit-note">${userPageEscape(user.memberFinanceError)}</p></section>`;
+  }
+  if (!user.memberFinanceLoaded) {
+    return '<section class="user-detail-panel user-tab-panel" data-user-finance-profile><h2>Wallet</h2><p class="audit-note">Loading Member finance data from the Admin API…</p></section>';
+  }
+  const wallet = typeof user.walletId === "string" && user.walletId
+    ? `<div class="user-facts"><div><dt>Wallet</dt><dd>${userPageEscape(user.walletId)}</dd></div><div><dt>Wallet status</dt><dd>${user.walletStatus ? badge(walletStatusLabel(user.walletStatus), String(user.tone)) : "Not provided by the Admin API"}</dd></div><div><dt>Ledger check</dt><dd>${user.walletProjectionMatchesLedger === true ? "Matches Ledger" : user.walletProjectionMatchesLedger === false ? "Needs review" : "Not provided by the Admin API"}</dd></div></div>${userPageWalletBalanceSummary(user)}`
+    : '<p class="audit-note">This Member has no Wallet.</p>';
+  const lifetime = [
+    ["Top-ups", user.memberTotalToppedUpSatang],
+    ["Earned from Quests", user.memberTotalEarnedFromQuestsSatang],
+    ["Spent on Quests", user.memberTotalSpentOnQuestsSatang],
+    ["Paid out", user.memberTotalPaidOutSatang],
+    ["Earnings converted", user.memberTotalEarningsConvertedSatang],
+  ] as Array<[string, unknown]>;
+  const reservations = user.memberFinanceReservations || [];
+  return `<section class="user-detail-panel user-tab-panel" data-user-finance-profile><div class="user-panel-heading"><div><h2>Wallet</h2><p>Current balances and lifetime finance data from the Admin API.</p></div></div>${wallet}<h3>Lifetime activity</h3><div class="wallet-finance-summary-grid">${lifetime.map(([label, value]) => `<div class="wallet-finance-summary-metric"><span>${label}</span><strong>${userPageWalletBalanceValue(value)}</strong></div>`).join("")}</div><h3>Active Funding Reservations</h3>${reservations.length ? `<div class="user-simple-list">${reservations.map((reservation) => `<article><strong>${userPageEscape(reservation.event || reservation.id || "Funding Reservation")}</strong><span>${userPageDate(reservation.at)} · ${userPageEscape(reservation.id || "")}</span><p>${userPageEscape(reservation.reason || "Total reserved not provided.")} · ${userPageEscape(reservation.note || "Remaining not provided.")}</p></article>`).join("")}</div>` : '<p class="audit-note">No active Funding Reservations.</p>'}</section>`;
+}
+
 function userPageWalletStatement(user: UserRecord): string {
   const walletId = typeof user.walletId === "string" && user.walletId ? user.walletId : null;
   if (!walletId) {
-    return '<section class="user-detail-panel user-tab-panel wallet-statement" data-user-wallet-statement><h2>Wallet Statement</h2><p>This Member has no Wallet. No Wallet Statement is available.</p></section>';
+    return `${userPageMemberFinance(user)}<section class="user-detail-panel user-tab-panel wallet-statement" data-user-wallet-statement><h2>Wallet Statement</h2><p>This Member has no Wallet. No Wallet Statement is available.</p></section>`;
   }
   const rows = walletStatementRowsFor(walletId, walletBalancesFromRecord(user), walletStatementState);
   const filteredTransactionCount = filterWalletStatementTransactions(walletStatementState.transactions, walletStatementState.filters).length;
@@ -415,7 +452,8 @@ function userPageWalletStatement(user: UserRecord): string {
     : walletStatementState.error
       ? ""
       : walletStatementTable(rows, userPageEscape);
-  return `<section class="user-detail-panel user-tab-panel wallet-statement" data-user-wallet-statement><div class="user-panel-heading"><div><h2>Wallet Statement</h2><p>Committed and sealed Ledger Transactions, newest first.</p></div></div>${walletStatementFiltersMarkup(walletStatementState.filters, ADMIN_LEDGER_EVENT_TYPES, userPageEscape)}<div aria-live="polite" data-wallet-statement-content>${statementContent}${walletStatementState.error ? `<p class="audit-note">${userPageEscape(walletStatementState.error)}</p>${retry}` : ""}</div>${canLoadMore ? `<button class="btn wallet-statement-load-more" type="button" data-wallet-statement-action="load-more"${walletStatementState.loading ? " disabled" : ""}>Load more</button>` : ""}</section>`;
+  const mockBalanceSummary = user.apiBacked ? "" : userPageWalletBalanceSummary(user);
+  return `${userPageMemberFinance(user)}<section class="user-detail-panel user-tab-panel wallet-statement" data-user-wallet-statement><div class="user-panel-heading"><div><h2>Wallet Statement</h2><p>Committed and sealed Ledger Transactions, newest first.</p></div></div>${mockBalanceSummary}${walletStatementFiltersMarkup(walletStatementState.filters, ADMIN_LEDGER_EVENT_TYPES, userPageEscape)}<div aria-live="polite" data-wallet-statement-content>${statementContent}${walletStatementState.error ? `<p class="audit-note">${userPageEscape(walletStatementState.error)}</p>${retry}` : ""}</div>${canLoadMore ? `<button class="btn wallet-statement-load-more" type="button" data-wallet-statement-action="load-more"${walletStatementState.loading ? " disabled" : ""}>Load more</button>` : ""}</section>`;
 }
 
 async function loadUserWalletStatement(

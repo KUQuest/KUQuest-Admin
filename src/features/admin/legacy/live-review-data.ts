@@ -4,10 +4,12 @@ import {
   type AdminQuest,
   type AdminQuestCommandResult,
   type AdminQuestDetail,
+  type AdminQuestFinance,
   type AdminApiQuestStatus,
   type AdminDisputeCase,
   type AdminDisputeCaseDetail,
   type AdminMemberDetail,
+  type AdminMemberFinance,
   type AdminMemberListItem,
   type AdminPayout,
   type AdminPayoutDetail,
@@ -223,6 +225,49 @@ export function memberRecordFromApiDetail(detail: AdminMemberDetail): LegacyReco
     walletProjectionMatchesLedger: detail.wallet?.projectionMatchesLedger,
     memberStats: detail.stats,
     memberDetailLoaded: true,
+  });
+}
+
+function mergeMemberFinance(record: LegacyRecord, finance: AdminMemberFinance): void {
+  const wallet = finance.wallet;
+  const totalBalanceSatang = wallet
+    ? wallet.spendingBalanceSatang
+      + wallet.earningsBalanceSatang
+      + wallet.fundingReservedSatang
+      + wallet.reservedForPayoutsSatang
+    : undefined;
+  const reservations: LegacyHistoryEntry[] = finance.activeFundingReservations.map((reservation) => ({
+    id: reservation.id,
+    event: reservation.callerReference,
+    at: dateTimeLabel(reservation.createdAt),
+    by: "Funding Reservation",
+    reason: `Total reserved ฿${satangToBaht(reservation.totalReservedSatang).toFixed(2)}`,
+    note: `Remaining ฿${satangToBaht(reservation.remainingSatang).toFixed(2)}`,
+    callerReference: reservation.callerReference,
+    totalReservedSatang: reservation.totalReservedSatang,
+    remainingSatang: reservation.remainingSatang,
+  }));
+  Object.assign(record, {
+    status: wallet?.walletStatus || "NOT_PROVIDED",
+    walletStatus: wallet?.walletStatus,
+    tone: wallet ? toneForWallet(wallet.walletStatus) : "neutral",
+    amount: totalBalanceSatang === undefined ? null : satangToBaht(totalBalanceSatang),
+    walletId: wallet?.id,
+    walletTotalBalanceSatang: totalBalanceSatang,
+    walletSpendingBalanceSatang: wallet?.spendingBalanceSatang,
+    walletEarningsBalanceSatang: wallet?.earningsBalanceSatang,
+    walletFundingReservedSatang: wallet?.fundingReservedSatang,
+    walletReservedForPayoutsSatang: wallet?.reservedForPayoutsSatang,
+    walletProjectionMatchesLedger: wallet?.projectionMatchesLedger,
+    memberFinanceLoaded: true,
+    memberFinanceLoading: false,
+    memberFinanceError: undefined,
+    memberTotalToppedUpSatang: finance.lifetimeStats.totalToppedUpSatang,
+    memberTotalEarnedFromQuestsSatang: finance.lifetimeStats.totalEarnedFromQuestsSatang,
+    memberTotalSpentOnQuestsSatang: finance.lifetimeStats.totalSpentOnQuestsSatang,
+    memberTotalPaidOutSatang: finance.lifetimeStats.totalPaidOutSatang,
+    memberTotalEarningsConvertedSatang: finance.lifetimeStats.totalEarningsConvertedSatang,
+    memberFinanceReservations: reservations,
   });
 }
 
@@ -475,6 +520,42 @@ function questRecordFromApi(quest: AdminQuest, detail?: AdminQuestDetail): Legac
     cancelledByUserId: detail?.cancelledByUserId ?? undefined,
     cancelledByAdminId: detail?.cancelledByAdminId ?? undefined,
   };
+}
+
+function mergeQuestFinance(record: LegacyRecord, finance: AdminQuestFinance): void {
+  const reservation = finance.reservation;
+  const transfers: LegacyHistoryEntry[] = finance.transfers.map((transfer) => ({
+    id: transfer.id,
+    event: transfer.type,
+    at: dateTimeLabel(transfer.occurredAt),
+    by: `${transfer.from.displayName} → ${transfer.to.displayName}`,
+    reason: transfer.description,
+    note: transfer.businessReference,
+    amountSatang: transfer.amountSatang,
+    platformFeeSatang: transfer.platformFeeSatang,
+    ledgerTransactionId: transfer.ledgerTransactionId,
+  }));
+  const ledgerTransactions: LegacyHistoryEntry[] = finance.ledgerTransactions.map((transaction) => ({
+    id: transaction.id,
+    event: transaction.eventType,
+    at: dateTimeLabel(transaction.createdAt),
+    by: transaction.businessReference,
+    reason: transaction.description || undefined,
+    note: `${transaction.postings.length} Ledger Postings${transaction.sealedAt ? " · sealed" : ""}`,
+    postingCount: transaction.postings.length,
+  }));
+  Object.assign(record, {
+    fundingTotalSatang: finance.quest.questFundingTotalSatang ?? undefined,
+    questRewardSatang: finance.quest.rewardSatang ?? undefined,
+    platformFeeSatang: finance.quest.platformFeePerWorkerSatang ?? undefined,
+    questFinanceLoaded: true,
+    questFinanceError: undefined,
+    questFinanceReservationStatus: reservation?.status,
+    questFinanceTotalReservedSatang: reservation?.totalReservedSatang,
+    questFinanceRemainingSatang: reservation?.remainingSatang,
+    questFinanceTransfers: transfers,
+    questFinanceLedgerTransactions: ledgerTransactions,
+  });
 }
 
 export function questRecordFromApiSummary(quest: AdminQuest): LegacyRecord {
@@ -801,8 +882,18 @@ export async function loadLiveQuest(questId: string): Promise<void> {
   state.backgroundLoading = false;
   replaceCollection("quests", []);
   try {
-    const detail = await adminApi.getQuest(questId);
-    replaceCollection("quests", [questRecordFromApi(detail, detail)]);
+    const [detailResult, financeResult] = await Promise.allSettled([
+      adminApi.getQuest(questId),
+      adminApi.getQuestFinance(questId),
+    ]);
+    if (detailResult.status === "rejected") throw detailResult.reason;
+    const record = questRecordFromApi(detailResult.value, detailResult.value);
+    if (financeResult.status === "fulfilled") {
+      mergeQuestFinance(record, financeResult.value);
+    } else {
+      record.questFinanceError = apiErrorMessage(financeResult.reason, "Quest finance");
+    }
+    replaceCollection("quests", [record]);
   } catch (error) {
     state.error = apiErrorMessage(error, "Quest detail");
   } finally {
@@ -814,8 +905,20 @@ export async function hydrateLiveQuest(record: LegacyRecord): Promise<void> {
   if (!record.apiBacked || record.questDetailLoaded) return;
   record.questDetailLoaded = true;
   try {
-    const detail = await adminApi.getQuest(record.id);
-    Object.assign(record, questRecordFromApi(detail, detail));
+    const [detailResult, financeResult] = await Promise.allSettled([
+      adminApi.getQuest(record.id),
+      adminApi.getQuestFinance(record.id),
+    ]);
+    if (detailResult.status === "fulfilled") {
+      Object.assign(record, questRecordFromApi(detailResult.value, detailResult.value));
+    } else {
+      record.questDetailError = apiErrorMessage(detailResult.reason, "Quest detail");
+    }
+    if (financeResult.status === "fulfilled") {
+      mergeQuestFinance(record, financeResult.value);
+    } else {
+      record.questFinanceError = apiErrorMessage(financeResult.reason, "Quest finance");
+    }
   } catch (error) {
     record.questDetailError = apiErrorMessage(error, "Quest detail");
   }
@@ -887,8 +990,18 @@ export async function loadLiveMember(memberId: string): Promise<void> {
   state.backgroundLoading = false;
   replaceCollection("users", []);
   try {
-    const detail = await adminApi.getMember(memberId);
-    replaceCollection("users", [memberRecordFromApiDetail(detail)]);
+    const [detailResult, financeResult] = await Promise.allSettled([
+      adminApi.getMember(memberId),
+      adminApi.getMemberFinance(memberId),
+    ]);
+    if (detailResult.status === "rejected") throw detailResult.reason;
+    const record = memberRecordFromApiDetail(detailResult.value);
+    if (financeResult.status === "fulfilled") {
+      mergeMemberFinance(record, financeResult.value);
+    } else {
+      record.memberFinanceError = apiErrorMessage(financeResult.reason, "Member finance");
+    }
+    replaceCollection("users", [record]);
   } catch (error) {
     state.error = apiErrorMessage(error, "Member detail");
   } finally {
@@ -900,11 +1013,26 @@ export async function hydrateLiveMember(record: LegacyRecord): Promise<void> {
   const memberId = typeof record.memberId === "string" ? record.memberId : "";
   if (!record.apiBacked || record.memberDetailLoaded || !memberId) return;
   record.memberDetailLoaded = true;
+  record.memberFinanceLoading = true;
   try {
-    const detail = await adminApi.getMember(memberId);
-    Object.assign(record, memberRecordFromApiDetail(detail));
+    const [detailResult, financeResult] = await Promise.allSettled([
+      adminApi.getMember(memberId),
+      adminApi.getMemberFinance(memberId),
+    ]);
+    if (detailResult.status === "fulfilled") {
+      Object.assign(record, memberRecordFromApiDetail(detailResult.value));
+    } else {
+      record.memberDetailError = apiErrorMessage(detailResult.reason, "Member detail");
+    }
+    if (financeResult.status === "fulfilled") {
+      mergeMemberFinance(record, financeResult.value);
+    } else {
+      record.memberFinanceError = apiErrorMessage(financeResult.reason, "Member finance");
+    }
   } catch (error) {
     record.memberDetailError = apiErrorMessage(error, "Member detail");
+  } finally {
+    record.memberFinanceLoading = false;
   }
 }
 
@@ -1078,7 +1206,7 @@ export async function hydrateLivePayout(record: LegacyRecord): Promise<void> {
   }
 }
 
-export function payoutServerValue(record: LegacyRecord, field: "principalSatang" | "receiptSatang" | "maximumFeeSatang" | "maximumTaxSatang" | "maximumDebitSatang"): number | null {
+export function payoutServerValue(record: LegacyRecord, field: "principalSatang" | "receiptSatang" | "maximumFeeSatang" | "maximumTaxSatang" | "maximumDebitSatang" | "actualFeeSatang" | "actualTaxSatang" | "actualDebitSatang"): number | null {
   const value = record[field];
   return typeof value === "number" ? satangToBaht(value) : null;
 }

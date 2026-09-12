@@ -81,6 +81,11 @@ test.describe("admin click flows", () => {
     await expect(page).toHaveURL(/\/users\/[^?]+\?tab=wallet-statement$/);
     const profileStatement = page.locator("[data-user-wallet-statement]");
     await expect(profileStatement.getByRole("heading", { level: 2, name: "Wallet Statement" })).toBeVisible();
+    await expect(profileStatement.locator(".wallet-statement-balance-grid")).toContainText("Spending Balance");
+    await expect(profileStatement.locator(".wallet-statement-balance-grid")).toContainText("Earnings Balance");
+    await expect(profileStatement.locator(".wallet-statement-balance-grid")).toContainText("Funding Reserved");
+    await expect(profileStatement.locator(".wallet-statement-balance-grid")).toContainText("Reserved For Payouts");
+    await expect(profileStatement.locator(".wallet-statement-balance")).toHaveCount(4);
     await expect(profileStatement.locator(".wallet-statement-table tbody tr")).toHaveCount(25);
     await expect(profileStatement.getByLabel("Event type")).toBeVisible();
     await expect(profileStatement.getByLabel("From ICT date")).toBeVisible();
@@ -159,6 +164,28 @@ test.describe("admin click flows", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Overview" })).toBeVisible();
     await expect(overview).toHaveAttribute("aria-current", "page");
     await expect(disputes).not.toHaveAttribute("aria-current", "page");
+  });
+
+  test("does not render the removed legacy Overview after repeated navigation", async ({ page }) => {
+    await signIn(page);
+
+    const navigation = page.locator("#nav");
+    const overview = navigation.getByRole("button", { name: "Overview", exact: true });
+    const reportCases = navigation.getByRole("button", { name: /^Report Cases/ });
+
+    await reportCases.click();
+    await expect(page).toHaveURL(/\/\?view=reports$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Report Cases", exact: true })).toBeVisible();
+
+    await overview.click();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Overview", exact: true })).toBeVisible();
+
+    await reportCases.click();
+    await expect(page).toHaveURL(/\/\?view=reports$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Report Cases", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Overview", exact: true })).toHaveCount(0);
+    await expect(page.locator("#dashboard-main")).toHaveCount(0);
   });
 
   test("admin does not see local data in Activity Log when the Admin API is disabled", async ({ page }) => {

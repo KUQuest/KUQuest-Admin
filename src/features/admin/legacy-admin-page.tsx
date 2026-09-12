@@ -26,14 +26,6 @@ const LegacyRuntimeLoader = dynamic(
   { ssr: false },
 );
 
-const AdminDashboard = dynamic(
-  () => import("./dashboard/admin-dashboard").then(({ AdminDashboard: Dashboard }) => Dashboard),
-  {
-    ssr: false,
-    loading: () => <main id="dashboard-main" tabIndex={-1}><section className="panel"><p>Loading marketplace overview…</p></section></main>,
-  },
-);
-
 const OverviewClone = dynamic(
   () => import("./dashboard/overview-clone").then(({ OverviewClone: Dashboard }) => Dashboard),
   {
@@ -396,13 +388,11 @@ export function LegacyAdminPage({
   page,
   recordId,
   reactDashboard = false,
-  dashboardVariant = "current",
   activeView,
 }: {
   page: LegacyPage;
   recordId?: string;
   reactDashboard?: boolean;
-  dashboardVariant?: "current" | "clone";
   activeView?: string;
 }) {
   const router = useRouter();
@@ -504,7 +494,7 @@ export function LegacyAdminPage({
           )}
         </header>
         <main id="main" tabIndex={-1} hidden={reactDashboard} />
-        {reactDashboard && (dashboardVariant === "clone" ? <OverviewClone /> : <AdminDashboard />)}
+        {reactDashboard && <OverviewClone />}
       </div>
       <LegacyOverlays detailSearch={detailPage} includeCommand={!reactDashboard} onAdminSession={setAdminIdentity}>
         {!reactDashboard && <LegacyRuntimeLoader page={page} recordId={recordId} />}

@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
-import { adminApi } from "../api/admin-api";
+import { adminApi, type AdminFinanceOverview } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { memberStatusLabel, walletStatusLabel } from "../domain/rulebook";
 import { loadDashboardData } from "./dashboard-bootstrap";
-import { dashboardActivityFromApi, type DashboardActivity } from "./dashboard-model";
+import { dashboardActivityFromApi, dashboardActivityKey, type DashboardActivity } from "./dashboard-model";
 import {
   overviewCloneModelFromApi,
   overviewCloneFallbackFromMockData,
@@ -22,14 +22,17 @@ function localActivityEvents(): DashboardActivity[] {
   try {
     const parsed: unknown = JSON.parse(localStorage.getItem(ACTIVITY_STORAGE_KEY) ?? "[]");
     if (!Array.isArray(parsed)) return [];
-    return parsed.flatMap((entry): DashboardActivity[] => {
+    return parsed.flatMap((entry, index): DashboardActivity[] => {
       if (!entry || typeof entry !== "object") return [];
       const record = entry as Record<string, unknown>;
+      const timestamp = typeof record.timestamp === "number" ? record.timestamp : 0;
+      const storedId = typeof record.id === "string" ? record.id.trim() : "";
       return [{
+        id: storedId || `local-${index}-${timestamp}`,
         actor: typeof record.actor === "string" ? record.actor : "AD",
         title: typeof record.title === "string" ? record.title : "Administrative activity",
         detail: typeof record.detail === "string" ? record.detail : "",
-        timestamp: typeof record.timestamp === "number" ? record.timestamp : 0,
+        timestamp,
       }];
     });
   } catch {
@@ -56,6 +59,74 @@ function countLabel(count: number): string {
   return new Intl.NumberFormat("en-US").format(count);
 }
 
+function moneyFromSatang(value: number): string {
+  return `฿${new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value / 100)}`;
+}
+
+function financeDateLabel(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Time not provided";
+  return `${date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "Asia/Bangkok",
+  })} · ${date.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Bangkok",
+  })} ICT`;
+}
+
+function FinanceMetric({ label, value }: { label: string; value: number }) {
+  return <div className="overview-command-center-finance-metric"><span>{label}</span><strong>{moneyFromSatang(value)}</strong></div>;
+}
+
+function FinanceGroup({ title, children }: { title: string; children: ReactNode }) {
+  return <div className="overview-command-center-finance-group"><h3>{title}</h3>{children}</div>;
+}
+
+function FinanceOverviewSection({
+  overview,
+  loading,
+  error,
+}: {
+  overview: AdminFinanceOverview | null;
+  loading: boolean;
+  error: string | null;
+}) {
+  if (!isAdminApiEnabled()) return null;
+  if (loading) {
+    return <section className="overview-command-center-finance" aria-labelledby="overview-finance-heading"><div className="overview-command-center-section-head"><div><h2 id="overview-finance-heading">Finance Overview</h2><p>Platform and Member Wallet totals.</p></div><span>Admin API</span></div><p className="overview-command-center-note">Reading the Finance Overview from the Admin API…</p></section>;
+  }
+  if (error || !overview) {
+    return <section className="overview-command-center-finance" aria-labelledby="overview-finance-heading"><div className="overview-command-center-section-head"><div><h2 id="overview-finance-heading">Finance Overview</h2><p>Platform and Member Wallet totals.</p></div><span>Unavailable</span></div><p className="overview-command-center-note">{error || "Finance Overview is not available."}</p></section>;
+  }
+
+  const integrityLabel = overview.integrity.subledgerBalanced ? "Balanced" : "Needs review";
+  const integrityClass = overview.integrity.subledgerBalanced ? "is-balanced" : "needs-review";
+  return <section className="overview-command-center-finance" aria-labelledby="overview-finance-heading">
+    <div className="overview-command-center-section-head"><div><h2 id="overview-finance-heading">Finance Overview</h2><p>Platform and Member Wallet totals.</p></div><span>Admin API</span></div>
+    <div className="overview-command-center-finance-groups">
+      <FinanceGroup title="Platform Balances">
+        <div className="overview-command-center-finance-metrics"><FinanceMetric label="Revenue" value={overview.platformBalances.revenueSatang} /><FinanceMetric label="Suspense" value={overview.platformBalances.suspenseSatang} /></div>
+      </FinanceGroup>
+      <FinanceGroup title="Member Wallet Summary">
+        <div className="overview-command-center-finance-metrics"><FinanceMetric label="Spending balance" value={overview.memberBalancesSummary.totalSpendingSatang} /><FinanceMetric label="Earnings balance" value={overview.memberBalancesSummary.totalEarningsSatang} /><FinanceMetric label="Funding reserved" value={overview.memberBalancesSummary.totalFundingReservedSatang} /><FinanceMetric label="Payout reserved" value={overview.memberBalancesSummary.totalPayoutReservedSatang} /><FinanceMetric label="Total circulating" value={overview.memberBalancesSummary.totalCirculatingSatang} /></div>
+      </FinanceGroup>
+      <FinanceGroup title="Lifetime Volume">
+        <div className="overview-command-center-finance-metrics"><FinanceMetric label="Top-ups deposited" value={overview.volumeLifetime.totalTopUpDepositedSatang} /><FinanceMetric label="Payouts completed" value={overview.volumeLifetime.totalPayoutCompletedSatang} /><FinanceMetric label="Platform fees earned" value={overview.volumeLifetime.totalPlatformFeesEarnedSatang} /></div>
+      </FinanceGroup>
+      <FinanceGroup title="Ledger Integrity">
+        <div className="overview-command-center-finance-integrity"><div><span>Subledger status</span><strong className={integrityClass}>{integrityLabel}</strong></div><div><span>Posting discrepancy</span><strong>{moneyFromSatang(overview.integrity.totalPostingsDiscrepancySatang)}</strong></div><div><span>Last audited</span><strong>{financeDateLabel(overview.integrity.lastAuditedAt)}</strong></div></div>
+      </FinanceGroup>
+    </div>
+  </section>;
+}
+
 function OverviewCloneLoading({ message }: { message: string }) {
   return <main id="dashboard-main" className="overview-command-center" tabIndex={-1}><section className="panel"><p>{message}</p></section></main>;
 }
@@ -63,6 +134,9 @@ function OverviewCloneLoading({ message }: { message: string }) {
 export function OverviewClone() {
   const [model, setModel] = useState<OverviewCloneModel | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [financeOverview, setFinanceOverview] = useState<AdminFinanceOverview | null>(null);
+  const [financeOverviewLoading, setFinanceOverviewLoading] = useState(isAdminApiEnabled());
+  const [financeOverviewError, setFinanceOverviewError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -94,6 +168,26 @@ export function OverviewClone() {
       if (!cancelled) setLoadError(error instanceof Error ? error.message : "The Admin API is unavailable.");
     });
 
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isAdminApiEnabled()) return;
+    let cancelled = false;
+    void adminApi.getFinanceOverview()
+      .then((overview) => {
+        if (!cancelled) setFinanceOverview(overview);
+        return undefined;
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) setFinanceOverviewError(error instanceof Error ? error.message : "Finance Overview is not available.");
+        return undefined;
+      })
+      .finally(() => {
+        if (!cancelled) setFinanceOverviewLoading(false);
+      });
     return () => {
       cancelled = true;
     };
@@ -131,6 +225,8 @@ export function OverviewClone() {
         </div>
       </section>
 
+      <FinanceOverviewSection overview={financeOverview} loading={financeOverviewLoading} error={financeOverviewError} />
+
       <div className="overview-command-center-grid">
         <section className="overview-command-center-table" aria-labelledby="overview-command-queue-heading">
           <div className="overview-command-center-section-head">
@@ -158,7 +254,7 @@ export function OverviewClone() {
           {model.activity.length ? (
             <ol className="overview-command-center-timeline">
               {model.activity.map((entry, index) => (
-                <li key={`${entry.timestamp}-${entry.actor}-${entry.title}`}>
+                <li key={dashboardActivityKey(entry, index)}>
                   <span className="overview-command-center-timeline-marker" aria-hidden="true">{index + 1}</span>
                   <span className="overview-command-center-timeline-avatar" aria-hidden="true">{entry.actor}</span>
                   <span><strong>{entry.title}</strong><small>{entry.detail} · {relativeTime(entry.timestamp)}</small></span>
