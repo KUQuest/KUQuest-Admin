@@ -1,0 +1,72 @@
+import { afterEach, describe, expect, it } from "bun:test";
+import { NextRequest } from "next/server";
+
+import { config, proxy } from "../../src/proxy";
+
+const originalDataSource = process.env.NEXT_PUBLIC_ADMIN_DATA_SOURCE;
+
+function request(path: string, cookie?: string): NextRequest {
+  return new NextRequest(`https://admin.example.test${path}`, {
+    headers: cookie ? { cookie } : undefined,
+  });
+}
+
+afterEach(() => {
+  if (originalDataSource === undefined) delete process.env.NEXT_PUBLIC_ADMIN_DATA_SOURCE;
+  else process.env.NEXT_PUBLIC_ADMIN_DATA_SOURCE = originalDataSource;
+});
+
+describe("Admin Proxy", () => {
+  it("redirects an API-mode request without an Admin session cookie to login", () => {
+    process.env.NEXT_PUBLIC_ADMIN_DATA_SOURCE = "api";
+
+    const response = proxy(request("/payout"));
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("https://admin.example.test/login");
+  });
+
+  it("redirects the root URL to Overview before the protected route check", () => {
+    process.env.NEXT_PUBLIC_ADMIN_DATA_SOURCE = "api";
+
+    const response = proxy(request("/"));
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("https://admin.example.test/overview");
+  });
+
+  it("passes a request with an Admin session cookie to the route", () => {
+    process.env.NEXT_PUBLIC_ADMIN_DATA_SOURCE = "api";
+
+    const response = proxy(request("/member/member-1", "kuquest-admin.session_token=session-token"));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
+  });
+
+  it("keeps login and public assets available without a session", () => {
+    process.env.NEXT_PUBLIC_ADMIN_DATA_SOURCE = "api";
+
+    expect(proxy(request("/login")).headers.get("location")).toBeNull();
+    expect(proxy(request("/kuquest-logo.png")).headers.get("location")).toBeNull();
+    expect(proxy(request("/_next/image?url=%2Fkuquest-logo.png&w=256&q=75")).headers.get("location")).toBeNull();
+  });
+
+  it("redirects an authenticated legacy view to its canonical route", () => {
+    process.env.NEXT_PUBLIC_ADMIN_DATA_SOURCE = "api";
+
+    const response = proxy(request("/?view=disputes", "kuquest-admin.session_token=session-token"));
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("https://admin.example.test/dispute");
+  });
+
+  it("uses a narrow matcher for Admin and compatibility routes", () => {
+    expect(config.matcher).toContain("/overview/:path*");
+    expect(config.matcher).toContain("/quest/:path*");
+    expect(config.matcher).toContain("/quests/:path*");
+    expect(config.matcher).not.toContain("/login");
+    expect(config.matcher).not.toContain("/_next/:path*");
+    expect(config.matcher).not.toContain("/public/:path*");
+  });
+});

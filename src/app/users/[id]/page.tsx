@@ -1,17 +1,12 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { LegacyAdminPage } from "@/features/admin/legacy-admin-page";
+import { memberRoutes } from "@/features/admin/admin-routes";
 
 interface UserPageProps {
   params: Promise<{ id: string }>;
 }
 
-export async function generateMetadata({ params }: UserPageProps): Promise<Metadata> {
-  const { id } = await params;
-  return { title: `User ${id}` };
-}
-
 export default async function UserPage({ params }: UserPageProps) {
   const { id } = await params;
-  return <LegacyAdminPage page="user" recordId={id} />;
+  redirect(memberRoutes.detail(id));
 }

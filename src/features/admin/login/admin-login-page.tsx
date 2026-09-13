@@ -14,6 +14,7 @@ import Link from "next/link";
 import { adminApi } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { ADMIN_SESSION_KEY } from "../legacy/auth";
+import { ADMIN_MOCK_SESSION_COOKIE } from "../../../lib/auth/admin-session-policy";
 
 type AdminLanguage = "en" | "th";
 
@@ -120,6 +121,7 @@ export function AdminLoginPage() {
         ADMIN_SESSION_KEY,
         JSON.stringify({ email: normalizedEmail, signedInAt: new Date().toISOString() }),
       );
+      document.cookie = `${ADMIN_MOCK_SESSION_COOKIE}=1; Path=/; SameSite=Lax`;
       window.location.assign("/");
       return;
     }

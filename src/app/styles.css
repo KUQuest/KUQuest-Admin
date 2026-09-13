@@ -230,6 +230,31 @@ nav {
   box-shadow: var(--shadow-low);
   font-weight: 700;
 }
+.sidebar .admin-nav-link {
+  width: 100%;
+  min-height: 35px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: inherit;
+  text-decoration: none;
+  font-weight: 500;
+}
+.sidebar .admin-nav-link:hover,
+.sidebar .admin-nav-link.active {
+  background: var(--surface);
+}
+.sidebar .admin-nav-link.active {
+  box-shadow: var(--shadow-low);
+  font-weight: 700;
+}
+.sidebar .admin-nav-link > span:first-child {
+  width: 20px;
+  color: var(--accent);
+  text-align: center;
+}
 .sidebar button span:first-child {
   width: 20px;
   text-align: center;
@@ -431,6 +456,12 @@ fieldset.theme-options {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 4px;
+}
+fieldset.language-options {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 .language-option {
   min-height: 36px;
