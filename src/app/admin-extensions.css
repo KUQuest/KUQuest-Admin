@@ -2013,6 +2013,29 @@ a.activity-log-target {
 .overview-command-center-header {
   margin-bottom: 24px;
 }
+.overview-command-center-header .overview-search-trigger {
+  flex: 0 1 420px;
+  width: min(420px, 42vw);
+}
+.overview-command-center-hero-stats a,
+.overview-command-center-queue a,
+.overview-command-center-activity h2 a {
+  color: inherit;
+  text-decoration: none;
+}
+.overview-command-center-hero-stats a:hover,
+.overview-command-center-queue a:hover,
+.overview-command-center-activity h2 a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.overview-command-center-hero-stats a {
+  grid-column: 1;
+  overflow-wrap: anywhere;
+}
+.overview-command-center-queue-oldest a {
+  color: var(--muted);
+}
 .overview-command-center-kicker {
   display: block;
   margin-bottom: 8px;
@@ -2568,6 +2591,7 @@ a.activity-log-target {
 @media (max-width: 560px) {
   .overview-command-center-header,
   .overview-command-center-section-head { align-items: flex-start; flex-direction: column; gap: 10px; }
+  .overview-command-center-header .overview-search-trigger { width: 100%; }
   .overview-command-center-command-head { align-items: flex-start; flex-direction: column; gap: 10px; }
   .overview-command-center-updated { max-width: 100%; padding-bottom: 0; white-space: normal; }
   .overview-command-center-hero { padding: 22px 20px; }

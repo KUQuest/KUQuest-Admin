@@ -16,6 +16,7 @@ import {
 import { isAdminMockEnabled } from "../../lib/auth/admin-auth-mode";
 import { AdminHeader } from "./admin-header";
 import { AdminSidebar } from "./admin-sidebar";
+import { AdminShellProvider } from "./admin-shell-context";
 
 type AdminShellProps = {
   identity: AdminIdentity;
@@ -79,22 +80,24 @@ export function AdminShell({ identity, children }: AdminShellProps) {
   }, [mobileNavigationOpen]);
 
   return (
-    <div className="shell admin-shell">
-      <AdminSidebar
-        open={mobileNavigationOpen}
-        onNavigate={closeMobileNavigation}
-        adminName={adminName}
-        counts={navigationCounts}
-        language={language}
-        onLanguageChange={changeLanguage}
-        translateText={translateText}
-      />
-      <AdminHeader
-        mobileNavigationOpen={mobileNavigationOpen}
-        onToggleNavigation={toggleMobileNavigation}
-        translateText={translateText}
-      />
-      {children}
-    </div>
+    <AdminShellProvider language={language} translateText={translateText}>
+      <div className="shell admin-shell">
+        <AdminSidebar
+          open={mobileNavigationOpen}
+          onNavigate={closeMobileNavigation}
+          adminName={adminName}
+          counts={navigationCounts}
+          language={language}
+          onLanguageChange={changeLanguage}
+          translateText={translateText}
+        />
+        <AdminHeader
+          mobileNavigationOpen={mobileNavigationOpen}
+          onToggleNavigation={toggleMobileNavigation}
+          translateText={translateText}
+        />
+        {children}
+      </div>
+    </AdminShellProvider>
   );
 }

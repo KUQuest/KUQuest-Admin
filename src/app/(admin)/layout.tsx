@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 
+import "../admin-extensions.css";
+
 import { AdminShell } from "../../components/admin/admin-shell";
 import { ForbiddenPage } from "../../components/admin/forbidden-page";
 import { getAdminSession } from "../../lib/auth/admin-session";

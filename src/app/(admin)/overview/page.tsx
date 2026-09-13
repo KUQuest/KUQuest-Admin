@@ -1,5 +1,5 @@
-import { AdminRoutePage } from "../../../components/admin/admin-route-page";
+import { AdminOverview } from "../../../features/admin/dashboard/overview-clone";
 
 export default function OverviewPage() {
-  return <AdminRoutePage title="Overview" description="Admin work queues and marketplace summary." />;
+  return <AdminOverview />;
 }
