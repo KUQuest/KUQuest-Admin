@@ -2013,6 +2013,15 @@ a.activity-log-target {
 .overview-command-center-header {
   margin-bottom: 24px;
 }
+/* The global shell header rule must not make this inner heading sticky. */
+.overview-command-center > .overview-command-center-header {
+  position: static;
+  z-index: auto;
+  padding: 0;
+  background: transparent;
+  border-bottom: 0;
+  backdrop-filter: none;
+}
 dialog.command {
   width: 100%;
   max-width: none;

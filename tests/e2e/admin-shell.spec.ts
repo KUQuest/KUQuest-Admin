@@ -67,6 +67,7 @@ test.describe("shared Admin shell", () => {
 
     const dashboard = page.locator("#dashboard-main");
     await expect(dashboard).toBeVisible();
+    await expect(dashboard.locator(".overview-command-center-header")).toHaveCSS("position", "static");
     await expect(dashboard.getByText("Work left", { exact: true })).toBeVisible();
     await expect(dashboard.locator('a[href="/dispute"]')).toHaveCount(2);
     await expect(dashboard.locator('a[href="/report"]')).toHaveCount(2);
