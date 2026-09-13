@@ -1,12 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-type AdminLanguage = "en" | "th";
+import {
+  normalizeAdminLanguage,
+  type AdminLanguage,
+} from "../../features/admin/language/admin-language";
+
+type AdminLanguageControlProps = {
+  language?: AdminLanguage;
+  onLanguageChange?: (language: AdminLanguage) => void;
+  translateText?: (value: string) => string;
+};
+
+const LANGUAGE_STORAGE_KEY = "kuquest-admin-language";
+const identityText = (value: string): string => value;
 
 function storedLanguage(): AdminLanguage {
   try {
-    return localStorage.getItem("kuquest-admin-language") === "th" ? "th" : "en";
+    return normalizeAdminLanguage(localStorage.getItem(LANGUAGE_STORAGE_KEY));
   } catch {
     return "en";
   }
@@ -16,35 +28,45 @@ function applyLanguage(language: AdminLanguage): void {
   document.documentElement.lang = language;
   document.documentElement.dataset.language = language;
   try {
-    localStorage.setItem("kuquest-admin-language", language);
+    localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
   } catch {
     // Keep the selected language for this page when storage is unavailable.
   }
 }
 
-export function AdminLanguageControl() {
-  const [language, setLanguage] = useState<AdminLanguage>("en");
+export function AdminLanguageControl({
+  language: controlledLanguage,
+  onLanguageChange,
+  translateText = identityText,
+}: AdminLanguageControlProps = {}) {
+  const [localLanguage, setLocalLanguage] = useState<AdminLanguage>("en");
+  const language = controlledLanguage ?? localLanguage;
 
   useEffect(() => {
     const initialLanguage = storedLanguage();
-    setLanguage(initialLanguage);
+    setLocalLanguage(initialLanguage);
     applyLanguage(initialLanguage);
-  }, []);
+    onLanguageChange?.(initialLanguage);
+  }, [onLanguageChange]);
 
-  const selectLanguage = (nextLanguage: AdminLanguage) => {
-    setLanguage(nextLanguage);
+  const selectLanguage = useCallback((nextLanguage: AdminLanguage) => {
+    setLocalLanguage(nextLanguage);
     applyLanguage(nextLanguage);
-  };
+    onLanguageChange?.(nextLanguage);
+  }, [onLanguageChange]);
+
+  const showEnglish = useCallback(() => selectLanguage("en"), [selectLanguage]);
+  const showThai = useCallback(() => selectLanguage("th"), [selectLanguage]);
 
   return (
     <div className="language-control" data-language-control>
-      <span className="language-control-label">Language</span>
-      <fieldset className="language-options" aria-label="Language options">
-        <legend className="visually-hidden">Language options</legend>
-        <button className="language-option" type="button" aria-pressed={language === "en"} onClick={() => selectLanguage("en")}>
+      <span className="language-control-label">{translateText("Language")}</span>
+      <fieldset className="language-options" aria-label={translateText("Language options")}>
+        <legend className="visually-hidden">{translateText("Language options")}</legend>
+        <button className="language-option" type="button" aria-pressed={language === "en"} onClick={showEnglish}>
           English
         </button>
-        <button className="language-option" type="button" aria-pressed={language === "th"} onClick={() => selectLanguage("th")}>
+        <button className="language-option" type="button" aria-pressed={language === "th"} onClick={showThai}>
           ไทย
         </button>
       </fieldset>

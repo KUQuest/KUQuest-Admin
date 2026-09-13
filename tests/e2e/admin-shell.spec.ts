@@ -48,6 +48,10 @@ test.describe("shared Admin shell", () => {
       "/activity",
     ]);
     expect(hrefs.some((href) => href?.includes("?view="))).toBe(false);
+    await expect(shell.locator('a[href="/dispute"] .admin-nav-count')).toHaveText("2");
+    await expect(shell.locator('a[href="/report"] .admin-nav-count')).toHaveText("2");
+    await expect(shell.locator('a[href="/conduct-report"] .admin-nav-count')).toHaveText("0");
+    await expect(shell.locator('a[href="/payout"] .admin-nav-count')).toHaveText("3");
 
     for (const route of canonicalRoutes) {
       await page.goto(route.path);
@@ -102,9 +106,12 @@ test.describe("shared Admin shell", () => {
     await page.getByRole("button", { name: /Dark Low-light workspace/ }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 
-    const languageOptions = page.getByRole("group", { name: "Language options" });
+    const languageOptions = page.getByRole("group", { name: /Language options|ตัวเลือกภาษา/ });
     await languageOptions.getByRole("button", { name: "ไทย", exact: true }).click();
     await expect(page.locator("html")).toHaveAttribute("lang", "th");
+    await expect(page.getByRole("link", { name: "ภาพรวม", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "สมาชิก", exact: true })).toBeVisible();
+    await expect(page.getByText("ระบบ", { exact: true })).toBeVisible();
     await expect(
       languageOptions.getByRole("button", { name: "ไทย", exact: true }),
     ).toHaveAttribute("aria-pressed", "true");

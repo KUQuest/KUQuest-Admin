@@ -2,18 +2,22 @@ import type { AdminOverview } from "./api/admin-api";
 import {
   disputeCaseStatusFor,
   isConductReportStatus,
+  payoutStatusFor,
   reportCaseStatusFor,
 } from "./domain/rulebook";
 
 export type AdminNavigationCounts = {
   disputes: number;
   payouts: number;
-  reports: null;
-  conductReports: null;
+  reports: number | null;
+  conductReports: number | null;
 };
 
+export type AdminNavigationCountKey = keyof AdminNavigationCounts;
+
 export type MockNavigationCounts = {
-  disputes?: number;
+  disputes: number;
+  payouts: number;
   reports: number;
   conductReports: number;
 };
@@ -22,15 +26,19 @@ export function adminNavigationCountsFromOverview(
   overview: AdminOverview,
 ): AdminNavigationCounts {
   return {
-    disputes: overview.disputes.awaitingResolution,
-    payouts: overview.payouts.pendingAdminApproval,
-    reports: null,
-    conductReports: null,
+    disputes: overview.queues?.disputes?.count ?? overview.disputes.awaitingResolution,
+    payouts: overview.queues?.payouts?.count ?? overview.payouts.pendingAdminApproval,
+    reports: overview.queues?.reports?.count ?? overview.reports?.open ?? null,
+    conductReports: overview.queues?.conductReports?.count ?? overview.conductReports?.open ?? null,
   };
 }
 
 export function adminNavigationCountsFromMockData(
-  collections: { disputes?: readonly unknown[]; reports: readonly unknown[] },
+  collections: {
+    disputes?: readonly unknown[];
+    payouts?: readonly unknown[];
+    reports: readonly unknown[];
+  },
 ): MockNavigationCounts {
   const disputes = collections.disputes?.filter((record) => {
     if (!record || typeof record !== "object") return false;
@@ -40,7 +48,12 @@ export function adminNavigationCountsFromMockData(
         ? candidate.disputeCaseStatus
         : typeof candidate.status === "string" ? candidate.status : "",
     ) === "DISPUTE_CASE_PENDING";
-  }).length;
+  }).length ?? 0;
+  const payouts = collections.payouts?.filter((record) => {
+    if (!record || typeof record !== "object") return false;
+    const candidate = record as Record<string, unknown>;
+    return payoutStatusFor(candidate.payoutStatus ?? candidate.status) === "PENDING_ADMIN_APPROVAL";
+  }).length ?? 0;
   const conductReports = collections.reports.filter((record) => {
     if (!record || typeof record !== "object") return false;
     const candidate = record as Record<string, unknown>;
@@ -57,9 +70,10 @@ export function adminNavigationCountsFromMockData(
   }).length;
 
   const counts: MockNavigationCounts = {
+    disputes,
+    payouts,
     reports: reportCases,
     conductReports,
   };
-  if (typeof disputes === "number") counts.disputes = disputes;
   return counts;
 }
