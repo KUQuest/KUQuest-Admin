@@ -1,9 +1,6 @@
 import type {
-  AdminMemberListItem,
   AdminOverview,
   AdminOverviewQueue,
-  AdminPayout,
-  AdminQuest,
 } from "../api/admin-api";
 import { adminNavigationCountsFromMockData } from "../admin-navigation";
 import {
@@ -37,6 +34,30 @@ type OverviewSource = "Admin API" | "Local fallback" | "Unavailable";
 type OverviewQueueRoute = {
   list: () => string;
   detail?: (identifier: string) => string;
+};
+
+type OverviewQueueInput = {
+  id: OverviewQueueId;
+  title: string;
+  count: OverviewCount;
+  source: OverviewSource;
+  status: string;
+  oldest: string;
+  waiting: string;
+  tone: string;
+  oldestId?: string | null;
+};
+
+type OverviewApiQueueConfig = {
+  id: OverviewQueueId;
+  title: string;
+  fallbackCount: OverviewCount;
+  summary: AdminOverviewQueue | undefined;
+  fallbackSource: OverviewSource;
+  fallbackOldest: string;
+  fallbackWaiting: string;
+  tone: string;
+  loadedAt: number;
 };
 
 export type OverviewQueue = {
@@ -96,6 +117,12 @@ export type OverviewSearchResult = {
   detail: string;
   href: string;
   searchText?: string;
+};
+
+export type OverviewApiSearchData = {
+  quests: Array<{ displayId: string; title: string }>;
+  members: Array<{ id: string; firstName: string; lastName: string; studentId: string | null }>;
+  payouts: Array<{ id: string; student: { firstName: string; lastName: string } }>;
 };
 
 const questStateTones: Record<QuestState, string> = {
@@ -181,29 +208,29 @@ function queueStatusLabel(summary: AdminOverviewQueue | undefined, count: Overvi
   return count > 0 ? "Open" : "Clear";
 }
 
-function queueFromApi(
-  id: OverviewQueue["id"],
-  title: string,
-  fallbackCount: OverviewCount,
-  summary: AdminOverviewQueue | undefined,
-  fallbackSource: OverviewSource,
-  fallbackOldest: string,
-  fallbackWaiting: string,
-  tone: string,
-  loadedAt: number,
-): OverviewQueue {
+function queueFromApi({
+  id,
+  title,
+  fallbackCount,
+  summary,
+  fallbackSource,
+  fallbackOldest,
+  fallbackWaiting,
+  tone,
+  loadedAt,
+}: OverviewApiQueueConfig): OverviewQueue {
   const count = summary ? countValue(summary.count) : fallbackCount;
-  return queue(
+  return queue({
     id,
     title,
     count,
-    summary ? "Admin API" : fallbackSource,
-    queueStatusLabel(summary, count),
-    queueOldestLabel(summary, count, fallbackOldest),
-    queueWaitingLabel(summary, loadedAt, fallbackWaiting),
-    count !== null && count > 0 ? tone : "",
-    summary?.oldest?.id ?? null,
-  );
+    source: summary ? "Admin API" : fallbackSource,
+    status: queueStatusLabel(summary, count),
+    oldest: queueOldestLabel(summary, count, fallbackOldest),
+    waiting: queueWaitingLabel(summary, loadedAt, fallbackWaiting),
+    tone: count !== null && count > 0 ? tone : "",
+    oldestId: summary?.oldest?.id ?? null,
+  });
 }
 
 function questStatesFromCounts(byState: Record<string, number>, total: number): OverviewQuestState[] {
@@ -222,28 +249,12 @@ function questStatesFromCounts(byState: Record<string, number>, total: number): 
   }));
 }
 
-function queue(
-  id: OverviewQueue["id"],
-  title: string,
-  count: OverviewCount,
-  source: OverviewSource,
-  status: string,
-  oldest: string,
-  waiting: string,
-  tone: string,
-  oldestId: string | null = null,
-): OverviewQueue {
+function queue(input: OverviewQueueInput): OverviewQueue {
+  const { oldestId, ...queueData } = input;
   return {
-    id,
-    title,
-    count,
-    source,
-    status,
-    oldest,
-    oldestHref: oldestId ? queueOldestHref(id, oldestId) : null,
-    listHref: queueListHref(id),
-    waiting,
-    tone,
+    ...queueData,
+    oldestHref: oldestId ? queueOldestHref(input.id, oldestId) : null,
+    listHref: queueListHref(input.id),
   };
 }
 
@@ -307,10 +318,10 @@ export function overviewModelFromApi(
   const memberStatusCounts = memberStatusCountsFromApi(overview.members.byStatus, fallback.memberStatusCounts);
   const walletStatusCounts = walletStatusCountsFromApi(overview.wallets?.byStatus, fallback.walletStatusCounts);
   const queues = [
-    queueFromApi("payouts", "Payout Approvals", payouts, overview.queues?.payouts, "Admin API", "Queue detail not provided", "—", "overview-queue-status-review", loadedAt),
-    queueFromApi("disputes", "Dispute Cases", disputes, overview.queues?.disputes, "Admin API", "Queue detail not provided", "—", "overview-queue-status-overdue", loadedAt),
-    queueFromApi("reports", "Report Cases", reports, overview.queues?.reports, sourceForCount(reportsFromApi, fallback.reports), "Queue detail not provided", "—", "overview-queue-status-review", loadedAt),
-    queueFromApi("conductReports", "Conduct Reports", conductReports, overview.queues?.conductReports, sourceForCount(conductReportsFromApi, fallback.conductReports), "Queue detail not provided", "—", "overview-queue-status-review", loadedAt),
+    queueFromApi({ id: "payouts", title: "Payout Approvals", fallbackCount: payouts, summary: overview.queues?.payouts, fallbackSource: "Admin API", fallbackOldest: "Queue detail not provided", fallbackWaiting: "—", tone: "overview-queue-status-review", loadedAt }),
+    queueFromApi({ id: "disputes", title: "Dispute Cases", fallbackCount: disputes, summary: overview.queues?.disputes, fallbackSource: "Admin API", fallbackOldest: "Queue detail not provided", fallbackWaiting: "—", tone: "overview-queue-status-overdue", loadedAt }),
+    queueFromApi({ id: "reports", title: "Report Cases", fallbackCount: reports, summary: overview.queues?.reports, fallbackSource: sourceForCount(reportsFromApi, fallback.reports), fallbackOldest: "Queue detail not provided", fallbackWaiting: "—", tone: "overview-queue-status-review", loadedAt }),
+    queueFromApi({ id: "conductReports", title: "Conduct Reports", fallbackCount: conductReports, summary: overview.queues?.conductReports, fallbackSource: sourceForCount(conductReportsFromApi, fallback.conductReports), fallbackOldest: "Queue detail not provided", fallbackWaiting: "—", tone: "overview-queue-status-review", loadedAt }),
   ];
   const hasSummaryOnlyData = !overview.queues
     || overviewQueueIds.some((id) => {
@@ -403,10 +414,10 @@ export function overviewModelFromMockData(
   });
   const questTotal = data.collections.quests.length;
   const queues = [
-    queue("payouts", "Payout Approvals", payouts, "Local fallback", "Needs review", "Local demo queue", "—", "overview-queue-status-review"),
-    queue("disputes", "Dispute Cases", disputes, "Local fallback", disputes ? "Open" : "Clear", "Local demo queue", "—", disputes ? "overview-queue-status-overdue" : ""),
-    queue("reports", "Report Cases", reportCases, "Local fallback", reportCases ? "Open" : "Clear", "Local demo queue", "—", reportCases ? "overview-queue-status-review" : ""),
-    queue("conductReports", "Conduct Reports", conductReports, "Local fallback", conductReports ? "Open" : "Clear", "Local demo queue", "—", conductReports ? "overview-queue-status-review" : ""),
+    queue({ id: "payouts", title: "Payout Approvals", count: payouts, source: "Local fallback", status: "Needs review", oldest: "Local demo queue", waiting: "—", tone: "overview-queue-status-review" }),
+    queue({ id: "disputes", title: "Dispute Cases", count: disputes, source: "Local fallback", status: disputes ? "Open" : "Clear", oldest: "Local demo queue", waiting: "—", tone: disputes ? "overview-queue-status-overdue" : "" }),
+    queue({ id: "reports", title: "Report Cases", count: reportCases, source: "Local fallback", status: reportCases ? "Open" : "Clear", oldest: "Local demo queue", waiting: "—", tone: reportCases ? "overview-queue-status-review" : "" }),
+    queue({ id: "conductReports", title: "Conduct Reports", count: conductReports, source: "Local fallback", status: conductReports ? "Open" : "Clear", oldest: "Local demo queue", waiting: "—", tone: conductReports ? "overview-queue-status-review" : "" }),
   ];
   const walletCounts = data.collections.users.reduce(
     (counts, record) => {
@@ -491,16 +502,12 @@ export function overviewSearchResultsFromMockData(
   return matchingSearchResults([...members, ...quests, ...payouts], query);
 }
 
-function memberName(member: Pick<AdminMemberListItem, "firstName" | "lastName" | "email">): string {
-  return `${member.firstName} ${member.lastName}`.trim() || member.email;
+function memberName(member: { firstName: string; lastName: string }): string {
+  return `${member.firstName} ${member.lastName}`.trim() || "Member";
 }
 
 export function overviewSearchResultsFromApi(
-  records: {
-    quests: readonly AdminQuest[];
-    members: readonly AdminMemberListItem[];
-    payouts: readonly AdminPayout[];
-  },
+  records: OverviewApiSearchData,
   query: string,
 ): OverviewSearchResult[] {
   const members = records.members.map((member): OverviewSearchResult => ({
@@ -509,7 +516,7 @@ export function overviewSearchResultsFromApi(
     title: memberName(member),
     detail: "Member",
     href: memberRoutes.detail(member.id),
-    searchText: [member.email, member.studentId ?? ""].join(" "),
+    searchText: member.studentId ?? "",
   }));
   const quests = records.quests.map((quest): OverviewSearchResult => ({
     kind: "quest",

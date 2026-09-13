@@ -85,6 +85,8 @@ export type AdminOverview = {
   };
 };
 
+export type AdminApiRequestOptions = Pick<RequestInit, "headers">;
+
 export type AdminFinanceOverview = {
   platformBalances: {
     revenueSatang: number;
@@ -973,13 +975,20 @@ export type AdminEvent = {
 let overviewInFlight: Promise<AdminOverview> | null = null;
 let overviewCache: { value: AdminOverview; expiresAt: number } | null = null;
 
-function getOverview(): Promise<AdminOverview> {
+function getOverview(options: AdminApiRequestOptions = {}): Promise<AdminOverview> {
+  if (options.headers !== undefined) {
+    return apiRequest<AdminOverview>("/api/v1/admin/overview", {
+      cache: "no-store",
+      ...options,
+    });
+  }
   if (typeof window !== "undefined" && overviewCache && overviewCache.expiresAt > Date.now()) {
     return Promise.resolve(overviewCache.value);
   }
   if (overviewInFlight) return overviewInFlight;
   const request = apiRequest<AdminOverview>("/api/v1/admin/overview", {
     cache: "no-store",
+    ...options,
   });
   const sharedRequest = request.then((value) => {
     if (typeof window !== "undefined") overviewCache = { value, expiresAt: Date.now() + 1000 };
@@ -1068,30 +1077,34 @@ export const adminApi = {
     }).then(() => null);
   },
 
-  getOverview(): Promise<AdminOverview> {
-    return getOverview();
+  getOverview(options: AdminApiRequestOptions = {}): Promise<AdminOverview> {
+    return getOverview(options);
   },
 
-  getFinanceOverview(): Promise<AdminFinanceOverview> {
+  getFinanceOverview(options: AdminApiRequestOptions = {}): Promise<AdminFinanceOverview> {
     return apiRequest<AdminFinanceOverview>(
       "/api/v1/admin/finance/overview",
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 
   listActivityLogs(
     query: AdminActivityListQuery = {},
+    options: AdminApiRequestOptions = {},
   ): Promise<AdminPage<AdminActivityLog>> {
     return apiRequest<AdminPage<AdminActivityLog>>(
       `/api/v1/admin/activity-log${queryString(query)}`,
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 
-  listQuests(query: AdminQuestListQuery = {}): Promise<AdminPage<AdminQuest>> {
+  listQuests(
+    query: AdminQuestListQuery = {},
+    options: AdminApiRequestOptions = {},
+  ): Promise<AdminPage<AdminQuest>> {
     return apiRequest<AdminPage<AdminQuest>>(
       `/api/v1/admin/quests${queryString(query)}`,
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 
@@ -1177,10 +1190,13 @@ export const adminApi = {
     );
   },
 
-  listPayouts(query: AdminPayoutListQuery = {}): Promise<AdminPage<AdminPayout>> {
+  listPayouts(
+    query: AdminPayoutListQuery = {},
+    options: AdminApiRequestOptions = {},
+  ): Promise<AdminPage<AdminPayout>> {
     return apiRequest<AdminPage<AdminPayout>>(
       `/api/v1/admin/payouts${queryString(query)}`,
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 
@@ -1300,10 +1316,13 @@ export const adminApi = {
     );
   },
 
-  listMembers(query: AdminMemberListQuery = {}): Promise<AdminPage<AdminMemberListItem>> {
+  listMembers(
+    query: AdminMemberListQuery = {},
+    options: AdminApiRequestOptions = {},
+  ): Promise<AdminPage<AdminMemberListItem>> {
     return apiRequest<AdminPage<AdminMemberListItem>>(
       `/api/v1/admin/members${queryString(query)}`,
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 

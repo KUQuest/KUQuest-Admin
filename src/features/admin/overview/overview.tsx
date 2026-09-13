@@ -19,16 +19,12 @@ import {
   overviewSearchResultsFromApi,
   overviewSearchResultsFromMockData,
   questStateTones,
+  type OverviewApiSearchData,
   type OverviewModel,
   type OverviewQueue,
   type OverviewSearchResult,
 } from "./overview-model";
-import {
-  loadFinanceOverview,
-  loadOverviewFromApi,
-  loadOverviewSearchData,
-  type OverviewApiSearchData,
-} from "./overview-service";
+import type { OverviewPageData } from "./overview-service";
 
 type SearchData =
   | { source: "mock"; data: PersistedAdminData }
@@ -152,52 +148,44 @@ function OverviewSearch({
   open,
   onClose,
   translateText,
+  initialData,
+  initialError,
 }: {
   open: boolean;
   onClose: () => void;
   translateText: (value: string) => string;
+  initialData?: OverviewApiSearchData | null;
+  initialError?: string | null;
 }) {
   const [query, setQuery] = useState("");
-  const [data, setData] = useState<SearchData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<SearchData | null>(
+    initialData ? { source: "api", data: initialData } : null,
+  );
+  const [error, setError] = useState<string | null>(initialError ?? null);
 
   useEffect(() => {
     if (!open) return;
-    let cancelled = false;
     setQuery("");
-    setData(null);
-    setError(null);
+    setData(initialData
+      ? { source: "api", data: initialData }
+      : isAdminMockEnabled()
+        ? { source: "mock", data: loadOverviewMockData(localStorage) }
+        : null);
+    setError(initialError ?? (
+      !isAdminMockEnabled() && initialData === undefined
+        ? translateText("The Admin API search is not available.")
+        : null
+    ));
 
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
     document.addEventListener("keydown", closeOnEscape);
 
-    if (isAdminMockEnabled()) {
-      setData({ source: "mock", data: loadOverviewMockData(localStorage) });
-      return () => {
-        document.removeEventListener("keydown", closeOnEscape);
-      };
-    }
-
-    setLoading(true);
-    void loadOverviewSearchData().then((data) => {
-      if (cancelled) return null;
-      setData({ source: "api", data });
-      return null;
-    }).catch(() => {
-      if (!cancelled) setError(translateText("The Admin API search is not available."));
-      return null;
-    }).finally(() => {
-      if (!cancelled) setLoading(false);
-    });
-
     return () => {
-      cancelled = true;
       document.removeEventListener("keydown", closeOnEscape);
     };
-  }, [onClose, open, translateText]);
+  }, [initialData, initialError, onClose, open, translateText]);
 
   if (!open) return null;
   const results = data?.source === "mock"
@@ -223,7 +211,6 @@ function OverviewSearch({
           <kbd>Esc</kbd>
         </div>
         <div id="overview-command-results">
-          {loading && <p className="empty">{translateText("Loading search records…")}</p>}
           {error && <p className="empty">{error}</p>}
           {results.map((result) => (
             <Link key={`${result.kind}-${result.id}`} className="result" href={result.href} onClick={onClose}>
@@ -232,62 +219,44 @@ function OverviewSearch({
               <small>{translateText(result.kind === "member" ? "Member" : result.kind === "payout" ? "Payout" : "Quest")}</small>
             </Link>
           ))}
-          {!loading && !error && query && !results.length && <p className="empty">{translateText("No matching records")}</p>}
+          {!error && query && !results.length && <p className="empty">{translateText("No matching records")}</p>}
         </div>
       </div>
     </dialog>
   );
 }
 
-export function AdminOverview({ showSearch = true }: { showSearch?: boolean } = {}) {
+export function AdminOverview({
+  showSearch = true,
+  initialData,
+}: {
+  showSearch?: boolean;
+  initialData?: OverviewPageData;
+} = {}) {
   const { translateText } = useAdminShell();
-  const [model, setModel] = useState<OverviewModel | null>(null);
+  const [model, setModel] = useState<OverviewModel | null>(initialData?.model ?? null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [financeOverview, setFinanceOverview] = useState<AdminFinanceOverview | null>(null);
-  const [financeOverviewLoading, setFinanceOverviewLoading] = useState(isAdminApiEnabled());
-  const [financeOverviewError, setFinanceOverviewError] = useState<string | null>(null);
+  const [financeOverview] = useState<AdminFinanceOverview | null>(initialData?.financeOverview ?? null);
+  const financeOverviewLoading = false;
+  const [financeOverviewError] = useState<string | null>(initialData?.financeOverviewError ?? null);
   const [searchOpen, setSearchOpen] = useState(false);
   const closeSearch = useCallback(() => setSearchOpen(false), []);
 
   useEffect(() => {
+    if (initialData || isAdminApiEnabled()) return;
     let cancelled = false;
-
-    const loadOverview = isAdminApiEnabled()
-      ? loadOverviewFromApi()
-      : Promise.resolve(loadOverviewModelFromMock(localStorage));
-
-    void loadOverview.then((nextModel) => {
+    try {
+      const nextModel = loadOverviewModelFromMock(localStorage);
       if (!cancelled) setModel(nextModel);
-      return null;
-    }).catch((error: unknown) => {
+    } catch (error: unknown) {
       console.error("Overview failed to load", error);
       if (!cancelled) setLoadError(error instanceof Error ? error.message : "The Admin API is unavailable.");
-    });
+    }
 
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  useEffect(() => {
-    if (!isAdminApiEnabled()) return;
-    let cancelled = false;
-    void loadFinanceOverview()
-      .then((overview) => {
-        if (!cancelled) setFinanceOverview(overview);
-        return undefined;
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) setFinanceOverviewError(error instanceof Error ? error.message : "Finance Overview is not available.");
-        return undefined;
-      })
-      .finally(() => {
-        if (!cancelled) setFinanceOverviewLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  }, [initialData]);
 
   useEffect(() => {
     if (!showSearch) return;
@@ -424,7 +393,13 @@ export function AdminOverview({ showSearch = true }: { showSearch?: boolean } = 
           </section>
         </div>
       </main>
-      <OverviewSearch open={showSearch && searchOpen} onClose={closeSearch} translateText={translateText} />
+      <OverviewSearch
+        open={showSearch && searchOpen}
+        onClose={closeSearch}
+        translateText={translateText}
+        initialData={initialData?.searchData}
+        initialError={initialData?.searchError}
+      />
     </>
   );
 }

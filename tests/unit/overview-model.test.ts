@@ -239,17 +239,9 @@ describe("Overview search results", () => {
       quests: [],
       members: [{
         id: "68000000",
-        email: "ari@example.com",
         firstName: "Ari",
         lastName: "Member",
         studentId: "6612345678",
-        telephone: null,
-        academicYear: null,
-        faculty: null,
-        department: null,
-        occupation: null,
-        wallet: null,
-        createdAt: "2026-09-01T00:00:00.000Z",
       }],
       payouts: [],
     }, "6612345678");

@@ -1,27 +1,33 @@
 import type {
+  AdminApiRequestOptions,
   AdminFinanceOverview,
-  AdminMemberListItem,
-  AdminPayout,
-  AdminQuest,
 } from "../api/admin-api";
 import { adminApi } from "../api/admin-api";
 import { dashboardActivityFromApi } from "../dashboard/dashboard-model";
 import {
   overviewFallbackWithoutApiData,
   overviewModelFromApi,
+  type OverviewApiSearchData,
   type OverviewModel,
 } from "./overview-model";
 
-export type OverviewApiSearchData = {
-  quests: AdminQuest[];
-  members: AdminMemberListItem[];
-  payouts: AdminPayout[];
+export type OverviewPageData = {
+  model: OverviewModel;
+  financeOverview: AdminFinanceOverview | null;
+  financeOverviewError: string | null;
+  searchData: OverviewApiSearchData | null;
+  searchError: string | null;
 };
 
-export async function loadOverviewFromApi(): Promise<OverviewModel> {
+function apiRequestOptions(cookieHeader?: string): AdminApiRequestOptions {
+  return cookieHeader === undefined ? {} : { headers: { Cookie: cookieHeader } };
+}
+
+export async function loadOverviewFromApi(cookieHeader?: string): Promise<OverviewModel> {
+  const options = apiRequestOptions(cookieHeader);
   const [overview, activityPage] = await Promise.all([
-    adminApi.getOverview(),
-    adminApi.listActivityLogs({ limit: 4, sort: "newest" }).catch(() => ({ items: [], nextCursor: null })),
+    adminApi.getOverview(options),
+    adminApi.listActivityLogs({ limit: 4, sort: "newest" }, options).catch(() => ({ items: [], nextCursor: null })),
   ]);
   return overviewModelFromApi(
     overview,
@@ -30,19 +36,48 @@ export async function loadOverviewFromApi(): Promise<OverviewModel> {
   );
 }
 
-export function loadFinanceOverview(): Promise<AdminFinanceOverview> {
-  return adminApi.getFinanceOverview();
+export function loadFinanceOverview(cookieHeader?: string): Promise<AdminFinanceOverview> {
+  return adminApi.getFinanceOverview(apiRequestOptions(cookieHeader));
 }
 
-export async function loadOverviewSearchData(): Promise<OverviewApiSearchData> {
+export async function loadOverviewSearchData(cookieHeader?: string): Promise<OverviewApiSearchData> {
+  const options = apiRequestOptions(cookieHeader);
   const [quests, members, payouts] = await Promise.all([
-    adminApi.listQuests({ limit: 100, sort: "newest" }),
-    adminApi.listMembers({ limit: 100 }),
-    adminApi.listPayouts({ limit: 100, sort: "newest" }),
+    adminApi.listQuests({ limit: 100, sort: "newest" }, options),
+    adminApi.listMembers({ limit: 100 }, options),
+    adminApi.listPayouts({ limit: 100, sort: "newest" }, options),
   ]);
   return {
-    quests: quests.items,
-    members: members.items,
-    payouts: payouts.items,
+    quests: quests.items.map(({ displayId, title }) => ({ displayId, title })),
+    members: members.items.map(({ id, firstName, lastName, studentId }) => ({
+      id,
+      firstName,
+      lastName,
+      studentId,
+    })),
+    payouts: payouts.items.map(({ id, student }) => ({
+      id,
+      student: {
+        firstName: student.firstName,
+        lastName: student.lastName,
+      },
+    })),
+  };
+}
+
+export async function loadOverviewPageData(cookieHeader: string): Promise<OverviewPageData> {
+  const [model, finance, search] = await Promise.allSettled([
+    loadOverviewFromApi(cookieHeader),
+    loadFinanceOverview(cookieHeader),
+    loadOverviewSearchData(cookieHeader),
+  ]);
+  if (model.status === "rejected") throw model.reason;
+
+  return {
+    model: model.value,
+    financeOverview: finance.status === "fulfilled" ? finance.value : null,
+    financeOverviewError: finance.status === "rejected" ? "Finance Overview is not available." : null,
+    searchData: search.status === "fulfilled" ? search.value : null,
+    searchError: search.status === "rejected" ? "The Admin API search is not available." : null,
   };
 }
