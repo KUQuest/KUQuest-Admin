@@ -38,7 +38,7 @@ describe("Report Case service", () => {
 
     const page = await loadReportCasePageData("kuquest-admin=server-session");
 
-    expect(request?.url).toBe("https://api.example.test/api/v1/admin/reports?limit=100");
+    expect(request?.url).toBe("https://api.example.test/api/v1/admin/reports?limit=50");
     expect(request?.headers.get("cookie")).toBe("kuquest-admin=server-session");
     expect(page.items.map((record) => record.id)).toEqual(["RPT-1"]);
     expect(page.items[0]).toMatchObject({
@@ -64,7 +64,7 @@ describe("Report Case service", () => {
 
     const page = await loadReportCasePageData(undefined, "next-report-page");
 
-    expect(request?.url).toBe("https://api.example.test/api/v1/admin/reports?limit=100&cursor=next-report-page");
+    expect(request?.url).toBe("https://api.example.test/api/v1/admin/reports?limit=50&cursor=next-report-page");
     expect(page.items.map((record) => record.id)).toEqual(["RPT-2"]);
     expect(page.items[0]?.status).toBe("REPORT_CASE_DISMISSED");
   });
