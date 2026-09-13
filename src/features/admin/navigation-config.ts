@@ -28,14 +28,6 @@ export type AdminNavigationIcon = (typeof adminNavigation)[number]["icon"];
 export const primaryAdminNavigation = adminNavigation.filter(({ group }) => group === "primary");
 export const systemAdminNavigation = adminNavigation.filter(({ group }) => group === "system");
 
-const detailRoutePrefixes = [
-  questRoutes.list(),
-  disputeRoutes.list(),
-  reportRoutes.list(),
-  payoutRoutes.list(),
-  memberRoutes.list(),
-] as const;
-
 function normalizedPathname(pathname: string): string {
   if (pathname.length <= 1) return pathname;
   return pathname.replace(/\/+$/, "");
@@ -44,9 +36,4 @@ function normalizedPathname(pathname: string): string {
 export function activeAdminNavigation(pathname: string): AdminNavigationKey {
   const normalized = normalizedPathname(pathname);
   return adminNavigation.find(({ href }) => normalized === href || normalized.startsWith(`${href}/`))?.key ?? "overview";
-}
-
-export function isAdminDetailPathname(pathname: string): boolean {
-  const normalized = normalizedPathname(pathname);
-  return detailRoutePrefixes.some((prefix) => normalized.startsWith(`${prefix}/`));
 }
