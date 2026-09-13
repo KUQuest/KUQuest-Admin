@@ -122,7 +122,6 @@ export function ReportCaseBoard({ initialData }: { initialData?: ReportCasePageD
   const models = page.items.filter((model) => tabMatches(model, activeTab) && modelMatchesQuery(model, query));
 
   return (
-    <>
       <main id="report-main" className="admin-route-page report-case-board" tabIndex={-1}>
         <div className="page-head"><div><p className="admin-route-kicker">{translateText("KUQuest Admin")}</p><h1>{translateText("Report Cases")}</h1><p>{translateText("Review Report Cases about Message or Attachment content.")}</p></div></div>
         <section className="panel" aria-labelledby="report-case-board-heading">
@@ -161,6 +160,5 @@ export function ReportCaseBoard({ initialData }: { initialData?: ReportCasePageD
           )}
         </section>
       </main>
-    </>
   );
 }
