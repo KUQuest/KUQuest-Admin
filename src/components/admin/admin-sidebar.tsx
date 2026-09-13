@@ -3,8 +3,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState, type ReactNode } from "react";
 
-import { adminNavigation, activeAdminNavigation } from "../../features/admin/navigation-config";
+import {
+  activeAdminNavigation,
+  adminNavigation,
+  primaryAdminNavigation,
+  systemAdminNavigation,
+  type AdminNavigationIcon,
+} from "../../features/admin/navigation-config";
 import { AdminLanguageControl } from "./admin-language-control";
 import { AdminThemeControl } from "./admin-theme-control";
 
@@ -14,39 +21,118 @@ type AdminSidebarProps = {
   adminName: string;
 };
 
-export function AdminSidebar({ open, onNavigate, adminName }: AdminSidebarProps) {
+type AdminNavigationItem = (typeof adminNavigation)[number];
+
+const walletIconNode = <><path d="M3 6h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Zm0 0 12-3v3" /><path d="M16 12h5v4h-5a2 2 0 0 1 0-4Z" /></>;
+const navigationIconNodes: Record<AdminNavigationIcon, ReactNode> = {
+  home: <><path d="M3 11.5 12 4l9 7.5" /><path d="M5.5 10v10h13V10M9 20v-6h6v6" /></>,
+  quest: <><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4V3h6v1M8 9h8M8 13h8M8 17h5" /></>,
+  dispute: <path d="M12 3v18M5 7h14M5 7l-3 6h6L5 7Zm14 0-3 6h6l-3-6ZM8 21h8" />,
+  report: <path d="M5 21V4m0 0h12l-2 4 2 4H5" />,
+  "conduct-report": <><path d="M5 21V4m0 0h12l-2 4 2 4H5" /><path d="m9 16 2 2 4-4" /></>,
+  payout: walletIconNode,
+  member: <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.8" />,
+  wallet: walletIconNode,
+  activity: <path d="M4 5h16v14H4zM8 9h8M8 13h5" />,
+};
+
+function NavigationIcon({ name }: { name: AdminNavigationIcon }) {
+  return (
+    <svg className="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+      {navigationIconNodes[name]}
+    </svg>
+  );
+}
+
+function AdminNavigationLink({
+  active,
+  item,
+  onNavigate,
+}: {
+  active: boolean;
+  item: AdminNavigationItem;
+  onNavigate: () => void;
+}) {
+  return (
+    <Link
+      className={`admin-nav-link${active ? " active" : ""}`}
+      href={item.href}
+      aria-current={active ? "page" : undefined}
+      data-navigation-key={item.key}
+      onClick={onNavigate}
+    >
+      <span aria-hidden="true"><NavigationIcon name={item.icon} /></span>
+      {item.label}
+    </Link>
+  );
+}
+
+export function AdminSidebar({
+  open,
+  onNavigate,
+  adminName,
+}: AdminSidebarProps) {
   const pathname = usePathname();
   const activeKey = activeAdminNavigation(pathname);
+  const [isMobile, setIsMobile] = useState(false);
   const initials = adminName.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase() || "AD";
 
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 900px)");
+    const updateMobileState = () => setIsMobile(mediaQuery.matches);
+    const closeOnBreakpointChange = () => {
+      updateMobileState();
+      onNavigate();
+    };
+    updateMobileState();
+    mediaQuery.addEventListener("change", closeOnBreakpointChange);
+    return () => mediaQuery.removeEventListener("change", closeOnBreakpointChange);
+  }, [onNavigate]);
+
+  const navigationHidden = isMobile && !open;
+
   return (
-    <aside className={`sidebar${open ? " open" : ""}`} id="site-navigation">
+    <aside
+      className={`sidebar${open ? " open" : ""}`}
+      id="site-navigation"
+      aria-hidden={navigationHidden ? true : undefined}
+      inert={navigationHidden ? true : undefined}
+    >
       <div className="brand">
         <Image src="/kuquest-logo.png?v=2" alt="" width={101} height={51} priority unoptimized />
         <span>KuQuest</span>
       </div>
       <nav aria-label="Primary navigation">
-        {adminNavigation.map((item) => {
-          const active = item.key === activeKey;
-          return (
-            <Link
-              className={`admin-nav-link${active ? " active" : ""}`}
-              href={item.href}
-              aria-current={active ? "page" : undefined}
-              key={item.key}
-              onClick={onNavigate}
-            >
-              <span aria-hidden="true">·</span>
-              {item.label}
-            </Link>
-          );
-        })}
+        {primaryAdminNavigation.map((item) => (
+          <AdminNavigationLink
+            active={item.key === activeKey}
+            item={item}
+            key={item.key}
+            onNavigate={onNavigate}
+          />
+        ))}
       </nav>
+      <div className="nav-group">
+        <small>SYSTEM</small>
+        <nav aria-label="System navigation">
+          {systemAdminNavigation.map((item) => (
+            <AdminNavigationLink
+              active={item.key === activeKey}
+              item={item}
+              key={item.key}
+              onNavigate={onNavigate}
+            />
+          ))}
+        </nav>
+      </div>
       <AdminThemeControl />
       <AdminLanguageControl />
       <div className="profile">
-        <span>{initials}</span>
-        <div><strong>{adminName}</strong><small>Admin</small></div>
+        <span aria-hidden="true">{initials}</span>
+        <div>
+          <strong>{adminName}</strong>
+          <small>Admin</small>
+        </div>
       </div>
     </aside>
   );
