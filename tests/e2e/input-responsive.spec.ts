@@ -6,8 +6,8 @@ async function signIn(page: Page) {
   await page.goto("/login");
   const email = page.getByLabel("University email");
   await expect(email).toBeFocused();
-  await email.fill("admin@ku.th");
-  await page.getByLabel("Password").fill("password123");
+  await email.fill("youtube@ku.th");
+  await page.getByLabel("Password").fill("Qwerty123!");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(
@@ -76,11 +76,11 @@ test.describe("input fields and responsive layouts", () => {
     const email = page.getByLabel("University email");
     const password = page.getByLabel("Password");
     await expect(email).toBeFocused();
-    await email.fill("admin@ku.th");
-    await password.fill("password123");
+    await email.fill("youtube@ku.th");
+    await password.fill("Qwerty123!");
 
-    await expect(email).toHaveValue("admin@ku.th");
-    await expect(password).toHaveValue("password123");
+    await expect(email).toHaveValue("youtube@ku.th");
+    await expect(password).toHaveValue("Qwerty123!");
     await expectResponsiveInput(page, email);
     await expectResponsiveInput(page, password);
   });
@@ -358,7 +358,7 @@ test.describe("input fields and responsive layouts", () => {
     await dialog.getByRole("button", { name: "Confirm violation" }).click();
 
     drawer = page.getByRole("dialog", { name: /Record details/ });
-    await expect(drawer).toContainText("Temp ban");
+    await expect(drawer).toContainText("FROZEN");
     await expect(drawer).toContainText("Expires");
   });
 
@@ -442,55 +442,17 @@ test.describe("input fields and responsive layouts", () => {
     await dialog.getByRole("button", { name: "Cancel" }).click();
   });
 
-  test("dispute chat message and file inputs accept input on mobile", async ({
+  test("Admin Chat composers are not shown on dispute and report pages", async ({
     page,
   }) => {
     await page.setViewportSize(mobileViewport);
     await signIn(page);
     await page.goto("/disputes/DSP-5201");
+    await expect(page.locator(".chat-compose")).toHaveCount(0);
+    await expect(page.locator('[data-chat-role], [data-report-chat-role]')).toHaveCount(0);
 
-    for (const role of ["hirer", "worker"]) {
-      await page.getByRole("button", { name: `Chat with ${role}` }).click();
-      const dialog = page.getByRole("dialog", { name: `Chat with ${role}` });
-      const message = dialog.getByRole("textbox", { name: `Message ${role}` });
-      await message.fill(`Message for the ${role} record.`);
-      await dialog.getByLabel("Attach file").setInputFiles({
-        name: `${role}-evidence.txt`,
-        mimeType: "text/plain",
-        buffer: Buffer.from(`${role} evidence`),
-      });
-      await expect(message).toHaveValue(`Message for the ${role} record.`);
-      await expect(dialog.getByText(`${role}-evidence.txt`, { exact: true })).toBeVisible();
-      await expectResponsiveInput(page, message);
-      await dialog.getByRole("button", { name: "Close chat" }).click();
-    }
-  });
-
-  test("report chat message and file inputs accept input on mobile", async ({
-    page,
-  }) => {
-    await page.setViewportSize(mobileViewport);
-    await signIn(page);
     await page.goto("/reports/RPT-8201");
-
-    for (const participant of ["reporter", "reported user"]) {
-      await page.getByRole("button", { name: `Chat with ${participant}` }).click();
-      const dialog = page.getByRole("dialog", { name: /Chat with/ });
-      const message = dialog.getByRole("textbox", { name: /^Message / });
-      await message.fill(`Message for the ${participant}.`);
-      await dialog.getByLabel("Attach file").setInputFiles({
-        name: `${participant.replaceAll(" ", "-")}-evidence.txt`,
-        mimeType: "text/plain",
-        buffer: Buffer.from(`${participant} evidence`),
-      });
-      await expect(message).toHaveValue(`Message for the ${participant}.`);
-      await expect(
-        dialog.getByText(`${participant.replaceAll(" ", "-")}-evidence.txt`, {
-          exact: true,
-        }),
-      ).toBeVisible();
-      await expectResponsiveInput(page, message);
-      await dialog.getByRole("button", { name: "Close chat" }).click();
-    }
+    await expect(page.locator(".chat-compose")).toHaveCount(0);
+    await expect(page.locator('[data-chat-role], [data-report-chat-role]')).toHaveCount(0);
   });
 });

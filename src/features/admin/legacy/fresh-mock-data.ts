@@ -1,17 +1,32 @@
 import {
   addUserHistory,
   adminDateTime,
-  autoRejectUnavailablePayout,
   penaltyPolicy,
   recordActivity,
   seedGeneratedActivity,
 } from "./runtime-seed";
 import { data, disputeCases } from "./runtime-data";
 import type { LegacyDomElement, LegacyHistoryEntry, LegacyRecord, LegacyRuntimeData } from "./runtime";
+import { isAdminApiEnabled } from "../api/admin-provider";
+import {
+  QUEST_STATES,
+  disputeCaseStatusFor,
+  payoutStatusFor,
+  questStateFor,
+  reportCaseStatusFor,
+  walletStatusFor,
+} from "../domain/rulebook";
+import {
+  currentWalletBalance,
+  latestWalletTransactionDate,
+  type WalletBalances,
+  type WalletStatementPosting,
+  type WalletStatementTransaction,
+} from "./wallet-model";
 
 // Deterministic high-volume demo data. Versioning resets browser-local records
 // whenever the synthetic marketplace scenario changes.
-const freshDemoVersion = "2026-08-30-v50-dispute-role-eligibility";
+const freshDemoVersion = "2026-09-12-v58-wallet-statements";
 const freshDemoKey = "kuquest-admin-demo-data";
 const seedBaseDate = new Date("2026-08-28T08:00:00Z");
 
@@ -63,10 +78,27 @@ const faculties = [
   "Information Studies", "Landscape Architecture", "Liberal Arts", "Mathematics", "Political Science",
 ];
 const accountStatuses = [
-  "Normal", "Normal", "Normal", "Normal", "Normal", "Normal", "Normal", "Red Flag", "Normal", "Normal",
-  "Temp ban", "Normal", "Normal", "Normal", "Perm ban", "Normal", "Normal", "Red Flag", "Normal", "Normal",
+  "Normal", "Red Flag", "Temp ban", "Perm ban", "Normal", "Red Flag", "Temp ban", "Perm ban", "Normal", "Red Flag",
+  "Temp ban", "Normal", "Perm ban", "Normal", "Red Flag", "Normal", "Temp ban", "Normal", "Perm ban", "Normal",
 ];
 const adminNames = ["Nicha P.", "Pimchanok R.", "Worawut K."];
+
+// These values represent the server-calculated financial fields. The demo
+// client selects a complete record; it does not calculate the fee.
+const questFinancialFixtures = [
+  { amount: 1200, fundingTotalSatang: 120000, questRewardSatang: 117600, platformFeeSatang: 2400, singleEscrowSatang: 120000, teamEscrowSatang: 360000 },
+  { amount: 1850, fundingTotalSatang: 185000, questRewardSatang: 181300, platformFeeSatang: 3700, singleEscrowSatang: 185000, teamEscrowSatang: 555000 },
+  { amount: 2750, fundingTotalSatang: 275000, questRewardSatang: 269500, platformFeeSatang: 5500, singleEscrowSatang: 275000, teamEscrowSatang: 825000 },
+  { amount: 4200, fundingTotalSatang: 420000, questRewardSatang: 411600, platformFeeSatang: 8400, singleEscrowSatang: 420000, teamEscrowSatang: 1260000 },
+  { amount: 6800, fundingTotalSatang: 680000, questRewardSatang: 666400, platformFeeSatang: 13600, singleEscrowSatang: 680000, teamEscrowSatang: 2040000 },
+  { amount: 9500, fundingTotalSatang: 950000, questRewardSatang: 931000, platformFeeSatang: 19000, singleEscrowSatang: 950000, teamEscrowSatang: 2850000 },
+  { amount: 12800, fundingTotalSatang: 1280000, questRewardSatang: 1254400, platformFeeSatang: 25600, singleEscrowSatang: 1280000, teamEscrowSatang: 3840000 },
+  { amount: 17500, fundingTotalSatang: 1750000, questRewardSatang: 1715000, platformFeeSatang: 35000, singleEscrowSatang: 1750000, teamEscrowSatang: 5250000 },
+  { amount: 24000, fundingTotalSatang: 2400000, questRewardSatang: 2352000, platformFeeSatang: 48000, singleEscrowSatang: 2400000, teamEscrowSatang: 7200000 },
+  { amount: 32500, fundingTotalSatang: 3250000, questRewardSatang: 3185000, platformFeeSatang: 65000, singleEscrowSatang: 3250000, teamEscrowSatang: 9750000 },
+  { amount: 48000, fundingTotalSatang: 4800000, questRewardSatang: 4704000, platformFeeSatang: 96000, singleEscrowSatang: 4800000, teamEscrowSatang: 14400000 },
+  { amount: 75000, fundingTotalSatang: 7500000, questRewardSatang: 7350000, platformFeeSatang: 150000, singleEscrowSatang: 7500000, teamEscrowSatang: 22500000 },
+] as const;
 
 function statusTone(status: string): string {
   if (["Normal", "Completed", "Approved"].includes(status)) return "success";
@@ -126,8 +158,8 @@ const generatedUsers: LegacyRecord[] = Array.from({ length: 280 }, (_, index: nu
       at: activeAt,
       by: admin,
       reason,
-      previousStatus: "Normal",
-      newStatus: status,
+      previousStatus: "ACTIVE",
+      newStatus: walletStatusFor(status),
     });
   }
   return {
@@ -135,7 +167,9 @@ const generatedUsers: LegacyRecord[] = Array.from({ length: 280 }, (_, index: nu
     title,
     person: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@ku.th`,
     other: `${faculties[index % faculties.length]} · Year ${(index % 4) + 1}`,
-    status,
+    status: walletStatusFor(status),
+    walletStatus: walletStatusFor(status),
+    memberStatus: status === "Red Flag" ? "Flag" : status === "Temp ban" ? "Temp Ban" : status === "Perm ban" ? "Perm Ban" : "Normal",
     tone: statusTone(status),
     age: status === "Normal"
       ? `Joined ${2022 + (index % 5)}`
@@ -179,6 +213,7 @@ const generatedUsers: LegacyRecord[] = Array.from({ length: 280 }, (_, index: nu
     ...(status === "Perm ban" ? {
       penalty: { label: "Permanent ban", reason, recordedAt: activeAt, appliedBy: admin },
     } : {}),
+    version: 1,
     moderationHistory: history,
     adminNotes: index % 13 === 0 ? [{
       at: activeAt,
@@ -189,6 +224,104 @@ const generatedUsers: LegacyRecord[] = Array.from({ length: 280 }, (_, index: nu
 });
 
 data.users = generatedUsers;
+
+function mockWalletStatementFor(userIndex: number, walletId = generatedUsers[userIndex].id): { balances: WalletBalances; transactions: WalletStatementTransaction[] } {
+  const openingBalances: WalletBalances = {
+    spendingBalanceSatang: 180000 + userIndex * 1000,
+    earningsBalanceSatang: 50000,
+    fundingReservedSatang: 20000,
+    reservedForPayoutsSatang: 10000,
+  };
+  let balances: WalletBalances = {
+    spendingBalanceSatang: 0,
+    earningsBalanceSatang: 0,
+    fundingReservedSatang: 0,
+    reservedForPayoutsSatang: 0,
+  };
+  const transactions: WalletStatementTransaction[] = [];
+
+  const addTransaction = (
+    index: number,
+    eventType: WalletStatementTransaction["eventType"],
+    movements: Array<[WalletStatementPosting["accountType"], number]>,
+    description: string,
+  ): void => {
+    const walletPostings: WalletStatementPosting[] = movements.map(([accountType, amountSatang]) => ({
+      accountType,
+      walletId,
+      amountSatang,
+    }));
+    const walletDelta = movements.reduce((total, [, amountSatang]) => total + amountSatang, 0);
+    for (const [accountType, amountSatang] of movements) {
+      if (accountType === "SPENDING") balances.spendingBalanceSatang += amountSatang;
+      if (accountType === "EARNINGS") balances.earningsBalanceSatang += amountSatang;
+      if (accountType === "FUNDING_RESERVED") balances.fundingReservedSatang += amountSatang;
+      if (accountType === "RESERVED_FOR_PAYOUTS") balances.reservedForPayoutsSatang += amountSatang;
+    }
+    const createdAt = seedDate(80 - index, 8 + (index % 10), (userIndex * 13 + index * 7) % 60).toISOString();
+    transactions.push({
+      id: `LGR-${String(userIndex + 1).padStart(3, "0")}-${String(index).padStart(3, "0")}`,
+      businessReference: `wallet-demo-${userIndex + 1}-${index}`,
+      eventType,
+      description,
+      createdAt,
+      sealedAt: createdAt,
+      postings: [
+        ...walletPostings,
+        {
+          accountType: eventType === "FUNDING_SETTLEMENT" ? "PLATFORM_REVENUE" : "PLATFORM_SUSPENSE",
+          walletId: null,
+          amountSatang: -walletDelta,
+        },
+      ],
+      balanceAfter: { ...balances },
+    });
+  };
+
+  addTransaction(0, "ADJUSTMENT", [
+    ["SPENDING", openingBalances.spendingBalanceSatang],
+    ["EARNINGS", openingBalances.earningsBalanceSatang],
+    ["FUNDING_RESERVED", openingBalances.fundingReservedSatang],
+    ["RESERVED_FOR_PAYOUTS", openingBalances.reservedForPayoutsSatang],
+  ], "Initial Wallet balance recorded from the sealed Ledger.");
+
+  for (let index = 1; index <= 64; index += 1) {
+    const cycle = index % 6;
+    if (cycle === 1) {
+      addTransaction(index, "TOP_UP", [["SPENDING", 500 + (userIndex % 5) * 100]], "Top-up confirmed by the payment provider.");
+    } else if (cycle === 2) {
+      addTransaction(index, "FUNDING_RESERVE", [["SPENDING", -1200], ["FUNDING_RESERVED", 1200]], "Funding Reservation created for a Quest.");
+    } else if (cycle === 3) {
+      addTransaction(index, "FUNDING_SETTLEMENT", [["FUNDING_RESERVED", -700], ["EARNINGS", 600]], "Quest funding settled to the Worker and Platform Revenue.");
+    } else if (cycle === 4) {
+      addTransaction(index, "FUNDING_RELEASE", [["FUNDING_RESERVED", -500], ["SPENDING", 500]], "Unused Funding Reservation released to Spending Balance.");
+    } else if (cycle === 5) {
+      addTransaction(index, "EARNINGS_CONVERSION", [["EARNINGS", -500], ["SPENDING", 500]], "Earnings converted to Spending Balance.");
+    } else {
+      addTransaction(index, "PAYOUT", [["RESERVED_FOR_PAYOUTS", -100]], "Payout sent to the selected Payout Destination.");
+    }
+  }
+
+  return { balances, transactions };
+}
+
+function attachMockWalletStatement(user: LegacyRecord, index: number): void {
+  const walletId = `WAL-${user.id}`;
+  const statement = mockWalletStatementFor(index, walletId);
+  Object.assign(user, {
+    memberId: user.id,
+    walletId,
+    walletSpendingBalanceSatang: statement.balances.spendingBalanceSatang,
+    walletEarningsBalanceSatang: statement.balances.earningsBalanceSatang,
+    walletFundingReservedSatang: statement.balances.fundingReservedSatang,
+    walletReservedForPayoutsSatang: statement.balances.reservedForPayoutsSatang,
+    walletTotalBalanceSatang: currentWalletBalance(statement.balances),
+    walletLatestTransactionAt: latestWalletTransactionDate(statement.transactions),
+    walletStatement: statement.transactions,
+  });
+}
+
+generatedUsers.forEach(attachMockWalletStatement);
 
 const questTitles = [
   "Audit campus laboratory signage", "Map bicycle parking capacity", "Transcribe oral history interviews", "Test library room booking flow",
@@ -206,15 +339,27 @@ const questTags = [
 const questStatuses = [
   "Open", "Assigned", "In progress", "Submitted", "Change pending", "Completed", "Completed", "Cancelled", "Hidden", "Disputed", "Draft", "Approved",
 ];
+const canonicalQuestStatusLabels: Record<(typeof QUEST_STATES)[number], string> = {
+  QUEST_DRAFT: "Draft",
+  QUEST_OPEN: "Open",
+  QUEST_ASSIGNED: "Assigned",
+  QUEST_IN_PROGRESS: "In progress",
+  QUEST_COMPLETED: "Completed",
+  QUEST_CANCELLED: "Cancelled",
+  QUEST_FAILED: "Failed",
+};
 const campusLocations = [
   "Kasetsart University, Bangkhen", "Central Library", "Student Activity Centre", "Faculty of Engineering", "Chalermphrakiat Building",
   "Kasetsart Innovation Centre", "Bangkhen Sports Complex", "Faculty of Agriculture", "Learning Resource Centre", "International College",
 ];
 
-function createQuest(index: number): LegacyRecord {
-  const status = questStatuses[index % questStatuses.length];
+function createQuest(index: number, forcedState?: (typeof QUEST_STATES)[number]): LegacyRecord {
+  const seededStatus = forcedState ? canonicalQuestStatusLabels[forcedState] : questStatuses[index % questStatuses.length];
+  const canonicalState = forcedState ?? questStateFor(seededStatus);
+  const hidden = seededStatus === "Hidden";
+  const status = hidden ? "Open" : seededStatus;
   const eligibleQuestUsers = data.users.filter(
-    (candidate: LegacyRecord) => !["Temp ban", "Perm ban"].includes(candidate.status),
+    (candidate: LegacyRecord) => !["FROZEN", "SUSPENDED", "CLOSED"].includes(walletStatusFor(candidate.walletStatus ?? candidate.status)),
   );
   const hirer: LegacyRecord = eligibleQuestUsers[(index * 11 + 7) % eligibleQuestUsers.length];
   const eligibleParticipants = eligibleQuestUsers;
@@ -223,7 +368,16 @@ function createQuest(index: number): LegacyRecord {
   const participants = Array.from({ length: participantCount }, (_, participantIndex: number) =>
     eligibleParticipants[(index * 13 + participantIndex * 17 + 5) % eligibleParticipants.length],
   ).filter((candidate: LegacyRecord | undefined, participantIndex: number, all: Array<LegacyRecord | undefined>) => candidate && candidate.id !== hirer.id && all.findIndex((item) => item?.id === candidate.id) === participantIndex) as LegacyRecord[];
-  const amount = 1400 + ((index * 719) % 10_600);
+  const financialFixture = questFinancialFixtures[index % questFinancialFixtures.length];
+  const {
+    amount,
+    fundingTotalSatang,
+    questRewardSatang,
+    platformFeeSatang,
+    singleEscrowSatang,
+    teamEscrowSatang,
+  } = financialFixture;
+  const platformFeeBps = 200;
   const createdDaysAgo = index < 12 ? index % 3 : 3 + ((index * 17) % 180);
   const createdAt = seedDateLabel(createdDaysAgo, 8 + (index % 9), (index * 13) % 60);
   const startsAt = seedDateLabel(Math.max(0, createdDaysAgo - 1), 8 + (index % 3), 30);
@@ -247,20 +401,35 @@ function createQuest(index: number): LegacyRecord {
     person: hirer.title,
     other: tag,
     amount,
+    fundingTotalSatang,
+    questRewardSatang,
+    platformFeeSatang,
+    platformFeeBps,
+    feeRoundingMode: "UP",
+    headcount: participantCount,
+    ...(canonicalState !== "QUEST_DRAFT" ? {
+      questEscrowSatang: teamQuest ? teamEscrowSatang : singleEscrowSatang,
+      fundingReservationId: `00000000-0000-4000-9000-${String(670000000000 + index).padStart(12, "0")}`,
+      policyRevisionId: "00000000-0000-4000-a067-000000000001",
+    } : {}),
     createdAt,
     startsAt,
     dueAt,
-    status,
+    status: canonicalState,
     tone: statusTone(status),
     age: relativeAge(createdDaysAgo),
+    questState: canonicalState,
+    version: 1,
+    ...(seededStatus === "Change pending" ? { editRequestStatus: "EDIT_REQUEST_PENDING" } : {}),
+    ...(hidden ? { hiddenAt: seedDateLabel(createdDaysAgo, 17, 20), hiddenByAdminId: adminNames[index % adminNames.length] } : {}),
     description: `Complete the ${title.toLowerCase()} brief and submit a clear, verifiable record for the university marketplace team.`,
     giver: [hirer.title, hirer.id, hirer.other, `${4.4 + (index % 6) / 10} from ${4 + (index % 18)} quests`],
     location: [location, `${["Indoor and outdoor checkpoints", "Three campus zones", "Reference route confirmed"][index % 3]}`, `${13.84 + (index % 9) / 1000}, 100.${56 + (index % 20)}`],
-    schedule: [startsAt, dueAt, status === "Draft" ? "Not published" : `Applications closed · ${activityDate}`],
+    schedule: [startsAt, dueAt],
     activity: [
       `Quest ${status === "Draft" ? "saved as draft" : "published"} · ${activityDate}, 09:10`,
       hasApplicants ? `Applications received · ${activityDate}, 12:30` : `Quest record created · ${activityDate}, 12:30`,
-      `${status} · ${activityDate}, 16:45`,
+      `${questStateFor(seededStatus)} · ${activityDate}, 16:45`,
     ],
     applications,
     ...(teamQuest ? {
@@ -280,11 +449,15 @@ function createQuest(index: number): LegacyRecord {
   } as unknown as LegacyRecord;
 }
 
-data.quests = Array.from({ length: 480 }, (_, index: number) => createQuest(index));
+const canonicalQuestFixtures = QUEST_STATES.map((state, index) => createQuest(index, state));
+data.quests = [
+  ...canonicalQuestFixtures,
+  ...Array.from({ length: 480 }, (_, index: number) => createQuest(index + canonicalQuestFixtures.length)),
+];
 
 const disputeCategories = ["Evidence", "Quality", "Scope", "Delivery", "Timing", "Rights", "Payment", "Completion"];
 Object.keys(disputeCases).forEach((key) => delete disputeCases[key]);
-const disputableQuests = data.quests.filter((quest) => quest.status === "Disputed");
+const disputableQuests = data.quests.filter((quest) => quest.questState === "QUEST_FAILED");
 
 data.disputes = disputableQuests.map((quest: LegacyRecord, index: number) => {
   const hirer = data.users.find((user) => user.title === quest.person) || data.users[index % data.users.length];
@@ -292,36 +465,29 @@ data.disputes = disputableQuests.map((quest: LegacyRecord, index: number) => {
   const worker = data.users.find((user) => user.title === workerName) || data.users[(index + 1) % data.users.length];
   const category = disputeCategories[index % disputeCategories.length];
   const status = index % 3 === 2 ? "Closed" : "Active";
-  const resolvedQuestStatus = index % 2 ? "Completed" : "Cancelled";
-  if (status === "Closed") {
-    quest.status = resolvedQuestStatus;
-    quest.tone = statusTone(resolvedQuestStatus);
-    const activity = quest.activity;
-    if (Array.isArray(activity) && activity.every((event): event is string => typeof event === "string")) {
-      quest.activity = activity.map((event) =>
-        event.startsWith("Disputed ·")
-          ? `${resolvedQuestStatus}${event.slice("Disputed".length)}`
-          : event,
-      );
-    }
-    if (resolvedQuestStatus === "Cancelled") {
-      quest.terminationReason = "The dispute was resolved in the hirer's favor.";
-    }
-  }
+  quest.questState = "QUEST_FAILED";
+  const disputeCaseStatus = status === "Closed" ? "DISPUTE_CASE_RESOLVED" : "DISPUTE_CASE_PENDING";
+  const disputeId = `DSP-${String(5201 + index).padStart(4, "0")}`;
   const record = {
-    id: `DSP-${String(5201 + index).padStart(4, "0")}`,
+    id: disputeId,
+    displayId: disputeId,
     questId: quest.id,
     title: quest.title,
     person: hirer.title,
     other: worker.title,
     amount: quest.amount,
-    status,
+    status: disputeCaseStatus,
+    disputeCaseStatus,
     tone: status === "Active" ? "danger" : "neutral",
     disputeDate: seedDateLabel((index % 30) + 1, 9 + (index % 8), (index * 7) % 60),
     disputeType: category,
     age: index < 2 ? `${18 + index * 24} min` : `${(index % 12) + 1} days`,
     detail: `The submitted record for ${quest.title.toLowerCase()} does not fully match the accepted quest conditions and requires an accountable review.`,
     evidence: [`${quest.title} submission · PDF · ${3 + (index % 8)} pages`, "Accepted quest conditions · PDF", "Participant message export · PDF"],
+    evidenceRefs: [],
+    workerId: worker.id,
+    amountSatang: quest.fundingTotalSatang,
+    version: 1,
     ...(status === "Closed" ? {
       resolution: index % 2 ? "Worker wins; the accepted delivery remains on record." : "Hirer wins; the held amount was returned after review.",
       decisionReason: "The accepted quest terms and submitted evidence were compared before recording this outcome.",
@@ -337,40 +503,71 @@ data.disputes = disputableQuests.map((quest: LegacyRecord, index: number) => {
     response: "The responding party has acknowledged the case and is preparing supporting evidence.",
     recommended: "Review the accepted conditions and submitted evidence before resolving the held funds.",
     policy: ["Published quest condition controls scope", "Evidence timestamps are authoritative", "Administrative reason required"],
-    signals: [["Evidence coverage", `${58 + (index % 38)}%`, "warning"], ["Account risk", index % 5 === 0 ? "High" : "Low", index % 5 === 0 ? "danger" : "success"], ["Response state", status, status === "Active" ? "info" : "neutral"]],
+    signals: [["Evidence coverage", `${58 + (index % 38)}%`, "warning"], ["Account risk", index % 5 === 0 ? "High" : "Low", index % 5 === 0 ? "danger" : "success"], ["Response state", disputeCaseStatus, status === "Active" ? "info" : "neutral"]],
   };
   return record as LegacyRecord;
 });
 
 const reportCategories = ["Harassment or abuse", "Fraud or payment issue", "Misleading quest activity", "Other"];
+const conductReportReasons = ["No show", "Abandoned work", "Out of scope work"];
 data.reports = Array.from({ length: 180 }, (_, index: number) => {
   const reporter = data.users[(index * 5 + 13) % data.users.length];
   let reported = data.users[(index * 7 + 31) % data.users.length];
   if (reported.id === reporter.id) reported = data.users[(index * 7 + 32) % data.users.length];
   const quest = data.quests[(index * 3 + 19) % data.quests.length];
-  const status = index % 5 === 0 ? "Active" : "Closed";
-  const category = reportCategories[index % reportCategories.length];
+  const isConductReport = index % 5 === 0;
+  const status = index % 5 === 1 ? "Active" : "Closed";
+  const category = isConductReport
+    ? conductReportReasons[index % conductReportReasons.length]
+    : reportCategories[index % reportCategories.length];
   const reportedAt = seedDateLabel((index % 80) + 1, 8 + (index % 8), (index * 11) % 60);
+  const decision = !isConductReport && status === "Closed"
+    ? (index % 3 === 0 ? "no-violation" : "confirmed-violation")
+    : undefined;
+  const reportCaseStatus = status === "Active"
+    ? "REPORT_CASE_PENDING"
+    : decision === "confirmed-violation"
+      ? "REPORT_CASE_HIDDEN"
+      : "REPORT_CASE_DISMISSED";
+  const conductReportStatus = index % 3 === 0
+    ? "CONDUCT_REPORT_PENDING"
+    : index % 3 === 1
+      ? "CONDUCT_REPORT_UPHELD"
+      : "CONDUCT_REPORT_DISMISSED";
+  const evidence = index % 7 === 0 ? [] : [`${category} evidence · PDF`];
   return {
     id: `RPT-${String(8201 + index).padStart(4, "0")}`,
     reporterId: reporter.id,
     reporterName: reporter.title,
     reportedUserId: reported.id,
     reportedUserName: reported.title,
+    title: quest.title,
     category,
     relatedQuestId: quest.id,
     relatedQuestTitle: quest.title,
-    details: `The report concerns activity connected to ${quest.title}. The submitted record is retained for admin review and audit testing.`,
-    evidence: index % 7 === 0 ? ["No attachment provided"] : [`${category} evidence · PDF`],
-    status,
-    tone: status === "Active" ? "warning" : "neutral",
+    questId: quest.id,
+    details: isConductReport
+      ? `The Conduct Report concerns ${category.toLowerCase()} during ${quest.title}. The Quest record is retained for Admin review and audit testing.`
+      : `The Report Case concerns activity connected to ${quest.title}. The submitted Message record is retained for Admin review and audit testing.`,
+    evidence,
+    evidenceRefs: [],
+    status: isConductReport ? conductReportStatus : reportCaseStatus,
+    ...(isConductReport ? { conductReportStatus } : { reportCaseStatus }),
+    version: 1,
+    tone: isConductReport
+      ? conductReportStatus === "CONDUCT_REPORT_PENDING" ? "warning" : "neutral"
+      : status === "Active" ? "warning" : "neutral",
     reportedAt,
-    ...(status === "Closed" ? {
+    ...((isConductReport && conductReportStatus !== "CONDUCT_REPORT_PENDING") || (!isConductReport && status === "Closed") ? {
       closedAt: seedDateLabel((index % 70) + 1, 15, 30),
-      decision: index % 3 === 0 ? "no-violation" : "confirmed-violation",
-      decisionLabel: index % 3 === 0 ? "No violation" : "Violation confirmed",
+      decision,
+      decisionLabel: isConductReport
+        ? conductReportStatus === "CONDUCT_REPORT_UPHELD" ? "Violation confirmed" : "No violation"
+        : decision === "no-violation" ? "No violation" : "Violation confirmed",
       decisionReason: "The submitted activity and related quest history were reviewed before closing this report.",
-      resolution: index % 3 === 0 ? "Report dismissed; no policy violation found." : "Violation confirmed; the account penalty ladder was applied.",
+      resolution: isConductReport
+        ? conductReportStatus === "CONDUCT_REPORT_UPHELD" ? "Violation confirmed; the account penalty ladder was applied." : "Conduct Report dismissed; no policy violation found."
+        : index % 3 === 0 ? "Report dismissed; no policy violation found." : "Violation confirmed; the account penalty ladder was applied.",
       resolvedBy: adminNames[index % adminNames.length],
       resolutionAt: seedDateLabel((index % 70) + 1, 15, 47),
     } : {}),
@@ -380,7 +577,7 @@ data.reports = Array.from({ length: 180 }, (_, index: number) => {
 const payoutStatuses = ["Completed", "Processing", "Needs approval", "Rejected", "Completed", "Processing"];
 type PayoutSource = { quest: LegacyRecord; recipientName: string };
 const payoutSources: PayoutSource[] = data.quests
-  .filter((quest) => quest.status === "Completed")
+  .filter((quest) => quest.questState === "QUEST_COMPLETED")
   .flatMap((quest) => {
     const recipients = quest.teamParticipants?.map(([name]) => name) || [quest.selectedParticipant];
     return recipients.filter((recipientName): recipientName is string => Boolean(recipientName)).map((recipientName) => ({ quest, recipientName }));
@@ -389,7 +586,7 @@ const payoutRecipientSources: PayoutSource[] = [...new Map(payoutSources.map((so
 
 function seedRecipientEarnings(recipientName: string): number {
   return data.quests
-    .filter((quest) => quest.status === "Completed" && (quest.selectedParticipant === recipientName || quest.teamParticipants?.some(([name]) => name === recipientName)))
+    .filter((quest) => quest.questState === "QUEST_COMPLETED" && (quest.selectedParticipant === recipientName || quest.teamParticipants?.some(([name]) => name === recipientName)))
     .reduce((total: number, quest: LegacyRecord) => {
       const workerCount = quest.teamParticipants?.length || Number(quest.teamSize) || 1;
       return total + Math.round(Number(quest.amount || 0) / workerCount);
@@ -418,7 +615,23 @@ const generatedPayouts: LegacyRecord[] = Array.from({ length: 240 }, (_, index: 
     person: `${["Kasikorn", "SCB", "Krungthai", "Bangkok Bank"][index % 4]} · •••• ${String(1200 + ((index * 137) % 8800)).slice(-4)}`,
     other: `Quest ${quest.id}`,
     amount,
-    status,
+    status: payoutStatusFor(
+      status === "Needs approval"
+        ? "PENDING_ADMIN_APPROVAL"
+        : status === "Processing"
+          ? "PROVIDER_PENDING"
+          : status === "Completed"
+            ? "SUCCEEDED"
+            : "CANCELLED",
+    ),
+    payoutStatus: status === "Needs approval"
+      ? "PENDING_ADMIN_APPROVAL"
+      : status === "Processing"
+        ? "PROVIDER_PENDING"
+        : status === "Completed"
+          ? "SUCCEEDED"
+            : "CANCELLED",
+    version: 1,
     tone: statusTone(status),
     age: `${240 - index} days`,
     requestedAt,
@@ -446,13 +659,20 @@ if (savedFreshDemo?.version === freshDemoVersion) {
   localStorage.removeItem(freshDemoKey);
 }
 
+data.users.forEach((user, index) => {
+  if (!Array.isArray(user.walletStatement)) attachMockWalletStatement(user, index);
+});
+data.wallets.splice(0, data.wallets.length, ...data.users.map((user) => ({ ...user, id: user.walletId || user.id })));
+
 function expirePenaltyIfDue(user: LegacyRecord): boolean {
-  const expiry = user.status === "Red Flag" ? user.redFlagExpiresAt : user.status === "Temp ban" ? user.banExpiresAt : "";
+  const penaltyLabel = user.penalty?.label;
+  const expiry = penaltyLabel === "Red Flag" ? user.redFlagExpiresAt : penaltyLabel === "Temporary ban" ? user.banExpiresAt : "";
   const expiryTimestamp = Date.parse(String(expiry || "").replace(" ยท ", " "));
   if (!expiry || !Number.isFinite(expiryTimestamp) || expiryTimestamp > Date.now()) return false;
-  const previousStatus = user.status;
+  const previousStatus = walletStatusFor(user.walletStatus ?? user.status);
   const changedAt = adminDateTime();
-  user.status = "Normal";
+  user.status = "ACTIVE";
+  user.walletStatus = "ACTIVE";
   user.tone = "success";
   user.statusReason = "No active moderation action.";
   user.statusAppliedAt = changedAt;
@@ -461,14 +681,14 @@ function expirePenaltyIfDue(user: LegacyRecord): boolean {
   delete user.redFlagExpiresAt;
   delete user.banExpiresAt;
   delete user.penalty;
-  if (previousStatus === "Temp ban") user.postBanExemptionRemaining = penaltyPolicy.postBanExemptionCount;
+  if (penaltyLabel === "Temporary ban") user.postBanExemptionRemaining = penaltyPolicy.postBanExemptionCount;
   addUserHistory(user, {
-    event: `${previousStatus} expired`,
+    event: `${penaltyLabel || "Penalty"} expired`,
     at: changedAt,
     by: "System",
-    reason: previousStatus === "Temp ban" ? `The ${penaltyPolicy.temporaryBanDays}-day temporary ban ended.` : `The ${penaltyPolicy.redFlagDays}-day Red Flag period ended.`,
+    reason: penaltyLabel === "Temporary ban" ? `The ${penaltyPolicy.temporaryBanDays}-day temporary ban ended.` : `The ${penaltyPolicy.redFlagDays}-day Red Flag period ended.`,
     previousStatus,
-    newStatus: "Normal",
+    newStatus: "ACTIVE",
   });
   return true;
 }
@@ -476,13 +696,24 @@ function expirePenaltyIfDue(user: LegacyRecord): boolean {
 const expiredPenalties = data.users.filter(expirePenaltyIfDue);
 
 export function persistAdminData(): void {
-  localStorage.setItem(freshDemoKey, JSON.stringify({ version: freshDemoVersion, collections: data }));
+  const withoutWalletStatements = (record: LegacyRecord): LegacyRecord => {
+    const copy = { ...record };
+    delete copy.walletStatement;
+    delete copy.walletStatementBalanceTransactions;
+    delete copy.walletStatementBalanceNextCursor;
+    delete copy.walletStatementLoading;
+    delete copy.walletStatementError;
+    return copy;
+  };
+  const collections = {
+    ...data,
+    users: data.users.map(withoutWalletStatements),
+    wallets: data.wallets.map(withoutWalletStatements),
+  };
+  localStorage.setItem(freshDemoKey, JSON.stringify({ version: freshDemoVersion, collections }));
 }
 
-const autoRejectedPayouts = typeof autoRejectUnavailablePayout === "function"
-  ? data.payouts.filter((record) => autoRejectUnavailablePayout(record))
-  : [];
-if (!savedFreshDemo || savedFreshDemo.version !== freshDemoVersion || autoRejectedPayouts.length || expiredPenalties.length) persistAdminData();
+if (!savedFreshDemo || savedFreshDemo.version !== freshDemoVersion || expiredPenalties.length) persistAdminData();
 
 if (typeof seedGeneratedActivity === "function") seedGeneratedActivity(data);
 
@@ -495,6 +726,8 @@ function setSeedCounter(view: string, count: number): void {
   if (counter) counter.textContent = String(count);
 }
 
-setSeedCounter("disputes", data.disputes.filter((record) => record.status === "Active").length);
-setSeedCounter("payouts", data.payouts.filter((record) => record.status === "Needs approval").length);
-setSeedCounter("reports", data.reports.filter((record) => record.status === "Active").length);
+if (!isAdminApiEnabled()) {
+  setSeedCounter("disputes", data.disputes.filter((record) => disputeCaseStatusFor(record.disputeCaseStatus ?? record.status) === "DISPUTE_CASE_PENDING").length);
+  setSeedCounter("payouts", data.payouts.filter((record) => payoutStatusFor(record.payoutStatus ?? record.status) === "PENDING_ADMIN_APPROVAL").length);
+  setSeedCounter("reports", data.reports.filter((record) => reportCaseStatusFor(record.conductReportStatus ?? record.reportCaseStatus ?? record.status, record.decision) === "REPORT_CASE_PENDING" || record.conductReportStatus === "CONDUCT_REPORT_PENDING").length);
+}

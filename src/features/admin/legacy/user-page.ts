@@ -3,6 +3,22 @@ import type {
   LegacyRecord,
 } from "./runtime";
 import type { ModerationPageContext } from "./dispute-detail";
+import { memberStatusFor, payoutStatusFor, questStateFor, reportCaseStatusFor, walletStatusFor, walletStatusLabel } from "../domain/rulebook";
+import {
+  loadWalletStatementBalanceCoverage,
+  walletBalancesFromRecord,
+  walletStatementApiDate,
+  walletStatementBalance,
+  walletStatementFiltersMarkup,
+  walletStatementRowsFor,
+  walletStatementTable,
+  isWalletStatementEventType,
+  walletStatementFormValue,
+  type WalletStatementLoader,
+  type WalletStatementViewState,
+} from "./wallet-statement-view";
+import { ADMIN_LEDGER_EVENT_TYPES } from "../api/admin-api";
+import { filterWalletStatementTransactions } from "./wallet-model";
 
 export type UserReview = {
   reviewer: string;
@@ -16,6 +32,33 @@ export type UserReview = {
   toneBeforeHidden?: string;
   [key: string]: unknown;
 };
+
+export type UserPageTab = "overview" | "activity" | "payouts" | "wallet-statement" | "reviews" | "reports" | "penalty-history";
+
+const userPageTabs = new Set<string>([
+  "overview",
+  "activity",
+  "payouts",
+  "wallet-statement",
+  "reviews",
+  "reports",
+  "penalty-history",
+]);
+
+export function userPageTabFromSearch(search: string): UserPageTab {
+  const tab = new URLSearchParams(search).get("tab");
+  return isUserPageTab(tab) ? tab : "overview";
+}
+
+function isUserPageTab(value: string | null | undefined): value is UserPageTab {
+  return typeof value === "string" && userPageTabs.has(value);
+}
+
+export function userPageUrlForTab(memberId: string | undefined, tab: UserPageTab): string | null {
+  if (!memberId) return null;
+  const path = `/users/${encodeURIComponent(memberId)}`;
+  return tab === "overview" ? path : `${path}?tab=${encodeURIComponent(tab)}`;
+}
 
 type UserNote = Omit<LegacyHistoryEntry, "event"> & { event?: string };
 
@@ -57,10 +100,12 @@ export type UserPageContext = Omit<ModerationPageContext, "data"> & {
   setActiveNavigation: (view: string) => void;
   openDrawer: (view: string, index: number) => void;
   openPenaltyDialog: (user: UserRecord) => void;
+  loadWalletStatement: WalletStatementLoader;
   userQuestRecords: (user: UserRecord) => LegacyRecord[];
   userReportsFor: (user: UserRecord) => LegacyRecord[];
   completedPayoutQuests: (user: UserRecord) => LegacyRecord[];
   payoutEarningForQuest: (quest: LegacyRecord) => number;
+  payoutBadge: (value: unknown, tone: string) => string;
   payoutTimestamp: (record: LegacyRecord) => number;
   penaltyOutcomeFor: (user: UserRecord) => { key: string; label: string } | null;
   penaltyOutcomeLabel: (
@@ -107,8 +152,6 @@ export function initializeUserPage(context: UserPageContext): UserPageApi {
   const {
     data,
     main,
-    closeActiveLayer,
-    showModalLayer,
     openDrawer,
     icon: ico,
     escapeActivityText,
@@ -119,10 +162,12 @@ export function initializeUserPage(context: UserPageContext): UserPageApi {
     toast,
     setActiveNavigation,
     openPenaltyDialog,
+    loadWalletStatement,
     userQuestRecords,
     userReportsFor,
     completedPayoutQuests,
     payoutEarningForQuest,
+    payoutBadge,
     payoutTimestamp,
     penaltyOutcomeFor,
     penaltyOutcomeLabel,
@@ -131,18 +176,17 @@ export function initializeUserPage(context: UserPageContext): UserPageApi {
     adminDateTime,
     currentAdminName,
   } = context;
-  const activeCustomLayerClose = closeActiveLayer;
   const userPageId =
     context.recordId ||
     new URLSearchParams(context.search).get("id") ||
     "";
   const userPageState: {
-    tab: "overview" | "activity" | "payouts" | "reviews" | "reports" | "penalty-history";
+    tab: UserPageTab;
     reviewFilter: string;
     reviewQuery: string;
     reviewRating: number | null;
   } = {
-    tab: "overview",
+    tab: userPageTabFromSearch(context.search),
     reviewFilter: "all",
     reviewQuery: "",
     reviewRating: null,
@@ -152,6 +196,40 @@ export function initializeUserPage(context: UserPageContext): UserPageApi {
     reports: { page: 1, size: 10, sortKey: "reportedAt", direction: "desc" },
     penalties: { page: 1, size: 10, sortKey: "at", direction: "desc" },
   };
+  const walletStatementState: WalletStatementViewState = {
+    transactions: [],
+    balanceTransactions: [],
+    balanceNextCursor: null,
+    nextCursor: null,
+    visibleCount: 25,
+    loading: false,
+    error: "",
+    filters: { eventType: "", from: "", to: "" },
+    requestId: 0,
+    loaded: false,
+  };
+  let walletStatementMemberId = "";
+
+  function resetWalletStatementState(user: UserRecord): void {
+    const memberId = user.memberId || user.id;
+    if (walletStatementMemberId === memberId) return;
+    walletStatementMemberId = memberId;
+    const transactions = Array.isArray(user.walletStatement) ? user.walletStatement : [];
+    Object.assign(walletStatementState, {
+      transactions,
+      balanceTransactions: Array.isArray(user.walletStatementBalanceTransactions)
+        ? user.walletStatementBalanceTransactions
+        : transactions,
+      balanceNextCursor: user.walletStatementBalanceNextCursor || null,
+      nextCursor: user.walletStatementNextCursor || null,
+      visibleCount: 25,
+      loading: false,
+      error: "",
+      loaded: !user.apiBacked && transactions.length > 0,
+      filters: { eventType: "", from: "", to: "" },
+      requestId: 0,
+    });
+  }
 
 function userPageEscape(value: unknown): string {
   return escapeActivityText(value ?? "");
@@ -248,7 +326,9 @@ function userPageInitials(name: unknown): string {
 }
 
 function userPageStatus(user: UserRecord): string {
-  return user.status === "Normal" ? "Active" : String(user.status);
+  return user.memberStatus
+    ? memberStatusFor(user.memberStatus)
+    : "Not provided by the Admin API";
 }
 
 function userPageFaculty(user: UserRecord): string {
@@ -277,7 +357,7 @@ function userPageHistory(user: UserRecord): LegacyHistoryEntry[] {
 }
 
 function userPageActionButtons(user: UserRecord): string {
-  if (["Temp ban", "Perm ban"].includes(String(user.status))) return '<p class="audit-note">No manual penalty override is available. The SRS duration or permanent ban rule applies.</p>';
+  if (["FROZEN", "SUSPENDED", "CLOSED"].includes(walletStatusFor(user.walletStatus ?? user.status))) return '<p class="audit-note">No manual penalty override is available. The SRS duration or permanent ban rule applies.</p>';
   return '<button class="btn primary" data-user-page-penalty="apply">Record violation</button>';
 }
 
@@ -292,10 +372,10 @@ function userPageExperience(user: UserRecord): string {
 }
 
 function userPageWorks(user: UserRecord): string {
-  const quests = userQuestRecords(user).filter((quest) => quest.status === "Completed").slice(0, 2);
+  const quests = userQuestRecords(user).filter((quest) => questStateFor(quest.questState ?? quest.status) === "QUEST_COMPLETED").slice(0, 2);
   const works: LegacyRecord[] = quests.length
     ? quests
-    : [{ id: "—", title: "Marketplace contribution", person: "", other: "University project", status: "Completed", tone: "success", amount: null, age: "" }];
+    : [{ id: "—", title: "Marketplace contribution", person: "", other: "University project", status: "QUEST_COMPLETED", tone: "success", amount: null, age: "" }];
   return `<section class="user-detail-panel"><div class="user-panel-heading"><h2>My Works</h2><span class="section-count">${works.length}</span></div><div class="user-work-grid">${works.map((work, index) => `<article class="user-work-item"><span class="user-work-thumb" aria-hidden="true">${index === 0 ? "▦" : "◈"}</span><strong>${userPageEscape(work.title)}</strong><span>${userPageEscape(work.other || "University project")} · ${userPageEscape(work.teamQuest ? "Team quest" : "Individual quest")}</span></article>`).join("")}</div></section>`;
 }
 
@@ -309,13 +389,130 @@ function userPagePayoutRecords(user: UserRecord): Array<{ record: LegacyRecord; 
 function userPagePayoutHistory(user: UserRecord, compact = false): string {
   const payoutRecords = userPagePayoutRecords(user),
     totalEarned = completedPayoutQuests(user).reduce((total, quest) => total + payoutEarningForQuest(quest), 0),
-    completed = payoutRecords.filter(({ record }) => record.status === "Completed"),
-    inFlight = payoutRecords.filter(({ record }) => ["Needs approval", "Processing"].includes(record.status)),
+    completed = payoutRecords.filter(({ record }) => payoutStatusFor(record.payoutStatus ?? record.status) === "SUCCEEDED"),
+    inFlight = payoutRecords.filter(({ record }) => ["PENDING_ADMIN_APPROVAL", "SUBMITTED_TO_PROVIDER", "PROVIDER_PENDING"].includes(payoutStatusFor(record.payoutStatus ?? record.status))),
     shownRecords = compact ? payoutRecords.slice(0, 5) : payoutRecords,
     headingAction = compact && payoutRecords.length > shownRecords.length
       ? '<button class="link" type="button" data-user-tab="payouts">View all</button>'
       : "";
-  return `<section class="user-detail-panel${compact ? " user-payout-preview" : " user-tab-panel"}"><div class="user-panel-heading"><div><h2>Payout history</h2>${compact ? `<p>Total earned ฿${fmt(totalEarned)} · Recent requests and transfer outcomes for this account.</p>` : `<p>${payoutRecords.length} payout records · ${completed.length} completed.</p>`}</div><div class="user-panel-heading-actions">${headingAction}<span class="section-count">${payoutRecords.length}</span></div></div>${!compact && payoutRecords.length ? `<div class="user-payout-stat-list"><div><strong>฿${fmt(totalEarned)}</strong><span>Total earned</span></div><div><strong>฿${fmt(completed.reduce((total, entry) => total + Number(entry.record.amount || 0), 0))}</strong><span>Paid out</span></div><div><strong>฿${fmt(inFlight.reduce((total, entry) => total + Number(entry.record.amount || 0), 0))}</strong><span>In progress</span></div><div><strong>${payoutRecords.length}</strong><span>Total requests</span></div></div>` : ""}${shownRecords.length ? `<div class="user-payout-list">${shownRecords.map(({ record, index }) => `<button class="user-payout-row" type="button" data-user-payout="${index}" aria-label="Open payout ${userPageEscape(record.id)}"><span class="user-payout-primary"><strong>${userPageEscape(record.id)}</strong><small>${userPageDate(record.requestedAt)}</small><small>${userPageEscape(record.questId || record.other || "Quest")}</small></span><span class="user-payout-secondary"><strong>฿${fmt(record.amount)}</strong>${badge(record.status, record.tone)}</span></button>`).join("")}</div>` : '<div class="empty"><h3>No payout history</h3><p>This account has no payout records.</p></div>'}</section>`;
+  return `<section class="user-detail-panel${compact ? " user-payout-preview" : " user-tab-panel"}"><div class="user-panel-heading"><div><h2>Payout history</h2>${compact ? `<p>Total earned ฿${fmt(totalEarned)} · Recent requests and transfer outcomes for this account.</p>` : `<p>${payoutRecords.length} payout records · ${completed.length} completed.</p>`}</div><div class="user-panel-heading-actions">${headingAction}<span class="section-count">${payoutRecords.length}</span></div></div>${!compact && payoutRecords.length ? `<div class="user-payout-stat-list"><div><strong>฿${fmt(totalEarned)}</strong><span>Total earned</span></div><div><strong>฿${fmt(completed.reduce((total, entry) => total + Number(entry.record.amount || 0), 0))}</strong><span>Paid out</span></div><div><strong>฿${fmt(inFlight.reduce((total, entry) => total + Number(entry.record.amount || 0), 0))}</strong><span>In progress</span></div><div><strong>${payoutRecords.length}</strong><span>Total requests</span></div></div>` : ""}${shownRecords.length ? `<div class="user-payout-list">${shownRecords.map(({ record, index }) => `<button class="user-payout-row" type="button" data-user-payout="${index}" aria-label="Open payout ${userPageEscape(record.id)}"><span class="user-payout-primary"><strong>${userPageEscape(record.id)}</strong><small>${userPageDate(record.requestedAt)}</small><small>${userPageEscape(record.questId || record.other || "Quest")}</small></span><span class="user-payout-secondary"><strong>฿${fmt(record.amount)}</strong>${payoutBadge(record.payoutStatus ?? record.status, record.tone)}</span></button>`).join("")}</div>` : '<div class="empty"><h3>No payout history</h3><p>This account has no payout records.</p></div>'}</section>`;
+}
+
+function userPageWalletBalanceValue(value: unknown): string {
+  return typeof value === "number" ? walletStatementBalance(value) : "--";
+}
+
+function userPageWalletBalanceSummary(user: UserRecord): string {
+  const balances: Array<[string, unknown]> = [
+    ["Spending Balance", user.walletSpendingBalanceSatang],
+    ["Earnings Balance", user.walletEarningsBalanceSatang],
+    ["Funding Reserved", user.walletFundingReservedSatang],
+    ["Reserved For Payouts", user.walletReservedForPayoutsSatang],
+  ];
+  return `<div class="wallet-statement-balance-grid" aria-label="Current Wallet balances">${balances.map(([label, value]) => `<div class="wallet-statement-balance"><span>${label}</span><strong>${userPageWalletBalanceValue(value)}</strong></div>`).join("")}</div>`;
+}
+
+function userPageMemberFinance(user: UserRecord): string {
+  if (!user.apiBacked) return "";
+  if (user.memberFinanceError) {
+    return `<section class="user-detail-panel user-tab-panel" data-user-finance-profile><div class="user-panel-heading"><div><h2>Wallet</h2><p>Member finance data from the Admin API.</p></div></div><p class="audit-note">${userPageEscape(user.memberFinanceError)}</p></section>`;
+  }
+  if (!user.memberFinanceLoaded) {
+    return '<section class="user-detail-panel user-tab-panel" data-user-finance-profile><h2>Wallet</h2><p class="audit-note">Loading Member finance data from the Admin API…</p></section>';
+  }
+  const wallet = typeof user.walletId === "string" && user.walletId
+    ? `<div class="user-facts"><div><dt>Wallet</dt><dd>${userPageEscape(user.walletId)}</dd></div><div><dt>Wallet status</dt><dd>${user.walletStatus ? badge(walletStatusLabel(user.walletStatus), String(user.tone)) : "Not provided by the Admin API"}</dd></div><div><dt>Ledger check</dt><dd>${user.walletProjectionMatchesLedger === true ? "Matches Ledger" : user.walletProjectionMatchesLedger === false ? "Needs review" : "Not provided by the Admin API"}</dd></div></div>${userPageWalletBalanceSummary(user)}`
+    : '<p class="audit-note">This Member has no Wallet.</p>';
+  const lifetime = [
+    ["Top-ups", user.memberTotalToppedUpSatang],
+    ["Earned from Quests", user.memberTotalEarnedFromQuestsSatang],
+    ["Spent on Quests", user.memberTotalSpentOnQuestsSatang],
+    ["Paid out", user.memberTotalPaidOutSatang],
+    ["Earnings converted", user.memberTotalEarningsConvertedSatang],
+  ] as Array<[string, unknown]>;
+  const reservations = user.memberFinanceReservations || [];
+  return `<section class="user-detail-panel user-tab-panel" data-user-finance-profile><div class="user-panel-heading"><div><h2>Wallet</h2><p>Current balances and lifetime finance data from the Admin API.</p></div></div>${wallet}<h3>Lifetime activity</h3><div class="wallet-finance-summary-grid">${lifetime.map(([label, value]) => `<div class="wallet-finance-summary-metric"><span>${label}</span><strong>${userPageWalletBalanceValue(value)}</strong></div>`).join("")}</div><h3>Active Funding Reservations</h3>${reservations.length ? `<div class="user-simple-list">${reservations.map((reservation) => `<article><strong>${userPageEscape(reservation.event || reservation.id || "Funding Reservation")}</strong><span>${userPageDate(reservation.at)} · ${userPageEscape(reservation.id || "")}</span><p>${userPageEscape(reservation.reason || "Total reserved not provided.")} · ${userPageEscape(reservation.note || "Remaining not provided.")}</p></article>`).join("")}</div>` : '<p class="audit-note">No active Funding Reservations.</p>'}</section>`;
+}
+
+function userPageWalletStatement(user: UserRecord): string {
+  const walletId = typeof user.walletId === "string" && user.walletId ? user.walletId : null;
+  if (!walletId) {
+    return `${userPageMemberFinance(user)}<section class="user-detail-panel user-tab-panel wallet-statement" data-user-wallet-statement><h2>Wallet Statement</h2><p>This Member has no Wallet. No Wallet Statement is available.</p></section>`;
+  }
+  const rows = walletStatementRowsFor(walletId, walletBalancesFromRecord(user), walletStatementState);
+  const filteredTransactionCount = filterWalletStatementTransactions(walletStatementState.transactions, walletStatementState.filters).length;
+  const canLoadMore = !walletStatementState.error && (user.apiBacked
+    ? Boolean(walletStatementState.nextCursor)
+    : filteredTransactionCount > walletStatementState.visibleCount);
+  const retry = walletStatementState.error
+    ? '<button class="btn" type="button" data-wallet-statement-action="retry">Retry</button>'
+    : "";
+  const statementContent = walletStatementState.loading
+    ? '<div class="empty"><h3>Loading Wallet Statement</h3><p>Reading sealed Ledger Transactions.</p></div>'
+    : walletStatementState.error
+      ? ""
+      : walletStatementTable(rows, userPageEscape);
+  const mockBalanceSummary = user.apiBacked ? "" : userPageWalletBalanceSummary(user);
+  return `${userPageMemberFinance(user)}<section class="user-detail-panel user-tab-panel wallet-statement" data-user-wallet-statement><div class="user-panel-heading"><div><h2>Wallet Statement</h2><p>Committed and sealed Ledger Transactions, newest first.</p></div></div>${mockBalanceSummary}${walletStatementFiltersMarkup(walletStatementState.filters, ADMIN_LEDGER_EVENT_TYPES, userPageEscape)}<div aria-live="polite" data-wallet-statement-content>${statementContent}${walletStatementState.error ? `<p class="audit-note">${userPageEscape(walletStatementState.error)}</p>${retry}` : ""}</div>${canLoadMore ? `<button class="btn wallet-statement-load-more" type="button" data-wallet-statement-action="load-more"${walletStatementState.loading ? " disabled" : ""}>Load more</button>` : ""}</section>`;
+}
+
+async function loadUserWalletStatement(
+  user: UserRecord,
+  append: boolean,
+): Promise<void> {
+  const walletId = typeof user.walletId === "string" && user.walletId ? user.walletId : "";
+  if (!user.apiBacked || !walletId) return;
+  const requestId = ++walletStatementState.requestId;
+  walletStatementState.loading = true;
+  walletStatementState.error = "";
+  renderUserPage();
+  try {
+    const page = await loadWalletStatement(walletId, {
+      eventType: walletStatementState.filters.eventType
+        && isWalletStatementEventType(walletStatementState.filters.eventType)
+        ? walletStatementState.filters.eventType
+        : undefined,
+      from: walletStatementApiDate(walletStatementState.filters.from, false),
+      to: walletStatementApiDate(walletStatementState.filters.to, true),
+      limit: 25,
+      cursor: append ? walletStatementState.nextCursor || undefined : undefined,
+    });
+    if (requestId !== walletStatementState.requestId) return;
+    const existing = append ? walletStatementState.transactions : [];
+    const unique = new Map([...existing, ...page.items].map((transaction) => [transaction.id, transaction]));
+    walletStatementState.transactions = [...unique.values()];
+    const balanceUnique = new Map([...walletStatementState.balanceTransactions, ...page.items].map((transaction) => [transaction.id, transaction]));
+    walletStatementState.balanceTransactions = [...balanceUnique.values()];
+    const unfiltered = !walletStatementState.filters.eventType
+      && !walletStatementState.filters.from
+      && !walletStatementState.filters.to;
+    if (unfiltered) walletStatementState.balanceNextCursor = page.nextCursor;
+    const oldestCreatedAt = walletStatementState.transactions
+      .toSorted((first, second) => Date.parse(first.createdAt) - Date.parse(second.createdAt))
+      .at(0)?.createdAt;
+    if (!unfiltered) {
+      await loadWalletStatementBalanceCoverage(
+        walletId,
+        walletStatementState,
+        oldestCreatedAt,
+        requestId,
+        loadWalletStatement,
+      );
+    }
+    walletStatementState.nextCursor = page.nextCursor;
+    walletStatementState.loading = false;
+    walletStatementState.loaded = true;
+    user.walletStatement = walletStatementState.transactions;
+    user.walletStatementBalanceTransactions = walletStatementState.balanceTransactions;
+    user.walletStatementBalanceNextCursor = walletStatementState.balanceNextCursor;
+    user.walletStatementNextCursor = walletStatementState.nextCursor;
+  } catch (error: unknown) {
+    if (requestId !== walletStatementState.requestId) return;
+    walletStatementState.loading = false;
+    walletStatementState.error = error instanceof Error ? error.message : "Wallet Statement is not available.";
+  } finally {
+    if (requestId === walletStatementState.requestId) renderUserPage();
+  }
 }
 
 function userPageCertificates(user: UserRecord): string {
@@ -341,23 +538,24 @@ function userPageOverview(user: UserRecord): string {
 
 function userPageAccountInfo(user: UserRecord): string {
   const [faculty, year] = String(user.other || "Student").split(" · ");
-  return `<section class="user-detail-panel"><h2>Account Information</h2><dl class="user-facts"><div><dt>Account status</dt><dd>${badge(userPageStatus(user), String(user.tone))}</dd></div><div><dt>Email verified</dt><dd>Yes</dd></div><div><dt>Created</dt><dd>${userPageDate(user.accountCreatedAt)}</dd></div><div><dt>Last active</dt><dd>${userPageDate(user.lastActiveAt)}</dd></div><div><dt>Role</dt><dd>Student</dd></div><div><dt>University</dt><dd>Kasetsart University</dd></div><div><dt>Faculty</dt><dd>${userPageEscape(faculty || "Not recorded")}${year ? ` · ${userPageEscape(year)}` : ""}</dd></div></dl></section>`;
+  return `<section class="user-detail-panel"><h2>Account Information</h2><dl class="user-facts"><div><dt>Member status</dt><dd>${badge(userPageStatus(user), String(user.tone))}</dd></div><div><dt>Wallet status</dt><dd>${badge(walletStatusFor(user.walletStatus ?? user.status), String(user.tone))}</dd></div><div><dt>Email verified</dt><dd>Yes</dd></div><div><dt>Created</dt><dd>${userPageDate(user.accountCreatedAt)}</dd></div><div><dt>Last active</dt><dd>${userPageDate(user.lastActiveAt)}</dd></div><div><dt>Role</dt><dd>Student</dd></div><div><dt>University</dt><dd>Kasetsart University</dd></div><div><dt>Faculty</dt><dd>${userPageEscape(faculty || "Not recorded")}${year ? ` · ${userPageEscape(year)}` : ""}</dd></div></dl></section>`;
 }
 
 function userPageModerationSummary(user: UserRecord): string {
   const reports = userReportsFor(user);
-  const activeWarnings = user.status === "Red Flag" ? 1 : 0;
-  const suspensions = ["Temp ban", "Perm ban"].includes(String(user.status)) ? 1 : 0;
+  const penaltyLabel = user.penalty?.label || "";
+  const activeWarnings = penaltyLabel === "Red Flag" ? 1 : 0;
+  const suspensions = ["Temporary ban", "Permanent ban"].includes(penaltyLabel) ? 1 : 0;
   const confirmedViolations = confirmedViolationCount(user);
   const nextOutcome = penaltyOutcomeFor(user);
   const exemption = redFlagExemptionFor(user);
-  const expiresAt = user.status === "Temp ban" ? user.banExpiresAt : user.status === "Red Flag" ? user.redFlagExpiresAt : "";
-  return `<section class="user-detail-panel"><h2>Moderation Summary</h2><div class="user-counter-list"><div><strong>${reports.length}</strong><span>Reports received</span></div><div><strong>${confirmedViolations}</strong><span>Confirmed violations</span></div><div><strong>${activeWarnings}</strong><span>Active Red Flags</span></div><div><strong>${suspensions}</strong><span>Suspensions</span></div></div><p class="audit-note">Next outcome: <strong>${userPageEscape(penaltyOutcomeLabel(nextOutcome))}</strong>${exemption ? ` · ${exemption.remaining} Red Flag exemption${exemption.remaining === 1 ? "" : "s"} remaining` : ""}${expiresAt ? ` · ${user.status === "Temp ban" ? "Temporary ban" : "Red Flag"} expires ${userPageDate(expiresAt)}` : ""}.</p><button class="btn full-width" type="button" data-user-tab="reports">View reports</button></section>`;
+  const expiresAt = penaltyLabel === "Temporary ban" ? user.banExpiresAt : penaltyLabel === "Red Flag" ? user.redFlagExpiresAt : "";
+  return `<section class="user-detail-panel"><h2>Moderation Summary</h2><div class="user-counter-list"><div><strong>${reports.length}</strong><span>Reports received</span></div><div><strong>${confirmedViolations}</strong><span>Confirmed violations</span></div><div><strong>${activeWarnings}</strong><span>Active Red Flags</span></div><div><strong>${suspensions}</strong><span>Suspensions</span></div></div><p class="audit-note">Next outcome: <strong>${userPageEscape(penaltyOutcomeLabel(nextOutcome))}</strong>${exemption ? ` · ${exemption.remaining} Red Flag exemption${exemption.remaining === 1 ? "" : "s"} remaining` : ""}${expiresAt ? ` · ${penaltyLabel === "Temporary ban" ? "Temporary ban" : "Red Flag"} expires ${userPageDate(expiresAt)}` : ""}.</p><button class="btn full-width" type="button" data-user-tab="reports">View reports</button></section>`;
 }
 
 function userPageRecentReports(user: UserRecord): string {
   const reports = userReportsFor(user).slice(0, 3);
-  return `<section class="user-detail-panel"><div class="user-panel-heading"><h2>Recent Reports</h2><span class="section-count">${reports.length}</span></div>${reports.length ? `<div class="user-recent-reports">${reports.map((report) => `<a href="/reports/${encodeURIComponent(report.id)}"><span><strong>${userPageEscape(report.id)}</strong><small>${userPageEscape(report.category)}</small></span>${badge(report.status, report.tone)}</a>`).join("")}</div>` : '<p class="audit-note">No reports have been filed against this account.</p>'}</section>`;
+  return `<section class="user-detail-panel"><div class="user-panel-heading"><h2>Recent Reports</h2><span class="section-count">${reports.length}</span></div>${reports.length ? `<div class="user-recent-reports">${reports.map((report) => `<a href="/reports/${encodeURIComponent(report.id)}"><span><strong>${userPageEscape(report.id)}</strong><small>${userPageEscape(report.category)}</small></span>${badge(reportCaseStatusFor(report.reportCaseStatus ?? report.conductReportStatus ?? report.status, report.decision), report.tone)}</a>`).join("")}</div>` : '<p class="audit-note">No reports have been filed against this account.</p>'}</section>`;
 }
 
 function userPageAdminNotes(user: UserRecord): string {
@@ -377,7 +575,7 @@ function userPageQuestRole(quest: LegacyRecord, user: UserRecord): { label: stri
 }
 
 function userPageQuestStatus(quest: LegacyRecord): { label: string; tone: string } {
-  return { label: quest.status || "Unknown", tone: quest.tone || "neutral" };
+  return { label: questStateFor(quest.questState ?? quest.status), tone: quest.tone || "neutral" };
 }
 
 function userPageQuestDates(quest: LegacyRecord, index: number): { created: string; starts: string; due: string; timestamp: number } {
@@ -397,7 +595,7 @@ function userPageQuestAmount(quest: LegacyRecord, role: { isHirer: boolean }): {
 
 function userPageActivity(user: UserRecord): string {
   const questRecords = userQuestRecords(user);
-  const completedQuests = questRecords.filter((quest) => quest.status === "Completed").length;
+  const completedQuests = questRecords.filter((quest) => questStateFor(quest.questState ?? quest.status) === "QUEST_COMPLETED").length;
   const quests = questRecords.map((quest, index) => {
     const role = userPageQuestRole(quest, user);
     const status = userPageQuestStatus(quest);
@@ -426,7 +624,7 @@ function userPageReviews(user: UserRecord): string {
   });
   const sorted = userPageSortedTableRows("reviews", filtered);
   const pagination = userPagePaginateTable("reviews", sorted);
-  return `<section class="user-detail-panel user-tab-panel"><div class="user-panel-heading"><div><h2>Reviews</h2>${userPageReviewSummary(user)}</div></div><div class="user-review-toolbar"><div class="inline-search search-field">${ico("search")}<input type="search" data-review-search value="${userPageEscape(userPageState.reviewQuery)}" placeholder="Search reviews…" aria-label="Search reviews"></div><div class="user-review-filters" role="group" aria-label="Review filters">${["all", "reported", "hidden"].map((filter) => `<button class="tab ${userPageState.reviewFilter === filter ? "active" : ""}" type="button" data-review-filter="${filter}">${filter[0].toUpperCase() + filter.slice(1)}</button>`).join("")}</div></div>${pagination.total ? `<div class="table-wrap"><table class="data user-detail-table"><thead><tr>${userPageTableSortHeader("reviews", "reviewer", "Reviewer")}${userPageTableSortHeader("reviews", "rating", "Rating")}${userPageTableSortHeader("reviews", "review", "Review")}${userPageTableSortHeader("reviews", "date", "Date")}${userPageTableSortHeader("reviews", "reports", "Reports")}${userPageTableSortHeader("reviews", "status", "Status")}<th scope="col">Action</th></tr></thead><tbody>${pagination.rows.map((review) => `<tr><td><strong>${userPageEscape(review.reviewer)}</strong></td><td>${"★".repeat(review.rating)}</td><td>${userPageEscape(review.review)}</td><td>${userPageEscape(review.date)}</td><td>${review.reports}</td><td>${badge(review.status, review.tone)}</td><td><button class="link" type="button" data-review-action="View" data-review-name="${userPageEscape(review.reviewer)}">View</button> <button class="link" type="button" data-review-action="${review.status === "Hidden" ? "Unhide" : "Hide"}" data-review-index="${reviews.indexOf(review)}" data-review-name="${userPageEscape(review.reviewer)}">${review.status === "Hidden" ? "Unhide" : "Hide"}</button> <button class="link danger-link" type="button" data-review-action="Remove" data-review-index="${reviews.indexOf(review)}" data-review-name="${userPageEscape(review.reviewer)}">Remove</button></td></tr>`).join("")}</tbody></table></div>${userPageTablePagination("reviews", pagination)}` : '<div class="empty"><h3>No matching reviews</h3><p>Try another filter or search term.</p></div>'}</section>`;
+  return `<section class="user-detail-panel user-tab-panel"><div class="user-panel-heading"><div><h2>Reviews</h2>${userPageReviewSummary(user)}</div></div><div class="user-review-toolbar"><div class="inline-search search-field">${ico("search")}<input type="search" data-review-search value="${userPageEscape(userPageState.reviewQuery)}" placeholder="Search reviews…" aria-label="Search reviews"></div><div class="user-review-filters" role="group" aria-label="Review filters">${["all", "reported", "hidden"].map((filter) => `<button class="tab ${userPageState.reviewFilter === filter ? "active" : ""}" type="button" data-review-filter="${filter}">${filter[0].toUpperCase() + filter.slice(1)}</button>`).join("")}</div></div>${pagination.total ? `<div class="table-wrap"><table class="data user-detail-table"><thead><tr>${userPageTableSortHeader("reviews", "reviewer", "Reviewer")}${userPageTableSortHeader("reviews", "rating", "Rating")}${userPageTableSortHeader("reviews", "review", "Review")}${userPageTableSortHeader("reviews", "date", "Date")}${userPageTableSortHeader("reviews", "reports", "Reports")}${userPageTableSortHeader("reviews", "status", "Status")}<th scope="col">Action</th></tr></thead><tbody>${pagination.rows.map((review) => `<tr><td><strong>${userPageEscape(review.reviewer)}</strong></td><td>${"★".repeat(review.rating)}</td><td>${userPageEscape(review.review)}</td><td>${userPageEscape(review.date)}</td><td>${review.reports}</td><td>${badge(review.status, review.tone)}</td><td><button class="link" type="button" data-review-action="View" data-review-name="${userPageEscape(review.reviewer)}">View</button> <button class="link" type="button" data-review-action="${review.status === "Hidden" ? "Unhide" : "Hide"}" data-review-index="${reviews.indexOf(review)}" data-review-name="${userPageEscape(review.reviewer)}">${review.status === "Hidden" ? "Unhide" : "Hide"}</button></td></tr>`).join("")}</tbody></table></div>${userPageTablePagination("reviews", pagination)}` : '<div class="empty"><h3>No matching reviews</h3><p>Try another filter or search term.</p></div>'}</section>`;
 }
 
 function userPageReviewsData(user: UserRecord): UserReview[] {
@@ -454,60 +652,11 @@ function toggleReviewVisibility(user: UserRecord, reviewIndex: number): void {
   toast(isHidden ? "Review unhidden" : "Review hidden");
 }
 
-function openReviewRemovalDialog(user: UserRecord, reviewIndex: number): void {
-  const review = userPageReviewsData(user)[reviewIndex];
-  if (!review) return;
-  activeCustomLayerClose?.();
-  const overlay = document.createElement("div");
-  overlay.className = "party-chat-overlay";
-  overlay.innerHTML = `<section class="party-chat-modal penalty-modal review-remove-modal" role="dialog" aria-modal="true" aria-labelledby="review-remove-title" aria-describedby="review-remove-copy"><div class="chat-modal-head"><div><strong id="review-remove-title">Remove review</strong><small>${userPageEscape(review.reviewer)}</small></div><button class="icon close-review-remove" type="button" aria-label="Close remove review confirmation"><span class="close-lines"></span></button></div><div class="review-remove-content"><p id="review-remove-copy">This review will be permanently removed from the user's profile.</p><label for="review-remove-reason">Reason for removing this review <span aria-hidden="true">*</span><textarea id="review-remove-reason" rows="3" minlength="8" maxlength="500" required aria-describedby="review-remove-reason-help review-remove-reason-error" placeholder="Explain why this review should be removed…"></textarea><span class="field-help" id="review-remove-reason-help"><span>Required for the permanent audit trail</span><span data-review-remove-count>0 / 500</span></span></label><p class="field-error" id="review-remove-reason-error" role="alert" hidden>Enter at least 8 characters before confirming.</p><div class="review-remove-actions"><button class="btn review-remove-cancel" type="button">Cancel</button><button class="btn danger review-remove-confirm" type="button" disabled>Confirm remove</button></div></div></section>`;
-  const close = showModalLayer(overlay, { initialFocus: "#review-remove-reason" });
-  const closeButton = query<HTMLElement>(overlay, ".close-review-remove");
-  if (closeButton) closeButton.onclick = close;
-  overlay.addEventListener("click", (event) => {
-    if (event.target === overlay) close();
-  });
-  const cancelButton = query<HTMLElement>(overlay, ".review-remove-cancel");
-  if (cancelButton) cancelButton.onclick = close;
-  const reason = query<HTMLTextAreaElement>(overlay, "#review-remove-reason");
-  const reasonError = query<HTMLElement>(overlay, "#review-remove-reason-error");
-  const reasonCount = query<HTMLElement>(overlay, "[data-review-remove-count]");
-  const confirmButton = query<HTMLButtonElement>(overlay, ".review-remove-confirm");
-  if (!reason || !reasonError || !reasonCount || !confirmButton) return;
-  const validateReason = () => {
-    const valid = reason.value.trim().length >= 8;
-    confirmButton.disabled = !valid;
-    reason.setAttribute("aria-invalid", String(!valid && reason.value.length > 0));
-    reasonError.hidden = true;
-    reasonCount.textContent = `${reason.value.length} / 500`;
-    return valid;
-  };
-  reason.oninput = validateReason;
-  confirmButton.onclick = () => {
-    if (!validateReason()) {
-      reason.setAttribute("aria-invalid", "true");
-      reasonError.hidden = false;
-      reason.focus();
-      return;
-    }
-    const reviews = userPageReviewsData(user);
-    const removed = reviews.splice(reviewIndex, 1)[0];
-    if (!removed) return close();
-    const decisionReason = reason.value.trim();
-    persistAdminData();
-    recordActivity("Review removed", `${user.id} · ${user.title} · ${removed.reviewer} · Reason: ${decisionReason}`);
-    close();
-    userPageState.tab = "reviews";
-    renderUserPage();
-    toast("Review removed");
-  };
-}
-
 function userPageReports(user: UserRecord): string {
   const reports = userReportsFor(user);
   const sorted = userPageSortedTableRows("reports", reports);
   const pagination = userPagePaginateTable("reports", sorted);
-  return `<section class="user-detail-panel user-tab-panel"><div class="user-panel-heading"><div><h2>Reports</h2><p>Reports filed against this account.</p></div><span class="section-count">${reports.length}</span></div>${pagination.total ? `<div class="table-wrap"><table class="data user-detail-table"><thead><tr>${userPageTableSortHeader("reports", "id", "Report")}${userPageTableSortHeader("reports", "category", "Type")}${userPageTableSortHeader("reports", "reporterName", "Reported by")}${userPageTableSortHeader("reports", "details", "Reason")}${userPageTableSortHeader("reports", "status", "Status")}${userPageTableSortHeader("reports", "reportedAt", "Reported")}<th scope="col">Action</th></tr></thead><tbody>${pagination.rows.map((report) => `<tr><td><strong>${userPageEscape(report.id)}</strong></td><td>${userPageEscape(report.category)}</td><td>${userPageEscape(report.reporterName)}</td><td>${userPageEscape(report.details)}</td><td>${badge(report.status, report.tone)}</td><td>${userPageDate(report.reportedAt)}</td><td><a class="link" href="/reports/${encodeURIComponent(report.id)}">View</a></td></tr>`).join("")}</tbody></table></div>${userPageTablePagination("reports", pagination)}` : '<div class="empty"><h3>No reports received</h3><p>This account has no report records.</p></div>'}</section>`;
+  return `<section class="user-detail-panel user-tab-panel"><div class="user-panel-heading"><div><h2>Reports</h2><p>Reports filed against this account.</p></div><span class="section-count">${reports.length}</span></div>${pagination.total ? `<div class="table-wrap"><table class="data user-detail-table"><thead><tr>${userPageTableSortHeader("reports", "id", "Report")}${userPageTableSortHeader("reports", "category", "Type")}${userPageTableSortHeader("reports", "reporterName", "Reported by")}${userPageTableSortHeader("reports", "details", "Reason")}${userPageTableSortHeader("reports", "status", "Status")}${userPageTableSortHeader("reports", "reportedAt", "Reported")}<th scope="col">Action</th></tr></thead><tbody>${pagination.rows.map((report) => `<tr><td><strong>${userPageEscape(report.id)}</strong></td><td>${userPageEscape(report.category)}</td><td>${userPageEscape(report.reporterName)}</td><td>${userPageEscape(report.details)}</td><td>${badge(reportCaseStatusFor(report.reportCaseStatus ?? report.conductReportStatus ?? report.status, report.decision), report.tone)}</td><td>${userPageDate(report.reportedAt)}</td><td><a class="link" href="/reports/${encodeURIComponent(report.id)}">View</a></td></tr>`).join("")}</tbody></table></div>${userPageTablePagination("reports", pagination)}` : '<div class="empty"><h3>No reports received</h3><p>This account has no report records.</p></div>'}</section>`;
 }
 
 function userPagePenaltyHistory(user: UserRecord): string {
@@ -520,6 +669,7 @@ function userPagePenaltyHistory(user: UserRecord): string {
 function userPageTabContent(user: UserRecord): string {
   if (userPageState.tab === "activity") return userPageActivity(user);
   if (userPageState.tab === "payouts") return userPagePayoutHistory(user);
+  if (userPageState.tab === "wallet-statement") return userPageWalletStatement(user);
   if (userPageState.tab === "reviews") return userPageReviews(user);
   if (userPageState.tab === "reports") return userPageReports(user);
   if (userPageState.tab === "penalty-history") return userPagePenaltyHistory(user);
@@ -529,7 +679,7 @@ function userPageTabContent(user: UserRecord): string {
 function userPageSummary(user: UserRecord): string {
   const profile = userPageProfile(user);
   const quests = userQuestRecords(user);
-  const completed = quests.filter((quest) => quest.status === "Completed").length;
+  const completed = quests.filter((quest) => questStateFor(quest.questState ?? quest.status) === "QUEST_COMPLETED").length;
   const reviews = userPageReviewsData(user);
   const rating = reviews.length
     ? (reviews.reduce((total, review) => total + Number(review.rating || 0), 0) / reviews.length).toFixed(1)
@@ -538,7 +688,7 @@ function userPageSummary(user: UserRecord): string {
 }
 
 function renderUserPage(): void {
-  const user = data.users.find((candidate) => candidate.id === userPageId);
+  const user = data.users.find((candidate) => candidate.id === userPageId || candidate.memberId === userPageId);
   const detail = window.__KUQUEST_USER_DETAIL__;
   if (!user) {
     if (detail) detail.user = null;
@@ -546,17 +696,26 @@ function renderUserPage(): void {
     return;
   }
   if (detail) detail.user = user;
+  resetWalletStatementState(user);
   setActiveNavigation("users");
-  main.innerHTML = `<div class="user-detail-breadcrumb"><a href="/?view=users">Users</a><span>›</span><span>${userPageEscape(user.title)}</span></div><div class="page-head user-detail-page-head"><div><h1>${userPageEscape(user.title)}</h1><p>Review user information, activity, payouts, and penalty history.</p></div></div>${userPageSummary(user)}<nav class="user-detail-tabs" aria-label="User detail sections">${[["overview", "Overview"], ["activity", "Activity"], ["payouts", "Payouts"], ["reviews", "Reviews"], ["reports", "Reports"], ["penalty-history", "Penalty History"]].map(([value, label]) => `<button class="${userPageState.tab === value ? "active" : ""}" type="button" data-user-tab="${value}" aria-current="${userPageState.tab === value ? "page" : "false"}">${label}</button>`).join("")}</nav><div class="user-detail-layout">${userPageTabContent(user)}</div>`;
+  main.innerHTML = `<div class="user-detail-breadcrumb"><a href="/?view=users">Users</a><span>›</span><span>${userPageEscape(user.title)}</span></div><div class="page-head user-detail-page-head"><div><h1>${userPageEscape(user.title)}</h1><p>Review user information, activity, payouts, and penalty history.</p></div></div>${userPageSummary(user)}<nav class="user-detail-tabs" aria-label="User detail sections">${[["overview", "Overview"], ["activity", "Activity"], ["payouts", "Payouts"], ["wallet-statement", "Wallet Statement"], ["reviews", "Reviews"], ["reports", "Reports"], ["penalty-history", "Penalty History"]].map(([value, label]) => `<button class="${userPageState.tab === value ? "active" : ""}" type="button" data-user-tab="${value}" aria-current="${userPageState.tab === value ? "page" : "false"}">${label}</button>`).join("")}</nav><div class="user-detail-layout">${userPageTabContent(user)}</div>`;
   bindUserPage(user);
+}
+
+function setUserPageTab(tab: UserPageTab): void {
+  userPageState.tab = tab;
+  const url = userPageUrlForTab(userPageId, tab);
+  if (url && `${window.location.pathname}${window.location.search}` !== url) {
+    window.history.pushState({}, "", url);
+  }
+  renderUserPage();
 }
 
 function bindUserPage(user: UserRecord): void {
   queryAll<HTMLElement>(document, "[data-user-tab]").forEach((button) => {
     button.onclick = () => {
       const tab = button.dataset.userTab;
-      if (tab === "overview" || tab === "activity" || tab === "payouts" || tab === "reviews" || tab === "reports" || tab === "penalty-history") userPageState.tab = tab;
-      renderUserPage();
+      if (isUserPageTab(tab)) setUserPageTab(tab);
     };
   });
   queryAll<HTMLElement>(document, "[data-user-page-penalty]").forEach((button) => {
@@ -565,8 +724,7 @@ function bindUserPage(user: UserRecord): void {
     };
   });
   queryAll<HTMLElement>(document, "[data-user-page-history]").forEach((button) => (button.onclick = () => {
-    userPageState.tab = "penalty-history";
-    renderUserPage();
+    setUserPageTab("penalty-history");
   }));
   queryAll<HTMLElement>(document, "[data-user-payout]").forEach((button) => (button.onclick = () => {
     openDrawer("payouts", Number(button.dataset.userPayout));
@@ -608,8 +766,7 @@ function bindUserPage(user: UserRecord): void {
     userPageTableState.reviews.sortKey = userPageState.reviewRating === null ? "date" : "rating";
     userPageTableState.reviews.direction = "desc";
     userPageTableState.reviews.page = 1;
-    userPageState.tab = "reviews";
-    renderUserPage();
+    setUserPageTab("reviews");
   }));
   queryAll<HTMLElement>(document, "[data-user-table-sort]").forEach((button) => (button.onclick = () => {
     const [tableValue, key = ""] = (button.dataset.userTableSort || "").split(":");
@@ -634,13 +791,72 @@ function bindUserPage(user: UserRecord): void {
       toggleReviewVisibility(user, Number(button.dataset.reviewIndex));
       return;
     }
-    if (button.dataset.reviewAction === "Remove") {
-      openReviewRemovalDialog(user, Number(button.dataset.reviewIndex));
-      return;
-    }
     toast(`${button.dataset.reviewAction} review by ${button.dataset.reviewName}.`);
   }));
-}
+  const walletStatement = query<HTMLElement>(document, "[data-user-wallet-statement]");
+  const walletStatementForm = walletStatement?.querySelector<HTMLFormElement>("[data-wallet-statement-filter]");
+  const loadUserWalletStatementPage = (append: boolean): void => {
+    if (user.apiBacked) {
+      if (append) walletStatementState.visibleCount += 25;
+      void loadUserWalletStatement(user, append);
+      return;
+    }
+    if (append) {
+      walletStatementState.visibleCount += 25;
+      renderUserPage();
+    }
+  };
+  walletStatementForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const formData = new FormData(walletStatementForm);
+    walletStatementState.filters = {
+      eventType: walletStatementFormValue(formData, "eventType"),
+      from: walletStatementFormValue(formData, "from"),
+      to: walletStatementFormValue(formData, "to"),
+    };
+    walletStatementState.visibleCount = 25;
+    walletStatementState.error = "";
+    if (user.apiBacked) {
+      walletStatementState.transactions = [];
+      walletStatementState.nextCursor = null;
+      walletStatementState.loaded = false;
+      loadUserWalletStatementPage(false);
+    } else {
+      renderUserPage();
+    }
+  });
+  walletStatement?.querySelector<HTMLElement>('[data-wallet-statement-action="clear"]')?.addEventListener("click", () => {
+    walletStatementState.filters = { eventType: "", from: "", to: "" };
+    walletStatementState.visibleCount = 25;
+    walletStatementState.error = "";
+    if (user.apiBacked) {
+      walletStatementState.transactions = [];
+      walletStatementState.nextCursor = null;
+      walletStatementState.loaded = false;
+      loadUserWalletStatementPage(false);
+    } else {
+      renderUserPage();
+    }
+  });
+  walletStatement?.querySelector<HTMLElement>('[data-wallet-statement-action="load-more"]')?.addEventListener("click", () => {
+    loadUserWalletStatementPage(true);
+  });
+  walletStatement?.querySelector<HTMLElement>('[data-wallet-statement-action="retry"]')?.addEventListener("click", () => {
+    walletStatementState.error = "";
+    walletStatementState.loaded = false;
+    loadUserWalletStatementPage(false);
+  });
+  if (userPageState.tab === "wallet-statement" && user.apiBacked && user.walletId && !walletStatementState.loaded && !walletStatementState.loading && !walletStatementState.error) {
+    loadUserWalletStatementPage(false);
+  }
+  }
+
+  window.addEventListener("popstate", () => {
+    const tab = userPageTabFromSearch(window.location.search);
+    if (tab === userPageState.tab) return;
+    userPageState.tab = tab;
+    renderUserPage();
+  });
 
 
 

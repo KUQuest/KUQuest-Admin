@@ -1,7 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { MouseEvent } from "react";
@@ -11,26 +12,31 @@ import "../../app/theme.css";
 
 import { readAdminData } from "./data/legacy-admin-data-adapter";
 import type { PersistedAdminData } from "./data/admin-records";
+import { adminApi, type AdminIdentity } from "./api/admin-api";
+import { isAdminApiEnabled } from "./api/admin-provider";
+import { adminNavigationCountsFromMockData, adminNavigationCountsFromOverview } from "./admin-navigation";
+import { loadDashboardData } from "./dashboard/dashboard-bootstrap";
 import { hardNavigate } from "./navigation";
 import { AdminThemeControl } from "./theme/admin-theme-control";
 import type { LegacyPage } from "./legacy/legacy-runtime-loader";
+import { ADMIN_SESSION_KEY, requireAdminSession } from "./legacy/auth";
 
 const LegacyRuntimeLoader = dynamic(
   () => import("./legacy/legacy-runtime-loader").then(({ LegacyRuntimeLoader: RuntimeLoader }) => RuntimeLoader),
   { ssr: false },
 );
 
-const AdminDashboard = dynamic(
-  () => import("./dashboard/admin-dashboard").then(({ AdminDashboard: Dashboard }) => Dashboard),
+const OverviewClone = dynamic(
+  () => import("./dashboard/overview-clone").then(({ OverviewClone: Dashboard }) => Dashboard),
   {
     ssr: false,
-    loading: () => <main id="dashboard-main" tabIndex={-1}><section className="panel"><p>Loading marketplace overview…</p></section></main>,
+    loading: () => <main id="dashboard-main" tabIndex={-1}><section className="panel"><p>Loading overview preview…</p></section></main>,
   },
 );
 
 /* oxlint-disable jsx-a11y/prefer-tag-over-role */
 
-type DashboardView = "home" | "quests" | "disputes" | "reports" | "payouts" | "users";
+type DashboardView = "home" | "quests" | "disputes" | "reports" | "conduct-reports" | "payouts" | "topups" | "users" | "wallets";
 
 const dashboardNavItems: Array<{ view: DashboardView; label: string; icon: DashboardView }> = [
   { view: "home", label: "Overview", icon: "home" },
@@ -38,8 +44,12 @@ const dashboardNavItems: Array<{ view: DashboardView; label: string; icon: Dashb
   { view: "disputes", label: "Disputes", icon: "disputes" },
   { view: "reports", label: "Reports", icon: "reports" },
   { view: "payouts", label: "Payouts", icon: "payouts" },
+  { view: "topups", label: "Top-ups", icon: "topups" },
   { view: "users", label: "Users", icon: "users" },
+  { view: "wallets", label: "Wallets", icon: "wallets" },
 ];
+
+type DashboardNavigationCounts = Partial<Record<DashboardView, number>>;
 
 function DashboardIcon({ name }: { name: DashboardView | "menu" | "search" }) {
   const paths = {
@@ -47,20 +57,66 @@ function DashboardIcon({ name }: { name: DashboardView | "menu" | "search" }) {
     quests: <><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4V3h6v1M8 9h8M8 13h8M8 17h5" /></>,
     disputes: <path d="M12 3v18M5 7h14M5 7l-3 6h6L5 7Zm14 0-3 6h6l-3-6ZM8 21h8" />,
     reports: <path d="M5 21V4m0 0h12l-2 4 2 4H5" />,
+    "conduct-reports": <><path d="M5 21V4m0 0h12l-2 4 2 4H5" /><path d="m9 16 2 2 4-4" /></>,
     payouts: <><path d="M3 6h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Zm0 0 12-3v3" /><path d="M16 12h5v4h-5a2 2 0 0 1 0-4Z" /></>,
+    topups: <><path d="M3 6h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6" /><path d="M12 9v6m-3-3h6" /></>,
     users: <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.8" />,
+    wallets: <><path d="M3 6h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Zm0 0 12-3v3" /><path d="M16 12h5v4h-5a2 2 0 0 1 0-4Z" /></>,
     menu: <path d="M4 7h16M4 12h16M4 17h16" />,
     search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></>,
   } as const;
   return <svg className="ui-icon" viewBox="0 0 24 24" aria-hidden="true">{paths[name]}</svg>;
 }
 
-function DashboardNavigation() {
+function normalizeDashboardView(view: string | undefined, fallback: DashboardView = "home"): DashboardView {
+  if (view === "conduct-reports") return "reports";
+  return dashboardNavItems.some((item) => item.view === view) ? view as DashboardView : fallback;
+}
+
+function defaultDashboardView(page: LegacyPage): DashboardView {
+  if (page === "quest") return "quests";
+  if (page === "dispute") return "disputes";
+  if (page === "report") return "reports";
+  if (page === "user") return "users";
+  return "home";
+}
+
+function DashboardNavigation({ activeView = "home" }: { activeView?: string }) {
+  const [counts, setCounts] = useState<DashboardNavigationCounts>({});
+  const selectedView = normalizeDashboardView(activeView);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadNavigationCounts = async (): Promise<void> => {
+      const useApi = isAdminApiEnabled();
+      const mockDataPromise = useApi ? import("./legacy/fresh-mock-data") : Promise.resolve();
+      const overviewPromise = useApi ? adminApi.getOverview() : null;
+      if (useApi) await mockDataPromise;
+      const mockCounts = adminNavigationCountsFromMockData(loadDashboardData(localStorage).collections);
+      if (cancelled) return;
+      setCounts({
+        disputes: mockCounts.disputes,
+        reports: mockCounts.reports + mockCounts.conductReports,
+      });
+      if (!useApi || !overviewPromise) return;
+      try {
+        const apiCounts = adminNavigationCountsFromOverview(await overviewPromise);
+        if (!cancelled) setCounts((current) => ({ ...current, payouts: apiCounts.payouts }));
+      } catch (error: unknown) {
+        if (!cancelled) console.error("Admin navigation counts failed", error);
+      }
+    };
+    void loadNavigationCounts();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <nav id="nav" aria-label="Primary navigation">
       {dashboardNavItems.map(({ view, label, icon }) => (
-        <button key={view} data-view={view} type="button">
-          <span><DashboardIcon name={icon} /></span>{label}
+        <button key={view} className={view === selectedView ? "active" : undefined} aria-current={view === selectedView ? "page" : undefined} data-view={view} type="button">
+          <span><DashboardIcon name={icon} /></span>{label}{typeof counts[view] === "number" && <b>{counts[view]}</b>}
         </button>
       ))}
     </nav>
@@ -158,8 +214,62 @@ function DashboardGlobalSearch({ open, onClose }: { open: boolean; onClose: () =
 }
 
 function handleLogout() {
-  localStorage.removeItem("kuquest-admin-session");
-  window.location.assign("/login");
+  const finishLogout = () => {
+    localStorage.removeItem(ADMIN_SESSION_KEY);
+    window.location.assign("/login");
+  };
+
+  if (!isAdminApiEnabled()) {
+    finishLogout();
+    return;
+  }
+
+  void adminApi.signOut()
+    .catch((error: unknown) => console.error("Admin sign-out failed", error))
+    .finally(finishLogout);
+}
+
+function AdminSessionGate({ children, onAdminSession }: { children: ReactNode; onAdminSession?: (identity: AdminIdentity) => void }) {
+  const [authorized, setAuthorized] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const redirectToLogin = () => {
+      window.localStorage.removeItem(ADMIN_SESSION_KEY);
+      window.location.replace("/login");
+    };
+
+    const checkSession = async () => {
+      if (!isAdminApiEnabled()) {
+        if (!requireAdminSession(window.localStorage, window.location)) return;
+        if (!cancelled) setAuthorized(true);
+        return;
+      }
+
+      try {
+        const session = await adminApi.getSession();
+        if (cancelled) return;
+        if (!session) {
+          redirectToLogin();
+          return;
+        }
+        onAdminSession?.(session.user);
+        setAuthorized(true);
+      } catch (error: unknown) {
+        if (cancelled) return;
+        console.error("Admin session check failed", error);
+        redirectToLogin();
+      }
+    };
+
+    void checkSession();
+    return () => {
+      cancelled = true;
+    };
+  }, [onAdminSession]);
+
+  return authorized ? children : null;
 }
 
 function LanguageControl({ className = "", disabled = false }: { className?: string; disabled?: boolean }) {
@@ -187,9 +297,10 @@ function LanguageControl({ className = "", disabled = false }: { className?: str
   );
 }
 
-function LegacyOverlays({ detailSearch = false, includeCommand = true }: { detailSearch?: boolean; includeCommand?: boolean }) {
+function LegacyOverlays({ detailSearch = false, includeCommand = true, onAdminSession, children }: { detailSearch?: boolean; includeCommand?: boolean; onAdminSession?: (identity: AdminIdentity) => void; children?: ReactNode }) {
   return (
-    <>
+    <AdminSessionGate onAdminSession={onAdminSession}>
+      <>
       <div id="scrim" className="scrim" hidden />
       {/* eslint-disable-next-line jsx-a11y/prefer-tag-over-role -- the source shell uses an aside drawer */}
       <aside
@@ -268,7 +379,9 @@ function LegacyOverlays({ detailSearch = false, includeCommand = true }: { detai
         </div>
       </div>}
       <div id="toasts" className="toasts" aria-live="polite" />
-    </>
+      {children}
+      </>
+    </AdminSessionGate>
   );
 }
 
@@ -276,32 +389,60 @@ export function LegacyAdminPage({
   page,
   recordId,
   reactDashboard = false,
+  activeView,
 }: {
   page: LegacyPage;
   recordId?: string;
   reactDashboard?: boolean;
+  activeView?: string;
 }) {
+  const router = useRouter();
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [dashboardSearchOpen, setDashboardSearchOpen] = useState(false);
+  const [adminIdentity, setAdminIdentity] = useState<AdminIdentity | null>(null);
+  useEffect(() => {
+    const navigate = (url: string) => router.push(url);
+    window.__KUQUEST_NEXT_NAVIGATE__ = navigate;
+    return () => {
+      if (window.__KUQUEST_NEXT_NAVIGATE__ === navigate) delete window.__KUQUEST_NEXT_NAVIGATE__;
+    };
+  }, [router]);
   const detailPage = page !== "home" && page !== "user";
+  const adminName = adminIdentity
+    ? `${adminIdentity.firstName} ${adminIdentity.lastName}`.trim() || adminIdentity.email
+    : isAdminApiEnabled() ? "Loading…" : "Nicha P.";
+  const adminInitials = adminIdentity
+    ? `${adminIdentity.firstName.trim().charAt(0)}${adminIdentity.lastName.trim().charAt(0)}`.trim() || "AD"
+    : isAdminApiEnabled() ? "…" : "NP";
+  const selectedView = normalizeDashboardView(activeView, defaultDashboardView(page));
   const navigateFromDashboard = useCallback((event: MouseEvent<HTMLElement>) => {
     const target = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-view]") : null;
     const view = target?.dataset.view;
     if (!view) return;
     event.preventDefault();
     event.stopPropagation();
-    window.location.assign(view === "home" ? "/" : `/?view=${encodeURIComponent(view)}`);
-  }, []);
+    const nextUrl = view === "home" ? "/" : `/?view=${encodeURIComponent(view)}`;
+    if (!reactDashboard) {
+      const runtime = window.__KUQUEST_LEGACY_RUNTIME__;
+      if (runtime) {
+        runtime.navigate(view);
+        return;
+      }
+      window.location.assign(nextUrl);
+      return;
+    }
+    router.push(nextUrl);
+  }, [reactDashboard, router]);
 
   return (
     <>
       <div className="shell">
-        <aside className={`sidebar${reactDashboard && mobileNavigationOpen ? " open" : ""}`} id="site-navigation" onClickCapture={reactDashboard ? navigateFromDashboard : undefined}>
+        <aside className={`sidebar${reactDashboard && mobileNavigationOpen ? " open" : ""}`} id="site-navigation" onClickCapture={navigateFromDashboard}>
           <div className="brand">
             <Image src="/kuquest-logo.png?v=2" alt="" width={101} height={51} priority unoptimized />
             <span>KuQuest</span>
           </div>
-          {reactDashboard ? <DashboardNavigation /> : <nav id="nav" aria-label="Primary navigation" />}
+          <DashboardNavigation activeView={selectedView} />
           <div className="nav-group">
             <small>SYSTEM</small>
             <button data-view="activity" type="button">
@@ -311,8 +452,8 @@ export function LegacyAdminPage({
           <AdminThemeControl />
           <LanguageControl />
           <div className="profile">
-            <span>NP</span>
-            <div><strong>Nicha P.</strong><small>Administrator</small></div>
+            <span>{adminInitials}</span>
+            <div><strong>{adminName}</strong><small>Administrator</small></div>
             <button className="logout-button" type="button" onClick={handleLogout}>Log out</button>
           </div>
         </aside>
@@ -354,11 +495,12 @@ export function LegacyAdminPage({
           )}
         </header>
         <main id="main" tabIndex={-1} hidden={reactDashboard} />
-        {reactDashboard && <AdminDashboard />}
+        {reactDashboard && <OverviewClone />}
       </div>
-      <LegacyOverlays detailSearch={detailPage} includeCommand={!reactDashboard} />
+      <LegacyOverlays detailSearch={detailPage} includeCommand={!reactDashboard} onAdminSession={setAdminIdentity}>
+        {!reactDashboard && <LegacyRuntimeLoader page={page} recordId={recordId} />}
+      </LegacyOverlays>
       {reactDashboard && <DashboardGlobalSearch open={dashboardSearchOpen} onClose={() => setDashboardSearchOpen(false)} />}
-      {!reactDashboard && <LegacyRuntimeLoader page={page} recordId={recordId} />}
     </>
   );
 }
@@ -367,6 +509,7 @@ declare global {
   interface Window {
     __KUQUEST_RECORD_ID__?: string;
     __KUQUEST_PAGE__?: LegacyPage;
+    __KUQUEST_NEXT_NAVIGATE__?: (url: string) => void;
     openDisputeDrawer?: (index: number) => void;
   }
 }

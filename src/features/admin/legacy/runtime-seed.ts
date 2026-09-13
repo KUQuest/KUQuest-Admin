@@ -1,5 +1,12 @@
 import type { LegacyHistoryEntry, LegacyRecord, LegacyRuntimeData } from "./runtime";
 import { data } from "./runtime-data";
+import {
+  disputeCaseStatusFor,
+  isReportCasePending,
+  payoutStatusFor,
+  questStateFor,
+  walletStatusFor,
+} from "../domain/rulebook";
 
 export type PenaltyOutcome = { key?: string; label: string; status: string; tone: string; durationDays?: number | null };
 type PenaltyExemption = { remaining: number; label: string; field: string };
@@ -74,21 +81,27 @@ export function seedGeneratedActivity(records: LegacyRuntimeData): void {
   const add = (actor: string, title: string, detail: string, at: unknown, fallback: number): void => {
     events.push({ actor, title, detail, timestamp: activityTimestamp(at, fallback) });
   };
-  (records.reports || []).slice(0, 14).forEach((record, index) => {
+  (records.reports || []).filter((record) => !record.conductReportStatus).slice(0, 14).forEach((record, index) => {
     const fallback = now - (index + 1) * 38 * 60 * 1000;
     add(activityInitials(record.reporterName, "US"), "User report received", `${record.id} · ${record.reporterName} reported ${record.reportedUserName}`, record.reportedAt, fallback);
-    if (record.status === "Closed") add("NP", "Report resolved", `${record.id} · ${record.decisionLabel || "Report closed"}`, record.resolutionAt || record.closedAt, fallback + 47 * 60 * 1000);
+    if (!isReportCasePending(record.reportCaseStatus ?? record.conductReportStatus ?? record.status, record.decision)) add("NP", "Report resolved", `${record.id} · ${record.decisionLabel || "Report closed"}`, record.resolutionAt || record.closedAt, fallback + 47 * 60 * 1000);
+  });
+  (records.reports || []).filter((record) => Boolean(record.conductReportStatus)).slice(0, 14).forEach((record, index) => {
+    const fallback = now - (index + 2) * 41 * 60 * 1000;
+    add(activityInitials(record.reporterName, "US"), "Conduct report received", `${record.id} · ${record.reporterName} reported ${record.reportedUserName}`, record.reportedAt, fallback);
+    if (!isReportCasePending(record.conductReportStatus ?? record.status, record.decision)) add("NP", "Conduct report resolved", `${record.id} · ${record.decisionLabel || "Conduct report closed"}`, record.resolutionAt || record.closedAt, fallback + 51 * 60 * 1000);
   });
   (records.disputes || []).slice(0, 12).forEach((record, index) => {
     const fallback = now - (index + 2) * 17 * 60 * 60 * 1000;
     add("SYS", "Dispute opened", `${record.id} · ${record.title}`, record.disputeDate, fallback);
-    if (record.status === "Closed") add("NP", "Dispute resolved", `${record.id} · ${record.resolution || "Resolution recorded"}`, record.disputeDate, fallback + 3 * 60 * 60 * 1000);
+    if (disputeCaseStatusFor(record.disputeCaseStatus ?? record.status) !== "DISPUTE_CASE_PENDING") add("NP", "Dispute resolved", `${record.id} · ${record.resolution || "Resolution recorded"}`, record.disputeDate, fallback + 3 * 60 * 60 * 1000);
   });
   (records.payouts || []).slice(0, 12).forEach((record, index) => {
     const fallback = now - (index + 1) * 21 * 60 * 60 * 1000;
     add("SYS", "Payout requested", `${record.id} · ${record.title} · ฿${formatAmount(record.amount)}`, record.requestedAt, fallback);
-    if (["Processing", "Completed"].includes(record.status)) add("NP", "Payout approved", `${record.id} · ${record.title}`, record.approvedAt, fallback + 2 * 60 * 60 * 1000);
-    else if (record.status === "Rejected") add("NP", "Payout rejected", `${record.id} · ${record.rejectionReason}`, record.rejectedAt, fallback + 2 * 60 * 60 * 1000);
+    const payoutStatus = payoutStatusFor(record.payoutStatus ?? record.status);
+    if (["SUBMITTED_TO_PROVIDER", "PROVIDER_PENDING", "SUCCEEDED"].includes(payoutStatus)) add("NP", "Payout approved", `${record.id} · ${record.title}`, record.approvedAt, fallback + 2 * 60 * 60 * 1000);
+    else if (payoutStatus === "CANCELLED") add("NP", "Payout rejected", `${record.id} · ${record.rejectionReason}`, record.rejectedAt, fallback + 2 * 60 * 60 * 1000);
   });
   (records.users || []).slice(0, 16).forEach((user, index) => {
     (user.moderationHistory || []).slice(0, 2).forEach((entry, entryIndex) => add(
@@ -126,7 +139,10 @@ export const penaltyPolicy = Object.freeze({
 });
 
 export function confirmedViolationCount(user: LegacyRecord): number {
-  const fallback = user.status === "Red Flag" ? 1 : user.status === "Temp ban" ? 2 : user.status === "Perm ban" ? 3 : 0;
+  const penaltyLabel = typeof user.penalty === "object" && user.penalty && "label" in user.penalty
+    ? String(user.penalty.label)
+    : "";
+  const fallback = penaltyLabel === "Red Flag" ? 1 : penaltyLabel === "Temporary ban" ? 2 : penaltyLabel === "Permanent ban" ? 3 : 0;
   return Math.max(0, Number(user.confirmedViolationCount ?? fallback) || 0);
 }
 
@@ -140,9 +156,9 @@ export function redFlagExemptionFor(user: LegacyRecord): PenaltyExemption | null
 
 export function penaltyOutcomeFor(user: LegacyRecord): PenaltyOutcome {
   const violationNumber = confirmedViolationCount(user) + 1;
-  if (violationNumber === 1) return { key: "red-flag", label: "Red Flag", status: "Red Flag", tone: "warning", durationDays: penaltyPolicy.redFlagDays };
-  if (violationNumber === 2) return { key: "temporary-ban", label: "Temporary ban", status: "Temp ban", tone: "danger", durationDays: penaltyPolicy.temporaryBanDays };
-  return { key: "permanent-ban", label: "Permanent ban", status: "Perm ban", tone: "danger" };
+  if (violationNumber === 1) return { key: "red-flag", label: "Red Flag", status: "ACTIVE", tone: "warning", durationDays: penaltyPolicy.redFlagDays };
+  if (violationNumber === 2) return { key: "temporary-ban", label: "Temporary ban", status: "FROZEN", tone: "danger", durationDays: penaltyPolicy.temporaryBanDays };
+  return { key: "permanent-ban", label: "Permanent ban", status: "FROZEN", tone: "danger" };
 }
 
 export function penaltyOutcomeLabel(outcome: PenaltyOutcome | null): string {
@@ -160,13 +176,13 @@ function consumeRedFlagExemption(user: LegacyRecord, exemption: PenaltyExemption
 }
 
 export function recordConfirmedViolation(user: LegacyRecord, reason: string, note: string): PenaltyOutcome {
-  const previousStatus = user.status;
+  const previousStatus = walletStatusFor(user.walletStatus ?? user.status);
   const appliedAt = adminDateTime();
   const appliedBy = currentAdminName();
   const violationNumber = confirmedViolationCount(user) + 1;
   const nextOutcome = penaltyOutcomeFor(user);
   const exemption = nextOutcome.key === "red-flag" ? redFlagExemptionFor(user) : null;
-  const outcome = exemption ? { ...nextOutcome, key: "red-flag-exempted", status: "Normal", tone: "success", durationDays: null } : nextOutcome;
+  const outcome = exemption ? { ...nextOutcome, key: "red-flag-exempted", status: "ACTIVE", tone: "success", durationDays: null } : nextOutcome;
   user.confirmedViolationCount = violationNumber;
   consumeRedFlagExemption(user, exemption);
   let expiresAt = "";
@@ -176,6 +192,7 @@ export function recordConfirmedViolation(user: LegacyRecord, reason: string, not
     expiresAt = adminDateTime(expires);
   }
   user.status = outcome.status;
+  user.walletStatus = walletStatusFor(outcome.status);
   user.tone = outcome.tone;
   user.statusReason = reason;
   user.statusAppliedAt = appliedAt;
@@ -188,27 +205,45 @@ export function recordConfirmedViolation(user: LegacyRecord, reason: string, not
     if (outcome.key === "temporary-ban") user.banExpiresAt = expiresAt;
     user.penalty = { label: outcome.label, reason, recordedAt: appliedAt, appliedBy, ...(outcome.durationDays ? { durationDays: outcome.durationDays } : {}), ...(expiresAt ? { expiresAt } : {}) };
   }
-  user.age = outcome.key === "red-flag-exempted" ? "Violation recorded · Red Flag exempted" : expiresAt ? `${outcome.status} · expires ${expiresAt}` : outcome.status;
+  user.age = outcome.key === "red-flag-exempted" ? "Violation recorded · Red Flag exempted" : expiresAt ? `${outcome.label} · expires ${expiresAt}` : outcome.label;
   addUserHistory(user, { event: outcome.key === "red-flag-exempted" ? "Violation recorded (Red Flag exempted)" : `${outcome.label} applied`, at: appliedAt, by: appliedBy, reason, previousStatus, newStatus: outcome.status, violationNumber, outcome: penaltyOutcomeLabel(outcome) });
   if (note) user.adminNotes = [{ at: appliedAt, by: appliedBy, note }, ...(user.adminNotes || [])];
   return outcome;
 }
 
 export function applyDemoAction(action: string, record: LegacyRecord): boolean {
+  if (action === "Hide quest") {
+    record.hiddenAt = adminDateTime();
+    record.hiddenByAdminId = currentAdminName();
+    record.age = "Just now";
+    return true;
+  }
+  if (action === "Restore quest") {
+    record.hiddenAt = null;
+    record.hiddenByAdminId = null;
+    record.age = "Just now";
+    return true;
+  }
   const transitions: Record<string, [string, string]> = {
-    "Restrict user": ["Temp ban", "danger"],
-    "Set normal": ["Normal", "success"],
-    "Lift penalty": ["Normal", "success"],
-    "Hide quest": ["Hidden", "neutral"],
-    "Reject payout": ["Rejected", "danger"],
-    "Approve payout": ["Processing", "info"],
-    "Close report": ["Closed", "neutral"],
-    "Terminate quest": ["Cancelled", "cancelled"],
+    "Restrict user": ["FROZEN", "danger"],
+    "Set normal": ["ACTIVE", "success"],
+    "Lift penalty": ["ACTIVE", "success"],
+    "Reject payout": ["CANCELLED", "danger"],
+    "Approve payout": ["SUBMITTED_TO_PROVIDER", "info"],
+    "Close report": ["REPORT_CASE_DISMISSED", "neutral"],
+    "Terminate quest": ["QUEST_CANCELLED", "cancelled"],
   };
   const next = transitions[action];
   if (!next) return false;
   [record.status, record.tone] = next;
+  if (["Restrict user", "Set normal", "Lift penalty"].includes(action)) {
+    record.walletStatus = record.status;
+  }
   if (action === "Lift penalty") delete record.penalty;
+  if (action === "Reject payout") record.payoutStatus = "CANCELLED";
+  if (action === "Approve payout") record.payoutStatus = "SUBMITTED_TO_PROVIDER";
+  if (action === "Close report") record.reportCaseStatus = "REPORT_CASE_DISMISSED";
+  if (action === "Terminate quest") record.questState = "QUEST_CANCELLED";
   record.age = "Just now";
   if (action === "Close report") record.closedAt = reportDateTime();
   return true;
@@ -219,7 +254,12 @@ export function applyReportDecision(report: LegacyRecord, decision: string, reas
   const resolvedAt = adminDateTime();
   const resolvedBy = currentAdminName();
   const outcome = decision === "confirmed-violation" && user ? recordConfirmedViolation(user, reason, "") : null;
-  report.status = "Closed";
+  report.status = decision === "confirmed-violation"
+    ? "REPORT_CASE_HIDDEN"
+    : "REPORT_CASE_DISMISSED";
+  report.reportCaseStatus = decision === "confirmed-violation"
+    ? "REPORT_CASE_HIDDEN"
+    : "REPORT_CASE_DISMISSED";
   report.tone = "neutral";
   report.closedAt = reportDateTime();
   report.decision = decision;
@@ -243,7 +283,7 @@ export function payoutEarningForQuest(quest: LegacyRecord): number {
 }
 
 export function completedPayoutQuests(record: LegacyRecord): LegacyRecord[] {
-  return data.quests.filter((quest) => quest.status === "Completed" && (quest.selectedParticipant === record.title || quest.teamParticipants?.some(([name]) => name === record.title)));
+  return data.quests.filter((quest) => questStateFor(quest.questState ?? quest.status) === "QUEST_COMPLETED" && (quest.selectedParticipant === record.title || quest.teamParticipants?.some(([name]) => name === record.title)));
 }
 
 export function userReportsFor(user: LegacyRecord): LegacyRecord[] {
@@ -258,7 +298,10 @@ export function payoutPreviousRecords(record: LegacyRecord): LegacyRecord[] {
   const currentTimestamp = payoutTimestamp(record);
   return data.payouts
     .filter((payout) => {
-      if (payout.title !== record.title || payout.id === record.id) return false;
+      const sameRecipient = record.studentId && payout.studentId
+        ? record.studentId === payout.studentId
+        : payout.title === record.title;
+      if (!sameRecipient || payout.id === record.id) return false;
       const timestamp = payoutTimestamp(payout);
       return timestamp < currentTimestamp || (!timestamp && !currentTimestamp);
     })
@@ -277,13 +320,13 @@ export type PayoutFinancials = {
 export function payoutFinancials(record: LegacyRecord): PayoutFinancials {
   const previousPayouts = payoutPreviousRecords(record);
   const processingReserved = previousPayouts
-    .filter((payout) => payout.status === "Processing")
+    .filter((payout) => ["SUBMITTED_TO_PROVIDER", "PROVIDER_PENDING"].includes(payoutStatusFor(payout.payoutStatus ?? payout.status)))
     .reduce((total, payout) => total + Number(payout.amount || 0), 0);
   const pendingReserved = previousPayouts
-    .filter((payout) => payout.status === "Needs approval")
+    .filter((payout) => payoutStatusFor(payout.payoutStatus ?? payout.status) === "PENDING_ADMIN_APPROVAL")
     .reduce((total, payout) => total + Number(payout.amount || 0), 0);
   const previousPaidOut = Number(record.previouslyPaidOut ?? previousPayouts
-    .filter((payout) => payout.status === "Completed")
+    .filter((payout) => payoutStatusFor(payout.payoutStatus ?? payout.status) === "SUCCEEDED")
     .reduce((total, payout) => total + Number(payout.amount || 0), 0));
   const earned = completedPayoutQuests(record).reduce(
     (total, quest) => total + payoutEarningForQuest(quest),
@@ -298,23 +341,11 @@ export function payoutFinancials(record: LegacyRecord): PayoutFinancials {
     committed: processingReserved + pendingReserved,
     pending: pendingReserved,
     available: balanceBeforeRequest,
-    remaining: ["Rejected", "Failed"].includes(record.status)
+    remaining: ["CANCELLED", "FAILED"].includes(payoutStatusFor(record.payoutStatus ?? record.status))
       ? balanceBeforeRequest
       : Math.max(0, balanceBeforeRequest - Number(record.amount || 0)),
     previousPaidOut,
   };
-}
-
-export function autoRejectUnavailablePayout(record: LegacyRecord): boolean {
-  if (record.status !== "Needs approval") return false;
-  if (payoutFinancials(record).available >= Number(record.amount || 0)) return false;
-  record.status = "Rejected";
-  record.tone = "danger";
-  record.rejectedAt = adminDateTime();
-  record.rejectedBy = currentAdminName();
-  record.rejectionReason = "Insufficient withdrawable balance.";
-  record.rejectionNote = "Automatically rejected before admin review because the available balance did not cover the request.";
-  return true;
 }
 
 export function payoutQuestId(record: { questId?: unknown; other?: unknown }): string {

@@ -3,13 +3,15 @@ import {
   matchingRows,
   paginateRows,
   resourceColumns,
+  reportTabLabel,
+  resourceTabs,
   resetResourceState,
+  resourceTabValue,
   resultCount,
+  type ResourceCollections,
   type ResourceState,
 } from "../../src/features/admin/legacy/resource-controls-model";
-import type { LegacyRecord, LegacyRuntimeData } from "../../src/features/admin/legacy/runtime";
-
-type ResourceCollections = LegacyRuntimeData;
+import type { LegacyRecord } from "../../src/features/admin/legacy/runtime";
 
 function createState(): ResourceState {
   return {
@@ -33,8 +35,11 @@ function createCollections(
     disputes: [],
     quests: [],
     users: [],
+    wallets: [],
     payouts: [],
+    topups: [],
     reports: [],
+    "conduct-reports": [],
     ...overrides,
   };
 }
@@ -57,6 +62,66 @@ function record(
 }
 
 describe("active resource controls model", () => {
+  it("uses Created At instead of Tag for Quest rows", () => {
+    expect(resourceColumns.quests).toContainEqual(["createdAt", "Created At"]);
+    expect(resourceColumns.quests).not.toContainEqual(["other", "Tag"]);
+  });
+
+  it("keeps Member fields separate from Wallet status fields", () => {
+    expect(resourceColumns.users).toContainEqual(["memberStatus", "Status"]);
+    expect(resourceColumns.users).not.toContainEqual(["walletStatus", "Wallet status"]);
+    expect(resourceColumns.wallets).toContainEqual(["walletTotalBalanceSatang", "Current Wallet Balance"]);
+    expect(resourceColumns.wallets).toContainEqual(["walletLatestTransactionAt", "Latest Wallet Transaction Date"]);
+    expect(resourceColumns.wallets).toContainEqual(["status", "Wallet status"]);
+  });
+
+  it("combines Report Cases and Conduct Reports in the Reports view", () => {
+    const state = createState();
+    const collections = createCollections({
+      reports: [
+        record("RPT-1", { status: "REPORT_CASE_PENDING", reportCaseStatus: "REPORT_CASE_PENDING" }),
+        record("RPT-2", { status: "CONDUCT_REPORT_PENDING", conductReportStatus: "CONDUCT_REPORT_PENDING" }),
+        record("RPT-3", { status: "CONDUCT_REPORT_UPHELD", conductReportStatus: "CONDUCT_REPORT_UPHELD" }),
+        record("RPT-4", { status: "REPORT_CASE_HIDDEN", reportCaseStatus: "REPORT_CASE_HIDDEN" }),
+      ],
+    });
+
+    expect(resourceColumns.reports).toContainEqual(["reportType", "Type"]);
+    expect(resourceColumns.reports).toContainEqual(["source", "Source"]);
+    expect(resourceTabs.reports).toEqual([
+      "All",
+      "OPEN",
+      "DISMISSED",
+      "CONFIRMED",
+      "REPORT_CASE_RESTORED",
+    ]);
+    expect(reportTabLabel("REPORT_CASE_HIDDEN")).toBe("Confirmed");
+    expect(matchingRows(collections, state, "reports").map((item) => item.id)).toEqual([
+      "RPT-1",
+      "RPT-2",
+      "RPT-3",
+      "RPT-4",
+    ]);
+
+    state.tab = "open";
+    expect(matchingRows(collections, state, "reports").map((item) => item.id)).toEqual([
+      "RPT-1",
+      "RPT-2",
+    ]);
+
+    state.tab = "confirmed";
+    expect(matchingRows(collections, state, "reports").map((item) => item.id)).toEqual([
+      "RPT-3",
+      "RPT-4",
+    ]);
+  });
+
+  it("keeps canonical status values when visible tab labels are human-readable", () => {
+    expect(resourceTabValue("quest_open")).toBe("QUEST_OPEN");
+    expect(resourceTabValue("all")).toBe("All");
+    expect(resourceTabValue("team")).toBe("Team");
+  });
+
   it("keeps the original order until a column is selected", () => {
     const state = createState();
     const collections = createCollections({
@@ -111,6 +176,22 @@ describe("active resource controls model", () => {
       "DSP-2",
       "DSP-1",
       "DSP-3",
+    ]);
+  });
+
+  it("sorts Quest rows by creation time", () => {
+    const state = createState();
+    const collections = createCollections({
+      quests: [
+        record("QST-2", { createdAt: "2026-09-02T08:00:00Z" }),
+        record("QST-1", { createdAt: "2026-09-01T08:00:00Z" }),
+      ],
+    });
+    state.orderBy.quests = "createdAt-asc";
+
+    expect(matchingRows(collections, state, "quests").map((item) => item.id)).toEqual([
+      "QST-1",
+      "QST-2",
     ]);
   });
 

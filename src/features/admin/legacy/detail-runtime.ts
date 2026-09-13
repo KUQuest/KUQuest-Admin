@@ -5,9 +5,6 @@ import type {
   LegacyRecord,
 } from "./runtime";
 import {
-  applyDemoAction as applyDemoActionCore,
-  applyReportDecision as applyReportDecisionCore,
-  badge,
   confirmedViolationCount,
   escapeActivityText,
   fmt,
@@ -15,23 +12,36 @@ import {
   penaltyOutcomeFor,
   penaltyOutcomeLabel,
   payoutFinancials,
+  payoutBadge,
   payoutDecisionContext,
   redFlagExemptionFor,
   recordActivity,
   recordConfirmedViolation,
   data,
   disputeCases,
+  adminCommands,
 } from "./runtime-core";
 import { createOverlayRuntime } from "./overlay-runtime";
 import { setActiveNavigation as setActiveNavigationCore } from "./navigation-state";
+import { newAdminIdempotencyKey } from "./admin-command-port";
+import { isAdminApiEnabled } from "../api/admin-provider";
+import { adminApi } from "../api/admin-api";
+import {
+  adminNavigationCountsFromMockData,
+  adminNavigationCountsFromOverview,
+  type AdminNavigationCounts,
+  type MockNavigationCounts,
+} from "../admin-navigation";
+import { isQuestModerationAction, setupQuestReasonCode, type AdminReasonCode } from "./quest-admin-reason";
+import {
+  disputeCaseStatusFor,
+  payoutStatusFor,
+} from "../domain/rulebook";
 
 export {
   addUserHistory,
   adminDateTime,
   badge,
-  bindChatAttachment,
-  chatMessage,
-  chatTimeLabel,
   completedPayoutQuests,
   confirmedViolationCount,
   currentAdminName,
@@ -42,6 +52,7 @@ export {
   penaltyOutcomeFor,
   penaltyOutcomeLabel,
   payoutEarningForQuest,
+  payoutBadge,
   payoutFinancials,
   payoutPreviousRecords,
   payoutQuestId,
@@ -56,19 +67,21 @@ export {
   userReportsFor,
 } from "./runtime-core";
 
-type LegacyView = "home" | "disputes" | "quests" | "users" | "payouts" | "reports" | "policies" | "activity";
+type LegacyView = "home" | "disputes" | "quests" | "users" | "wallets" | "payouts" | "topups" | "reports" | "conduct-reports" | "policies" | "activity";
 type IconName = "home" | "scale" | "quest" | "users" | "wallet" | "settings" | "history" | "menu" | "search" | "filter" | "paperclip" | "check" | "user" | "flag";
 type LegacyForm = HTMLFormElement & {
   elements: HTMLFormControlsCollection & Record<string, LegacyDomElement>;
 };
 
-const navItems: Array<[LegacyView, IconName, string, string]> = [
-  ["home", "home", "Overview", ""],
-  ["quests", "quest", "Quests", ""],
-  ["disputes", "scale", "Disputes", "7"],
-  ["reports", "flag", "Reports", "0"],
-  ["payouts", "wallet", "Payouts", "4"],
-  ["users", "users", "Users", ""],
+const navItems: Array<[LegacyView, IconName, string]> = [
+  ["home", "home", "Overview"],
+  ["quests", "quest", "Quests"],
+  ["disputes", "scale", "Disputes"],
+  ["reports", "flag", "Reports"],
+  ["payouts", "wallet", "Payouts"],
+  ["topups", "wallet", "Top-ups"],
+  ["users", "users", "Users"],
+  ["wallets", "wallet", "Wallets"],
 ];
 
 function requiredQuery<T extends Element>(root: ParentNode, selector: string): T {
@@ -78,8 +91,9 @@ function requiredQuery<T extends Element>(root: ParentNode, selector: string): T
 }
 
 const requestedView = new URLSearchParams(location.search).get("view");
-const initialView: LegacyView = ["home", "disputes", "quests", "users", "payouts", "reports", "policies", "activity"].includes(requestedView as LegacyView)
-  ? requestedView as LegacyView
+const normalizedRequestedView = requestedView === "conduct-reports" ? "reports" : requestedView;
+const initialView: LegacyView = ["home", "disputes", "quests", "users", "wallets", "payouts", "topups", "reports", "policies", "activity"].includes(normalizedRequestedView as LegacyView)
+  ? normalizedRequestedView as LegacyView
   : "home";
 export const state: LegacyPageState = {
   view: initialView,
@@ -106,10 +120,11 @@ export const drawer = drawerElement;
 export const scrim = scrimElement;
 export const shell = shellElement;
 export { data, disputeCases };
+export { adminCommands };
 
 export function initializeDetailRuntime(): void {
-  navigation.innerHTML = navItems.map(([view, icon, label, count]) =>
-    `<button data-view="${view}" type="button"><span>${ico(icon)}</span>${label}${count ? `<b>${count}</b>` : ""}</button>`).join("");
+  navigation.innerHTML = navItems.map(([view, icon, label]) =>
+    `<button data-view="${view}" type="button"><span>${ico(icon)}</span>${label}</button>`).join("");
   document.querySelectorAll<HTMLElement>("[data-static-icon]").forEach((element) => {
     element.innerHTML = ico(element.dataset.staticIcon || "");
   });
@@ -135,25 +150,55 @@ export const closeActiveLayer = overlayRuntime.closeActiveLayer;
 export const closeDrawer = overlayRuntime.closeDrawer;
 export const showDrawerLayer = overlayRuntime.showDrawerLayer;
 export const showModalLayer = overlayRuntime.showModalLayer;
-function refreshNavigationCounts(): void {
+function setNavigationCount(view: string, count: number): void {
+  const button = navigation.querySelector<HTMLElement>(`[data-view="${view}"]`);
+  if (!button) return;
+  let counter = button.querySelector<HTMLElement>("b");
+  if (!counter) {
+    counter = document.createElement("b");
+    button.append(counter);
+  }
+  counter.textContent = String(count);
+}
+
+function removeNavigationCount(view: string): void {
+  navigation.querySelector<HTMLElement>(`[data-view="${view}"] b`)?.remove();
+}
+
+export function setNavigationCounts(counts: AdminNavigationCounts): void {
+  setNavigationCount("disputes", counts.disputes);
+  setNavigationCount("payouts", counts.payouts);
+  removeNavigationCount("reports");
+}
+
+export function setMockNavigationCounts(counts: MockNavigationCounts): void {
+  if (typeof counts.disputes === "number") setNavigationCount("disputes", counts.disputes);
+  setNavigationCount("reports", counts.reports + counts.conductReports);
+}
+
+export async function refreshNavigationCounts(): Promise<void> {
+  if (isAdminApiEnabled()) {
+    try {
+      const apiCounts = adminNavigationCountsFromOverview(await adminApi.getOverview());
+      const mockCounts = adminNavigationCountsFromMockData(data);
+      setNavigationCounts(apiCounts);
+      setMockNavigationCounts(mockCounts);
+    } catch (error: unknown) {
+      removeNavigationCount("disputes");
+      removeNavigationCount("payouts");
+      setMockNavigationCounts(adminNavigationCountsFromMockData(data));
+      console.error("Admin navigation counts failed", error);
+    }
+    return;
+  }
+
   const counts = {
-    disputes: data.disputes.filter((record) => record.status === "Active").length,
-    payouts: data.payouts.filter((record) => record.status === "Needs approval").length,
-    reports: data.reports.filter((record) => record.status === "Active").length,
+    disputes: data.disputes.filter((record) => disputeCaseStatusFor(record.disputeCaseStatus ?? record.status) === "DISPUTE_CASE_PENDING").length,
+    payouts: data.payouts.filter((record) => payoutStatusFor(record.payoutStatus ?? record.status) === "PENDING_ADMIN_APPROVAL").length,
   };
-  Object.entries(counts).forEach(([view, count]) => {
-    const counter = document.querySelector<HTMLElement>(`[data-view="${view}"] b`);
-    if (counter) counter.textContent = String(count);
-  });
-}
-
-export function applyDemoAction(action: string, record: LegacyRecord): void {
-  if (applyDemoActionCore(action, record)) refreshNavigationCounts();
-}
-
-export function applyReportDecision(report: LegacyRecord, decision: string, reason: string): void {
-  applyReportDecisionCore(report, decision, reason);
-  refreshNavigationCounts();
+  setNavigationCount("disputes", counts.disputes);
+  setNavigationCount("payouts", counts.payouts);
+  setMockNavigationCounts(adminNavigationCountsFromMockData(data));
 }
 
 function persistAdminData(): void {
@@ -204,19 +249,39 @@ export function openPenaltyDialog(user: LegacyRecord): void {
 function openPayoutDrawer(index: number): void {
   const record = data.payouts[index];
   if (!record) return;
+  if (isAdminApiEnabled() && !record.apiBacked) {
+    toast("This Payout is not available from the Admin API.");
+    return;
+  }
   const context = payoutDecisionContext(record);
+  const status = payoutStatusFor(record.payoutStatus ?? record.status);
   showDrawerLayer();
-  drawer.innerHTML = `<div class="drawer-top"><strong>${escapeActivityText(record.id)}</strong><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div><div class="drawer-body"><div class="drawer-title"><span class="att-icon neutral">${ico("wallet")}</span><div><h2>${escapeActivityText(record.title)}</h2><p>${escapeActivityText(record.person)} · ${escapeActivityText(record.other)}</p></div></div><div class="facts"><div class="fact"><span>Status</span>${badge(record.status, record.tone)}</div><div class="fact"><span>Payout amount</span><strong>฿${fmt(record.amount)}</strong></div><div class="fact"><span>Record</span><strong>${escapeActivityText(record.id)}</strong></div></div><section class="section"><h3>${escapeActivityText(context.heading)}</h3><p>${escapeActivityText(context.copy)}</p><p class="audit-note">${escapeActivityText(context.next)}</p></section><section class="section"><h3>Financial summary</h3><div class="facts"><div class="fact"><span>Available to withdraw</span><strong>฿${fmt(payoutFinancials(record).available)}</strong></div><div class="fact"><span>Remaining after payout</span><strong>฿${fmt(payoutFinancials(record).remaining)}</strong></div></div></section></div><div class="drawer-actions">${record.status === "Needs approval" ? '<button class="btn" data-action="Reject payout">Reject payout</button><button class="btn primary" data-action="Approve payout">Approve payout</button>' : '<button class="btn" id="close-payout-record">Close record</button>'}</div>`;
+  drawer.innerHTML = `<div class="drawer-top"><strong>${escapeActivityText(record.id)}</strong><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div><div class="drawer-body"><div class="drawer-title"><span class="att-icon neutral">${ico("wallet")}</span><div><h2>${escapeActivityText(record.title)}</h2><p>${escapeActivityText(record.person)} · ${escapeActivityText(record.other)}</p></div></div><div class="facts"><div class="fact"><span>Status</span>${payoutBadge(status, record.tone)}</div><div class="fact"><span>Payout amount</span><strong>฿${fmt(record.amount)}</strong></div><div class="fact"><span>Record</span><strong>${escapeActivityText(record.id)}</strong></div></div><section class="section"><h3>${escapeActivityText(context.heading)}</h3><p>${escapeActivityText(context.copy)}</p><p class="audit-note">${escapeActivityText(context.next)}</p></section><section class="section"><h3>Financial summary</h3><div class="facts"><div class="fact"><span>Available to withdraw</span><strong>฿${fmt(payoutFinancials(record).available)}</strong></div><div class="fact"><span>Remaining after payout</span><strong>฿${fmt(payoutFinancials(record).remaining)}</strong></div></div></section></div><div class="drawer-actions">${status === "PENDING_ADMIN_APPROVAL" ? '<button class="btn" data-action="Reject payout">Reject payout</button><button class="btn primary" data-action="Approve payout">Approve payout</button>' : '<button class="btn" id="close-payout-record">Close record</button>'}</div>`;
   drawer.querySelector<HTMLElement>("#close")?.addEventListener("click", closeDrawer);
   drawer.querySelector<HTMLElement>("#close-payout-record")?.addEventListener("click", closeDrawer);
   scrim.onclick = closeDrawer;
   drawer.querySelectorAll<HTMLElement>("[data-action]").forEach((button) => button.addEventListener("click", () => {
     const action = button.dataset.action;
     if (!action) return;
-    confirmAction(action, record, "", () => {
-      applyDemoAction(action, record);
-      persistAdminData();
-      closeDrawer();
+    confirmAction(action, record, "", (reason) => {
+      const command = action === "Approve payout"
+        ? adminCommands.approvePayout(record.id, {
+          idempotencyKey: newAdminIdempotencyKey("approve-payout", record.id),
+          expectedVersion: record.version ?? 1,
+          reasonCode: "PAYOUT_POLICY_REVIEW",
+          note: reason,
+        })
+        : adminCommands.rejectPayout(record.id, {
+          idempotencyKey: newAdminIdempotencyKey("reject-payout", record.id),
+          expectedVersion: record.version ?? 1,
+          reasonCode: "PAYOUT_RISK_REVIEW",
+          reason,
+        });
+      void command.then(() => {
+        persistAdminData();
+        closeDrawer();
+        return undefined;
+      });
     });
   }));
 }
@@ -232,7 +297,7 @@ export function ensureDetailDrawer(view: string, index: number): void {
 }
 
 const dialog = document.querySelector<HTMLDialogElement>("#confirm");
-export function confirmAction(action: string, record: LegacyRecord, decisionDetail = "", onConfirm?: (reason: string) => void, options: Pick<LegacyModalOptions, "keepDrawerOpen"> = {}): void {
+export function confirmAction(action: string, record: LegacyRecord, decisionDetail = "", onConfirm?: (reason: string, reasonCode?: AdminReasonCode) => void, options: Pick<LegacyModalOptions, "keepDrawerOpen"> = {}): void {
   if (!dialog) return;
   const form = requiredQuery<LegacyForm>(document, "#confirm-form");
   const reason = requiredQuery<HTMLTextAreaElement>(document, "#confirm-reason");
@@ -242,6 +307,8 @@ export function confirmAction(action: string, record: LegacyRecord, decisionDeta
   const context = document.querySelector<HTMLElement>("#confirm-context");
   if (context) { context.hidden = true; context.innerHTML = ""; }
   reason.value = "";
+  const reasonCode = setupQuestReasonCode(document, action, isAdminApiEnabled());
+  reason.required = !reasonCode;
   error.hidden = true;
   count.textContent = "0 / 500";
   confirmButton.textContent = action;
@@ -249,30 +316,38 @@ export function confirmAction(action: string, record: LegacyRecord, decisionDeta
   requiredQuery<HTMLElement>(document, "#confirm-title").textContent = action;
   requiredQuery<HTMLElement>(document, "#confirm-copy").textContent = decisionDetail || `This will update ${record.id} and add your decision to the permanent admin audit trail.`;
   const validate = () => {
-    const valid = reason.value.trim().length >= 8;
+    const reasonValid = !reasonCode || !reasonCode.required || reasonCode.value.length > 0;
+    const valid = reasonCode ? reasonValid : reason.value.trim().length >= 8;
     confirmButton.disabled = !valid;
     reason.setAttribute("aria-invalid", String(!valid && reason.value.length > 0));
     count.textContent = `${reason.value.length} / 500`;
+    error.textContent = reasonCode && !reasonValid
+      ? "Select a reason code before confirming."
+      : "Enter at least 8 characters before confirming.";
     return valid;
   };
   reason.oninput = validate;
+  reasonCode?.addEventListener("change", validate);
   form.onsubmit = (event) => {
     if ((event.submitter as HTMLButtonElement | null)?.value === "confirm" && !validate()) {
       event.preventDefault();
       reason.setAttribute("aria-invalid", "true");
       error.hidden = false;
-      reason.focus();
+      (reasonCode && !reasonCode.value ? reasonCode : reason).focus();
     }
   };
   dialog.showModal();
-  requestAnimationFrame(() => reason.focus());
+  requestAnimationFrame(() => (reasonCode && reasonCode.required ? reasonCode : reason).focus());
   dialog.addEventListener("close", () => {
     if (dialog.returnValue !== "confirm") return;
     if (!options.keepDrawerOpen && drawer.classList.contains("open")) closeDrawer();
     const decisionReason = reason.value.trim();
-    onConfirm?.(decisionReason);
-    recordActivity(action, `${record.id} · ${record.title || record.reportedUserName || "Record"}${decisionReason ? ` · ${decisionReason}` : ""}`);
-    toast(`${action} recorded for ${record.id}. Audit reason saved.`);
+    onConfirm?.(decisionReason, reasonCode?.value as AdminReasonCode | undefined);
+    const localAudit = !isAdminApiEnabled() || !isQuestModerationAction(action) && action !== "Confirm dispute resolution";
+    if (localAudit) {
+      recordActivity(action, `${record.id} · ${record.title || record.reportedUserName || "Record"}${decisionReason ? ` · ${decisionReason}` : ""}`);
+      toast(`${action} recorded for ${record.id}. Audit reason saved.`);
+    }
   }, { once: true });
 }
 

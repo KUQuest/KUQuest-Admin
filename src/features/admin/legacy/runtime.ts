@@ -1,3 +1,5 @@
+import type { WalletStatementTransaction } from "./wallet-model";
+
 export type LegacyTone = "warning" | "danger" | "success" | "info" | "neutral" | "assigned" | "cancelled" | string;
 
 // The legacy shell reuses a small set of selectors for different controls. This
@@ -16,6 +18,20 @@ export type LegacyHistoryEntry = {
   [key: string]: string | number | undefined;
 };
 
+export type LegacyWalletBalanceSnapshot = {
+  spendingBalanceSatang: number;
+  earningsBalanceSatang: number;
+  fundingReservedSatang: number;
+  reservedForPayoutsSatang: number;
+};
+
+export type LegacyWalletVerification = {
+  matches: boolean;
+  projected: LegacyWalletBalanceSnapshot;
+  ledger: LegacyWalletBalanceSnapshot;
+  activityCountMatches: boolean;
+};
+
 export type LegacyPenalty = {
   label: string;
   reason: string;
@@ -23,6 +39,18 @@ export type LegacyPenalty = {
   appliedBy?: string;
   durationDays?: number;
   expiresAt?: string;
+};
+
+export type LegacyDisputeMockData = {
+  amountBaht: number;
+  category: string;
+  openedBy: string;
+  respondent: string;
+  summary: string;
+  claim: string;
+  response: string;
+  policy: string[];
+  recommended: string;
 };
 
 export type LegacyRecordValue =
@@ -39,7 +67,10 @@ export type LegacyRecordValue =
   | LegacyRecord[]
   | Array<[string, string]>
   | LegacyHistoryEntry[]
-  | LegacyPenalty;
+  | LegacyPenalty
+  | LegacyDisputeMockData
+  | LegacyWalletVerification
+  | WalletStatementTransaction[];
 
 export type LegacyDisputeCase = {
   [key: string]: string | string[] | Array<[string, string, string]>;
@@ -54,11 +85,54 @@ export type LegacyRecord = {
   tone: LegacyTone;
   amount: number | null;
   age: string;
+  memberId?: string;
+  walletId?: string;
+  walletTotalBalanceSatang?: number;
+  walletSpendingBalanceSatang?: number;
+  walletEarningsBalanceSatang?: number;
+  walletFundingReservedSatang?: number;
+  walletReservedForPayoutsSatang?: number;
+  version?: number;
+  apiBacked?: boolean;
+  studentId?: string;
+  questState?: string;
+  disputeCaseStatus?: string;
+  reportCaseStatus?: string;
+  conductReportStatus?: string;
+  payoutStatus?: string;
+  topUpStatus?: string;
+  walletStatus?: string;
+  memberStatus?: string;
+  hiddenAt?: string | null;
+  hiddenByAdminId?: string | null;
+  evidenceRefs?: string[];
+  workerId?: string;
+  filerUserId?: string;
+  amountSatang?: number;
+  resolvedAmountSatang?: number | null;
+  fundingTotalSatang?: number;
+  questRewardSatang?: number;
+  platformFeeSatang?: number;
+  platformFeeBps?: number;
+  feeRoundingMode?: "UP";
+  questEscrowSatang?: number;
+  fundingReservationId?: string;
+  policyRevisionId?: string;
+  headcount?: number;
+  questFinanceLoaded?: boolean;
+  questFinanceError?: string;
+  questFinanceReservationStatus?: string;
+  questFinanceTotalReservedSatang?: number;
+  questFinanceRemainingSatang?: number;
+  questFinanceTransfers?: LegacyHistoryEntry[];
+  questFinanceLedgerTransactions?: LegacyHistoryEntry[];
   detail?: string;
   details?: string;
   category?: string;
   disputeDate?: string;
   disputeType?: string;
+  mockDisputeData?: LegacyDisputeMockData;
+  apiMissingFields?: string[];
   evidence?: string[];
   failureReason?: string;
   questId?: string;
@@ -68,9 +142,66 @@ export type LegacyRecord = {
   reporterId?: string;
   reporterName?: string;
   requestedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  principalSatang?: number;
+  receiptSatang?: number;
+  maximumFeeSatang?: number;
+  maximumTaxSatang?: number;
+  maximumDebitSatang?: number;
+  actualFeeSatang?: number | null;
+  actualTaxSatang?: number | null;
+  actualDebitSatang?: number | null;
+  bankCode?: string;
+  bankName?: string;
+  destinationType?: string;
+  maskedDestinationValue?: string;
+  maskedRoutingValue?: string;
+  providerReference?: string | null;
+  providerStatus?: string | null;
+  paymentMethod?: string;
+  creditAmountSatang?: number;
+  paymentTotalSatang?: number;
+  providerFeeSatang?: number;
+  providerTaxSatang?: number;
+  expiresAt?: string;
+  paidAt?: string | null;
+  topUpDetailLoaded?: boolean;
+  topUpDetailError?: string;
+  rejectionReason?: string | null;
+  walletProjectionMatchesLedger?: boolean;
+  walletVerification?: LegacyWalletVerification;
+  walletVerificationLoaded?: boolean;
+  walletVerificationError?: string;
+  walletLatestTransactionAt?: string | null;
+  walletStatement?: WalletStatementTransaction[];
+  walletStatementBalanceTransactions?: WalletStatementTransaction[];
+  walletStatementBalanceNextCursor?: string | null;
+  walletStatementNextCursor?: string | null;
+  walletStatementLoaded?: boolean;
+  walletStatementLoading?: boolean;
+  walletStatementError?: string;
+  payoutHistory?: LegacyHistoryEntry[];
+  payoutHistoryLoaded?: boolean;
+  payoutHistoryError?: string;
+  memberFinanceLoaded?: boolean;
+  memberFinanceLoading?: boolean;
+  memberFinanceError?: string;
+  memberTotalToppedUpSatang?: number;
+  memberTotalEarnedFromQuestsSatang?: number;
+  memberTotalSpentOnQuestsSatang?: number;
+  memberTotalPaidOutSatang?: number;
+  memberTotalEarningsConvertedSatang?: number;
+  memberFinanceReservations?: LegacyHistoryEntry[];
   resolution?: string;
   resolutionAt?: string;
+  disputeDetailLoaded?: boolean;
+  disputeDetailError?: string;
+  disputeEvidenceLoaded?: boolean;
+  disputeEvidenceError?: string;
+  questFailedAt?: string | null;
   selectedParticipant?: string;
+  assignedWorkers?: Array<[string, string, string]>;
   teamParticipants?: Array<[string, string]>;
   teamQuest?: boolean;
   teamSize?: number;
@@ -86,7 +217,9 @@ export type LegacyRuntimeData = {
   disputes: LegacyRecord[];
   quests: LegacyRecord[];
   users: LegacyRecord[];
+  wallets: LegacyRecord[];
   payouts: LegacyRecord[];
+  topups: LegacyRecord[];
   reports: LegacyRecord[];
 };
 
@@ -136,6 +269,7 @@ declare global {
     recordActivity?: (title: string, detail: string, actor?: string) => void;
     toast?: (message: string) => void;
     ico?: (name: string) => string;
+    __KUQUEST_NEXT_NAVIGATE__?: (url: string) => void;
     __KUQUEST_RESET_RESOURCE_STATE__?: () => void;
   }
 }

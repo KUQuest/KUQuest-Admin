@@ -5,13 +5,21 @@ import type {
   QuestRecord,
   TimelineItem,
 } from "./quest-detail";
+import {
+  disputeCaseStatusFor,
+  hasHiddenQuestOverlay,
+  isQuestTerminal,
+  questStateFor,
+} from "../domain/rulebook";
+import { openDisputeForm, questBahtLabel, questCandidateModeLabel, questPercentLabel } from "./quest-detail";
+import { newAdminIdempotencyKey } from "./admin-command-port";
+import type { AdminQuestReasonCode } from "../api/admin-api";
 
 export type QuestPageDependencies = QuestDetailDependencies & {
   main: HTMLElement;
   recordId?: string;
   locationSearch?: string;
   detail: QuestDetailModule;
-  applyDemoAction: (action: string, record: QuestRecord) => void;
   persistAdminData: () => void;
   setActiveNavigation: (view: string) => void;
 };
@@ -46,11 +54,13 @@ export function createQuestPageModule(
     detail,
     badge,
     fmt,
+    escapeActivityText,
     ico,
     timeline,
     disputeTypeLabel,
     confirmAction,
-    applyDemoAction,
+    adminCommands,
+    toast,
     persistAdminData,
     setActiveNavigation,
   } = dependencies;
@@ -58,11 +68,34 @@ export function createQuestPageModule(
   const questRecord = data.quests.find((quest) => quest.id === questId);
 
   const relatedDisputeFor = (record: QuestRecord): QuestDispute | undefined =>
-    data.disputes.find((dispute) => (disputeCases[dispute.id]?.questId ?? "") === record.id);
+    data.disputes.find((dispute) =>
+      (!record.apiBacked || dispute.apiBacked)
+      && (dispute.questId ?? disputeCases[dispute.id]?.questId ?? "") === record.id,
+    );
+
+  const readableFinanceStatus = (value: string | undefined): string => (value || "Not provided")
+    .toLowerCase()
+    .split("_")
+    .map((part) => part ? part[0].toUpperCase() + part.slice(1) : part)
+    .join(" ");
+
+  const questFinancialRecord = (quest: QuestRecord): string => {
+    const financeError = quest.questFinanceError;
+    const reservationStatus = quest.questFinanceReservationStatus;
+    const transfers = quest.questFinanceTransfers || [];
+    const ledgerTransactions = quest.questFinanceLedgerTransactions || [];
+    const transferRows = transfers.length
+      ? `<div class="related-list">${transfers.map((transfer) => `<div class="related-row"><span><strong>${readableFinanceStatus(transfer.event)}</strong><small>${escapeActivityText(transfer.at || "Date not provided")} · ${escapeActivityText(transfer.by || "Accounts not provided")}</small><small>${escapeActivityText(transfer.reason || "Transfer description not provided")}</small></span><span>${questBahtLabel(transfer.amountSatang)}</span></div>`).join("")}</div>`
+      : '<p class="audit-note">No money movements were returned by the Finance API.</p>';
+    const ledgerRows = ledgerTransactions.length
+      ? `<div class="related-list">${ledgerTransactions.map((transaction) => `<div class="related-row"><span><strong>${readableFinanceStatus(transaction.event)}</strong><small>${escapeActivityText(transaction.at || "Date not provided")} · ${escapeActivityText(transaction.by || "Business reference not provided")}</small><small>${escapeActivityText(transaction.reason || "Description not provided")}</small></span><span>${transaction.postingCount || 0} postings</span></div>`).join("")}</div>`
+      : '<p class="audit-note">No Ledger Transactions were returned by the Finance API.</p>';
+    return `<section class="record-panel"><h2>Financial record</h2><div class="financial-line"><span>Quest Funding Total</span><strong>${questBahtLabel(quest.fundingTotalSatang)}</strong></div><div class="financial-line"><span>Quest Reward</span><strong>${questBahtLabel(quest.questRewardSatang)}</strong></div><div class="financial-line"><span>Platform Fee per Worker</span><strong>${questBahtLabel(quest.platformFeeSatang)}</strong></div><div class="financial-line"><span>Platform Fee policy</span><strong>${typeof quest.platformFeeBps === "number" ? questPercentLabel(quest.platformFeeBps) : "Not provided by the Admin API"}</strong></div>${quest.questFinanceLoaded ? reservationStatus ? `<div class="financial-line"><span>Funding Reservation</span><strong>${readableFinanceStatus(reservationStatus)}</strong></div><div class="financial-line"><span>Reserved</span><strong>${questBahtLabel(quest.questFinanceTotalReservedSatang)}</strong></div><div class="financial-line"><span>Remaining</span><strong>${questBahtLabel(quest.questFinanceRemainingSatang)}</strong></div>` : '<p class="audit-note">No Funding Reservation was returned by the Finance API.</p>' : ""}${financeError ? `<p class="audit-note">${escapeActivityText(financeError)}</p>` : quest.apiBacked && !quest.questFinanceLoaded ? '<p class="audit-note">Loading Quest finance data from the Admin API…</p>' : ""}${quest.questFinanceLoaded ? `<h3>Money movements</h3>${transferRows}<h3>Ledger Transactions</h3>${ledgerRows}` : ""}<p class="audit-note">Funds remain held in the Funding Reservation until proof approval or Dispute Case resolution.</p></section>`;
+  };
 
   const renderQuestPage = (): void => {
     if (!questRecord) {
-      main.innerHTML = `<div class="full-page-empty"><h1>Quest not found</h1><p>No synthetic quest matches <strong>${questId}</strong>.</p><a class="btn primary" href="/">Return to quests</a></div>`;
+      main.innerHTML = `<div class="full-page-empty"><h1>Quest not found</h1><p>No Quest matches <strong>${questId}</strong> in the Admin API.</p><a class="btn primary" href="/">Return to quests</a></div>`;
       return;
     }
     const quest = questRecord;
@@ -70,11 +103,19 @@ export function createQuestPageModule(
     const participants = detail.participantsForQuest(quest, questDetail);
     const started = detail.questHasStarted(quest);
     const relatedDispute = relatedDisputeFor(quest);
-    const isBlocked = relatedDispute?.status === "Active" || quest.status === "Disputed";
-    main.innerHTML = `<div class="record-breadcrumb"><a href="/">Quests</a><span>›</span><span>${quest.id}</span></div><div class="full-record-head"><div><div class="record-id">${quest.id}</div><h1>${quest.title}</h1><p>${quest.teamQuest ? "Team quest · " : ""}${quest.other} · created by ${quest.person}</p></div><div class="full-record-actions"><a class="btn" href="/">Back to list</a></div></div><div class="record-status-bar"><div><span>Status</span>${badge(quest.status, quest.tone)}</div><div><span>Funded wage</span><strong>฿${fmt(quest.amount)}</strong></div><div><span>Participant mode</span><strong>${quest.teamQuest ? "Team" : "Single"}</strong></div><div><span>Candidate mode</span><strong>${quest.candidateMode ?? (quest.status === "Open" ? "FCFS" : "CANDIDATE")}</strong></div><div><span>Proof</span><strong>${questDetail.proof.length ? `${questDetail.proof.length} ${questDetail.proof.length === 1 ? "file" : "files"}` : "No submission"}</strong></div></div><div class="full-record-grid"><div class="record-primary"><section class="record-panel"><div class="record-panel-head"><h2>Quest description</h2></div><p class="record-description">${questDetail.description}</p><div class="requirement-box"><strong>Completion requirements</strong><ul><li>Submit work before the recorded deadline</li><li>Attach verifiable proof files</li><li>Keep communication and payment inside KuQuest</li></ul></div></section>${detail.giverAttachmentsPanel(questDetail.giverAttachments)}<section class="record-panel"><div class="record-panel-head"><h2>${detail.participantSectionTitle(quest, participants, started)}</h2><span class="section-count">${participants.length}</span></div>${detail.relatedRows(participants)}</section>${detail.proofSubmissionsPanel(questDetail.proof, quest)}${detail.renderQuestEditHistory(quest)}<section class="record-panel"><div class="record-panel-head"><h2>Overall quest timeline</h2><button class="link">Export log</button></div>${timeline(questActivityTimeline(questDetail.activity))}</section></div><aside class="record-side"><section class="record-panel"><h2>Hirer</h2>${detail.giverProfile(questDetail)}${detail.giverProfileLink(questDetail)}</section><section class="record-panel"><h2>Schedule and location</h2><div class="side-facts"><div><span>Starts</span><strong>${questDetail.schedule[0]}</strong></div><div><span>Due</span><strong>${questDetail.schedule[1]}</strong></div><div><span>Application window</span><strong>${questDetail.schedule[2]}</strong></div><div><span>Location</span><strong>${questDetail.location[0]}</strong><small>${questDetail.location[1]}</small></div></div></section><section class="record-panel"><h2>Financial record</h2><div class="financial-line"><span>Funded by hirer</span><strong>฿${fmt(quest.amount)}</strong></div><div class="financial-line"><span>Platform fee</span><strong>฿${fmt(Math.round(quest.amount * 0.05))}</strong></div><div class="financial-line total"><span>${quest.teamQuest ? "Team receives (total)" : "Worker receives"}</span><strong>฿${fmt(Math.round(quest.amount * 0.95))}</strong></div><p class="audit-note">Funds remain held until submitted proof is accepted or a dispute is resolved.</p></section><section class="record-panel dispute-summary ${relatedDispute ? "has-dispute" : ""}"><div class="record-panel-head"><h2>Dispute and risk</h2>${relatedDispute ? badge(relatedDispute.status, relatedDispute.tone) : badge("Clear", "success")}</div>${relatedDispute ? `<p><strong>${relatedDispute.id}</strong> · ${relatedDispute.detail}</p><div class="dispute-money"><span>Amount held</span><strong>฿${fmt(relatedDispute.amount)}</strong></div><a class="btn primary full-width" href="/disputes/${encodeURIComponent(relatedDispute.id)}">Open full dispute</a>` : '<div class="no-dispute">No dispute or active moderation hold is connected to this quest.</div>'}</section></aside></div>`;
+    const questState = questStateFor(quest.questState ?? quest.status);
+    const hidden = hasHiddenQuestOverlay(quest);
+    const disputeStatus = relatedDispute
+      ? disputeCaseStatusFor(relatedDispute.disputeCaseStatus ?? relatedDispute.status)
+      : undefined;
+    const isBlocked = disputeStatus === "DISPUTE_CASE_PENDING";
+    const noRelatedDispute = questState === "QUEST_FAILED"
+      ? `<div class="no-dispute">No Dispute Case is linked to this failed Quest.</div>${openDisputeForm(quest, escapeActivityText)}`
+      : '<div class="no-dispute">No Dispute Case or active moderation hold is connected to this Quest.</div>';
+    main.innerHTML = `<div class="record-breadcrumb"><a href="/">Quests</a><span>›</span><span>${quest.id}</span></div><div class="full-record-head"><div><div class="record-id">${quest.id}</div><h1>${quest.title}</h1><p>${quest.teamQuest ? "Team quest · " : ""}${quest.other} · created by ${quest.person}</p></div><div class="full-record-actions"><a class="btn" href="/">Back to list</a></div></div><div class="record-status-bar"><div><span>Status</span>${badge(questState, quest.tone)}${hidden ? '<span class="badge neutral quest-hidden-overlay">Hidden</span>' : ""}</div><div><span>Quest Funding Total</span><strong>${questBahtLabel(quest.fundingTotalSatang)}</strong></div><div><span>Participant mode</span><strong>${quest.teamQuest ? "Team" : "Single"}</strong></div><div><span>Candidate mode</span><strong>${questCandidateModeLabel(quest.candidateMode, questState)}</strong></div><div><span>Proof</span><strong>${questDetail.proof.length ? `${questDetail.proof.length} ${questDetail.proof.length === 1 ? "file" : "files"}` : "No submission"}</strong></div></div><div class="full-record-grid"><div class="record-primary"><section class="record-panel"><div class="record-panel-head"><h2>Quest description</h2></div><p class="record-description">${questDetail.description}</p><div class="requirement-box"><strong>Completion requirements</strong><ul><li>Submit work before the recorded deadline</li><li>Attach verifiable proof files</li><li>Keep communication and payment inside KuQuest</li></ul></div></section>${detail.giverAttachmentsPanel(questDetail.giverAttachments)}<section class="record-panel"><div class="record-panel-head"><h2>${detail.participantSectionTitle(quest, participants, started)}</h2><span class="section-count">${participants.length}</span></div>${detail.relatedRows(participants)}</section>${detail.proofSubmissionsPanel(questDetail.proof, quest)}${detail.renderQuestEditHistory(quest)}<section class="record-panel"><div class="record-panel-head"><h2>Overall quest timeline</h2><button class="link">Export log</button></div>${timeline(questActivityTimeline(questDetail.activity))}</section></div><aside class="record-side"><section class="record-panel"><h2>Hirer</h2>${detail.giverProfile(questDetail)}${detail.giverProfileLink(questDetail)}</section><section class="record-panel"><h2>Schedule and location</h2><div class="side-facts"><div><span>Starts</span><strong>${questDetail.schedule[0]}</strong></div><div><span>Due</span><strong>${questDetail.schedule[1]}</strong></div><div><span>Location</span><strong>${questDetail.location[0]}</strong><small>${questDetail.location[1]}</small></div></div></section>${questFinancialRecord(quest)}<section class="record-panel dispute-summary ${relatedDispute ? "has-dispute" : ""}><div class="record-panel-head"><h2>Dispute and risk</h2>${relatedDispute ? badge(disputeStatus ?? "DISPUTE_CASE_PENDING", relatedDispute.tone) : ""}</div>${relatedDispute ? `<p><strong>${relatedDispute.id}</strong> · ${relatedDispute.detail}</p>${typeof relatedDispute.amount === "number" ? `<div class="dispute-money"><span>Amount held</span><strong>฿${fmt(relatedDispute.amount)}</strong></div>` : '<p class="audit-note">Amount at risk was not returned by the Admin API.</p>'}<a class="btn primary full-width" href="/disputes/${encodeURIComponent(relatedDispute.id)}">Open full dispute</a>` : noRelatedDispute}</section></aside></div>`;
     main.querySelector<HTMLElement>(".record-primary .record-panel:last-child .link")?.setAttribute("data-functional-action", "export-log");
     main.querySelector<HTMLElement>(".full-record-actions button:not([data-page-action])")?.remove();
-    const canTerminate = !["Completed", "Cancelled", "Hidden", "Disputed"].includes(quest.status);
+    const canTerminate = !isQuestTerminal(questState);
     if (canTerminate) {
       const terminateButton = main.ownerDocument.createElement("button");
       terminateButton.className = "btn danger";
@@ -86,7 +127,7 @@ export function createQuestPageModule(
       .find((panel) => panel.querySelector("h2")?.textContent === "Financial record")
       ?.querySelector<HTMLElement>(".audit-note");
     if (defaultFinancialNote) defaultFinancialNote.textContent = "Funds remain held until submitted proof is accepted or a dispute is resolved.";
-    if (quest.status === "Cancelled") {
+    if (questState === "QUEST_CANCELLED") {
       if (defaultFinancialNote) defaultFinancialNote.textContent = "This quest was cancelled. Any held funds require separate settlement review.";
       const terminationNote = main.ownerDocument.createElement("div");
       terminationNote.className = "decision-block";
@@ -95,7 +136,7 @@ export function createQuestPageModule(
       if (note) note.textContent = quest.terminationReason ?? "This quest was cancelled by an administrator.";
       main.querySelector(".record-status-bar")?.before(terminationNote);
     }
-    if (relatedDispute?.status === "Closed") main.querySelector(".dispute-summary")?.classList.remove("has-dispute");
+    if (disputeStatus !== "DISPUTE_CASE_PENDING") main.querySelector(".dispute-summary")?.classList.remove("has-dispute");
     if (isBlocked) {
       const disputeUrl = `/disputes/${encodeURIComponent(relatedDispute?.id ?? "")}`;
       const blocker = main.ownerDocument.createElement("div");
@@ -116,15 +157,48 @@ export function createQuestPageModule(
         disputeSummary.querySelector("p")?.remove();
       }
     }
-    main.querySelectorAll<HTMLElement>("[data-page-action]").forEach((button) => {
+    main.querySelectorAll<HTMLButtonElement>("[data-page-action]").forEach((button) => {
       button.addEventListener("click", () => {
         const action = button.dataset.pageAction;
-        if (action === "Terminate quest") {
-          confirmAction(action, quest, "This will cancel the quest, stop further progression, and preserve the record in the admin audit trail.", (reason) => {
-            applyDemoAction(action, quest);
-            quest.terminationReason = reason;
+        if (action === "Open Dispute Case") {
+          const workerSelect = main.querySelector<HTMLSelectElement>("[data-open-dispute-worker]");
+          const workerId = workerSelect?.value ?? "";
+          if (!workerId) {
+            toast("Select an assigned Worker before opening the Dispute Case.");
+            return;
+          }
+          const worker = quest.assignedWorkers?.find(([id]) => id === workerId);
+          if (!window.confirm(`Open a Dispute Case for ${worker?.[1] ?? workerId}?`)) return;
+          button.disabled = true;
+          button.setAttribute("aria-busy", "true");
+          button.textContent = "Opening Dispute Case…";
+          void adminCommands.openDispute(quest.id, { workerId }).then((result) => {
             persistAdminData();
             renderQuestPage();
+            toast(`Dispute Case ${result.id} is ready for review.`);
+            return undefined;
+          }).catch((error: unknown) => {
+            button.disabled = false;
+            button.removeAttribute("aria-busy");
+            button.textContent = "Open Dispute Case";
+            toast(`Open Dispute Case failed: ${error instanceof Error ? error.message : "Request failed."}`);
+          });
+          return;
+        }
+        if (action === "Terminate quest") {
+          confirmAction(action, quest, "This will cancel the quest, stop further progression, and preserve the record in the admin audit trail.", (reason, reasonCode) => {
+            void adminCommands.terminateQuest(quest.id, {
+              idempotencyKey: newAdminIdempotencyKey("terminate-quest", quest.id),
+              reason,
+              reasonCode: (reasonCode as AdminQuestReasonCode | undefined) ?? "POLICY_REVIEW",
+            }).then(() => {
+              persistAdminData();
+              renderQuestPage();
+              toast(`${action} completed for ${quest.id}.`);
+              return undefined;
+            }).catch((error: unknown) => {
+              toast(`${action} failed: ${error instanceof Error ? error.message : "Request failed."}`);
+            });
           });
           return;
         }

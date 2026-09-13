@@ -1,13 +1,154 @@
 import type { LegacyRecord } from "./runtime";
 import { data, disputeCases } from "./runtime-data";
+import {
+  disputeCaseStatusLabel,
+  isConductReportStatus,
+  isDisputeCaseStatus,
+  isPayoutStatus,
+  isQuestState,
+  isReportCaseStatus,
+  isTopUpStatus,
+  isWalletStatus,
+  memberStatusLabel,
+  payoutStatusFor,
+  payoutStatusLabel,
+  questStateLabel,
+  reportCaseStatusLabel,
+  topUpStatusLabel,
+  walletStatusLabel,
+} from "../domain/rulebook";
+import { mockAdminCommandPort } from "./admin-command-port";
+import { adminApiCommandPort } from "../api/admin-api";
+import type { AdminCommandPort } from "../api/admin-api";
+import { isAdminApiEnabled } from "../api/admin-provider";
+import { mergeLiveDisputeSummary, mergeLiveOpenedDispute, mergeLiveQuestCommand, mergeLiveWalletProjection, payoutRecordFromApi } from "./live-review-data";
+import { statusBadgeClass } from "../status-badge";
 
 export { data, disputeCases };
+export { mockAdminCommandPort };
+export type { AdminCommandPort };
+
+function mergeLivePayout(
+  id: string,
+  result: Awaited<ReturnType<typeof adminApiCommandPort.approvePayout>>,
+): void {
+  const record = data.payouts.find((candidate) => candidate.id === id);
+  if (record) Object.assign(record, payoutRecordFromApi(result.resourceSummary), {
+    version: result.resourceVersion,
+  });
+}
+
+function mergeLiveWalletStatus(
+  walletId: string,
+  result: Awaited<ReturnType<typeof adminApiCommandPort.setWalletStatus>>,
+): void {
+  const wallet = result.wallet;
+  const totalBalanceSatang = wallet.spendingBalanceSatang
+    + wallet.earningsBalanceSatang
+    + wallet.fundingReservedSatang
+    + wallet.reservedForPayoutsSatang;
+  const fields = {
+    status: wallet.walletStatus,
+    walletStatus: wallet.walletStatus,
+    tone: wallet.walletStatus === "ACTIVE" ? "success" : wallet.walletStatus === "FROZEN" ? "warning" : wallet.walletStatus === "CLOSED" ? "cancelled" : "danger",
+    amount: totalBalanceSatang / 100,
+    walletTotalBalanceSatang: totalBalanceSatang,
+    walletSpendingBalanceSatang: wallet.spendingBalanceSatang,
+    walletEarningsBalanceSatang: wallet.earningsBalanceSatang,
+    walletFundingReservedSatang: wallet.fundingReservedSatang,
+    walletReservedForPayoutsSatang: wallet.reservedForPayoutsSatang,
+  };
+  [
+    data.wallets.find((record) => record.walletId === walletId || record.id === walletId),
+    data.users.find((record) => record.walletId === walletId),
+  ].forEach((record) => {
+    if (record) Object.assign(record, fields);
+  });
+}
+
+const livePayoutCommands: AdminCommandPort = {
+  ...mockAdminCommandPort,
+  approvePayout: async (payoutId, options) => {
+    const payout = await adminApiCommandPort.approvePayout(payoutId, options);
+    mergeLivePayout(payoutId, payout);
+    return payout;
+  },
+  rejectPayout: async (payoutId, options) => {
+    const result = await adminApiCommandPort.rejectPayout(payoutId, options);
+    mergeLivePayout(payoutId, result);
+    return result;
+  },
+  reconcilePayout: async (payoutId) => adminApiCommandPort.reconcilePayout(payoutId),
+  retryPayoutProviderEvent: async (eventId) => adminApiCommandPort.retryPayoutProviderEvent(eventId),
+};
+
+const liveWalletCommands: AdminCommandPort = {
+  ...mockAdminCommandPort,
+  setWalletStatus: async (walletId, options) => {
+    const result = await adminApiCommandPort.setWalletStatus(walletId, options);
+    mergeLiveWalletStatus(walletId, result);
+    return result;
+  },
+  rebuildWalletProjection: async (walletId) => {
+    const result = await adminApiCommandPort.rebuildWalletProjection(walletId);
+    mergeLiveWalletProjection(walletId, result);
+    return result;
+  },
+};
+
+const liveQuestCommands: AdminCommandPort = {
+  ...mockAdminCommandPort,
+  hideQuest: async (questId, options) => {
+    const result = await adminApiCommandPort.hideQuest(questId, options);
+    mergeLiveQuestCommand(questId, result);
+    return result;
+  },
+  restoreQuest: async (questId, options) => {
+    const result = await adminApiCommandPort.restoreQuest(questId, options);
+    mergeLiveQuestCommand(questId, result);
+    return result;
+  },
+  terminateQuest: async (questId, options) => {
+    const result = await adminApiCommandPort.terminateQuest(questId, options);
+    mergeLiveQuestCommand(questId, result);
+    return result;
+  },
+  openDispute: async (questId, options) => {
+    const result = await adminApiCommandPort.openDispute(questId, options);
+    const quest = data.quests.find((record) => record.id === questId);
+    if (quest) mergeLiveOpenedDispute(quest, result);
+    return result;
+  },
+  resolveDispute: async (disputeCaseId, options) => {
+    const mockDispute = data.disputes.find((record) =>
+      !record.apiBacked
+      && (record.questId === disputeCaseId || record.id === disputeCaseId || disputeCases[record.id]?.questId === disputeCaseId),
+    );
+    if (mockDispute) return mockAdminCommandPort.resolveDispute(disputeCaseId, options);
+    const result = await adminApiCommandPort.resolveDispute(disputeCaseId, options);
+    const liveDispute = data.disputes.find((record) => record.id === disputeCaseId);
+    if (liveDispute) mergeLiveDisputeSummary(liveDispute, result.resourceSummary);
+    return result;
+  },
+};
+
+// The live adapter uses the API for Quest, Dispute Case, Wallet, and Payout commands.
+// Mock Dispute Cases remain available only when the Admin is not API-backed.
+export const adminCommands: AdminCommandPort = isAdminApiEnabled()
+  ? {
+    ...livePayoutCommands,
+    setWalletStatus: liveWalletCommands.setWalletStatus,
+    rebuildWalletProjection: liveWalletCommands.rebuildWalletProjection,
+    hideQuest: liveQuestCommands.hideQuest,
+    restoreQuest: liveQuestCommands.restoreQuest,
+    terminateQuest: liveQuestCommands.terminateQuest,
+    openDispute: liveQuestCommands.openDispute,
+    resolveDispute: liveQuestCommands.resolveDispute,
+  }
+  : mockAdminCommandPort;
 export {
   addUserHistory,
   adminDateTime,
-  applyDemoAction,
-  applyReportDecision,
-  autoRejectUnavailablePayout,
   completedPayoutQuests,
   confirmedViolationCount,
   currentAdminName,
@@ -30,7 +171,7 @@ export {
   userReportsFor,
 } from "./runtime-seed";
 
-type IconName = "home" | "scale" | "quest" | "users" | "wallet" | "settings" | "history" | "menu" | "search" | "filter" | "paperclip" | "check" | "user" | "flag";
+type IconName = "home" | "scale" | "quest" | "users" | "wallet" | "settings" | "history" | "menu" | "search" | "filter" | "check" | "user" | "flag";
 type Tone = "warning" | "danger" | "success" | "info" | "neutral" | "assigned" | "cancelled";
 type TimelineEntry = string | { title: string; detail?: string; time?: string; showDetails?: boolean };
 type TimelineOptions = { showDetails?: boolean };
@@ -46,7 +187,6 @@ const paths: Record<IconName, string> = {
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
   filter: '<path d="M4 5h16M7 12h10M10 19h4"/>',
-  paperclip: '<path d="m21.4 11.6-8.5 8.5a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/>',
   check: '<path d="m4 12 5 5L20 6"/>',
   user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
   flag: '<path d="M5 21V4m0 0h12l-2 4 2 4H5"/>',
@@ -76,17 +216,34 @@ export function escapeActivityText(value: unknown): string {
 
 function questStatusClass(status: string): string {
   const slug = String(status ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  return ["open", "assigned", "in-progress", "submitted", "change-pending", "approved", "disputed", "completed", "hidden", "draft", "cancelled"].includes(slug)
+  return ["open", "assigned", "in-progress", "submitted", "change-pending", "approved", "disputed", "completed", "hidden", "draft", "cancelled", "failed"].includes(slug)
     ? ` quest-status-${slug}`
     : "";
 }
 
-export const badge = (status: string, tone: string): string =>
-  `<span class="badge ${toneClass(tone)}${questStatusClass(status)}">${escapeActivityText(status)}</span>`;
-
-export function chatTimeLabel(date = new Date()): string {
-  return `Today · ${date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`;
+function statusLabel(status: string): string {
+  if (isPayoutStatus(status)) return payoutStatusLabel(status);
+  if (isQuestState(status)) return questStateLabel(status);
+  if (isDisputeCaseStatus(status)) return disputeCaseStatusLabel(status);
+  if (isReportCaseStatus(status) || isConductReportStatus(status)) return reportCaseStatusLabel(status);
+  if (isTopUpStatus(status)) return topUpStatusLabel(status);
+  if (isWalletStatus(status)) return walletStatusLabel(status);
+  if (["Normal", "Flag", "Temp Ban", "Perm Ban", "Temp ban", "Perm ban", "Red Flag"].includes(status)) {
+    return memberStatusLabel(status);
+  }
+  return status;
 }
+
+export const badge = (status: string, tone: string): string => {
+  const label = statusLabel(status);
+  const metadata = label === status
+    ? ""
+    : ` title="${escapeActivityText(status)}" aria-label="${escapeActivityText(`${label} (${status})`)}"`;
+  return `<span class="badge ${toneClass(tone)}${questStatusClass(status)} ${statusBadgeClass(status)}"${metadata}>${escapeActivityText(label)}</span>`;
+};
+
+export const payoutBadge = (value: unknown, tone: string): string =>
+  badge(payoutStatusFor(value), tone);
 
 export function disputeTypeLabel(record: Pick<LegacyRecord, "disputeType">): string {
   return record.disputeType || "Other";
@@ -94,37 +251,39 @@ export function disputeTypeLabel(record: Pick<LegacyRecord, "disputeType">): str
 
 export function payoutDecisionContext(record: LegacyRecord): { heading: string; copy: string; next: string } {
   const contexts: Record<string, { heading: string; copy: string; next: string }> = {
-    "Needs approval": {
+    PENDING_ADMIN_APPROVAL: {
       heading: "Why your approval is needed",
       copy: "This payout is ready for release, but it cannot move to the bank until an admin approves it.",
-      next: "Approve payout → status changes to Processing. Funds are not yet transferred.",
+      next: "Approve payout → status changes to SUBMITTED_TO_PROVIDER. Funds are not yet transferred.",
     },
-    Processing: {
+    SUBMITTED_TO_PROVIDER: {
+      heading: "Transfer submitted",
+      copy: "The payout was approved and submitted to the payment provider.",
+      next: "The provider will report the final transfer result.",
+    },
+    PROVIDER_PENDING: {
       heading: "Transfer in progress",
       copy: "The payout has been approved and is moving to the recipient’s bank. No action is needed unless the transfer fails.",
-      next: "The record will become Completed after the bank confirms the transfer.",
+      next: "The record will become SUCCEEDED after the provider confirms the transfer.",
     },
-    Completed: {
+    SUCCEEDED: {
       heading: "Transfer completed",
       copy: "The recipient’s bank transfer completed successfully. This record is retained for audit.",
       next: "No further admin action is available.",
     },
-    Rejected: {
+    CANCELLED: {
       heading: "Payout rejected",
       copy: "This payout was rejected before funds were released. Review the recorded reason before creating a new payout request.",
       next: "No retry is available from this record.",
     },
-    Failed: {
+    FAILED: {
       heading: "Transfer failed",
       copy: "The payment provider could not complete this transfer.",
       next: "Review the failure reason before creating a new payout request.",
     },
   };
-  return contexts[record.status] || contexts["Needs approval"];
-}
-
-export function chatMessage(sender: string, time: string, message: string, variant: string): string {
-  return `<article class="chat-message ${variant}"><div class="chat-message-meta"><strong>${escapeActivityText(sender)}</strong><time>${escapeActivityText(time)}</time></div><p>${escapeActivityText(message)}</p></article>`;
+  const status = payoutStatusFor(record.payoutStatus ?? record.status);
+  return contexts[status] || contexts.PENDING_ADMIN_APPROVAL;
 }
 
 function timelineDetail(title: string, index: number): string {
@@ -155,15 +314,4 @@ export function timeline(items: TimelineEntry[], options: TimelineOptions = {}):
     const detail = entry.time ? entry.detail : parts.slice(timeParts).join(" · ") || timelineDetail(entry.title, index);
     return `<li><strong>${escapeActivityText(entry.title)}</strong>${time ? `<time>${escapeActivityText(time)}</time>` : ""}${options.showDetails === false || entry.showDetails === false ? "" : `<span>${escapeActivityText(detail)}</span>`}</li>`;
   }).join("")}</ul>`;
-}
-
-export function bindChatAttachment(form: HTMLFormElement): void {
-  const input = form.querySelector<HTMLElement & { files?: FileList }>("[data-chat-attachment]");
-  const label = form.querySelector<HTMLElement>("[data-chat-attachment-name]");
-  if (!input || !label) return;
-  input.addEventListener("change", () => {
-    const file = input.files?.[0];
-    label.textContent = file?.name || "No file attached";
-    label.title = file?.name || "";
-  });
 }

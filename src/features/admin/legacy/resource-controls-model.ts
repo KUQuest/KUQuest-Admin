@@ -1,9 +1,24 @@
-import type { LegacyPageState, LegacyRecord, LegacyRuntimeData } from "./runtime";
+import type { LegacyPageState, LegacyRecord } from "./runtime";
+import {
+  disputeCaseStatusFor,
+  memberStatusFor,
+  payoutStatusFor,
+  questStateFor,
+  reportCaseStatusFor,
+  topUpStatusFor,
+  walletStatusFor,
+} from "../domain/rulebook";
 
-export type ResourceView = keyof Pick<
-  LegacyRuntimeData,
-  "disputes" | "quests" | "users" | "payouts" | "reports"
->;
+export type ResourceView =
+  | "disputes"
+  | "quests"
+  | "users"
+  | "wallets"
+  | "payouts"
+  | "topups"
+  | "reports"
+  | "conduct-reports";
+export type ResourceCollections = Record<ResourceView, LegacyRecord[]>;
 export type ResourceColumn = [string, string];
 export type Pagination = { page: number; size: number | "all" };
 export type PaginationResult = {
@@ -21,7 +36,7 @@ export type ResourceState = Pick<
 
 export const resourceColumns: Record<ResourceView, ResourceColumn[]> = {
   disputes: [
-    ["id", "Case"],
+    ["displayId", "Case"],
     ["title", "Quest"],
     ["amount", "Amount"],
     ["status", "Status"],
@@ -32,16 +47,25 @@ export const resourceColumns: Record<ResourceView, ResourceColumn[]> = {
     ["id", "Quest"],
     ["title", "Title"],
     ["person", "Hirer"],
-    ["other", "Tag"],
+    ["createdAt", "Created At"],
     ["amount", "Wage"],
     ["status", "Status"],
   ],
   users: [
     ["id", "Student ID"],
     ["title", "User"],
-    ["person", "Email"],
+    ["person", "Member ID"],
     ["other", "Academic profile"],
-    ["status", "Status"],
+    ["memberStatus", "Status"],
+  ],
+  wallets: [
+    ["id", "Wallet / Member ID"],
+    ["title", "Member"],
+    ["person", "Email"],
+    ["walletTotalBalanceSatang", "Current Wallet Balance"],
+    ["walletLatestTransactionAt", "Latest Wallet Transaction Date"],
+    ["status", "Wallet status"],
+    ["accountCreatedAt", "Created"],
   ],
   payouts: [
     ["id", "Payout"],
@@ -51,38 +75,90 @@ export const resourceColumns: Record<ResourceView, ResourceColumn[]> = {
     ["requestedAt", "Requested"],
     ["status", "Status"],
   ],
+  topups: [
+    ["id", "Top-up"],
+    ["title", "Member"],
+    ["person", "Member ID"],
+    ["creditAmountSatang", "Credit"],
+    ["paymentTotalSatang", "Payment total"],
+    ["status", "Status"],
+    ["createdAt", "Created"],
+  ],
   reports: [
     ["id", "Report"],
+    ["reportType", "Type"],
+    ["source", "Source"],
     ["reportedUserName", "Reported user"],
     ["reporterName", "Reported by"],
-    ["category", "Type"],
+    ["category", "Reason"],
+    ["status", "Status"],
+    ["reportedAt", "Reported"],
+  ],
+  "conduct-reports": [
+    ["id", "Conduct report"],
+    ["relatedQuestTitle", "Quest"],
+    ["reportedUserName", "Reported member"],
+    ["reporterName", "Reported by"],
+    ["category", "Reason"],
     ["status", "Status"],
     ["reportedAt", "Reported"],
   ],
 };
 
 export const resourceTabs: Record<ResourceView, string[]> = {
-  disputes: ["All", "Active", "Closed"],
-  payouts: ["All", "Needs approval", "Processing", "Completed", "Rejected"],
+  disputes: ["All", "DISPUTE_CASE_PENDING", "DISPUTE_CASE_DISMISSED", "DISPUTE_CASE_RESOLVED"],
+  payouts: ["All", "PENDING_ADMIN_APPROVAL", "SUBMITTED_TO_PROVIDER", "PROVIDER_PENDING", "SUCCEEDED", "FAILED", "CANCELLED"],
+  topups: ["All", "PENDING", "PAID", "EXPIRED", "FAILED"],
   quests: [
     "All",
     "Team",
     "Solo",
-    "Draft",
-    "Open",
-    "Assigned",
-    "In progress",
-    "Submitted",
-    "Change pending",
-    "Approved",
-    "Disputed",
-    "Completed",
-    "Cancelled",
-    "Hidden",
+    "QUEST_DRAFT",
+    "QUEST_OPEN",
+    "QUEST_ASSIGNED",
+    "QUEST_IN_PROGRESS",
+    "QUEST_COMPLETED",
+    "QUEST_CANCELLED",
+    "QUEST_FAILED",
   ],
-  users: ["All", "Normal", "Red Flag", "Temp ban", "Perm ban"],
-  reports: ["All", "Active", "Closed"],
+  users: ["All", "Normal", "Flag", "Temp Ban", "Perm Ban"],
+  wallets: ["All", "ACTIVE", "FROZEN", "SUSPENDED", "CLOSED"],
+  reports: ["All", "OPEN", "DISMISSED", "CONFIRMED", "REPORT_CASE_RESTORED"],
+  "conduct-reports": ["All", "CONDUCT_REPORT_PENDING", "CONDUCT_REPORT_UPHELD", "CONDUCT_REPORT_DISMISSED"],
 };
+
+export function reportTabLabel(tab: string): string {
+  switch (tab) {
+    case "OPEN":
+      return "Open";
+    case "DISMISSED":
+      return "Dismissed";
+    case "CONFIRMED":
+    case "CONDUCT_REPORT_UPHELD":
+      return "Confirmed";
+    case "REPORT_CASE_HIDDEN":
+      return "Confirmed";
+    case "REPORT_CASE_RESTORED":
+      return "Restored";
+    default:
+      return tab;
+  }
+}
+
+export function reportStatusMatchesTab(tab: string, status: string): boolean {
+  switch (tab.trim().toUpperCase()) {
+    case "ALL":
+      return true;
+    case "OPEN":
+      return status === "REPORT_CASE_PENDING" || status === "CONDUCT_REPORT_PENDING";
+    case "DISMISSED":
+      return status === "REPORT_CASE_DISMISSED" || status === "CONDUCT_REPORT_DISMISSED";
+    case "CONFIRMED":
+      return status === "REPORT_CASE_HIDDEN" || status === "CONDUCT_REPORT_UPHELD";
+    default:
+      return status === tab.trim().toUpperCase();
+  }
+}
 
 export const pageSizeOptions: Array<[number | "all", string]> = [
   [10, "Show 10"],
@@ -112,7 +188,7 @@ export function resetResourceState(state: ResourceState): void {
 }
 
 export function matchingRows(
-  collections: Pick<LegacyRuntimeData, ResourceView>,
+  collections: ResourceCollections,
   state: ResourceState,
   view: ResourceView,
 ): LegacyRecord[] {
@@ -120,12 +196,17 @@ export function matchingRows(
   const statuses = state.filters[view] || [];
   const questFilters = state.questFilters || { mode: "all", status: "all" };
   const rows = collections[view].filter((record) => {
+    const displayStatus = statusForView(view, record);
+    const rawStatus = record.status.toLowerCase();
     const searchable = [
       record.id,
       record.title,
       record.person,
       record.other,
       record.status,
+      record.memberStatus || "",
+      record.walletStatus || "",
+      displayStatus,
       record.disputeDate || "",
       record.disputeType || "",
       record.reporterName || "",
@@ -134,7 +215,9 @@ export function matchingRows(
       record.details || "",
       record.reportedAt || "",
       record.requestedAt || "",
+      record.createdAt || "",
       record.detail || "",
+      view === "reports" ? (record.conductReportStatus ? "Conduct Report Quest" : "Report Case Message") : "",
     ]
       .join(" ")
       .toLowerCase();
@@ -145,12 +228,17 @@ export function matchingRows(
               ? Boolean(record.teamQuest)
               : !record.teamQuest)) &&
           (questFilters.status === "all" ||
+            displayStatus === questFilters.status ||
             record.status === questFilters.status)
-        : state.tab === "all" || record.status.toLowerCase().includes(state.tab);
+        : view === "users" && !record.memberStatus
+          ? state.tab === "all"
+          : view === "reports"
+            ? reportStatusMatchesTab(state.tab, displayStatus)
+            : state.tab === "all" || displayStatus.toLowerCase() === state.tab || rawStatus.includes(state.tab);
     return (
       (!query || searchable.includes(query)) &&
       matchesTab &&
-      (!statuses.length || statuses.includes(record.status))
+      (!statuses.length || statuses.includes(record.status) || statuses.includes(displayStatus))
     );
   });
   const activeSort = sortSpec(view, state.orderBy[view]);
@@ -178,6 +266,17 @@ export function matchingRows(
         : leftRecord.index - rightRecord.index;
     })
     .map(({ record }) => record);
+}
+
+function statusForView(view: ResourceView, record: LegacyRecord): string {
+  if (view === "quests") return questStateFor(record.questState ?? record.status);
+  if (view === "disputes") return disputeCaseStatusFor(record.disputeCaseStatus ?? record.status);
+  if (view === "payouts") return payoutStatusFor(record.payoutStatus ?? record.status);
+  if (view === "topups") return topUpStatusFor(record.topUpStatus ?? record.status);
+  if (view === "reports") return reportCaseStatusFor(record.conductReportStatus ?? record.reportCaseStatus ?? record.status, record.decision);
+  if (view === "conduct-reports") return reportCaseStatusFor(record.conductReportStatus ?? record.status, record.decision);
+  if (view === "users") return memberStatusFor(record.memberStatus);
+  return walletStatusFor(record.walletStatus ?? record.status);
 }
 
 export function sortSpec(
@@ -213,6 +312,10 @@ function sortValue(record: LegacyRecord, key: string): string | number | null {
   if (key === "disputeDate") return dateSortValue(record.disputeDate);
   if (key === "requestedAt") return dateSortValue(record.requestedAt);
   if (key === "reportedAt") return dateSortValue(record.reportedAt);
+  if (key === "createdAt") return dateSortValue(record.createdAt);
+  if (key === "walletLatestTransactionAt") return dateSortValue(record.walletLatestTransactionAt);
+  if (key === "reportType") return record.conductReportStatus ? "Conduct Report" : "Report Case";
+  if (key === "source") return record.conductReportStatus ? "Quest" : "Message";
   const value = record[key];
   if (typeof value === "string" || typeof value === "number") return value;
   if (value == null) return null;
@@ -291,6 +394,14 @@ export function questFilterKind(tab: string): "all" | "mode" | "status" {
   return "status";
 }
 
+export function resourceTabValue(tab: string): string {
+  const normalized = tab.trim().toLowerCase();
+  if (normalized === "all") return "All";
+  if (normalized === "team") return "Team";
+  if (normalized === "solo") return "Solo";
+  return tab.trim().toUpperCase();
+}
+
 export function resourceTabIsActive(
   state: ResourceState,
   view: ResourceView,
@@ -301,5 +412,18 @@ export function resourceTabIsActive(
   const filters = state.questFilters || { mode: "all", status: "all" };
   if (normalized === "all") return filters.mode === "all" && filters.status === "all";
   if (["team", "solo"].includes(normalized)) return filters.mode === normalized;
-  return filters.status === tab;
+  return filters.status === tab || filters.status === legacyStatusForTab(tab);
+}
+
+function legacyStatusForTab(tab: string): string {
+  const values: Record<string, string> = {
+    QUEST_DRAFT: "Draft",
+    QUEST_OPEN: "Open",
+    QUEST_ASSIGNED: "Assigned",
+    QUEST_IN_PROGRESS: "In progress",
+    QUEST_COMPLETED: "Completed",
+    QUEST_CANCELLED: "Cancelled",
+    QUEST_FAILED: "Failed",
+  };
+  return values[tab] || tab;
 }

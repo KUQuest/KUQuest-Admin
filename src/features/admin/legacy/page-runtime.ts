@@ -2,6 +2,20 @@ import type { DisputeCase as ModerationDisputeCase, ModerationPageContext } from
 import type { QuestData, QuestDetailDependencies } from "./quest-detail";
 import type { LegacyDisputeCase, LegacyRecord, LegacyRuntimeData } from "./runtime";
 import type { UserPageContext, UserRecord } from "./user-page";
+import { isAdminApiEnabled } from "../api/admin-provider";
+import {
+  hydrateLiveQuest,
+  loadLiveDispute,
+  loadLiveMember,
+  loadLiveQuest,
+  refreshLiveDisputes,
+  refreshLiveMembers,
+  refreshLivePayouts,
+  refreshLiveTopUps,
+  refreshLiveQuests,
+  refreshLiveWallets,
+  loadLiveWalletStatement,
+} from "./live-review-data";
 
 export type TypedLegacyPage = "home" | "quest" | "dispute" | "report" | "user";
 
@@ -30,21 +44,18 @@ type SharedRuntimeCore = Pick<
   | "toneClass"
   | "disputeTypeLabel"
   | "timeline"
-  | "chatMessage"
-  | "chatTimeLabel"
-  | "bindChatAttachment"
   | "confirmAction"
   | "toast"
   | "renderHome"
   | "render"
   | "setActiveNavigation"
-  | "applyDemoAction"
+  | "refreshNavigationCounts"
   | "payoutQuestId"
   | "penaltyOutcomeFor"
   | "penaltyOutcomeLabel"
   | "redFlagExemptionFor"
   | "confirmedViolationCount"
-  | "applyReportDecision"
+  | "adminCommands"
   | "openDrawer"
   | "openPenaltyDialog"
   | "userQuestRecords"
@@ -112,7 +123,9 @@ function createQuestDetailDependencies(
     showDrawerLayer: core.showDrawerLayer,
     closeDrawer: core.closeDrawer,
     confirmAction: core.confirmAction,
-    applyDemoAction: core.applyDemoAction,
+    hydrateQuest: isAdminApiEnabled() ? hydrateLiveQuest : undefined,
+    adminCommands: core.adminCommands,
+    toast: core.toast,
     persistAdminData,
     refresh: core.render,
     badge: core.badge,
@@ -129,6 +142,7 @@ async function initializeHomePage(
   core: SharedRuntimeCore,
   mockData: typeof import("./fresh-mock-data"),
 ): Promise<void> {
+  const persistAdminData = isAdminApiEnabled() ? () => undefined : mockData.persistAdminData;
   const common = {
     document,
     main: core.main,
@@ -146,15 +160,13 @@ async function initializeHomePage(
     toneClass: core.toneClass,
     disputeTypeLabel: core.disputeTypeLabel,
     timeline: core.timeline,
-    chatMessage: core.chatMessage,
-    chatTimeLabel: core.chatTimeLabel,
-    bindChatAttachment: core.bindChatAttachment,
     confirmAction: core.confirmAction,
-    persistAdminData: mockData.persistAdminData,
+    persistAdminData,
     toast: core.toast,
     renderHome: core.renderHome,
     render: core.render,
     setActiveNavigation: core.setActiveNavigation,
+    adminCommands: core.adminCommands,
   };
 
   await import("./resource-controls");
@@ -162,7 +174,7 @@ async function initializeHomePage(
   if (isQuestData(runtimeData)) {
     const questData = runtimeData;
     const { createQuestDetailModule } = await import("./quest-detail");
-    const detail = createQuestDetailModule(createQuestDetailDependencies(core, questData, mockData.persistAdminData));
+    const detail = createQuestDetailModule(createQuestDetailDependencies(core, questData, persistAdminData));
     window.openQuestDrawer = detail.openQuestDrawer;
   }
   if (isModerationData(runtimeData)) {
@@ -177,6 +189,29 @@ async function initializeHomePage(
     window.openDisputeDrawer = detail.openDisputeDrawer;
   }
   core.render();
+}
+
+const legacyBoardViews = new Set([
+  "home",
+  "disputes",
+  "quests",
+  "users",
+  "wallets",
+  "payouts",
+  "topups",
+  "reports",
+  "conduct-reports",
+  "policies",
+  "activity",
+]);
+
+function resetLegacyBoardState(core: SharedRuntimeCore, search: string): void {
+  const requestedView = new URLSearchParams(search).get("view") ?? "home";
+  const normalizedView = requestedView === "conduct-reports" ? "reports" : requestedView;
+  core.state.view = legacyBoardViews.has(normalizedView) ? normalizedView : "home";
+  core.state.tab = "all";
+  core.state.query = "";
+  core.state.questFilters = { mode: "all", status: "all" };
 }
 
 function moderationDisputeCases(
@@ -212,15 +247,41 @@ export async function initializeTypedLegacyPage(
 ): Promise<void> {
   if (options.page === "home") {
     const core = await import("./script");
+    resetLegacyBoardState(core, options.search);
+    core.main.replaceChildren();
     const mockData = await import("./fresh-mock-data");
+    if (isAdminApiEnabled()) {
+      const view = new URLSearchParams(options.search).get("view");
+      const liveRefresh = view === "quests"
+        ? refreshLiveQuests()
+        : view === "disputes"
+          ? refreshLiveDisputes()
+          : view === "payouts"
+            ? refreshLivePayouts()
+            : view === "topups"
+              ? refreshLiveTopUps()
+              : view === "users"
+              ? refreshLiveMembers()
+              : view === "wallets"
+                ? refreshLiveWallets()
+                : Promise.resolve();
+      await Promise.all([liveRefresh, core.refreshNavigationCounts()]);
+    } else {
+      await core.refreshNavigationCounts();
+    }
     await initializeHomePage(core, mockData);
     return;
   }
 
   const core = await import("./detail-runtime");
   const mockData = await import("./fresh-mock-data");
+  const persistAdminData = isAdminApiEnabled() ? () => undefined : mockData.persistAdminData;
+  if (isAdminApiEnabled() && options.page === "quest" && options.recordId) await loadLiveQuest(options.recordId);
+  if (isAdminApiEnabled() && options.page === "dispute" && options.recordId) await loadLiveDispute(options.recordId);
+  if (isAdminApiEnabled() && options.page === "user" && options.recordId) await loadLiveMember(options.recordId);
   window.__KUQUEST_LEGACY_RUNTIME__ = core.legacyRuntime;
   core.initializeDetailRuntime();
+  await core.refreshNavigationCounts();
   core.initializeDetailSearch();
   const common = {
     document,
@@ -239,15 +300,13 @@ export async function initializeTypedLegacyPage(
     toneClass: core.toneClass,
     disputeTypeLabel: core.disputeTypeLabel,
     timeline: core.timeline,
-    chatMessage: core.chatMessage,
-    chatTimeLabel: core.chatTimeLabel,
-    bindChatAttachment: core.bindChatAttachment,
     confirmAction: core.confirmAction,
-    persistAdminData: mockData.persistAdminData,
+    persistAdminData,
     toast: core.toast,
     renderHome: core.renderHome,
     render: core.render,
     setActiveNavigation: core.setActiveNavigation,
+    adminCommands: core.adminCommands,
   };
 
   if (options.page === "quest") {
@@ -259,7 +318,7 @@ export async function initializeTypedLegacyPage(
       import("./quest-page"),
       import("./quest-change-review"),
     ]);
-    const detail = createQuestDetailModule(createQuestDetailDependencies(core, questData, mockData.persistAdminData));
+    const detail = createQuestDetailModule(createQuestDetailDependencies(core, questData, persistAdminData));
     window.openQuestDrawer = detail.openQuestDrawer;
     const questPage = createQuestPageModule({
       document,
@@ -281,8 +340,9 @@ export async function initializeTypedLegacyPage(
       recordId: options.recordId,
       locationSearch: options.search,
       detail,
-      applyDemoAction: core.applyDemoAction,
-      persistAdminData: mockData.persistAdminData,
+      adminCommands: core.adminCommands,
+      toast: core.toast,
+      persistAdminData,
       refresh: core.render,
       setActiveNavigation: core.setActiveNavigation,
     });
@@ -343,7 +403,6 @@ export async function initializeTypedLegacyPage(
         return exemption ? { key: exemption.field, remaining: exemption.remaining } : null;
       },
       confirmedViolationCount: core.confirmedViolationCount,
-      applyReportDecision: core.applyReportDecision,
     })();
     return;
   }
@@ -359,10 +418,12 @@ export async function initializeTypedLegacyPage(
     setActiveNavigation: core.setActiveNavigation,
     openDrawer: core.openDrawer,
     openPenaltyDialog: core.openPenaltyDialog,
+    loadWalletStatement: loadLiveWalletStatement,
     userQuestRecords: core.userQuestRecords,
     userReportsFor: core.userReportsFor,
     completedPayoutQuests: core.completedPayoutQuests,
     payoutEarningForQuest: core.payoutEarningForQuest,
+    payoutBadge: core.payoutBadge,
     payoutTimestamp: core.payoutTimestamp,
     penaltyOutcomeFor: (user) => {
       const outcome = core.penaltyOutcomeFor(user);

@@ -2,6 +2,7 @@ import {
   badge,
   bind,
   data,
+  adminDateTime,
   disputeCases,
   disputeTypeLabel,
   escapeActivityText,
@@ -10,6 +11,7 @@ import {
   ico,
   main,
   pageHead,
+  payoutBadge,
   renderActivity,
   renderPolicies,
   renderResource,
@@ -26,9 +28,12 @@ import {
   resetPagination as resetResourcePagination,
   resetResourceState as resetResourceStateModel,
   resourceColumns,
+  reportTabLabel,
+  type ResourceCollections,
   resourceTabIsActive as resourceTabIsActiveModel,
   resourceTabs,
   resultCount as getResultCount,
+  resourceTabValue,
   sortSpec,
   type Pagination,
   type PaginationResult,
@@ -36,16 +41,65 @@ import {
   type ResourceView,
 } from "./resource-controls-model";
 import type { LegacyDomElement, LegacyRecord } from "./runtime";
+import { LIVE_RESOURCE_UPDATED_EVENT, liveResourceState, type LiveResourceView } from "./live-review-data";
+import { totalWalletFunds, type WalletBalances } from "./wallet-model";
+import { adminApiReadPort, type AdminFinanceOverview } from "../api/admin-api";
+import { isAdminApiEnabled } from "../api/admin-provider";
+import {
+  disputeCaseStatusFor,
+  disputeCaseStatusLabel,
+  hasHiddenQuestOverlay,
+  memberStatusFor,
+  memberStatusLabel,
+  payoutStatusFor,
+  payoutStatusLabel,
+  questStateLabel,
+  questStateFor,
+  reportCaseStatusLabel,
+  reportCaseStatusFor,
+  topUpStatusLabel,
+  topUpStatusFor,
+  walletStatusFor,
+  walletStatusLabel,
+} from "../domain/rulebook";
+import { recordsFor } from "./runtime-data";
 
-const resourceCollections: Record<ResourceView, LegacyRecord[]> = data;
+const resourceCollections: ResourceCollections = {
+  disputes: data.disputes,
+  quests: data.quests,
+  users: data.users,
+  wallets: data.wallets,
+  payouts: data.payouts,
+  topups: data.topups,
+  reports: recordsFor("reports"),
+  "conduct-reports": recordsFor("conduct-reports"),
+};
+
+type WalletFinanceSummaryState = {
+  attempted: boolean;
+  loading: boolean;
+  data: AdminFinanceOverview["memberBalancesSummary"] | null;
+  error: string | null;
+};
+
+const walletFinanceSummaryState: WalletFinanceSummaryState = {
+  attempted: false,
+  loading: false,
+  data: null,
+  error: null,
+};
+let walletFinanceSummaryRequest: Promise<void> | null = null;
 state.filters = {};
 state.questFilters = { mode: "all", status: "all" };
 state.orderBy = {
   disputes: null,
   quests: null,
   users: null,
+  wallets: null,
   payouts: null,
+  topups: null,
   reports: null,
+  "conduct-reports": null,
 };
 state.pagination = Object.fromEntries(
   Object.keys(resourceColumns).map((view) => [view, { page: 1, size: 10 }]),
@@ -85,6 +139,96 @@ function resourceTabIsActive(view: ResourceView, tab: string): boolean {
   return resourceTabIsActiveModel(state, view, tab);
 }
 
+function walletBalancesFor(record: LegacyRecord): WalletBalances {
+  const numberOrZero = (value: unknown): number => typeof value === "number" ? value : 0;
+  return {
+    spendingBalanceSatang: numberOrZero(record.walletSpendingBalanceSatang),
+    earningsBalanceSatang: numberOrZero(record.walletEarningsBalanceSatang),
+    fundingReservedSatang: numberOrZero(record.walletFundingReservedSatang),
+    reservedForPayoutsSatang: numberOrZero(record.walletReservedForPayoutsSatang),
+  };
+}
+
+function walletMoneyFromSatang(value: unknown): string {
+  if (typeof value !== "number") return "Not provided by the Admin API";
+  return `฿${new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value / 100)}`;
+}
+
+function walletDateTimeLabel(value: unknown): string {
+  const date = new Date(String(value ?? ""));
+  if (Number.isNaN(date.getTime())) return "Not provided by the Admin API";
+  return `${date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "Asia/Bangkok",
+  })} · ${date.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Bangkok",
+  })} ICT`;
+}
+
+function walletFinanceMetric(label: string, value: unknown): string {
+  return `<div class="wallet-finance-summary-metric"><span>${label}</span><strong>${walletMoneyFromSatang(value)}</strong></div>`;
+}
+
+function walletFinanceSummaryMarkup(): string {
+  if (!isAdminApiEnabled()) {
+    return `<span>Total Wallet Funds</span><strong>${walletMoneyFromSatang(totalWalletFunds(resourceCollections.wallets.map(walletBalancesFor)))}</strong><small>All Wallets · all statuses</small>`;
+  }
+
+  if (walletFinanceSummaryState.loading || (!walletFinanceSummaryState.attempted && !walletFinanceSummaryState.data && !walletFinanceSummaryState.error)) {
+    return `<div class="wallet-finance-summary-heading"><strong>Member Wallet Summary</strong><small>Reading the Admin API…</small></div>`;
+  }
+
+  if (walletFinanceSummaryState.error || !walletFinanceSummaryState.data) {
+    return `<div class="wallet-finance-summary-heading"><div><strong>Member Wallet Summary</strong><small>${escapeActivityText(walletFinanceSummaryState.error || "Wallet summary is not available.")}</small></div><button class="btn" type="button" id="wallet-finance-summary-retry">Try again</button></div>`;
+  }
+
+  const summary = walletFinanceSummaryState.data;
+  return `<div class="wallet-finance-summary-heading"><div><strong>Member Wallet Summary</strong><small>Aggregate values from the Admin API</small></div></div><div class="wallet-finance-summary-grid">${walletFinanceMetric("Spending balance", summary.totalSpendingSatang)}${walletFinanceMetric("Earnings balance", summary.totalEarningsSatang)}${walletFinanceMetric("Funding reserved", summary.totalFundingReservedSatang)}${walletFinanceMetric("Payout reserved", summary.totalPayoutReservedSatang)}${walletFinanceMetric("Total circulating", summary.totalCirculatingSatang)}</div>`;
+}
+
+function renderWalletFinanceSummary(): void {
+  const summary = document.querySelector<LegacyDomElement>("#wallet-finance-summary");
+  if (!summary) return;
+  summary.innerHTML = walletFinanceSummaryMarkup();
+  summary.querySelector<HTMLButtonElement>("#wallet-finance-summary-retry")?.addEventListener("click", () => {
+    walletFinanceSummaryState.attempted = false;
+    walletFinanceSummaryState.error = null;
+    void loadWalletFinanceSummary();
+  });
+}
+
+function loadWalletFinanceSummary(): Promise<void> | undefined {
+  if (!isAdminApiEnabled() || walletFinanceSummaryState.attempted || walletFinanceSummaryRequest) return;
+  walletFinanceSummaryState.attempted = true;
+  walletFinanceSummaryState.loading = true;
+  walletFinanceSummaryState.error = null;
+  renderWalletFinanceSummary();
+
+  const request = adminApiReadPort.getFinanceOverview()
+    .then((overview) => {
+      walletFinanceSummaryState.data = overview.memberBalancesSummary;
+      return undefined;
+    })
+    .catch((error: unknown) => {
+      walletFinanceSummaryState.error = error instanceof Error ? error.message : "Request failed.";
+      return undefined;
+    })
+    .finally(() => {
+      walletFinanceSummaryState.loading = false;
+      if (walletFinanceSummaryRequest === request) walletFinanceSummaryRequest = null;
+      renderWalletFinanceSummary();
+    });
+  walletFinanceSummaryRequest = request;
+  return request;
+}
+
 function pageSizeControls(view: ResourceView): string {
   const pagination = paginationFor(view);
   return `<div class="page-size-controls" aria-label="Rows per page">${pageSizeOptions
@@ -106,11 +250,39 @@ setRenderResource(function resourceRender(view: string): void {
   const resourceView = view as ResourceView;
   const rows = matchingRows(resourceView),
     pagination = paginateRows(resourceView, rows),
-    tabs = resourceTabs[resourceView],
-    hasQuery = Boolean(state.query);
-  main.innerHTML = `${pageHead(...heads[resourceView])}<section class="panel resource"><div class="tabs" aria-label="Filter ${view} records">${tabs.map((tab: string) => `<button class="tab ${state.tab === tab.toLowerCase() ? "active" : ""}" data-tab="${tab.toLowerCase()}" aria-pressed="${state.tab === tab.toLowerCase()}">${escapeActivityText(tab)}${tab === "All" ? ` (${resourceCollections[resourceView].length})` : ""}</button>`).join("")}</div><div class="toolbar resource-toolbar"><div class="inline-search search-field">${ico("search")}<input id="resource-search" value="${escapeActivityText(state.query)}" placeholder="Search ${view}…" aria-label="Search ${view}" autocomplete="off">${hasQuery ? '<button class="clear-search" aria-label="Clear search"><span class="close-lines"></span></button>' : ""}</div><span class="sort-help">Click a column to sort</span>${pageSizeControls(resourceView)}<span class="count" aria-live="polite">${resultCount(resourceView, pagination)}</span></div>${rows.length ? `${controlledTable(resourceView, pagination.rows)}${paginationControls(resourceView, pagination)}` : `<div class="empty"><h3>No matching records</h3><p>${hasQuery ? "Clear your search to see more results." : "There are no records in this view."}</p><button class="btn reset-results">Reset view</button></div>`}</section>`;
+    tabs = resourceView === "users"
+      && resourceCollections.users.length > 0
+      && resourceCollections.users.every((record) => !record.memberStatus)
+      ? ["All"]
+      : resourceTabs[resourceView],
+    hasQuery = Boolean(state.query),
+    liveState = ["payouts", "disputes", "quests", "users", "wallets", "topups"].includes(resourceView)
+      ? liveResourceState[resourceView as LiveResourceView]
+      : null,
+    resultLabel = liveState?.backgroundLoading
+      ? `${resultCount(resourceView, pagination)} · Loading more records…`
+      : resultCount(resourceView, pagination),
+    resultContent = liveState?.loading
+      ? '<div class="empty"><h3>Loading records</h3><p>Reading the Admin API.</p></div>'
+      : liveState?.error && !resourceCollections[resourceView].length
+        ? `<div class="empty"><h3>Records are not available</h3><p>${escapeActivityText(liveState.error)}</p></div>`
+        : resourceView === "topups" && !isAdminApiEnabled()
+          ? '<div class="empty"><h3>Top-up review requires the Admin API</h3><p>Connect the Admin API to read Top-up records.</p></div>'
+        : rows.length
+          ? `${controlledTable(resourceView, pagination.rows)}${paginationControls(resourceView, pagination)}`
+          : `<div class="empty"><h3>No matching records</h3><p>${hasQuery ? "Clear your search to see more results." : "There are no records in this view."}</p><button class="btn reset-results">Reset view</button></div>`;
+  main.innerHTML = `${pageHead(...heads[resourceView])}<section class="panel resource"><div class="tabs" aria-label="Filter ${view} records">${tabs.map((tab: string) => { const label = tab === "All" || tab === "Team" || tab === "Solo" ? tab : resourceView === "payouts" ? payoutStatusLabel(tab) : resourceView === "topups" ? topUpStatusLabel(tab) : resourceView === "disputes" ? disputeCaseStatusLabel(tab) : resourceView === "quests" ? questStateLabel(tab) : resourceView === "reports" ? reportTabLabel(tab) : resourceView === "conduct-reports" ? reportCaseStatusLabel(tab) : resourceView === "users" ? memberStatusLabel(tab) : resourceView === "wallets" ? walletStatusLabel(tab) : tab; return `<button class="tab ${state.tab === tab.toLowerCase() ? "active" : ""}" data-tab="${tab.toLowerCase()}" aria-pressed="${state.tab === tab.toLowerCase()}">${escapeActivityText(label)}${tab === "All" ? ` (${resourceCollections[resourceView].length})` : ""}</button>`; }).join("")}</div><div class="toolbar resource-toolbar"><div class="inline-search search-field">${ico("search")}<input id="resource-search" value="${escapeActivityText(state.query)}" placeholder="Search ${view}…" aria-label="Search ${view}" autocomplete="off">${hasQuery ? '<button class="clear-search" aria-label="Clear search"><span class="close-lines"></span></button>' : ""}</div><span class="sort-help">Click a column to sort</span>${pageSizeControls(resourceView)}<span class="count" aria-live="polite">${resultLabel}</span></div>${resultContent}</section>`;
+  if (resourceView === "wallets") {
+    const summary = document.createElement("div");
+    summary.id = "wallet-finance-summary";
+    summary.className = "wallet-funds-summary wallet-finance-summary";
+    summary.innerHTML = walletFinanceSummaryMarkup();
+    main.querySelector<LegacyDomElement>(".panel.resource")?.prepend(summary);
+    renderWalletFinanceSummary();
+    void loadWalletFinanceSummary();
+  }
   main.querySelectorAll<LegacyDomElement>("[data-tab]").forEach((button) => {
-    const tab = button.textContent.trim().replace(/\s+\(\d+\)$/, ""),
+    const tab = resourceTabValue(button.dataset.tab || "all"),
       kind = resourceView === "quests" ? questFilterKind(tab) : "status",
       active = resourceTabIsActive(resourceView, tab);
     button.setAttribute("type", "button");
@@ -126,45 +298,95 @@ function controlledTable(view: ResourceView, rows: LegacyRecord[]): string {
   const visible = state.visibleColumns[view] || [],
     columns = resourceColumns[view].filter(([key]) => visible.includes(key));
   const activeSort = sortSpec(view, state.orderBy[view]);
-  return `<div class="table-wrap" tabindex="0" role="region" aria-label="${view} table"><table class="data"><thead><tr>${columns.map(([key, label]: ResourceColumn) => { const active = activeSort?.key === key; return `<th scope="col" aria-sort="${active ? (activeSort.direction === "asc" ? "ascending" : "descending") : "none"}"><span class="table-sort${active ? " is-active" : ""}" data-sort-key="${key}">${label}<span class="sort-indicator" aria-hidden="true">${active ? (activeSort.direction === "asc" ? "↑" : "↓") : "↕"}</span></span></th>`; }).join("")}</tr></thead><tbody>${rows.map((record: LegacyRecord) => {
+  const tableLabel = view === "users" ? "Users" : view === "wallets" ? "Wallets" : view === "reports" ? "Reports" : view === "conduct-reports" ? "Conduct Reports" : view === "topups" ? "Top-ups" : view[0].toUpperCase() + view.slice(1);
+  return `<div class="table-wrap" role="region" aria-label="${tableLabel} table"><table class="data"><caption>${tableLabel}</caption><thead><tr>${columns.map(([key, label]: ResourceColumn) => { const active = activeSort?.key === key; return `<th scope="col" aria-sort="${active ? (activeSort.direction === "asc" ? "ascending" : "descending") : "none"}"><span class="table-sort${active ? " is-active" : ""}" data-sort-key="${key}">${label}<span class="sort-indicator" aria-hidden="true">${active ? (activeSort.direction === "asc" ? "↑" : "↓") : "↕"}</span></span></th>`; }).join("")}</tr></thead><tbody>${rows.map((record: LegacyRecord) => {
     const target = `${view}:${resourceCollections[view].indexOf(record)}`;
-    return `<tr class="${view === "disputes" && record.status === "Active" ? "dispute-active-row" : ""}" data-open="${target}">${columns.map(([key]) => tableCell(view, record, key, target)).join("")}</tr>`;
+    return `<tr class="${view === "disputes" && disputeCaseStatusFor(record.disputeCaseStatus ?? record.status) === "DISPUTE_CASE_PENDING" ? "dispute-active-row" : ""}" data-open="${target}">${columns.map(([key]) => tableCell(view, record, key, target)).join("")}</tr>`;
   }).join("")}</tbody></table></div>`;
 }
 
 function disputeCaseIdForQuest(record: LegacyRecord): string | undefined {
-  if (record.status !== "Disputed") return undefined;
+  if (questStateFor(record.questState ?? record.status) !== "QUEST_FAILED") return undefined;
   return Object.entries(disputeCases).find(
     ([, caseData]) => String(caseData.questId || "") === record.id,
   )?.[0];
 }
 
 function tableCell(view: ResourceView, record: LegacyRecord, key: string, target: string): string {
-  if (key === "id")
-    return `<td><button class="row-record-button" data-open="${target}" aria-label="Open ${view.slice(0, -1)} ${escapeActivityText(record.id)}">${escapeActivityText(record.id)}</button></td>`;
+  if (key === "displayId")
+    return `<td><button class="row-record-button" data-open="${target}" aria-label="Open ${view.slice(0, -1)} ${escapeActivityText(record.displayId)}">${escapeActivityText(record.displayId)}</button></td>`;
   if (key === "title") {
     const title = `<strong>${escapeActivityText(record.title)}</strong>${view === "disputes" ? `<small>${escapeActivityText(record.detail).slice(0, 45)}…</small>` : view === "quests" && record.teamQuest ? `<small>${record.teamSize} selected participants · Team quest</small>` : ""}`;
-    return view === "users" ? `<td><a class="user-record-link" href="/users/${encodeURIComponent(record.id)}">${title}</a></td>` : `<td>${title}</td>`;
+    return view === "users" || view === "wallets" ? `<td><a class="user-record-link" href="/users/${encodeURIComponent(String(record.memberId || record.id))}">${title}</a></td>` : `<td>${title}</td>`;
   }
   if (key === "person") return `<td><strong>${escapeActivityText(record.person)}</strong></td>`;
   if (key === "other") return `<td>${escapeActivityText(record.other)}</td>`;
-  if (key === "amount") return `<td class="money">฿${fmt(record.amount)}</td>`;
+  if (key === "memberStatus") {
+    return record.memberStatus
+      ? `<td>${badge(memberStatusLabel(record.memberStatus), record.tone)}</td>`
+      : '<td><span class="audit-note">Not provided by the Admin API</span></td>';
+  }
+  if (key === "createdAt") return `<td>${escapeActivityText(createdAtLabel(record.createdAt))}</td>`;
+  if (key === "walletTotalBalanceSatang") return `<td class="money">${walletMoneyFromSatang(totalWalletFunds([walletBalancesFor(record)]))}</td>`;
+  if (key === "walletLatestTransactionAt") {
+    const label = walletDateTimeLabel(record.walletLatestTransactionAt);
+    return `<td>${label === "Not provided by the Admin API" ? `<span class="audit-note">${label}</span>` : escapeActivityText(label)}</td>`;
+  }
+  if (key === "amount") {
+    return record.amount === null
+      ? '<td class="money"><span class="audit-note">Not provided by the Admin API</span></td>'
+      : `<td class="money">฿${fmt(record.amount)}</td>`;
+  }
+  if (key === "creditAmountSatang" || key === "paymentTotalSatang") {
+    const value = record[key];
+    return `<td class="money">${typeof value === "number" ? `฿${fmt(value / 100)}` : '<span class="audit-note">Not provided by the Admin API</span>'}</td>`;
+  }
   if (key === "requestedAt") return `<td>${escapeActivityText(record.requestedAt || "—")}</td>`;
+  if (key === "accountCreatedAt") return `<td>${escapeActivityText(String(record.accountCreatedAt || "—"))}</td>`;
   if (key === "status") {
     const disputeCaseId = view === "quests" ? disputeCaseIdForQuest(record) : undefined;
-    return `<td>${badge(record.status, record.tone)}${disputeCaseId ? `<a class="link quest-dispute-link" href="/disputes/${encodeURIComponent(disputeCaseId)}">View dispute case</a>` : ""}</td>`;
+    const status = view === "quests"
+      ? questStateFor(record.questState ?? record.status)
+      : view === "disputes"
+        ? disputeCaseStatusFor(record.disputeCaseStatus ?? record.status)
+        : view === "payouts"
+          ? payoutStatusFor(record.payoutStatus ?? record.status)
+          : view === "topups"
+            ? topUpStatusFor(record.topUpStatus ?? record.status)
+      : view === "reports" || view === "conduct-reports"
+          ? reportCaseStatusFor(record.conductReportStatus ?? record.reportCaseStatus ?? record.status, record.decision)
+          : view === "users"
+            ? memberStatusFor(record.memberStatus)
+            : walletStatusFor(record.walletStatus ?? record.status);
+    const hiddenOverlay = view === "quests" && hasHiddenQuestOverlay(record)
+      ? '<span class="badge neutral quest-hidden-overlay">Hidden</span>'
+      : "";
+    return `<td>${view === "payouts" ? payoutBadge(status, record.tone) : badge(status, record.tone)}${hiddenOverlay}${disputeCaseId ? `<a class="link quest-dispute-link" href="/disputes/${encodeURIComponent(disputeCaseId)}">View dispute case</a>` : ""}</td>`;
   }
   if (key === "disputeDate") return `<td>${escapeActivityText(record.disputeDate || "—")}</td>`;
   if (key === "disputeType")
     return `<td><strong>${escapeActivityText(disputeTypeLabel(record))}</strong></td>`;
   if (key === "reportedUserName")
     return `<td><a class="user-record-link" href="/users/${encodeURIComponent(String(record.reportedUserId || ""))}"><strong>${escapeActivityText(record.reportedUserName)}</strong></a></td>`;
+  if (key === "relatedQuestTitle")
+    return `<td><strong>${escapeActivityText(String(record.relatedQuestTitle || record.title || "Quest not recorded"))}</strong></td>`;
+  if (key === "reportType")
+    return `<td><strong>${record.conductReportStatus ? "Conduct Report" : "Report Case"}</strong></td>`;
+  if (key === "source")
+    return `<td>${record.conductReportStatus ? "Quest" : "Message"}</td>`;
   if (key === "reporterName")
     return `<td><a class="user-record-link" href="/users/${encodeURIComponent(String(record.reporterId || ""))}">${escapeActivityText(record.reporterName)}</a></td>`;
   if (key === "category") return `<td>${escapeActivityText(record.category)}</td>`;
   if (key === "reportedAt") return `<td>${escapeActivityText(record.reportedAt)}</td>`;
   if (key === "age") return `<td>${escapeActivityText(record.age)}</td>`;
   return "<td>—</td>";
+}
+
+function createdAtLabel(value: unknown): string {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "—";
+  const date = new Date(raw.replace(" · ", " "));
+  return Number.isNaN(date.getTime()) ? raw : adminDateTime(date);
 }
 
 const originalBind = bind;
@@ -225,6 +447,10 @@ const resourceBind = function (): void {
   });
 };
 setBind(resourceBind);
+window.addEventListener(LIVE_RESOURCE_UPDATED_EVENT, (event) => {
+  const view = (event as CustomEvent<{ view?: string }>).detail?.view;
+  if (view === state.view) renderResource(state.view);
+});
 window.addEventListener("pageshow", (event) => {
   if (!event.persisted || !(state.view in resourceColumns)) return;
   resetResourceState();

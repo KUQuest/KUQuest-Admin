@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 
-import { requireAdminSession } from "./auth";
 import { applyRequestedLegacyRecords } from "./deep-links";
 import { initializeFunctionalControls } from "./functional-controls";
 import { getLegacyAdminRuntime } from "./runtime";
@@ -12,7 +11,6 @@ export type LegacyPage = "home" | "quest" | "dispute" | "report" | "user";
 export function LegacyRuntimeLoader({ page, recordId }: { page: LegacyPage; recordId?: string }) {
   useEffect(() => {
     let cancelled = false;
-    if (!requireAdminSession(window.localStorage, window.location)) return;
 
     const notifyReady = async () => {
       if (cancelled) return;

@@ -5,8 +5,8 @@ async function signIn(page: Page) {
   await page.goto("/login");
   const email = page.getByLabel("University email");
   await expect(email).toBeFocused();
-  await email.fill("admin@ku.th");
-  await page.getByLabel("Password").fill("password123");
+  await email.fill("youtube@ku.th");
+  await page.getByLabel("Password").fill("Qwerty123!");
   await page.getByRole("button", { name: "Sign in" }).click();
 
   await expect(page).toHaveURL(/\/$/);
@@ -51,6 +51,66 @@ test.describe("admin click flows", () => {
     ).toBeVisible();
   });
 
+  test("admin can review Wallet funds and the Wallet Statement", async ({ page }) => {
+    await signIn(page);
+    await page.getByRole("button", { name: "Wallets", exact: true }).click();
+
+    await expect(page).toHaveURL(/\/\?view=wallets$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Wallets" })).toBeVisible();
+    await expect(page.locator(".wallet-funds-summary")).toContainText("Total Wallet Funds");
+    await expect(page.locator(".wallet-funds-summary strong")).toContainText("฿");
+    await expect(page.locator("#main thead")).toContainText("Current Wallet Balance");
+    await expect(page.locator("#main thead")).toContainText("Latest Wallet Transaction Date");
+
+    await page.locator("#main .data tbody tr").first().locator(".row-record-button").click();
+    const drawer = page.locator("#drawer");
+    await expect(drawer).toHaveClass(/open/);
+    await expect(drawer.getByRole("heading", { level: 3, name: "Wallet Statement" })).toBeVisible();
+    await expect(drawer.locator(".wallet-statement-table tbody tr")).toHaveCount(5);
+    await expect(drawer.getByRole("button", { name: "Load more" })).toHaveCount(0);
+    await expect(drawer.getByLabel("Event type")).toHaveCount(0);
+    await expect(drawer.getByLabel("From ICT date")).toHaveCount(0);
+    await expect(drawer.getByLabel("To ICT date")).toHaveCount(0);
+    const memberProfileLink = drawer.getByRole("link", { name: "See full Member profile" });
+    const memberProfileHref = await memberProfileLink.getAttribute("href");
+    const walletRecordId = await drawer.locator(".fact").filter({ hasText: "Wallet record" }).locator("strong").textContent();
+    expect(memberProfileHref).toMatch(/^\/users\/[^?]+$/);
+    expect(memberProfileHref).not.toBe(`/users/${walletRecordId}`);
+
+    await drawer.getByRole("link", { name: "View full Wallet Statement" }).click();
+    await expect(page).toHaveURL(/\/users\/[^?]+\?tab=wallet-statement$/);
+    const profileStatement = page.locator("[data-user-wallet-statement]");
+    await expect(profileStatement.getByRole("heading", { level: 2, name: "Wallet Statement" })).toBeVisible();
+    await expect(profileStatement.locator(".wallet-statement-balance-grid")).toContainText("Spending Balance");
+    await expect(profileStatement.locator(".wallet-statement-balance-grid")).toContainText("Earnings Balance");
+    await expect(profileStatement.locator(".wallet-statement-balance-grid")).toContainText("Funding Reserved");
+    await expect(profileStatement.locator(".wallet-statement-balance-grid")).toContainText("Reserved For Payouts");
+    await expect(profileStatement.locator(".wallet-statement-balance")).toHaveCount(4);
+    await expect(profileStatement.locator(".wallet-statement-table tbody tr")).toHaveCount(25);
+    await expect(profileStatement.getByLabel("Event type")).toBeVisible();
+    await expect(profileStatement.getByLabel("From ICT date")).toBeVisible();
+    await expect(profileStatement.getByLabel("To ICT date")).toBeVisible();
+    await expect(profileStatement.getByRole("button", { name: "Load more" })).toBeVisible();
+
+    await profileStatement.getByRole("button", { name: "Load more" }).click();
+    await expect(profileStatement.locator(".wallet-statement-table tbody tr")).toHaveCount(50);
+
+    await profileStatement.getByLabel("Event type").selectOption("TOP_UP");
+    await profileStatement.getByRole("button", { name: "Apply filters" }).click();
+    await expect(profileStatement.locator(".wallet-statement-table tbody tr")).toHaveCount(11);
+
+    const profileTabs = page.getByRole("navigation", { name: "User detail sections" });
+    await profileTabs.getByRole("button", { name: "Overview", exact: true }).click();
+    await expect(page).toHaveURL(/\/users\/[^?]+$/);
+    await profileTabs.getByRole("button", { name: "Wallet Statement", exact: true }).click();
+    await expect(page).toHaveURL(/\/users\/[^?]+\?tab=wallet-statement$/);
+    await page.goBack();
+    await expect(page).toHaveURL(/\/users\/[^?]+$/);
+    await page.goForward();
+    await expect(page).toHaveURL(/\/users\/[^?]+\?tab=wallet-statement$/);
+    await expect(page.locator("[data-user-wallet-statement]")).toBeVisible();
+  });
+
   test("admin can sign in and open Users from primary navigation", async ({
     page,
   }) => {
@@ -62,6 +122,97 @@ test.describe("admin click flows", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "Users" }),
     ).toBeVisible();
+  });
+
+  test("admin keeps primary navigation when the session check is slow", async ({
+    page,
+  }) => {
+    let sessionRequests = 0;
+    await page.route("**/api/admin/auth/get-session", async (route) => {
+      sessionRequests += 1;
+      if (sessionRequests === 1) await new Promise((resolve) => setTimeout(resolve, 1200));
+      await route.continue();
+    });
+
+    await signIn(page);
+    await page.getByRole("button", { name: /^Disputes/ }).click();
+
+    await expect(page).toHaveURL(/\/\?view=disputes$/);
+    expect(await page.locator("#nav [data-view]").count()).toBe(8);
+    await expect(page.locator("#nav [data-view]")).toHaveCount(8, { timeout: 5000 });
+    await expect(page.getByRole("heading", { level: 1, name: "Disputes" })).toBeVisible({ timeout: 5000 });
+    await expect(page.locator("#main .data tbody tr").first()).toBeVisible({ timeout: 5000 });
+
+    await page.getByRole("button", { name: "Quests", exact: true }).click();
+    await expect(page).toHaveURL(/\/\?view=quests$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Quests" })).toBeVisible({ timeout: 5000 });
+  });
+
+  test("active navigation follows the current board", async ({ page }) => {
+    await signIn(page);
+
+    const navigation = page.locator("#nav");
+    const overview = navigation.getByRole("button", { name: "Overview", exact: true });
+    const disputes = navigation.getByRole("button", { name: /^Disputes/ });
+
+    await disputes.click();
+    await expect(page.getByRole("heading", { level: 1, name: "Disputes" })).toBeVisible();
+    await expect(disputes).toHaveAttribute("aria-current", "page");
+
+    await overview.click();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Overview" })).toBeVisible();
+    await expect(overview).toHaveAttribute("aria-current", "page");
+    await expect(disputes).not.toHaveAttribute("aria-current", "page");
+  });
+
+  test("does not render the removed legacy Overview after repeated navigation", async ({ page }) => {
+    await signIn(page);
+
+    const navigation = page.locator("#nav");
+    const overview = navigation.getByRole("button", { name: "Overview", exact: true });
+    const reports = navigation.getByRole("button", { name: /^Reports/ });
+
+    await reports.click();
+    await expect(page).toHaveURL(/\/\?view=reports$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Reports", exact: true })).toBeVisible();
+    await expect(navigation.getByRole("button", { name: /^Conduct Reports/ })).toHaveCount(0);
+    await expect(page.locator(".data caption")).toHaveText("Reports");
+    await expect(page.getByText("Report Case", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Conduct Report", { exact: true }).first()).toBeVisible();
+
+    await overview.click();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Overview", exact: true })).toBeVisible();
+
+    await reports.click();
+    await expect(page).toHaveURL(/\/\?view=reports$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Reports", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Overview", exact: true })).toHaveCount(0);
+    await expect(page.locator("#dashboard-main")).toHaveCount(0);
+  });
+
+  test("admin does not see local data in Activity Log when the Admin API is disabled", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/?view=activity");
+
+    await expect(page.getByRole("heading", { level: 1, name: "Activity log" })).toBeVisible();
+    await expect(page.locator(".activity-log-error")).toContainText("The Admin API is required to display this read-only log.");
+    await expect(page.locator("#activity-records table")).toHaveCount(0);
+  });
+
+  test("admin loads the API Overview from the Quest board", async ({ page }) => {
+    await signIn(page);
+
+    await page.getByRole("button", { name: /^Quests/ }).click();
+    await expect(page).toHaveURL(/\/\?view=quests$/);
+
+    await page.getByRole("button", { name: "Overview", exact: true }).click();
+
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.locator(".overview-command-center-updated")).toHaveCount(0);
+    const workLeft = Number(await page.locator(".overview-command-center-hero-copy strong").textContent());
+    expect(workLeft).toBeGreaterThan(3);
   });
 
   test("admin can export a quest log after switching to Thai", async ({ page }) => {
@@ -239,7 +390,7 @@ test.describe("admin click flows", () => {
     await signIn(page);
     await page.getByRole("button", { name: /^Quests/ }).click();
 
-    const draftTab = page.getByRole("button", { name: "Draft", exact: true });
+    const draftTab = page.getByRole("button", { name: "QUEST_DRAFT", exact: true });
     await expect(draftTab).toBeVisible();
     await draftTab.click();
     await expect(draftTab).toHaveAttribute("aria-pressed", "true");
@@ -259,39 +410,30 @@ test.describe("admin click flows", () => {
     await signIn(page);
     await page.getByRole("button", { name: /^Quests/ }).click();
 
-    const approvedTab = page.getByRole("button", {
-      name: "Approved",
-      exact: true,
-    });
     const completedTab = page.getByRole("button", {
-      name: "Completed",
+      name: "QUEST_COMPLETED",
       exact: true,
     });
     const teamTab = page.getByRole("button", { name: "Team", exact: true });
     const soloTab = page.getByRole("button", { name: "Solo", exact: true });
-    await expect(approvedTab).toBeVisible();
+    await expect(completedTab).toBeVisible();
     await expect(soloTab).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Rework", exact: true }),
     ).toHaveCount(0);
 
-    await approvedTab.click();
-    await expect(page.locator(".data tbody")).toContainText("Approved");
-    await approvedTab.click();
     await completedTab.click();
     await teamTab.click();
-    await expect(approvedTab).toHaveAttribute("aria-pressed", "false");
     await expect(teamTab).toHaveAttribute("aria-pressed", "true");
     await expect(completedTab).toHaveAttribute("aria-pressed", "true");
-    await expect(page.locator(".data tbody")).toContainText("Completed");
+    await expect(page.locator(".data tbody")).toContainText("QUEST_COMPLETED");
     await expect(page.locator(".data tbody")).toContainText("Team quest");
 
     await soloTab.click();
-    await expect(approvedTab).toHaveAttribute("aria-pressed", "false");
     await expect(teamTab).toHaveAttribute("aria-pressed", "false");
     await expect(soloTab).toHaveAttribute("aria-pressed", "true");
     await expect(completedTab).toHaveAttribute("aria-pressed", "true");
-    await expect(page.locator(".data tbody")).toContainText("Completed");
+    await expect(page.locator(".data tbody")).toContainText("QUEST_COMPLETED");
     await expect(page.locator(".data tbody")).not.toContainText("Team quest");
   });
 
@@ -321,7 +463,7 @@ test.describe("admin click flows", () => {
       exact: true,
     });
     const disputeRow = disputeButton.locator("xpath=ancestor::tr");
-    await expect(disputeRow).toContainText("Active");
+    await expect(disputeRow).toContainText("DISPUTE_CASE_PENDING");
     await disputeButton.click();
 
     const drawer = page.getByRole("dialog", { name: /Record details/ });
@@ -342,12 +484,12 @@ test.describe("admin click flows", () => {
       .getByRole("button", { name: "Confirm dispute resolution", exact: true })
       .click();
 
-    await expect(disputeRow).toContainText("Closed");
+    await expect(disputeRow).toContainText("DISPUTE_CASE_RESOLVED");
     await expect(disputeRow).not.toHaveClass(/dispute-active-row/);
     await expect(drawer).toContainText("Dispute decision recorded");
 
     await page.goto(questHref);
-    await expect(page.locator(".record-status-bar .badge")).toHaveText("Cancelled");
+    await expect(page.locator(".record-status-bar .badge")).toHaveText("QUEST_FAILED");
   });
 
   test("admin can review a payout approval and cancel safely", async ({
@@ -372,7 +514,7 @@ test.describe("admin click flows", () => {
     await expect(confirmation).toContainText("Available balance");
     await confirmation.getByRole("button", { name: "Cancel" }).click();
     await expect(confirmation).toHaveCount(0);
-    await expect(drawer).toContainText("Needs approval");
+    await expect(drawer).toContainText("PENDING_ADMIN_APPROVAL");
   });
 
   test("admin must enter a reason before approving a payout", async ({
@@ -522,10 +664,10 @@ test.describe("admin click flows", () => {
     })).toHaveCount(0);
   });
 
-  test("every disputed quest links to its dispute case", async ({ page }) => {
+  test("every failed quest links to its dispute case", async ({ page }) => {
     await signIn(page);
     await page.getByRole("button", { name: /^Quests/ }).click();
-    await page.getByRole("button", { name: "Disputed", exact: true }).click();
+    await page.getByRole("button", { name: "QUEST_FAILED", exact: true }).click();
     await page.getByRole("button", { name: "Show all", exact: true }).click();
 
     const rows = page.locator("#main .table-wrap[aria-label='quests table'] tbody tr");
@@ -542,9 +684,9 @@ test.describe("admin click flows", () => {
   test("closed disputes leave their linked quest in a final status", async ({ page }) => {
     await signIn(page);
     await page.goto("/?view=disputes");
-    await page.getByRole("button", { name: "Closed", exact: true }).click();
+    await page.getByRole("button", { name: "Resolved", exact: true }).click();
 
-    const closedCase = page.locator("#main .table-wrap[aria-label='disputes table'] tbody tr").first();
+    const closedCase = page.locator("#main .table-wrap[aria-label='Disputes table'] tbody tr").first();
     await expect(closedCase).toBeVisible();
     await closedCase.getByRole("button").first().click();
 
@@ -556,7 +698,7 @@ test.describe("admin click flows", () => {
     await page.goto(questHref);
 
     await expect(page.locator(".record-status-bar .badge")).not.toHaveText("Disputed");
-    await expect(page.locator(".record-status-bar .badge")).toHaveText(/Completed|Cancelled/);
+    await expect(page.locator(".record-status-bar .badge")).toHaveAttribute("title", "QUEST_FAILED");
   });
 
   test("banned users are never assigned as quest hirers or workers", async ({ page }) => {
@@ -723,7 +865,7 @@ test.describe("admin click flows", () => {
     await expect(allRatings).toHaveAttribute("aria-pressed", "true");
   });
 
-  test("review removal requires confirmation before deleting", async ({ page }) => {
+  test("reviews cannot be deleted", async ({ page }) => {
     await signIn(page);
     await page.getByRole("button", { name: "Users", exact: true }).click();
 
@@ -735,44 +877,8 @@ test.describe("admin click flows", () => {
     const reviewRows = page.locator(".user-detail-table tbody tr");
     const initialCount = await reviewRows.count();
     expect(initialCount).toBeGreaterThan(0);
-    const firstReview = reviewRows.first();
-    const reviewer = (await firstReview.locator("td").first().innerText()).trim();
-
-    await firstReview.getByRole("button", { name: "Remove", exact: true }).click();
-    const confirmation = page.getByRole("dialog", { name: "Remove review" });
-    await expect(confirmation).toBeVisible();
-    await expect(confirmation).toContainText(reviewer);
-    const reason = confirmation.getByLabel("Reason for removing this review");
-    const confirmRemove = confirmation.getByRole("button", {
-      name: "Confirm remove",
-      exact: true,
-    });
-    await expect(reason).toBeVisible();
-    await expect(confirmRemove).toBeDisabled();
-    await reason.fill("short");
-    await expect(confirmRemove).toBeDisabled();
-    await confirmation.getByRole("button", { name: "Cancel", exact: true }).click();
-    await expect(confirmation).toHaveCount(0);
+    await expect(reviewRows.getByRole("button", { name: "Remove", exact: true })).toHaveCount(0);
     await expect(reviewRows).toHaveCount(initialCount);
-
-    await reviewRows.first().getByRole("button", { name: "Remove", exact: true }).click();
-    const removalConfirmation = page.getByRole("dialog", { name: "Remove review" });
-    const removalReason = removalConfirmation.getByLabel("Reason for removing this review");
-    const removalConfirm = removalConfirmation.getByRole("button", {
-      name: "Confirm remove",
-      exact: true,
-    });
-    await removalReason.fill("This review contains inaccurate delivery claims.");
-    await expect(removalConfirm).toBeEnabled();
-    await removalConfirm.click();
-
-    await expect(page.getByRole("dialog", { name: "Remove review" })).toHaveCount(0);
-    await expect(page.locator(".user-detail-table tbody tr")).toHaveCount(initialCount - 1);
-
-    await page.goto("/?view=activity");
-    await expect(page.locator("main")).toContainText(
-      "Reason: This review contains inaccurate delivery claims.",
-    );
   });
 
   test("hide changes a review status and can be reversed", async ({ page }) => {
