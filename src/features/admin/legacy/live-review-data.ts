@@ -486,7 +486,7 @@ function questRecordFromApi(quest: AdminQuest, detail?: AdminQuestDetail): Legac
     .filter((label): label is string => Boolean(label)) ?? [];
 
   return {
-    id: quest.displayId,
+    id: quest.id,
     title: quest.title,
     person: hirer,
     other: detail?.tagId ? `Tag ${detail.tagId}` : "Tag not provided by the Admin API",

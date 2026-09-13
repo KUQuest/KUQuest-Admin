@@ -549,7 +549,8 @@ export function createQuestDetailModule(
             : adminCommands.restoreQuest(record.id, {
               expectedVersion: options.expectedVersion,
               idempotencyKey: options.idempotencyKey,
-              ...(questReasonCode ? { reasonCode: questReasonCode } : {}),
+              reason: options.reason,
+              reasonCode: questReasonCode ?? "POLICY_REVIEW",
             });
           void command.then(() => {
             persistAdminData();

@@ -164,7 +164,8 @@ export type AdminQuestMember = {
 };
 
 export type AdminQuest = {
-  displayId: string;
+  id: string;
+  displayId?: string;
   apiVersion: "v1" | "v2";
   version: number;
   title: string;
@@ -780,6 +781,7 @@ export type AdminPayoutListQuery = {
 };
 
 export type AdminQuestListQuery = {
+  q?: string;
   status?: AdminApiQuestStatus;
   mode?: AdminQuestMode;
   participation?: AdminQuestParticipation;
@@ -881,7 +883,8 @@ export type QuestHideCommand = AdminCommandOptions & {
   reasonCode: AdminQuestReasonCode;
 };
 export type QuestRestoreCommand = AdminCommandOptions & {
-  reasonCode?: AdminQuestReasonCode;
+  reason: string;
+  reasonCode: AdminQuestReasonCode;
 };
 export type QuestTerminateCommand = AdminCommandOptions & {
   reason: string;
@@ -1128,7 +1131,7 @@ export const adminApi = {
       {
         method: "POST",
         headers: questCommandHeaders(options),
-        body: { reasonCode: options.reasonCode },
+        body: { reason: options.reason, reasonCode: options.reasonCode },
       },
     );
   },
@@ -1139,7 +1142,7 @@ export const adminApi = {
       {
         method: "POST",
         headers: questCommandHeaders(options),
-        body: options.reasonCode ? { reasonCode: options.reasonCode } : {},
+        body: { reason: options.reason, reasonCode: options.reasonCode },
       },
     );
   },
@@ -1150,7 +1153,7 @@ export const adminApi = {
       {
         method: "POST",
         headers: questCommandHeaders(options),
-        body: { reasonCode: options.reasonCode },
+        body: { reason: options.reason, reasonCode: options.reasonCode },
       },
     );
   },

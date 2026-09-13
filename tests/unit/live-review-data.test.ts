@@ -338,7 +338,7 @@ describe("live review data", () => {
     expect(canonicalQuestStateForApi("QUEST_SUBMITTED")).toBe("QUEST_IN_PROGRESS");
 
     const record = questRecordFromApiSummary({
-      displayId: "quest-1",
+      id: "quest-1",
       apiVersion: "v2",
       version: 4,
       title: "Campus survey",
@@ -411,7 +411,7 @@ describe("live review data", () => {
       return new Response(JSON.stringify({
         success: true,
         data: {
-          displayId: "quest-1",
+          id: "quest-1",
           apiVersion: "v1",
           version: 1,
           title: "Campus survey",
