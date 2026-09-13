@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-
 import { LegacyAdminPage } from "@/features/admin/legacy-admin-page";
 
 interface ReportPageProps {

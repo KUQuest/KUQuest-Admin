@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-import { isAdminProtectedPath } from "./lib/auth/admin-routing";
 import { requiresAdminSessionBoundary } from "./lib/auth/admin-auth-mode";
+import { isAdminProtectedPath } from "./lib/auth/admin-routing";
 import { hasAdminSessionCookie } from "./lib/auth/admin-session-policy";
 
 export const config = {
@@ -20,10 +20,6 @@ export const config = {
   ],
 };
 
-export function isAdminApiAuthenticationEnabled(): boolean {
-  return requiresAdminSessionBoundary();
-}
-
 function loginRedirect(request: NextRequest): NextResponse {
   return NextResponse.redirect(new URL("/login", request.url));
 }
@@ -35,7 +31,7 @@ export function proxy(request: NextRequest): NextResponse {
     return NextResponse.redirect(new URL("/overview", request.url));
   }
 
-  if (isAdminApiAuthenticationEnabled() && isAdminProtectedPath(request.nextUrl.pathname) && !hasSessionCookie) {
+  if (requiresAdminSessionBoundary() && isAdminProtectedPath(request.nextUrl.pathname) && !hasSessionCookie) {
     return loginRedirect(request);
   }
 

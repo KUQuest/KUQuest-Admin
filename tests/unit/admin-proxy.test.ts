@@ -44,6 +44,23 @@ describe("Admin Proxy", () => {
     expect(response.headers.get("location")).toBeNull();
   });
 
+  it("allows the explicit mock adapter without a production session cookie", () => {
+    process.env.NEXT_PUBLIC_ADMIN_DATA_SOURCE = "mock";
+
+    const response = proxy(request("/overview"));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
+  });
+
+  it("fails closed when the auth mode is unset or unknown", () => {
+    delete process.env.NEXT_PUBLIC_ADMIN_DATA_SOURCE;
+    expect(proxy(request("/overview")).headers.get("location")).toBe("https://admin.example.test/login");
+
+    process.env.NEXT_PUBLIC_ADMIN_DATA_SOURCE = "demo";
+    expect(proxy(request("/overview")).headers.get("location")).toBe("https://admin.example.test/login");
+  });
+
   it("keeps login and public assets available without a session", () => {
     process.env.NEXT_PUBLIC_ADMIN_DATA_SOURCE = "api";
 
