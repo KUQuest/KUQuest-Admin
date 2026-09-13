@@ -3,7 +3,6 @@ import { reportSubmissionSchema } from "../data/admin-records";
 import {
   adminDateTime,
   badge,
-  completedPayoutQuests,
   confirmedViolationCount,
   currentAdminName,
   disputeTypeLabel,
@@ -13,7 +12,6 @@ import {
   penaltyOutcomeFor,
   penaltyOutcomeLabel,
   payoutBadge,
-  payoutEarningForQuest,
   payoutFinancials,
   payoutPreviousRecords,
   payoutDecisionContext,

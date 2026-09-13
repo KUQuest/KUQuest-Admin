@@ -105,6 +105,8 @@ test.describe("shared Admin shell", () => {
     await page.getByRole("button", { name: /Theme Grey-white/ }).click();
     await page.getByRole("button", { name: /Dark Low-light workspace/ }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await page.reload();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 
     const languageOptions = page.getByRole("group", { name: /Language options|ตัวเลือกภาษา/ });
     await languageOptions.getByRole("button", { name: "ไทย", exact: true }).click();
@@ -112,6 +114,12 @@ test.describe("shared Admin shell", () => {
     await expect(page.getByRole("link", { name: "ภาพรวม", exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "สมาชิก", exact: true })).toBeVisible();
     await expect(page.getByText("ระบบ", { exact: true })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "การนำทางหลัก" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "การนำทางระบบ" })).toBeVisible();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.getByRole("button", { name: "เปิดการนำทาง" })).toBeVisible();
+    await page.getByRole("button", { name: "เปิดการนำทาง" }).click();
+    await expect(page.getByRole("button", { name: "ปิดการนำทาง" })).toBeVisible();
     await expect(
       languageOptions.getByRole("button", { name: "ไทย", exact: true }),
     ).toHaveAttribute("aria-pressed", "true");

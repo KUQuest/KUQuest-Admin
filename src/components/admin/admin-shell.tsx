@@ -92,6 +92,7 @@ export function AdminShell({ identity, children }: AdminShellProps) {
       <AdminHeader
         mobileNavigationOpen={mobileNavigationOpen}
         onToggleNavigation={toggleMobileNavigation}
+        translateText={translateText}
       />
       {children}
     </div>

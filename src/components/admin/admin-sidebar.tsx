@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import {
   activeAdminNavigation,
@@ -53,13 +53,11 @@ function NavigationIcon({ name }: { name: AdminNavigationIcon }) {
 function AdminNavigationLink({
   active,
   item,
-  onNavigate,
   counts,
   translateText,
 }: {
   active: boolean;
   item: AdminNavigationItem;
-  onNavigate: () => void;
   counts: AdminNavigationCounts | null;
   translateText: (value: string) => string;
 }) {
@@ -71,7 +69,6 @@ function AdminNavigationLink({
       href={item.href}
       aria-current={active ? "page" : undefined}
       data-navigation-key={item.key}
-      onClick={onNavigate}
     >
       <span aria-hidden="true"><NavigationIcon name={item.icon} /></span>
       {translateText(item.label)}
@@ -92,7 +89,14 @@ export function AdminSidebar({
   const pathname = usePathname();
   const activeKey = activeAdminNavigation(pathname);
   const [isMobile, setIsMobile] = useState(false);
+  const previousPathname = useRef(pathname);
   const initials = adminName.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase() || "AD";
+
+  useEffect(() => {
+    if (previousPathname.current === pathname) return;
+    previousPathname.current = pathname;
+    if (isMobile && open) onNavigate();
+  }, [isMobile, onNavigate, open, pathname]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 900px)");
@@ -119,13 +123,12 @@ export function AdminSidebar({
         <Image src="/kuquest-logo.png?v=2" alt="" width={101} height={51} priority unoptimized />
         <span>KuQuest</span>
       </div>
-      <nav aria-label="Primary navigation">
+      <nav aria-label={translateText("Primary navigation")}>
         {primaryAdminNavigation.map((item) => (
           <AdminNavigationLink
             active={item.key === activeKey}
             item={item}
             key={item.key}
-            onNavigate={onNavigate}
             counts={counts}
             translateText={translateText}
           />
@@ -139,7 +142,6 @@ export function AdminSidebar({
               active={item.key === activeKey}
               item={item}
               key={item.key}
-              onNavigate={onNavigate}
               counts={counts}
               translateText={translateText}
             />

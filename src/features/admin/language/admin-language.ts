@@ -25,6 +25,8 @@ const thaiTranslations: Record<string, string> = {
   "Language options": "ตัวเลือกภาษา",
   "Primary navigation": "การนำทางหลัก",
   "System navigation": "การนำทางระบบ",
+  "Open navigation": "เปิดการนำทาง",
+  "Close navigation": "ปิดการนำทาง",
 };
 
 export function isAdminLanguage(value: unknown): value is AdminLanguage {
