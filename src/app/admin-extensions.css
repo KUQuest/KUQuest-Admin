@@ -2013,6 +2013,16 @@ a.activity-log-target {
 .overview-command-center-header {
   margin-bottom: 24px;
 }
+dialog.command {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+dialog.command::backdrop { background: transparent; }
 .overview-command-center-header .overview-search-trigger {
   flex: 0 1 420px;
   width: min(420px, 42vw);
@@ -2032,6 +2042,8 @@ a.activity-log-target {
 .overview-command-center-hero-stats a {
   grid-column: 1;
   overflow-wrap: anywhere;
+  font-size: 12px;
+  font-weight: 800;
 }
 .overview-command-center-queue-oldest a {
   color: var(--muted);

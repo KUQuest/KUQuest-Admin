@@ -1,25 +1,10 @@
-import type {
-  AdminMemberListItem,
-  AdminOverview,
-  AdminOverviewQueue,
-  AdminPayout,
-  AdminQuest,
-} from "../api/admin-api";
+import type { AdminOverview, AdminOverviewQueue } from "../api/admin-api";
 import { adminNavigationCountsFromMockData } from "../admin-navigation";
-import {
-  conductReportRoutes,
-  disputeRoutes,
-  memberRoutes,
-  payoutRoutes,
-  questRoutes,
-  reportRoutes,
-} from "../admin-routes";
 import {
   MEMBER_STATUSES,
   QUEST_STATES,
   WALLET_STATUSES,
   memberStatusFor,
-  payoutStatusFor,
   questStateFor,
   questStateLabel,
   walletStatusFor,
@@ -30,21 +15,15 @@ import {
 import type { PersistedAdminData } from "../data/admin-records";
 import type { DashboardActivity } from "./dashboard-model";
 
-type OverviewCount = number | null;
-type OverviewQueueId = "payouts" | "disputes" | "reports" | "conductReports";
-type OverviewSource = "Admin API" | "Local fallback" | "Unavailable";
-
 export type OverviewCloneQueue = {
-  id: OverviewQueueId;
+  id: "payouts" | "disputes" | "reports";
   title: string;
-  count: OverviewCount;
+  count: number;
   oldest: string;
-  oldestHref: string | null;
-  listHref: string;
   status: string;
   waiting: string;
   tone: string;
-  source: OverviewSource;
+  source: "Admin API" | "Local fallback";
 };
 
 export type OverviewCloneQuestState = {
@@ -58,17 +37,17 @@ export type OverviewCloneModel = {
   source: "Admin API" | "Local demo data";
   hasFallbackQueues: boolean;
   loadedAt: number;
-  totalWorkLeft: OverviewCount;
+  totalWorkLeft: number;
   queues: OverviewCloneQueue[];
   questTotal: number;
   questStates: OverviewCloneQuestState[];
-  memberSignals: OverviewCount;
-  reportCases: OverviewCount;
-  conductReports: OverviewCount;
-  memberStatusCounts: Array<{ status: MemberStatus; count: OverviewCount }>;
-  memberStatusSource: OverviewSource;
-  walletStatusCounts: Array<{ status: WalletStatus; count: OverviewCount }>;
-  walletStatusSource: OverviewSource;
+  memberSignals: number;
+  reportCases: number;
+  conductReports: number;
+  memberStatusCounts: Array<{ status: MemberStatus; count: number }>;
+  memberStatusSource: "Admin API" | "Local fallback";
+  walletStatusCounts: Array<{ status: WalletStatus; count: number }>;
+  walletStatusSource: "Admin API" | "Local fallback";
   frozenWallets: number;
   suspendedWallets: number;
   inFlightPayouts: number | null;
@@ -76,19 +55,11 @@ export type OverviewCloneModel = {
 };
 
 export type OverviewCloneFallback = {
-  disputes: OverviewCount;
-  reports: OverviewCount;
-  conductReports: OverviewCount;
-  memberStatusCounts: Array<{ status: MemberStatus; count: OverviewCount }>;
-  walletStatusCounts: Array<{ status: WalletStatus; count: OverviewCount }>;
-};
-
-export type OverviewSearchResult = {
-  kind: "quest" | "member" | "payout";
-  id: string;
-  title: string;
-  detail: string;
-  href: string;
+  disputes: number;
+  reports: number;
+  conductReports: number;
+  memberStatusCounts: Array<{ status: MemberStatus; count: number }>;
+  walletStatusCounts: Array<{ status: WalletStatus; count: number }>;
 };
 
 const questStateTones: Record<QuestState, string> = {
@@ -106,14 +77,14 @@ function countValue(value: unknown): number {
   return Number.isFinite(count) && count >= 0 ? count : 0;
 }
 
-function countOrFallback(value: unknown, fallback: OverviewCount): OverviewCount {
+function countOrFallback(value: unknown, fallback: number): number {
   return value === undefined || value === null ? fallback : countValue(value);
 }
 
 function memberStatusCountsFromApi(
   byStatus: Record<string, number> | undefined,
-  fallback: Array<{ status: MemberStatus; count: OverviewCount }>,
-): Array<{ status: MemberStatus; count: OverviewCount }> {
+  fallback: Array<{ status: MemberStatus; count: number }>,
+): Array<{ status: MemberStatus; count: number }> {
   if (!byStatus) return fallback;
   return [
     { status: "Normal", count: countValue(byStatus.NORMAL) },
@@ -125,8 +96,8 @@ function memberStatusCountsFromApi(
 
 function walletStatusCountsFromApi(
   byStatus: Record<string, number> | undefined,
-  fallback: Array<{ status: WalletStatus; count: OverviewCount }>,
-): Array<{ status: WalletStatus; count: OverviewCount }> {
+  fallback: Array<{ status: WalletStatus; count: number }>,
+): Array<{ status: WalletStatus; count: number }> {
   if (!byStatus) return fallback;
   return [
     { status: "ACTIVE", count: countValue(byStatus.ACTIVE) },
@@ -150,12 +121,11 @@ function waitingLabel(createdAt: string, now: number): string {
 
 function queueOldestLabel(
   summary: AdminOverviewQueue | undefined,
-  count: OverviewCount,
+  count: number,
   fallback: string,
 ): string {
   if (!summary) return fallback;
   if (summary.oldest) return summary.oldest.title;
-  if (count === null) return "Queue count not provided";
   return count > 0 ? "Oldest record not provided" : "No open records";
 }
 
@@ -168,18 +138,17 @@ function queueWaitingLabel(
   return summary.oldest ? waitingLabel(summary.oldest.createdAt, loadedAt) : "—";
 }
 
-function queueStatusLabel(summary: AdminOverviewQueue | undefined, count: OverviewCount): string {
+function queueStatusLabel(summary: AdminOverviewQueue | undefined, count: number): string {
   if (summary) return summary.state === "OPEN" ? "Open" : "Clear";
-  if (count === null) return "Not provided";
   return count > 0 ? "Open" : "Clear";
 }
 
 function queueFromApi(
   id: OverviewCloneQueue["id"],
   title: string,
-  fallbackCount: OverviewCount,
+  fallbackCount: number,
   summary: AdminOverviewQueue | undefined,
-  fallbackSource: OverviewSource,
+  fallbackSource: OverviewCloneQueue["source"],
   fallbackOldest: string,
   fallbackWaiting: string,
   tone: string,
@@ -194,8 +163,44 @@ function queueFromApi(
     queueStatusLabel(summary, count),
     queueOldestLabel(summary, count, fallbackOldest),
     queueWaitingLabel(summary, loadedAt, fallbackWaiting),
-    count !== null && count > 0 ? tone : "",
-    summary?.oldest?.id ?? null,
+    count > 0 ? tone : "",
+  );
+}
+
+function oldestRecord(summaries: Array<AdminOverviewQueue | undefined>): AdminOverviewQueue["oldest"] {
+  return summaries
+    .flatMap((summary) => summary?.oldest ? [summary.oldest] : [])
+    .toSorted((left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt))[0] ?? null;
+}
+
+function combinedReportQueue(
+  reportCount: number,
+  reportSummary: AdminOverviewQueue | undefined,
+  conductReportSummary: AdminOverviewQueue | undefined,
+  apiCountersAvailable: boolean,
+  fallbackSource: OverviewCloneQueue["source"],
+  fallbackOldest: string,
+  fallbackWaiting: string,
+  loadedAt: number,
+): OverviewCloneQueue {
+  const hasApiQueueDetails = Boolean(reportSummary && conductReportSummary);
+  const oldest = hasApiQueueDetails ? oldestRecord([reportSummary, conductReportSummary]) : null;
+  const count = hasApiQueueDetails
+    ? countValue(reportSummary?.count) + countValue(conductReportSummary?.count)
+    : reportCount;
+  return queue(
+    "reports",
+    "Report",
+    count,
+    apiCountersAvailable || hasApiQueueDetails ? "Admin API" : fallbackSource,
+    hasApiQueueDetails
+      ? (reportSummary?.state === "OPEN" || conductReportSummary?.state === "OPEN" ? "Open" : "Clear")
+      : count > 0 ? "Open" : "Clear",
+    hasApiQueueDetails
+      ? oldest?.title ?? (count > 0 ? "Oldest record not provided" : "No open records")
+      : fallbackOldest,
+    hasApiQueueDetails ? (oldest ? waitingLabel(oldest.createdAt, loadedAt) : "—") : fallbackWaiting,
+    count > 0 ? "overview-queue-status-review" : "",
   );
 }
 
@@ -218,69 +223,14 @@ function questStatesFromCounts(byState: Record<string, number>, total: number): 
 function queue(
   id: OverviewCloneQueue["id"],
   title: string,
-  count: OverviewCount,
-  source: OverviewSource,
+  count: number,
+  source: OverviewCloneQueue["source"],
   status: string,
   oldest: string,
   waiting: string,
   tone: string,
-  oldestId: string | null = null,
 ): OverviewCloneQueue {
-  return {
-    id,
-    title,
-    count,
-    source,
-    status,
-    oldest,
-    oldestHref: oldestId ? queueOldestHref(id, oldestId) : null,
-    listHref: queueListHref(id),
-    waiting,
-    tone,
-  };
-}
-
-function queueListHref(id: OverviewQueueId): string {
-  switch (id) {
-    case "payouts": return payoutRoutes.list();
-    case "disputes": return disputeRoutes.list();
-    case "reports": return reportRoutes.list();
-    case "conductReports": return conductReportRoutes.list();
-  }
-}
-
-function queueOldestHref(id: OverviewQueueId, identifier: string): string | null {
-  const trimmedIdentifier = identifier.trim();
-  if (!trimmedIdentifier) return null;
-  switch (id) {
-    case "payouts": return payoutRoutes.detail(trimmedIdentifier);
-    case "disputes": return disputeRoutes.detail(trimmedIdentifier);
-    case "reports": return reportRoutes.detail(trimmedIdentifier);
-    case "conductReports": return conductReportRoutes.list();
-  }
-}
-
-function sumCounts(left: OverviewCount, right: OverviewCount): OverviewCount {
-  return left === null || right === null ? null : left + right;
-}
-
-function totalQueueCount(queues: OverviewCloneQueue[]): OverviewCount {
-  return queues.some((item) => item.count === null)
-    ? null
-    : queues.reduce((sum, item) => sum + (item.count ?? 0), 0);
-}
-
-function sourceForCount(apiValue: OverviewCount, fallback: OverviewCount): OverviewSource {
-  if (apiValue !== null) return "Admin API";
-  return fallback === null ? "Unavailable" : "Local fallback";
-}
-
-function sourceForStatusCounts(
-  apiValue: Record<string, number> | undefined,
-  fallback: Array<{ status: string; count: OverviewCount }>,
-): OverviewSource {
-  if (apiValue) return "Admin API";
-  return fallback.some((entry) => entry.count !== null) ? "Local fallback" : "Unavailable";
+  return { id, title, count, source, status, oldest, waiting, tone };
 }
 
 export function overviewCloneModelFromApi(
@@ -291,44 +241,50 @@ export function overviewCloneModelFromApi(
 ): OverviewCloneModel {
   const payouts = countValue(overview.payouts.pendingAdminApproval);
   const disputes = countValue(overview.disputes.awaitingResolution);
-  const reportsFromApi = countOrFallback(overview.reports?.open, null);
-  const conductReportsFromApi = countOrFallback(overview.conductReports?.open, null);
-  const reports = countOrFallback(reportsFromApi, fallback.reports);
-  const conductReports = countOrFallback(conductReportsFromApi, fallback.conductReports);
-  const reportCountersAvailable = reportsFromApi !== null
-    && conductReportsFromApi !== null;
+  const reports = countOrFallback(overview.reports?.open, fallback.reports);
+  const conductReports = countOrFallback(overview.conductReports?.open, fallback.conductReports);
+  const reportCount = reports + conductReports;
+  const reportCountersAvailable = overview.reports?.open !== undefined
+    && overview.conductReports?.open !== undefined;
   const memberStatusCounts = memberStatusCountsFromApi(overview.members.byStatus, fallback.memberStatusCounts);
   const walletStatusCounts = walletStatusCountsFromApi(overview.wallets?.byStatus, fallback.walletStatusCounts);
   const queues = [
     queueFromApi("payouts", "Payout Approvals", payouts, overview.queues?.payouts, "Admin API", "Queue detail not provided", "—", "overview-queue-status-review", loadedAt),
     queueFromApi("disputes", "Dispute Cases", disputes, overview.queues?.disputes, "Admin API", "Queue detail not provided", "—", "overview-queue-status-overdue", loadedAt),
-    queueFromApi("reports", "Report Cases", reports, overview.queues?.reports, sourceForCount(reportsFromApi, fallback.reports), "Queue detail not provided", "—", "overview-queue-status-review", loadedAt),
-    queueFromApi("conductReports", "Conduct Reports", conductReports, overview.queues?.conductReports, sourceForCount(conductReportsFromApi, fallback.conductReports), "Queue detail not provided", "—", "overview-queue-status-review", loadedAt),
+    combinedReportQueue(
+      reportCount,
+      overview.queues?.reports,
+      overview.queues?.conductReports,
+      reportCountersAvailable,
+      "Local fallback",
+      "API path not available",
+      "—",
+      loadedAt,
+    ),
   ];
-  const hasFallbackQueues = !overview.queues
-    || !overview.queues.payouts
-    || !overview.queues.disputes
-    || !overview.queues.reports
-    || !overview.queues.conductReports
-    || !reportCountersAvailable
-    || !overview.members.byStatus
-    || !overview.wallets?.byStatus;
 
   return {
     source: "Admin API",
-    hasFallbackQueues,
+    hasFallbackQueues: !overview.queues
+      || !overview.queues.payouts
+      || !overview.queues.disputes
+      || !overview.queues.reports
+      || !overview.queues.conductReports
+      || !reportCountersAvailable
+      || !overview.members.byStatus
+      || !overview.wallets?.byStatus,
     loadedAt,
-    totalWorkLeft: totalQueueCount(queues),
+    totalWorkLeft: queues.reduce((sum, item) => sum + item.count, 0),
     queues,
     questTotal: countValue(overview.quests.total),
     questStates: questStatesFromCounts(overview.quests.byState, overview.quests.total),
-    memberSignals: sumCounts(reports, conductReports),
+    memberSignals: reports + conductReports,
     reportCases: reports,
     conductReports,
     memberStatusCounts,
-    memberStatusSource: sourceForStatusCounts(overview.members.byStatus, fallback.memberStatusCounts),
+    memberStatusSource: overview.members.byStatus ? "Admin API" : "Local fallback",
     walletStatusCounts,
-    walletStatusSource: sourceForStatusCounts(overview.wallets?.byStatus, fallback.walletStatusCounts),
+    walletStatusSource: overview.wallets?.byStatus ? "Admin API" : "Local fallback",
     frozenWallets: overview.wallets?.byStatus
       ? countValue(overview.wallets.byStatus.FROZEN)
       : countValue(overview.members.frozenWallets),
@@ -344,16 +300,6 @@ function statusCounts<T extends string>(statuses: readonly T[], values: T[]): Ar
   const counts = new Map<T, number>(statuses.map((status) => [status, 0]));
   values.forEach((status) => counts.set(status, (counts.get(status) ?? 0) + 1));
   return statuses.map((status) => ({ status, count: counts.get(status) ?? 0 }));
-}
-
-export function overviewCloneFallbackWithoutApiData(): OverviewCloneFallback {
-  return {
-    disputes: null,
-    reports: null,
-    conductReports: null,
-    memberStatusCounts: MEMBER_STATUSES.map((status) => ({ status, count: null })),
-    walletStatusCounts: WALLET_STATUSES.map((status) => ({ status, count: null })),
-  };
 }
 
 export function overviewCloneFallbackFromMockData(data: PersistedAdminData): OverviewCloneFallback {
@@ -381,11 +327,9 @@ export function overviewCloneModelFromMockData(
   const fallback = overviewCloneFallbackFromMockData(data);
   const reportCases = fallback.reports;
   const conductReports = fallback.conductReports;
+  const reportCount = reportCases + conductReports;
   const disputes = fallback.disputes;
-  const payouts = data.collections.payouts
-    .filter((record): record is Record<string, unknown> => Boolean(record) && typeof record === "object" && !Array.isArray(record))
-    .filter((record) => payoutStatusFor(record.payoutStatus ?? record.status) === "PENDING_ADMIN_APPROVAL")
-    .length;
+  const payouts = data.collections.payouts.filter((record): record is Record<string, unknown> => Boolean(record) && typeof record === "object" && !Array.isArray(record)).filter((record) => record.payoutStatus === "PENDING_ADMIN_APPROVAL").length;
   const questCounts = new Map<QuestState, number>(QUEST_STATES.map((status) => [status, 0]));
   data.collections.quests.forEach((record) => {
     if (!record || typeof record !== "object" || Array.isArray(record)) return;
@@ -397,8 +341,7 @@ export function overviewCloneModelFromMockData(
   const queues = [
     queue("payouts", "Payout Approvals", payouts, "Local fallback", "Needs review", "Local demo queue", "—", "overview-queue-status-review"),
     queue("disputes", "Dispute Cases", disputes, "Local fallback", disputes ? "Open" : "Clear", "Local demo queue", "—", disputes ? "overview-queue-status-overdue" : ""),
-    queue("reports", "Report Cases", reportCases, "Local fallback", reportCases ? "Open" : "Clear", "Local demo queue", "—", reportCases ? "overview-queue-status-review" : ""),
-    queue("conductReports", "Conduct Reports", conductReports, "Local fallback", conductReports ? "Open" : "Clear", "Local demo queue", "—", conductReports ? "overview-queue-status-review" : ""),
+    queue("reports", "Report", reportCount, "Local fallback", reportCount ? "Open" : "Clear", "Local demo queue", "—", reportCount ? "overview-queue-status-review" : ""),
   ];
   const walletCounts = data.collections.users.reduce(
     (counts, record) => {
@@ -414,7 +357,7 @@ export function overviewCloneModelFromMockData(
     source: "Local demo data",
     hasFallbackQueues: true,
     loadedAt,
-    totalWorkLeft: totalQueueCount(queues),
+    totalWorkLeft: queues.reduce((sum, item) => sum + item.count, 0),
     queues,
     questTotal,
     questStates: QUEST_STATES.map((status) => ({
@@ -423,7 +366,7 @@ export function overviewCloneModelFromMockData(
       count: questCounts.get(status) ?? 0,
       percentage: questTotal ? ((questCounts.get(status) ?? 0) / questTotal) * 100 : 0,
     })),
-    memberSignals: sumCounts(reportCases, conductReports),
+    memberSignals: reportCases + conductReports,
     reportCases,
     conductReports,
     memberStatusCounts: fallback.memberStatusCounts,
@@ -438,81 +381,3 @@ export function overviewCloneModelFromMockData(
 }
 
 export { questStateTones };
-
-function recordText(record: unknown, key: string): string {
-  if (!record || typeof record !== "object") return "";
-  const value = (record as Record<string, unknown>)[key];
-  return typeof value === "string" || typeof value === "number" ? String(value) : "";
-}
-
-function searchResultMatches(result: OverviewSearchResult, query: string): boolean {
-  return `${result.id} ${result.title} ${result.detail}`
-    .toLowerCase()
-    .includes(query.trim().toLowerCase());
-}
-
-function matchingSearchResults(results: OverviewSearchResult[], query: string): OverviewSearchResult[] {
-  const normalizedQuery = query.trim();
-  if (!normalizedQuery) return [];
-  return results.filter((result) => searchResultMatches(result, normalizedQuery)).slice(0, 12);
-}
-
-export function overviewSearchResultsFromMockData(
-  data: PersistedAdminData,
-  query: string,
-): OverviewSearchResult[] {
-  const members = data.collections.users.map((member): OverviewSearchResult => ({
-    kind: "member",
-    id: member.id,
-    title: member.title,
-    detail: "Member",
-    href: memberRoutes.detail(member.id),
-  }));
-  const quests = data.collections.quests.flatMap((record): OverviewSearchResult[] => {
-    const id = recordText(record, "id");
-    const title = recordText(record, "title");
-    return id && title ? [{ kind: "quest", id, title, detail: "Quest", href: questRoutes.detail(id) }] : [];
-  });
-  const payouts = data.collections.payouts.flatMap((record): OverviewSearchResult[] => {
-    const id = recordText(record, "id");
-    const title = recordText(record, "title");
-    return id && title ? [{ kind: "payout", id, title, detail: "Payout", href: payoutRoutes.detail(id) }] : [];
-  });
-  return matchingSearchResults([...members, ...quests, ...payouts], query);
-}
-
-function memberName(member: Pick<AdminMemberListItem, "firstName" | "lastName" | "email">): string {
-  return `${member.firstName} ${member.lastName}`.trim() || member.email;
-}
-
-export function overviewSearchResultsFromApi(
-  records: {
-    quests: readonly AdminQuest[];
-    members: readonly AdminMemberListItem[];
-    payouts: readonly AdminPayout[];
-  },
-  query: string,
-): OverviewSearchResult[] {
-  const members = records.members.map((member): OverviewSearchResult => ({
-    kind: "member",
-    id: member.id,
-    title: memberName(member),
-    detail: "Member",
-    href: memberRoutes.detail(member.id),
-  }));
-  const quests = records.quests.map((quest): OverviewSearchResult => ({
-    kind: "quest",
-    id: quest.displayId,
-    title: quest.title,
-    detail: "Quest",
-    href: questRoutes.detail(quest.displayId),
-  }));
-  const payouts = records.payouts.map((payout): OverviewSearchResult => ({
-    kind: "payout",
-    id: payout.id,
-    title: memberName(payout.student),
-    detail: "Payout",
-    href: payoutRoutes.detail(payout.id),
-  }));
-  return matchingSearchResults([...members, ...quests, ...payouts], query);
-}

@@ -154,6 +154,7 @@ test.describe("shared Admin shell", () => {
     await expect(page.locator("html")).toHaveAttribute("lang", "th");
     await expect(page.getByRole("link", { name: "ภาพรวม", exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "สมาชิก", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "ภาพรวม", exact: true })).toBeVisible();
     await expect(page.getByText("ระบบ", { exact: true })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "การนำทางหลัก" })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "การนำทางระบบ" })).toBeVisible();

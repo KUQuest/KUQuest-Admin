@@ -1,10 +1,11 @@
 import { describe, expect, it } from "bun:test";
 
 import {
-  overviewCloneFallbackWithoutApiData,
-  overviewCloneModelFromApi,
+  overviewFallbackWithoutApiData,
+  overviewModelFromApi,
+  overviewSearchResultsFromApi,
   overviewSearchResultsFromMockData,
-} from "../../src/features/admin/dashboard/overview-clone-model";
+} from "../../src/features/admin/overview/overview-model";
 
 function apiOverview() {
   return {
@@ -24,9 +25,9 @@ function apiOverview() {
   };
 }
 
-describe("Overview clone model", () => {
+describe("Overview model", () => {
   it("maps available API counters and keeps missing fields as explicit fallback data", () => {
-    const model = overviewCloneModelFromApi(apiOverview(), [], {
+    const model = overviewModelFromApi(apiOverview(), [], {
       disputes: 2,
       reports: 6,
       conductReports: 4,
@@ -77,7 +78,7 @@ describe("Overview clone model", () => {
   });
 
   it("maps the complete documented Overview response with separate moderation queues", () => {
-    const model = overviewCloneModelFromApi({
+    const model = overviewModelFromApi({
       ...apiOverview(),
       reports: { open: 6 },
       conductReports: { open: 4 },
@@ -119,7 +120,8 @@ describe("Overview clone model", () => {
       walletStatusCounts: [],
     }, Date.parse("2026-09-13T00:00:00.000Z"));
 
-    expect(model.hasFallbackQueues).toBe(false);
+    expect(model.hasSummaryOnlyData).toBe(false);
+    expect(model.hasUnavailableData).toBe(false);
     expect(model.memberStatusSource).toBe("Admin API");
     expect(model.walletStatusSource).toBe("Admin API");
     expect(model.queues.map((row) => [row.title, row.count, row.oldest, row.status])).toEqual([
@@ -145,13 +147,15 @@ describe("Overview clone model", () => {
   });
 
   it("does not invent local values when the API only returns summary fields", () => {
-    const model = overviewCloneModelFromApi(
+    const model = overviewModelFromApi(
       apiOverview(),
       [],
-      overviewCloneFallbackWithoutApiData(),
+      overviewFallbackWithoutApiData(),
       123,
     );
 
+    expect(model.hasSummaryOnlyData).toBe(true);
+    expect(model.hasUnavailableData).toBe(true);
     expect(model.totalWorkLeft).toBeNull();
     expect(model.memberSignals).toBeNull();
     expect(model.memberStatusSource).toBe("Unavailable");
@@ -163,6 +167,32 @@ describe("Overview clone model", () => {
       ["Conduct Reports", null, "Unavailable", "Not provided"],
     ]);
   });
+
+  it("keeps API counters visible when queue detail records are not provided", () => {
+    const model = overviewModelFromApi({
+      ...apiOverview(),
+      reports: { open: 6 },
+      conductReports: { open: 4 },
+      members: {
+        frozenWallets: 1,
+        suspendedWallets: 2,
+        byStatus: { NORMAL: 10, FLAG: 2, TEMP_BAN: 1, PERM_BAN: 1 },
+      },
+      wallets: {
+        byStatus: { ACTIVE: 10, FROZEN: 2, SUSPENDED: 1, CLOSED: 1 },
+      },
+    }, [], overviewFallbackWithoutApiData(), 123);
+
+    expect(model.hasSummaryOnlyData).toBe(true);
+    expect(model.hasUnavailableData).toBe(false);
+    expect(model.totalWorkLeft).toBe(15);
+    expect(model.queues.map((row) => [row.count, row.source, row.oldest])).toEqual([
+      [3, "Admin API", "Queue detail not provided"],
+      [2, "Admin API", "Queue detail not provided"],
+      [6, "Admin API", "Queue detail not provided"],
+      [4, "Admin API", "Queue detail not provided"],
+    ]);
+  });
 });
 
 describe("Overview search results", () => {
@@ -170,7 +200,7 @@ describe("Overview search results", () => {
     const results = overviewSearchResultsFromMockData({
       version: "test",
       collections: {
-        users: [{ id: "68000000", title: "Ari Member" }],
+        users: [{ id: "68000000", title: "Ari Member", studentId: "6612345678" }],
         quests: [{ id: "QST-12001", title: "Verify dorm fire exits" }],
         payouts: [{ id: "PAY-9637", title: "Ari Member" }],
         disputes: [],
@@ -192,5 +222,38 @@ describe("Overview search results", () => {
         reports: [],
       },
     }, "QST-12001")[0]?.href).toBe("/quest/QST-12001");
+    expect(overviewSearchResultsFromMockData({
+      version: "test",
+      collections: {
+        users: [{ id: "68000000", title: "Ari Member", studentId: "6612345678" }],
+        quests: [],
+        payouts: [],
+        disputes: [],
+        reports: [],
+      },
+    }, "6612345678")[0]?.href).toBe("/member/68000000");
+  });
+
+  it("finds API members by Student ID", () => {
+    const results = overviewSearchResultsFromApi({
+      quests: [],
+      members: [{
+        id: "68000000",
+        email: "ari@example.com",
+        firstName: "Ari",
+        lastName: "Member",
+        studentId: "6612345678",
+        telephone: null,
+        academicYear: null,
+        faculty: null,
+        department: null,
+        occupation: null,
+        wallet: null,
+        createdAt: "2026-09-01T00:00:00.000Z",
+      }],
+      payouts: [],
+    }, "6612345678");
+
+    expect(results[0]).toMatchObject({ kind: "member", id: "68000000", href: "/member/68000000" });
   });
 });

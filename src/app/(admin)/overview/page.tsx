@@ -1,4 +1,4 @@
-import { AdminOverview } from "../../../features/admin/dashboard/overview-clone";
+import { AdminOverview } from "../../../features/admin/overview/overview";
 
 export default function OverviewPage() {
   return <AdminOverview />;
