@@ -1,4 +1,4 @@
-import type { AdminOverview } from "../api/admin-api";
+import type { AdminOverview, AdminOverviewQueue } from "../api/admin-api";
 import { adminNavigationCountsFromMockData } from "../admin-navigation";
 import {
   MEMBER_STATUSES,
@@ -16,7 +16,7 @@ import type { PersistedAdminData } from "../data/admin-records";
 import type { DashboardActivity } from "./dashboard-model";
 
 export type OverviewCloneQueue = {
-  id: "payouts" | "disputes" | "reports" | "conduct-reports";
+  id: "payouts" | "disputes" | "reports";
   title: string;
   count: number;
   oldest: string;
@@ -45,7 +45,9 @@ export type OverviewCloneModel = {
   reportCases: number;
   conductReports: number;
   memberStatusCounts: Array<{ status: MemberStatus; count: number }>;
+  memberStatusSource: "Admin API" | "Local fallback";
   walletStatusCounts: Array<{ status: WalletStatus; count: number }>;
+  walletStatusSource: "Admin API" | "Local fallback";
   frozenWallets: number;
   suspendedWallets: number;
   inFlightPayouts: number | null;
@@ -73,6 +75,133 @@ const questStateTones: Record<QuestState, string> = {
 function countValue(value: unknown): number {
   const count = Number(value);
   return Number.isFinite(count) && count >= 0 ? count : 0;
+}
+
+function countOrFallback(value: unknown, fallback: number): number {
+  return value === undefined || value === null ? fallback : countValue(value);
+}
+
+function memberStatusCountsFromApi(
+  byStatus: Record<string, number> | undefined,
+  fallback: Array<{ status: MemberStatus; count: number }>,
+): Array<{ status: MemberStatus; count: number }> {
+  if (!byStatus) return fallback;
+  return [
+    { status: "Normal", count: countValue(byStatus.NORMAL) },
+    { status: "Flag", count: countValue(byStatus.FLAG) },
+    { status: "Temp Ban", count: countValue(byStatus.TEMP_BAN) },
+    { status: "Perm Ban", count: countValue(byStatus.PERM_BAN) },
+  ];
+}
+
+function walletStatusCountsFromApi(
+  byStatus: Record<string, number> | undefined,
+  fallback: Array<{ status: WalletStatus; count: number }>,
+): Array<{ status: WalletStatus; count: number }> {
+  if (!byStatus) return fallback;
+  return [
+    { status: "ACTIVE", count: countValue(byStatus.ACTIVE) },
+    { status: "FROZEN", count: countValue(byStatus.FROZEN) },
+    { status: "SUSPENDED", count: countValue(byStatus.SUSPENDED) },
+    { status: "CLOSED", count: countValue(byStatus.CLOSED) },
+  ];
+}
+
+function waitingLabel(createdAt: string, now: number): string {
+  const timestamp = Date.parse(createdAt);
+  if (Number.isNaN(timestamp)) return "Time not provided";
+  const minutes = Math.max(0, Math.floor((now - timestamp) / 60_000));
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
+}
+
+function queueOldestLabel(
+  summary: AdminOverviewQueue | undefined,
+  count: number,
+  fallback: string,
+): string {
+  if (!summary) return fallback;
+  if (summary.oldest) return summary.oldest.title;
+  return count > 0 ? "Oldest record not provided" : "No open records";
+}
+
+function queueWaitingLabel(
+  summary: AdminOverviewQueue | undefined,
+  loadedAt: number,
+  fallback: string,
+): string {
+  if (!summary) return fallback;
+  return summary.oldest ? waitingLabel(summary.oldest.createdAt, loadedAt) : "—";
+}
+
+function queueStatusLabel(summary: AdminOverviewQueue | undefined, count: number): string {
+  if (summary) return summary.state === "OPEN" ? "Open" : "Clear";
+  return count > 0 ? "Open" : "Clear";
+}
+
+function queueFromApi(
+  id: OverviewCloneQueue["id"],
+  title: string,
+  fallbackCount: number,
+  summary: AdminOverviewQueue | undefined,
+  fallbackSource: OverviewCloneQueue["source"],
+  fallbackOldest: string,
+  fallbackWaiting: string,
+  tone: string,
+  loadedAt: number,
+): OverviewCloneQueue {
+  const count = summary ? countValue(summary.count) : fallbackCount;
+  return queue(
+    id,
+    title,
+    count,
+    summary ? "Admin API" : fallbackSource,
+    queueStatusLabel(summary, count),
+    queueOldestLabel(summary, count, fallbackOldest),
+    queueWaitingLabel(summary, loadedAt, fallbackWaiting),
+    count > 0 ? tone : "",
+  );
+}
+
+function oldestRecord(summaries: Array<AdminOverviewQueue | undefined>): AdminOverviewQueue["oldest"] {
+  return summaries
+    .flatMap((summary) => summary?.oldest ? [summary.oldest] : [])
+    .toSorted((left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt))[0] ?? null;
+}
+
+function combinedReportQueue(
+  reportCount: number,
+  reportSummary: AdminOverviewQueue | undefined,
+  conductReportSummary: AdminOverviewQueue | undefined,
+  apiCountersAvailable: boolean,
+  fallbackSource: OverviewCloneQueue["source"],
+  fallbackOldest: string,
+  fallbackWaiting: string,
+  loadedAt: number,
+): OverviewCloneQueue {
+  const hasApiQueueDetails = Boolean(reportSummary && conductReportSummary);
+  const oldest = hasApiQueueDetails ? oldestRecord([reportSummary, conductReportSummary]) : null;
+  const count = hasApiQueueDetails
+    ? countValue(reportSummary?.count) + countValue(conductReportSummary?.count)
+    : reportCount;
+  return queue(
+    "reports",
+    "Report",
+    count,
+    apiCountersAvailable || hasApiQueueDetails ? "Admin API" : fallbackSource,
+    hasApiQueueDetails
+      ? (reportSummary?.state === "OPEN" || conductReportSummary?.state === "OPEN" ? "Open" : "Clear")
+      : count > 0 ? "Open" : "Clear",
+    hasApiQueueDetails
+      ? oldest?.title ?? (count > 0 ? "Oldest record not provided" : "No open records")
+      : fallbackOldest,
+    hasApiQueueDetails ? (oldest ? waitingLabel(oldest.createdAt, loadedAt) : "—") : fallbackWaiting,
+    count > 0 ? "overview-queue-status-review" : "",
+  );
 }
 
 function questStatesFromCounts(byState: Record<string, number>, total: number): OverviewCloneQuestState[] {
@@ -111,19 +240,39 @@ export function overviewCloneModelFromApi(
   loadedAt = Date.now(),
 ): OverviewCloneModel {
   const payouts = countValue(overview.payouts.pendingAdminApproval);
-  const disputes = countValue(fallback.disputes);
-  const reports = countValue(fallback.reports);
-  const conductReports = countValue(fallback.conductReports);
+  const disputes = countValue(overview.disputes.awaitingResolution);
+  const reports = countOrFallback(overview.reports?.open, fallback.reports);
+  const conductReports = countOrFallback(overview.conductReports?.open, fallback.conductReports);
+  const reportCount = reports + conductReports;
+  const reportCountersAvailable = overview.reports?.open !== undefined
+    && overview.conductReports?.open !== undefined;
+  const memberStatusCounts = memberStatusCountsFromApi(overview.members.byStatus, fallback.memberStatusCounts);
+  const walletStatusCounts = walletStatusCountsFromApi(overview.wallets?.byStatus, fallback.walletStatusCounts);
   const queues = [
-    queue("payouts", "Payout Approvals", payouts, "Admin API", "Needs review", "Queue detail not provided", "—", "overview-queue-status-review"),
-    queue("disputes", "Dispute Cases", disputes, "Local fallback", disputes ? "Open" : "Clear", "API path not available", "—", disputes ? "overview-queue-status-overdue" : ""),
-    queue("reports", "Report Cases", reports, "Local fallback", reports ? "Open" : "Clear", "API path not available", "—", reports ? "overview-queue-status-review" : ""),
-    queue("conduct-reports", "Conduct Reports", conductReports, "Local fallback", conductReports ? "Open" : "Clear", "API path not available", "—", conductReports ? "overview-queue-status-review" : ""),
+    queueFromApi("payouts", "Payout Approvals", payouts, overview.queues?.payouts, "Admin API", "Queue detail not provided", "—", "overview-queue-status-review", loadedAt),
+    queueFromApi("disputes", "Dispute Cases", disputes, overview.queues?.disputes, "Admin API", "Queue detail not provided", "—", "overview-queue-status-overdue", loadedAt),
+    combinedReportQueue(
+      reportCount,
+      overview.queues?.reports,
+      overview.queues?.conductReports,
+      reportCountersAvailable,
+      "Local fallback",
+      "API path not available",
+      "—",
+      loadedAt,
+    ),
   ];
 
   return {
     source: "Admin API",
-    hasFallbackQueues: true,
+    hasFallbackQueues: !overview.queues
+      || !overview.queues.payouts
+      || !overview.queues.disputes
+      || !overview.queues.reports
+      || !overview.queues.conductReports
+      || !reportCountersAvailable
+      || !overview.members.byStatus
+      || !overview.wallets?.byStatus,
     loadedAt,
     totalWorkLeft: queues.reduce((sum, item) => sum + item.count, 0),
     queues,
@@ -132,10 +281,16 @@ export function overviewCloneModelFromApi(
     memberSignals: reports + conductReports,
     reportCases: reports,
     conductReports,
-    memberStatusCounts: fallback.memberStatusCounts,
-    walletStatusCounts: fallback.walletStatusCounts,
-    frozenWallets: countValue(overview.members.frozenWallets),
-    suspendedWallets: countValue(overview.members.suspendedWallets),
+    memberStatusCounts,
+    memberStatusSource: overview.members.byStatus ? "Admin API" : "Local fallback",
+    walletStatusCounts,
+    walletStatusSource: overview.wallets?.byStatus ? "Admin API" : "Local fallback",
+    frozenWallets: overview.wallets?.byStatus
+      ? countValue(overview.wallets.byStatus.FROZEN)
+      : countValue(overview.members.frozenWallets),
+    suspendedWallets: overview.wallets?.byStatus
+      ? countValue(overview.wallets.byStatus.SUSPENDED)
+      : countValue(overview.members.suspendedWallets),
     inFlightPayouts: countValue(overview.payouts.inFlight),
     activity: activity.slice(0, 4),
   };
@@ -172,6 +327,7 @@ export function overviewCloneModelFromMockData(
   const fallback = overviewCloneFallbackFromMockData(data);
   const reportCases = fallback.reports;
   const conductReports = fallback.conductReports;
+  const reportCount = reportCases + conductReports;
   const disputes = fallback.disputes;
   const payouts = data.collections.payouts.filter((record): record is Record<string, unknown> => Boolean(record) && typeof record === "object" && !Array.isArray(record)).filter((record) => record.payoutStatus === "PENDING_ADMIN_APPROVAL").length;
   const questCounts = new Map<QuestState, number>(QUEST_STATES.map((status) => [status, 0]));
@@ -185,8 +341,7 @@ export function overviewCloneModelFromMockData(
   const queues = [
     queue("payouts", "Payout Approvals", payouts, "Local fallback", "Needs review", "Local demo queue", "—", "overview-queue-status-review"),
     queue("disputes", "Dispute Cases", disputes, "Local fallback", disputes ? "Open" : "Clear", "Local demo queue", "—", disputes ? "overview-queue-status-overdue" : ""),
-    queue("reports", "Report Cases", reportCases, "Local fallback", reportCases ? "Open" : "Clear", "Local demo queue", "—", reportCases ? "overview-queue-status-review" : ""),
-    queue("conduct-reports", "Conduct Reports", conductReports, "Local fallback", conductReports ? "Open" : "Clear", "Local demo queue", "—", conductReports ? "overview-queue-status-review" : ""),
+    queue("reports", "Report", reportCount, "Local fallback", reportCount ? "Open" : "Clear", "Local demo queue", "—", reportCount ? "overview-queue-status-review" : ""),
   ];
   const walletCounts = data.collections.users.reduce(
     (counts, record) => {
@@ -215,7 +370,9 @@ export function overviewCloneModelFromMockData(
     reportCases,
     conductReports,
     memberStatusCounts: fallback.memberStatusCounts,
+    memberStatusSource: "Local fallback",
     walletStatusCounts: fallback.walletStatusCounts,
+    walletStatusSource: "Local fallback",
     frozenWallets: walletCounts.frozen,
     suspendedWallets: walletCounts.suspended,
     inFlightPayouts: null,

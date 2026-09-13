@@ -16,6 +16,8 @@ import {
   type AdminPayoutDetail,
   type AdminPayoutReconcileResult,
   type AdminApiPayoutStatus,
+  type AdminTopUpDetail,
+  type AdminTopUpListItem,
   type AdminWallet,
   type AdminWalletDetail,
   type AdminWalletStatusResult,
@@ -25,8 +27,8 @@ import {
   type AdminLedgerTransactionsQuery,
 } from "../api/admin-api";
 import { ApiError } from "../../../lib/api/client";
-import { isPayoutStatus, walletStatusLabel } from "../domain/rulebook";
-import type { PayoutStatus, QuestState } from "../domain/rulebook";
+import { isPayoutStatus, topUpStatusFor, walletStatusLabel } from "../domain/rulebook";
+import type { PayoutStatus, QuestState, TopUpStatus } from "../domain/rulebook";
 import type { LegacyDisputeMockData, LegacyHistoryEntry, LegacyRecord, LegacyWalletBalanceSnapshot } from "./runtime";
 import type { WalletStatementTransaction } from "./wallet-model";
 import { data } from "./runtime-data";
@@ -38,7 +40,7 @@ type LiveResourceState = {
   backgroundLoading: boolean;
 };
 
-export type LiveResourceView = "payouts" | "disputes" | "quests" | "users" | "wallets";
+export type LiveResourceView = "payouts" | "disputes" | "quests" | "users" | "wallets" | "topups";
 export const LIVE_RESOURCE_UPDATED_EVENT = "kuquest-live-resource-updated";
 
 export const liveResourceState: Record<LiveResourceView, LiveResourceState> = {
@@ -47,6 +49,7 @@ export const liveResourceState: Record<LiveResourceView, LiveResourceState> = {
   quests: { loading: false, error: null, backgroundLoading: false },
   users: { loading: false, error: null, backgroundLoading: false },
   wallets: { loading: false, error: null, backgroundLoading: false },
+  topups: { loading: false, error: null, backgroundLoading: false },
 };
 
 function apiErrorMessage(error: unknown, resource: string): string {
@@ -56,7 +59,7 @@ function apiErrorMessage(error: unknown, resource: string): string {
   return `${resource} API unavailable. ${error instanceof Error ? error.message : "Request failed."}`;
 }
 
-function replaceCollection(view: "disputes" | "quests" | "payouts" | "users" | "wallets", records: LegacyRecord[]): void {
+function replaceCollection(view: "disputes" | "quests" | "payouts" | "users" | "wallets" | "topups", records: LegacyRecord[]): void {
   data[view].splice(0, data[view].length, ...records);
 }
 
@@ -71,6 +74,13 @@ function toneForPayout(status: PayoutStatus): string {
   if (status === "FAILED") return "danger";
   if (status === "CANCELLED") return "cancelled";
   return "info";
+}
+
+function toneForTopUp(status: TopUpStatus): string {
+  if (status === "PENDING") return "warning";
+  if (status === "PAID") return "success";
+  if (status === "FAILED") return "danger";
+  return "neutral";
 }
 
 function toneForWallet(status: string): string {
@@ -672,6 +682,69 @@ export async function reconcileLivePayout(record: LegacyRecord): Promise<void> {
   mergeReconciledPayout(record, result.payout);
 }
 
+export function topUpRecordFromApi(topUp: AdminTopUpListItem): LegacyRecord {
+  const status = topUpStatusFor(topUp.topUpStatus);
+  const member = `${topUp.member.firstName} ${topUp.member.lastName}`.trim() || `Member ${topUp.userId}`;
+  return {
+    id: topUp.id,
+    title: member,
+    person: topUp.userId,
+    other: topUp.member.studentId || "Student ID not provided by the Admin API",
+    status,
+    topUpStatus: status,
+    tone: toneForTopUp(status),
+    amount: satangToBaht(topUp.creditAmountSatang),
+    amountSatang: topUp.creditAmountSatang,
+    creditAmountSatang: topUp.creditAmountSatang,
+    providerFeeSatang: topUp.providerFeeSatang,
+    providerTaxSatang: topUp.providerTaxSatang,
+    paymentTotalSatang: topUp.paymentTotalSatang,
+    paymentMethod: topUp.paymentMethod,
+    providerReference: topUp.providerReference,
+    expiresAt: topUp.expiresAt,
+    paidAt: topUp.paidAt,
+    createdAt: topUp.createdAt,
+    updatedAt: topUp.createdAt,
+    requestedAt: dateTimeLabel(topUp.createdAt),
+    age: dateTimeLabel(topUp.createdAt),
+    apiBacked: true,
+    memberId: topUp.userId,
+  };
+}
+
+function mergeReconciledTopUp(
+  record: LegacyRecord,
+  topUp: AdminTopUpDetail,
+): void {
+  const status = topUpStatusFor(topUp.topUpStatus);
+  Object.assign(record, {
+    status,
+    topUpStatus: status,
+    tone: toneForTopUp(status),
+    amount: satangToBaht(topUp.creditSatang),
+    amountSatang: topUp.creditSatang,
+    creditAmountSatang: topUp.creditSatang,
+    providerFeeSatang: topUp.providerFeeSatang,
+    providerTaxSatang: topUp.providerTaxSatang,
+    paymentTotalSatang: topUp.paymentTotalSatang,
+    paymentMethod: topUp.providerChannelCode || record.paymentMethod || topUp.provider,
+    providerReference: topUp.providerReference,
+    providerStatus: topUp.providerStatus,
+    expiresAt: topUp.qrExpiresAt || record.expiresAt,
+    paidAt: status === "PAID" ? topUp.updatedAt : null,
+    createdAt: topUp.createdAt,
+    updatedAt: topUp.updatedAt,
+    age: dateTimeLabel(topUp.updatedAt),
+    topUpDetailLoaded: true,
+    topUpDetailError: undefined,
+  });
+}
+
+export async function reconcileLiveTopUp(record: LegacyRecord): Promise<void> {
+  const result = await adminApi.reconcileTopUp(record.id);
+  mergeReconciledTopUp(record, result.topUp);
+}
+
 function disputeRecordFromApi(dispute: AdminDisputeCase | AdminDisputeCaseDetail): LegacyRecord {
   const detail = "quest" in dispute ? dispute as AdminDisputeCaseDetail : null;
   const mockDisputeData = disputeMockDataFor(dispute.id);
@@ -822,6 +895,70 @@ async function refreshLivePayoutsInternal(status?: PayoutStatus): Promise<void> 
   } catch (error) {
     if (refreshId !== payoutsRefreshId) return;
     state.error = apiErrorMessage(error, "Payout");
+    state.loading = false;
+  }
+}
+
+function mergeTopUps(items: AdminTopUpListItem[]): LegacyRecord[] {
+  const uniqueTopUps = new Map<string, AdminTopUpListItem>();
+  items.forEach((topUp) => uniqueTopUps.set(topUp.id, topUp));
+  return [...uniqueTopUps.values()]
+    .toSorted((first, second) => Date.parse(second.createdAt) - Date.parse(first.createdAt))
+    .map(topUpRecordFromApi);
+}
+
+let topupsRefreshId = 0;
+let topupsRefreshInFlight: Promise<void> | null = null;
+
+export function refreshLiveTopUps(): Promise<void> {
+  if (topupsRefreshInFlight || liveResourceState.topups.backgroundLoading) {
+    return topupsRefreshInFlight || Promise.resolve();
+  }
+  const refresh = refreshLiveTopUpsInternal();
+  const sharedRefresh = refresh.finally(() => {
+    if (topupsRefreshInFlight === sharedRefresh) topupsRefreshInFlight = null;
+  });
+  topupsRefreshInFlight = sharedRefresh;
+  return sharedRefresh;
+}
+
+async function refreshLiveTopUpsInternal(): Promise<void> {
+  const refreshId = ++topupsRefreshId;
+  const state = liveResourceState.topups;
+  state.loading = true;
+  state.error = null;
+  state.backgroundLoading = false;
+  replaceCollection("topups", []);
+  try {
+    const firstPage = await adminApi.listTopUps({ limit: 100 });
+    if (refreshId !== topupsRefreshId) return;
+    replaceCollection("topups", mergeTopUps(firstPage.items));
+    state.loading = false;
+
+    if (firstPage.nextCursor) {
+      state.backgroundLoading = true;
+      void (async () => {
+        const items: AdminTopUpListItem[] = [];
+        let cursor = firstPage.nextCursor || undefined;
+        while (cursor) {
+          const page = await adminApi.listTopUps({ limit: 100, cursor });
+          items.push(...page.items);
+          if (!page.nextCursor || page.nextCursor === cursor) break;
+          cursor = page.nextCursor;
+        }
+        if (refreshId !== topupsRefreshId) return;
+        replaceCollection("topups", mergeTopUps([...firstPage.items, ...items]));
+        state.backgroundLoading = false;
+        notifyLiveResourceUpdated("topups");
+      })().catch((error: unknown) => {
+        if (refreshId !== topupsRefreshId) return;
+        state.backgroundLoading = false;
+        state.error = apiErrorMessage(error, "Top-up");
+      });
+    }
+  } catch (error) {
+    if (refreshId !== topupsRefreshId) return;
+    state.error = apiErrorMessage(error, "Top-up");
     state.loading = false;
   }
 }

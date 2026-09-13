@@ -7,12 +7,13 @@ export const data: LegacyRuntimeData = {
   users: [],
   wallets: [],
   payouts: [],
+  topups: [],
   reports: [],
 };
 
 export function recordsFor(view: string): LegacyRecord[] {
   if (view === "reports") {
-    return data.reports.filter((record) => !record.conductReportStatus);
+    return data.reports;
   }
   if (view === "conduct-reports") {
     return data.reports.filter((record) => Boolean(record.conductReportStatus));

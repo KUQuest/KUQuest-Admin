@@ -100,6 +100,7 @@ export type LegacyRecord = {
   reportCaseStatus?: string;
   conductReportStatus?: string;
   payoutStatus?: string;
+  topUpStatus?: string;
   walletStatus?: string;
   memberStatus?: string;
   hiddenAt?: string | null;
@@ -158,6 +159,15 @@ export type LegacyRecord = {
   maskedRoutingValue?: string;
   providerReference?: string | null;
   providerStatus?: string | null;
+  paymentMethod?: string;
+  creditAmountSatang?: number;
+  paymentTotalSatang?: number;
+  providerFeeSatang?: number;
+  providerTaxSatang?: number;
+  expiresAt?: string;
+  paidAt?: string | null;
+  topUpDetailLoaded?: boolean;
+  topUpDetailError?: string;
   rejectionReason?: string | null;
   walletProjectionMatchesLedger?: boolean;
   walletVerification?: LegacyWalletVerification;
@@ -209,6 +219,7 @@ export type LegacyRuntimeData = {
   users: LegacyRecord[];
   wallets: LegacyRecord[];
   payouts: LegacyRecord[];
+  topups: LegacyRecord[];
   reports: LegacyRecord[];
 };
 

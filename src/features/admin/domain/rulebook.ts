@@ -42,6 +42,9 @@ export const PAYOUT_STATUSES = [
 ] as const;
 export type PayoutStatus = (typeof PAYOUT_STATUSES)[number];
 
+export const TOP_UP_STATUSES = ["PENDING", "PAID", "EXPIRED", "FAILED"] as const;
+export type TopUpStatus = (typeof TOP_UP_STATUSES)[number];
+
 export const WALLET_STATUSES = [
   "ACTIVE",
   "FROZEN",
@@ -80,6 +83,10 @@ export function isConductReportStatus(value: unknown): value is ConductReportSta
 
 export function isPayoutStatus(value: unknown): value is PayoutStatus {
   return typeof value === "string" && PAYOUT_STATUSES.includes(value as PayoutStatus);
+}
+
+export function isTopUpStatus(value: unknown): value is TopUpStatus {
+  return typeof value === "string" && TOP_UP_STATUSES.includes(value as TopUpStatus);
 }
 
 export function isWalletStatus(value: unknown): value is WalletStatus {
@@ -208,7 +215,7 @@ export function reportCaseStatusLabel(value: unknown, decision?: unknown): strin
     case "CONDUCT_REPORT_DISMISSED":
       return "Dismissed";
     case "REPORT_CASE_HIDDEN":
-      return "Hidden";
+      return "Confirmed";
     case "REPORT_CASE_RESTORED":
       return "Restored";
     case "CONDUCT_REPORT_UPHELD":
@@ -250,6 +257,23 @@ export function payoutStatusLabel(value: unknown): string {
       return "Failed";
     case "CANCELLED":
       return "Cancelled";
+  }
+}
+
+export function topUpStatusFor(value: unknown): TopUpStatus {
+  return isTopUpStatus(value) ? value : "PENDING";
+}
+
+export function topUpStatusLabel(value: unknown): string {
+  switch (topUpStatusFor(value)) {
+    case "PENDING":
+      return "Pending";
+    case "PAID":
+      return "Paid";
+    case "EXPIRED":
+      return "Expired";
+    case "FAILED":
+      return "Failed";
   }
 }
 

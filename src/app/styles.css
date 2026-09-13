@@ -83,6 +83,14 @@
   --status-payout-failed-soft: #fee2e2;
   --status-payout-cancelled: #475569;
   --status-payout-cancelled-soft: #f1f5f9;
+  --status-top-up-pending: #a16207;
+  --status-top-up-pending-soft: #fef3c7;
+  --status-top-up-paid: #15803d;
+  --status-top-up-paid-soft: #dcfce7;
+  --status-top-up-expired: #475569;
+  --status-top-up-expired-soft: #f1f5f9;
+  --status-top-up-failed: #b42318;
+  --status-top-up-failed-soft: #fee2e2;
   --status-report-pending: #a16207;
   --status-report-pending-soft: #fef3c7;
   --status-report-dismissed: #475569;
@@ -1156,6 +1164,22 @@ main {
 .badge.status-payout-cancelled {
   color: var(--status-payout-cancelled);
   background: var(--status-payout-cancelled-soft);
+}
+.badge.status-top-up-pending {
+  color: var(--status-top-up-pending);
+  background: var(--status-top-up-pending-soft);
+}
+.badge.status-top-up-paid {
+  color: var(--status-top-up-paid);
+  background: var(--status-top-up-paid-soft);
+}
+.badge.status-top-up-expired {
+  color: var(--status-top-up-expired);
+  background: var(--status-top-up-expired-soft);
+}
+.badge.status-top-up-failed {
+  color: var(--status-top-up-failed);
+  background: var(--status-top-up-failed-soft);
 }
 .badge.status-report-pending {
   color: var(--status-report-pending);

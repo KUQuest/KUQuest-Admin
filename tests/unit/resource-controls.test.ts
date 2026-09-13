@@ -3,6 +3,8 @@ import {
   matchingRows,
   paginateRows,
   resourceColumns,
+  reportTabLabel,
+  resourceTabs,
   resetResourceState,
   resourceTabValue,
   resultCount,
@@ -35,6 +37,7 @@ function createCollections(
     users: [],
     wallets: [],
     payouts: [],
+    topups: [],
     reports: [],
     "conduct-reports": [],
     ...overrides,
@@ -70,6 +73,47 @@ describe("active resource controls model", () => {
     expect(resourceColumns.wallets).toContainEqual(["walletTotalBalanceSatang", "Current Wallet Balance"]);
     expect(resourceColumns.wallets).toContainEqual(["walletLatestTransactionAt", "Latest Wallet Transaction Date"]);
     expect(resourceColumns.wallets).toContainEqual(["status", "Wallet status"]);
+  });
+
+  it("combines Report Cases and Conduct Reports in the Reports view", () => {
+    const state = createState();
+    const collections = createCollections({
+      reports: [
+        record("RPT-1", { status: "REPORT_CASE_PENDING", reportCaseStatus: "REPORT_CASE_PENDING" }),
+        record("RPT-2", { status: "CONDUCT_REPORT_PENDING", conductReportStatus: "CONDUCT_REPORT_PENDING" }),
+        record("RPT-3", { status: "CONDUCT_REPORT_UPHELD", conductReportStatus: "CONDUCT_REPORT_UPHELD" }),
+        record("RPT-4", { status: "REPORT_CASE_HIDDEN", reportCaseStatus: "REPORT_CASE_HIDDEN" }),
+      ],
+    });
+
+    expect(resourceColumns.reports).toContainEqual(["reportType", "Type"]);
+    expect(resourceColumns.reports).toContainEqual(["source", "Source"]);
+    expect(resourceTabs.reports).toEqual([
+      "All",
+      "OPEN",
+      "DISMISSED",
+      "CONFIRMED",
+      "REPORT_CASE_RESTORED",
+    ]);
+    expect(reportTabLabel("REPORT_CASE_HIDDEN")).toBe("Confirmed");
+    expect(matchingRows(collections, state, "reports").map((item) => item.id)).toEqual([
+      "RPT-1",
+      "RPT-2",
+      "RPT-3",
+      "RPT-4",
+    ]);
+
+    state.tab = "open";
+    expect(matchingRows(collections, state, "reports").map((item) => item.id)).toEqual([
+      "RPT-1",
+      "RPT-2",
+    ]);
+
+    state.tab = "confirmed";
+    expect(matchingRows(collections, state, "reports").map((item) => item.id)).toEqual([
+      "RPT-3",
+      "RPT-4",
+    ]);
   });
 
   it("keeps canonical status values when visible tab labels are human-readable", () => {

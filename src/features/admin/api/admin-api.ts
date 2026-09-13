@@ -39,6 +39,16 @@ export type AdminPage<T> = {
   nextCursor: string | null;
 };
 
+export type AdminOverviewQueue = {
+  count: number;
+  state: "OPEN" | "CLEAR";
+  oldest: {
+    id: string;
+    title: string;
+    createdAt: string;
+  } | null;
+};
+
 export type AdminOverview = {
   quests: {
     total: number;
@@ -56,6 +66,22 @@ export type AdminOverview = {
   members: {
     frozenWallets: number;
     suspendedWallets: number;
+    byStatus?: Record<string, number>;
+  };
+  reports?: {
+    open: number;
+  };
+  conductReports?: {
+    open: number;
+  };
+  wallets?: {
+    byStatus: Record<string, number>;
+  };
+  queues?: {
+    payouts?: AdminOverviewQueue;
+    disputes?: AdminOverviewQueue;
+    reports?: AdminOverviewQueue;
+    conductReports?: AdminOverviewQueue;
   };
 };
 
@@ -649,6 +675,100 @@ export type AdminPayoutProviderEventResult = {
   event: AdminPayoutProviderEvent;
 };
 
+export const ADMIN_API_TOP_UP_STATUSES = ["PENDING", "PAID", "EXPIRED", "FAILED"] as const;
+export type AdminApiTopUpStatus = (typeof ADMIN_API_TOP_UP_STATUSES)[number];
+
+export type AdminTopUpListItem = {
+  id: string;
+  userId: string;
+  member: {
+    firstName: string;
+    lastName: string;
+    studentId: string | null;
+  };
+  topUpStatus: AdminApiTopUpStatus;
+  creditAmountSatang: number;
+  providerFeeSatang: number;
+  providerTaxSatang: number;
+  paymentTotalSatang: number;
+  paymentMethod: string;
+  providerReference: string | null;
+  expiresAt: string;
+  paidAt: string | null;
+  createdAt: string;
+};
+
+export type AdminTopUpDetail = {
+  id: string;
+  internalReference: string;
+  principalUserId: string;
+  quoteId: string;
+  provider: string;
+  providerReference: string | null;
+  providerApiVersion: string | null;
+  providerStatus: string | null;
+  providerAmountSatang: number | null;
+  providerChannelCode: string | null;
+  creditSatang: number;
+  chargedFeeSatang: number;
+  chargedTaxSatang: number;
+  paymentTotalSatang: number;
+  providerFeeSatang: number;
+  providerTaxSatang: number;
+  providerTotalSatang: number;
+  qrPayload: string | null;
+  qrDataUrl: string | null;
+  qrExpiresAt: string | null;
+  topUpStatus: AdminApiTopUpStatus;
+  creditedLedgerTransactionId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  simulated?: boolean;
+  callbackReceived?: boolean;
+  reconciliationUsed?: boolean;
+};
+
+export type AdminTopUpReconcileResult = {
+  topUp: AdminTopUpDetail;
+};
+
+export type AdminTopUpProviderEvent = {
+  id: string;
+  provider: string;
+  providerEventId: string;
+  eventType: string;
+  resourceType: string;
+  internalReference: string | null;
+  providerReference: string | null;
+  providerApiVersion: string | null;
+  providerStatus: string;
+  normalizedStatus: string;
+  providerAmountSatang: number | null;
+  providerChannelCode: string | null;
+  providerOccurredAt: string;
+  payloadHash: string;
+  rawPayloadAvailable: boolean;
+  rawPayloadExpiresAt: string;
+  processingStatus: string;
+  attemptCount: number;
+  claimedAt: string | null;
+  processedAt: string | null;
+  lastError: string | null;
+  receivedAt: string;
+  createdAt: string;
+};
+
+export type AdminTopUpProviderEventResult = {
+  event: AdminTopUpProviderEvent;
+};
+
+export type AdminTopUpListQuery = {
+  status?: AdminApiTopUpStatus;
+  userId?: string;
+  limit?: number;
+  cursor?: string;
+};
+
 export type AdminPayoutListQuery = {
   status?: AdminApiPayoutStatus;
   limit?: number;
@@ -1113,6 +1233,27 @@ export const adminApi = {
     );
   },
 
+  listTopUps(query: AdminTopUpListQuery = {}): Promise<AdminPage<AdminTopUpListItem>> {
+    return apiRequest<AdminPage<AdminTopUpListItem>>(
+      `/api/v1/admin/top-ups${queryString(query)}`,
+      { cache: "no-store" },
+    );
+  },
+
+  reconcileTopUp(topUpId: string): Promise<AdminTopUpReconcileResult> {
+    return apiRequest<AdminTopUpReconcileResult>(
+      `/api/v1/admin/top-ups/${encode(topUpId)}/reconcile`,
+      { method: "POST" },
+    );
+  },
+
+  retryTopUpProviderEvent(eventId: string): Promise<AdminTopUpProviderEventResult> {
+    return apiRequest<AdminTopUpProviderEventResult>(
+      `/api/v1/admin/top-ups/events/${encode(eventId)}/retry`,
+      { method: "POST" },
+    );
+  },
+
   listReports(query: AdminReportListQuery = {}): Promise<AdminPage<AdminReportCase>> {
     return apiRequest<AdminPage<AdminReportCase>>(
       `/api/v1/admin/reports${queryString(query)}`,
@@ -1252,6 +1393,7 @@ export type AdminReadPort = Pick<
   | "getPayoutHistory"
   | "reconcilePayout"
   | "retryPayoutProviderEvent"
+  | "listTopUps"
   | "listReports"
   | "getReport"
   | "getEvidence"
@@ -1276,6 +1418,8 @@ export type AdminCommandPort = Pick<
   | "rejectPayout"
   | "reconcilePayout"
   | "retryPayoutProviderEvent"
+  | "reconcileTopUp"
+  | "retryTopUpProviderEvent"
   | "decideReport"
   | "setWalletStatus"
   | "rebuildWalletProjection"

@@ -95,7 +95,7 @@ describe("Admin Rulebook status boundary", () => {
   it("uses concise Report labels without changing canonical statuses", () => {
     expect(reportCaseStatusLabel("REPORT_CASE_PENDING")).toBe("Open");
     expect(reportCaseStatusLabel("REPORT_CASE_DISMISSED")).toBe("Dismissed");
-    expect(reportCaseStatusLabel("REPORT_CASE_HIDDEN")).toBe("Hidden");
+    expect(reportCaseStatusLabel("REPORT_CASE_HIDDEN")).toBe("Confirmed");
     expect(reportCaseStatusLabel("REPORT_CASE_RESTORED")).toBe("Restored");
     expect(reportCaseStatusLabel("CONDUCT_REPORT_PENDING")).toBe("Open");
     expect(reportCaseStatusLabel("CONDUCT_REPORT_UPHELD")).toBe("Confirmed");

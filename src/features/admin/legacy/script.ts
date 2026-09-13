@@ -31,17 +31,20 @@ import {
 import { createOverlayRuntime } from "./overlay-runtime";
 import { setActiveNavigation as setActiveNavigationCore } from "./navigation-state";
 import { recordsFor } from "./runtime-data";
+import { reportStatusMatchesTab, reportTabLabel } from "./resource-controls-model";
 import { newAdminIdempotencyKey } from "./admin-command-port";
 import {
   hydrateLiveMember,
   hydrateLivePayout,
   hydrateLiveWallet,
   reconcileLivePayout,
+  reconcileLiveTopUp,
   payoutServerValue,
   refreshLiveDisputes,
   refreshLiveMembers,
   refreshLiveQuests,
   refreshLivePayouts,
+  refreshLiveTopUps,
   refreshLiveWallets,
   verifyLiveWallet,
   loadLiveWalletStatement,
@@ -77,6 +80,9 @@ import {
   memberStatusFor,
   reportCaseStatusLabel,
   reportCaseStatusFor,
+  TOP_UP_STATUSES,
+  topUpStatusFor,
+  topUpStatusLabel,
   walletStatusFor,
   walletStatusLabel,
 } from "../domain/rulebook";
@@ -131,7 +137,7 @@ export {
   adminCommands,
 } from "./runtime-core";
 
-type LegacyView = "home" | "disputes" | "quests" | "users" | "wallets" | "payouts" | "reports" | "conduct-reports" | "policies" | "activity";
+type LegacyView = "home" | "disputes" | "quests" | "users" | "wallets" | "payouts" | "topups" | "reports" | "conduct-reports" | "policies" | "activity";
 type IconName = "home" | "scale" | "quest" | "users" | "wallet" | "settings" | "history" | "menu" | "search" | "filter" | "check" | "user" | "flag";
 type LegacyForm = HTMLFormElement & {
   elements: HTMLFormControlsCollection & Record<string, LegacyDomElement>;
@@ -142,7 +148,8 @@ function statusForView(view: string, record: LegacyRecord): string {
   if (view === "quests") return questStateFor(record.questState ?? record.status);
   if (view === "disputes") return disputeCaseStatusFor(record.disputeCaseStatus ?? record.status);
   if (view === "payouts") return payoutStatusFor(record.payoutStatus ?? record.status);
-  if (view === "reports") return reportCaseStatusFor(record.reportCaseStatus ?? record.status, record.decision);
+  if (view === "topups") return topUpStatusFor(record.topUpStatus ?? record.status);
+  if (view === "reports") return reportCaseStatusFor(record.conductReportStatus ?? record.reportCaseStatus ?? record.status, record.decision);
   if (view === "conduct-reports") return reportCaseStatusFor(record.conductReportStatus ?? record.status, record.decision);
   if (view === "users") return memberStatusFor(record.memberStatus);
   if (view === "wallets") return walletStatusFor(record.walletStatus ?? record.status);
@@ -159,9 +166,9 @@ const navItems: Array<[LegacyView, IconName, string]> = [
   ["home", "home", "Overview"],
   ["quests", "quest", "Quests"],
   ["disputes", "scale", "Disputes"],
-  ["reports", "flag", "Report Cases"],
-  ["conduct-reports", "flag", "Conduct Reports"],
+  ["reports", "flag", "Reports"],
   ["payouts", "wallet", "Payouts"],
+  ["topups", "wallet", "Top-ups"],
   ["users", "users", "Users"],
   ["wallets", "wallet", "Wallets"],
 ];
@@ -206,6 +213,7 @@ function requiredQuery<T extends Element>(root: ParentNode, selector: string): T
   return element;
 }
 const requestedView = new URLSearchParams(location.search).get("view");
+const normalizedRequestedView = requestedView === "conduct-reports" ? "reports" : requestedView;
 const initialView: LegacyView = [
     "home",
     "disputes",
@@ -213,12 +221,12 @@ const initialView: LegacyView = [
     "users",
     "wallets",
     "payouts",
+    "topups",
     "reports",
-    "conduct-reports",
     "policies",
     "activity",
-  ].includes(requestedView as LegacyView)
-    ? requestedView as LegacyView
+  ].includes(normalizedRequestedView as LegacyView)
+    ? normalizedRequestedView as LegacyView
     : "home";
 export const state: LegacyPageState = { view: initialView, tab: "all", query: "", questFilters: { mode: "all", status: "all" }, filters: {}, orderBy: {}, pagination: {}, visibleColumns: {} };
 const mainElement = document.querySelector<LegacyDomElement>("main");
@@ -253,13 +261,11 @@ export function setNavigationCounts(counts: AdminNavigationCounts): void {
   setNavigationCount("disputes", counts.disputes);
   setNavigationCount("payouts", counts.payouts);
   removeNavigationCount("reports");
-  removeNavigationCount("conduct-reports");
 }
 
 export function setMockNavigationCounts(counts: MockNavigationCounts): void {
   if (typeof counts.disputes === "number") setNavigationCount("disputes", counts.disputes);
-  setNavigationCount("reports", counts.reports);
-  setNavigationCount("conduct-reports", counts.conductReports);
+  setNavigationCount("reports", counts.reports + counts.conductReports);
 }
 document
   .querySelectorAll<LegacyDomElement>("[data-static-icon]")
@@ -270,7 +276,8 @@ export const heads: Record<Exclude<LegacyView, "home">, [string, string]> = {
   users: ["Users", "Review student accounts, reports, and marketplace access."],
   wallets: ["Wallets", "Review Wallet status and administrative holds."],
   payouts: ["Payouts", "Approve or investigate money leaving the marketplace."],
-  reports: ["Report Cases", "Review reports about Message or Attachment content."],
+  topups: ["Top-ups", "Review inbound payments added to Member Spending Balance."],
+  reports: ["Reports", "Review reports about Message or Attachment content."],
   "conduct-reports": ["Conduct Reports", "Review Member behavior on Quests."],
   policies: [
     "Money policies",
@@ -293,33 +300,44 @@ export let renderResource = function renderResource(v: string): void {
         ? ["All", "DISPUTE_CASE_PENDING", "DISPUTE_CASE_DISMISSED", "DISPUTE_CASE_RESOLVED"]
         : v === "payouts"
           ? ["All", "PENDING_ADMIN_APPROVAL", "SUBMITTED_TO_PROVIDER", "PROVIDER_PENDING", "SUCCEEDED", "FAILED", "CANCELLED"]
+          : v === "topups"
+            ? ["All", ...TOP_UP_STATUSES]
           : v === "quests"
             ? ["All", ...QUEST_STATES]
-            : v === "reports"
-              ? ["All", "REPORT_CASE_PENDING", "REPORT_CASE_DISMISSED", "REPORT_CASE_HIDDEN", "REPORT_CASE_RESTORED"]
+              : v === "reports"
+              ? ["All", "OPEN", "DISMISSED", "CONFIRMED", "REPORT_CASE_RESTORED"]
               : v === "conduct-reports"
                 ? ["All", "CONDUCT_REPORT_PENDING", "CONDUCT_REPORT_UPHELD", "CONDUCT_REPORT_DISMISSED"]
               : v === "users"
                 ? ["All", "Normal", "Flag", "Temp Ban", "Perm Ban"]
-              : ["All", "ACTIVE", "FROZEN", "SUSPENDED", "CLOSED"];
+                : ["All", "ACTIVE", "FROZEN", "SUSPENDED", "CLOSED"];
   const filtered = rows.filter(
     (r) =>
       `${r.id} ${r.title || ""} ${r.person || ""} ${r.reportedUserName || ""} ${r.reporterName || ""} ${r.category || ""}`
         .toLowerCase()
         .includes(state.query.toLowerCase()) &&
-      (state.tab === "all" || statusForView(v, r).toLowerCase() === state.tab || r.status.toLowerCase().includes(state.tab)),
+      (v === "reports"
+        ? reportStatusMatchesTab(state.tab, statusForView(v, r))
+        : state.tab === "all" || statusForView(v, r).toLowerCase() === state.tab || r.status.toLowerCase().includes(state.tab)),
   );
   const header = heads[v as keyof typeof heads] || [v, ""];
-    main.innerHTML = `${pageHead(header[0], header[1])}<section class="panel resource"><div class="tabs">${tabs.map((t) => { const label = t === "All" || t === "Team" || t === "Solo" ? t : v === "payouts" ? payoutStatusLabel(t) : v === "disputes" ? disputeCaseStatusLabel(t) : v === "quests" ? questStateLabel(t) : v === "reports" || v === "conduct-reports" ? reportCaseStatusLabel(t) : v === "users" ? memberStatusLabel(t) : v === "wallets" ? walletStatusLabel(t) : t; return `<button class="tab ${state.tab === t.toLowerCase() ? "active" : ""}" data-tab="${t.toLowerCase()}" data-filter-value="${escapeActivityText(t)}">${escapeActivityText(label)}${t === "All" ? ` (${rows.length})` : ""}</button>`; }).join("")}</div><div class="toolbar"><div class="inline-search"><input id="resource-search" value="${state.query}" placeholder="⌕  Search ${v}…"></div><span class="count">${filtered.length} results</span></div>${filtered.length ? table(v, filtered) : '<div class="empty"><h3>No matching records</h3><p>Try changing your search or selected view.</p></div>'}</section>`;
+    main.innerHTML = `${pageHead(header[0], header[1])}<section class="panel resource"><div class="tabs">${tabs.map((t) => { const label = t === "All" || t === "Team" || t === "Solo" ? t : v === "payouts" ? payoutStatusLabel(t) : v === "topups" ? topUpStatusLabel(t) : v === "disputes" ? disputeCaseStatusLabel(t) : v === "quests" ? questStateLabel(t) : v === "reports" ? reportTabLabel(t) : v === "conduct-reports" ? reportCaseStatusLabel(t) : v === "users" ? memberStatusLabel(t) : v === "wallets" ? walletStatusLabel(t) : t; return `<button class="tab ${state.tab === t.toLowerCase() ? "active" : ""}" data-tab="${t.toLowerCase()}" data-filter-value="${escapeActivityText(t)}">${escapeActivityText(label)}${t === "All" ? ` (${rows.length})` : ""}</button>`; }).join("")}</div><div class="toolbar"><div class="inline-search"><input id="resource-search" value="${state.query}" placeholder="⌕  Search ${v}…"></div><span class="count">${filtered.length} results</span></div>${filtered.length ? table(v, filtered) : '<div class="empty"><h3>No matching records</h3><p>Try changing your search or selected view.</p></div>'}</section>`;
   bind();
 };
 export function setRenderResource(renderer: (view: string) => void): void {
   renderResource = renderer;
 }
 function table(v: string, rows: LegacyRecord[]): string {
-  if (v === "reports" || v === "conduct-reports") {
-    const isConductReport = v === "conduct-reports";
-    return `<div class="table-wrap"><table class="data report-table"><caption>${isConductReport ? "Conduct Reports" : "Report Cases"}</caption><thead><tr>${isConductReport ? "<th>Conduct report</th><th>Quest</th><th>Reported member</th><th>Reported by</th><th>Reason</th>" : "<th>Report</th><th>Reported user</th><th>Submitted by</th><th>Report type</th>"}<th>Status</th><th>Reported</th></tr></thead><tbody>${rows.map((r) => `<tr data-open="${v}:${recordsFor(v).indexOf(r)}"><td><strong>${escapeActivityText(r.id)}</strong></td>${isConductReport ? `<td><strong>${escapeActivityText(String(r.relatedQuestTitle || r.title || "Quest not recorded"))}</strong></td><td><strong>${escapeActivityText(r.reportedUserName)}</strong><small>${escapeActivityText(r.reportedUserId)}</small></td><td><strong>${escapeActivityText(r.reporterName)}</strong><small>${escapeActivityText(r.reporterId)}</small></td><td>${escapeActivityText(r.category)}</td>` : `<td><strong>${escapeActivityText(r.reportedUserName)}</strong><small>${escapeActivityText(r.reportedUserId)}</small></td><td><strong>${escapeActivityText(r.reporterName)}</strong><small>${escapeActivityText(r.reporterId)}</small></td><td>${escapeActivityText(r.category)}</td>`}<td>${badge(statusForView(v, r), r.tone || "warning")}</td><td>${escapeActivityText(r.reportedAt)}</td></tr>`).join("")}</tbody></table></div>`;
+  if (v === "reports") {
+    const collection = recordsFor(v);
+    return `<div class="table-wrap"><table class="data report-table"><caption>Reports</caption><thead><tr><th>Report</th><th>Type</th><th>Source</th><th>Reported user</th><th>Reported by</th><th>Reason</th><th>Status</th><th>Reported</th></tr></thead><tbody>${rows.map((r) => {
+      const isConductReport = Boolean(r.conductReportStatus);
+      return `<tr data-open="${v}:${collection.indexOf(r)}"><td><strong>${escapeActivityText(r.id)}</strong></td><td><strong>${isConductReport ? "Conduct Report" : "Report Case"}</strong></td><td>${isConductReport ? "Quest" : "Message"}</td><td><strong>${escapeActivityText(r.reportedUserName)}</strong><small>${escapeActivityText(r.reportedUserId)}</small></td><td><strong>${escapeActivityText(r.reporterName)}</strong><small>${escapeActivityText(r.reporterId)}</small></td><td>${escapeActivityText(r.category)}</td><td>${badge(statusForView(v, r), r.tone || "warning")}</td><td>${escapeActivityText(r.reportedAt)}</td></tr>`;
+    }).join("")}</tbody></table></div>`;
+  }
+  if (v === "conduct-reports") {
+    const collection = recordsFor(v);
+    return `<div class="table-wrap"><table class="data report-table"><caption>Conduct Reports</caption><thead><tr><th>Conduct report</th><th>Quest</th><th>Reported member</th><th>Reported by</th><th>Reason</th><th>Status</th><th>Reported</th></tr></thead><tbody>${rows.map((r) => `<tr data-open="${v}:${collection.indexOf(r)}"><td><strong>${escapeActivityText(r.id)}</strong></td><td><strong>${escapeActivityText(String(r.relatedQuestTitle || r.title || "Quest not recorded"))}</strong></td><td><strong>${escapeActivityText(r.reportedUserName)}</strong><small>${escapeActivityText(r.reportedUserId)}</small></td><td><strong>${escapeActivityText(r.reporterName)}</strong><small>${escapeActivityText(r.reporterId)}</small></td><td>${escapeActivityText(r.category)}</td><td>${badge(statusForView(v, r), r.tone || "warning")}</td><td>${escapeActivityText(r.reportedAt)}</td></tr>`).join("")}</tbody></table></div>`;
   }
   if (v === "users") {
     const collection = recordsFor(v);
@@ -666,13 +684,15 @@ export function navigate(v: string): void {
   state.view = v;
   state.tab = "all";
   state.query = "";
-  if (isAdminApiEnabled() && ["payouts", "quests", "disputes", "users", "wallets"].includes(v)) {
+  if (isAdminApiEnabled() && ["payouts", "quests", "disputes", "users", "wallets", "topups"].includes(v)) {
     const refresh = v === "quests"
       ? refreshLiveQuests()
       : v === "payouts"
         ? refreshLivePayouts()
         : v === "disputes"
           ? refreshLiveDisputes()
+        : v === "topups"
+          ? refreshLiveTopUps()
         : v === "users"
           ? refreshLiveMembers()
           : refreshLiveWallets();
@@ -756,6 +776,61 @@ function payoutPreviousHistory(record: LegacyRecord): string {
     return '<p class="audit-note">No previous payouts are connected to this recipient.</p>';
   return `<div class="payout-previous-list">${previous.map((payout) => `<div class="payout-previous-row"><span><strong>${escapeActivityText(payout.id)}</strong><small>${escapeActivityText(payout.requestedAt || "Date not recorded")}</small></span><span><strong>฿${fmt(payout.amount)}</strong>${payoutBadge(payout.payoutStatus ?? payout.status, payout.tone)}</span></div>`).join("")}</div>`;
 }
+
+function topUpMoney(value: unknown): string {
+  return typeof value === "number"
+    ? `฿${fmt(value / 100)}`
+    : "Not provided by the Admin API";
+}
+
+function topUpDateTime(value: unknown): string {
+  const date = new Date(String(value ?? ""));
+  if (Number.isNaN(date.getTime())) return "Not provided by the Admin API";
+  return `${date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "Asia/Bangkok",
+  })} · ${date.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Bangkok",
+  })} ICT`;
+}
+
+function topUpFact(label: string, value: unknown, money = false): string {
+  const display = money ? topUpMoney(value) : String(value ?? "Not provided by the Admin API");
+  return `<div class="fact"><span>${escapeActivityText(label)}</span><strong>${escapeActivityText(display)}</strong></div>`;
+}
+
+function openTopUpDrawer(index: number): void {
+  const topUp = recordsFor("topups")[index];
+  if (!topUp) return;
+  showDrawerLayer();
+  const status = topUpStatusFor(topUp.topUpStatus ?? topUp.status);
+  const canReconcile = topUp.apiBacked && ["PENDING", "FAILED"].includes(status);
+  const reference = topUp.providerReference || "Not provided by the Admin API";
+  drawer.innerHTML = `<div class="drawer-top"><div><strong>${escapeActivityText(topUp.id)}</strong><small>Top-up record</small></div><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div><div class="drawer-body"><div class="drawer-title"><span class="att-icon ${toneClass(topUp.tone)}">${ico("wallet")}</span><div><h2>${escapeActivityText(topUp.title)}</h2><p>Member ID · ${escapeActivityText(topUp.person)}</p></div></div><div class="facts">${topUpFact("Status", topUpStatusLabel(status))}${topUpFact("Credit", topUp.creditAmountSatang, true)}${topUpFact("Payment total", topUp.paymentTotalSatang, true)}${topUpFact("Member", topUp.person)}${topUpFact("Student ID", topUp.other)}${topUpFact("Payment method", topUp.paymentMethod)}${topUpFact("Provider reference", reference)}</div><section class="section"><h3>Payment timing</h3><div class="facts">${topUpFact("Created", topUpDateTime(topUp.createdAt))}${topUpFact("Expires", topUpDateTime(topUp.expiresAt))}${topUpFact("Paid", topUp.paidAt ? topUpDateTime(topUp.paidAt) : "Not paid")}</div></section><section class="section"><h3>Provider charges</h3><div class="facts">${topUpFact("Provider fee", topUp.providerFeeSatang, true)}${topUpFact("Provider tax", topUp.providerTaxSatang, true)}</div><p class="audit-note">Amounts are supplied by the Top-up API. The Admin client does not calculate fees or tax.</p></section>${topUp.topUpDetailError ? `<p class="login-error" role="alert">${escapeActivityText(topUp.topUpDetailError)}</p>` : ""}</div><div class="drawer-actions">${canReconcile ? '<button class="btn primary" data-top-up-action="reconcile">Reconcile with provider</button>' : ""}<button class="btn" id="close-top-up-record">Close record</button></div>`;
+  drawer.querySelector<LegacyDomElement>("#close")?.addEventListener("click", closeDrawer);
+  drawer.querySelector<LegacyDomElement>("#close-top-up-record")?.addEventListener("click", closeDrawer);
+  scrim.onclick = closeDrawer;
+  drawer.querySelector<HTMLButtonElement>('[data-top-up-action="reconcile"]')?.addEventListener("click", (event) => {
+    const button = event.currentTarget;
+    if (!(button instanceof HTMLButtonElement)) return;
+    button.disabled = true;
+    void reconcileLiveTopUp(topUp).then(() => {
+      render();
+      const nextIndex = recordsFor("topups").indexOf(topUp);
+      if (nextIndex >= 0) openTopUpDrawer(nextIndex);
+      toast(`Top-up ${topUp.id} reconciled with the provider.`);
+    }).catch((error: unknown) => {
+      button.disabled = false;
+      topUp.topUpDetailError = error instanceof Error ? error.message : "Request failed.";
+      toast(`Top-up reconciliation failed: ${topUp.topUpDetailError}`);
+    });
+  });
+}
+
 function reportStatusLabel(report: LegacyRecord): string {
   return reportCaseStatusFor(report.reportCaseStatus ?? report.conductReportStatus ?? report.status, report.decision);
 }
@@ -844,9 +919,9 @@ function openUserReportDetails(user: LegacyRecord, report: LegacyRecord): void {
 function openReportDrawer(index: number, view: "reports" | "conduct-reports" = "reports"): void {
   const report = recordsFor(view)[index];
   if (!report) return;
-  const isConductReport = view === "conduct-reports";
+  const isConductReport = view === "conduct-reports" || Boolean(report.conductReportStatus);
   showDrawerLayer();
-  const status = reportCaseStatusFor(report.reportCaseStatus ?? report.conductReportStatus ?? report.status, report.decision),
+  const status = reportCaseStatusFor(report.conductReportStatus ?? report.reportCaseStatus ?? report.status, report.decision),
     isClosed = !isReportCasePending(status);
   drawer.innerHTML = `<div class="drawer-top"><div><strong>${report.id}</strong><small>${isConductReport ? "Conduct report" : "Report Case"}</small></div><button class="icon" id="close" aria-label="Close"><span class="close-lines"></span></button></div><div class="drawer-body report-record ${isClosed ? "closed-record" : "open-record"}"><div class="drawer-title"><span class="att-icon ${isClosed ? "neutral" : "warning"}">${ico("flag")}</span><div><h2>${isConductReport ? escapeActivityText(report.category) : `Report against ${escapeActivityText(report.reportedUserName)}`}</h2><p>${isConductReport ? `Quest: ${escapeActivityText(String(report.relatedQuestTitle || report.title || "Not recorded"))}` : `Submitted by ${escapeActivityText(report.reporterName)}`}</p></div></div><div class="case-alert"><span>${ico("flag")}</span><div><strong>${isClosed ? `${isConductReport ? "Conduct report" : "Report"} decision recorded` : `${isConductReport ? "Open conduct report" : "Open report"} — review is required`}</strong><p>${isClosed ? "This record is retained as a read-only audit record." : "Review the submitted details and evidence before closing this record."}</p></div></div><section class="section"><h3>${isConductReport ? "Conduct report overview" : "Report overview"}</h3><div class="facts"><div class="fact"><span>Status</span>${badge(status, report.tone || (isClosed ? "neutral" : "warning"))}</div><div class="fact"><span>${isConductReport ? "Reason" : "Report type"}</span><strong>${escapeActivityText(report.category)}</strong></div><div class="fact"><span>Reported</span><strong>${escapeActivityText(report.reportedAt)}</strong></div></div></section><section class="section"><h3>Report detail</h3><p>${escapeActivityText(report.details)}</p></section><section class="section"><h3>People involved</h3><div class="facts"><div class="fact"><span>${isConductReport ? "Reported member" : "Reported user"}</span><strong>${escapeActivityText(report.reportedUserName)}</strong><small>${escapeActivityText(report.reportedUserId)}</small></div><div class="fact"><span>Reported by</span><strong>${escapeActivityText(report.reporterName)}</strong><small>${escapeActivityText(report.reporterId)}</small></div></div></section><section class="section"><h3>Evidence</h3>${report.evidence?.[0] && report.evidenceRefs?.[0] ? `<button class="evidence-item" data-report-evidence data-evidence-ref="${escapeActivityText(report.evidenceRefs[0])}"><span class="evidence-state">${ico("check")}</span><span><strong>${escapeActivityText(report.evidence[0])}</strong><small>Attached by ${escapeActivityText(report.reporterName)}</small></span><span>Open</span></button>` : '<p class="audit-note">No Evidence Reference was provided.</p>'}</section>${isClosed && report.decisionReason ? `<section class="section"><h3>Closing note</h3><p>${escapeActivityText(report.decisionReason)}</p></section>` : ""}</div><div class="drawer-actions"><a class="btn" href="/reports/${encodeURIComponent(report.id)}">Full report detail</a><button class="btn" id="close-report-record">Close record</button>${isClosed ? "" : '<a class="btn primary" href="/reports/' + encodeURIComponent(report.id) + '">Review report</a>'}</div>`;
   if (!isClosed)
@@ -1153,6 +1228,7 @@ export function openDrawer(v: string, i: number): void {
   if (v === "reports") return openReportDrawer(i);
   if (v === "conduct-reports") return openReportDrawer(i, "conduct-reports");
   if (v === "wallets") return openWalletDrawer(i);
+  if (v === "topups") return openTopUpDrawer(i);
   if (v === "quests" || v === "disputes") return ensureDetailDrawer(v, i);
   const r = recordsFor(v)[i],
     isP = v === "payouts",

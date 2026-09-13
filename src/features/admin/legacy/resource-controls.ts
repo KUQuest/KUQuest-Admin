@@ -28,6 +28,7 @@ import {
   resetPagination as resetResourcePagination,
   resetResourceState as resetResourceStateModel,
   resourceColumns,
+  reportTabLabel,
   type ResourceCollections,
   resourceTabIsActive as resourceTabIsActiveModel,
   resourceTabs,
@@ -56,6 +57,8 @@ import {
   questStateFor,
   reportCaseStatusLabel,
   reportCaseStatusFor,
+  topUpStatusLabel,
+  topUpStatusFor,
   walletStatusFor,
   walletStatusLabel,
 } from "../domain/rulebook";
@@ -67,6 +70,7 @@ const resourceCollections: ResourceCollections = {
   users: data.users,
   wallets: data.wallets,
   payouts: data.payouts,
+  topups: data.topups,
   reports: recordsFor("reports"),
   "conduct-reports": recordsFor("conduct-reports"),
 };
@@ -93,6 +97,7 @@ state.orderBy = {
   users: null,
   wallets: null,
   payouts: null,
+  topups: null,
   reports: null,
   "conduct-reports": null,
 };
@@ -251,7 +256,7 @@ setRenderResource(function resourceRender(view: string): void {
       ? ["All"]
       : resourceTabs[resourceView],
     hasQuery = Boolean(state.query),
-    liveState = ["payouts", "disputes", "quests", "users", "wallets"].includes(resourceView)
+    liveState = ["payouts", "disputes", "quests", "users", "wallets", "topups"].includes(resourceView)
       ? liveResourceState[resourceView as LiveResourceView]
       : null,
     resultLabel = liveState?.backgroundLoading
@@ -261,10 +266,12 @@ setRenderResource(function resourceRender(view: string): void {
       ? '<div class="empty"><h3>Loading records</h3><p>Reading the Admin API.</p></div>'
       : liveState?.error && !resourceCollections[resourceView].length
         ? `<div class="empty"><h3>Records are not available</h3><p>${escapeActivityText(liveState.error)}</p></div>`
+        : resourceView === "topups" && !isAdminApiEnabled()
+          ? '<div class="empty"><h3>Top-up review requires the Admin API</h3><p>Connect the Admin API to read Top-up records.</p></div>'
         : rows.length
           ? `${controlledTable(resourceView, pagination.rows)}${paginationControls(resourceView, pagination)}`
           : `<div class="empty"><h3>No matching records</h3><p>${hasQuery ? "Clear your search to see more results." : "There are no records in this view."}</p><button class="btn reset-results">Reset view</button></div>`;
-  main.innerHTML = `${pageHead(...heads[resourceView])}<section class="panel resource"><div class="tabs" aria-label="Filter ${view} records">${tabs.map((tab: string) => { const label = tab === "All" || tab === "Team" || tab === "Solo" ? tab : resourceView === "payouts" ? payoutStatusLabel(tab) : resourceView === "disputes" ? disputeCaseStatusLabel(tab) : resourceView === "quests" ? questStateLabel(tab) : resourceView === "reports" || resourceView === "conduct-reports" ? reportCaseStatusLabel(tab) : resourceView === "users" ? memberStatusLabel(tab) : resourceView === "wallets" ? walletStatusLabel(tab) : tab; return `<button class="tab ${state.tab === tab.toLowerCase() ? "active" : ""}" data-tab="${tab.toLowerCase()}" aria-pressed="${state.tab === tab.toLowerCase()}">${escapeActivityText(label)}${tab === "All" ? ` (${resourceCollections[resourceView].length})` : ""}</button>`; }).join("")}</div><div class="toolbar resource-toolbar"><div class="inline-search search-field">${ico("search")}<input id="resource-search" value="${escapeActivityText(state.query)}" placeholder="Search ${view}…" aria-label="Search ${view}" autocomplete="off">${hasQuery ? '<button class="clear-search" aria-label="Clear search"><span class="close-lines"></span></button>' : ""}</div><span class="sort-help">Click a column to sort</span>${pageSizeControls(resourceView)}<span class="count" aria-live="polite">${resultLabel}</span></div>${resultContent}</section>`;
+  main.innerHTML = `${pageHead(...heads[resourceView])}<section class="panel resource"><div class="tabs" aria-label="Filter ${view} records">${tabs.map((tab: string) => { const label = tab === "All" || tab === "Team" || tab === "Solo" ? tab : resourceView === "payouts" ? payoutStatusLabel(tab) : resourceView === "topups" ? topUpStatusLabel(tab) : resourceView === "disputes" ? disputeCaseStatusLabel(tab) : resourceView === "quests" ? questStateLabel(tab) : resourceView === "reports" ? reportTabLabel(tab) : resourceView === "conduct-reports" ? reportCaseStatusLabel(tab) : resourceView === "users" ? memberStatusLabel(tab) : resourceView === "wallets" ? walletStatusLabel(tab) : tab; return `<button class="tab ${state.tab === tab.toLowerCase() ? "active" : ""}" data-tab="${tab.toLowerCase()}" aria-pressed="${state.tab === tab.toLowerCase()}">${escapeActivityText(label)}${tab === "All" ? ` (${resourceCollections[resourceView].length})` : ""}</button>`; }).join("")}</div><div class="toolbar resource-toolbar"><div class="inline-search search-field">${ico("search")}<input id="resource-search" value="${escapeActivityText(state.query)}" placeholder="Search ${view}…" aria-label="Search ${view}" autocomplete="off">${hasQuery ? '<button class="clear-search" aria-label="Clear search"><span class="close-lines"></span></button>' : ""}</div><span class="sort-help">Click a column to sort</span>${pageSizeControls(resourceView)}<span class="count" aria-live="polite">${resultLabel}</span></div>${resultContent}</section>`;
   if (resourceView === "wallets") {
     const summary = document.createElement("div");
     summary.id = "wallet-finance-summary";
@@ -291,7 +298,7 @@ function controlledTable(view: ResourceView, rows: LegacyRecord[]): string {
   const visible = state.visibleColumns[view] || [],
     columns = resourceColumns[view].filter(([key]) => visible.includes(key));
   const activeSort = sortSpec(view, state.orderBy[view]);
-  const tableLabel = view === "users" ? "Users" : view === "wallets" ? "Wallets" : view === "reports" ? "Report Cases" : view === "conduct-reports" ? "Conduct Reports" : view[0].toUpperCase() + view.slice(1);
+  const tableLabel = view === "users" ? "Users" : view === "wallets" ? "Wallets" : view === "reports" ? "Reports" : view === "conduct-reports" ? "Conduct Reports" : view === "topups" ? "Top-ups" : view[0].toUpperCase() + view.slice(1);
   return `<div class="table-wrap" role="region" aria-label="${tableLabel} table"><table class="data"><caption>${tableLabel}</caption><thead><tr>${columns.map(([key, label]: ResourceColumn) => { const active = activeSort?.key === key; return `<th scope="col" aria-sort="${active ? (activeSort.direction === "asc" ? "ascending" : "descending") : "none"}"><span class="table-sort${active ? " is-active" : ""}" data-sort-key="${key}">${label}<span class="sort-indicator" aria-hidden="true">${active ? (activeSort.direction === "asc" ? "↑" : "↓") : "↕"}</span></span></th>`; }).join("")}</tr></thead><tbody>${rows.map((record: LegacyRecord) => {
     const target = `${view}:${resourceCollections[view].indexOf(record)}`;
     return `<tr class="${view === "disputes" && disputeCaseStatusFor(record.disputeCaseStatus ?? record.status) === "DISPUTE_CASE_PENDING" ? "dispute-active-row" : ""}" data-open="${target}">${columns.map(([key]) => tableCell(view, record, key, target)).join("")}</tr>`;
@@ -330,6 +337,10 @@ function tableCell(view: ResourceView, record: LegacyRecord, key: string, target
       ? '<td class="money"><span class="audit-note">Not provided by the Admin API</span></td>'
       : `<td class="money">฿${fmt(record.amount)}</td>`;
   }
+  if (key === "creditAmountSatang" || key === "paymentTotalSatang") {
+    const value = record[key];
+    return `<td class="money">${typeof value === "number" ? `฿${fmt(value / 100)}` : '<span class="audit-note">Not provided by the Admin API</span>'}</td>`;
+  }
   if (key === "requestedAt") return `<td>${escapeActivityText(record.requestedAt || "—")}</td>`;
   if (key === "accountCreatedAt") return `<td>${escapeActivityText(String(record.accountCreatedAt || "—"))}</td>`;
   if (key === "status") {
@@ -340,8 +351,10 @@ function tableCell(view: ResourceView, record: LegacyRecord, key: string, target
         ? disputeCaseStatusFor(record.disputeCaseStatus ?? record.status)
         : view === "payouts"
           ? payoutStatusFor(record.payoutStatus ?? record.status)
+          : view === "topups"
+            ? topUpStatusFor(record.topUpStatus ?? record.status)
       : view === "reports" || view === "conduct-reports"
-          ? reportCaseStatusFor(record.reportCaseStatus ?? record.conductReportStatus ?? record.status, record.decision)
+          ? reportCaseStatusFor(record.conductReportStatus ?? record.reportCaseStatus ?? record.status, record.decision)
           : view === "users"
             ? memberStatusFor(record.memberStatus)
             : walletStatusFor(record.walletStatus ?? record.status);
@@ -357,6 +370,10 @@ function tableCell(view: ResourceView, record: LegacyRecord, key: string, target
     return `<td><a class="user-record-link" href="/users/${encodeURIComponent(String(record.reportedUserId || ""))}"><strong>${escapeActivityText(record.reportedUserName)}</strong></a></td>`;
   if (key === "relatedQuestTitle")
     return `<td><strong>${escapeActivityText(String(record.relatedQuestTitle || record.title || "Quest not recorded"))}</strong></td>`;
+  if (key === "reportType")
+    return `<td><strong>${record.conductReportStatus ? "Conduct Report" : "Report Case"}</strong></td>`;
+  if (key === "source")
+    return `<td>${record.conductReportStatus ? "Quest" : "Message"}</td>`;
   if (key === "reporterName")
     return `<td><a class="user-record-link" href="/users/${encodeURIComponent(String(record.reporterId || ""))}">${escapeActivityText(record.reporterName)}</a></td>`;
   if (key === "category") return `<td>${escapeActivityText(record.category)}</td>`;

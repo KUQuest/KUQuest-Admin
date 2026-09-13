@@ -131,6 +131,14 @@ export const mockAdminCommandPort: AdminCommandPort = {
     return commandResult("retryPayoutProviderEvent", record);
   },
 
+  async reconcileTopUp(_topUpId: string) {
+    throw new Error("Top-up reconciliation requires the Admin API.");
+  },
+
+  async retryTopUpProviderEvent(_eventId: string) {
+    throw new Error("Top-up provider event retry requires the Admin API.");
+  },
+
   decideReport(reportId: string, options: ReportDecision) {
     const record = recordFor(reportId, data.reports, "Report Case");
     if (options.decision === "REPORT_CASE_RESTORED") {

@@ -11,6 +11,7 @@ import {
   refreshLiveDisputes,
   refreshLiveMembers,
   refreshLivePayouts,
+  refreshLiveTopUps,
   refreshLiveQuests,
   refreshLiveWallets,
   loadLiveWalletStatement,
@@ -197,6 +198,7 @@ const legacyBoardViews = new Set([
   "users",
   "wallets",
   "payouts",
+  "topups",
   "reports",
   "conduct-reports",
   "policies",
@@ -205,7 +207,8 @@ const legacyBoardViews = new Set([
 
 function resetLegacyBoardState(core: SharedRuntimeCore, search: string): void {
   const requestedView = new URLSearchParams(search).get("view") ?? "home";
-  core.state.view = legacyBoardViews.has(requestedView) ? requestedView : "home";
+  const normalizedView = requestedView === "conduct-reports" ? "reports" : requestedView;
+  core.state.view = legacyBoardViews.has(normalizedView) ? normalizedView : "home";
   core.state.tab = "all";
   core.state.query = "";
   core.state.questFilters = { mode: "all", status: "all" };
@@ -255,7 +258,9 @@ export async function initializeTypedLegacyPage(
           ? refreshLiveDisputes()
           : view === "payouts"
             ? refreshLivePayouts()
-            : view === "users"
+            : view === "topups"
+              ? refreshLiveTopUps()
+              : view === "users"
               ? refreshLiveMembers()
               : view === "wallets"
                 ? refreshLiveWallets()

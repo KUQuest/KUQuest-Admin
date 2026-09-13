@@ -16,6 +16,9 @@ export function statusBadgeClass(status: string): string {
     "FAILED",
     "CANCELLED",
   ].includes(value)) return `status-payout-${kebabCase(value)}`;
+  if (["PENDING", "PAID", "EXPIRED", "FAILED"].includes(value)) {
+    return `status-top-up-${kebabCase(value)}`;
+  }
   if (["ACTIVE", "FROZEN", "SUSPENDED", "CLOSED"].includes(value)) return `status-wallet-${kebabCase(value)}`;
   if (["NORMAL", "FLAG", "TEMP BAN", "PERM BAN"].includes(value)) return `status-member-${kebabCase(value)}`;
   return "";

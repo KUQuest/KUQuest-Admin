@@ -11,6 +11,7 @@ function runtime(): LegacyAdminRuntime {
       users: [{ id: "USR-1" } as LegacyRecord],
       wallets: [],
       payouts: [],
+      topups: [],
       reports: [],
     },
     navigate() {},

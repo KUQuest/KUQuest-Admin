@@ -728,6 +728,5 @@ function setSeedCounter(view: string, count: number): void {
 if (!isAdminApiEnabled()) {
   setSeedCounter("disputes", data.disputes.filter((record) => disputeCaseStatusFor(record.disputeCaseStatus ?? record.status) === "DISPUTE_CASE_PENDING").length);
   setSeedCounter("payouts", data.payouts.filter((record) => payoutStatusFor(record.payoutStatus ?? record.status) === "PENDING_ADMIN_APPROVAL").length);
-  setSeedCounter("reports", data.reports.filter((record) => !record.conductReportStatus && reportCaseStatusFor(record.reportCaseStatus ?? record.status, record.decision) === "REPORT_CASE_PENDING").length);
-  setSeedCounter("conduct-reports", data.reports.filter((record) => record.conductReportStatus === "CONDUCT_REPORT_PENDING").length);
+  setSeedCounter("reports", data.reports.filter((record) => reportCaseStatusFor(record.conductReportStatus ?? record.reportCaseStatus ?? record.status, record.decision) === "REPORT_CASE_PENDING" || record.conductReportStatus === "CONDUCT_REPORT_PENDING").length);
 }

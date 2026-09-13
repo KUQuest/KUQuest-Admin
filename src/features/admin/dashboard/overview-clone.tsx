@@ -279,7 +279,7 @@ export function OverviewClone() {
         </section>
 
         <section className="overview-command-center-snapshot-card" aria-labelledby="overview-command-members-heading">
-          <div className="overview-command-center-section-head"><div><h2 id="overview-command-members-heading">Members</h2><p>Count by Member status.</p></div><span>Local fallback</span></div>
+          <div className="overview-command-center-section-head"><div><h2 id="overview-command-members-heading">Members</h2><p>Count by Member status.</p></div><span>{model.memberStatusSource}</span></div>
           <ul className="overview-command-center-status-list">
             {model.memberStatusCounts.map((entry) => (
               <li key={entry.status} className={`overview-command-center-status-row overview-member-${entry.status.toLowerCase().replaceAll(" ", "-")}`}>
@@ -289,11 +289,11 @@ export function OverviewClone() {
               </li>
             ))}
           </ul>
-          <p className="overview-command-center-note">Member status counts use local fallback data because the Admin API does not provide a Member list.</p>
+          {model.memberStatusSource === "Local fallback" ? <p className="overview-command-center-note">Member status counts use local fallback data because the Admin API does not provide them.</p> : null}
         </section>
 
         <section className="overview-command-center-snapshot-card" aria-labelledby="overview-command-wallets-heading">
-          <div className="overview-command-center-section-head"><div><h2 id="overview-command-wallets-heading">Wallets</h2><p>Count by Wallet status.</p></div><span>Local fallback</span></div>
+          <div className="overview-command-center-section-head"><div><h2 id="overview-command-wallets-heading">Wallets</h2><p>Count by Wallet status.</p></div><span>{model.walletStatusSource}</span></div>
           <ul className="overview-command-center-status-list">
             {model.walletStatusCounts.map((entry) => (
               <li key={entry.status} className={`overview-command-center-status-row overview-wallet-${entry.status.toLowerCase()}`}>
@@ -304,7 +304,7 @@ export function OverviewClone() {
             ))}
           </ul>
           <div className="overview-command-center-status-fact"><span>Payouts in flight</span><strong>{model.inFlightPayouts === null ? "—" : countLabel(model.inFlightPayouts)}</strong></div>
-          <p className="overview-command-center-note">Wallet status counts use local fallback data because the Admin API does not provide a Wallet list.</p>
+          {model.walletStatusSource === "Local fallback" ? <p className="overview-command-center-note">Wallet status counts use local fallback data because the Admin API does not provide them.</p> : null}
         </section>
       </div>
     </main>

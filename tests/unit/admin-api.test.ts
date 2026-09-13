@@ -265,6 +265,30 @@ describe("Admin API boundary", () => {
     expect(request?.url).toBe("https://api.example.test/api/v1/admin/activity-log?action=QUEST_HIDDEN&resourceType=QUEST&resourceId=quest-1&adminId=admin-1&limit=50&cursor=next-page&sort=oldest");
   });
 
+  it("uses the Top-up list query and reconcile routes", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    const requests: Request[] = [];
+
+    mockFetch(async (input, init) => {
+      const request = new Request(input, init);
+      requests.push(request);
+      return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
+    });
+
+    await adminApi.listTopUps({
+      status: "PENDING",
+      userId: "member-1",
+      limit: 50,
+      cursor: "next-page",
+    });
+    await adminApi.reconcileTopUp("top-up-1");
+
+    expect(requests[0].url).toBe("https://api.example.test/api/v1/admin/top-ups?status=PENDING&userId=member-1&limit=50&cursor=next-page");
+    expect(requests[0].method).toBe("GET");
+    expect(requests[1].url).toBe("https://api.example.test/api/v1/admin/top-ups/top-up-1/reconcile");
+    expect(requests[1].method).toBe("POST");
+  });
+
   it("reads the current Admin session without the shared envelope", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     let request: Request | undefined;
@@ -457,6 +481,9 @@ describe("Admin API boundary", () => {
     await adminApi.rejectPayout("payout-1", { idempotencyKey: "reject-1", expectedVersion: 1, reasonCode: "PAYOUT_RISK_REVIEW" });
     await adminApi.reconcilePayout("payout-1");
     await adminApi.retryPayoutProviderEvent("event-1");
+    await adminApi.listTopUps({ status: "PENDING", limit: 50, cursor: "top-up-next" });
+    await adminApi.reconcileTopUp("top-up-1");
+    await adminApi.retryTopUpProviderEvent("top-up-event-1");
     await adminApi.listReports();
     await adminApi.getReport("report-1");
     await adminApi.decideReport("report-1", {
@@ -496,6 +523,9 @@ describe("Admin API boundary", () => {
       "/api/v1/admin/payouts/payout-1/cancel",
       "/api/v1/admin/payouts/payout-1/reconcile",
       "/api/v1/admin/payouts/events/event-1/retry",
+      "/api/v1/admin/top-ups",
+      "/api/v1/admin/top-ups/top-up-1/reconcile",
+      "/api/v1/admin/top-ups/events/top-up-event-1/retry",
       "/api/v1/admin/reports",
       "/api/v1/admin/reports/report-1",
       "/api/v1/admin/reports/report-1/decide",

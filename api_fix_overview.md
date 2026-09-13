@@ -205,6 +205,13 @@ The required response is:
 }
 ~~~
 
+The API keeps `reports` and `conductReports` as separate queue objects. The
+active Admin Overview combines them into one visible `Report` row. The Admin
+uses the sum of both queue counts for that row and selects the earlier
+`oldest.createdAt` when both queues have an oldest record. The separate API
+objects remain necessary because Report Case and Conduct Report have different
+status values and queue eligibility rules.
+
 If a queue has no open records, return:
 
 ~~~json
@@ -274,9 +281,9 @@ awaitingResolution  count where status is DISPUTE_CASE_PENDING
 
 The active Overview uses awaitingResolution for the Dispute review queue.
 
-The API already returns both fields. The current Admin Overview Clone does not
-use awaitingResolution; it currently uses local fallback data. After this API
-contract is stable, the Admin should use the API field.
+The API already returns both fields. The active Admin Overview Clone reads
+awaitingResolution for the Dispute queue count. The queue detail fields remain
+optional in the current API response until queues.disputes is implemented.
 
 ### 3.3 Payout counters
 
@@ -391,6 +398,11 @@ disputes
 reports
 conductReports
 ~~~
+
+The API queue keys remain separate. The active Admin Overview displays the
+`reports` and `conductReports` queues as one `Report` row. This is a display
+merge only; the API must still return each queue independently so the Admin
+can preserve the queue-specific status filters and audit meaning.
 
 ### Queue eligibility filters
 
@@ -520,6 +532,17 @@ queues.reports.count
 
 queues.conductReports.count
   = conductReports.open
+
+~~~
+
+The combined `Report` row shown by the Admin uses:
+
+~~~text
+Report count
+  = queues.reports.count + queues.conductReports.count
+
+Report oldest
+  = the earlier non-null oldest.createdAt from those two queues
 ~~~
 
 If members.byStatus represents all Members, the sum of its values must equal
@@ -565,14 +588,13 @@ The API Server team must:
 The following current Admin behavior must be removed after the API fields are
 available:
 
-- Dispute queue count from local fallback data
 - Report Case count from local fallback data
 - Conduct Report count from local fallback data
 - Member status counts from local fallback data
 - Wallet status counts from local fallback data
-- Queue labels such as API path not available
-- Queue labels such as Queue detail not provided
-- Waiting value of —
+- Queue labels such as API path not available for Report and Conduct Report
+- Queue labels such as Queue detail not provided for queues without oldest data
+- Waiting value of — for queues without oldest data
 
 The Admin must then read:
 

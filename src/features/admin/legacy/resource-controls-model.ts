@@ -5,6 +5,7 @@ import {
   payoutStatusFor,
   questStateFor,
   reportCaseStatusFor,
+  topUpStatusFor,
   walletStatusFor,
 } from "../domain/rulebook";
 
@@ -14,6 +15,7 @@ export type ResourceView =
   | "users"
   | "wallets"
   | "payouts"
+  | "topups"
   | "reports"
   | "conduct-reports";
 export type ResourceCollections = Record<ResourceView, LegacyRecord[]>;
@@ -52,7 +54,7 @@ export const resourceColumns: Record<ResourceView, ResourceColumn[]> = {
   users: [
     ["id", "Student ID"],
     ["title", "User"],
-    ["person", "Email"],
+    ["person", "Member ID"],
     ["other", "Academic profile"],
     ["memberStatus", "Status"],
   ],
@@ -73,11 +75,22 @@ export const resourceColumns: Record<ResourceView, ResourceColumn[]> = {
     ["requestedAt", "Requested"],
     ["status", "Status"],
   ],
+  topups: [
+    ["id", "Top-up"],
+    ["title", "Member"],
+    ["person", "Member ID"],
+    ["creditAmountSatang", "Credit"],
+    ["paymentTotalSatang", "Payment total"],
+    ["status", "Status"],
+    ["createdAt", "Created"],
+  ],
   reports: [
     ["id", "Report"],
+    ["reportType", "Type"],
+    ["source", "Source"],
     ["reportedUserName", "Reported user"],
     ["reporterName", "Reported by"],
-    ["category", "Type"],
+    ["category", "Reason"],
     ["status", "Status"],
     ["reportedAt", "Reported"],
   ],
@@ -95,6 +108,7 @@ export const resourceColumns: Record<ResourceView, ResourceColumn[]> = {
 export const resourceTabs: Record<ResourceView, string[]> = {
   disputes: ["All", "DISPUTE_CASE_PENDING", "DISPUTE_CASE_DISMISSED", "DISPUTE_CASE_RESOLVED"],
   payouts: ["All", "PENDING_ADMIN_APPROVAL", "SUBMITTED_TO_PROVIDER", "PROVIDER_PENDING", "SUCCEEDED", "FAILED", "CANCELLED"],
+  topups: ["All", "PENDING", "PAID", "EXPIRED", "FAILED"],
   quests: [
     "All",
     "Team",
@@ -109,9 +123,42 @@ export const resourceTabs: Record<ResourceView, string[]> = {
   ],
   users: ["All", "Normal", "Flag", "Temp Ban", "Perm Ban"],
   wallets: ["All", "ACTIVE", "FROZEN", "SUSPENDED", "CLOSED"],
-  reports: ["All", "REPORT_CASE_PENDING", "REPORT_CASE_DISMISSED", "REPORT_CASE_HIDDEN", "REPORT_CASE_RESTORED"],
+  reports: ["All", "OPEN", "DISMISSED", "CONFIRMED", "REPORT_CASE_RESTORED"],
   "conduct-reports": ["All", "CONDUCT_REPORT_PENDING", "CONDUCT_REPORT_UPHELD", "CONDUCT_REPORT_DISMISSED"],
 };
+
+export function reportTabLabel(tab: string): string {
+  switch (tab) {
+    case "OPEN":
+      return "Open";
+    case "DISMISSED":
+      return "Dismissed";
+    case "CONFIRMED":
+    case "CONDUCT_REPORT_UPHELD":
+      return "Confirmed";
+    case "REPORT_CASE_HIDDEN":
+      return "Confirmed";
+    case "REPORT_CASE_RESTORED":
+      return "Restored";
+    default:
+      return tab;
+  }
+}
+
+export function reportStatusMatchesTab(tab: string, status: string): boolean {
+  switch (tab.trim().toUpperCase()) {
+    case "ALL":
+      return true;
+    case "OPEN":
+      return status === "REPORT_CASE_PENDING" || status === "CONDUCT_REPORT_PENDING";
+    case "DISMISSED":
+      return status === "REPORT_CASE_DISMISSED" || status === "CONDUCT_REPORT_DISMISSED";
+    case "CONFIRMED":
+      return status === "REPORT_CASE_HIDDEN" || status === "CONDUCT_REPORT_UPHELD";
+    default:
+      return status === tab.trim().toUpperCase();
+  }
+}
 
 export const pageSizeOptions: Array<[number | "all", string]> = [
   [10, "Show 10"],
@@ -170,6 +217,7 @@ export function matchingRows(
       record.requestedAt || "",
       record.createdAt || "",
       record.detail || "",
+      view === "reports" ? (record.conductReportStatus ? "Conduct Report Quest" : "Report Case Message") : "",
     ]
       .join(" ")
       .toLowerCase();
@@ -184,7 +232,9 @@ export function matchingRows(
             record.status === questFilters.status)
         : view === "users" && !record.memberStatus
           ? state.tab === "all"
-          : state.tab === "all" || displayStatus.toLowerCase() === state.tab || rawStatus.includes(state.tab);
+          : view === "reports"
+            ? reportStatusMatchesTab(state.tab, displayStatus)
+            : state.tab === "all" || displayStatus.toLowerCase() === state.tab || rawStatus.includes(state.tab);
     return (
       (!query || searchable.includes(query)) &&
       matchesTab &&
@@ -222,7 +272,8 @@ function statusForView(view: ResourceView, record: LegacyRecord): string {
   if (view === "quests") return questStateFor(record.questState ?? record.status);
   if (view === "disputes") return disputeCaseStatusFor(record.disputeCaseStatus ?? record.status);
   if (view === "payouts") return payoutStatusFor(record.payoutStatus ?? record.status);
-  if (view === "reports") return reportCaseStatusFor(record.reportCaseStatus ?? record.status, record.decision);
+  if (view === "topups") return topUpStatusFor(record.topUpStatus ?? record.status);
+  if (view === "reports") return reportCaseStatusFor(record.conductReportStatus ?? record.reportCaseStatus ?? record.status, record.decision);
   if (view === "conduct-reports") return reportCaseStatusFor(record.conductReportStatus ?? record.status, record.decision);
   if (view === "users") return memberStatusFor(record.memberStatus);
   return walletStatusFor(record.walletStatus ?? record.status);
@@ -263,6 +314,8 @@ function sortValue(record: LegacyRecord, key: string): string | number | null {
   if (key === "reportedAt") return dateSortValue(record.reportedAt);
   if (key === "createdAt") return dateSortValue(record.createdAt);
   if (key === "walletLatestTransactionAt") return dateSortValue(record.walletLatestTransactionAt);
+  if (key === "reportType") return record.conductReportStatus ? "Conduct Report" : "Report Case";
+  if (key === "source") return record.conductReportStatus ? "Quest" : "Message";
   const value = record[key];
   if (typeof value === "string" || typeof value === "number") return value;
   if (value == null) return null;

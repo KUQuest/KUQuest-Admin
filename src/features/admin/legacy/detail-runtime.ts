@@ -67,7 +67,7 @@ export {
   userReportsFor,
 } from "./runtime-core";
 
-type LegacyView = "home" | "disputes" | "quests" | "users" | "wallets" | "payouts" | "reports" | "conduct-reports" | "policies" | "activity";
+type LegacyView = "home" | "disputes" | "quests" | "users" | "wallets" | "payouts" | "topups" | "reports" | "conduct-reports" | "policies" | "activity";
 type IconName = "home" | "scale" | "quest" | "users" | "wallet" | "settings" | "history" | "menu" | "search" | "filter" | "paperclip" | "check" | "user" | "flag";
 type LegacyForm = HTMLFormElement & {
   elements: HTMLFormControlsCollection & Record<string, LegacyDomElement>;
@@ -77,9 +77,9 @@ const navItems: Array<[LegacyView, IconName, string]> = [
   ["home", "home", "Overview"],
   ["quests", "quest", "Quests"],
   ["disputes", "scale", "Disputes"],
-  ["reports", "flag", "Report Cases"],
-  ["conduct-reports", "flag", "Conduct Reports"],
+  ["reports", "flag", "Reports"],
   ["payouts", "wallet", "Payouts"],
+  ["topups", "wallet", "Top-ups"],
   ["users", "users", "Users"],
   ["wallets", "wallet", "Wallets"],
 ];
@@ -91,8 +91,9 @@ function requiredQuery<T extends Element>(root: ParentNode, selector: string): T
 }
 
 const requestedView = new URLSearchParams(location.search).get("view");
-const initialView: LegacyView = ["home", "disputes", "quests", "users", "wallets", "payouts", "reports", "conduct-reports", "policies", "activity"].includes(requestedView as LegacyView)
-  ? requestedView as LegacyView
+const normalizedRequestedView = requestedView === "conduct-reports" ? "reports" : requestedView;
+const initialView: LegacyView = ["home", "disputes", "quests", "users", "wallets", "payouts", "topups", "reports", "policies", "activity"].includes(normalizedRequestedView as LegacyView)
+  ? normalizedRequestedView as LegacyView
   : "home";
 export const state: LegacyPageState = {
   view: initialView,
@@ -168,13 +169,11 @@ export function setNavigationCounts(counts: AdminNavigationCounts): void {
   setNavigationCount("disputes", counts.disputes);
   setNavigationCount("payouts", counts.payouts);
   removeNavigationCount("reports");
-  removeNavigationCount("conduct-reports");
 }
 
 export function setMockNavigationCounts(counts: MockNavigationCounts): void {
   if (typeof counts.disputes === "number") setNavigationCount("disputes", counts.disputes);
-  setNavigationCount("reports", counts.reports);
-  setNavigationCount("conduct-reports", counts.conductReports);
+  setNavigationCount("reports", counts.reports + counts.conductReports);
 }
 
 export async function refreshNavigationCounts(): Promise<void> {

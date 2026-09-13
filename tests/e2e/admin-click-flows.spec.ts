@@ -171,19 +171,23 @@ test.describe("admin click flows", () => {
 
     const navigation = page.locator("#nav");
     const overview = navigation.getByRole("button", { name: "Overview", exact: true });
-    const reportCases = navigation.getByRole("button", { name: /^Report Cases/ });
+    const reports = navigation.getByRole("button", { name: /^Reports/ });
 
-    await reportCases.click();
+    await reports.click();
     await expect(page).toHaveURL(/\/\?view=reports$/);
-    await expect(page.getByRole("heading", { level: 1, name: "Report Cases", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Reports", exact: true })).toBeVisible();
+    await expect(navigation.getByRole("button", { name: /^Conduct Reports/ })).toHaveCount(0);
+    await expect(page.locator(".data caption")).toHaveText("Reports");
+    await expect(page.getByText("Report Case", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Conduct Report", { exact: true }).first()).toBeVisible();
 
     await overview.click();
     await expect(page).toHaveURL(/\/$/);
     await expect(page.getByRole("heading", { level: 1, name: "Overview", exact: true })).toBeVisible();
 
-    await reportCases.click();
+    await reports.click();
     await expect(page).toHaveURL(/\/\?view=reports$/);
-    await expect(page.getByRole("heading", { level: 1, name: "Report Cases", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Reports", exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { level: 1, name: "Overview", exact: true })).toHaveCount(0);
     await expect(page.locator("#dashboard-main")).toHaveCount(0);
   });

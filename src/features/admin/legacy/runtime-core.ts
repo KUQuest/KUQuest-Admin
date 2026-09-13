@@ -7,12 +7,14 @@ import {
   isPayoutStatus,
   isQuestState,
   isReportCaseStatus,
+  isTopUpStatus,
   isWalletStatus,
   memberStatusLabel,
   payoutStatusFor,
   payoutStatusLabel,
   questStateLabel,
   reportCaseStatusLabel,
+  topUpStatusLabel,
   walletStatusLabel,
 } from "../domain/rulebook";
 import { mockAdminCommandPort } from "./admin-command-port";
@@ -224,6 +226,7 @@ function statusLabel(status: string): string {
   if (isQuestState(status)) return questStateLabel(status);
   if (isDisputeCaseStatus(status)) return disputeCaseStatusLabel(status);
   if (isReportCaseStatus(status) || isConductReportStatus(status)) return reportCaseStatusLabel(status);
+  if (isTopUpStatus(status)) return topUpStatusLabel(status);
   if (isWalletStatus(status)) return walletStatusLabel(status);
   if (["Normal", "Flag", "Temp Ban", "Perm Ban", "Temp ban", "Perm ban", "Red Flag"].includes(status)) {
     return memberStatusLabel(status);

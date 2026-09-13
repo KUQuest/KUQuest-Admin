@@ -108,6 +108,14 @@ html[data-theme="dark"] {
   --status-payout-failed-soft: #452725;
   --status-payout-cancelled: #cbd5e1;
   --status-payout-cancelled-soft: #303d42;
+  --status-top-up-pending: #fcd34d;
+  --status-top-up-pending-soft: #3c301d;
+  --status-top-up-paid: #86efac;
+  --status-top-up-paid-soft: #163a2c;
+  --status-top-up-expired: #cbd5e1;
+  --status-top-up-expired-soft: #303d42;
+  --status-top-up-failed: #ff968c;
+  --status-top-up-failed-soft: #452725;
   --status-report-pending: #fcd34d;
   --status-report-pending-soft: #3c301d;
   --status-report-dismissed: #cbd5e1;

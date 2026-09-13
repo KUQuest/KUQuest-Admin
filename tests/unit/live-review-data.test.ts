@@ -8,11 +8,13 @@ import {
   memberRecordFromApi,
   payoutRecordFromApi,
   refreshLivePayouts,
+  refreshLiveTopUps,
   refreshLiveDisputes,
   refreshLiveQuests,
   payoutServerValue,
   walletRecordFromApi,
   questRecordFromApiSummary,
+  topUpRecordFromApi,
 } from "../../src/features/admin/legacy/live-review-data";
 import { data } from "../../src/features/admin/legacy/runtime-data";
 
@@ -21,6 +23,7 @@ const originalQuests = data.quests;
 const originalPayouts = data.payouts;
 const originalDisputes = data.disputes;
 const originalUsers = data.users;
+const originalTopups = data.topups;
 
 afterEach(() => {
   globalThis.fetch = originalFetch;
@@ -28,6 +31,7 @@ afterEach(() => {
   data.payouts = originalPayouts;
   data.disputes = originalDisputes;
   data.users = originalUsers;
+  data.topups = originalTopups;
   delete process.env.NEXT_PUBLIC_API_URL;
 });
 
@@ -171,6 +175,78 @@ describe("live review data", () => {
       maximumDebitSatang: 12701,
       apiBacked: true,
       studentId: "student-1",
+    });
+  });
+
+  it("maps the Top-up API DTO with canonical status and server amounts", () => {
+    const record = topUpRecordFromApi({
+      id: "top-up-1",
+      userId: "member-1",
+      member: {
+        firstName: "Ari",
+        lastName: "Wattanakul",
+        studentId: "68000001",
+      },
+      topUpStatus: "PAID",
+      creditAmountSatang: 10000,
+      providerFeeSatang: 200,
+      providerTaxSatang: 14,
+      paymentTotalSatang: 10214,
+      paymentMethod: "PROMPTPAY",
+      providerReference: "provider-ref-1",
+      expiresAt: "2026-09-13T10:00:00.000Z",
+      paidAt: "2026-09-13T09:05:00.000Z",
+      createdAt: "2026-09-13T09:00:00.000Z",
+    });
+
+    expect(record).toMatchObject({
+      id: "top-up-1",
+      title: "Ari Wattanakul",
+      person: "member-1",
+      status: "PAID",
+      topUpStatus: "PAID",
+      amount: 100,
+      creditAmountSatang: 10000,
+      paymentTotalSatang: 10214,
+      providerFeeSatang: 200,
+      providerTaxSatang: 14,
+      paidAt: "2026-09-13T09:05:00.000Z",
+      apiBacked: true,
+    });
+  });
+
+  it("loads Top-up rows from the Admin API without a local fallback", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    globalThis.fetch = (async () => new Response(JSON.stringify({
+      success: true,
+      data: {
+        items: [{
+          id: "top-up-1",
+          userId: "member-1",
+          member: { firstName: "Ari", lastName: "Wattanakul", studentId: "68000001" },
+          topUpStatus: "PENDING",
+          creditAmountSatang: 10000,
+          providerFeeSatang: 200,
+          providerTaxSatang: 14,
+          paymentTotalSatang: 10214,
+          paymentMethod: "PROMPTPAY",
+          providerReference: null,
+          expiresAt: "2026-09-13T10:00:00.000Z",
+          paidAt: null,
+          createdAt: "2026-09-13T09:00:00.000Z",
+        }],
+        nextCursor: null,
+      },
+    }), { status: 200, headers: { "content-type": "application/json" } })) as unknown as typeof globalThis.fetch;
+
+    await refreshLiveTopUps();
+
+    expect(data.topups).toHaveLength(1);
+    expect(data.topups[0]).toMatchObject({
+      id: "top-up-1",
+      status: "PENDING",
+      apiBacked: true,
+      creditAmountSatang: 10000,
     });
   });
 
