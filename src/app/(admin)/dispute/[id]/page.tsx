@@ -1,17 +1,13 @@
-import type { Metadata } from "next";
+import {
+  AdminDetailRoute,
+  adminDetailMetadata,
+  type AdminDetailRoutePageProps,
+} from "../../../../components/admin/admin-detail-route";
 
-import { AdminRoutePage } from "../../../../features/admin/admin-route-page";
-
-type DisputeDetailPageProps = {
-  params: Promise<{ id: string }>;
-};
-
-export async function generateMetadata({ params }: DisputeDetailPageProps): Promise<Metadata> {
-  const { id } = await params;
-  return { title: `Dispute Case ${id}` };
+export function generateMetadata({ params }: AdminDetailRoutePageProps) {
+  return adminDetailMetadata(params, "Dispute Case");
 }
 
-export default async function DisputeDetailPage({ params }: DisputeDetailPageProps) {
-  const { id } = await params;
-  return <AdminRoutePage title={`Dispute Case ${id}`} description="Review one Dispute Case through its canonical detail route." detailId={id} />;
+export default function DisputeDetailPage({ params }: AdminDetailRoutePageProps) {
+  return <AdminDetailRoute params={params} title="Dispute Case" description="Review one Dispute Case through its canonical detail route." />;
 }

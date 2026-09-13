@@ -52,19 +52,10 @@ describe("Admin Proxy", () => {
     expect(proxy(request("/_next/image?url=%2Fkuquest-logo.png&w=256&q=75")).headers.get("location")).toBeNull();
   });
 
-  it("redirects an authenticated legacy view to its canonical route", () => {
-    process.env.NEXT_PUBLIC_ADMIN_DATA_SOURCE = "api";
-
-    const response = proxy(request("/?view=disputes", "kuquest-admin.session_token=session-token"));
-
-    expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toBe("https://admin.example.test/dispute");
-  });
-
-  it("uses a narrow matcher for Admin and compatibility routes", () => {
+  it("uses a narrow matcher for canonical Admin routes", () => {
     expect(config.matcher).toContain("/overview/:path*");
     expect(config.matcher).toContain("/quest/:path*");
-    expect(config.matcher).toContain("/quests/:path*");
+    expect(config.matcher).not.toContain("/quests/:path*");
     expect(config.matcher).not.toContain("/login");
     expect(config.matcher).not.toContain("/_next/:path*");
     expect(config.matcher).not.toContain("/public/:path*");

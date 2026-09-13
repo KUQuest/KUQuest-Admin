@@ -12,8 +12,8 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { adminApi } from "../api/admin-api";
-import { isAdminApiEnabled } from "../api/admin-provider";
 import { ADMIN_SESSION_KEY } from "../legacy/auth";
+import { isAdminMockEnabled } from "../../../lib/auth/admin-auth-mode";
 import { ADMIN_MOCK_SESSION_COOKIE } from "../../../lib/auth/admin-session-policy";
 
 type AdminLanguage = "en" | "th";
@@ -116,7 +116,7 @@ export function AdminLoginPage() {
     setPasswordError(nextPasswordError);
     if (nextEmailError || nextPasswordError) return;
 
-    if (!isAdminApiEnabled()) {
+    if (isAdminMockEnabled()) {
       localStorage.setItem(
         ADMIN_SESSION_KEY,
         JSON.stringify({ email: normalizedEmail, signedInAt: new Date().toISOString() }),

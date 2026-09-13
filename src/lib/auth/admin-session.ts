@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 
 import type { AdminAuthSessionDetails, AdminIdentity } from "../../features/admin/api/admin-api";
 import { getApiUrl } from "../api/client";
+import { adminAuthMode } from "./admin-auth-mode";
 import {
   adminSessionCookieHeader,
   adminSessionDecision,
@@ -25,10 +26,6 @@ const mockAdminIdentity: AdminIdentity = {
   lastName: "P.",
   disabledAt: null,
 };
-
-function isAdminApiEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_ADMIN_DATA_SOURCE === "api";
-}
 
 function adminIdentityFrom(value: unknown): AdminIdentity | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
@@ -87,11 +84,19 @@ export async function getAdminSessionFromApi(
 export async function getAdminSession(): Promise<AdminSessionResult> {
   const cookieStore = await cookies();
   const requestCookies = cookieStore.getAll();
+  const authMode = adminAuthMode();
 
-  if (!isAdminApiEnabled()) {
+  if (authMode === "mock") {
     return hasMockAdminSessionCookie(requestCookies)
       ? { kind: "authenticated", identity: mockAdminIdentity }
       : { kind: "missing" };
+  }
+
+  if (authMode === "invalid") {
+    return {
+      kind: "unavailable",
+      error: new Error("NEXT_PUBLIC_ADMIN_DATA_SOURCE must be set to api or mock."),
+    };
   }
 
   const cookieHeader = adminSessionCookieHeader(requestCookies);

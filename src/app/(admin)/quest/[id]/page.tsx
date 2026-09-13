@@ -1,17 +1,13 @@
-import type { Metadata } from "next";
+import {
+  AdminDetailRoute,
+  adminDetailMetadata,
+  type AdminDetailRoutePageProps,
+} from "../../../../components/admin/admin-detail-route";
 
-import { AdminRoutePage } from "../../../../features/admin/admin-route-page";
-
-type QuestDetailPageProps = {
-  params: Promise<{ id: string }>;
-};
-
-export async function generateMetadata({ params }: QuestDetailPageProps): Promise<Metadata> {
-  const { id } = await params;
-  return { title: `Quest ${id}` };
+export function generateMetadata({ params }: AdminDetailRoutePageProps) {
+  return adminDetailMetadata(params, "Quest");
 }
 
-export default async function QuestDetailPage({ params }: QuestDetailPageProps) {
-  const { id } = await params;
-  return <AdminRoutePage title={`Quest ${id}`} description="Review one Quest through its canonical detail route." detailId={id} />;
+export default function QuestDetailPage({ params }: AdminDetailRoutePageProps) {
+  return <AdminDetailRoute params={params} title="Quest" description="Review one Quest through its canonical detail route." />;
 }

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-import { canonicalRouteForLegacyUrl, isAdminProtectedPath } from "./lib/auth/admin-routing";
+import { isAdminProtectedPath } from "./lib/auth/admin-routing";
+import { requiresAdminSessionBoundary } from "./lib/auth/admin-auth-mode";
 import { hasAdminSessionCookie } from "./lib/auth/admin-session-policy";
 
 export const config = {
@@ -16,15 +17,11 @@ export const config = {
     "/member/:path*",
     "/wallet/:path*",
     "/activity/:path*",
-    "/quests/:path*",
-    "/disputes/:path*",
-    "/reports/:path*",
-    "/users/:path*",
   ],
 };
 
 export function isAdminApiAuthenticationEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_ADMIN_DATA_SOURCE === "api";
+  return requiresAdminSessionBoundary();
 }
 
 function loginRedirect(request: NextRequest): NextResponse {
@@ -32,11 +29,10 @@ function loginRedirect(request: NextRequest): NextResponse {
 }
 
 export function proxy(request: NextRequest): NextResponse {
-  const legacyTarget = canonicalRouteForLegacyUrl(request.nextUrl);
   const hasSessionCookie = hasAdminSessionCookie(request.cookies.getAll());
 
-  if (legacyTarget && legacyTarget !== request.nextUrl.pathname) {
-    return NextResponse.redirect(new URL(legacyTarget, request.url));
+  if (request.nextUrl.pathname === "/") {
+    return NextResponse.redirect(new URL("/overview", request.url));
   }
 
   if (isAdminApiAuthenticationEnabled() && isAdminProtectedPath(request.nextUrl.pathname) && !hasSessionCookie) {

@@ -1,12 +1,17 @@
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 
-import { questRoutes } from "@/features/admin/admin-routes";
+import { LegacyAdminPage } from "@/features/admin/legacy-admin-page";
 
 interface QuestPageProps {
   params: Promise<{ id: string }>;
 }
 
+export async function generateMetadata({ params }: QuestPageProps): Promise<Metadata> {
+  const { id } = await params;
+  return { title: `Quest ${id}` };
+}
+
 export default async function QuestPage({ params }: QuestPageProps) {
   const { id } = await params;
-  redirect(questRoutes.detail(id));
+  return <LegacyAdminPage page="quest" recordId={id} />;
 }

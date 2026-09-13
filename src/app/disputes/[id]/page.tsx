@@ -1,12 +1,17 @@
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 
-import { disputeRoutes } from "@/features/admin/admin-routes";
+import { LegacyAdminPage } from "@/features/admin/legacy-admin-page";
 
 interface DisputePageProps {
   params: Promise<{ id: string }>;
 }
 
+export async function generateMetadata({ params }: DisputePageProps): Promise<Metadata> {
+  const { id } = await params;
+  return { title: `Dispute ${id}` };
+}
+
 export default async function DisputePage({ params }: DisputePageProps) {
   const { id } = await params;
-  redirect(disputeRoutes.detail(id));
+  return <LegacyAdminPage page="dispute" recordId={id} />;
 }

@@ -1,17 +1,13 @@
-import type { Metadata } from "next";
+import {
+  AdminDetailRoute,
+  adminDetailMetadata,
+  type AdminDetailRoutePageProps,
+} from "../../../../components/admin/admin-detail-route";
 
-import { AdminRoutePage } from "../../../../features/admin/admin-route-page";
-
-type MemberDetailPageProps = {
-  params: Promise<{ id: string }>;
-};
-
-export async function generateMetadata({ params }: MemberDetailPageProps): Promise<Metadata> {
-  const { id } = await params;
-  return { title: `Member ${id}` };
+export function generateMetadata({ params }: AdminDetailRoutePageProps) {
+  return adminDetailMetadata(params, "Member");
 }
 
-export default async function MemberDetailPage({ params }: MemberDetailPageProps) {
-  const { id } = await params;
-  return <AdminRoutePage title={`Member ${id}`} description="Review one Member through its canonical detail route." detailId={id} />;
+export default function MemberDetailPage({ params }: AdminDetailRoutePageProps) {
+  return <AdminDetailRoute params={params} title="Member" description="Review one Member through its canonical detail route." />;
 }
