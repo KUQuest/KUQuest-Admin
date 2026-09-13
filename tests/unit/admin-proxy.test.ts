@@ -35,6 +35,15 @@ describe("Admin Proxy", () => {
     expect(response.headers.get("location")).toBe("https://admin.example.test/overview");
   });
 
+  it("keeps legacy root queries available without redirecting to an incomplete route", () => {
+    process.env.NEXT_PUBLIC_ADMIN_DATA_SOURCE = "api";
+
+    const response = proxy(request("/?view=quests", "kuquest-admin.session_token=session-token"));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
+  });
+
   it("passes a request with an Admin session cookie to the route", () => {
     process.env.NEXT_PUBLIC_ADMIN_DATA_SOURCE = "api";
 

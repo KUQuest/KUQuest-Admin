@@ -6,18 +6,15 @@ import { getAdminSession } from "../../lib/auth/admin-session";
 
 type AdminLayoutProps = {
   children: React.ReactNode;
-  modal?: React.ReactNode;
-  params?: Promise<Record<string, string>>;
 };
 
 export default async function AdminLayout({
   children,
-  modal,
 }: AdminLayoutProps) {
   const session = await getAdminSession();
   if (session.kind === "missing") redirect("/login");
   if (session.kind === "forbidden") return <ForbiddenPage />;
   if (session.kind === "unavailable") throw session.error;
 
-  return <AdminShell identity={session.identity} modal={modal}>{children}</AdminShell>;
+  return <AdminShell identity={session.identity}>{children}</AdminShell>;
 }

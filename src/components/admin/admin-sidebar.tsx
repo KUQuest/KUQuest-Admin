@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 
 import { adminNavigation, activeAdminNavigation } from "../../features/admin/navigation-config";
 import { AdminLanguageControl } from "./admin-language-control";
-import { AdminThemeControl } from "../../features/admin/theme/admin-theme-control";
+import { AdminThemeControl } from "./admin-theme-control";
 
 type AdminSidebarProps = {
   open: boolean;

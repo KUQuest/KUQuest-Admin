@@ -9,14 +9,13 @@ import { AdminSidebar } from "./admin-sidebar";
 type AdminShellProps = {
   identity: AdminIdentity;
   children: ReactNode;
-  modal: ReactNode;
 };
 
 function identityName(identity: AdminIdentity): string {
   return `${identity.firstName} ${identity.lastName}`.trim() || identity.email;
 }
 
-export function AdminShell({ identity, children, modal }: AdminShellProps) {
+export function AdminShell({ identity, children }: AdminShellProps) {
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const adminName = identityName(identity);
 
@@ -32,7 +31,6 @@ export function AdminShell({ identity, children, modal }: AdminShellProps) {
         onToggleNavigation={() => setMobileNavigationOpen((open) => !open)}
       />
       {children}
-      {modal}
     </div>
   );
 }
