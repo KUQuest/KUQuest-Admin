@@ -10,16 +10,11 @@ import {
   type AdminTheme,
 } from "../../features/admin/theme/theme-model";
 
-type ThemeTranslator = {
-  translate: (value: string) => string;
+type AdminThemeControlProps = {
+  translateText?: (value: string) => string;
 };
 
-function translateThemeText(value: string): string {
-  if (typeof window === "undefined") return value;
-  const legacyWindow = window as unknown as Record<string, unknown>;
-  const translator = legacyWindow["__KUQUEST_LANGUAGE__"] as ThemeTranslator | undefined;
-  return translator?.translate(value) ?? value;
-}
+const identityText = (value: string): string => value;
 
 function storedTheme(): AdminTheme {
   try {
@@ -43,7 +38,7 @@ function applyTheme(theme: AdminTheme) {
   }
 }
 
-export function AdminThemeControl() {
+export function AdminThemeControl({ translateText = identityText }: AdminThemeControlProps = {}) {
   const [theme, setTheme] = useState<AdminTheme>("grey");
   const [open, setOpen] = useState(false);
   const controlRef = useRef<HTMLDivElement>(null);
@@ -98,14 +93,14 @@ export function AdminThemeControl() {
         ref={triggerRef}
       >
         <span className="theme-trigger-copy">
-          <strong>{translateThemeText("Theme")}</strong>
-          <small>{translateThemeText(themeDefinitions[theme].label)}</small>
+          <strong>{translateText("Theme")}</strong>
+          <small>{translateText(themeDefinitions[theme].label)}</small>
         </span>
         <span className="theme-trigger-chevron" aria-hidden="true">⌄</span>
       </button>
       <div className="theme-menu" id="theme-options" hidden={!open}>
-        <p className="theme-menu-title">{translateThemeText("Choose a theme")}</p>
-        <fieldset className="theme-options" aria-label={translateThemeText("Theme options")}>
+        <p className="theme-menu-title">{translateText("Choose a theme")}</p>
+        <fieldset className="theme-options" aria-label={translateText("Theme options")}>
           {(Object.keys(themeDefinitions) as AdminTheme[]).map((option) => (
             <button
               className="theme-option"
@@ -117,15 +112,13 @@ export function AdminThemeControl() {
             >
               <span className={`theme-swatch theme-swatch-${option}`} aria-hidden="true" />
               <span className="theme-option-copy">
-                <strong>{translateThemeText(themeDefinitions[option].label)}</strong>
+                <strong>{translateText(themeDefinitions[option].label)}</strong>
                 <small>
-                  {translateThemeText(
-                    option === "grey"
-                      ? "Neutral workspace"
-                      : option === "green"
-                        ? "Original KuQuest palette"
-                        : "Low-light workspace",
-                  )}
+                  {translateText(option === "grey"
+                    ? "Neutral workspace"
+                    : option === "green"
+                      ? "Original KuQuest palette"
+                      : "Low-light workspace")}
                 </small>
               </span>
               <span className="theme-option-check" aria-hidden="true">✓</span>
