@@ -2,9 +2,21 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 
-import type { AdminIdentity } from "../../features/admin/api/admin-api";
+import {
+  adminNavigationCountsFromMockData,
+  adminNavigationCountsFromOverview,
+  type AdminNavigationCounts,
+} from "../../features/admin/admin-navigation";
+import { adminApi, type AdminIdentity } from "../../features/admin/api/admin-api";
+import { loadDashboardData } from "../../features/admin/dashboard/dashboard-bootstrap";
+import {
+  translateAdminText,
+  type AdminLanguage,
+} from "../../features/admin/language/admin-language";
+import { isAdminMockEnabled } from "../../lib/auth/admin-auth-mode";
 import { AdminHeader } from "./admin-header";
 import { AdminSidebar } from "./admin-sidebar";
+import { AdminShellProvider } from "./admin-shell-context";
 
 type AdminShellProps = {
   identity: AdminIdentity;
@@ -17,6 +29,8 @@ function identityName(identity: AdminIdentity): string {
 
 export function AdminShell({ identity, children }: AdminShellProps) {
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
+  const [language, setLanguage] = useState<AdminLanguage>("en");
+  const [navigationCounts, setNavigationCounts] = useState<AdminNavigationCounts | null>(null);
   const adminName = identityName(identity);
 
   const closeMobileNavigation = useCallback(() => setMobileNavigationOpen(false), []);
@@ -24,6 +38,37 @@ export function AdminShell({ identity, children }: AdminShellProps) {
     () => setMobileNavigationOpen((open) => !open),
     [],
   );
+  const changeLanguage = useCallback((nextLanguage: AdminLanguage) => {
+    setLanguage(nextLanguage);
+  }, []);
+  const translateText = useCallback(
+    (value: string) => translateAdminText(language, value),
+    [language],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadNavigationCounts = async () => {
+      if (isAdminMockEnabled()) {
+        const counts = adminNavigationCountsFromMockData(loadDashboardData(localStorage).collections);
+        if (!cancelled) setNavigationCounts(counts);
+        return;
+      }
+
+      try {
+        const overview = await adminApi.getOverview();
+        if (!cancelled) setNavigationCounts(adminNavigationCountsFromOverview(overview));
+      } catch {
+        if (!cancelled) setNavigationCounts(null);
+      }
+    };
+
+    void loadNavigationCounts();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!mobileNavigationOpen) return;
@@ -35,17 +80,24 @@ export function AdminShell({ identity, children }: AdminShellProps) {
   }, [mobileNavigationOpen]);
 
   return (
-    <div className="shell admin-shell">
-      <AdminSidebar
-        open={mobileNavigationOpen}
-        onNavigate={closeMobileNavigation}
-        adminName={adminName}
-      />
-      <AdminHeader
-        mobileNavigationOpen={mobileNavigationOpen}
-        onToggleNavigation={toggleMobileNavigation}
-      />
-      {children}
-    </div>
+    <AdminShellProvider language={language} translateText={translateText}>
+      <div className="shell admin-shell">
+        <AdminSidebar
+          open={mobileNavigationOpen}
+          onNavigate={closeMobileNavigation}
+          adminName={adminName}
+          counts={navigationCounts}
+          language={language}
+          onLanguageChange={changeLanguage}
+          translateText={translateText}
+        />
+        <AdminHeader
+          mobileNavigationOpen={mobileNavigationOpen}
+          onToggleNavigation={toggleMobileNavigation}
+          translateText={translateText}
+        />
+        {children}
+      </div>
+    </AdminShellProvider>
   );
 }

@@ -6,11 +6,13 @@ import { useEffect, useRef } from "react";
 type AdminHeaderProps = {
   mobileNavigationOpen: boolean;
   onToggleNavigation: () => void;
+  translateText: (value: string) => string;
 };
 
 export function AdminHeader({
   mobileNavigationOpen,
   onToggleNavigation,
+  translateText,
 }: AdminHeaderProps) {
   const pathname = usePathname();
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -42,7 +44,7 @@ export function AdminHeader({
         className="icon mobile"
         type="button"
         ref={menuButtonRef}
-        aria-label={mobileNavigationOpen ? "Close navigation" : "Open navigation"}
+        aria-label={translateText(mobileNavigationOpen ? "Close navigation" : "Open navigation")}
         aria-controls="site-navigation"
         aria-expanded={mobileNavigationOpen}
         onClick={onToggleNavigation}

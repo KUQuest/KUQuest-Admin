@@ -48,6 +48,10 @@ test.describe("shared Admin shell", () => {
       "/activity",
     ]);
     expect(hrefs.some((href) => href?.includes("?view="))).toBe(false);
+    await expect(shell.locator('a[href="/dispute"] .admin-nav-count')).toHaveText("2");
+    await expect(shell.locator('a[href="/report"] .admin-nav-count')).toHaveText("2");
+    await expect(shell.locator('a[href="/conduct-report"] .admin-nav-count')).toHaveText("0");
+    await expect(shell.locator('a[href="/payout"] .admin-nav-count')).toHaveText("3");
 
     for (const route of canonicalRoutes) {
       await page.goto(route.path);
@@ -56,6 +60,48 @@ test.describe("shared Admin shell", () => {
         shell.locator(`a[aria-current="page"][href="${route.activeHref}"]`),
       ).toBeVisible();
     }
+  });
+
+  test("renders the Overview dashboard and searches canonical records", async ({ page }) => {
+    await signIn(page);
+
+    const dashboard = page.locator("#dashboard-main");
+    await expect(dashboard).toBeVisible();
+    await expect(dashboard.locator(".overview-command-center-header")).toHaveCSS("position", "static");
+    await expect(dashboard.getByText("Work left", { exact: true })).toBeVisible();
+    await expect(dashboard.locator('a[href="/dispute"]')).toHaveCount(2);
+    await expect(dashboard.locator('a[href="/report"]')).toHaveCount(2);
+    await expect(dashboard.locator('a[href="/conduct-report"]')).toHaveCount(2);
+    await expect(dashboard.locator('a[href="/payout"]')).toHaveCount(2);
+    await expect(dashboard.locator('a[href="/activity"]')).toBeVisible();
+
+    const openSearch = async () => {
+      await page.getByRole("button", { name: "Search marketplace records" }).click();
+      const dialog = page.locator("#overview-command");
+      await expect(dialog).toBeVisible();
+      return dialog;
+    };
+
+    let dialog = await openSearch();
+    const searchInput = dialog.getByRole("searchbox", { name: "Search marketplace records" });
+    await searchInput.fill("QST-12001");
+    await expect(dialog.getByRole("link", { name: /QST-12001/ })).toHaveAttribute("href", "/quest/QST-12001");
+    await dialog.getByRole("link", { name: /QST-12001/ }).click();
+    await expect(page).toHaveURL(/\/quest\/QST-12001$/);
+
+    await page.goto("/overview");
+    await expect(page.getByRole("heading", { level: 1, name: "Overview" })).toBeVisible();
+    dialog = await openSearch();
+    await dialog.getByRole("searchbox", { name: "Search marketplace records" }).fill("68000000");
+    await expect(dialog.getByRole("link", { name: /68000000/ })).toHaveAttribute("href", "/member/68000000");
+    await dialog.getByRole("link", { name: /68000000/ }).click();
+    await expect(page).toHaveURL(/\/member\/68000000$/);
+
+    await page.goto("/overview");
+    await expect(page.getByRole("heading", { level: 1, name: "Overview" })).toBeVisible();
+    dialog = await openSearch();
+    await dialog.getByRole("searchbox", { name: "Search marketplace records" }).fill("PAY-9637");
+    await expect(dialog.getByRole("link", { name: /PAY-9637/ })).toHaveAttribute("href", "/payout/PAY-9637");
   });
 
   test("keeps mobile navigation open and close behavior", async ({ page }) => {
@@ -101,10 +147,22 @@ test.describe("shared Admin shell", () => {
     await page.getByRole("button", { name: /Theme Grey-white/ }).click();
     await page.getByRole("button", { name: /Dark Low-light workspace/ }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await page.reload();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 
-    const languageOptions = page.getByRole("group", { name: "Language options" });
+    const languageOptions = page.getByRole("group", { name: /Language options|ตัวเลือกภาษา/ });
     await languageOptions.getByRole("button", { name: "ไทย", exact: true }).click();
     await expect(page.locator("html")).toHaveAttribute("lang", "th");
+    await expect(page.getByRole("link", { name: "ภาพรวม", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "สมาชิก", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "ภาพรวม", exact: true })).toBeVisible();
+    await expect(page.getByText("ระบบ", { exact: true })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "การนำทางหลัก" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "การนำทางระบบ" })).toBeVisible();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.getByRole("button", { name: "เปิดการนำทาง" })).toBeVisible();
+    await page.getByRole("button", { name: "เปิดการนำทาง" }).click();
+    await expect(page.getByRole("button", { name: "ปิดการนำทาง" })).toBeVisible();
     await expect(
       languageOptions.getByRole("button", { name: "ไทย", exact: true }),
     ).toHaveAttribute("aria-pressed", "true");

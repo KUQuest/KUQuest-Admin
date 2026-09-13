@@ -57,6 +57,28 @@ describe("Admin API boundary", () => {
     expect(request?.headers.get("content-type")).toBeNull();
   });
 
+  it("forwards an explicit Admin cookie for server-scoped Overview reads", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    let request: Request | undefined;
+
+    mockFetch(async (input, init) => {
+      request = new Request(input, init);
+      return jsonResponse({
+        success: true,
+        data: {
+          quests: { total: 0, hidden: 0, byState: {} },
+          disputes: { total: 0, awaitingResolution: 0 },
+          payouts: { pendingAdminApproval: 0, inFlight: 0 },
+          members: { frozenWallets: 0, suspendedWallets: 0 },
+        },
+      });
+    });
+
+    await adminApi.getOverview({ headers: { Cookie: "kuquest-admin=server-session" } });
+
+    expect(request?.headers.get("cookie")).toBe("kuquest-admin=server-session");
+  });
+
   it("coalesces simultaneous Overview requests", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     let calls = 0;

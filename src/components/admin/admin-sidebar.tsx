@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import {
   activeAdminNavigation,
@@ -12,6 +12,8 @@ import {
   systemAdminNavigation,
   type AdminNavigationIcon,
 } from "../../features/admin/navigation-config";
+import type { AdminNavigationCounts } from "../../features/admin/admin-navigation";
+import type { AdminLanguage } from "../../features/admin/language/admin-language";
 import { AdminLanguageControl } from "./admin-language-control";
 import { AdminThemeControl } from "./admin-theme-control";
 
@@ -19,6 +21,10 @@ type AdminSidebarProps = {
   open: boolean;
   onNavigate: () => void;
   adminName: string;
+  counts: AdminNavigationCounts | null;
+  language: AdminLanguage;
+  onLanguageChange: (language: AdminLanguage) => void;
+  translateText: (value: string) => string;
 };
 
 type AdminNavigationItem = (typeof adminNavigation)[number];
@@ -47,22 +53,26 @@ function NavigationIcon({ name }: { name: AdminNavigationIcon }) {
 function AdminNavigationLink({
   active,
   item,
-  onNavigate,
+  counts,
+  translateText,
 }: {
   active: boolean;
   item: AdminNavigationItem;
-  onNavigate: () => void;
+  counts: AdminNavigationCounts | null;
+  translateText: (value: string) => string;
 }) {
+  const count = item.count && counts ? counts[item.count] : null;
+
   return (
     <Link
       className={`admin-nav-link${active ? " active" : ""}`}
       href={item.href}
       aria-current={active ? "page" : undefined}
       data-navigation-key={item.key}
-      onClick={onNavigate}
     >
       <span aria-hidden="true"><NavigationIcon name={item.icon} /></span>
-      {item.label}
+      {translateText(item.label)}
+      {typeof count === "number" && <b className="admin-nav-count">{count}</b>}
     </Link>
   );
 }
@@ -71,11 +81,22 @@ export function AdminSidebar({
   open,
   onNavigate,
   adminName,
+  counts,
+  language,
+  onLanguageChange,
+  translateText,
 }: AdminSidebarProps) {
   const pathname = usePathname();
   const activeKey = activeAdminNavigation(pathname);
   const [isMobile, setIsMobile] = useState(false);
+  const previousPathname = useRef(pathname);
   const initials = adminName.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase() || "AD";
+
+  useEffect(() => {
+    if (previousPathname.current === pathname) return;
+    previousPathname.current = pathname;
+    if (isMobile && open) onNavigate();
+  }, [isMobile, onNavigate, open, pathname]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 900px)");
@@ -102,36 +123,42 @@ export function AdminSidebar({
         <Image src="/kuquest-logo.png?v=2" alt="" width={101} height={51} priority unoptimized />
         <span>KuQuest</span>
       </div>
-      <nav aria-label="Primary navigation">
+      <nav aria-label={translateText("Primary navigation")}>
         {primaryAdminNavigation.map((item) => (
           <AdminNavigationLink
             active={item.key === activeKey}
             item={item}
             key={item.key}
-            onNavigate={onNavigate}
+            counts={counts}
+            translateText={translateText}
           />
         ))}
       </nav>
       <div className="nav-group">
-        <small>SYSTEM</small>
-        <nav aria-label="System navigation">
+        <small>{translateText("SYSTEM")}</small>
+        <nav aria-label={translateText("System navigation")}>
           {systemAdminNavigation.map((item) => (
             <AdminNavigationLink
               active={item.key === activeKey}
               item={item}
               key={item.key}
-              onNavigate={onNavigate}
+              counts={counts}
+              translateText={translateText}
             />
           ))}
         </nav>
       </div>
-      <AdminThemeControl />
-      <AdminLanguageControl />
+      <AdminThemeControl translateText={translateText} />
+      <AdminLanguageControl
+        language={language}
+        onLanguageChange={onLanguageChange}
+        translateText={translateText}
+      />
       <div className="profile">
         <span aria-hidden="true">{initials}</span>
         <div>
           <strong>{adminName}</strong>
-          <small>Admin</small>
+          <small>{translateText("Admin")}</small>
         </div>
       </div>
     </aside>

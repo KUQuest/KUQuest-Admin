@@ -16,6 +16,17 @@ describe("Admin navigation active state", () => {
       "/activity",
     ]);
     expect(adminNavigation.every(({ href }) => !href.includes("?view="))).toBe(true);
+    expect(adminNavigation.map(({ key, count }) => [key, count])).toEqual([
+      ["overview", null],
+      ["quest", null],
+      ["dispute", "disputes"],
+      ["report", "reports"],
+      ["conduct-report", "conductReports"],
+      ["payout", "payouts"],
+      ["member", null],
+      ["wallet", null],
+      ["activity", null],
+    ]);
   });
 
   it("keeps a detail route active on its board", () => {

@@ -259,7 +259,8 @@ nav {
   width: 20px;
   text-align: center;
 }
-.sidebar button b {
+.sidebar button b,
+.sidebar .admin-nav-link b {
   margin-left: auto;
   min-width: 21px;
   padding: 1px 6px;
