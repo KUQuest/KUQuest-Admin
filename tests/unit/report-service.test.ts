@@ -1,0 +1,56 @@
+import { afterEach, describe, expect, it } from "bun:test";
+
+import {
+  loadReportCaseDetailFromApi,
+  loadReportCasePageData,
+} from "../../src/features/admin/report/report-service";
+
+const originalFetch = globalThis.fetch;
+
+function jsonResponse(body: unknown): Response {
+  return new Response(JSON.stringify(body), {
+    headers: { "content-type": "application/json" },
+  });
+}
+
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+  delete process.env.NEXT_PUBLIC_API_URL;
+});
+
+describe("Report Case service", () => {
+  it("filters Conduct Reports from the Admin API list before the page renders", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    let request: Request | undefined;
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      request = new Request(input, init);
+      return jsonResponse({
+        success: true,
+        data: {
+          items: [
+            { id: "RPT-1", status: "REPORT_CASE_PENDING", reportedMemberId: "member-1" },
+            { id: "CND-1", status: "CONDUCT_REPORT_PENDING", reportedMemberId: "member-2", questId: "quest-1" },
+          ],
+          nextCursor: "next-report-page",
+        },
+      });
+    }) as unknown as typeof globalThis.fetch;
+
+    const page = await loadReportCasePageData("kuquest-admin=server-session");
+
+    expect(request?.url).toBe("https://api.example.test/api/v1/admin/reports?limit=100");
+    expect(request?.headers.get("cookie")).toBe("kuquest-admin=server-session");
+    expect(page.items.map((record) => record.id)).toEqual(["RPT-1"]);
+    expect(page.nextCursor).toBe("next-report-page");
+  });
+
+  it("does not render a Conduct Report through the Report Case detail route", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    globalThis.fetch = (async (_input: RequestInfo | URL, _init?: RequestInit) => jsonResponse({
+      success: true,
+      data: { id: "CND-1", status: "CONDUCT_REPORT_PENDING", reportedMemberId: "member-2" },
+    })) as unknown as typeof globalThis.fetch;
+
+    await expect(loadReportCaseDetailFromApi("CND-1")).resolves.toBeNull();
+  });
+});

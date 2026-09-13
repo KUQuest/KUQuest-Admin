@@ -37,8 +37,8 @@ const dashboardSeedData: PersistedAdminData = {
       { id: "DSP-5202", title: "Design orientation social cards", disputeType: "Quality", amount: 7871, status: "DISPUTE_CASE_PENDING", disputeCaseStatus: "DISPUTE_CASE_PENDING", tone: "danger", disputeDate: "27 Aug 2026 · 09:00" },
     ],
     reports: [
-      { id: "RPT-8201", reportedUserName: "Amara Ariyawat", status: "REPORT_CASE_PENDING", reportCaseStatus: "REPORT_CASE_PENDING", tone: "warning", reportedAt: "27 Aug 2026 · 08:40" },
-      { id: "RPT-8202", reportedUserName: "Benja Ariyawat", status: "REPORT_CASE_PENDING", reportCaseStatus: "REPORT_CASE_PENDING", tone: "warning", reportedAt: "27 Aug 2026 · 08:20" },
+      { id: "RPT-8201", reportedMemberId: "68000020", reportedUserName: "Amara Ariyawat", reporterId: "68000000", reporterName: "Akarin Ariyawat", category: "Harassment or abuse", details: "The submitted report requires review.", evidence: "Message capture", evidenceRefs: ["evidence-rpt-8201"], status: "REPORT_CASE_PENDING", reportCaseStatus: "REPORT_CASE_PENDING", tone: "warning", reportedAt: "27 Aug 2026 · 08:40" },
+      { id: "RPT-8202", reportedMemberId: "68000040", reportedUserName: "Benja Ariyawat", reporterId: "68000000", reporterName: "Akarin Ariyawat", category: "Fraud or payment issue", details: "The submitted report requires review.", evidence: "Payment message capture", evidenceRefs: ["evidence-rpt-8202"], status: "REPORT_CASE_PENDING", reportCaseStatus: "REPORT_CASE_PENDING", tone: "warning", reportedAt: "27 Aug 2026 · 08:20" },
     ],
   },
 };

@@ -1271,17 +1271,23 @@ export const adminApi = {
     );
   },
 
-  listReports(query: AdminReportListQuery = {}): Promise<AdminPage<AdminReportCase>> {
+  listReports(
+    query: AdminReportListQuery = {},
+    options: AdminApiRequestOptions = {},
+  ): Promise<AdminPage<AdminReportCase>> {
     return apiRequest<AdminPage<AdminReportCase>>(
       `/api/v1/admin/reports${queryString(query)}`,
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 
-  getReport(reportId: string): Promise<AdminReportCase> {
+  getReport(
+    reportId: string,
+    options: AdminApiRequestOptions = {},
+  ): Promise<AdminReportCase> {
     return apiRequest<AdminReportCase>(
       `/api/v1/admin/reports/${encode(reportId)}`,
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 
@@ -1296,10 +1302,13 @@ export const adminApi = {
     );
   },
 
-  getEvidence(evidenceRef: string): Promise<AdminEvidence> {
+  getEvidence(
+    evidenceRef: string,
+    options: AdminApiRequestOptions = {},
+  ): Promise<AdminEvidence> {
     return apiRequest<AdminEvidence>(
       `/api/v1/admin/evidence/${encode(evidenceRef)}`,
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 
