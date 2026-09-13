@@ -21,6 +21,8 @@ describe("Admin shell language", () => {
       ["Wallet status", "สถานะ Wallet"],
       ["Open", "เปิด"],
       ["Clear", "ไม่มีรายการค้าง"],
+      ["Finance Overview is not available.", "ภาพรวมการเงินไม่พร้อมใช้งาน"],
+      ["The Admin API search is not available.", "ไม่สามารถค้นหาผ่าน Admin API ได้"],
     ]) {
       expect(translateAdminText("th", english)).toBe(thai);
     }

@@ -112,7 +112,7 @@ function FinanceOverviewSection({
     return <section className="overview-command-center-finance" aria-labelledby="overview-finance-heading"><div className="overview-command-center-section-head"><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p>{translateText("Platform and Member Wallet totals.")}</p></div><span>{translateText("Admin API")}</span></div><p className="overview-command-center-note">{translateText("Reading the Finance Overview from the Admin API…")}</p></section>;
   }
   if (error || !overview) {
-    return <section className="overview-command-center-finance" aria-labelledby="overview-finance-heading"><div className="overview-command-center-section-head"><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p>{translateText("Platform and Member Wallet totals.")}</p></div><span>{translateText("Unavailable")}</span></div><p className="overview-command-center-note">{error || translateText("Finance Overview is not available.")}</p></section>;
+    return <section className="overview-command-center-finance" aria-labelledby="overview-finance-heading"><div className="overview-command-center-section-head"><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p>{translateText("Platform and Member Wallet totals.")}</p></div><span>{translateText("Unavailable")}</span></div><p className="overview-command-center-note">{error ? translateText(error) : translateText("Finance Overview is not available.")}</p></section>;
   }
 
   const integrityLabel = overview.integrity.subledgerBalanced ? "Balanced" : "Needs review";
@@ -211,7 +211,7 @@ function OverviewSearch({
           <kbd>Esc</kbd>
         </div>
         <div id="overview-command-results">
-          {error && <p className="empty">{error}</p>}
+          {error && <p className="empty">{translateText(error)}</p>}
           {results.map((result) => (
             <Link key={`${result.kind}-${result.id}`} className="result" href={result.href} onClick={onClose}>
               <span aria-hidden="true">{searchResultMarker(result.kind)}</span>
