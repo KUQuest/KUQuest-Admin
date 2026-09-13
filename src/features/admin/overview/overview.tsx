@@ -12,6 +12,10 @@ import { memberStatusLabel, walletStatusLabel } from "../domain/rulebook";
 import type { PersistedAdminData } from "../data/admin-records";
 import { dashboardActivityKey } from "../dashboard/dashboard-model";
 import {
+  loadOverviewMockData,
+  loadOverviewModelFromMock,
+} from "./overview-adapter";
+import {
   overviewSearchResultsFromApi,
   overviewSearchResultsFromMockData,
   questStateTones,
@@ -22,9 +26,7 @@ import {
 import {
   loadFinanceOverview,
   loadOverviewFromApi,
-  loadOverviewFromMock,
   loadOverviewSearchData,
-  loadOverviewSearchDataFromMock,
   type OverviewApiSearchData,
 } from "./overview-service";
 
@@ -173,7 +175,7 @@ function OverviewSearch({
     document.addEventListener("keydown", closeOnEscape);
 
     if (isAdminMockEnabled()) {
-      setData({ source: "mock", data: loadOverviewSearchDataFromMock(localStorage) });
+      setData({ source: "mock", data: loadOverviewMockData(localStorage) });
       return () => {
         document.removeEventListener("keydown", closeOnEscape);
       };
@@ -252,7 +254,7 @@ export function AdminOverview({ showSearch = true }: { showSearch?: boolean } = 
 
     const loadOverview = isAdminApiEnabled()
       ? loadOverviewFromApi()
-      : Promise.resolve(loadOverviewFromMock(localStorage));
+      : Promise.resolve(loadOverviewModelFromMock(localStorage));
 
     void loadOverview.then((nextModel) => {
       if (!cancelled) setModel(nextModel);
