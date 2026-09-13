@@ -1,29 +1,33 @@
-import type { AdminApiRequestOptions, AdminReportCase } from "../api/admin-api";
+import type { AdminReportListQuery } from "../api/admin-api";
 import { adminApi } from "../api/admin-api";
-import { isReportCaseRecord, type ReportCaseRecord } from "./report-model";
+import { adminApiRequestOptions } from "../api/admin-api-request-options";
+import { reportCaseModelFromRecord, type ReportCaseModel } from "./report-model";
 
 export type ReportCasePageData = {
   source: "api" | "mock";
-  items: ReportCaseRecord[];
+  items: ReportCaseModel[];
   nextCursor: string | null;
 };
 
-function apiRequestOptions(cookieHeader?: string): AdminApiRequestOptions {
-  return cookieHeader === undefined ? {} : { headers: { Cookie: cookieHeader } };
+function reportCaseModels(values: readonly unknown[]): ReportCaseModel[] {
+  return values.flatMap((value) => {
+    const model = reportCaseModelFromRecord(value);
+    return model ? [model] : [];
+  });
 }
 
-function apiReportCase(value: AdminReportCase): value is AdminReportCase & ReportCaseRecord {
-  return isReportCaseRecord(value);
-}
-
-export async function loadReportCasePageData(cookieHeader?: string): Promise<ReportCasePageData> {
+export async function loadReportCasePageData(
+  cookieHeader?: string,
+  cursor?: string,
+): Promise<ReportCasePageData> {
+  const query: AdminReportListQuery = { limit: 100, ...(cursor ? { cursor } : {}) };
   const page = await adminApi.listReports(
-    { limit: 100 },
-    apiRequestOptions(cookieHeader),
+    query,
+    adminApiRequestOptions(cookieHeader),
   );
   return {
     source: "api",
-    items: page.items.filter(apiReportCase),
+    items: reportCaseModels(page.items),
     nextCursor: page.nextCursor,
   };
 }
@@ -31,7 +35,8 @@ export async function loadReportCasePageData(cookieHeader?: string): Promise<Rep
 export async function loadReportCaseDetailFromApi(
   reportId: string,
   cookieHeader?: string,
-): Promise<ReportCaseRecord | null> {
-  const report = await adminApi.getReport(reportId, apiRequestOptions(cookieHeader));
-  return report.id === reportId && isReportCaseRecord(report) ? report : null;
+): Promise<ReportCaseModel | null> {
+  const report = await adminApi.getReport(reportId, adminApiRequestOptions(cookieHeader));
+  const model = reportCaseModelFromRecord(report);
+  return model?.id === reportId ? model : null;
 }

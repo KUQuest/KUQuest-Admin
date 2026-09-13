@@ -19,10 +19,10 @@ export default async function ReportDetailPage({ params }: AdminDetailRoutePageP
   if (!isAdminApiEnabled()) return <ReportCaseDetail reportId={id} />;
 
   const cookieStore = await cookies();
-  const record = await loadReportCaseDetailFromApi(
+  const model = await loadReportCaseDetailFromApi(
     id,
     adminSessionCookieHeader(cookieStore.getAll()),
   );
-  if (!record) notFound();
-  return <ReportCaseDetail reportId={id} initialRecord={record} />;
+  if (!model) notFound();
+  return <ReportCaseDetail reportId={id} initialModel={model} />;
 }

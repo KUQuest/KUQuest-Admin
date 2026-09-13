@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
@@ -8,27 +9,24 @@ import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { adminApi, type AdminEvidence, type ReportDecision } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { reportRoutes } from "../admin-routes";
-import { isReportCaseStatus } from "../domain/rulebook";
 import {
   findReportCaseFromMock,
   newReportCaseIdempotencyKey,
   saveMockReportDecision,
-  type ReportCaseCommand,
 } from "./report-adapter";
 import {
-  isReportCaseRecord,
+  REPORT_CASE_UPDATED_EVENT,
   reportCaseDecisionFor,
   reportCaseModelFromRecord,
   type ReportCaseDecisionChoice,
   type ReportCaseModel,
-  type ReportCaseRecord,
 } from "./report-model";
 
 type ReportCaseDetailProps = {
   reportId: string;
-  initialRecord?: ReportCaseRecord | null;
+  initialModel?: ReportCaseModel | null;
   drawer?: boolean;
-  onUpdated?: (record: ReportCaseRecord) => void;
+  onUpdated?: (model: ReportCaseModel) => void;
 };
 
 type DecisionDialogProps = {
@@ -190,7 +188,27 @@ function ReportAlert({ model, translateText }: { model: ReportCaseModel; transla
   );
 }
 
-function ReportOverview({ model, translateText }: { model: ReportCaseModel; translateText: (value: string) => string }) {
+function ReportOverview({
+  model,
+  translateText,
+  compact = false,
+}: {
+  model: ReportCaseModel;
+  translateText: (value: string) => string;
+  compact?: boolean;
+}) {
+  if (compact) {
+    return (
+      <>
+        <section className="section">
+          <h3>{translateText("Report overview")}</h3>
+          <div className="facts"><div className="fact"><span>{translateText("Status")}</span><strong><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></strong></div><div className="fact"><span>{translateText("Report type")}</span><strong>{model.reportType}</strong></div><div className="fact"><span>{translateText("Reported")}</span><strong>{model.submittedAt}</strong></div></div>
+        </section>
+        <section className="section"><h3>{translateText("Report detail")}</h3><p>{model.detail}</p></section>
+      </>
+    );
+  }
+
   return (
     <section className="record-panel report-overview">
       <div className="record-panel-head"><h2>{translateText("Report detail")}</h2></div>
@@ -204,7 +222,24 @@ function ReportOverview({ model, translateText }: { model: ReportCaseModel; tran
   );
 }
 
-function PeopleInvolved({ model, translateText }: { model: ReportCaseModel; translateText: (value: string) => string }) {
+function PeopleInvolved({
+  model,
+  translateText,
+  compact = false,
+}: {
+  model: ReportCaseModel;
+  translateText: (value: string) => string;
+  compact?: boolean;
+}) {
+  if (compact) {
+    return (
+      <section className="section">
+        <h3>{translateText("People involved")}</h3>
+        <div className="facts"><div className="fact"><span>{translateText("Reported Member")}</span><strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} /></strong><small>{model.reportedMemberId}</small></div><div className="fact"><span>{translateText("Reported by")}</span><strong><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} /></strong><small>{model.reporterId ?? "—"}</small></div></div>
+      </section>
+    );
+  }
+
   return (
     <section className="record-panel">
       <h2>{translateText("People involved")}</h2>
@@ -220,14 +255,16 @@ function EvidenceSection({
   model,
   translateText,
   onOpen,
+  compact = false,
 }: {
   model: ReportCaseModel;
   translateText: (value: string) => string;
   onOpen: (reference: string) => void;
+  compact?: boolean;
 }) {
   return (
-    <section className="record-panel">
-      <div className="record-panel-head"><h2>{translateText("Evidence")}</h2><span className="section-count">{model.evidence.length}</span></div>
+    <section className={compact ? "section" : "record-panel"}>
+      <div className="record-panel-head">{compact ? <h3>{translateText("Evidence")}</h3> : <h2>{translateText("Evidence")}</h2>}<span className="section-count">{model.evidence.length}</span></div>
       {model.evidence.length === 0 && <p className="audit-note">{translateText("No Evidence Reference was provided.")}</p>}
       {model.evidence.length > 0 && (
         <div className="evidence-stack">
@@ -239,6 +276,47 @@ function EvidenceSection({
         </div>
       )}
     </section>
+  );
+}
+
+function MemberSummaryPanel({
+  heading,
+  id,
+  name,
+  href,
+  translateText,
+}: {
+  heading: string;
+  id: string | null;
+  name: string;
+  href: string | null;
+  translateText: (value: string) => string;
+}) {
+  return (
+    <section className="record-panel">
+      <h2>{translateText(heading)}</h2>
+      <div className="side-facts"><div><span>{translateText("Name")}</span><strong><MemberLink id={id} name={name} href={href} /></strong></div><div><span>{translateText("Member ID")}</span><strong>{id || "—"}</strong></div></div>
+      {href && <Link className="btn full-width" href={href}>{translateText("See Member profile")}</Link>}
+    </section>
+  );
+}
+
+function ResolutionDetails({ model, translateText }: { model: ReportCaseModel; translateText: (value: string) => string }) {
+  const details = [
+    ["Resolution", model.resolution],
+    ["Resolved by", model.resolvedBy],
+    ["Resolution time", model.resolutionAt],
+    ["Closed at", model.closedAt],
+  ] as const;
+  return (
+    <>
+      {model.decisionReason && <div className="overview-group"><span>{translateText("Reason for decision")}</span><p>{model.decisionReason}</p></div>}
+      {details.some(([, value]) => value) && (
+        <dl className="overview-meta report-resolution-meta">
+          {details.flatMap(([label, value]) => value ? [<div key={label}><dt>{translateText(label)}</dt><dd>{value}</dd></div>] : [])}
+        </dl>
+      )}
+    </>
   );
 }
 
@@ -287,7 +365,7 @@ function DecisionControls({
     return (
       <>
         <p className="audit-note">{translateText("Decision recorded:")} <strong>{model.decisionLabel ?? model.statusLabel}</strong>.</p>
-        {model.decisionReason && <div className="overview-group"><span>{translateText("Reason for decision")}</span><p>{model.decisionReason}</p></div>}
+        <ResolutionDetails model={model} translateText={translateText} />
       </>
     );
   }
@@ -296,6 +374,7 @@ function DecisionControls({
     return (
       <>
         <p className="audit-note">{translateText("This Message is hidden. A reason is required before the Admin restores it.")}</p>
+        <ResolutionDetails model={model} translateText={translateText} />
         {commandError && <p className="field-error" role="alert">{translateText(commandError)}</p>}
         <button className="btn primary full-width" type="button" data-report-decision="restore" onClick={() => { onSelect("restore"); onStart(); }}>
           {translateText("Restore Message")}
@@ -361,16 +440,8 @@ function ReportCaseSections({
         <ReportTimeline model={model} translateText={translateText} />
       </div>
       <aside className="record-side">
-        <section className="record-panel">
-          <h2>{translateText("Reported Member")}</h2>
-          <div className="side-facts"><div><span>{translateText("Name")}</span><strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} /></strong></div><div><span>{translateText("Member ID")}</span><strong>{model.reportedMemberId || "—"}</strong></div></div>
-          {model.reportedMemberHref && <Link className="btn full-width" href={model.reportedMemberHref}>{translateText("See Member profile")}</Link>}
-        </section>
-        <section className="record-panel">
-          <h2>{translateText("Submitted by")}</h2>
-          <div className="side-facts"><div><span>{translateText("Name")}</span><strong><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} /></strong></div><div><span>{translateText("Member ID")}</span><strong>{model.reporterId || "—"}</strong></div></div>
-          {model.reporterHref && <Link className="btn full-width" href={model.reporterHref}>{translateText("See Member profile")}</Link>}
-        </section>
+        <MemberSummaryPanel heading="Reported Member" id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} translateText={translateText} />
+        <MemberSummaryPanel heading="Submitted by" id={model.reporterId} name={model.reporterName} href={model.reporterHref} translateText={translateText} />
         <section className="record-panel report-decision-panel">
           <h2>{model.isActionable ? translateText("Report decision") : translateText("Recorded outcome")}</h2>
           {decisionPanel}
@@ -401,25 +472,24 @@ function DrawerSections({
     <div className="drawer-body report-case-drawer-detail">
       <div className="drawer-title"><span className="att-icon warning" aria-hidden="true">⚑</span><div><h2>{model.title}</h2><p>{translateText("Submitted by")} {model.reporterName}</p></div></div>
       <ReportAlert model={model} translateText={translateText} />
-      <section className="section"><h3>{translateText("Report overview")}</h3><div className="facts"><div className="fact"><span>{translateText("Status")}</span><strong><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></strong></div><div className="fact"><span>{translateText("Report type")}</span><strong>{model.reportType}</strong></div><div className="fact"><span>{translateText("Reported")}</span><strong>{model.submittedAt}</strong></div></div></section>
-      <section className="section"><h3>{translateText("Report detail")}</h3><p>{model.detail}</p></section>
-      <section className="section"><h3>{translateText("People involved")}</h3><div className="facts"><div className="fact"><span>{translateText("Reported Member")}</span><strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} /></strong><small>{model.reportedMemberId}</small></div><div className="fact"><span>{translateText("Reported by")}</span><strong><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} /></strong><small>{model.reporterId ?? "—"}</small></div></div></section>
-      <section className="section"><EvidenceSection model={model} translateText={translateText} onOpen={onOpenEvidence} /></section>
+      <ReportOverview model={model} translateText={translateText} compact />
+      <PeopleInvolved model={model} translateText={translateText} compact />
+      <EvidenceSection model={model} translateText={translateText} onOpen={onOpenEvidence} compact />
       <section className="section report-decision-panel"><h3>{model.isActionable ? translateText("Report decision") : translateText("Resolution")}</h3><DecisionControls model={model} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelect={onSelectChoice} onStart={onStartDecision} /></section>
-      <div className="drawer-actions">{model.reportedMemberHref && <Link className="btn" href={model.reportedMemberHref}>{translateText("Member profile")}</Link>}<Link className="btn primary" href={reportRoutes.detail(model.id)}>{translateText("Open full Report Case")}</Link></div>
+      <div className="drawer-actions">{model.reportedMemberHref && <Link className="btn" href={model.reportedMemberHref}>{translateText("Member profile")}</Link>}<a className="btn primary" href={reportRoutes.detail(model.id)}>{translateText("Open full Report Case")}</a></div>
     </div>
   );
 }
 
 export function ReportCaseDetail({
   reportId,
-  initialRecord = null,
+  initialModel = null,
   drawer = false,
   onUpdated,
 }: ReportCaseDetailProps) {
   const { translateText } = useAdminShell();
-  const [record, setRecord] = useState<ReportCaseRecord | null>(initialRecord);
-  const [loading, setLoading] = useState(!initialRecord);
+  const [reportModel, setReportModel] = useState<ReportCaseModel | null>(initialModel);
+  const [loading, setLoading] = useState(!initialModel);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedChoice, setSelectedChoice] = useState<ReportCaseDecisionChoice | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -428,7 +498,7 @@ export function ReportCaseDetail({
   const [evidenceState, setEvidenceState] = useState<EvidenceState | null>(null);
 
   useEffect(() => {
-    if (initialRecord && !drawer) return;
+    if (initialModel && !drawer) return;
     let cancelled = false;
     setLoading(true);
     setLoadError(null);
@@ -439,11 +509,12 @@ export function ReportCaseDetail({
 
     void request.then((nextRecord) => {
       if (cancelled) return undefined;
-      if (!nextRecord || !isReportCaseRecord(nextRecord) || nextRecord.id !== reportId) {
-        setRecord(null);
+      const nextModel = reportCaseModelFromRecord(nextRecord);
+      if (!nextModel || nextModel.id !== reportId) {
+        setReportModel(null);
         setLoadError("The Report Case was not found.");
       } else {
-        setRecord(nextRecord);
+        setReportModel(nextModel);
       }
       return undefined;
     }).catch((error: unknown) => {
@@ -457,9 +528,9 @@ export function ReportCaseDetail({
     return () => {
       cancelled = true;
     };
-  }, [drawer, initialRecord, reportId]);
+  }, [drawer, initialModel, reportId]);
 
-  const model = reportCaseModelFromRecord(record);
+  const model = reportModel;
 
   if (loading && !model) return <AdminLoading message={translateText("Loading Report Case…")} />;
   if (!model) {
@@ -507,12 +578,14 @@ export function ReportCaseDetail({
     try {
       const updated = isAdminApiEnabled()
         ? await adminApi.decideReport(model.id, options)
-        : saveMockReportDecision(localStorage, model.id, decision as ReportCaseCommand, reason);
-      if (!updated || !isReportCaseRecord(updated) || !isReportCaseStatus(updated.status)) {
+        : saveMockReportDecision(localStorage, model.id, decision, reason);
+      const updatedModel = reportCaseModelFromRecord(updated);
+      if (!updatedModel || updatedModel.id !== model.id) {
         throw new Error("The Admin API returned an invalid Report Case.");
       }
-      setRecord(updated);
-      onUpdated?.(updated);
+      setReportModel(updatedModel);
+      window.dispatchEvent(new CustomEvent(REPORT_CASE_UPDATED_EVENT, { detail: updatedModel }));
+      onUpdated?.(updatedModel);
       setDialogOpen(false);
       setSelectedChoice(null);
     } catch (error: unknown) {
@@ -553,14 +626,14 @@ export function ReportCaseDetail({
 
 export function ReportCaseDrawer({
   reportId,
-  initialRecord,
+  initialModel,
   onClose,
   onUpdated,
 }: {
   reportId: string;
-  initialRecord: ReportCaseRecord;
+  initialModel?: ReportCaseModel | null;
   onClose: () => void;
-  onUpdated: (record: ReportCaseRecord) => void;
+  onUpdated?: (model: ReportCaseModel) => void;
 }) {
   const { translateText } = useAdminShell();
   return (
@@ -568,8 +641,26 @@ export function ReportCaseDrawer({
       <button className="scrim" type="button" aria-label={translateText("Close Report Case drawer")} onClick={onClose} />
       <dialog open className="drawer open" aria-modal="true" aria-label={translateText("Report Case details")}>
         <div className="drawer-top"><div><strong>{reportId}</strong><small>{translateText("Report Case")}</small></div><button className="icon" type="button" aria-label={translateText("Close drawer")} onClick={onClose}><span className="close-lines" /></button></div>
-        <ReportCaseDetail reportId={reportId} initialRecord={initialRecord} drawer onUpdated={onUpdated} />
+        <ReportCaseDetail reportId={reportId} initialModel={initialModel} drawer onUpdated={onUpdated} />
       </dialog>
     </>
+  );
+}
+
+export function ReportCaseDrawerRoute({
+  reportId,
+  initialModel,
+}: {
+  reportId: string;
+  initialModel?: ReportCaseModel | null;
+}) {
+  const router = useRouter();
+  return (
+    <ReportCaseDrawer
+      reportId={reportId}
+      initialModel={initialModel}
+      onClose={() => router.back()}
+      onUpdated={() => router.refresh()}
+    />
   );
 }

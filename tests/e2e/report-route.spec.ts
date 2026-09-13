@@ -49,4 +49,15 @@ test.describe("Report Case routes", () => {
     await expect(dialog).toBeHidden();
     await expect(page.locator(".report-page-alert .badge")).toHaveText("Dismissed");
   });
+
+  test("opens the full Report Case page from the drawer", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/report");
+    await page.locator("tbody tr[data-report-id]").first().click();
+
+    await page.getByRole("link", { name: "Open full Report Case" }).click();
+    await expect(page).toHaveURL(/\/report\/RPT-8201$/);
+    await expect(page.locator("dialog.drawer.open")).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 1, name: "Report against Amara Ariyawat" })).toBeVisible();
+  });
 });

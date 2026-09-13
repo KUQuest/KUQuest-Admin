@@ -18,6 +18,26 @@ export type ReportCaseDecisionChoice =
   | "confirmed-violation"
   | "restore";
 
+export type ReportCaseCommand =
+  | "REPORT_CASE_DISMISSED"
+  | "REPORT_CASE_HIDDEN"
+  | "REPORT_CASE_RESTORED";
+
+export const reportCaseDecisionMetadata = {
+  "no-violation": {
+    command: "REPORT_CASE_DISMISSED",
+    label: "No violation",
+  },
+  "confirmed-violation": {
+    command: "REPORT_CASE_HIDDEN",
+    label: "Violation confirmed",
+  },
+  restore: {
+    command: "REPORT_CASE_RESTORED",
+    label: "Message restored",
+  },
+} as const satisfies Record<ReportCaseDecisionChoice, { command: ReportCaseCommand; label: string }>;
+
 export type ReportCaseEvidence = {
   reference: string | null;
   label: string;
@@ -49,6 +69,8 @@ export type ReportCaseModel = {
   closedAt: string | null;
   version: number | undefined;
 };
+
+export const REPORT_CASE_UPDATED_EVENT = "kuquest:report-case-updated";
 
 function asRecord(value: unknown): ReportCaseRecord | null {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -130,15 +152,21 @@ export function isReportCaseActionable(status: unknown): boolean {
 
 export function reportCaseDecisionFor(
   choice: ReportCaseDecisionChoice,
-): "REPORT_CASE_DISMISSED" | "REPORT_CASE_HIDDEN" | "REPORT_CASE_RESTORED" {
-  switch (choice) {
-    case "no-violation":
-      return "REPORT_CASE_DISMISSED";
-    case "confirmed-violation":
-      return "REPORT_CASE_HIDDEN";
-    case "restore":
-      return "REPORT_CASE_RESTORED";
+): ReportCaseCommand {
+  return reportCaseDecisionMetadata[choice].command;
+}
+
+export function reportCaseDecisionDetailsForCommand(command: ReportCaseCommand): {
+  choice: ReportCaseDecisionChoice;
+  command: ReportCaseCommand;
+  label: string;
+} {
+  for (const [choice, metadata] of Object.entries(reportCaseDecisionMetadata)) {
+    if (metadata.command === command) {
+      return { choice: choice as ReportCaseDecisionChoice, ...metadata };
+    }
   }
+  throw new Error(`Unsupported Report Case command: ${command}`);
 }
 
 export function reportCaseModelFromRecord(value: unknown): ReportCaseModel | null {

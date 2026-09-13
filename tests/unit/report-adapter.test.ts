@@ -20,7 +20,7 @@ describe("Report Case mock adapter", () => {
     const page = loadReportCasesFromMock(memoryStorage());
 
     expect(page.items.map((record) => record.id)).toEqual(["RPT-8201", "RPT-8202"]);
-    expect(page.items.every((record) => record.reportCaseStatus === "REPORT_CASE_PENDING")).toBe(true);
+    expect(page.items.every((record) => record.status === "REPORT_CASE_PENDING")).toBe(true);
   });
 
   it("persists the Report Case reason and canonical command status", () => {
