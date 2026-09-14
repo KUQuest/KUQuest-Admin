@@ -18,6 +18,28 @@ export type ActivityLogEntry = {
   createdAtTimestamp: number | null;
 };
 
+export type ActivityLogFilters = {
+  action: string;
+  resourceType: string;
+  resourceId: string;
+  adminId: string;
+  sort: "newest" | "oldest";
+};
+
+export type ActivityLogPageData = {
+  source: "api";
+  items: ActivityLogEntry[];
+  nextCursor: string | null;
+};
+
+export const DEFAULT_ACTIVITY_LOG_FILTERS: ActivityLogFilters = {
+  action: "",
+  resourceType: "",
+  resourceId: "",
+  adminId: "",
+  sort: "newest",
+};
+
 export function activityLogEntryFromApi(entry: AdminActivityLog): ActivityLogEntry {
   const adminName = `${entry.admin.firstName.trim()} ${entry.admin.lastName.trim()}`.trim();
   const adminInitials = `${entry.admin.firstName.trim().charAt(0)}${entry.admin.lastName.trim().charAt(0)}`.toUpperCase();
@@ -90,6 +112,49 @@ export function activityLogMatchesSearch(entry: ActivityLogEntry, query: string)
   ].some((value) => String(value ?? "").toLowerCase().includes(normalizedQuery));
 }
 
+export function activityLogTargetLabel(entry: ActivityLogEntry): string {
+  const resourceType = entry.resourceType || "";
+  const resourceId = entry.resourceId || "";
+  return !resourceType && !resourceId ? "" : [resourceType, resourceId].filter(Boolean).join(" · ");
+}
+
+function csvCell(value: string | number | null | undefined): string {
+  const text = String(value ?? "");
+  const safeText = /^[=+\-@]/.test(text) ? `'${text}` : text;
+  return `"${safeText.replaceAll('"', '""')}"`;
+}
+
+export function activityLogCsv(entries: readonly ActivityLogEntry[]): string {
+  const headers = [
+    "id",
+    "createdAt",
+    "adminId",
+    "adminName",
+    "action",
+    "resourceType",
+    "resourceId",
+    "target",
+    "reasonCode",
+    "reasonCatalogVersion",
+    "resultVersion",
+    "resultTimestamp",
+  ];
+  const rows = entries.map((entry) => [
+    entry.id,
+    entry.createdAt,
+    entry.adminId,
+    entry.adminName,
+    entry.action,
+    entry.resourceType,
+    entry.resourceId,
+    activityLogTargetLabel(entry),
+    entry.reasonCode,
+    entry.reasonCatalogVersion,
+    entry.resultVersion,
+    entry.resultTimestamp,
+  ]);
+  return [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n");
+}
 export function activityTargetHref(resourceType: string, resourceId: string): string | null {
   if (!resourceId) return null;
   switch (resourceType.trim().toUpperCase()) {
