@@ -120,7 +120,7 @@ export type OverviewSearchResult = {
 };
 
 export type OverviewApiSearchData = {
-  quests: Array<{ displayId: string; title: string }>;
+  quests: Array<{ id: string; displayId?: string; title: string }>;
   members: Array<{ id: string; firstName: string; lastName: string; studentId: string | null }>;
   payouts: Array<{ id: string; student: { firstName: string; lastName: string } }>;
 };
@@ -520,10 +520,10 @@ export function overviewSearchResultsFromApi(
   }));
   const quests = records.quests.map((quest): OverviewSearchResult => ({
     kind: "quest",
-    id: quest.displayId,
+    id: quest.displayId ?? quest.id,
     title: quest.title,
     detail: "Quest",
-    href: questRoutes.detail(quest.displayId),
+    href: questRoutes.detail(quest.id),
   }));
   const payouts = records.payouts.map((payout): OverviewSearchResult => ({
     kind: "payout",

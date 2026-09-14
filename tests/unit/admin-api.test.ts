@@ -475,7 +475,72 @@ describe("Admin API boundary", () => {
 
     expect(request?.headers.get("idempotency-key")).toBe("hide-quest-1");
     expect(request?.headers.get("if-match")).toBe("2");
-    expect(await request?.json()).toEqual({ reasonCode: "POLICY_REVIEW" });
+    expect(await request?.json()).toEqual({
+      reason: "The Quest needs policy review.",
+      reasonCode: "POLICY_REVIEW",
+    });
+  });
+
+  it("preserves the Quest Terminate command contract", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    let request: Request | undefined;
+
+    mockFetch(async (input, init) => {
+      request = new Request(input, init);
+      return jsonResponse({
+        success: true,
+        data: {
+          resourceSummary: { id: "quest-1" },
+          resourceVersion: 3,
+          adminActionId: "action-1",
+        },
+      });
+    });
+
+    await adminApi.terminateQuest("quest-1", {
+      idempotencyKey: "terminate-quest-1",
+      expectedVersion: 2,
+      reason: "The Quest violates the safety policy.",
+      reasonCode: "SAFETY_REVIEW",
+    });
+
+    expect(request?.headers.get("idempotency-key")).toBe("terminate-quest-1");
+    expect(request?.headers.get("if-match")).toBe("2");
+    expect(await request?.json()).toEqual({
+      reason: "The Quest violates the safety policy.",
+      reasonCode: "SAFETY_REVIEW",
+    });
+  });
+
+  it("preserves the Quest Restore command contract", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    let request: Request | undefined;
+
+    mockFetch(async (input, init) => {
+      request = new Request(input, init);
+      return jsonResponse({
+        success: true,
+        data: {
+          resourceSummary: { id: "quest-1" },
+          resourceVersion: 3,
+          adminActionId: "action-1",
+        },
+      });
+    });
+
+    await adminApi.restoreQuest("quest-1", {
+      idempotencyKey: "restore-quest-1",
+      expectedVersion: 2,
+      reason: "The Quest is safe after review.",
+      reasonCode: "POLICY_REVIEW",
+    });
+
+    expect(request?.headers.get("idempotency-key")).toBe("restore-quest-1");
+    expect(request?.headers.get("if-match")).toBe("2");
+    expect(await request?.json()).toEqual({
+      reason: "The Quest is safe after review.",
+      reasonCode: "POLICY_REVIEW",
+    });
   });
 
   it("uses the existing Admin Report command boundary for Conduct Reports", async () => {
@@ -548,7 +613,7 @@ describe("Admin API boundary", () => {
     await adminApi.listQuests();
     await adminApi.getQuest("quest-1");
     await adminApi.hideQuest("quest-1", { idempotencyKey: "hide-1", expectedVersion: 1, reason: "Policy review.", reasonCode: "POLICY_REVIEW" });
-    await adminApi.restoreQuest("quest-1", { idempotencyKey: "restore-1", expectedVersion: 1 });
+    await adminApi.restoreQuest("quest-1", { idempotencyKey: "restore-1", expectedVersion: 1, reason: "Policy review completed.", reasonCode: "POLICY_REVIEW" });
     await adminApi.terminateQuest("quest-1", { idempotencyKey: "terminate-1", expectedVersion: 1, reason: "Policy violation.", reasonCode: "SAFETY_REVIEW" });
     await adminApi.listDisputes();
     await adminApi.getDispute("case-1");

@@ -1287,7 +1287,10 @@ main {
   position: fixed;
   inset: 0;
   z-index: 40;
+  padding: 0;
+  border: 0;
   background: var(--scrim);
+  cursor: default;
 }
 .drawer {
   position: fixed;
@@ -1295,12 +1298,20 @@ main {
   top: 0;
   right: 0;
   width: min(520px, 100vw);
+  max-width: none;
   height: 100vh;
+  margin: 0;
+  padding: 0;
+  border: 0;
   background: var(--surface);
   box-shadow: -8px 0 32px color-mix(in srgb, var(--text) 18%, transparent);
   transform: translateX(102%);
   transition: transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
   overflow: auto;
+}
+.quest-drawer {
+  left: auto;
+  right: 0;
 }
 .drawer.open {
   transform: translateX(0);

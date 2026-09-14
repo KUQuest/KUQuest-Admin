@@ -42,7 +42,11 @@ export async function loadOverviewSearchData(cookieHeader?: string): Promise<Ove
     adminApi.listPayouts({ limit: 100, sort: "newest" }, options),
   ]);
   return {
-    quests: quests.items.map(({ displayId, title }) => ({ displayId, title })),
+    quests: quests.items.map(({ id, displayId, title }) => ({
+      id,
+      displayId: displayId ?? id,
+      title,
+    })),
     members: members.items.map(({ id, firstName, lastName, studentId }) => ({
       id,
       firstName,
