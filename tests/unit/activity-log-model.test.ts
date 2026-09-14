@@ -46,7 +46,7 @@ describe("Activity Log model", () => {
     expect(activityLogMatchesSearch(view, "result-timestamp")).toBe(false);
     expect(activityLogMatchesSearch(view, "2026-09-08T08:00:00.000Z")).toBe(true);
     expect(activityLogMatchesSearch(view, "missing-value")).toBe(false);
-    expect(activityTargetHref(view.resourceType, view.resourceId)).toBe("/quests/quest-1");
+    expect(activityTargetHref(view.resourceType, view.resourceId)).toBe("/quest/quest-1");
     expect(activityTargetHref("UNKNOWN", "record-1")).toBeNull();
   });
 });

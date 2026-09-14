@@ -1,7 +1,8 @@
 import { cookies } from "next/headers";
 
 import type { AdminApiRequestOptions } from "../api/admin-api";
-import { adminApi, adminApiRequestOptions } from "../api/admin-api";
+import { adminApi } from "../api/admin-api";
+import { adminApiRequestOptions } from "../api/admin-api-request-options";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { adminSessionCookieHeader } from "../../../lib/auth/admin-session-policy";
 import { mockWalletFinanceSummary, mockWallets } from "./wallet-mock-data";

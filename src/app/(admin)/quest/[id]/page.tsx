@@ -1,13 +1,26 @@
-import {
-  AdminDetailRoute,
-  adminDetailMetadata,
-  type AdminDetailRoutePageProps,
-} from "../../../../components/admin/admin-detail-route";
+import { cookies } from "next/headers";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 
-export function generateMetadata({ params }: AdminDetailRoutePageProps) {
-  return adminDetailMetadata(params, "Quest");
+import { isAdminApiEnabled } from "../../../../features/admin/api/admin-provider";
+import { QuestDetailPage } from "../../../../features/admin/quest/quest-page";
+import { loadQuestDetailPageData } from "../../../../features/admin/quest/quest-service";
+import { adminSessionCookieHeader } from "../../../../lib/auth/admin-session-policy";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  return { title: `Quest ${id}` };
 }
 
-export default function QuestDetailPage({ params }: AdminDetailRoutePageProps) {
-  return <AdminDetailRoute params={params} title="Quest" description="Review one Quest through its canonical detail route." />;
+export default async function QuestRoute({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const dataSource = isAdminApiEnabled() ? "api" : "mock";
+  const cookieStore = dataSource === "api" ? await cookies() : null;
+  const initialData = await loadQuestDetailPageData(
+    id,
+    cookieStore ? adminSessionCookieHeader(cookieStore.getAll()) : "",
+    dataSource,
+  );
+  if (!initialData) notFound();
+  return <QuestDetailPage questId={id} initialData={initialData} />;
 }

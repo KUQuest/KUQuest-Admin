@@ -1,6 +1,10 @@
 import { redirect } from "next/navigation";
 
 import "../admin-extensions.css";
+import "../dispute-page.css";
+import "../quest-page.css";
+import "../report-page.css";
+import "../user-page.css";
 
 import { AdminShell } from "../../components/admin/admin-shell";
 import { ForbiddenPage } from "../../components/admin/forbidden-page";
@@ -20,8 +24,5 @@ export default async function AdminLayout({
   if (session.kind === "forbidden") return <ForbiddenPage />;
   if (session.kind === "unavailable") throw session.error;
 
-  return <AdminShell identity={session.identity}>
-    {children}
-    {modal}
-  </AdminShell>;
+  return <AdminShell identity={session.identity}>{children}{modal}</AdminShell>;
 }

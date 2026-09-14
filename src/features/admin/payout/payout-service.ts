@@ -8,9 +8,9 @@ import type {
 } from "../api/admin-api";
 import {
   adminApi,
-  adminApiRequestOptions,
   ADMIN_API_PAYOUT_STATUSES,
 } from "../api/admin-api";
+import { adminApiRequestOptions } from "../api/admin-api-request-options";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { mockPayoutDetail, mockPayoutDetails } from "./payout-mock-data";
 import {

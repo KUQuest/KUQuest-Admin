@@ -87,10 +87,6 @@ export type AdminOverview = {
 
 export type AdminApiRequestOptions = Pick<RequestInit, "headers">;
 
-export function adminApiRequestOptions(cookieHeader?: string): AdminApiRequestOptions {
-  return cookieHeader === undefined ? {} : { headers: { Cookie: cookieHeader } };
-}
-
 export type AdminFinanceOverview = {
   platformBalances: {
     revenueSatang: number;
@@ -168,7 +164,8 @@ export type AdminQuestMember = {
 };
 
 export type AdminQuest = {
-  displayId: string;
+  id: string;
+  displayId?: string;
   apiVersion: "v1" | "v2";
   version: number;
   title: string;
@@ -226,6 +223,13 @@ export type AdminQuestDetail = AdminQuest & {
     startedAt: string | null;
     createdAt: string;
   }>;
+  images?: Array<{
+    imageId: string;
+    fileId: string;
+    position: number;
+    url: string;
+    urlExpiresAt: string;
+  }>;
   proofSubmissions: Array<{
     id: string;
     worker: AdminQuestMember | null;
@@ -238,16 +242,36 @@ export type AdminQuestDetail = AdminQuest & {
     reviewedAt: string | null;
     files: Array<{ fileId: string; contentType: string; sizeBytes: number; position: number }>;
   }>;
-  editHistory: Array<{
-    kind: "FIELD_EDIT" | "EDIT_REQUEST";
-    id: string;
-    fieldName?: string;
-    requestStatus?: string;
-    failureCode?: string | null;
-    createdAt?: string;
-    editedAt?: string;
-    resolvedAt?: string | null;
-  }>;
+  editHistory: Array<
+    | {
+        kind: "FIELD_EDIT";
+        id: string;
+        fieldName: string;
+        oldValue: unknown;
+        newValue: unknown;
+        editedAt: string;
+        editedByUserId: string | null;
+        editedByAdminId: string | null;
+      }
+    | {
+        kind: "EDIT_REQUEST";
+        id: string;
+        apiVersion: "v1" | "v2";
+        requestStatus: string;
+        failureCode: string | null;
+        requestedByUserId: string | null;
+        proposedChanges: unknown;
+        createdAt: string;
+        expiresAt: string | null;
+        resolvedAt: string | null;
+        responses: Array<{
+          workerId: string;
+          decision: string | null;
+          reason: string | null;
+          respondedAt: string | null;
+        }>;
+      }
+  >;
   adminActions: Array<{
     id: string;
     admin: { id: string; firstName: string; lastName: string };
@@ -316,6 +340,7 @@ export type AdminDisputeCase = {
   questId: string;
   status: DisputeCaseStatus;
   workerId?: string;
+  amountAtRiskSatang?: number;
   amountSatang?: number;
   evidenceRefs?: EvidenceReference[];
   questState?: "QUEST_FAILED";
@@ -885,7 +910,8 @@ export type QuestHideCommand = AdminCommandOptions & {
   reasonCode: AdminQuestReasonCode;
 };
 export type QuestRestoreCommand = AdminCommandOptions & {
-  reasonCode?: AdminQuestReasonCode;
+  reason: string;
+  reasonCode: AdminQuestReasonCode;
 };
 export type QuestTerminateCommand = AdminCommandOptions & {
   reason: string;
@@ -1112,17 +1138,17 @@ export const adminApi = {
     );
   },
 
-  getQuest(questId: string): Promise<AdminQuestDetail> {
+  getQuest(questId: string, options: AdminApiRequestOptions = {}): Promise<AdminQuestDetail> {
     return apiRequest<AdminQuestDetail>(
       `/api/v1/admin/quests/${encode(questId)}`,
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 
-  getQuestFinance(questId: string): Promise<AdminQuestFinance> {
+  getQuestFinance(questId: string, options: AdminApiRequestOptions = {}): Promise<AdminQuestFinance> {
     return apiRequest<AdminQuestFinance>(
       `/api/v1/admin/finance/quests/${encode(questId)}`,
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 
@@ -1132,7 +1158,7 @@ export const adminApi = {
       {
         method: "POST",
         headers: questCommandHeaders(options),
-        body: { reasonCode: options.reasonCode },
+        body: { reason: options.reason, reasonCode: options.reasonCode },
       },
     );
   },
@@ -1143,7 +1169,7 @@ export const adminApi = {
       {
         method: "POST",
         headers: questCommandHeaders(options),
-        body: options.reasonCode ? { reasonCode: options.reasonCode } : {},
+        body: { reason: options.reason, reasonCode: options.reasonCode },
       },
     );
   },
@@ -1154,22 +1180,28 @@ export const adminApi = {
       {
         method: "POST",
         headers: questCommandHeaders(options),
-        body: { reasonCode: options.reasonCode },
+        body: { reason: options.reason, reasonCode: options.reasonCode },
       },
     );
   },
 
-  listDisputes(query: AdminDisputeListQuery = {}): Promise<AdminPage<AdminDisputeCase>> {
+  listDisputes(
+    query: AdminDisputeListQuery = {},
+    options: AdminApiRequestOptions = {},
+  ): Promise<AdminPage<AdminDisputeCase>> {
     return apiRequest<AdminPage<AdminDisputeCase>>(
       `/api/v1/admin/disputes${queryString(query)}`,
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 
-  getDispute(disputeId: string): Promise<AdminDisputeCaseDetail> {
+  getDispute(
+    disputeId: string,
+    options: AdminApiRequestOptions = {},
+  ): Promise<AdminDisputeCaseDetail> {
     return apiRequest<AdminDisputeCaseDetail>(
       `/api/v1/admin/disputes/${encode(disputeId)}`,
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 
@@ -1278,17 +1310,23 @@ export const adminApi = {
     );
   },
 
-  listReports(query: AdminReportListQuery = {}): Promise<AdminPage<AdminReportCase>> {
+  listReports(
+    query: AdminReportListQuery = {},
+    options: AdminApiRequestOptions = {},
+  ): Promise<AdminPage<AdminReportCase>> {
     return apiRequest<AdminPage<AdminReportCase>>(
       `/api/v1/admin/reports${queryString(query)}`,
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 
-  getReport(reportId: string): Promise<AdminReportCase> {
+  getReport(
+    reportId: string,
+    options: AdminApiRequestOptions = {},
+  ): Promise<AdminReportCase> {
     return apiRequest<AdminReportCase>(
       `/api/v1/admin/reports/${encode(reportId)}`,
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 
@@ -1303,10 +1341,13 @@ export const adminApi = {
     );
   },
 
-  getEvidence(evidenceRef: string): Promise<AdminEvidence> {
+  getEvidence(
+    evidenceRef: string,
+    options: AdminApiRequestOptions = {},
+  ): Promise<AdminEvidence> {
     return apiRequest<AdminEvidence>(
       `/api/v1/admin/evidence/${encode(evidenceRef)}`,
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 
@@ -1333,17 +1374,23 @@ export const adminApi = {
     );
   },
 
-  getMember(memberId: string): Promise<AdminMemberDetail> {
+  getMember(
+    memberId: string,
+    options: AdminApiRequestOptions = {},
+  ): Promise<AdminMemberDetail> {
     return apiRequest<AdminMemberDetail>(
       `/api/v1/admin/members/${encode(memberId)}`,
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 
-  getMemberFinance(memberId: string): Promise<AdminMemberFinance> {
+  getMemberFinance(
+    memberId: string,
+    options: AdminApiRequestOptions = {},
+  ): Promise<AdminMemberFinance> {
     return apiRequest<AdminMemberFinance>(
       `/api/v1/admin/finance/members/${encode(memberId)}`,
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 
