@@ -46,6 +46,76 @@
 .dispute-page-allocation {
   grid-template-columns: 1fr;
 }
+.dispute-table {
+  min-width: 980px;
+}
+.dispute-case-board .dispute-table tbody tr[tabindex="0"]:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+.dispute-case-board .dispute-table td a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.dispute-case-board .dispute-table td a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.dispute-case-board .dispute-table td small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.dispute-case-board .table-link {
+  padding: 0;
+  border: 0;
+  color: var(--accent);
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.dispute-case-board .table-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.dispute-case-drawer-detail .record-panel {
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.dispute-case-drawer-detail .section > .record-panel {
+  padding: 0;
+}
+.dispute-case-drawer-detail .record-panel-head {
+  margin-bottom: 10px;
+}
+.dispute-resolution-meta {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 14px;
+}
+.dispute-statements {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+.dispute-decision-dialog,
+.dispute-evidence-dialog {
+  z-index: 60;
+}
+.dispute-decision-dialog select {
+  width: 100%;
+  margin: 6px 0 14px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--surface);
+}
+.dispute-evidence-dialog {
+  width: min(620px, calc(100vw - 32px));
+}
 .dispute-overview {
   display: grid;
   gap: 18px;
@@ -97,5 +167,8 @@
   .overview-meta {
     grid-template-columns: 1fr;
     gap: 10px;
+  }
+  .dispute-resolution-meta {
+    grid-template-columns: 1fr;
   }
 }

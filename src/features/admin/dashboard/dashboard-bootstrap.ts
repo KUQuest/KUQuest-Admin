@@ -15,6 +15,11 @@ const dashboardConductReportSeedData = [
   { id: "CND-8303", reportedMemberId: "68000000", reportedUserName: "Akarin Ariyawat", reporterId: "68000040", reporterName: "Benja Ariyawat", reasonCode: "CONDUCT_NO_SHOW", questId: "QST-12003", questTitle: "Photograph library study areas", questRecord: "Assignment cancelled before the dueAt", details: "The reported conduct was reviewed against the Quest record.", status: "CONDUCT_REPORT_DISMISSED", conductReportStatus: "CONDUCT_REPORT_DISMISSED", decision: "no-violation", decisionLabel: "No violation", decisionReason: "The Quest record does not confirm a conduct violation.", resolution: "Conduct Report dismissed; no policy violation found.", resolvedBy: "Admin", resolutionAt: "27 Aug 2026 · 11:47", closedAt: "27 Aug 2026 · 11:30", tone: "neutral", reportedAt: "25 Aug 2026 · 09:10", version: 1 },
 ];
 
+const dashboardDisputeSeedData = [
+  { id: "DSP-5201", displayId: "DSP-5201", questId: "QST-12001", questState: "QUEST_FAILED", title: "Verify dorm fire exits", disputeType: "Evidence", amount: 2483, amountAtRiskSatang: 248300, filerUserId: "68000000", filerRole: "Hirer", filerName: "Akarin Ariyawat", respondentUserId: "68000020", respondentRole: "Worker", respondentName: "Amara Ariyawat", filerStatement: "The submitted Proof Submission did not satisfy the Quest Condition.", respondentStatement: "The Proof Submission records the work completed before the Quest failed.", status: "DISPUTE_CASE_PENDING", disputeCaseStatus: "DISPUTE_CASE_PENDING", tone: "danger", disputeDate: "27 Aug 2026 · 15:30", evidenceRefs: ["evidence-dsp-5201"], version: 1 },
+  { id: "DSP-5202", displayId: "DSP-5202", questId: "QST-12008", questState: "QUEST_FAILED", title: "Design orientation social cards", disputeType: "Quality", amount: 7871, amountAtRiskSatang: 787100, filerUserId: "68000020", filerRole: "Hirer", filerName: "Amara Ariyawat", respondentUserId: "68000040", respondentRole: "Worker", respondentName: "Benja Ariyawat", filerStatement: "The delivered social cards did not match the Quest Condition.", respondentStatement: "The requested changes were outside the agreed Quest Condition.", status: "DISPUTE_CASE_PENDING", disputeCaseStatus: "DISPUTE_CASE_PENDING", tone: "danger", disputeDate: "27 Aug 2026 · 09:00", evidenceRefs: ["evidence-dsp-5202"], version: 1 },
+];
+
 const dashboardSeedData: PersistedAdminData = {
   version: dashboardSeedVersion,
   collections: {
@@ -40,10 +45,7 @@ const dashboardSeedData: PersistedAdminData = {
       { id: "PAY-9631", title: "Fah Lertwiroj", amount: 1711, status: "PENDING_ADMIN_APPROVAL", payoutStatus: "PENDING_ADMIN_APPROVAL", tone: "warning" },
       { id: "PAY-9628", title: "Gunn Maneewan", amount: 850, status: "PENDING_ADMIN_APPROVAL", payoutStatus: "PENDING_ADMIN_APPROVAL", tone: "warning" },
     ],
-    disputes: [
-      { id: "DSP-5201", title: "Verify dorm fire exits", disputeType: "Evidence", amount: 2483, status: "DISPUTE_CASE_PENDING", disputeCaseStatus: "DISPUTE_CASE_PENDING", tone: "danger", disputeDate: "27 Aug 2026 · 15:30" },
-      { id: "DSP-5202", title: "Design orientation social cards", disputeType: "Quality", amount: 7871, status: "DISPUTE_CASE_PENDING", disputeCaseStatus: "DISPUTE_CASE_PENDING", tone: "danger", disputeDate: "27 Aug 2026 · 09:00" },
-    ],
+    disputes: dashboardDisputeSeedData,
     reports: [
       { id: "RPT-8201", reportedMemberId: "68000020", reportedUserName: "Amara Ariyawat", reporterId: "68000000", reporterName: "Akarin Ariyawat", category: "Harassment or abuse", details: "The submitted report requires review.", evidence: "Message capture", evidenceRefs: ["evidence-rpt-8201"], status: "REPORT_CASE_PENDING", reportCaseStatus: "REPORT_CASE_PENDING", tone: "warning", reportedAt: "27 Aug 2026 · 08:40" },
       { id: "RPT-8202", reportedMemberId: "68000040", reportedUserName: "Benja Ariyawat", reporterId: "68000000", reporterName: "Akarin Ariyawat", category: "Fraud or payment issue", details: "The submitted report requires review.", evidence: "Payment message capture", evidenceRefs: ["evidence-rpt-8202"], status: "REPORT_CASE_PENDING", reportCaseStatus: "REPORT_CASE_PENDING", tone: "warning", reportedAt: "27 Aug 2026 · 08:20" },
@@ -79,9 +81,34 @@ function migrateConductReportSeed(storage: BrowserStorage, data: PersistedAdminD
   return migrated;
 }
 
+function migrateDisputeSeed(storage: BrowserStorage, data: PersistedAdminData): PersistedAdminData {
+  const seedById = new Map(dashboardDisputeSeedData.map((record) => [record.id, record]));
+  let changed = false;
+  const disputes = data.collections.disputes.map((value) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+    const record = value as Record<string, unknown>;
+    const seed = seedById.get(record.id as string);
+    if (!seed || record.questId && record.questState && record.displayId) return value;
+    changed = true;
+    return { ...seed, ...record };
+  });
+  if (!changed) return data;
+
+  const migrated: PersistedAdminData = {
+    ...data,
+    collections: { ...data.collections, disputes },
+  };
+  try {
+    storage.setItem(ADMIN_DEMO_DATA_KEY, JSON.stringify(migrated));
+  } catch {
+    // The migrated data remains useful for the current render.
+  }
+  return migrated;
+}
+
 export function loadDashboardData(storage: BrowserStorage): PersistedAdminData {
   const stored = readAdminData(storage);
-  if (stored) return migrateConductReportSeed(storage, stored);
+  if (stored) return migrateDisputeSeed(storage, migrateConductReportSeed(storage, stored));
 
   try {
     storage.setItem(ADMIN_DEMO_DATA_KEY, JSON.stringify(dashboardSeedData));
