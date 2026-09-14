@@ -79,6 +79,37 @@ describe("Admin API boundary", () => {
     expect(request?.headers.get("cookie")).toBe("kuquest-admin=server-session");
   });
 
+  it("forwards an explicit Admin cookie for Report Case reads", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    const cookies: Array<string | null> = [];
+
+    mockFetch(async (input, init) => {
+      const request = new Request(input, init);
+      cookies.push(request.headers.get("cookie"));
+      if (request.url.includes("/evidence/")) {
+        return jsonResponse({ success: true, data: { evidenceRef: "evidence-1" } });
+      }
+      if (request.url.endsWith("/reports/report-1")) {
+        return jsonResponse({
+          success: true,
+          data: { id: "report-1", status: "REPORT_CASE_PENDING", reportedMemberId: "member-1" },
+        });
+      }
+      return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
+    });
+
+    const options = { headers: { Cookie: "kuquest-admin=server-session" } };
+    await adminApi.listReports({}, options);
+    await adminApi.getReport("report-1", options);
+    await adminApi.getEvidence("evidence-1", options);
+
+    expect(cookies).toEqual([
+      "kuquest-admin=server-session",
+      "kuquest-admin=server-session",
+      "kuquest-admin=server-session",
+    ]);
+  });
+
   it("coalesces simultaneous Overview requests", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     let calls = 0;
