@@ -62,6 +62,18 @@ test.describe("shared Admin shell", () => {
     }
   });
 
+  test("renders the canonical Activity Log route without a legacy data fallback", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/activity");
+
+    const main = page.locator("#activity-main");
+    await expect(main).toBeVisible();
+    await expect(main.getByRole("heading", { level: 1, name: "Activity Log" })).toBeVisible();
+    await expect(main.getByRole("heading", { name: "Activity Log unavailable" })).toBeVisible();
+    await expect(main).toContainText("The Admin API is required to display this read-only log.");
+    await expect(main.locator("table")).toHaveCount(0);
+  });
+
   test("renders Conduct Reports separately and resolves them inside the board drawer", async ({ page }) => {
     await signIn(page);
     await page.goto("/conduct-report");
