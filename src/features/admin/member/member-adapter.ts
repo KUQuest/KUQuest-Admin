@@ -1,0 +1,188 @@
+import { changeReviewVisibility } from "../user-reviews/review-model";
+import {
+  ADMIN_DEMO_DATA_KEY,
+  type BrowserStorage,
+} from "../data/legacy-admin-data-adapter";
+import { loadDashboardData } from "../dashboard/dashboard-bootstrap";
+import type { PersistedAdminData } from "../data/admin-records";
+import {
+  memberModelFromMockRecord,
+  nextPenaltyFor,
+  type MemberActionOutcome,
+  type MemberModel,
+} from "./member-model";
+
+export type MemberMockPage = {
+  source: "mock";
+  items: MemberModel[];
+  nextCursor: null;
+};
+
+function persist(storage: BrowserStorage, data: PersistedAdminData): void {
+  try {
+    storage.setItem(ADMIN_DEMO_DATA_KEY, JSON.stringify(data));
+  } catch {
+    // Keep the in-memory demo record useful when browser storage is full.
+  }
+}
+
+function memberRecord(data: PersistedAdminData, memberId: string): Record<string, unknown> | null {
+  const record = data.collections.users.find((candidate) => candidate.id === memberId);
+  return record ? record as Record<string, unknown> : null;
+}
+
+export function loadMembersFromMock(storage: BrowserStorage): MemberMockPage {
+  const data = loadDashboardData(storage);
+  return {
+    source: "mock",
+    items: data.collections.users.flatMap((record) => {
+      const model = memberModelFromMockRecord(record, data);
+      return model ? [model] : [];
+    }),
+    nextCursor: null,
+  };
+}
+
+export function findMemberFromMock(storage: BrowserStorage, memberId: string): MemberModel | null {
+  const data = loadDashboardData(storage);
+  const record = memberRecord(data, memberId);
+  return record ? memberModelFromMockRecord(record, data) : null;
+}
+
+export function saveMemberNote(
+  storage: BrowserStorage,
+  memberId: string,
+  note: string,
+  actor = "Admin",
+): MemberModel | null {
+  const data = loadDashboardData(storage);
+  const record = memberRecord(data, memberId);
+  if (!record) return null;
+  const notes = Array.isArray(record.adminNotes) ? record.adminNotes : [];
+  record.adminNotes = [
+    { at: new Date().toISOString(), by: actor, note },
+    ...notes,
+  ];
+  persist(storage, data);
+  return memberModelFromMockRecord(record, data);
+}
+
+export function toggleMemberReview(
+  storage: BrowserStorage,
+  memberId: string,
+  reviewIndex: number,
+): MemberModel | null {
+  const data = loadDashboardData(storage);
+  const record = memberRecord(data, memberId);
+  if (!record) return null;
+  const current = memberModelFromMockRecord(record, data);
+  if (!current) return null;
+  record.reviews = changeReviewVisibility(current.reviews, reviewIndex);
+  persist(storage, data);
+  return memberModelFromMockRecord(record, data);
+}
+
+function addMemberHistory(record: Record<string, unknown>, outcome: MemberActionOutcome, reason: string): void {
+  const history = Array.isArray(record.moderationHistory) ? record.moderationHistory : [];
+  record.moderationHistory = [
+    {
+      event: `${outcome.label} applied`,
+      at: new Date().toISOString(),
+      by: "Admin",
+      reason,
+      previousStatus: record.walletStatus ?? record.status,
+      newStatus: outcome.walletStatus,
+      outcome: outcome.label,
+    },
+    ...history,
+  ];
+}
+
+export function recordMemberViolation(
+  storage: BrowserStorage,
+  memberId: string,
+  reason: string,
+  note = "",
+): { model: MemberModel; outcome: MemberActionOutcome } | null {
+  const data = loadDashboardData(storage);
+  const record = memberRecord(data, memberId);
+  if (!record) return null;
+  const current = memberModelFromMockRecord(record, data);
+  if (!current) return null;
+  const outcome = nextPenaltyFor(current);
+  const appliedAt = new Date();
+  const expiresAt = outcome.durationDays
+    ? new Date(appliedAt.getTime() + outcome.durationDays * 86_400_000).toISOString()
+    : null;
+  const previousWalletStatus = record.walletStatus ?? record.status;
+  record.confirmedViolationCount = (current.confirmedViolationCount ?? 0) + 1;
+  record.memberStatus = outcome.memberStatus;
+  record.walletStatus = outcome.walletStatus;
+  record.status = outcome.walletStatus;
+  record.tone = outcome.exempted ? "success" : outcome.walletStatus === "ACTIVE" ? "warning" : "danger";
+  record.statusReason = reason;
+  record.statusAppliedAt = appliedAt.toISOString();
+  record.statusAppliedBy = "Admin";
+  record.redFlagExpiresAt = outcome.memberStatus === "Flag" ? expiresAt : null;
+  record.banExpiresAt = outcome.memberStatus === "Temp Ban" ? expiresAt : null;
+  if (outcome.exempted) {
+    if (current.newUserExemptionRemaining > 0) {
+      record.newUserExemptionRemaining = current.newUserExemptionRemaining - 1;
+    } else {
+      record.postBanExemptionRemaining = Math.max(0, current.postBanExemptionRemaining - 1);
+    }
+    delete record.penalty;
+  } else {
+    record.penalty = {
+      label: outcome.label,
+      reason,
+      recordedAt: appliedAt.toISOString(),
+      appliedBy: "Admin",
+      ...(outcome.durationDays ? { durationDays: outcome.durationDays } : {}),
+      ...(expiresAt ? { expiresAt } : {}),
+    };
+  }
+  record.age = expiresAt ? `${outcome.label} · expires ${expiresAt}` : outcome.label;
+  addMemberHistory(record, outcome, reason);
+  if (note.trim()) {
+    const notes = Array.isArray(record.adminNotes) ? record.adminNotes : [];
+    record.adminNotes = [{ at: appliedAt.toISOString(), by: "Admin", note: note.trim() }, ...notes];
+  }
+  persist(storage, data);
+  const model = memberModelFromMockRecord(record, data);
+  if (!model) return null;
+  if (previousWalletStatus === outcome.walletStatus) {
+    model.statusReason = reason;
+  }
+  return { model, outcome };
+}
+
+export function submitMemberReport(
+  storage: BrowserStorage,
+  memberId: string,
+  category: string,
+  details: string,
+): MemberModel | null {
+  const data = loadDashboardData(storage);
+  const record = memberRecord(data, memberId);
+  if (!record) return null;
+  const title = typeof record.title === "string" ? record.title : memberId;
+  const reporter = data.collections.users.find((candidate) => candidate.id !== memberId);
+  const reporterRecord = reporter as Record<string, unknown> | undefined;
+  const report = {
+    id: `RPT-${Date.now()}`,
+    reportedMemberId: memberId,
+    reportedUserName: title,
+    reporterId: reporter?.id ?? "mock-admin",
+    reporterName: typeof reporterRecord?.title === "string" ? reporterRecord.title : "Admin",
+    category,
+    details,
+    status: "REPORT_CASE_PENDING",
+    reportCaseStatus: "REPORT_CASE_PENDING",
+    reportedAt: new Date().toISOString(),
+    tone: "warning",
+  };
+  data.collections.reports = [...data.collections.reports, report];
+  persist(storage, data);
+  return memberModelFromMockRecord(record, data);
+}

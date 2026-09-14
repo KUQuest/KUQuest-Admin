@@ -1,5 +1,14 @@
-import { AdminRoutePage } from "../../../components/admin/admin-route-page";
+import { cookies } from "next/headers";
 
-export default function MemberPage() {
-  return <AdminRoutePage title="Members" description="Review Member profiles and account status." />;
+import { isAdminApiEnabled } from "../../../features/admin/api/admin-provider";
+import { MemberBoard } from "../../../features/admin/member/member-board";
+import { loadMemberPageData } from "../../../features/admin/member/member-service";
+import { adminSessionCookieHeader } from "../../../lib/auth/admin-session-policy";
+
+export default async function MemberPage() {
+  if (!isAdminApiEnabled()) return <MemberBoard />;
+
+  const cookieStore = await cookies();
+  const initialData = await loadMemberPageData(adminSessionCookieHeader(cookieStore.getAll()));
+  return <MemberBoard initialData={initialData} />;
 }
