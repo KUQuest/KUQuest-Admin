@@ -646,6 +646,27 @@ describe("Admin API boundary", () => {
     expect(new URL(request?.url || "https://api.example.test").search).toBe("?search=youtube%40ku.th&limit=100");
   });
 
+  it("forwards server request options when reading Wallets", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    let request: Request | undefined;
+    mockFetch(async (input, init) => {
+      request = new Request(input, init);
+      return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
+    });
+
+    await adminApi.listWallets(
+      { status: "FROZEN", search: "member-1", limit: 100 },
+      { headers: { Cookie: "kuquest-admin=session" } },
+    );
+
+    const url = new URL(request?.url || "https://api.example.test");
+    expect(url.pathname).toBe("/api/v1/admin/wallets");
+    expect(url.searchParams.get("status")).toBe("FROZEN");
+    expect(url.searchParams.get("search")).toBe("member-1");
+    expect(request?.headers.get("cookie")).toBe("kuquest-admin=session");
+    expect(request?.cache).toBe("no-store");
+  });
+
   it("loads Wallet Statement rows through the Finance Ledger endpoint", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     let request: Request | undefined;

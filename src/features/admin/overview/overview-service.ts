@@ -1,8 +1,5 @@
-import type {
-  AdminApiRequestOptions,
-  AdminFinanceOverview,
-} from "../api/admin-api";
-import { adminApi } from "../api/admin-api";
+import type { AdminFinanceOverview } from "../api/admin-api";
+import { adminApi, adminApiRequestOptions } from "../api/admin-api";
 import { dashboardActivityFromApi } from "../dashboard/dashboard-model";
 import {
   overviewFallbackWithoutApiData,
@@ -19,12 +16,8 @@ export type OverviewPageData = {
   searchError: string | null;
 };
 
-function apiRequestOptions(cookieHeader?: string): AdminApiRequestOptions {
-  return cookieHeader === undefined ? {} : { headers: { Cookie: cookieHeader } };
-}
-
 export async function loadOverviewFromApi(cookieHeader?: string): Promise<OverviewModel> {
-  const options = apiRequestOptions(cookieHeader);
+  const options = adminApiRequestOptions(cookieHeader);
   const [overview, activityPage] = await Promise.all([
     adminApi.getOverview(options),
     adminApi.listActivityLogs({ limit: 4, sort: "newest" }, options).catch(() => ({ items: [], nextCursor: null })),
@@ -37,11 +30,11 @@ export async function loadOverviewFromApi(cookieHeader?: string): Promise<Overvi
 }
 
 export function loadFinanceOverview(cookieHeader?: string): Promise<AdminFinanceOverview> {
-  return adminApi.getFinanceOverview(apiRequestOptions(cookieHeader));
+  return adminApi.getFinanceOverview(adminApiRequestOptions(cookieHeader));
 }
 
 export async function loadOverviewSearchData(cookieHeader?: string): Promise<OverviewApiSearchData> {
-  const options = apiRequestOptions(cookieHeader);
+  const options = adminApiRequestOptions(cookieHeader);
   const [quests, members, payouts] = await Promise.all([
     adminApi.listQuests({ limit: 100, sort: "newest" }, options),
     adminApi.listMembers({ limit: 100 }, options),

@@ -3,11 +3,14 @@ import { cookies } from "next/headers";
 import { ApiError } from "../../../lib/api/client";
 import { adminSessionCookieHeader } from "../../../lib/auth/admin-session-policy";
 import type {
-  AdminApiRequestOptions,
   AdminApiPayoutStatus,
   AdminPayoutDetail,
 } from "../api/admin-api";
-import { adminApi, ADMIN_API_PAYOUT_STATUSES } from "../api/admin-api";
+import {
+  adminApi,
+  adminApiRequestOptions,
+  ADMIN_API_PAYOUT_STATUSES,
+} from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { mockPayoutDetail, mockPayoutDetails } from "./payout-mock-data";
 import {
@@ -41,15 +44,11 @@ export async function loadPayoutRouteContext(): Promise<{
   };
 }
 
-function apiRequestOptions(cookieHeader?: string): AdminApiRequestOptions {
-  return cookieHeader === undefined ? {} : { headers: { Cookie: cookieHeader } };
-}
-
 async function listAllPayoutsForStatus(
   status: AdminApiPayoutStatus,
   cookieHeader?: string,
 ) {
-  const options = apiRequestOptions(cookieHeader);
+  const options = adminApiRequestOptions(cookieHeader);
   const items = [] as Awaited<ReturnType<typeof adminApi.listPayouts>>["items"];
   let cursor: string | undefined;
 
@@ -92,7 +91,7 @@ export async function loadPayoutDetailPageData(
     detail = mockPayoutDetail(payoutId);
   } else {
     try {
-      detail = await adminApi.getPayout(payoutId, apiRequestOptions(cookieHeader));
+      detail = await adminApi.getPayout(payoutId, adminApiRequestOptions(cookieHeader));
     } catch (error) {
       if (error instanceof ApiError && error.status === 404) return null;
       throw error;

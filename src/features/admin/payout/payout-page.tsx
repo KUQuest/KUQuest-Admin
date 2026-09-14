@@ -12,6 +12,7 @@ import {
 } from "react";
 
 import { ApiError } from "../../../lib/api/client";
+import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { payoutRoutes } from "../admin-routes";
 import {
   adminApi,
@@ -46,7 +47,6 @@ import type {
 
 type PayoutPresentation = "page" | "drawer";
 type PayoutCommand = "approve" | "reject";
-const payoutFocusReturnStorageKey = "kuquest-payout-focus-return";
 type ApprovalReasonCode = PayoutApproval["reasonCode"];
 type RejectionReasonCode = PayoutRejection["reasonCode"];
 type PayoutCommandSubmission =
@@ -323,10 +323,6 @@ export function AdminPayoutDetailPage({
   presentation?: PayoutPresentation;
 }) {
   const router = useRouter();
-  const drawerRef = useRef<HTMLDialogElement>(null);
-  const drawerOpenerRef = useRef<HTMLElement | null>(null);
-  const drawerOpenerIdRef = useRef<string | null>(null);
-  const restoreDrawerFocusRef = useRef(false);
   const [detail, setDetail] = useState(data.detail);
   const [command, setCommand] = useState<PayoutCommand | null>(null);
   const [commandIdempotencyKey, setCommandIdempotencyKey] = useState<string | null>(null);
@@ -337,10 +333,8 @@ export function AdminPayoutDetailPage({
   const [reconcilePending, setReconcilePending] = useState(false);
 
   const closeDrawer = useCallback(() => {
-    window.sessionStorage.setItem(payoutFocusReturnStorageKey, detail.id);
-    restoreDrawerFocusRef.current = true;
     router.back();
-  }, [detail.id, router]);
+  }, [router]);
 
   useEffect(() => {
     setDetail(data.detail);
@@ -351,88 +345,6 @@ export function AdminPayoutDetailPage({
     setReconcileNotice(null);
     setReconcilePending(false);
   }, [data]);
-
-  useEffect(() => {
-    if (presentation !== "drawer") return;
-    const drawer = drawerRef.current;
-    if (!drawer) return;
-
-    const activeElement = document.activeElement;
-    const triggers = Array.from(document.querySelectorAll<HTMLElement>("[data-payout-drawer-trigger]"));
-    drawerOpenerIdRef.current = detail.id;
-    drawerOpenerRef.current = triggers.find((element) => element.tagName === "A" && element.dataset.payoutDrawerTrigger === detail.id)
-      ?? (activeElement instanceof HTMLElement && activeElement.dataset.payoutDrawerTrigger === detail.id
-        ? activeElement
-        : null)
-        ?? triggers.find((element) => element.dataset.payoutDrawerTrigger === detail.id)
-        ?? null;
-    restoreDrawerFocusRef.current = false;
-
-    const shell = drawer.closest<HTMLElement>(".admin-shell");
-    const outsideElements = shell
-      ? Array.from(shell.children).filter((element): element is HTMLElement => element instanceof HTMLElement && element !== drawer && !element.classList.contains("scrim") && !element.classList.contains("payout-command-layer"))
-      : [];
-    const previousInert = outsideElements.map((element) => element.inert);
-    outsideElements.forEach((element) => { element.inert = true; });
-    const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-    const focusableElements = () => Array.from(drawer.querySelectorAll<HTMLElement>(focusableSelector)).filter((element) => element.getClientRects().length > 0);
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        if (command) return;
-        event.preventDefault();
-        closeDrawer();
-        return;
-      }
-      if (event.key !== "Tab" || command) return;
-      const focusable = focusableElements();
-      if (!focusable.length) {
-        event.preventDefault();
-        drawer.focus({ preventScroll: true });
-        return;
-      }
-      const current = document.activeElement;
-      const first = focusable[0];
-      const last = focusable.at(-1);
-      if (event.shiftKey && (current === drawer || current === first || !drawer.contains(current))) {
-        event.preventDefault();
-        last?.focus({ preventScroll: true });
-      } else if (!event.shiftKey && (current === last || !drawer.contains(current))) {
-        event.preventDefault();
-        first.focus({ preventScroll: true });
-      }
-    };
-    const restoreFocusToOpener = () => {
-      const opener = drawerOpenerRef.current?.isConnected
-        ? drawerOpenerRef.current
-        : Array.from(document.querySelectorAll<HTMLElement>("[data-payout-drawer-trigger]")).find(
-          (element) => element.dataset.payoutDrawerTrigger === drawerOpenerIdRef.current,
-        );
-      if (!opener) return;
-      opener.focus({ preventScroll: true });
-    };
-    const retryFocusToOpener = (attempt = 0) => {
-      restoreFocusToOpener();
-      if (attempt < 8) requestAnimationFrame(() => retryFocusToOpener(attempt + 1));
-    };
-    const markBrowserClose = () => {
-      restoreDrawerFocusRef.current = true;
-      window.sessionStorage.setItem(payoutFocusReturnStorageKey, detail.id);
-      requestAnimationFrame(() => retryFocusToOpener());
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("popstate", markBrowserClose);
-    drawer.focus({ preventScroll: true });
-
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("popstate", markBrowserClose);
-      outsideElements.forEach((element, index) => { element.inert = previousInert[index] ?? false; });
-      if (restoreDrawerFocusRef.current) {
-        requestAnimationFrame(() => retryFocusToOpener());
-      }
-    };
-  }, [closeDrawer, command, detail.id, presentation]);
 
   async function submitCommand(submission: PayoutCommandSubmission) {
     setCommandError(null);
@@ -520,14 +432,20 @@ export function AdminPayoutDetailPage({
   if (presentation === "drawer") {
     return (
       <>
-        <button className="scrim" type="button" tabIndex={-1} aria-label="Close Payout detail" onClick={closeDrawer} />
-        <dialog ref={drawerRef} className="drawer open payout-drawer" aria-modal="true" aria-labelledby="payout-drawer-title" tabIndex={-1} open>
-          <div className="drawer-top">
-            <div><strong id="payout-drawer-title">{detail.id}</strong><small>Payout detail drawer</small></div>
-            <button className="icon" type="button" aria-label="Close Payout detail" onClick={closeDrawer}><span className="close-lines" /></button>
-          </div>
-          <div className="drawer-body">{content}</div>
-        </dialog>
+        <AdminDrawer
+          ariaLabel="Close Payout detail"
+          title={detail.id}
+          titleId="payout-drawer-title"
+          subtitle="Payout detail drawer"
+          className="payout-drawer"
+          openerAttribute="data-payout-drawer-trigger"
+          openerValue={detail.id}
+          outsideClassName="payout-command-layer"
+          escapeDisabled={command !== null}
+          onClose={closeDrawer}
+        >
+          {content}
+        </AdminDrawer>
         {command ? <PayoutCommandDialog command={command} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandPending} /> : null}
       </>
     );
@@ -576,46 +494,6 @@ export function AdminPayoutPage({
   const [sortDirection, setSortDirection] = useState<PayoutSortDirection>("descending");
 
   useEffect(() => { setRows(initialData.rows); }, [initialData]);
-
-  useEffect(() => {
-    let cancelled = false;
-    let frame = 0;
-    const focusReturn = () => {
-      const payoutId = window.sessionStorage.getItem(payoutFocusReturnStorageKey);
-      if (!payoutId) return;
-
-      let attempt = 0;
-      const retry = () => {
-        if (cancelled) return;
-        if (document.querySelector("dialog.payout-drawer")) {
-          if (attempt < 60) {
-            attempt += 1;
-            frame = requestAnimationFrame(retry);
-          }
-          return;
-        }
-        const triggers = Array.from(document.querySelectorAll<HTMLElement>("[data-payout-drawer-trigger]"));
-        const trigger = triggers.find((element) => element.tagName === "A" && element.dataset.payoutDrawerTrigger === payoutId)
-          ?? triggers.find((element) => element.dataset.payoutDrawerTrigger === payoutId);
-        trigger?.focus({ preventScroll: true });
-        if (attempt < 60) {
-          attempt += 1;
-          frame = requestAnimationFrame(retry);
-        } else {
-          window.sessionStorage.removeItem(payoutFocusReturnStorageKey);
-        }
-      };
-      retry();
-    };
-
-    focusReturn();
-    window.addEventListener("popstate", focusReturn);
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(frame);
-      window.removeEventListener("popstate", focusReturn);
-    };
-  }, []);
 
   const filteredRows = searchPayoutRows(rows, query).filter((row) => payoutMatchesTab(row, tab));
   const sortedRows = sortPayoutRows(filteredRows, sortKey, sortDirection);

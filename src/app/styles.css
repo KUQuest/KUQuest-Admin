@@ -1314,6 +1314,15 @@ dialog.drawer.payout-drawer {
   border: 0;
   border-radius: 0;
 }
+dialog.drawer.wallet-drawer {
+  inset: 0 0 0 auto;
+  margin: 0;
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+}
 .drawer-top {
   position: sticky;
   top: 0;

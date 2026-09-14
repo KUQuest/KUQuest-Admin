@@ -30,6 +30,7 @@ describe("Admin route helpers", () => {
     expect(conductReportRoutes.list()).toBe("/conduct-report");
     expect(payoutRoutes.list()).toBe("/payout");
     expect(memberRoutes.list()).toBe("/member");
+    expect(memberRoutes.walletStatement("member-1")).toBe("/member/member-1/wallet-statement");
     expect(walletRoutes.list()).toBe("/wallet");
     expect(activityRoutes.list()).toBe("/activity");
   });
@@ -40,6 +41,7 @@ describe("Admin route helpers", () => {
     expect(reportRoutes.detail("RPT-1")).toBe("/report/RPT-1");
     expect(payoutRoutes.detail("PAY-1")).toBe("/payout/PAY-1");
     expect(memberRoutes.detail("member/1")).toBe("/member/member%2F1");
+    expect(memberRoutes.walletStatement("member/1")).toBe("/member/member%2F1/wallet-statement");
   });
 
   it("rejects empty dynamic identifiers", () => {
