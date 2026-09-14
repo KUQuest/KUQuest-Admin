@@ -1371,17 +1371,23 @@ export const adminApi = {
     );
   },
 
-  getMember(memberId: string): Promise<AdminMemberDetail> {
+  getMember(
+    memberId: string,
+    options: AdminApiRequestOptions = {},
+  ): Promise<AdminMemberDetail> {
     return apiRequest<AdminMemberDetail>(
       `/api/v1/admin/members/${encode(memberId)}`,
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 
-  getMemberFinance(memberId: string): Promise<AdminMemberFinance> {
+  getMemberFinance(
+    memberId: string,
+    options: AdminApiRequestOptions = {},
+  ): Promise<AdminMemberFinance> {
     return apiRequest<AdminMemberFinance>(
       `/api/v1/admin/finance/members/${encode(memberId)}`,
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 
@@ -1394,10 +1400,11 @@ export const adminApi = {
 
   listLedgerTransactions(
     query: AdminLedgerTransactionsQuery = {},
+    options: AdminApiRequestOptions = {},
   ): Promise<AdminPage<AdminLedgerTransaction>> {
     return apiRequest<AdminPage<AdminLedgerTransaction>>(
       `/api/v1/admin/finance/ledger/transactions${queryString(query)}`,
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 

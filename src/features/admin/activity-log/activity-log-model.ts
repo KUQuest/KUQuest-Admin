@@ -1,4 +1,5 @@
 import type { AdminActivityLog } from "../api/admin-api";
+import { disputeRoutes, memberRoutes, questRoutes, reportRoutes } from "../admin-routes";
 
 export type ActivityLogEntry = {
   id: string;
@@ -90,13 +91,18 @@ export function activityLogMatchesSearch(entry: ActivityLogEntry, query: string)
 }
 
 export function activityTargetHref(resourceType: string, resourceId: string): string | null {
-  const routes: Record<string, string> = {
-    DISPUTE_CASE: "/disputes",
-    MEMBER: "/users",
-    QUEST: "/quests",
-    REPORT_CASE: "/reports",
-    USER: "/users",
-  };
-  const route = routes[resourceType.trim().toUpperCase()];
-  return route && resourceId ? `${route}/${encodeURIComponent(resourceId)}` : null;
+  if (!resourceId) return null;
+  switch (resourceType.trim().toUpperCase()) {
+    case "DISPUTE_CASE":
+      return disputeRoutes.detail(resourceId);
+    case "MEMBER":
+    case "USER":
+      return memberRoutes.detail(resourceId);
+    case "QUEST":
+      return questRoutes.detail(resourceId);
+    case "REPORT_CASE":
+      return reportRoutes.detail(resourceId);
+    default:
+      return null;
+  }
 }
