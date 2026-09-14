@@ -223,6 +223,13 @@ export type AdminQuestDetail = AdminQuest & {
     startedAt: string | null;
     createdAt: string;
   }>;
+  images?: Array<{
+    imageId: string;
+    fileId: string;
+    position: number;
+    url: string;
+    urlExpiresAt: string;
+  }>;
   proofSubmissions: Array<{
     id: string;
     worker: AdminQuestMember | null;
@@ -235,16 +242,36 @@ export type AdminQuestDetail = AdminQuest & {
     reviewedAt: string | null;
     files: Array<{ fileId: string; contentType: string; sizeBytes: number; position: number }>;
   }>;
-  editHistory: Array<{
-    kind: "FIELD_EDIT" | "EDIT_REQUEST";
-    id: string;
-    fieldName?: string;
-    requestStatus?: string;
-    failureCode?: string | null;
-    createdAt?: string;
-    editedAt?: string;
-    resolvedAt?: string | null;
-  }>;
+  editHistory: Array<
+    | {
+        kind: "FIELD_EDIT";
+        id: string;
+        fieldName: string;
+        oldValue: unknown;
+        newValue: unknown;
+        editedAt: string;
+        editedByUserId: string | null;
+        editedByAdminId: string | null;
+      }
+    | {
+        kind: "EDIT_REQUEST";
+        id: string;
+        apiVersion: "v1" | "v2";
+        requestStatus: string;
+        failureCode: string | null;
+        requestedByUserId: string | null;
+        proposedChanges: unknown;
+        createdAt: string;
+        expiresAt: string | null;
+        resolvedAt: string | null;
+        responses: Array<{
+          workerId: string;
+          decision: string | null;
+          reason: string | null;
+          respondedAt: string | null;
+        }>;
+      }
+  >;
   adminActions: Array<{
     id: string;
     admin: { id: string; firstName: string; lastName: string };
@@ -781,7 +808,6 @@ export type AdminPayoutListQuery = {
 };
 
 export type AdminQuestListQuery = {
-  q?: string;
   status?: AdminApiQuestStatus;
   mode?: AdminQuestMode;
   participation?: AdminQuestParticipation;
@@ -1111,17 +1137,17 @@ export const adminApi = {
     );
   },
 
-  getQuest(questId: string): Promise<AdminQuestDetail> {
+  getQuest(questId: string, options: AdminApiRequestOptions = {}): Promise<AdminQuestDetail> {
     return apiRequest<AdminQuestDetail>(
       `/api/v1/admin/quests/${encode(questId)}`,
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 
-  getQuestFinance(questId: string): Promise<AdminQuestFinance> {
+  getQuestFinance(questId: string, options: AdminApiRequestOptions = {}): Promise<AdminQuestFinance> {
     return apiRequest<AdminQuestFinance>(
       `/api/v1/admin/finance/quests/${encode(questId)}`,
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 
@@ -1158,10 +1184,13 @@ export const adminApi = {
     );
   },
 
-  listDisputes(query: AdminDisputeListQuery = {}): Promise<AdminPage<AdminDisputeCase>> {
+  listDisputes(
+    query: AdminDisputeListQuery = {},
+    options: AdminApiRequestOptions = {},
+  ): Promise<AdminPage<AdminDisputeCase>> {
     return apiRequest<AdminPage<AdminDisputeCase>>(
       `/api/v1/admin/disputes${queryString(query)}`,
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 

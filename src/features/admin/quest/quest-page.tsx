@@ -1,18 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 
 import { ApiError } from "../../../lib/api/client";
 import { disputeRoutes, questRoutes } from "../admin-routes";
 import {
   adminApi,
-  type AdminQuestDetail,
-  type AdminQuestFinance,
   type AdminQuestReasonCode,
 } from "../api/admin-api";
-import { canHideQuest, DISPUTE_CASE_STATUSES, isQuestTerminal, questStateFor } from "../domain/rulebook";
+import { canHideQuest, isQuestTerminal, type QuestState } from "../domain/rulebook";
 import {
   formatQuestDate,
   formatQuestMoney,
@@ -21,23 +20,31 @@ import {
   questMatchesTab,
   questMemberName,
   questPageCount,
-  questRowsFromApi,
   questStatusClass,
   searchQuestRows,
   sortQuestRows,
   type QuestBoardPageSize,
   type QuestBoardRow,
   type QuestBoardTab,
+  type QuestDetailView,
+  type QuestFinanceView,
   type QuestSortDirection,
   type QuestSortKey,
 } from "./quest-model";
+import type { QuestBoardPageData, QuestDetailPageData } from "./quest-service";
 
 type QuestPresentation = "page" | "drawer";
 type QuestCommand = "hide" | "restore" | "terminate";
+type QuestCommandSubmission = {
+  command: QuestCommand;
+  reason: string;
+  reasonCode: AdminQuestReasonCode;
+};
 
 type QuestDetailPageProps = {
   questId: string;
   presentation?: QuestPresentation;
+  initialData: QuestDetailPageData;
 };
 
 const reasonCodes: Array<{ value: AdminQuestReasonCode; label: string }> = [
@@ -64,24 +71,70 @@ function readableValue(value: string): string {
     .replace(/\b\w/g, (letter) => letter.toLocaleUpperCase());
 }
 
-async function findDisputeForQuest(questId: string): Promise<string | null> {
-  for (const status of DISPUTE_CASE_STATUSES) {
-    let cursor: string | undefined;
-    do {
-      const page = await adminApi.listDisputes({
-        status,
-        limit: 50,
-        ...(cursor ? { cursor } : {}),
-      });
-      const linkedCase = page.items.find((item) => item.questId === questId);
-      if (linkedCase) return linkedCase.id;
-      cursor = page.nextCursor ?? undefined;
-    } while (cursor);
-  }
-  return null;
+type AdminQuestEditRequest = Extract<QuestDetailView["editHistory"][number], { kind: "EDIT_REQUEST" }>;
+
+type QuestEditChange = {
+  field: string;
+  accepted: string;
+  proposed: string;
+};
+
+function recordValue(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
 }
 
-function Badge({ state }: { state: ReturnType<typeof questStateFor> }) {
+function editValueText(value: unknown): string {
+  if (value === null || value === undefined) return "Not provided";
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) {
+    const textValues = value
+      .map((item) => recordValue(item)?.text)
+      .filter((item): item is string => typeof item === "string");
+    if (textValues.length === value.length) return textValues.join(" · ");
+    return value.map(editValueText).join(" · ");
+  }
+  const objectValue = recordValue(value);
+  if (!objectValue) return "Not provided";
+  return Object.entries(objectValue)
+    .map(([key, item]) => `${readableValue(key)}: ${editValueText(item)}`)
+    .join("; ");
+}
+
+function currentQuestValue(detail: QuestDetailView, field: string): unknown {
+  switch (field) {
+    case "title": return detail.title;
+    case "description": return detail.description;
+    case "condition": return detail.condition.items.length ? detail.condition.items : detail.condition.text;
+    case "startTime": return detail.startTime;
+    case "dueAt": return detail.dueAt;
+    case "proofRequired": return detail.proofRequired;
+    case "locations": return detail.locations.map((location) => location.label);
+    case "images": return detail.images?.map((image) => image.fileId);
+    default: return "Current accepted value not provided by the Admin API.";
+  }
+}
+
+function editChangesFor(detail: QuestDetailView, request: AdminQuestEditRequest): QuestEditChange[] {
+  const proposed = recordValue(request.proposedChanges);
+  if (!proposed) return [];
+
+  if ("previousCondition" in proposed || "proposedCondition" in proposed) {
+    return [{
+      field: "Quest Condition",
+      accepted: editValueText(proposed.previousCondition),
+      proposed: editValueText(proposed.proposedCondition),
+    }];
+  }
+
+  return Object.entries(proposed).map(([field, value]) => ({
+    field: readableValue(field),
+    accepted: editValueText(currentQuestValue(detail, field)),
+    proposed: editValueText(value),
+  }));
+}
+
+function Badge({ state }: { state: QuestState }) {
   return <span className={`badge ${questStatusClass(state)}`}>{readableValue(state.replace("QUEST_", ""))}</span>;
 }
 
@@ -109,18 +162,31 @@ function QuestDetailContent({
   detail,
   finance,
   linkedDisputeId,
+  disputeLookupError,
   onCommand,
+  onOpenDispute,
+  disputePending,
+  disputeError,
   showFullDetailLink,
 }: {
-  detail: AdminQuestDetail;
-  finance: AdminQuestFinance | null;
+  detail: QuestDetailView;
+  finance: QuestFinanceView | null;
   linkedDisputeId: string | null;
+  disputeLookupError: string | null;
   onCommand: (command: QuestCommand) => void;
+  onOpenDispute: (workerId: string) => void;
+  disputePending: boolean;
+  disputeError: string | null;
   showFullDetailLink: boolean;
 }) {
-  const state = questStateFor(detail.questStatus);
+  const state = detail.state;
   const hidden = Boolean(detail.hiddenAt);
+  const [selectedWorkerId, setSelectedWorkerId] = useState("");
   const financeQuest = finance?.quest;
+  const pendingHirerChange = detail.editHistory.find(
+    (entry): entry is AdminQuestEditRequest => entry.kind === "EDIT_REQUEST" && entry.requestStatus === "EDIT_REQUEST_PENDING",
+  );
+  const pendingChanges = pendingHirerChange ? editChangesFor(detail, pendingHirerChange) : [];
   const fundingTotal = financeQuest?.questFundingTotalSatang ?? detail.questFundingTotalSatang;
   const reward = financeQuest?.rewardSatang ?? detail.rewardSatang;
   const platformFee = financeQuest?.platformFeePerWorkerSatang ?? detail.platformFeePerWorkerSatang;
@@ -163,6 +229,77 @@ function QuestDetailContent({
           ) : null}
         </div>
       </Section>
+
+      <Section title="Hirer attachments" count={detail.images?.length ?? 0}>
+        {detail.images === undefined ? (
+          <p className="audit-note">Hirer attachments are not available from the Admin API.</p>
+        ) : detail.images.length ? (
+          <div className="related-list">
+            {detail.images.map((image) => (
+              <a
+                className="file-row quest-attachment-link"
+                href={image.url}
+                key={image.imageId}
+                rel="noreferrer"
+                target="_blank"
+              >
+                <Image className="attachment-thumbnail" src={image.url} alt={`Hirer attachment ${image.position + 1}`} height={54} loading="lazy" unoptimized width={72} />
+                <span>
+                  <strong>Hirer attachment {image.position + 1}</strong>
+                  <small>{image.fileId} · Link expires {formatQuestDate(image.urlExpiresAt)}</small>
+                </span>
+                <span>Open</span>
+              </a>
+            ))}
+          </div>
+        ) : <ListEmpty>No Hirer attachments were returned by the Admin API.</ListEmpty>}
+      </Section>
+
+      {pendingHirerChange ? (
+        <Section title="Pending Hirer changes">
+          <div className="change-warning">
+            <div>
+              <strong>Current accepted terms remain active</strong>
+              <p>This proposal does not change the Worker agreement until every Active Worker consents.</p>
+            </div>
+          </div>
+          <div className="change-meta">
+            <div><span>Status</span><strong>{pendingHirerChange.requestStatus}</strong></div>
+            <div><span>Requested by</span><strong>{pendingHirerChange.requestedByUserId === detail.hirer.id ? `${questMemberName(detail.hirer)} · Hirer` : pendingHirerChange.requestedByUserId ?? "Hirer not provided by the Admin API."}</strong></div>
+            <div><span>Requested at</span><strong>{formatQuestDate(pendingHirerChange.createdAt)}</strong></div>
+            <div><span>Expires at</span><strong>{formatQuestDate(pendingHirerChange.expiresAt)}</strong></div>
+          </div>
+          {pendingChanges.length ? (
+            <div className="change-table">
+              <div className="change-row change-head"><span>Field</span><span>Accepted value</span><span>Proposed value</span></div>
+              {pendingChanges.map((change) => (
+                <div className="change-row" key={change.field}>
+                  <strong>{change.field}</strong>
+                  <span>{change.accepted}</span>
+                  <span>{change.proposed}</span>
+                </div>
+              ))}
+            </div>
+          ) : <p className="audit-note">The Admin API did not return the proposed changes.</p>}
+          <div className="response-block">
+            <h3>Participant consent</h3>
+            {pendingHirerChange.responses.length ? (
+              <div className="response-table">
+                <div className="response-row response-head"><span>Worker</span><span>Status</span></div>
+                {pendingHirerChange.responses.map((response) => {
+                  const worker = detail.assignments.find((assignment) => assignment.worker.id === response.workerId)?.worker;
+                  return (
+                    <div className="response-row" key={response.workerId}>
+                      <span><strong>{worker ? questMemberName(worker) : response.workerId}</strong><small>{response.reason ?? "No response reason"}</small></span>
+                      <span className="response-status">{response.decision ?? "Pending"}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : <ListEmpty>No Worker responses were returned by the Admin API.</ListEmpty>}
+          </div>
+        </Section>
+      ) : null}
 
       <Section title="Hirer">
         <div className="hirer-profile-summary">
@@ -254,30 +391,89 @@ function QuestDetailContent({
             {finance.transfers.map((transfer) => <div className="financial-line" key={transfer.id}><span>{readableValue(transfer.type)}<small>{formatQuestDate(transfer.occurredAt)}</small></span><strong>{formatQuestMoney(transfer.amountSatang)}</strong></div>)}
           </div>
         ) : null}
+        {finance?.ledgerTransactions.length ? (
+          <div className="quest-finance-list">
+            <h3>Ledger Transactions</h3>
+            <ul className="related-list quest-ledger-list">
+              {finance.ledgerTransactions.map((transaction) => (
+                <li className="related-row" key={transaction.id}>
+                  <span>
+                    <strong>{readableValue(transaction.eventType)}</strong>
+                    <small>{formatQuestDate(transaction.createdAt)} · {transaction.businessReference || "Business reference not provided by the Finance API."}</small>
+                    <small>{transaction.description || "Description not provided by the Finance API."}</small>
+                  </span>
+                  <span>{transaction.postings.length} Ledger Posting{transaction.postings.length === 1 ? "" : "s"}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : finance ? <p className="audit-note">No Ledger Transactions were returned by the Finance API.</p> : null}
         {!finance ? <p className="audit-note">Quest finance data is not available from the Admin API.</p> : null}
       </Section>
 
       <Section title="Quest edit history" count={detail.editHistory.length}>
         {detail.editHistory.length ? (
           <div className="related-list">
-            {detail.editHistory.map((entry) => (
-              <div className="related-row" key={entry.id}>
-                <span><strong>{readableValue(entry.kind)}</strong><small>{entry.fieldName ? `Field · ${entry.fieldName}` : entry.requestStatus ? `Request · ${readableValue(entry.requestStatus)}` : "Quest record edit"}</small></span>
-                <span>{formatQuestDate(entry.editedAt ?? entry.createdAt)}</span>
-              </div>
-            ))}
+            {detail.editHistory.map((entry) => {
+              const detailLabel = entry.kind === "FIELD_EDIT"
+                ? `Field · ${entry.fieldName}`
+                : `Request · ${readableValue(entry.requestStatus)}`;
+              const editedAt = entry.kind === "FIELD_EDIT" ? entry.editedAt : entry.createdAt;
+              return (
+                <div className="related-row" key={entry.id}>
+                  <span><strong>{readableValue(entry.kind)}</strong><small>{detailLabel}</small></span>
+                  <span>{formatQuestDate(editedAt)}</span>
+                </div>
+              );
+            })}
           </div>
         ) : <ListEmpty>No Quest edits returned by the Admin API.</ListEmpty>}
       </Section>
 
       <Section title="Dispute and risk">
-        {linkedDisputeId ? (
+        {disputeLookupError ? (
+          <p className="field-error" role="alert">{disputeLookupError}</p>
+        ) : linkedDisputeId ? (
           <>
             <p>A Dispute Case is linked to this Quest.</p>
             <Link className="btn primary full-width" href={disputeRoutes.detail(linkedDisputeId)}>Open Dispute Case</Link>
           </>
         ) : state === "QUEST_FAILED" ? (
-          <p className="audit-note">This Quest is in QUEST_FAILED, but no linked Dispute Case was returned by the Admin API.</p>
+          <>
+            <p className="audit-note">This Quest is in QUEST_FAILED, but no linked Dispute Case was returned by the Admin API.</p>
+            {detail.assignments.length ? (
+              <form
+                className="dispute-open-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (selectedWorkerId) onOpenDispute(selectedWorkerId);
+                }}
+              >
+                <label htmlFor="quest-dispute-worker">Worker
+                  <select
+                    id="quest-dispute-worker"
+                    name="workerId"
+                    value={selectedWorkerId}
+                    onChange={(event) => setSelectedWorkerId(event.target.value)}
+                    required
+                    disabled={disputePending}
+                  >
+                    <option value="">Select an assigned Worker</option>
+                    {detail.assignments.map((assignment) => (
+                      <option key={assignment.worker.id} value={assignment.worker.id}>
+                        {questMemberName(assignment.worker)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {disputeError ? <p className="field-error" role="alert">{disputeError}</p> : null}
+                <button className="btn primary dispute-open-submit" type="submit" disabled={disputePending}>
+                  {disputePending ? "Opening Dispute Case…" : "Open Dispute Case"}
+                </button>
+                <p className="audit-note">Select the assigned Worker for this failed Quest.</p>
+              </form>
+            ) : <p className="audit-note">No assigned Worker was returned by the Admin API.</p>}
+          </>
         ) : <p className="audit-note">No linked Dispute Case was returned by the Admin API.</p>}
       </Section>
 
@@ -306,17 +502,18 @@ function QuestCommandDialog({
 }: {
   command: QuestCommand;
   onCancel: () => void;
-  onSubmit: (reason: string, reasonCode?: AdminQuestReasonCode) => void;
+  onSubmit: (submission: QuestCommandSubmission) => void;
   error: string | null;
   pending: boolean;
 }) {
+  const needsReason = true;
   const [reason, setReason] = useState("");
   const [reasonCode, setReasonCode] = useState<AdminQuestReasonCode | "">("");
   const [validationError, setValidationError] = useState<string | null>(null);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (reason.trim().length < 8) {
+    if (needsReason && reason.trim().length < 8) {
       setValidationError("Enter at least 8 characters for the reason.");
       return;
     }
@@ -324,7 +521,7 @@ function QuestCommandDialog({
       setValidationError("Select a reason code.");
       return;
     }
-    onSubmit(reason.trim(), reasonCode || undefined);
+    onSubmit({ command, reason: reason.trim(), reasonCode });
   }
 
   return (
@@ -334,8 +531,8 @@ function QuestCommandDialog({
         <form onSubmit={submit}>
           <h2 id="quest-command-title">{command === "hide" ? "Hide Quest" : command === "restore" ? "Restore Quest" : "Terminate Quest"}</h2>
           <p>{command === "terminate" ? "This changes the Quest to QUEST_CANCELLED and preserves the Admin Action." : "The API Server remains the authority for this Quest action."}</p>
-          <label htmlFor="quest-command-reason">Reason<textarea id="quest-command-reason" value={reason} onChange={(event) => setReason(event.target.value)} rows={4} /></label>
-          <label htmlFor="quest-command-reason-code">Reason code *<select id="quest-command-reason-code" value={reasonCode} onChange={(event) => setReasonCode(event.target.value as AdminQuestReasonCode | "")}><option value="">Select a reason code</option>{reasonCodes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
+          {needsReason ? <label htmlFor="quest-command-reason">Reason<textarea id="quest-command-reason" value={reason} onChange={(event) => setReason(event.target.value)} rows={4} /></label> : null}
+          <label htmlFor="quest-command-reason-code">Reason code{needsReason ? " *" : ""}<select id="quest-command-reason-code" value={reasonCode} onChange={(event) => setReasonCode(event.target.value as AdminQuestReasonCode | "")}><option value="">{needsReason ? "Select a reason code" : "No reason code"}</option>{reasonCodes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
           {validationError || error ? <p className="field-error" role="alert">{validationError || error}</p> : null}
           <div className="dialog-actions"><button className="btn" type="button" onClick={onCancel} disabled={pending}>Cancel</button><button className={`btn ${command === "terminate" ? "danger" : "primary"}`} type="submit" disabled={pending}>{pending ? "Saving…" : "Confirm"}</button></div>
         </form>
@@ -344,84 +541,160 @@ function QuestCommandDialog({
   );
 }
 
-export function QuestDetailPage({ questId, presentation = "page" }: QuestDetailPageProps) {
+export function QuestDetailPage({ questId, presentation = "page", initialData }: QuestDetailPageProps) {
   const router = useRouter();
-  const [detail, setDetail] = useState<AdminQuestDetail | null>(null);
-  const [finance, setFinance] = useState<AdminQuestFinance | null>(null);
-  const [linkedDisputeId, setLinkedDisputeId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [notFound, setNotFound] = useState(false);
+  const drawerRef = useRef<HTMLDialogElement>(null);
+  const drawerOpenerRef = useRef<HTMLElement | null>(null);
+  const restoreDrawerFocusRef = useRef(false);
+  const [detail, setDetail] = useState<QuestDetailView>(initialData.detail);
+  const [finance, setFinance] = useState<QuestFinanceView | null>(initialData.finance);
+  const [linkedDisputeId, setLinkedDisputeId] = useState<string | null>(initialData.linkedDisputeId);
+  const [disputeLookupError, setDisputeLookupError] = useState<string | null>(initialData.disputeLookupError);
   const [command, setCommand] = useState<QuestCommand | null>(null);
   const [commandError, setCommandError] = useState<string | null>(null);
   const [commandPending, setCommandPending] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
+  const [disputeError, setDisputeError] = useState<string | null>(null);
+  const [disputePending, setDisputePending] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
-    setDetail(null);
-    setFinance(null);
-    setLinkedDisputeId(null);
-    setError(null);
-    setNotFound(false);
+    setDetail(initialData.detail);
+    setFinance(initialData.finance);
+    setLinkedDisputeId(initialData.linkedDisputeId);
+    setDisputeLookupError(initialData.disputeLookupError);
+    setDisputeError(null);
+  }, [initialData]);
 
-    async function load() {
-      try {
-        const [detailResult, financeResult] = await Promise.allSettled([
-          adminApi.getQuest(questId),
-          adminApi.getQuestFinance(questId),
-        ]);
-        if (detailResult.status === "rejected") throw detailResult.reason;
-        const nextDetail = detailResult.value;
-        let nextDisputeId: string | null = null;
-        if (questStateFor(nextDetail.questStatus) === "QUEST_FAILED") {
-          try {
-            nextDisputeId = await findDisputeForQuest(nextDetail.id);
-          } catch {
-            nextDisputeId = null;
-          }
-        }
-        if (cancelled) return;
-        setDetail(nextDetail);
-        setFinance(financeResult.status === "fulfilled" ? financeResult.value : null);
-        setLinkedDisputeId(nextDisputeId);
-      } catch (loadError: unknown) {
-        if (!cancelled) {
-          setNotFound(loadError instanceof ApiError && loadError.status === 404);
-          setError(errorMessage(loadError, "Quest detail could not load from the Admin API."));
-        }
+  useEffect(() => {
+    if (presentation !== "drawer") return;
+    const drawer = drawerRef.current;
+    if (!drawer) return;
+
+    const activeElement = document.activeElement;
+    const triggerElements = Array.from(
+      document.querySelectorAll<HTMLElement>("[data-quest-drawer-trigger]"),
+    ).filter((element) => element.dataset.questDrawerTrigger === questId);
+    drawerOpenerRef.current =
+      activeElement instanceof HTMLElement && activeElement.dataset.questDrawerTrigger === questId
+        ? activeElement
+        : triggerElements.find((element) => element.tagName === "A") ?? triggerElements[0] ?? null;
+    restoreDrawerFocusRef.current = false;
+
+    const shell = drawer.closest<HTMLElement>(".admin-shell");
+    const outsideElements = shell
+      ? Array.from(shell.children).filter(
+          (element): element is HTMLElement =>
+            element instanceof HTMLElement &&
+            element !== drawer &&
+            !element.classList.contains("scrim"),
+        )
+      : [];
+    const previousInert = outsideElements.map((element) => element.inert);
+    outsideElements.forEach((element) => {
+      element.inert = true;
+    });
+
+    const focusableSelector =
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const focusableElements = () =>
+      Array.from(drawer.querySelectorAll<HTMLElement>(focusableSelector)).filter(
+        (element) => element.getClientRects().length > 0,
+      );
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        if (document.querySelector(".quest-command-dialog")) return;
+        event.preventDefault();
+        restoreDrawerFocusRef.current = true;
+        router.back();
+        return;
       }
-    }
+      if (event.key !== "Tab" || document.querySelector(".quest-command-dialog")) return;
 
-    void load();
-    return () => { cancelled = true; };
-  }, [questId, reloadKey]);
+      const focusable = focusableElements();
+      if (!focusable.length) {
+        event.preventDefault();
+        drawer.focus({ preventScroll: true });
+        return;
+      }
+
+      const currentElement = document.activeElement;
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (event.shiftKey && (currentElement === drawer || currentElement === first || !drawer.contains(currentElement))) {
+        event.preventDefault();
+        last?.focus({ preventScroll: true });
+      } else if (!event.shiftKey && (currentElement === last || !drawer.contains(currentElement))) {
+        event.preventDefault();
+        first.focus({ preventScroll: true });
+      }
+    };
+    const markBrowserClose = () => {
+      restoreDrawerFocusRef.current = true;
+    };
+
+    document.addEventListener("keydown", closeOnEscape);
+    window.addEventListener("popstate", markBrowserClose);
+    drawer.focus({ preventScroll: true });
+
+    return () => {
+      document.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("popstate", markBrowserClose);
+      outsideElements.forEach((element, index) => {
+        element.inert = previousInert[index] ?? false;
+      });
+      if (restoreDrawerFocusRef.current && drawerOpenerRef.current?.isConnected) {
+        requestAnimationFrame(() => drawerOpenerRef.current?.focus({ preventScroll: true }));
+      }
+    };
+  }, [presentation, questId, router]);
 
   function openCommand(nextCommand: QuestCommand) {
     setCommandError(null);
     setCommand(nextCommand);
   }
 
-  async function submitCommand(reason: string, reasonCode?: AdminQuestReasonCode) {
-    if (!detail || !command) return;
+  function closeDrawer() {
+    restoreDrawerFocusRef.current = true;
+    router.back();
+  }
+
+  async function openDispute(workerId: string) {
+    if (linkedDisputeId || disputeLookupError || disputePending || detail.state !== "QUEST_FAILED") return;
+    if (!detail.assignments.some((assignment) => assignment.worker.id === workerId)) return;
+    const worker = detail.assignments.find((assignment) => assignment.worker.id === workerId)?.worker;
+    if (!worker || !window.confirm(`Open a Dispute Case for ${questMemberName(worker)}?`)) return;
+
+    setDisputeError(null);
+    setDisputePending(true);
+    try {
+      const result = await adminApi.openDispute(detail.id, { workerId });
+      setLinkedDisputeId(result.id);
+      if (presentation === "drawer") closeDrawer();
+    } catch (openError: unknown) {
+      setDisputeError(errorMessage(openError, "Dispute Case could not be opened."));
+    } finally {
+      setDisputePending(false);
+    }
+  }
+
+  async function submitCommand(submission: QuestCommandSubmission) {
+    if (!detail || !command || command !== submission.command) return;
     setCommandError(null);
     setCommandPending(true);
     const options = {
-      idempotencyKey: newIdempotencyKey(command, detail.id),
+      idempotencyKey: newIdempotencyKey(submission.command, detail.id),
       expectedVersion: detail.version,
     };
     try {
-      if (command === "hide") {
-        if (!reasonCode) throw new Error("A reason code is required.");
-        await adminApi.hideQuest(detail.id, { ...options, reason, reasonCode });
-      } else if (command === "restore") {
-        if (!reasonCode) throw new Error("A reason code is required.");
-        await adminApi.restoreQuest(detail.id, { ...options, reason, reasonCode });
+      if (submission.command === "hide") {
+        await adminApi.hideQuest(detail.id, { ...options, reason: submission.reason, reasonCode: submission.reasonCode });
+      } else if (submission.command === "restore") {
+        await adminApi.restoreQuest(detail.id, { ...options, reason: submission.reason, reasonCode: submission.reasonCode });
       } else {
-        if (!reasonCode) throw new Error("A reason code is required.");
-        await adminApi.terminateQuest(detail.id, { ...options, reason, reasonCode });
+        await adminApi.terminateQuest(detail.id, { ...options, reason: submission.reason, reasonCode: submission.reasonCode });
       }
       setCommand(null);
-      setReloadKey((key) => key + 1);
+      router.refresh();
     } catch (commandErrorValue: unknown) {
       setCommandError(errorMessage(commandErrorValue, "Quest command failed."));
     } finally {
@@ -429,20 +702,23 @@ export function QuestDetailPage({ questId, presentation = "page" }: QuestDetailP
     }
   }
 
-  const content = error
-    ? <div className="empty"><h2>{notFound ? "Quest not found" : "Quest unavailable"}</h2><p>{error}</p></div>
-    : detail
-      ? <QuestDetailContent detail={detail} finance={finance} linkedDisputeId={linkedDisputeId} onCommand={openCommand} showFullDetailLink={presentation === "drawer"} />
-      : <div className="empty"><p>Loading Quest from the Admin API…</p></div>;
+  const content = <QuestDetailContent detail={detail} finance={finance} linkedDisputeId={linkedDisputeId} disputeLookupError={disputeLookupError} onCommand={openCommand} onOpenDispute={openDispute} disputePending={disputePending} disputeError={disputeError} showFullDetailLink={presentation === "drawer"} />;
 
   if (presentation === "drawer") {
     return (
       <>
-        <div className="scrim" />
-        <aside className="drawer open quest-drawer" aria-label="Quest detail drawer">
-          <div className="drawer-top"><div><strong>{detail?.title ?? questId}</strong><small>Quest {questId} · Quest detail drawer</small></div><button className="icon" type="button" aria-label="Close Quest detail" onClick={() => router.back()}><span className="close-lines" /></button></div>
+        <button className="scrim" type="button" tabIndex={-1} aria-label="Close Quest detail" onClick={closeDrawer} />
+        <dialog
+          ref={drawerRef}
+          className="drawer open quest-drawer"
+          aria-modal="true"
+          aria-labelledby="quest-drawer-title"
+          tabIndex={-1}
+          open
+        >
+          <div className="drawer-top"><div><strong id="quest-drawer-title">{detail.title}</strong><small>Quest {questId} · Quest detail drawer</small></div><button className="icon" type="button" aria-label="Close Quest detail" onClick={closeDrawer}><span className="close-lines" /></button></div>
           <div className="drawer-body">{content}</div>
-        </aside>
+        </dialog>
         {command ? <QuestCommandDialog command={command} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandPending} /> : null}
       </>
     );
@@ -450,66 +726,25 @@ export function QuestDetailPage({ questId, presentation = "page" }: QuestDetailP
 
   return (
     <main className="admin-route-page quest-detail-page" tabIndex={-1}>
-      <div className="page-head"><div><p className="admin-route-kicker">Quest</p><h1>{detail?.title ?? questId}</h1><p>{detail ? `Created by ${questMemberName(detail.hirer)}` : "Full Quest record from the Admin API."}</p></div><Link className="btn" href={questRoutes.list()}>Back to Quests</Link></div>
+      <div className="page-head"><div><p className="admin-route-kicker">Quest</p><h1>{detail.title}</h1><p>Created by {questMemberName(detail.hirer)}</p></div><Link className="btn" href={questRoutes.list()}>Back to Quests</Link></div>
       <div className="quest-detail-grid">{content}</div>
       {command ? <QuestCommandDialog command={command} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandPending} /> : null}
     </main>
   );
 }
 
-export function AdminQuestPage() {
+export function AdminQuestPage({ initialData }: { initialData: QuestBoardPageData }) {
   const router = useRouter();
-  const [rows, setRows] = useState<QuestBoardRow[]>([]);
+  const [rows, setRows] = useState<QuestBoardRow[]>(initialData.rows);
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<QuestBoardTab>("all");
   const [pageSize, setPageSize] = useState<QuestBoardPageSize>(10);
   const [page, setPage] = useState(1);
   const [sortKey, setSortKey] = useState<QuestSortKey>("createdAt");
   const [sortDirection, setSortDirection] = useState<QuestSortDirection>("descending");
-  const [loading, setLoading] = useState(true);
-  const [backgroundLoading, setBackgroundLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   useEffect(() => {
-    let cancelled = false;
-    let firstPageLoaded = false;
-
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const firstPage = await adminApi.listQuests({ limit: 50, sort: "newest" });
-        if (cancelled) return;
-        firstPageLoaded = true;
-        setRows(questRowsFromApi(firstPage.items));
-        setLoading(false);
-        if (!firstPage.nextCursor) return;
-
-        setBackgroundLoading(true);
-        const allItems = [...firstPage.items];
-        let cursor: string | undefined = firstPage.nextCursor;
-        while (cursor) {
-          const nextPage = await adminApi.listQuests({ limit: 50, cursor, sort: "newest" });
-          if (cancelled) return;
-          allItems.push(...nextPage.items);
-          if (!nextPage.nextCursor || nextPage.nextCursor === cursor) break;
-          cursor = nextPage.nextCursor;
-        }
-        if (!cancelled) setRows(questRowsFromApi(allItems));
-      } catch (loadError: unknown) {
-        if (!cancelled) {
-          if (!firstPageLoaded) setRows([]);
-          setLoading(false);
-          setError(errorMessage(loadError, "Quest data could not load from the Admin API."));
-        }
-      } finally {
-        if (!cancelled) setBackgroundLoading(false);
-      }
-    }
-
-    void load();
-    return () => { cancelled = true; };
-  }, []);
+    setRows(initialData.rows);
+  }, [initialData]);
 
   const filteredRows = searchQuestRows(rows, query).filter((row) => questMatchesTab(row, tab));
   const sortedRows = sortQuestRows(filteredRows, sortKey, sortDirection);
@@ -532,10 +767,8 @@ export function AdminQuestPage() {
       <div className="page-head"><div><p className="admin-route-kicker">KUQuest Admin</p><h1>Quests</h1><p>Review Quests through every Quest State.</p></div></div>
       <section className="panel quest-board" aria-label="Quest board">
         <div className="tabs" aria-label="Quest filters">{QUEST_BOARD_TABS.map((item) => <button className={`tab${tab === item.id ? " active" : ""}`} type="button" aria-pressed={tab === item.id} key={item.id} onClick={() => chooseTab(item.id)}>{item.label}{item.id === "all" ? ` (${rows.length})` : ""}</button>)}</div>
-        <div className="toolbar resource-toolbar"><label className="inline-search search-field" htmlFor="quest-search"><span className="visually-hidden">Search Quests</span><input id="quest-search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="Search Quests…" autoComplete="off" /></label><span className="sort-help">Click a column to sort</span><div className="page-size-controls">{([10, 25, 50, "all"] as const).map((size) => <button className={`page-size-button${pageSize === size ? " active" : ""}`} type="button" key={size} onClick={() => choosePageSize(size)}>{size === "all" ? "Show all" : `Show ${size}`}</button>)}</div><span className="count" aria-live="polite">{loading ? "Loading Quests…" : `Showing ${pageStart}–${pageEnd} of ${sortedRows.length} results`}</span></div>
-        {backgroundLoading ? <p className="quest-api-status" aria-live="polite">Loading more Quests from the Admin API…</p> : null}
-        {error ? <div className="quest-api-error" role="alert"><strong>Admin API unavailable</strong><span>{error}</span></div> : null}
-        {loading ? <div className="empty"><p>Loading Quests from the Admin API…</p></div> : !sortedRows.length ? <div className="empty"><h2>No matching records</h2><p>There are no Quests in this view.</p><button className="btn" type="button" onClick={() => { setQuery(""); setTab("all"); }}>Reset view</button></div> : <div className="table-wrap" aria-label="quests table"><table className="data"><caption>Quests</caption><thead><tr><SortableHeader label="Quest" sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Title" sortKey="title" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Hirer" sortKey="hirer" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Created At" sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Quest Reward" sortKey="reward" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Status" sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr className="quest-row" data-quest-id={row.id} key={row.id} tabIndex={0} aria-label={`Open Quest ${row.title}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; void router.push(questRoutes.detail(row.id)); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); void router.push(questRoutes.detail(row.id)); } }}><td><Link className="row-record-button" href={questRoutes.detail(row.id)} aria-label={`Open Quest ${row.displayId}`}>{row.displayId}</Link></td><td><Link className="row-record-button quest-title-link" href={questRoutes.detail(row.id)} aria-label={`Open Quest ${row.title}`}><strong>{row.title}</strong><small>{row.participationLabel} · {row.modeLabel}</small></Link></td><td><strong>{row.hirerName}</strong><small>{row.hirerEmail}</small></td><td>{formatQuestDate(row.createdAt)}</td><td className="money">{formatQuestMoney(row.rewardSatang)}</td><td><span className={`badge ${questStatusClass(row.state)}`}>{row.stateLabel}</span>{row.hiddenAt ? <span className="badge neutral quest-hidden-overlay">Hidden</span> : null}</td></tr>)}</tbody></table></div>}
+        <div className="toolbar resource-toolbar"><label className="inline-search search-field" htmlFor="quest-search"><span className="visually-hidden">Search Quests</span><input id="quest-search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="Search Quests…" autoComplete="off" /></label><span className="sort-help">Click a column to sort</span><div className="page-size-controls">{([10, 25, 50, "all"] as const).map((size) => <button className={`page-size-button${pageSize === size ? " active" : ""}`} type="button" key={size} onClick={() => choosePageSize(size)}>{size === "all" ? "Show all" : `Show ${size}`}</button>)}</div><span className="count" aria-live="polite">Showing {pageStart}–{pageEnd} of {sortedRows.length} results</span></div>
+        {!sortedRows.length ? <div className="empty"><h2>No matching records</h2><p>There are no Quests in this view.</p><button className="btn" type="button" onClick={() => { setQuery(""); setTab("all"); }}>Reset view</button></div> : <div className="table-wrap" aria-label="quests table"><table className="data"><caption>Quests</caption><thead><tr><SortableHeader label="Quest" sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Title" sortKey="title" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Hirer" sortKey="hirer" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Created At" sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Quest Reward" sortKey="reward" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Status" sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr className="quest-row" data-quest-id={row.id} data-quest-drawer-trigger={row.id} key={row.id} tabIndex={0} aria-label={`Open Quest ${row.title}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; void router.push(questRoutes.detail(row.id)); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); void router.push(questRoutes.detail(row.id)); } }}><td><Link className="row-record-button" data-quest-drawer-trigger={row.id} href={questRoutes.detail(row.id)} aria-label={`Open Quest ${row.displayId}`}>{row.displayId}</Link></td><td><Link className="row-record-button quest-title-link" data-quest-drawer-trigger={row.id} href={questRoutes.detail(row.id)} aria-label={`Open Quest ${row.title}`}><strong>{row.title}</strong><small>{row.participationLabel} · {row.modeLabel}</small></Link></td><td><strong>{row.hirerName}</strong><small>{row.hirerEmail}</small></td><td>{formatQuestDate(row.createdAt)}</td><td className="money">{formatQuestMoney(row.rewardSatang)}</td><td><span className={`badge ${questStatusClass(row.state)}`}>{row.stateLabel}</span>{row.hiddenAt ? <span className="badge neutral quest-hidden-overlay">Hidden</span> : null}</td></tr>)}</tbody></table></div>}
         {sortedRows.length ? <div className="table-pagination"><button className="page-nav" type="button" disabled={currentPage <= 1} onClick={() => setPage((value) => value - 1)}>Previous</button><span className="page-indicator">Page {currentPage} of {Math.max(totalPages, 1)}</span><button className="page-nav" type="button" disabled={currentPage >= totalPages} onClick={() => setPage((value) => value + 1)}>Next</button></div> : null}
       </section>
     </main>

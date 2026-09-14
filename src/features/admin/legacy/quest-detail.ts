@@ -549,7 +549,7 @@ export function createQuestDetailModule(
             : adminCommands.restoreQuest(record.id, {
               expectedVersion: options.expectedVersion,
               idempotencyKey: options.idempotencyKey,
-              reason: options.reason,
+              reason,
               reasonCode: questReasonCode ?? "POLICY_REVIEW",
             });
           void command.then(() => {

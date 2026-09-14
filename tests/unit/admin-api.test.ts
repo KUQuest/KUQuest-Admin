@@ -450,7 +450,7 @@ describe("Admin API boundary", () => {
     });
   });
 
-  it("sends the text reason for Quest Terminate commands", async () => {
+  it("preserves the Quest Terminate command contract", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     let request: Request | undefined;
 
@@ -481,7 +481,7 @@ describe("Admin API boundary", () => {
     });
   });
 
-  it("sends the text reason and reason code for Quest Restore commands", async () => {
+  it("preserves the Quest Restore command contract", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     let request: Request | undefined;
 

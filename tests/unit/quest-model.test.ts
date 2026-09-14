@@ -1,9 +1,12 @@
 import { describe, expect, it } from "bun:test";
 
 import type { AdminQuest } from "../../src/features/admin/api/admin-api";
+import { mockQuestDetail, mockQuestFinance, mockQuestSummary } from "../../src/features/admin/quest/quest-mock-data";
 import {
   formatQuestMoney,
   pageQuestRows,
+  questDetailViewFromApi,
+  questFinanceViewFromApi,
   questMatchesTab,
   questPageCount,
   questRowFromApi,
@@ -39,6 +42,37 @@ function quest(overrides: Partial<AdminQuest> = {}): AdminQuest {
 }
 
 describe("Quest route model", () => {
+  it("maps Admin API Quest detail and Finance DTOs into view models", () => {
+    const apiDetail = mockQuestDetail(mockQuestSummary({
+      displayId: undefined,
+      questStatus: "QUEST_DISPUTED",
+    }));
+    const apiFinance = mockQuestFinance(apiDetail);
+
+    const detail = questDetailViewFromApi(apiDetail);
+    const finance = questFinanceViewFromApi(apiFinance);
+
+    expect(detail).toMatchObject({
+      id: apiDetail.id,
+      displayId: apiDetail.id,
+      title: apiDetail.title,
+      state: "QUEST_FAILED",
+      hirer: apiDetail.hirer,
+    });
+    expect("questStatus" in detail).toBe(false);
+    expect(detail).not.toBe(apiDetail);
+    expect(detail.hirer).not.toBe(apiDetail.hirer);
+    expect(finance).toMatchObject({
+      quest: {
+        id: apiFinance.quest.id,
+        title: apiFinance.quest.title,
+        state: "QUEST_FAILED",
+      },
+    });
+    expect("questStatus" in finance.quest).toBe(false);
+    expect(finance).not.toBe(apiFinance);
+  });
+
   it("uses the API Quest id while keeping an optional display id for the board", () => {
     expect(questRowFromApi(quest({ displayId: "QST-1" }))).toMatchObject({
       id: "quest-1",

@@ -1,121 +1,21 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
 
-import type {
-  AdminQuest,
-  AdminQuestDetail,
-  AdminQuestFinance,
-} from "../../src/features/admin/api/admin-api";
-
-const OPEN_QUEST_ID = "00000000-0000-0000-0000-000000000001";
-const TEAM_QUEST_ID = "00000000-0000-0000-0000-000000000002";
-const FAILED_QUEST_ID = "00000000-0000-0000-0000-000000000003";
-const HIDDEN_QUEST_ID = "00000000-0000-0000-0000-000000000004";
-const DISPUTE_CASE_ID = "00000000-0000-0000-0000-000000000101";
-
-const hirer = {
-  id: "00000000-0000-0000-0000-000000000010",
-  firstName: "Kamonwan",
-  lastName: "Lertwiroj",
-  email: "hirer@ku.th",
-};
-
-function questSummary(overrides: Partial<AdminQuest> = {}): AdminQuest {
-  return {
-    id: OPEN_QUEST_ID,
-    displayId: "QST-OPEN",
-    apiVersion: "v1",
-    version: 4,
-    title: "Inspect campus signs",
-    questStatus: "QUEST_OPEN",
-    mode: "FIRST_COME_FIRST_SERVED",
-    participation: "SINGLE",
-    headcount: 1,
-    rewardSatang: 12000,
-    questFundingTotalSatang: 12240,
-    startTime: "2026-09-17T08:48:00.000Z",
-    dueAt: "2026-09-24T08:48:00.000Z",
-    hiddenAt: null,
-    createdAt: "2026-09-14T08:48:00.000Z",
-    updatedAt: "2026-09-14T09:00:00.000Z",
-    hirer,
-    ...overrides,
-  };
-}
-
-const quests = [
-  questSummary(),
-  questSummary({
-    id: TEAM_QUEST_ID,
-    displayId: "QST-TEAM",
-    title: "Map library access points",
-    questStatus: "QUEST_ASSIGNED",
-    participation: "GROUP",
-  }),
-  questSummary({
-    id: FAILED_QUEST_ID,
-    displayId: "QST-FAILED",
-    title: "Review flood route markers",
-    questStatus: "QUEST_FAILED",
-  }),
-  questSummary({
-    id: HIDDEN_QUEST_ID,
-    displayId: "QST-HIDDEN",
-    title: "Restore reviewed campus signs",
-    version: 5,
-    hiddenAt: "2026-09-14T09:10:00.000Z",
-  }),
-];
-
-function questDetail(quest: AdminQuest): AdminQuestDetail {
-  return {
-    ...quest,
-    description: `Full description for ${quest.title}.`,
-    condition: {
-      text: "Complete the requested work and submit verifiable evidence.",
-      items: [{ position: 0, text: "Submit the requested work before the due date." }],
-    },
-    locations: [{ label: "Kasetsart Innovation Centre" }],
-    proofRequired: true,
-    tagId: null,
-    fundingReservationId: "00000000-0000-0000-0000-000000000201",
-    policyRevisionId: "00000000-0000-0000-0000-000000000202",
-    platformFeeBps: 200,
-    platformFeePerWorkerSatang: 240,
-    questEscrowSatang: 12240,
-    cancelledAt: null,
-    cancelledByUserId: null,
-    cancelledByAdminId: null,
-    candidates: { applications: [], teams: [] },
-    assignments: [],
-    proofSubmissions: [],
-    editHistory: [],
-    adminActions: [],
-  };
-}
-
-function financeDetail(quest: AdminQuest): AdminQuestFinance {
-  return {
-    quest: {
-      id: quest.id,
-      title: quest.title,
-      questStatus: quest.questStatus,
-      headcount: quest.headcount,
-      rewardSatang: quest.rewardSatang,
-      platformFeePerWorkerSatang: 240,
-      questFundingTotalSatang: quest.questFundingTotalSatang,
-      hirer: { ...hirer, studentId: "6599900015" },
-    },
-    reservation: {
-      id: "00000000-0000-0000-0000-000000000201",
-      status: "ACTIVE",
-      totalReservedSatang: 12240,
-      remainingSatang: 12240,
-      createdAt: "2026-09-14T08:48:00.000Z",
-    },
-    transfers: [],
-    ledgerTransactions: [],
-  };
-}
+import {
+  MOCK_ASSIGNED_WORKER_ID as ASSIGNED_WORKER_ID,
+  MOCK_DISPUTE_CASE_ID as DISPUTE_CASE_ID,
+  MOCK_FAILED_QUEST_ID as FAILED_QUEST_ID,
+  MOCK_HIDDEN_QUEST_ID as HIDDEN_QUEST_ID,
+  MOCK_NEW_DISPUTE_CASE_ID as NEW_DISPUTE_CASE_ID,
+  MOCK_OPEN_QUEST_ID as OPEN_QUEST_ID,
+  MOCK_TEAM_QUEST_ID as TEAM_QUEST_ID,
+  MOCK_UNLINKED_FAILED_QUEST_ID as UNLINKED_FAILED_QUEST_ID,
+  assignedWorker,
+  mockHirer as hirer,
+  mockQuestDetail as questDetail,
+  mockQuestFinance as financeDetail,
+  mockQuests as quests,
+  mockUnlinkedFailedQuest as unlinkedFailedQuest,
+} from "../../src/features/admin/quest/quest-mock-data";
 
 function success(data: unknown): { success: true; data: unknown } {
   return { success: true, data };
@@ -162,7 +62,16 @@ async function mockAdminApi(page: Page): Promise<CommandRequest[]> {
 
     if (url.pathname.startsWith("/api/v1/admin/finance/quests/")) {
       const questId = url.pathname.split("/").at(-1);
-      const quest = quests.find((item) => item.id === questId) ?? quests[0];
+      const quest = quests.find((item) => item.id === questId)
+        ?? (questId === UNLINKED_FAILED_QUEST_ID ? unlinkedFailedQuest : undefined);
+      if (!quest) {
+        await route.fulfill({
+          status: 404,
+          contentType: "application/json",
+          body: JSON.stringify({ success: false, error: { code: "QUEST_NOT_FOUND", message: "Quest was not found." } }),
+        });
+        return;
+      }
       await fulfill(route, financeDetail(quest));
       return;
     }
@@ -171,7 +80,16 @@ async function mockAdminApi(page: Page): Promise<CommandRequest[]> {
       const [questId, action] = url.pathname
         .slice("/api/v1/admin/quests/".length)
         .split("/");
-      const quest = quests.find((item) => item.id === questId) ?? quests[0];
+      const quest = quests.find((item) => item.id === questId)
+        ?? (questId === UNLINKED_FAILED_QUEST_ID ? unlinkedFailedQuest : undefined);
+      if (!quest) {
+        await route.fulfill({
+          status: 404,
+          contentType: "application/json",
+          body: JSON.stringify({ success: false, error: { code: "QUEST_NOT_FOUND", message: "Quest was not found." } }),
+        });
+        return;
+      }
 
       if (request.method() === "POST" && action) {
         commandRequests.push({
@@ -189,6 +107,31 @@ async function mockAdminApi(page: Page): Promise<CommandRequest[]> {
       }
 
       await fulfill(route, questDetail(quest));
+      return;
+    }
+
+    if (url.pathname.startsWith("/api/v1/admin/disputes/open/")) {
+      const questId = url.pathname.slice("/api/v1/admin/disputes/open/".length);
+      commandRequests.push({
+        action: "open",
+        body: request.postDataJSON() as Record<string, unknown>,
+        idempotencyKey: request.headers()["idempotency-key"] ?? null,
+        resourceVersion: request.headers()["if-match"] ?? null,
+      });
+      await fulfill(route, {
+        id: NEW_DISPUTE_CASE_ID,
+        questId,
+        filerUserId: hirer.id,
+        openedByAdminId: "00000000-0000-0000-0000-000000000099",
+        status: "DISPUTE_CASE_PENDING",
+        version: 1,
+        resolvedWorkerId: null,
+        resolvedAmountSatang: null,
+        resolvedByAdminId: null,
+        resolvedAt: null,
+        createdAt: "2026-09-14T10:00:00.000Z",
+        updatedAt: "2026-09-14T10:00:00.000Z",
+      });
       return;
     }
 
@@ -238,8 +181,23 @@ test.describe("Quest route family", () => {
     await expect(page.locator("tbody tr").first()).toContainText("Map library access points");
 
     await page.getByRole("button", { name: "Failed", exact: true }).click();
-    await expect(page.locator("tbody tr")).toHaveCount(1);
+    await expect(page.locator("tbody tr")).toHaveCount(2);
     await expect(page.locator("tbody tr").first()).toContainText("Review flood route markers");
+  });
+
+  test("does not fetch Quest data from the Client Component", async ({ page }) => {
+    const clientQuestReads: string[] = [];
+    page.on("request", (request) => {
+      if (request.method() !== "GET") return;
+      if (new URL(request.url()).pathname.startsWith("/api/v1/admin/quests")) {
+        clientQuestReads.push(request.url());
+      }
+    });
+
+    await page.goto("/quest");
+
+    await expect(page.getByRole("heading", { level: 1, name: "Quests" })).toBeVisible();
+    expect(clientQuestReads).toEqual([]);
   });
 
   test("opens the full Quest detail directly and keeps the detail action in the drawer only", async ({ page }) => {
@@ -248,6 +206,11 @@ test.describe("Quest route family", () => {
     await expect(page.locator(".quest-detail-page h1")).toHaveText("Inspect campus signs");
     await expect(page.getByText("Quest description", { exact: true })).toBeVisible();
     await expect(page.getByText("Schedule and location", { exact: true })).toBeVisible();
+    await expect(page.getByText("Hirer attachments", { exact: true })).toBeVisible();
+    await expect(page.getByRole("img", { name: "Hirer attachment 1" })).toBeVisible();
+    await expect(page.getByText("Ledger Transactions", { exact: true })).toBeVisible();
+    await expect(page.getByText("Quest Funding Reserved", { exact: true })).toBeVisible();
+    await expect(page.getByText("Funding Reservation created for the Quest.", { exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "Full Quest detail" })).toHaveCount(0);
 
     await page.reload();
@@ -264,6 +227,12 @@ test.describe("Quest route family", () => {
     await expect(drawer.getByText("Quest summary", { exact: true })).toBeVisible();
     await expect(drawer.getByRole("link", { name: "Full Quest detail" })).toBeVisible();
 
+    const drawerBox = await drawer.boundingBox();
+    const viewport = page.viewportSize();
+    expect(drawerBox).not.toBeNull();
+    expect(viewport).not.toBeNull();
+    expect(drawerBox!.x + drawerBox!.width).toBeCloseTo(viewport!.width, 0);
+
     await page.goBack();
     await expect(page).toHaveURL(/\/quest$/);
     await expect(page.locator(".quest-drawer")).toHaveCount(0);
@@ -272,6 +241,76 @@ test.describe("Quest route family", () => {
     await drawer.getByRole("link", { name: "Full Quest detail" }).click();
     await expect(page.locator(".quest-drawer")).toHaveCount(0);
     await expect(page.locator(".quest-detail-page h1")).toHaveText("Inspect campus signs");
+  });
+
+  test("closes the detail drawer when clicking outside it", async ({ page }) => {
+    await page.goto("/quest");
+    await page.getByRole("link", { name: "Open Quest QST-OPEN" }).click();
+
+    await expect(page.locator(".quest-drawer")).toBeVisible();
+    await page.locator(".scrim").click();
+
+    await expect(page).toHaveURL(/\/quest$/);
+    await expect(page.locator(".quest-drawer")).toHaveCount(0);
+  });
+
+  test("closes the drawer after opening a Dispute Case", async ({ page }) => {
+    await page.goto("/quest");
+    await page.getByRole("link", { name: "Open Quest QST-NO-DISPUTE" }).click();
+    const drawer = page.locator(".quest-drawer");
+    await expect(drawer.getByRole("button", { name: "Open Dispute Case", exact: true })).toBeVisible();
+    await drawer.getByRole("combobox", { name: "Worker" }).selectOption(ASSIGNED_WORKER_ID);
+    page.once("dialog", (dialog) => dialog.accept());
+    await drawer.getByRole("button", { name: "Open Dispute Case", exact: true }).click();
+
+    await expect.poll(() => lastCommandRequests.length).toBe(1);
+    await expect(page).toHaveURL(/\/quest$/);
+    await expect(drawer).toHaveCount(0);
+  });
+
+  test("closes the detail drawer with Escape and returns focus to its opener", async ({ page }) => {
+    await page.goto("/quest");
+    const opener = page.getByRole("link", { name: "Open Quest QST-OPEN" });
+    await opener.focus();
+    await opener.click();
+
+    const drawer = page.locator(".quest-drawer");
+    await expect(drawer).toBeVisible();
+    await page.keyboard.press("Escape");
+
+    await expect(page).toHaveURL(/\/quest$/);
+    await expect(drawer).toHaveCount(0);
+    await expect(opener).toBeFocused();
+  });
+
+  test("keeps keyboard focus inside the detail drawer", async ({ page }) => {
+    await page.goto("/quest");
+    await page.getByRole("link", { name: "Open Quest QST-OPEN" }).click();
+
+    const drawer = page.locator(".quest-drawer");
+    const focusable = drawer.locator("a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex=\"-1\"])");
+    const closeButton = drawer.getByRole("button", { name: "Close Quest detail" });
+
+    await expect(drawer).toBeFocused();
+    await expect(page.locator("main").first()).toHaveAttribute("inert", "");
+
+    const lastFocusable = focusable.last();
+    await lastFocusable.focus();
+    await page.keyboard.press("Tab");
+    await expect(closeButton).toBeFocused();
+
+    await page.keyboard.press("Shift+Tab");
+    await expect(lastFocusable).toBeFocused();
+  });
+
+  test("shows Pending Hirer changes from the Quest edit history", async ({ page }) => {
+    await page.goto(`/quest/${TEAM_QUEST_ID}`);
+
+    await expect(page.getByText("Pending Hirer changes", { exact: true })).toBeVisible();
+    await expect(page.getByText("EDIT_REQUEST_PENDING", { exact: true })).toBeVisible();
+    await expect(page.getByText("Complete the revised requested work and submit verifiable evidence.", { exact: true })).toBeVisible();
+    await expect(page.getByText("Participant consent", { exact: true })).toBeVisible();
+    await expect(page.locator(".response-table").getByText("Nicha Worker", { exact: true })).toBeVisible();
   });
 
   test("preserves Quest Hide command reason code and concurrency headers", async ({ page }) => {
@@ -295,7 +334,7 @@ test.describe("Quest route family", () => {
     expect(lastCommandRequests[0]?.idempotencyKey).toMatch(/^admin-hide-quest-/);
   });
 
-  test("preserves Quest Restore reason and reason code", async ({ page }) => {
+  test("preserves Quest Restore reason and reason code with concurrency headers", async ({ page }) => {
     await page.goto(`/quest/${HIDDEN_QUEST_ID}`);
     await page.getByRole("button", { name: "Restore Quest", exact: true }).click();
 
@@ -316,10 +355,58 @@ test.describe("Quest route family", () => {
     expect(lastCommandRequests[0]?.idempotencyKey).toMatch(/^admin-restore-quest-/);
   });
 
+  test("preserves Quest Terminate reason code and concurrency headers", async ({ page }) => {
+    await page.goto(`/quest/${OPEN_QUEST_ID}`);
+    await page.getByRole("button", { name: "Terminate Quest", exact: true }).click();
+
+    const dialog = page.locator(".quest-command-dialog");
+    await dialog.getByRole("textbox", { name: "Reason" }).fill("The Quest violates the safety policy.");
+    await dialog.getByRole("combobox", { name: /Reason code/ }).selectOption("SAFETY_REVIEW");
+    await dialog.getByRole("button", { name: "Confirm", exact: true }).click();
+
+    await expect.poll(() => lastCommandRequests.length).toBe(1);
+    expect(lastCommandRequests[0]).toMatchObject({
+      action: "terminate",
+      body: {
+        reason: "The Quest violates the safety policy.",
+        reasonCode: "SAFETY_REVIEW",
+      },
+      resourceVersion: "4",
+    });
+    expect(lastCommandRequests[0]?.idempotencyKey).toMatch(/^admin-terminate-quest-/);
+  });
+
+  test("shows not-found behavior for an unknown Quest", async ({ page }) => {
+    await page.goto("/quest/00000000-0000-0000-0000-000000000099");
+
+    await expect(page.getByRole("heading", { name: "Not found" })).toBeVisible();
+    await expect(page.getByText("The requested Admin record was not found.", { exact: true })).toBeVisible();
+  });
+
   test("links a failed Quest to its Dispute Case", async ({ page }) => {
     await page.goto(`/quest/${FAILED_QUEST_ID}`);
 
     const disputeLink = page.getByRole("link", { name: "Open Dispute Case" });
     await expect(disputeLink).toHaveAttribute("href", `/dispute/${DISPUTE_CASE_ID}`);
   });
+
+  test("opens a Dispute Case for a selected assigned Worker", async ({ page }) => {
+    await page.goto(`/quest/${UNLINKED_FAILED_QUEST_ID}`);
+
+    await expect(page.getByText(
+      "This Quest is in QUEST_FAILED, but no linked Dispute Case was returned by the Admin API.",
+      { exact: true },
+    )).toBeVisible();
+    await page.getByRole("combobox", { name: "Worker" }).selectOption(ASSIGNED_WORKER_ID);
+    page.once("dialog", (dialog) => dialog.accept());
+    await page.getByRole("button", { name: "Open Dispute Case", exact: true }).click();
+
+    await expect.poll(() => lastCommandRequests.length).toBe(1);
+    expect(lastCommandRequests[0]).toMatchObject({
+      action: "open",
+      body: { workerId: ASSIGNED_WORKER_ID },
+    });
+    await expect(page.getByText("A Dispute Case is linked to this Quest.", { exact: true })).toBeVisible();
+  });
+
 });
