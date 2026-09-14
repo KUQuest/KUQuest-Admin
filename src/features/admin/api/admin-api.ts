@@ -1200,10 +1200,13 @@ export const adminApi = {
     );
   },
 
-  getPayout(payoutId: string): Promise<AdminPayoutDetail> {
+  getPayout(
+    payoutId: string,
+    options: AdminApiRequestOptions = {},
+  ): Promise<AdminPayoutDetail> {
     return apiRequest<AdminPayoutDetail>(
       `/api/v1/admin/payouts/${encode(payoutId)}`,
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 

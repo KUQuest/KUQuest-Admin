@@ -367,6 +367,43 @@ describe("Admin API boundary", () => {
     });
   });
 
+  it("sends the Payout approval contract", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    let request: Request | undefined;
+
+    mockFetch(async (input, init) => {
+      request = new Request(input, init);
+      return jsonResponse({ success: true, data: { id: "payout-1" } });
+    });
+
+    await adminApi.approvePayout("payout-1", {
+      idempotencyKey: "approve-payout-1",
+      expectedVersion: 4,
+      reasonCode: "PAYOUT_RISK_REVIEW",
+      note: "Destination and balance were verified.",
+    });
+
+    expect(request?.url).toBe("https://api.example.test/api/v1/admin/payouts/payout-1/approve");
+    expect(request?.headers.get("idempotency-key")).toBe("approve-payout-1");
+    expect(request?.headers.get("if-match")).toBe("4");
+    expect(await request?.json()).toEqual({ reasonCode: "PAYOUT_RISK_REVIEW" });
+  });
+
+  it("sends the Payout reconciliation command", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    let request: Request | undefined;
+
+    mockFetch(async (input, init) => {
+      request = new Request(input, init);
+      return jsonResponse({ success: true, data: { payout: { id: "payout-1" } } });
+    });
+
+    await adminApi.reconcilePayout("payout-1");
+
+    expect(request?.url).toBe("https://api.example.test/api/v1/admin/payouts/payout-1/reconcile");
+    expect(request?.method).toBe("POST");
+  });
+
   it("uses the Wallet API status command contract", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     let request: Request | undefined;
