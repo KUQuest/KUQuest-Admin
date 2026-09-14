@@ -312,6 +312,7 @@ export type AdminDisputeCase = {
   questId: string;
   status: DisputeCaseStatus;
   workerId?: string;
+  amountAtRiskSatang?: number;
   amountSatang?: number;
   evidenceRefs?: EvidenceReference[];
   questState?: "QUEST_FAILED";
@@ -1155,17 +1156,23 @@ export const adminApi = {
     );
   },
 
-  listDisputes(query: AdminDisputeListQuery = {}): Promise<AdminPage<AdminDisputeCase>> {
+  listDisputes(
+    query: AdminDisputeListQuery = {},
+    options: AdminApiRequestOptions = {},
+  ): Promise<AdminPage<AdminDisputeCase>> {
     return apiRequest<AdminPage<AdminDisputeCase>>(
       `/api/v1/admin/disputes${queryString(query)}`,
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 
-  getDispute(disputeId: string): Promise<AdminDisputeCaseDetail> {
+  getDispute(
+    disputeId: string,
+    options: AdminApiRequestOptions = {},
+  ): Promise<AdminDisputeCaseDetail> {
     return apiRequest<AdminDisputeCaseDetail>(
       `/api/v1/admin/disputes/${encode(disputeId)}`,
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 
