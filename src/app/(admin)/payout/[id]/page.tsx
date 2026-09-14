@@ -1,13 +1,30 @@
-import {
-  AdminDetailRoute,
-  adminDetailMetadata,
-  type AdminDetailRoutePageProps,
-} from "../../../../components/admin/admin-detail-route";
+import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 
-export function generateMetadata({ params }: AdminDetailRoutePageProps) {
-  return adminDetailMetadata(params, "Payout");
+import { AdminPayoutDetailPage } from "../../../../features/admin/payout/payout-page";
+import {
+  loadPayoutDetailPageData,
+  loadPayoutRouteContext,
+} from "../../../../features/admin/payout/payout-service";
+
+type PayoutDetailPageProps = {
+  params: Promise<{ id: string }>;
+};
+
+export async function generateMetadata({ params }: PayoutDetailPageProps): Promise<Metadata> {
+  const { id } = await params;
+  return { title: `Payout ${id}` };
 }
 
-export default function PayoutDetailPage({ params }: AdminDetailRoutePageProps) {
-  return <AdminDetailRoute params={params} title="Payout" description="Review one Payout through its canonical detail route." />;
+export default async function PayoutDetailPage({ params }: PayoutDetailPageProps) {
+  const { id } = await params;
+  const { dataSource, cookieHeader } = await loadPayoutRouteContext();
+  const data = await loadPayoutDetailPageData(
+    id,
+    cookieHeader,
+    dataSource,
+  );
+  if (!data) notFound();
+
+  return <AdminPayoutDetailPage data={data} dataSource={dataSource} />;
 }

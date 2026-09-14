@@ -1236,10 +1236,13 @@ export const adminApi = {
     );
   },
 
-  getPayout(payoutId: string): Promise<AdminPayoutDetail> {
+  getPayout(
+    payoutId: string,
+    options: AdminApiRequestOptions = {},
+  ): Promise<AdminPayoutDetail> {
     return apiRequest<AdminPayoutDetail>(
       `/api/v1/admin/payouts/${encode(payoutId)}`,
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 
@@ -1391,10 +1394,13 @@ export const adminApi = {
     );
   },
 
-  listWallets(query: AdminWalletListQuery = {}): Promise<AdminPage<AdminWallet>> {
+  listWallets(
+    query: AdminWalletListQuery = {},
+    options: AdminApiRequestOptions = {},
+  ): Promise<AdminPage<AdminWallet>> {
     return apiRequest<AdminPage<AdminWallet>>(
       `/api/v1/admin/wallets${queryString(query)}`,
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 
@@ -1408,24 +1414,33 @@ export const adminApi = {
     );
   },
 
-  getWallet(walletId: string): Promise<{ wallet: AdminWalletDetail }> {
+  getWallet(
+    walletId: string,
+    options: AdminApiRequestOptions = {},
+  ): Promise<{ wallet: AdminWalletDetail }> {
     return apiRequest<{ wallet: AdminWalletDetail }>(
       `/api/v1/admin/wallets/${encode(walletId)}`,
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 
-  getWalletStatusHistory(walletId: string): Promise<{ history: AdminWalletStatusHistoryEntry[] }> {
+  getWalletStatusHistory(
+    walletId: string,
+    options: AdminApiRequestOptions = {},
+  ): Promise<{ history: AdminWalletStatusHistoryEntry[] }> {
     return apiRequest<{ history: AdminWalletStatusHistoryEntry[] }>(
       `/api/v1/admin/wallets/${encode(walletId)}/status-history`,
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 
-  verifyWalletProjection(walletId: string): Promise<AdminWalletVerification> {
+  verifyWalletProjection(
+    walletId: string,
+    options: AdminApiRequestOptions = {},
+  ): Promise<AdminWalletVerification> {
     return apiRequest<AdminWalletVerification>(
       `/api/v1/admin/wallets/${encode(walletId)}/verification`,
-      { cache: "no-store" },
+      { cache: "no-store", ...options },
     );
   },
 

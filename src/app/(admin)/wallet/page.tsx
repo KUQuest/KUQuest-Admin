@@ -1,5 +1,12 @@
-import { AdminRoutePage } from "../../../components/admin/admin-route-page";
+import { AdminWalletPage } from "../../../features/admin/wallet/wallet-page";
+import {
+  loadWalletBoardPageData,
+  loadWalletRouteContext,
+} from "../../../features/admin/wallet/wallet-service";
 
-export default function WalletPage() {
-  return <AdminRoutePage title="Wallets" description="Review Wallet status without inventing a Wallet detail route." />;
+export default async function WalletPage() {
+  const { dataSource, cookieHeader } = await loadWalletRouteContext();
+  const initialData = await loadWalletBoardPageData(cookieHeader, dataSource);
+
+  return <AdminWalletPage initialData={initialData} />;
 }

@@ -398,6 +398,43 @@ describe("Admin API boundary", () => {
     });
   });
 
+  it("sends the Payout approval contract", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    let request: Request | undefined;
+
+    mockFetch(async (input, init) => {
+      request = new Request(input, init);
+      return jsonResponse({ success: true, data: { id: "payout-1" } });
+    });
+
+    await adminApi.approvePayout("payout-1", {
+      idempotencyKey: "approve-payout-1",
+      expectedVersion: 4,
+      reasonCode: "PAYOUT_RISK_REVIEW",
+      note: "Destination and balance were verified.",
+    });
+
+    expect(request?.url).toBe("https://api.example.test/api/v1/admin/payouts/payout-1/approve");
+    expect(request?.headers.get("idempotency-key")).toBe("approve-payout-1");
+    expect(request?.headers.get("if-match")).toBe("4");
+    expect(await request?.json()).toEqual({ reasonCode: "PAYOUT_RISK_REVIEW" });
+  });
+
+  it("sends the Payout reconciliation command", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    let request: Request | undefined;
+
+    mockFetch(async (input, init) => {
+      request = new Request(input, init);
+      return jsonResponse({ success: true, data: { payout: { id: "payout-1" } } });
+    });
+
+    await adminApi.reconcilePayout("payout-1");
+
+    expect(request?.url).toBe("https://api.example.test/api/v1/admin/payouts/payout-1/reconcile");
+    expect(request?.method).toBe("POST");
+  });
+
   it("uses the Wallet API status command contract", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     let request: Request | undefined;
@@ -730,6 +767,27 @@ describe("Admin API boundary", () => {
     await adminApi.listMembers({ search: "youtube@ku.th", limit: 100 });
 
     expect(new URL(request?.url || "https://api.example.test").search).toBe("?search=youtube%40ku.th&limit=100");
+  });
+
+  it("forwards server request options when reading Wallets", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    let request: Request | undefined;
+    mockFetch(async (input, init) => {
+      request = new Request(input, init);
+      return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
+    });
+
+    await adminApi.listWallets(
+      { status: "FROZEN", search: "member-1", limit: 100 },
+      { headers: { Cookie: "kuquest-admin=session" } },
+    );
+
+    const url = new URL(request?.url || "https://api.example.test");
+    expect(url.pathname).toBe("/api/v1/admin/wallets");
+    expect(url.searchParams.get("status")).toBe("FROZEN");
+    expect(url.searchParams.get("search")).toBe("member-1");
+    expect(request?.headers.get("cookie")).toBe("kuquest-admin=session");
+    expect(request?.cache).toBe("no-store");
   });
 
   it("loads Wallet Statement rows through the Finance Ledger endpoint", async () => {

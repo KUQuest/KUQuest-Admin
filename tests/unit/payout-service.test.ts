@@ -1,0 +1,93 @@
+import { afterEach, describe, expect, it } from "bun:test";
+
+import {
+  mockPendingPayout,
+} from "../../src/features/admin/payout/payout-mock-data";
+import {
+  loadPayoutBoardPageData,
+  loadPayoutDetailPageData,
+} from "../../src/features/admin/payout/payout-service";
+
+const originalFetch = globalThis.fetch;
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
+}
+
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+  delete process.env.NEXT_PUBLIC_API_URL;
+});
+
+describe("Payout service boundary", () => {
+  it("loads mock Payout rows without making a browser or API read", async () => {
+    let calls = 0;
+    globalThis.fetch = (async () => {
+      calls += 1;
+      return jsonResponse({ success: true, data: null });
+    }) as unknown as typeof globalThis.fetch;
+
+    const result = await loadPayoutBoardPageData(undefined, "mock");
+
+    expect(calls).toBe(0);
+    expect(result.rows.map((row) => row.id)).toEqual(["PAY-9637", "PAY-9636", "PAY-9638", "PAY-9639"]);
+  });
+
+  it("reads the Payout board through the Admin API and forwards the server cookie", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    const requests: Request[] = [];
+    globalThis.fetch = (async (input, init) => {
+      const request = new Request(input, init);
+      requests.push(request);
+      const cursor = new URL(request.url).searchParams.get("cursor");
+      return jsonResponse({
+        success: true,
+        data: cursor
+          ? { items: [], nextCursor: null }
+          : new URL(request.url).searchParams.get("status") === "PENDING_ADMIN_APPROVAL"
+            ? { items: [mockPendingPayout], nextCursor: "next-page" }
+            : { items: [], nextCursor: null },
+      });
+    }) as typeof globalThis.fetch;
+
+    const result = await loadPayoutBoardPageData("kuquest-admin=session", "api");
+
+    expect(result.rows[0]?.id).toBe("PAY-9637");
+    expect(requests).toHaveLength(7);
+    expect(new Set(requests.map((request) => new URL(request.url).searchParams.get("status")))).toEqual(new Set([
+      "PENDING_ADMIN_APPROVAL",
+      "SUBMITTED_TO_PROVIDER",
+      "PROVIDER_PENDING",
+      "SUCCEEDED",
+      "FAILED",
+      "CANCELLED",
+    ]));
+    expect(new Set(requests.map((request) => new URL(request.url).searchParams.get("limit")))).toEqual(new Set(["50"]));
+    expect(requests[0]?.headers.get("cookie")).toBe("kuquest-admin=session");
+    expect(requests.find((request) => new URL(request.url).searchParams.get("cursor") === "next-page")).toBeDefined();
+    expect(requests.every((request) => request.cache === "no-store")).toBe(true);
+  });
+
+  it("maps a live Payout detail and returns null for an API 404", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    let request: Request | undefined;
+    globalThis.fetch = (async (input, init) => {
+      request = new Request(input, init);
+      const url = new URL(request.url);
+      if (url.pathname.endsWith("/missing")) return jsonResponse({ success: false, error: { code: "NOT_FOUND", message: "Payout not found." } }, 404);
+      if (url.pathname === "/api/v1/admin/payouts") return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
+      return jsonResponse({ success: true, data: mockPendingPayout });
+    }) as typeof globalThis.fetch;
+
+    const result = await loadPayoutDetailPageData("PAY-9637", "kuquest-admin=session", "api");
+    expect(result?.detail.id).toBe("PAY-9637");
+    expect(result?.detail.destination.maskedValue).toBe("•••• 9637");
+    expect(request?.headers.get("cookie")).toBe("kuquest-admin=session");
+    expect(request?.cache).toBe("no-store");
+
+    await expect(loadPayoutDetailPageData("missing", "kuquest-admin=session", "api")).resolves.toBeNull();
+  });
+});
