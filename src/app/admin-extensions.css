@@ -133,6 +133,51 @@ a.activity-log-target {
   justify-content: center;
   padding-top: 16px;
 }
+.activity-log-toolbar {
+  margin-bottom: 12px;
+}
+.activity-log-dialog-backdrop {
+  position: fixed;
+  z-index: 70;
+  inset: 0;
+  display: grid;
+  place-items: stretch end;
+  background: var(--scrim-dialog);
+}
+.activity-log-dialog {
+  position: static;
+  width: min(560px, 100vw);
+  max-width: none;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  border: 0;
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: -12px 0 32px #0003;
+}
+.activity-log-dialog .drawer-top {
+  background: var(--surface);
+}
+.activity-log-detail .facts {
+  margin-top: 22px;
+}
+.activity-log-detail .fact strong {
+  overflow-wrap: anywhere;
+}
+.activity-log-detail .drawer-actions {
+  margin-top: 22px;
+}
+@media (max-width: 700px) {
+  .activity-log-dialog {
+    width: 100vw;
+  }
+  .activity-log-dialog-backdrop {
+    place-items: end stretch;
+  }
+}
 @media (max-width: 1100px) {
   .activity-filter-grid {
     grid-template-columns: repeat(3, minmax(150px, 1fr));
