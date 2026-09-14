@@ -155,7 +155,6 @@ export function activityLogCsv(entries: readonly ActivityLogEntry[]): string {
   ]);
   return [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n");
 }
-
 export function activityTargetHref(resourceType: string, resourceId: string): string | null {
   if (!resourceId) return null;
   switch (resourceType.trim().toUpperCase()) {
