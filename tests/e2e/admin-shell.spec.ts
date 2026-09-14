@@ -50,7 +50,7 @@ test.describe("shared Admin shell", () => {
     expect(hrefs.some((href) => href?.includes("?view="))).toBe(false);
     await expect(shell.locator('a[href="/dispute"] .admin-nav-count')).toHaveText("2");
     await expect(shell.locator('a[href="/report"] .admin-nav-count')).toHaveText("2");
-    await expect(shell.locator('a[href="/conduct-report"] .admin-nav-count')).toHaveText("0");
+    await expect(shell.locator('a[href="/conduct-report"] .admin-nav-count')).toHaveText("1");
     await expect(shell.locator('a[href="/payout"] .admin-nav-count')).toHaveText("3");
 
     for (const route of canonicalRoutes) {
@@ -60,6 +60,45 @@ test.describe("shared Admin shell", () => {
         shell.locator(`a[aria-current="page"][href="${route.activeHref}"]`),
       ).toBeVisible();
     }
+  });
+
+  test("renders Conduct Reports separately and resolves them inside the board drawer", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/conduct-report");
+
+    const main = page.locator("#conduct-report-main");
+    await expect(main.getByRole("heading", { level: 1, name: "Conduct Reports" })).toBeVisible();
+    await expect(main.locator("tbody tr[data-conduct-report-id]")).toHaveCount(3);
+    await expect(main.getByText("Report Case", { exact: true })).toHaveCount(0);
+    await expect(main.locator('a[href*="/conduct-report/"]')).toHaveCount(0);
+
+    await main.getByRole("tab", { name: "Confirmed", exact: true }).click();
+    await expect(main.locator('tbody tr[data-conduct-report-status="CONDUCT_REPORT_UPHELD"]')).toHaveCount(1);
+    await main.getByRole("tab", { name: "Open", exact: true }).click();
+    const pendingRow = main.locator('tbody tr[data-conduct-report-status="CONDUCT_REPORT_PENDING"]');
+    await expect(pendingRow).toHaveCount(1);
+    await pendingRow.click();
+
+    await expect(page).toHaveURL(/\/conduct-report$/);
+    const drawer = page.getByRole("dialog", { name: "Conduct Report details" });
+    await expect(drawer).toBeVisible();
+    await expect(drawer).toContainText("Quest record");
+    await drawer.getByLabel("Confirm violation").check();
+    await drawer.getByRole("button", { name: "Close report", exact: true }).click();
+
+    const decisionDialog = page.getByRole("dialog", { name: "Confirm violation" });
+    await expect(decisionDialog).toBeVisible();
+    await decisionDialog.getByLabel("Reason for this decision").fill(
+      "The Quest record confirms the reported conduct violation.",
+    );
+    await decisionDialog.getByRole("button", { name: "Confirm decision" }).click();
+
+    await expect(decisionDialog).toBeHidden();
+    await expect(drawer).toContainText("Violation confirmed");
+    await expect(main.locator('tbody tr[data-conduct-report-status="CONDUCT_REPORT_PENDING"]')).toHaveCount(0);
+    await drawer.getByRole("button", { name: "Close drawer" }).click();
+    await main.getByRole("tab", { name: "Confirmed", exact: true }).click();
+    await expect(main.locator('tbody tr[data-conduct-report-status="CONDUCT_REPORT_UPHELD"]')).toHaveCount(2);
   });
 
   test("renders the Overview dashboard and searches canonical records", async ({ page }) => {
@@ -159,6 +198,9 @@ test.describe("shared Admin shell", () => {
     await expect(page.getByText("ระบบ", { exact: true })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "การนำทางหลัก" })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "การนำทางระบบ" })).toBeVisible();
+    await page.goto("/conduct-report");
+    await expect(page.getByRole("heading", { level: 1, name: "รายงานพฤติกรรม", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "รายงานพฤติกรรม", exact: true })).toBeVisible();
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(page.getByRole("button", { name: "เปิดการนำทาง" })).toBeVisible();
     await page.getByRole("button", { name: "เปิดการนำทาง" }).click();

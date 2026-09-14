@@ -4,8 +4,16 @@ import {
   type BrowserStorage,
 } from "../data/legacy-admin-data-adapter";
 import type { PersistedAdminData } from "../data/admin-records";
+import { isConductReportStatus } from "../domain/rulebook";
 
-const dashboardSeedVersion = "dashboard-bootstrap-v2-canonical-statuses";
+const dashboardSeedVersion = "dashboard-bootstrap-v3-canonical-conduct-reports";
+const previousDashboardSeedVersion = "dashboard-bootstrap-v2-canonical-statuses";
+
+const dashboardConductReportSeedData = [
+  { id: "CND-8301", reportedMemberId: "68000020", reportedUserName: "Amara Ariyawat", reporterId: "68000000", reporterName: "Akarin Ariyawat", reasonCode: "CONDUCT_ABANDONED", questId: "QST-12001", questTitle: "Verify dorm fire exits", questRecord: "Assignment accepted · Proof Submission not provided · dueAt 27 Aug 2026 · 15:00", details: "The Worker did not complete the assigned Quest and did not provide a Proof Submission.", status: "CONDUCT_REPORT_PENDING", conductReportStatus: "CONDUCT_REPORT_PENDING", tone: "warning", reportedAt: "27 Aug 2026 · 15:30", version: 1 },
+  { id: "CND-8302", reportedMemberId: "68000040", reportedUserName: "Benja Ariyawat", reporterId: "68000020", reporterName: "Amara Ariyawat", reasonCode: "CONDUCT_OUT_OF_SCOPE", questId: "QST-12002", questTitle: "Design orientation social cards", questRecord: "Assignment completed · Quest reached terminal state", details: "The Hirer requested work outside the Quest Condition.", status: "CONDUCT_REPORT_UPHELD", conductReportStatus: "CONDUCT_REPORT_UPHELD", decision: "confirmed-violation", decisionLabel: "Violation confirmed", decisionReason: "The Quest record confirms the reported conduct violation.", resolution: "Violation confirmed; the Member Misconduct ladder was applied.", resolvedBy: "Admin", resolutionAt: "27 Aug 2026 · 16:47", closedAt: "27 Aug 2026 · 16:30", tone: "danger", reportedAt: "26 Aug 2026 · 10:20", version: 1 },
+  { id: "CND-8303", reportedMemberId: "68000000", reportedUserName: "Akarin Ariyawat", reporterId: "68000040", reporterName: "Benja Ariyawat", reasonCode: "CONDUCT_NO_SHOW", questId: "QST-12003", questTitle: "Photograph library study areas", questRecord: "Assignment cancelled before the dueAt", details: "The reported conduct was reviewed against the Quest record.", status: "CONDUCT_REPORT_DISMISSED", conductReportStatus: "CONDUCT_REPORT_DISMISSED", decision: "no-violation", decisionLabel: "No violation", decisionReason: "The Quest record does not confirm a conduct violation.", resolution: "Conduct Report dismissed; no policy violation found.", resolvedBy: "Admin", resolutionAt: "27 Aug 2026 · 11:47", closedAt: "27 Aug 2026 · 11:30", tone: "neutral", reportedAt: "25 Aug 2026 · 09:10", version: 1 },
+];
 
 const dashboardSeedData: PersistedAdminData = {
   version: dashboardSeedVersion,
@@ -39,13 +47,41 @@ const dashboardSeedData: PersistedAdminData = {
     reports: [
       { id: "RPT-8201", reportedMemberId: "68000020", reportedUserName: "Amara Ariyawat", reporterId: "68000000", reporterName: "Akarin Ariyawat", category: "Harassment or abuse", details: "The submitted report requires review.", evidence: "Message capture", evidenceRefs: ["evidence-rpt-8201"], status: "REPORT_CASE_PENDING", reportCaseStatus: "REPORT_CASE_PENDING", tone: "warning", reportedAt: "27 Aug 2026 · 08:40" },
       { id: "RPT-8202", reportedMemberId: "68000040", reportedUserName: "Benja Ariyawat", reporterId: "68000000", reporterName: "Akarin Ariyawat", category: "Fraud or payment issue", details: "The submitted report requires review.", evidence: "Payment message capture", evidenceRefs: ["evidence-rpt-8202"], status: "REPORT_CASE_PENDING", reportCaseStatus: "REPORT_CASE_PENDING", tone: "warning", reportedAt: "27 Aug 2026 · 08:20" },
+      ...dashboardConductReportSeedData,
     ],
   },
 };
 
+function hasConductReports(data: PersistedAdminData): boolean {
+  return data.collections.reports.some((record) => {
+    if (!record || typeof record !== "object" || Array.isArray(record)) return false;
+    const candidate = record as Record<string, unknown>;
+    return isConductReportStatus(candidate.status) || isConductReportStatus(candidate.conductReportStatus);
+  });
+}
+
+function migrateConductReportSeed(storage: BrowserStorage, data: PersistedAdminData): PersistedAdminData {
+  if (data.version !== previousDashboardSeedVersion || hasConductReports(data)) return data;
+
+  const migrated: PersistedAdminData = {
+    ...data,
+    version: dashboardSeedVersion,
+    collections: {
+      ...data.collections,
+      reports: [...data.collections.reports, ...dashboardConductReportSeedData],
+    },
+  };
+  try {
+    storage.setItem(ADMIN_DEMO_DATA_KEY, JSON.stringify(migrated));
+  } catch {
+    // The migrated data remains useful for the current render.
+  }
+  return migrated;
+}
+
 export function loadDashboardData(storage: BrowserStorage): PersistedAdminData {
   const stored = readAdminData(storage);
-  if (stored) return stored;
+  if (stored) return migrateConductReportSeed(storage, stored);
 
   try {
     storage.setItem(ADMIN_DEMO_DATA_KEY, JSON.stringify(dashboardSeedData));

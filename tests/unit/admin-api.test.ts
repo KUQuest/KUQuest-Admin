@@ -478,6 +478,33 @@ describe("Admin API boundary", () => {
     expect(await request?.json()).toEqual({ reasonCode: "POLICY_REVIEW" });
   });
 
+  it("uses the existing Admin Report command boundary for Conduct Reports", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    let request: Request | undefined;
+
+    mockFetch(async (input, init) => {
+      request = new Request(input, init);
+      return jsonResponse({
+        success: true,
+        data: { id: "CND-1", status: "CONDUCT_REPORT_UPHELD", reportedMemberId: "member-1" },
+      });
+    });
+
+    await adminApi.decideReport("CND-1", {
+      idempotencyKey: "conduct-report-1",
+      decision: "CONDUCT_REPORT_UPHELD",
+      reason: "The Quest record confirms the violation.",
+    });
+
+    expect(request?.url).toBe("https://api.example.test/api/v1/admin/reports/CND-1/decide");
+    expect(request?.method).toBe("POST");
+    expect(request?.headers.get("idempotency-key")).toBe("conduct-report-1");
+    expect(await request?.json()).toEqual({
+      decision: "CONDUCT_REPORT_UPHELD",
+      reason: "The Quest record confirms the violation.",
+    });
+  });
+
   it("maps an API error envelope to ApiError", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     mockFetch(async () => jsonResponse({
