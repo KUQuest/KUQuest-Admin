@@ -4,7 +4,7 @@ import type {
 } from "../api/admin-api";
 import { adminApi } from "../api/admin-api";
 import { adminApiRequestOptions } from "../api/admin-api-request-options";
-import { loadAllWalletLedgerTransactions } from "../wallet/wallet-service";
+import { loadAllWalletLedgerTransactions } from "../wallet/wallet-ledger-pages";
 import {
   memberListModelFromApi,
   memberModelFromApi,

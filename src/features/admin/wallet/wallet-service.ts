@@ -5,6 +5,7 @@ import { adminApi } from "../api/admin-api";
 import { adminApiRequestOptions } from "../api/admin-api-request-options";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { adminSessionCookieHeader } from "../../../lib/auth/admin-session-policy";
+import { loadAllWalletLedgerTransactions } from "./wallet-ledger-pages";
 import { mockWalletFinanceSummary, mockWallets } from "./wallet-mock-data";
 import {
   walletDetailFromApi,
@@ -90,24 +91,6 @@ export async function loadWalletDrawerData(
     history: walletHistoryFromApi(historyResult.history),
     ledger: walletLedgerRowsFromApi(ledgerResult.items, walletId, walletResult.wallet.balances),
   };
-}
-
-export async function loadAllWalletLedgerTransactions(
-  walletId: string,
-  options: AdminApiRequestOptions,
-) {
-  const transactions = [] as Awaited<ReturnType<typeof adminApi.listLedgerTransactions>>["items"];
-  let cursor: string | undefined;
-
-  do {
-    const page = await adminApi.listLedgerTransactions({ walletId, limit: 100, cursor }, options);
-    transactions.push(...page.items);
-    const nextCursor = page.nextCursor ?? undefined;
-    if (nextCursor === cursor) break;
-    cursor = nextCursor;
-  } while (cursor);
-
-  return transactions;
 }
 
 export async function loadWalletStatementPageData(
