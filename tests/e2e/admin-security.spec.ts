@@ -90,6 +90,60 @@ test.describe("Admin session and private-route boundary", () => {
     await expect(page.getByRole("dialog", { name: "QUEST_HIDDEN" })).toHaveCount(0);
   });
 
+  test("covers Activity Log mobile, language, theme, export, and pagination behavior", async ({ context, page }) => {
+    await addAdminCookie(context, "valid-session");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/activity");
+
+    const main = page.locator("#activity-main");
+    await expect(main.getByRole("heading", { level: 1, name: "Activity Log" })).toBeVisible();
+    await expect(main.locator("tbody tr").first()).toBeVisible();
+    const viewport = await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    }));
+    expect(viewport.scrollWidth).toBeLessThanOrEqual(viewport.clientWidth);
+
+    const downloadPromise = page.waitForEvent("download");
+    await main.getByRole("button", { name: "Export CSV" }).click();
+    expect((await downloadPromise).suggestedFilename()).toBe("activity-log.csv");
+
+    await main.getByRole("button", { name: "Load more" }).click();
+    await expect(main.locator("tbody tr")).toHaveCount(3);
+
+    await page.getByRole("button", { name: "Open navigation" }).click();
+    await page.getByRole("button", { name: /Theme Grey-white/ }).click();
+    await page.getByRole("button", { name: /Dark Low-light workspace/ }).click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+
+    const languageOptions = page.getByRole("group", { name: /Language options|ตัวเลือกภาษา/ });
+    await languageOptions.getByRole("button", { name: "ไทย", exact: true }).click();
+    await expect(page.locator("html")).toHaveAttribute("lang", "th");
+    await expect(main.getByRole("heading", { level: 1, name: "บันทึกกิจกรรม", exact: true })).toBeVisible();
+    await expect(main.getByRole("button", { name: "ส่งออก CSV", exact: true })).toBeEnabled();
+  });
+
+  test("covers Activity Log loading, empty, and error states", async ({ context, page }) => {
+    await addAdminCookie(context, "valid-session");
+    await page.goto("/activity");
+
+    const main = page.locator("#activity-main");
+    await main.getByLabel("Action filter").fill("ACTIVITY_SLOW");
+    await main.getByRole("button", { name: "Apply filters" }).click();
+    await expect(main.locator("#activity-status")).toHaveText("Loading activity");
+    await expect(main.locator("tbody tr")).toHaveCount(2);
+
+    await main.getByLabel("Action filter").fill("ACTIVITY_EMPTY");
+    await main.getByRole("button", { name: "Apply filters" }).click();
+    await expect(main.getByRole("heading", { name: "No activity recorded" })).toBeVisible();
+    await expect(main.locator("table")).toHaveCount(0);
+
+    await main.getByLabel("Action filter").fill("ACTIVITY_ERROR");
+    await main.getByRole("button", { name: "Apply filters" }).click();
+    await expect(main.getByRole("alert")).toContainText("Activity log is not available");
+    await expect(main.getByRole("button", { name: "Try again" })).toBeVisible();
+  });
+
   test("protects Activity Log records at the Admin API boundary", async ({ page }) => {
     const apiUrl = "http://localhost:5002/api/v1/admin/activity-log";
     const noSession = await page.request.get(apiUrl);

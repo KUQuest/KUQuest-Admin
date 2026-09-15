@@ -57,11 +57,23 @@ const activityLogItems = [
     resultTimestamp: "2026-09-14T00:00:00.000Z",
     createdAt: "2026-09-14T00:00:00.000Z",
   },
+  {
+    id: "activity-3",
+    admin: { id: "valid-admin", firstName: "Test", lastName: "Admin" },
+    action: "DISPUTE_CASE_RESOLVED",
+    resourceType: "DISPUTE_CASE",
+    resourceId: "dispute-1",
+    reasonCode: "DISPUTE_POLICY_REVIEW",
+    reasonCatalogVersion: 1,
+    resultVersion: 2,
+    resultTimestamp: "2026-09-13T00:00:00.000Z",
+    createdAt: "2026-09-13T00:00:00.000Z",
+  },
 ];
 
 const server = Bun.serve({
   port: 5002,
-  fetch(request) {
+  async fetch(request) {
     const url = new URL(request.url);
     const cookie = request.headers.get("cookie") ?? "";
 
@@ -138,8 +150,15 @@ const server = Bun.serve({
     }
 
     if (url.pathname === "/api/v1/admin/activity-log") {
+      const action = url.searchParams.get("action");
+      if (action === "ACTIVITY_ERROR") {
+        return json({ success: false, error: { code: "SERVICE_UNAVAILABLE", message: "Activity Log is unavailable." } }, 503);
+      }
+      if (action === "ACTIVITY_SLOW") {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
       const filters = ["action", "resourceType", "resourceId", "adminId"] as const;
-      const filteredItems = activityLogItems.filter((item) => filters.every((filter) => {
+      const filteredItems = activityLogItems.filter((item) => action === "ACTIVITY_SLOW" || filters.every((filter) => {
         const value = url.searchParams.get(filter);
         const itemValue = filter === "adminId" ? item.admin.id : item[filter];
         return !value || itemValue.includes(value);
@@ -148,11 +167,13 @@ const server = Bun.serve({
         const direction = url.searchParams.get("sort") === "oldest" ? 1 : -1;
         return direction * (Date.parse(left.createdAt) - Date.parse(right.createdAt));
       });
+      const cursor = url.searchParams.get("cursor");
+      const items = cursor === "activity-next" ? filteredItems.slice(2) : filteredItems.slice(0, 2);
       return json({
         success: true,
         data: {
-          items: filteredItems,
-          nextCursor: null,
+          items,
+          nextCursor: !cursor && items.length === 2 && filteredItems.length > items.length ? "activity-next" : null,
         },
       });
     }
