@@ -17,7 +17,6 @@ import {
 import {
   canonicalRouteForLegacyUrl,
   isAdminProtectedPath,
-  isLegacyAdminUrl,
 } from "../../src/lib/auth/admin-routing";
 
 function legacyUrl(path: string): URL {
@@ -43,7 +42,6 @@ describe("Admin route helpers", () => {
     expect(conductReportRoutes.list()).toBe("/conduct-report");
     expect(payoutRoutes.list()).toBe("/payout");
     expect(memberRoutes.list()).toBe("/member");
-    expect(memberRoutes.walletStatement("member-1")).toBe("/member/member-1/wallet-statement");
     expect(walletRoutes.list()).toBe("/wallet");
     expect(activityRoutes.list()).toBe("/activity");
   });
@@ -54,7 +52,6 @@ describe("Admin route helpers", () => {
     expect(reportRoutes.detail("RPT-1")).toBe("/report/RPT-1");
     expect(payoutRoutes.detail("PAY-1")).toBe("/payout/PAY-1");
     expect(memberRoutes.detail("member/1")).toBe("/member/member%2F1");
-    expect(memberRoutes.walletStatement("member/1")).toBe("/member/member%2F1/wallet-statement");
   });
 
   it("rejects empty dynamic identifiers", () => {
@@ -109,12 +106,6 @@ describe("legacy Admin URL compatibility", () => {
     expect(canonicalRouteForLegacyUrl(legacyUrl("/member/member-1/wallet-statement?unexpected=value"))).toBe("/member/member-1?tab=wallet-statement");
   });
 
-  it("identifies root compatibility URLs separately from canonical redirects", () => {
-    expect(isLegacyAdminUrl(legacyUrl("/?view=quests"))).toBe(true);
-    expect(isLegacyAdminUrl(legacyUrl("/?openUser=member-1"))).toBe(true);
-    expect(isLegacyAdminUrl(legacyUrl("/"))).toBe(false);
-    expect(isLegacyAdminUrl(legacyUrl("/overview"))).toBe(false);
-  });
 });
 
 describe("canonical App Router source boundary", () => {

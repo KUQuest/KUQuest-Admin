@@ -39,7 +39,6 @@ export const payoutRoutes = {
 export const memberRoutes = {
   list: () => "/member",
   detail: (id: string) => `/member/${pathSegment(id)}`,
-  walletStatement: (id: string) => `/member/${pathSegment(id)}/wallet-statement`,
 } as const;
 
 export const walletRoutes = {

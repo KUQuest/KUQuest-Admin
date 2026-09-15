@@ -16,8 +16,6 @@ type LegacyUrl = Readonly<{
   searchParams: URLSearchParams;
 }>;
 
-const legacyRootQueryKeys = ["view", "user", "openUser"] as const;
-
 const adminRoutePrefixes = [
   "/overview",
   "/quest",
@@ -123,10 +121,6 @@ export function canonicalRouteForLegacyUrl(url: LegacyUrl): string | null {
   if (memberId) return memberDetailRouteFromLegacyUrl(url, memberId);
 
   return null;
-}
-
-export function isLegacyAdminUrl(url: LegacyUrl): boolean {
-  return url.pathname === "/" && legacyRootQueryKeys.some((key) => url.searchParams.has(key));
 }
 
 export function isAdminProtectedPath(pathname: string): boolean {
