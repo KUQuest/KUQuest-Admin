@@ -8,16 +8,16 @@ test.describe("Member route family", () => {
     await page.goto("/member");
 
     const board = page.locator("#member-main");
-    await expect(board.getByRole("heading", { level: 1, name: "Users" })).toBeVisible();
+    await expect(board.getByRole("heading", { level: 1, name: "Members" })).toBeVisible();
     await expect(board.locator("tbody tr[data-member-id]")).toHaveCount(3);
-    await expect(board.getByRole("searchbox", { name: "Search users" })).toBeVisible();
+    await expect(board.getByRole("searchbox", { name: "Search Members" })).toBeVisible();
 
-    await board.getByRole("button", { name: "Open user 68000000" }).click();
+    await board.getByRole("button", { name: "Open Member 68000000" }).click();
     await expect(page).toHaveURL(/\/member\/68000000$/);
     await expect(page.getByRole("dialog", { name: "Record details" })).toBeVisible();
     await expect(page.getByRole("dialog", { name: "Record details" })).toContainText("Akarin Ariyawat");
 
-    await page.getByRole("dialog", { name: "Record details" }).getByRole("link", { name: "See full user profile" }).click();
+    await page.getByRole("dialog", { name: "Record details" }).getByRole("link", { name: "See full Member profile" }).click();
     await expect(page.getByRole("dialog", { name: "Record details" })).toHaveCount(0);
     await expect(page.locator(".user-detail-page")).toBeVisible();
     await page.goto("/member");
@@ -28,7 +28,7 @@ test.describe("Member route family", () => {
     await page.goto("/member/68000000");
 
     await expect(page.getByRole("heading", { level: 1, name: "Akarin Ariyawat" })).toBeVisible();
-    const tabs = page.getByRole("navigation", { name: "User detail sections" });
+    const tabs = page.getByRole("navigation", { name: "Member detail sections" });
     await expect(tabs.getByRole("link", { name: "Wallet Statement", exact: true })).toBeVisible();
     await expect(tabs.getByRole("link", { name: "Penalty History", exact: true })).toBeVisible();
 
@@ -59,8 +59,8 @@ test.describe("Member route family", () => {
     await signIn(page);
     await page.goto("/member");
     await page.getByRole("button", { name: "ไทย", exact: true }).click();
-    await expect(page.getByRole("heading", { level: 1, name: "ผู้ใช้" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "สมาชิก" })).toBeVisible();
     await page.getByRole("button", { name: "English", exact: true }).click();
-    await expect(page.getByRole("heading", { level: 1, name: "Users" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Members" })).toBeVisible();
   });
 });

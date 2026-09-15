@@ -111,4 +111,40 @@ describe("Member detail service", () => {
     expect(ledgerRequests[1]?.url).toContain("cursor=ledger-next");
     expect(requests.every((request) => request.headers.get("cookie") === "kuquest-admin=session")).toBe(true);
   });
+
+  it("loads Ledger Transactions from the effective Wallet when detail has no Wallet", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    const requests: Request[] = [];
+    globalThis.fetch = (async (input, init) => {
+      const request = new Request(input, init);
+      requests.push(request);
+      const url = new URL(request.url);
+
+      if (url.pathname === "/api/v1/admin/members/68000000") {
+        return jsonResponse({ success: true, data: { ...memberDetail, wallet: null } });
+      }
+      if (url.pathname === "/api/v1/admin/finance/members/68000000") {
+        return jsonResponse({ success: true, data: { wallet: memberDetail.wallet } });
+      }
+      if (url.pathname === "/api/v1/admin/reports") {
+        return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
+      }
+      if (url.pathname === "/api/v1/admin/finance/ledger/transactions") {
+        return jsonResponse({
+          success: true,
+          data: { items: [ledgerTransaction("ledger-from-finance", "2026-09-12T08:30:00.000Z")], nextCursor: null },
+        });
+      }
+      return jsonResponse({ success: false, error: { code: "UNAVAILABLE", message: "Unexpected request" } }, 503);
+    }) as typeof globalThis.fetch;
+
+    const model = await loadMemberDetailFromApi("68000000", "kuquest-admin=session");
+
+    expect(model?.walletId).toBe("WAL-1001");
+    expect(model?.walletStatement.map((transaction) => transaction.id)).toEqual(["ledger-from-finance"]);
+    expect(model?.walletStatementError).toBeNull();
+    const ledgerRequests = requests.filter((request) => new URL(request.url).pathname.endsWith("/ledger/transactions"));
+    expect(ledgerRequests).toHaveLength(1);
+    expect(ledgerRequests[0]?.url).toContain("walletId=WAL-1001");
+  });
 });

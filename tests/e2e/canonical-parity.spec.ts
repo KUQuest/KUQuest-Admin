@@ -30,7 +30,7 @@ async function expectResponsiveInput(page: Page, input: Locator) {
 
 async function openMemberDrawer(page: Page) {
   await page.goto("/member");
-  await page.getByRole("button", { name: "Open user 68000000" }).click();
+  await page.getByRole("button", { name: "Open Member 68000000" }).click();
   const drawer = page.getByRole("dialog", { name: "Record details" });
   await expect(drawer).toBeVisible();
   return drawer;
@@ -59,6 +59,16 @@ test.describe("legacy parity on canonical routes", () => {
       await expect(statement.locator(".wallet-statement-balance-grid")).toContainText(label);
     }
     await expect(statement.getByLabel("Event type")).toBeVisible();
+    await expect(statement.getByLabel("Event type").locator("option")).toHaveText([
+      "All event types",
+      "TOP_UP",
+      "PAYOUT",
+      "FUNDING_RESERVE",
+      "FUNDING_RELEASE",
+      "FUNDING_SETTLEMENT",
+      "ADJUSTMENT",
+      "EARNINGS_CONVERSION",
+    ]);
     await expect(statement.getByLabel("From ICT date")).toBeVisible();
     await expect(statement.getByLabel("To ICT date")).toBeVisible();
 
@@ -74,7 +84,7 @@ test.describe("legacy parity on canonical routes", () => {
     expect(eventTypes.length).toBeGreaterThan(0);
     expect(eventTypes.every((eventType) => eventType === "TOP_UP")).toBe(true);
 
-    const tabs = page.getByRole("navigation", { name: "User detail sections" });
+    const tabs = page.getByRole("navigation", { name: "Member detail sections" });
     await tabs.getByRole("link", { name: "Overview", exact: true }).click();
     await expect(page).toHaveURL(/\/member\/68000000$/);
     await tabs.getByRole("link", { name: "Wallet Statement", exact: true }).click();
@@ -212,10 +222,10 @@ test.describe("legacy parity for inputs on mobile", () => {
   test("Member report form accepts input on mobile", async ({ page }) => {
     await signIn(page);
     const drawer = await openMemberDrawer(page);
-    await drawer.getByRole("button", { name: "Report user" }).click();
+    await drawer.getByRole("button", { name: "Report Member" }).click();
 
     const dialog = page.getByRole("dialog", { name: "Report Akarin Ariyawat" });
-    await expect(dialog.getByRole("group", { name: "Reported user" })).toContainText("Akarin Ariyawat");
+    await expect(dialog.getByRole("group", { name: "Reported Member" })).toContainText("Akarin Ariyawat");
     const category = dialog.getByLabel("Report type");
     const details = dialog.getByLabel("What happened?");
     await category.selectOption({ label: "Fraud or payment issue" });

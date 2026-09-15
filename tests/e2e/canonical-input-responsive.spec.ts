@@ -37,7 +37,7 @@ test.describe("canonical route inputs and responsive layouts", () => {
     { path: "/report", name: "Report Case", input: "Search Report Cases", value: "RPT-8201" },
     { path: "/conduct-report", name: "Conduct Report", input: "Search Conduct Reports", value: "CR-7001" },
     { path: "/payout", name: "Payout", input: "Search Payouts…", value: "PAY-9637" },
-    { path: "/member", name: "Member", input: "Search users", value: "68000000" },
+    { path: "/member", name: "Member", input: "Search Members", value: "68000000" },
     { path: "/wallet", name: "Wallet", input: "Search Wallets…", value: "WAL-1001" },
   ]) {
     test(`${board.name} search accepts input on mobile`, async ({ page }) => {

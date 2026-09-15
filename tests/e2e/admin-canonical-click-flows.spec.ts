@@ -115,8 +115,8 @@ test.describe("Admin canonical click flows", () => {
 
     await page.locator('.admin-shell aside a[href="/member"]').click();
     await expect(page).toHaveURL(/\/member$/);
-    await page.getByRole("button", { name: "Open user 68000000" }).click();
-    await page.getByRole("dialog", { name: "Record details" }).getByRole("link", { name: "See full user profile" }).click();
+    await page.getByRole("button", { name: "Open Member 68000000" }).click();
+    await page.getByRole("dialog", { name: "Record details" }).getByRole("link", { name: "See full Member profile" }).click();
     await expect(page).toHaveURL(/\/member\/68000000$/);
     await expect(page.getByRole("heading", { level: 1, name: "Akarin Ariyawat" })).toBeVisible();
   });

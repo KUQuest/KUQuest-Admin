@@ -70,6 +70,81 @@ describe("Member route model", () => {
     expect(walletStatementRows(model!, { eventType: "TOP_UP", from: "", to: "" }, 25)).toHaveLength(11);
   });
 
+  it("keeps the complete Ledger balance when filtering displayed rows", () => {
+    const data = mockData();
+    data.collections.users.push({
+      id: "member-1",
+      title: "Ari Member",
+      person: "ari@ku.th",
+      walletStatus: "ACTIVE",
+      walletSpendingBalanceSatang: 150,
+      walletEarningsBalanceSatang: 0,
+      walletFundingReservedSatang: 0,
+      walletReservedForPayoutsSatang: 0,
+      walletStatement: [
+        {
+          id: "ledger-old",
+          eventType: "PAYOUT",
+          description: "Payout",
+          createdAt: "2026-09-01T00:00:00.000Z",
+          sealedAt: "2026-09-01T00:00:00.000Z",
+          postings: [{ accountType: "SPENDING", walletId: "WAL-member-1", amountSatang: 100 }],
+        },
+        {
+          id: "ledger-new",
+          eventType: "TOP_UP",
+          description: "Top-up",
+          createdAt: "2026-09-02T00:00:00.000Z",
+          sealedAt: "2026-09-02T00:00:00.000Z",
+          postings: [{ accountType: "SPENDING", walletId: "WAL-member-1", amountSatang: 50 }],
+        },
+      ],
+    });
+    const model = memberModelFromMockRecord(data.collections.users[0], data);
+
+    const rows = walletStatementRows(model!, { eventType: "PAYOUT", from: "2026-09-01", to: "2026-09-01" }, 25);
+
+    expect(rows.map((row) => row.transaction.id)).toEqual(["ledger-old"]);
+    expect(rows[0]?.resultingWalletBalanceSatang).toBe(100);
+  });
+
+  it("uses Ledger Transaction ID order when timestamps are equal", () => {
+    const data = mockData();
+    data.collections.users.push({
+      id: "member-1",
+      title: "Ari Member",
+      person: "ari@ku.th",
+      walletStatus: "ACTIVE",
+      walletSpendingBalanceSatang: 150,
+      walletEarningsBalanceSatang: 0,
+      walletFundingReservedSatang: 0,
+      walletReservedForPayoutsSatang: 0,
+      walletStatement: [
+        {
+          id: "ledger-a",
+          eventType: "PAYOUT",
+          description: "Payout",
+          createdAt: "2026-09-01T00:00:00.000Z",
+          sealedAt: "2026-09-01T00:00:00.000Z",
+          postings: [{ accountType: "SPENDING", walletId: "WAL-member-1", amountSatang: 100 }],
+        },
+        {
+          id: "ledger-b",
+          eventType: "TOP_UP",
+          description: "Top-up",
+          createdAt: "2026-09-01T00:00:00.000Z",
+          sealedAt: "2026-09-01T00:00:00.000Z",
+          postings: [{ accountType: "SPENDING", walletId: "WAL-member-1", amountSatang: 50 }],
+        },
+      ],
+    });
+    const model = memberModelFromMockRecord(data.collections.users[0], data);
+
+    const rows = walletStatementRows(model!, { eventType: "PAYOUT", from: "", to: "" }, 25);
+
+    expect(rows[0]?.resultingWalletBalanceSatang).toBe(100);
+  });
+
   it("does not infer Member penalty status from API Wallet status", () => {
     const detail: AdminMemberDetail = {
       member: {

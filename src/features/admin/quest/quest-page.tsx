@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 
 import { ApiError } from "../../../lib/api/client";
-import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { disputeRoutes, questRoutes } from "../admin-routes";
 import {
   adminApi,
@@ -135,30 +134,6 @@ function editChangesFor(detail: QuestDetailView, request: AdminQuestEditRequest)
   }));
 }
 
-type QuestTimelineEntry = {
-  id: string;
-  title: string;
-  time: string;
-  detail: string;
-};
-
-function csvCell(value: string): string {
-  return `"${value.replaceAll('"', '""')}"`;
-}
-
-function downloadQuestLog(entries: readonly QuestTimelineEntry[]): void {
-  const csv = [
-    ["time", "event", "detail"],
-    ...entries.map((entry) => [entry.time, entry.title, entry.detail]),
-  ].map((row) => row.map(csvCell).join(",")).join("\r\n");
-  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = "kuquest-admin-export.csv";
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
-
 function Badge({ state }: { state: QuestState }) {
   return <span className={`badge ${questStatusClass(state)}`}>{readableValue(state.replace("QUEST_", ""))}</span>;
 }
@@ -204,7 +179,6 @@ function QuestDetailContent({
   disputeError: string | null;
   showFullDetailLink: boolean;
 }) {
-  const { translateText } = useAdminShell();
   const state = detail.state;
   const hidden = Boolean(detail.hiddenAt);
   const [selectedWorkerId, setSelectedWorkerId] = useState("");
@@ -216,7 +190,7 @@ function QuestDetailContent({
   const fundingTotal = financeQuest?.questFundingTotalSatang ?? detail.questFundingTotalSatang;
   const reward = financeQuest?.rewardSatang ?? detail.rewardSatang;
   const platformFee = financeQuest?.platformFeePerWorkerSatang ?? detail.platformFeePerWorkerSatang;
-  const timeline: QuestTimelineEntry[] = detail.adminActions.length
+  const timeline = detail.adminActions.length
     ? detail.adminActions.map((action) => ({
         id: action.id,
         title: readableValue(action.action),
@@ -505,8 +479,7 @@ function QuestDetailContent({
 
       <section className="panel">
         <div className="panel-head">
-          <h2>{translateText("Overall Quest timeline")}</h2>
-          <button className="link" type="button" data-functional-action="export-log" onClick={() => downloadQuestLog(timeline)}>{translateText("Export log")}</button>
+          <h2>Overall Quest timeline</h2>
         </div>
         <div className="quest-detail-body">
           <ol className="timeline">

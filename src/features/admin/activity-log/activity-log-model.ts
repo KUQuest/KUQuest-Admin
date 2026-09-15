@@ -1,5 +1,5 @@
 import type { AdminActivityLog } from "../api/admin-api";
-import { disputeRoutes, memberRoutes, questRoutes, reportRoutes } from "../admin-routes";
+import { disputeRoutes, memberRoutes, payoutRoutes, questRoutes, reportRoutes } from "../admin-routes";
 
 export type ActivityLogEntry = {
   id: string;
@@ -165,6 +165,8 @@ export function activityTargetHref(resourceType: string, resourceId: string): st
       return memberRoutes.detail(resourceId);
     case "QUEST":
       return questRoutes.detail(resourceId);
+    case "PAYOUT":
+      return payoutRoutes.detail(resourceId);
     case "REPORT_CASE":
       return reportRoutes.detail(resourceId);
     default:

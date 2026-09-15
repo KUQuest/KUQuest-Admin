@@ -697,16 +697,14 @@ export function walletStatementRows(
   const to = dateBoundary(filters.to, true);
   const walletId = model.walletId;
   if (!walletId || !model.walletBalances) return [];
-  const visible = model.walletStatement
+  const ordered = model.walletStatement
     .filter((transaction) => transaction.sealedAt)
-    .filter((transaction) => !filters.eventType || transaction.eventType === filters.eventType)
-    .filter((transaction) => {
-      const timestamp = Date.parse(transaction.createdAt);
-      return (from === null || timestamp >= from) && (to === null || timestamp <= to);
-    })
-    .toSorted((first, second) => Date.parse(second.createdAt) - Date.parse(first.createdAt));
+    .toSorted((first, second) => {
+      const dateDifference = Date.parse(second.createdAt) - Date.parse(first.createdAt);
+      return dateDifference || second.id.localeCompare(first.id);
+    });
   let runningBalances = { ...model.walletBalances };
-  return visible.flatMap((transaction) => {
+  const rows = ordered.flatMap((transaction) => {
     const movement = transaction.postings.filter((posting) => posting.walletId === walletId && WALLET_ACCOUNT_TYPES[posting.accountType]);
     if (!movement.length) return [];
     const resultingBalances = transaction.balanceAfter ? { ...transaction.balanceAfter } : { ...runningBalances };
@@ -725,7 +723,14 @@ export function walletStatementRows(
       resultingBalances,
       resultingWalletBalanceSatang: currentWalletBalance(resultingBalances),
     }];
-  }).slice(0, visibleCount);
+  });
+  return rows
+    .filter(({ transaction }) => !filters.eventType || transaction.eventType === filters.eventType)
+    .filter(({ transaction }) => {
+      const timestamp = Date.parse(transaction.createdAt);
+      return (from === null || timestamp >= from) && (to === null || timestamp <= to);
+    })
+    .slice(0, visibleCount);
 }
 
 export function formatMoneySatang(value: number, signed = false): string {

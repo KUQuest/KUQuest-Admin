@@ -1,6 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { MOCK_OPEN_QUEST_ID as OPEN_QUEST_ID } from "../../src/features/admin/quest/quest-mock-data";
 import { signIn } from "./support/admin-auth";
 
 async function switchToThai(page: Page) {
@@ -27,13 +26,13 @@ test.describe("Thai language on canonical routes", () => {
     await switchToThai(page);
 
     await page.goto("/member");
-    await expect(page.getByRole("heading", { level: 1, name: "ผู้ใช้" })).toBeVisible();
-    await expect(page.getByRole("searchbox", { name: "ค้นหาผู้ใช้" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "สมาชิก" })).toBeVisible();
+    await expect(page.getByRole("searchbox", { name: "ค้นหาสมาชิก" })).toBeVisible();
 
-    await page.getByRole("button", { name: "เปิดผู้ใช้ 68000000" }).click();
-    await page.getByRole("dialog", { name: "รายละเอียดรายการ" }).getByRole("link", { name: "ดูโปรไฟล์ผู้ใช้ฉบับเต็ม" }).click();
+    await page.getByRole("button", { name: "เปิดสมาชิก 68000000" }).click();
+    await page.getByRole("dialog", { name: "รายละเอียดรายการ" }).getByRole("link", { name: "ดูโปรไฟล์สมาชิกฉบับเต็ม" }).click();
     await expect(page).toHaveURL(/\/member\/68000000$/);
-    await expect(page.getByRole("navigation", { name: "ส่วนรายละเอียดผู้ใช้" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "ส่วนรายละเอียดสมาชิก" })).toBeVisible();
     await expect(page.getByRole("link", { name: "รายการ Wallet", exact: true })).toBeVisible();
   });
 
@@ -46,19 +45,4 @@ test.describe("Thai language on canonical routes", () => {
     await expect(page.getByRole("link", { name: "ดูโปรไฟล์ Member", exact: true }).first()).toBeVisible();
   });
 
-  test("keeps the Quest Export log control on the canonical route", async ({ page }) => {
-    await signIn(page, { expectLanguageOptions: true, waitForNetworkIdle: true });
-    await switchToThai(page);
-    await page.goto(`/quest/${OPEN_QUEST_ID}`);
-
-    const exportLog = page.getByRole("button", { name: "ส่งออกบันทึก", exact: true });
-    await expect(exportLog).toBeVisible();
-    await expect(exportLog).toHaveAttribute("data-functional-action", "export-log");
-
-    const [download] = await Promise.all([
-      page.waitForEvent("download"),
-      exportLog.click(),
-    ]);
-    expect(download.suggestedFilename()).toBe("kuquest-admin-export.csv");
-  });
 });
