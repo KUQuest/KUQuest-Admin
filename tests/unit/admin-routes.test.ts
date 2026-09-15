@@ -86,7 +86,7 @@ describe("legacy Admin URL compatibility", () => {
     expect(canonicalRouteForLegacyUrl(legacyUrl("/?view=payouts"))).toBe("/payout");
     expect(canonicalRouteForLegacyUrl(legacyUrl("/?view=users"))).toBe("/member");
     expect(canonicalRouteForLegacyUrl(legacyUrl("/?view=wallets"))).toBe("/wallet");
-    expect(canonicalRouteForLegacyUrl(legacyUrl("/?view=topups"))).toBe("/wallet");
+    expect(canonicalRouteForLegacyUrl(legacyUrl("/?view=topups"))).toBe("/overview");
     expect(canonicalRouteForLegacyUrl(legacyUrl("/?view=activity"))).toBe("/activity");
   });
 

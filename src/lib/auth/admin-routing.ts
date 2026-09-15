@@ -92,7 +92,8 @@ export function canonicalRouteForLegacyUrl(url: LegacyUrl): string | null {
       case "wallets":
         return walletRoutes.list();
       case "topups":
-        return walletRoutes.list();
+        // Issue #68 has no canonical Top-up route. Keep this legacy link safe.
+        return overviewRoutes.list();
       case "activity":
         return activityRoutes.list();
       case "home":
