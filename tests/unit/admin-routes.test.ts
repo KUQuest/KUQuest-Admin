@@ -1,3 +1,6 @@
+import { readFileSync, readdirSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "bun:test";
 
 import {
@@ -19,6 +22,16 @@ import {
 
 function legacyUrl(path: string): URL {
   return new URL(path, "https://admin.example.test");
+}
+
+const appDirectory = join(dirname(fileURLToPath(import.meta.url)), "../../src/app");
+
+function canonicalRouteSources(directory: string): string[] {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) return canonicalRouteSources(path);
+    return entry.name.endsWith(".tsx") ? [path] : [];
+  });
 }
 
 describe("Admin route helpers", () => {
@@ -46,6 +59,8 @@ describe("Admin route helpers", () => {
 
   it("rejects empty dynamic identifiers", () => {
     expect(() => questRoutes.detail(" ")).toThrow("identifier");
+    expect(() => memberRoutes.detail(".")).toThrow("dot path segment");
+    expect(() => memberRoutes.detail("..")).toThrow("dot path segment");
   });
 });
 
@@ -62,7 +77,7 @@ describe("Admin route protection", () => {
 });
 
 describe("legacy Admin URL compatibility", () => {
-  it("maps the allow-listed views without enabling a redirect", () => {
+  it("maps the allow-listed views to canonical routes", () => {
     expect(canonicalRouteForLegacyUrl(legacyUrl("/?view=home"))).toBe("/overview");
     expect(canonicalRouteForLegacyUrl(legacyUrl("/?view=quests"))).toBe("/quest");
     expect(canonicalRouteForLegacyUrl(legacyUrl("/?view=disputes"))).toBe("/dispute");
@@ -71,15 +86,27 @@ describe("legacy Admin URL compatibility", () => {
     expect(canonicalRouteForLegacyUrl(legacyUrl("/?view=payouts"))).toBe("/payout");
     expect(canonicalRouteForLegacyUrl(legacyUrl("/?view=users"))).toBe("/member");
     expect(canonicalRouteForLegacyUrl(legacyUrl("/?view=wallets"))).toBe("/wallet");
+    expect(canonicalRouteForLegacyUrl(legacyUrl("/?view=topups"))).toBe("/wallet");
     expect(canonicalRouteForLegacyUrl(legacyUrl("/?view=activity"))).toBe("/activity");
   });
 
   it("prefers user over openUser and safely maps unknown views", () => {
     expect(canonicalRouteForLegacyUrl(legacyUrl("/?view=users&user=member%2F1&openUser=member-2"))).toBe("/member/member%2F1");
-    expect(canonicalRouteForLegacyUrl(legacyUrl("/?openUser=member-2"))).toBe("/member/member-2");
+    expect(canonicalRouteForLegacyUrl(legacyUrl("/?openUser=member-2&tab=wallet-statement"))).toBe("/member/member-2?tab=wallet-statement");
     expect(canonicalRouteForLegacyUrl(legacyUrl("/?view=policies"))).toBe("/overview");
     expect(canonicalRouteForLegacyUrl(legacyUrl("/?view=not-a-route"))).toBe("/overview");
+    expect(canonicalRouteForLegacyUrl(legacyUrl("/?user=..&openUser=member-2"))).toBe("/member/member-2");
+    expect(canonicalRouteForLegacyUrl(legacyUrl("/?user=."))).toBe("/overview");
     expect(canonicalRouteForLegacyUrl(legacyUrl("/login"))).toBeNull();
+  });
+
+  it("maps old plural detail paths and the old Wallet Statement page", () => {
+    expect(canonicalRouteForLegacyUrl(legacyUrl("/quests/QST-1"))).toBe("/quest/QST-1");
+    expect(canonicalRouteForLegacyUrl(legacyUrl("/disputes/DSP-1"))).toBe("/dispute/DSP-1");
+    expect(canonicalRouteForLegacyUrl(legacyUrl("/reports/RPT-1"))).toBe("/report/RPT-1");
+    expect(canonicalRouteForLegacyUrl(legacyUrl("/users/member-1?tab=wallet-statement"))).toBe("/member/member-1?tab=wallet-statement");
+    expect(canonicalRouteForLegacyUrl(legacyUrl("/member/member-1/wallet-statement"))).toBe("/member/member-1?tab=wallet-statement");
+    expect(canonicalRouteForLegacyUrl(legacyUrl("/member/member-1/wallet-statement?unexpected=value"))).toBe("/member/member-1?tab=wallet-statement");
   });
 
   it("identifies root compatibility URLs separately from canonical redirects", () => {
@@ -87,5 +114,18 @@ describe("legacy Admin URL compatibility", () => {
     expect(isLegacyAdminUrl(legacyUrl("/?openUser=member-1"))).toBe(true);
     expect(isLegacyAdminUrl(legacyUrl("/"))).toBe(false);
     expect(isLegacyAdminUrl(legacyUrl("/overview"))).toBe(false);
+  });
+});
+
+describe("canonical App Router source boundary", () => {
+  it("does not import or call the legacy runtime", () => {
+    const sources = [
+      join(appDirectory, "page.tsx"),
+      ...canonicalRouteSources(join(appDirectory, "(admin)")),
+    ];
+    const legacyReference = /LegacyAdminPage|legacy-admin-page|features\/admin\/legacy/;
+    const violations = sources.filter((source) => legacyReference.test(readFileSync(source, "utf8")));
+
+    expect(violations).toEqual([]);
   });
 });

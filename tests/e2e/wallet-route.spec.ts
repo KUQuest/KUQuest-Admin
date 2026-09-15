@@ -62,7 +62,7 @@ test.describe("Wallet App Router board", () => {
     await opener.click();
     await expect(page.locator("dialog.wallet-drawer")).toBeVisible();
     await expect(page.getByText("Wallet balances", { exact: true })).toBeVisible();
-    await expect(page.getByRole("link", { name: "See Wallet Statement" })).toHaveAttribute("href", "/member/68000000/wallet-statement");
+    await expect(page.getByRole("link", { name: "See Wallet Statement" })).toHaveAttribute("href", "/member/68000000?tab=wallet-statement");
     await page.locator("button.scrim").click({ position: { x: 8, y: 8 } });
     await expect(page.locator("dialog.wallet-drawer")).toHaveCount(0);
     await expect(opener).toBeFocused();
@@ -73,16 +73,16 @@ test.describe("Wallet App Router board", () => {
     await expect(opener).toBeFocused();
   });
 
-  test("opens the full Wallet Statement route from the drawer", async ({ page }) => {
+  test("opens the Wallet Statement tab from the drawer", async ({ page }) => {
     await signIn(page);
     await page.goto("/wallet");
 
     await page.getByRole("button", { name: "Open Wallet WAL-1001" }).click();
     await page.getByRole("link", { name: "See Wallet Statement" }).click();
 
-    await expect(page).toHaveURL("/member/68000000/wallet-statement");
-    await expect(page.getByRole("heading", { level: 1, name: "Wallet Statement" })).toBeVisible();
-    await expect(page.getByText("Every committed and sealed Ledger Transaction for this Wallet, newest first.", { exact: true })).toBeVisible();
+    await expect(page).toHaveURL("/member/68000000?tab=wallet-statement");
+    await expect(page.getByRole("heading", { name: "Wallet Statement" })).toBeVisible();
+    await expect(page.getByText("Committed and sealed Ledger Transactions affecting this Wallet.", { exact: true })).toBeVisible();
   });
 
   test("does not create a Wallet detail route", async ({ page }) => {

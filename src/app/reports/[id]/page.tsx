@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
-import { LegacyAdminPage } from "@/features/admin/legacy-admin-page";
+import { redirect } from "next/navigation";
+
+import { reportRoutes } from "@/features/admin/admin-routes";
 
 interface ReportPageProps {
   params: Promise<{ id: string }>;
@@ -12,5 +14,5 @@ export async function generateMetadata({ params }: ReportPageProps): Promise<Met
 
 export default async function ReportPage({ params }: ReportPageProps) {
   const { id } = await params;
-  return <LegacyAdminPage page="report" recordId={id} />;
+  redirect(reportRoutes.detail(id));
 }

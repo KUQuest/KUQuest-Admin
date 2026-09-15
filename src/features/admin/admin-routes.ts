@@ -2,6 +2,9 @@ function pathSegment(identifier: string): string {
   if (!identifier.trim()) {
     throw new Error("Admin route identifier cannot be empty.");
   }
+  if (identifier === "." || identifier === "..") {
+    throw new Error("Admin route identifier cannot be a dot path segment.");
+  }
   return encodeURIComponent(identifier);
 }
 

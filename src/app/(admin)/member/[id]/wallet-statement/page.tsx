@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { AdminWalletStatementPage } from "../../../../../features/admin/wallet/wallet-statement-page";
-import {
-  loadWalletRouteContext,
-  loadWalletStatementPageData,
-} from "../../../../../features/admin/wallet/wallet-service";
+import { memberTabHref } from "../../../../../features/admin/member/member-model";
 
 type WalletStatementPageProps = {
   params: Promise<{ id: string }>;
@@ -17,8 +14,5 @@ export async function generateMetadata({ params }: WalletStatementPageProps): Pr
 
 export default async function WalletStatementPage({ params }: WalletStatementPageProps) {
   const { id } = await params;
-  const { dataSource, cookieHeader } = await loadWalletRouteContext();
-  const data = await loadWalletStatementPageData(id, cookieHeader, dataSource);
-
-  return <AdminWalletStatementPage data={data} />;
+  redirect(memberTabHref(id, "wallet-statement"));
 }

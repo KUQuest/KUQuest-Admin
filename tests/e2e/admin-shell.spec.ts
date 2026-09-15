@@ -62,6 +62,55 @@ test.describe("shared Admin shell", () => {
     }
   });
 
+  test("redirects legacy query and plural detail URLs to canonical routes", async ({ page }) => {
+    await signIn(page);
+
+    const redirects = [
+      ["/?view=home", "/overview"],
+      ["/?view=quests", "/quest"],
+      ["/?view=disputes", "/dispute"],
+      ["/?view=reports", "/report"],
+      ["/?view=conduct-reports", "/conduct-report"],
+      ["/?view=payouts", "/payout"],
+      ["/?view=users", "/member"],
+      ["/?view=wallets", "/wallet"],
+      ["/?view=topups", "/wallet"],
+      ["/?view=activity", "/activity"],
+      ["/?view=unknown", "/overview"],
+      ["/?user=..", "/overview"],
+      ["/users/%2E%2E", "/overview"],
+      ["/quests/QST-12001", "/quest/QST-12001"],
+      ["/disputes/DSP-5201", "/dispute/DSP-5201"],
+      ["/reports/RPT-8201", "/report/RPT-8201"],
+      ["/users/68000000", "/member/68000000"],
+      ["/member/68000000/wallet-statement", "/member/68000000?tab=wallet-statement"],
+    ] as const;
+
+    for (const [legacyPath, canonicalPath] of redirects) {
+      await page.goto(legacyPath);
+      await expect(page).toHaveURL(new RegExp(`${canonicalPath.replace(/[?]/g, "\\?")}$`));
+    }
+
+    await page.goto("/?view=users&openUser=68000000&tab=wallet-statement");
+    await expect(page).toHaveURL("/member/68000000?tab=wallet-statement");
+    await expect(page.getByRole("heading", { name: "Wallet Statement" })).toBeVisible();
+    await page.reload();
+    await expect(page).toHaveURL("/member/68000000?tab=wallet-statement");
+    await expect(page.getByRole("heading", { name: "Wallet Statement" })).toBeVisible();
+  });
+
+  test("keeps a canonical destination in browser history after a legacy redirect", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/overview");
+    await page.goto("/?view=quests");
+    await expect(page).toHaveURL("/quest");
+
+    await page.goBack();
+    await expect(page).toHaveURL("/overview");
+    await page.goForward();
+    await expect(page).toHaveURL("/quest");
+  });
+
   test("renders the canonical Activity Log route without a legacy data fallback", async ({ page }) => {
     await signIn(page);
     await page.goto("/activity");

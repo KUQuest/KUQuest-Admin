@@ -31,10 +31,10 @@ test("renders Wallet data and the Wallet Statement through the live Admin API", 
   const statementLink = drawer.getByRole("link", { name: "See Wallet Statement" });
   await expect(statementLink).toBeVisible();
   const statementHref = await statementLink.getAttribute("href");
-  expect(statementHref).toMatch(/^\/member\/[^/]+\/wallet-statement$/);
+  expect(statementHref).toMatch(/^\/member\/[^/?]+\?tab=wallet-statement$/);
 
   await statementLink.click();
   await expect(page).toHaveURL(statementHref!);
-  await expect(page.getByRole("heading", { level: 1, name: "Wallet Statement" })).toBeVisible();
-  await expect(page.getByText("Every committed and sealed Ledger Transaction for this Wallet, newest first.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Wallet Statement" })).toBeVisible();
+  await expect(page.getByText("Committed and sealed Ledger Transactions affecting this Wallet.", { exact: true })).toBeVisible();
 });

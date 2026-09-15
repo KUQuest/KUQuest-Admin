@@ -122,7 +122,7 @@ export function AdminLoginPage() {
         JSON.stringify({ email: normalizedEmail, signedInAt: new Date().toISOString() }),
       );
       document.cookie = `${ADMIN_MOCK_SESSION_COOKIE}=1; Path=/; SameSite=Lax`;
-      window.location.assign("/");
+      window.location.assign("/overview");
       return;
     }
 
@@ -133,7 +133,7 @@ export function AdminLoginPage() {
         ADMIN_SESSION_KEY,
         JSON.stringify({ email: session.user.email, signedInAt: new Date().toISOString() }),
       );
-      window.location.assign("/");
+      window.location.assign("/overview");
     } catch (error: unknown) {
       setFormError(error instanceof Error ? error.message : "Admin sign-in failed. Try again.");
     } finally {

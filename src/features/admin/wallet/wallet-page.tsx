@@ -15,6 +15,7 @@ import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { memberRoutes } from "../admin-routes";
 import { adminApi } from "../api/admin-api";
 import { walletStatusLabel, type WalletStatus } from "../domain/rulebook";
+import { memberTabHref } from "../member/member-model";
 import { loadWalletDrawerDataAction, verifyWalletProjectionAction } from "./wallet-actions";
 import { WalletStatementTable } from "./wallet-statement-table";
 import {
@@ -177,7 +178,7 @@ function WalletDrawer({
         <button className="btn" type="button" disabled={actionPending !== null} onClick={() => { void verifyLedger(); }}>{actionPending === "verify" ? "Verifying…" : "Verify Ledger"}</button>
         <button className="btn primary" type="button" disabled={actionPending !== null} onClick={() => { if (window.confirm("Rebuild this Wallet projection from the Ledger source of truth?")) void rebuildProjection(); }}>{actionPending === "rebuild" ? "Rebuilding…" : "Rebuild projection"}</button>
       </> : null}
-      {detail ? <Link className="btn" href={memberRoutes.walletStatement(detail.memberId)}>See Wallet Statement</Link> : null}
+      {detail ? <Link className="btn" href={memberTabHref(detail.memberId, "wallet-statement")}>See Wallet Statement</Link> : null}
       <button className="btn" type="button" onClick={onClose}>Close record</button>
     </> : null}
   >

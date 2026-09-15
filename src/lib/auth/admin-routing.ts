@@ -9,6 +9,7 @@ import {
   reportRoutes,
   walletRoutes,
 } from "../../features/admin/admin-routes";
+import { memberTabFrom, memberTabHref } from "../../features/admin/member/member-model";
 
 type LegacyUrl = Readonly<{
   pathname: string;
@@ -29,34 +30,51 @@ const adminRoutePrefixes = [
   "/activity",
 ] as const;
 
+function safeLegacyIdentifier(value: string | null): string | null {
+  const normalized = value?.trim();
+  if (!normalized || normalized === "." || normalized === "..") return null;
+  return normalized;
+}
+
 function routePrefixMatches(pathname: string, prefix: string): boolean {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
 
-function legacyDetailId(pathname: string, prefix: string): string | null {
-  if (!pathname.startsWith(`${prefix}/`)) return null;
-  const encodedId = pathname.slice(prefix.length + 1);
+function legacyPathSegment(pathname: string, prefix: string, suffix = ""): string | null {
+  if (!pathname.startsWith(prefix) || !pathname.endsWith(suffix)) return null;
+  const end = suffix ? pathname.length - suffix.length : pathname.length;
+  const encodedId = pathname.slice(prefix.length, end);
   if (!encodedId || encodedId.includes("/")) return null;
 
   try {
     const id = decodeURIComponent(encodedId);
-    return id.trim() ? id : null;
+    return safeLegacyIdentifier(id);
   } catch {
     return null;
   }
 }
 
+function legacyDetailId(pathname: string, prefix: string): string | null {
+  return legacyPathSegment(pathname, `${prefix}/`);
+}
+
 function memberIdFromLegacyUrl(url: LegacyUrl): string | null {
-  const user = url.searchParams.get("user");
-  const openUser = url.searchParams.get("openUser");
-  const id = user?.trim() ? user : openUser;
-  return id?.trim() ? id : null;
+  return safeLegacyIdentifier(url.searchParams.get("user"))
+    ?? safeLegacyIdentifier(url.searchParams.get("openUser"));
+}
+
+function memberDetailRouteFromLegacyUrl(url: LegacyUrl, memberId: string): string {
+  return memberTabHref(memberId, memberTabFrom(url.searchParams.get("tab")));
+}
+
+function memberWalletStatementId(pathname: string): string | null {
+  return legacyPathSegment(pathname, "/member/", "/wallet-statement");
 }
 
 export function canonicalRouteForLegacyUrl(url: LegacyUrl): string | null {
   if (url.pathname === "/") {
     const memberId = memberIdFromLegacyUrl(url);
-    if (memberId) return memberRoutes.detail(memberId);
+    if (memberId) return memberDetailRouteFromLegacyUrl(url, memberId);
 
     switch (url.searchParams.get("view")) {
       case "quests":
@@ -73,6 +91,8 @@ export function canonicalRouteForLegacyUrl(url: LegacyUrl): string | null {
         return memberRoutes.list();
       case "wallets":
         return walletRoutes.list();
+      case "topups":
+        return walletRoutes.list();
       case "activity":
         return activityRoutes.list();
       case "home":
@@ -81,6 +101,9 @@ export function canonicalRouteForLegacyUrl(url: LegacyUrl): string | null {
         return overviewRoutes.list();
     }
   }
+
+  const walletStatementMemberId = memberWalletStatementId(url.pathname);
+  if (walletStatementMemberId) return `${memberRoutes.detail(walletStatementMemberId)}?tab=wallet-statement`;
 
   const questId = legacyDetailId(url.pathname, "/quests");
   if (questId) return questRoutes.detail(questId);
@@ -92,7 +115,7 @@ export function canonicalRouteForLegacyUrl(url: LegacyUrl): string | null {
   if (reportId) return reportRoutes.detail(reportId);
 
   const memberId = legacyDetailId(url.pathname, "/users");
-  if (memberId) return memberRoutes.detail(memberId);
+  if (memberId) return memberDetailRouteFromLegacyUrl(url, memberId);
 
   return null;
 }

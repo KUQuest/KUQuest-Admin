@@ -35,13 +35,26 @@ describe("Admin Proxy", () => {
     expect(response.headers.get("location")).toBe("https://admin.example.test/overview");
   });
 
-  it("keeps legacy root queries available without redirecting to an incomplete route", () => {
+  it("redirects legacy root queries to their canonical route", () => {
     process.env.NEXT_PUBLIC_ADMIN_DATA_SOURCE = "api";
 
     const response = proxy(request("/?view=quests", "kuquest-admin.session_token=session-token"));
 
-    expect(response.status).toBe(200);
-    expect(response.headers.get("location")).toBeNull();
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("https://admin.example.test/quest");
+  });
+
+  it("redirects legacy plural detail paths to canonical detail routes", () => {
+    process.env.NEXT_PUBLIC_ADMIN_DATA_SOURCE = "api";
+
+    expect(proxy(request("/quests/QST-1", "kuquest-admin.session_token=session-token")).headers.get("location"))
+      .toBe("https://admin.example.test/quest/QST-1");
+    expect(proxy(request("/disputes/DSP-1", "kuquest-admin.session_token=session-token")).headers.get("location"))
+      .toBe("https://admin.example.test/dispute/DSP-1");
+    expect(proxy(request("/reports/RPT-1", "kuquest-admin.session_token=session-token")).headers.get("location"))
+      .toBe("https://admin.example.test/report/RPT-1");
+    expect(proxy(request("/users/member-1?tab=wallet-statement", "kuquest-admin.session_token=session-token")).headers.get("location"))
+      .toBe("https://admin.example.test/member/member-1?tab=wallet-statement");
   });
 
   it("passes a request with an Admin session cookie to the route", () => {
@@ -81,7 +94,10 @@ describe("Admin Proxy", () => {
   it("uses a narrow matcher for canonical Admin routes", () => {
     expect(config.matcher).toContain("/overview/:path*");
     expect(config.matcher).toContain("/quest/:path*");
-    expect(config.matcher).not.toContain("/quests/:path*");
+    expect(config.matcher).toContain("/quests/:path*");
+    expect(config.matcher).toContain("/disputes/:path*");
+    expect(config.matcher).toContain("/reports/:path*");
+    expect(config.matcher).toContain("/users/:path*");
     expect(config.matcher).not.toContain("/login");
     expect(config.matcher).not.toContain("/_next/:path*");
     expect(config.matcher).not.toContain("/public/:path*");
