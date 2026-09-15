@@ -210,6 +210,8 @@ test.describe("Quest route family", () => {
     await expect(page.getByText("Ledger Transactions", { exact: true })).toBeVisible();
     await expect(page.getByText("Quest Funding Reserved", { exact: true })).toBeVisible();
     await expect(page.getByText("Funding Reservation created for the Quest.", { exact: true })).toBeVisible();
+    const timeline = page.locator("section.panel").filter({ has: page.getByRole("heading", { name: "Overall Quest timeline" }) });
+    await expect(timeline.locator(".section-count")).toHaveText("1");
     await expect(page.getByRole("link", { name: "Full Quest detail" })).toHaveCount(0);
 
     await page.reload();

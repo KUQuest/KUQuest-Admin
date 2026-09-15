@@ -83,6 +83,7 @@ test.describe("legacy parity on canonical routes", () => {
     const eventTypes = await rows.locator("td:nth-child(2) strong").allTextContents();
     expect(eventTypes.length).toBeGreaterThan(0);
     expect(eventTypes.every((eventType) => eventType === "TOP_UP")).toBe(true);
+    await expect(statement.getByRole("button", { name: "Load more" })).toHaveCount(0);
 
     const tabs = page.getByRole("navigation", { name: "Member detail sections" });
     await tabs.getByRole("link", { name: "Overview", exact: true }).click();

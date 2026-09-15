@@ -477,16 +477,11 @@ function QuestDetailContent({
         ) : <p className="audit-note">No linked Dispute Case was returned by the Admin API.</p>}
       </Section>
 
-      <section className="panel">
-        <div className="panel-head">
-          <h2>Overall Quest timeline</h2>
-        </div>
-        <div className="quest-detail-body">
-          <ol className="timeline">
-            {timeline.map((entry) => <li key={entry.id}><strong>{entry.title}</strong><time>{entry.time}</time><span>{entry.detail}</span></li>)}
-          </ol>
-        </div>
-      </section>
+      <Section title="Overall Quest timeline" count={timeline.length}>
+        <ol className="timeline">
+          {timeline.map((entry) => <li key={entry.id}><strong>{entry.title}</strong><time>{entry.time}</time><span>{entry.detail}</span></li>)}
+        </ol>
+      </Section>
 
       <div className="quest-command-actions">
         {showFullDetailLink ? <a className="btn quest-full-detail-link" href={questRoutes.detail(detail.id)}>Full Quest detail</a> : null}

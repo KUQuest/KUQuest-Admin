@@ -9,10 +9,11 @@ const configs = [
   "playwright.wallet-error.config.ts",
   "playwright.wallet-initial-error.config.ts",
 ];
+const extraArgs = process.argv.slice(2);
 
 function run(config) {
   return new Promise((resolve, reject) => {
-    const child = spawn(playwright, ["playwright", "test", `--config=${config}`], {
+    const child = spawn(playwright, ["playwright", "test", `--config=${config}`, ...extraArgs], {
       env: process.env,
       stdio: "inherit",
       shell: false,
