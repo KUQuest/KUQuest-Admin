@@ -1,12 +1,6 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
-async function signIn(page: Page) {
-  await page.goto("/login");
-  await page.getByLabel("University email").fill("admin@ku.th");
-  await page.getByLabel("Password").fill("password123");
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/overview$/);
-}
+import { signIn } from "./support/admin-auth";
 
 test.describe("Payout App Router route family", () => {
   test("renders the default review queue and reads route data on the server", async ({ page }) => {

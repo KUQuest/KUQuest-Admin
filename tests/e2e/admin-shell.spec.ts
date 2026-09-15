@@ -1,5 +1,6 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
+import { signIn } from "./support/admin-auth";
 const canonicalRoutes = [
   { path: "/overview", activeHref: "/overview" },
   { path: "/quest", activeHref: "/quest" },
@@ -16,16 +17,6 @@ const canonicalRoutes = [
   { path: "/payout/PAY-9637", activeHref: "/payout" },
   { path: "/member/68000000", activeHref: "/member" },
 ] as const;
-
-async function signIn(page: Page) {
-  await page.goto("/login");
-  await page.getByLabel("University email").fill("admin@ku.th");
-  await page.getByLabel("Password").fill("password123");
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/overview$/);
-  await expect(page.getByRole("heading", { level: 1, name: "Overview" })).toBeVisible();
-  await page.waitForLoadState("networkidle");
-}
 
 test.describe("shared Admin shell", () => {
   test("uses canonical links and keeps the board active on detail routes", async ({ page }) => {

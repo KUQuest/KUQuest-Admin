@@ -1,16 +1,7 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 import { MOCK_OPEN_QUEST_ID as OPEN_QUEST_ID } from "../../src/features/admin/quest/quest-mock-data";
-
-async function signIn(page: Page) {
-  await page.goto("/login");
-  await expect(page.getByLabel("University email")).toBeFocused();
-  await page.getByLabel("University email").fill("admin@ku.th");
-  await page.getByLabel("Password").fill("password123");
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/overview$/);
-  await expect(page.getByRole("heading", { level: 1, name: "Overview" })).toBeVisible();
-}
+import { signIn } from "./support/admin-auth";
 
 test.describe("Admin canonical click flows", () => {
   test("admin can show and hide the password while signing in", async ({ page }) => {
@@ -40,7 +31,7 @@ test.describe("Admin canonical click flows", () => {
   });
 
   test("admin keeps the selected theme after reload", async ({ page }) => {
-    await signIn(page);
+    await signIn(page, { expectEmailFocused: true });
 
     await page.getByRole("button", { name: /Theme Grey-white/ }).click();
     await page.getByRole("button", { name: /Dark Low-light workspace/ }).click();
@@ -51,7 +42,7 @@ test.describe("Admin canonical click flows", () => {
   });
 
   test("global search links use canonical record routes", async ({ page }) => {
-    await signIn(page);
+    await signIn(page, { expectEmailFocused: true });
 
     await page.getByRole("button", { name: "Search marketplace records" }).click();
     const searchDialog = page.getByRole("dialog", { name: "Search marketplace records" });
@@ -66,7 +57,7 @@ test.describe("Admin canonical click flows", () => {
   });
 
   test("admin can filter and update Member reviews", async ({ page }) => {
-    await signIn(page);
+    await signIn(page, { expectEmailFocused: true });
     await page.goto("/member/68000000?tab=reviews");
 
     const reviews = page.locator(".user-detail-table");
@@ -100,7 +91,7 @@ test.describe("Admin canonical click flows", () => {
   });
 
   test("admin can navigate from the sidebar and open canonical detail routes", async ({ page }) => {
-    await signIn(page);
+    await signIn(page, { expectEmailFocused: true });
 
     await page.locator('.admin-shell aside a[href="/quest"]').click();
     await expect(page).toHaveURL(/\/quest$/);
@@ -130,7 +121,7 @@ test.describe("Admin canonical click flows", () => {
   });
 
   test("admin can open the Wallet Statement from a Wallet drawer", async ({ page }) => {
-    await signIn(page);
+    await signIn(page, { expectEmailFocused: true });
     await page.goto("/wallet");
 
     const opener = page.getByRole("button", { name: "Open Wallet WAL-1001" });

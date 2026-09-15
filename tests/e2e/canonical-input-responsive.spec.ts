@@ -1,14 +1,8 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
-const mobileViewport = { width: 390, height: 844 };
+import { signIn } from "./support/admin-auth";
 
-async function signIn(page: Page) {
-  await page.goto("/login");
-  await page.getByLabel("University email").fill("admin@ku.th");
-  await page.getByLabel("Password").fill("password123");
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/overview$/);
-}
+const mobileViewport = { width: 390, height: 844 };
 
 async function expectResponsiveInput(page: Page, input: Locator) {
   await expect(input).toBeVisible();

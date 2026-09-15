@@ -12,13 +12,13 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: "WALLET_FIXTURE_INITIAL_ERROR=1 bun tests/e2e/wallet-api-fixture.ts",
+      command: "node scripts/run-with-env.mjs WALLET_FIXTURE_INITIAL_ERROR=1 -- bun tests/e2e/wallet-api-fixture.ts",
       url: "http://localhost:5001/health",
       reuseExistingServer: false,
       timeout: 120_000,
     },
     {
-      command: "NEXT_PUBLIC_API_URL=http://localhost:5001 NEXT_PUBLIC_ADMIN_DATA_SOURCE=api npm run dev -- --port 3005",
+      command: "node scripts/run-with-env.mjs NEXT_PUBLIC_API_URL=http://localhost:5001 NEXT_PUBLIC_ADMIN_DATA_SOURCE=api -- npm run dev -- --port 3005",
       url: "http://localhost:3005/login",
       reuseExistingServer: false,
       timeout: 120_000,

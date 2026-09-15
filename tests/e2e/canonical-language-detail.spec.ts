@@ -1,15 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-async function signIn(page: Page) {
-  await page.goto("/login");
-  await page.getByLabel("University email").fill("admin@ku.th");
-  await page.getByLabel("Password").fill("password123");
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/overview$/);
-  await expect(page.getByRole("heading", { level: 1, name: "Overview" })).toBeVisible();
-  await expect(page.getByRole("group", { name: "Language options" })).toBeVisible();
-  await page.waitForLoadState("networkidle");
-}
+import { signIn } from "./support/admin-auth";
 
 async function switchToThai(page: Page) {
   const languageOptions = page.getByRole("group", { name: /Language options|ตัวเลือกภาษา/ });
@@ -31,7 +22,7 @@ test.describe("Thai language on canonical routes", () => {
   });
 
   test("translates a canonical board and full Member detail page", async ({ page }) => {
-    await signIn(page);
+    await signIn(page, { expectLanguageOptions: true, waitForNetworkIdle: true });
     await switchToThai(page);
 
     await page.goto("/member");
@@ -46,7 +37,7 @@ test.describe("Thai language on canonical routes", () => {
   });
 
   test("keeps translated detail controls on the canonical Report Case route", async ({ page }) => {
-    await signIn(page);
+    await signIn(page, { expectLanguageOptions: true, waitForNetworkIdle: true });
     await switchToThai(page);
     await page.goto("/report/RPT-8201");
 

@@ -11,7 +11,7 @@ export default defineConfig({
     headless: true,
   },
   webServer: {
-    command: "NEXT_PUBLIC_ADMIN_DATA_SOURCE=mock npm run dev -- --port 3003",
+    command: "node scripts/run-with-env.mjs NEXT_PUBLIC_ADMIN_DATA_SOURCE=mock -- npm run dev -- --port 3003",
     url: "http://localhost:3003",
     reuseExistingServer: false,
     timeout: 120_000,

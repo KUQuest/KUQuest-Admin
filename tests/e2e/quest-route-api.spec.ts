@@ -1,23 +1,21 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+
+import { signIn } from "./support/admin-auth";
 
 const adminEmail = process.env.QUEST_E2E_ADMIN_EMAIL;
 const adminPassword = process.env.QUEST_E2E_ADMIN_PASSWORD;
+const adminCredentials = {
+  email: adminEmail ?? "",
+  password: adminPassword ?? "",
+};
 const questId = process.env.QUEST_E2E_QUEST_ID ?? "00000000-0000-0000-0000-000000000705";
 const questTitle = process.env.QUEST_E2E_QUEST_TITLE ?? "[Admin Demo] Failed Quest without a Dispute Case";
-
-async function signIn(page: Page): Promise<void> {
-  await page.goto("/login");
-  await page.getByLabel("University email").fill(adminEmail ?? "");
-  await page.getByLabel("Password").fill(adminPassword ?? "");
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/overview$/);
-}
 
 test.describe("Quest route against the real Admin API", () => {
   test.skip(!adminEmail || !adminPassword, "Set QUEST_E2E_ADMIN_EMAIL and QUEST_E2E_ADMIN_PASSWORD to run the real API check.");
 
   test("loads the Quest board, full detail, and drawer from the real API", async ({ page }) => {
-    await signIn(page);
+    await signIn(page, adminCredentials);
 
     const apiResponse = await page.request.get(`http://localhost:5000/api/v1/admin/quests/${questId}`);
     expect(apiResponse.status()).toBe(200);

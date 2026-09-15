@@ -1,4 +1,6 @@
 import type {
+  AdminApiRequestOptions,
+  AdminLedgerTransaction,
   AdminMemberListQuery,
   AdminReportListQuery,
 } from "../api/admin-api";
@@ -16,6 +18,26 @@ function reportQuery(memberId: string): AdminReportListQuery {
 }
 function errorMessage(reason: unknown, fallback: string): string {
   return reason instanceof Error ? reason.message : fallback;
+}
+
+async function loadAllMemberLedgerTransactions(
+  walletId: string,
+  options: AdminApiRequestOptions,
+) {
+  const transactions = [] as Awaited<ReturnType<typeof adminApi.listLedgerTransactions>>["items"];
+  let cursor: string | undefined;
+
+  do {
+    // Each request needs the cursor returned by the previous page.
+    // eslint-disable-next-line no-await-in-loop
+    const page = await adminApi.listLedgerTransactions({ walletId, limit: 100, cursor }, options);
+    transactions.push(...page.items);
+    const nextCursor = page.nextCursor ?? undefined;
+    if (nextCursor === cursor) break;
+    cursor = nextCursor;
+  } while (cursor);
+
+  return transactions;
 }
 
 export async function loadMemberPageData(
@@ -44,12 +66,12 @@ export async function loadMemberDetailFromApi(
     adminApi.getMemberFinance(memberId, options),
     adminApi.listReports(reportQuery(memberId), options),
     detail.wallet
-      ? adminApi.listLedgerTransactions({ walletId: detail.wallet.id, limit: 50 }, options)
-      : Promise.resolve({ items: [], nextCursor: null }),
+      ? loadAllMemberLedgerTransactions(detail.wallet.id, options)
+      : Promise.resolve([] as AdminLedgerTransaction[]),
   ]);
   const finance = financeResult.status === "fulfilled" ? financeResult.value : null;
   const reports = reportsResult.status === "fulfilled" ? reportsResult.value.items : [];
-  const ledger = ledgerResult.status === "fulfilled" ? ledgerResult.value.items : [];
+  const ledger = ledgerResult.status === "fulfilled" ? ledgerResult.value : [];
   const errors = {
     finance: financeResult.status === "rejected" ? errorMessage(financeResult.reason, "Member finance is not available from the Admin API.") : null,
     reports: reportsResult.status === "rejected" ? errorMessage(reportsResult.reason, "Member reports are not available from the Admin API.") : null,

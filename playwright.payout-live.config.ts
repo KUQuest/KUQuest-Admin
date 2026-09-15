@@ -6,15 +6,15 @@ export default defineConfig({
   fullyParallel: false,
   reporter: "list",
   use: {
-    baseURL: "http://localhost:3003",
+    baseURL: "http://localhost:3000",
     channel: "chrome",
     headless: true,
   },
   webServer: {
     command:
-      "NEXT_PUBLIC_API_URL=http://localhost:5000 NEXT_PUBLIC_ADMIN_DATA_SOURCE=api npm run dev -- --port 3003",
-    url: "http://localhost:3003/login",
-    reuseExistingServer: false,
+      "node scripts/run-with-env.mjs NEXT_PUBLIC_API_URL=http://localhost:5000 NEXT_PUBLIC_ADMIN_DATA_SOURCE=api -- npm run dev -- --port 3000",
+    url: "http://localhost:3000/login",
+    reuseExistingServer: true,
     timeout: 120_000,
   },
 });
