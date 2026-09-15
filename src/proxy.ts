@@ -30,15 +30,16 @@ function loginRedirect(request: NextRequest): NextResponse {
 
 export function proxy(request: NextRequest): NextResponse {
   const hasSessionCookie = hasAdminSessionCookie(request.cookies.getAll());
+
+  if (requiresAdminSessionBoundary() && isAdminProtectedPath(request.nextUrl.pathname) && !hasSessionCookie) {
+    return loginRedirect(request);
+  }
+
   const canonicalRoute = canonicalRouteForLegacyUrl(request.nextUrl);
   const currentRoute = `${request.nextUrl.pathname}${request.nextUrl.search}`;
 
   if (canonicalRoute && canonicalRoute !== currentRoute) {
     return NextResponse.redirect(new URL(canonicalRoute, request.url));
-  }
-
-  if (requiresAdminSessionBoundary() && isAdminProtectedPath(request.nextUrl.pathname) && !hasSessionCookie) {
-    return loginRedirect(request);
   }
 
   return NextResponse.next();

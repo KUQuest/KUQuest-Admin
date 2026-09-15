@@ -26,13 +26,13 @@ describe("Admin Proxy", () => {
     expect(response.headers.get("location")).toBe("https://admin.example.test/login");
   });
 
-  it("redirects the root URL to Overview before the protected route check", () => {
+  it("redirects an unauthenticated root request directly to login", () => {
     process.env.NEXT_PUBLIC_ADMIN_DATA_SOURCE = "api";
 
     const response = proxy(request("/"));
 
     expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toBe("https://admin.example.test/overview");
+    expect(response.headers.get("location")).toBe("https://admin.example.test/login");
   });
 
   it("redirects legacy root queries to their canonical route", () => {
@@ -55,6 +55,15 @@ describe("Admin Proxy", () => {
       .toBe("https://admin.example.test/report/RPT-1");
     expect(proxy(request("/users/member-1?tab=wallet-statement", "kuquest-admin.session_token=session-token")).headers.get("location"))
       .toBe("https://admin.example.test/member/member-1?tab=wallet-statement");
+  });
+
+  it("redirects an unauthenticated legacy detail request directly to login", () => {
+    process.env.NEXT_PUBLIC_ADMIN_DATA_SOURCE = "api";
+
+    const response = proxy(request("/quests/QST-1"));
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("https://admin.example.test/login");
   });
 
   it("passes a request with an Admin session cookie to the route", () => {

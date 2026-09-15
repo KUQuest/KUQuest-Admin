@@ -28,6 +28,10 @@ const adminRoutePrefixes = [
   "/member",
   "/wallet",
   "/activity",
+  "/quests",
+  "/disputes",
+  "/reports",
+  "/users",
 ] as const;
 
 function safeLegacyIdentifier(value: string | null): string | null {

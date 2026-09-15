@@ -65,11 +65,11 @@ describe("Admin route helpers", () => {
 });
 
 describe("Admin route protection", () => {
-  it("protects canonical Admin paths only", () => {
+  it("protects canonical and legacy Admin paths", () => {
     expect(isAdminProtectedPath("/")).toBe(true);
     expect(isAdminProtectedPath("/overview")).toBe(true);
     expect(isAdminProtectedPath("/quest/QST-1")).toBe(true);
-    expect(isAdminProtectedPath("/users/member-1")).toBe(false);
+    expect(isAdminProtectedPath("/users/member-1")).toBe(true);
     expect(isAdminProtectedPath("/questing")).toBe(false);
     expect(isAdminProtectedPath("/login")).toBe(false);
     expect(isAdminProtectedPath("/kuquest-logo.png")).toBe(false);
