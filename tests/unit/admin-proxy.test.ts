@@ -26,13 +26,23 @@ describe("Admin Proxy", () => {
     expect(response.headers.get("location")).toBe("https://admin.example.test/login");
   });
 
-  it("redirects the root URL to Overview before the protected route check", () => {
+  it("redirects the root URL to Overview for an Admin with a session cookie", () => {
     process.env.NEXT_PUBLIC_ADMIN_DATA_SOURCE = "api";
 
-    const response = proxy(request("/"));
+    const response = proxy(request("/", "kuquest-admin.session_token=session-token"));
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe("https://admin.example.test/overview");
+  });
+
+  it("redirects a missing session once to login before any legacy normalization", () => {
+    process.env.NEXT_PUBLIC_ADMIN_DATA_SOURCE = "api";
+
+    for (const path of ["/", "/?view=quests", "/quests/QST-1", "/disputes/DSP-1", "/reports/RPT-1", "/users/member-1", "/member/member-1/wallet-statement"]) {
+      const response = proxy(request(path));
+      expect(response.status).toBe(307);
+      expect(response.headers.get("location")).toBe("https://admin.example.test/login");
+    }
   });
 
   it("redirects legacy root queries to their canonical route", () => {

@@ -92,7 +92,7 @@ export async function loadWalletDrawerData(
   };
 }
 
-async function loadAllWalletLedgerTransactions(
+export async function loadAllWalletLedgerTransactions(
   walletId: string,
   options: AdminApiRequestOptions,
 ) {

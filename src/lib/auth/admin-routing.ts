@@ -28,6 +28,11 @@ const adminRoutePrefixes = [
   "/member",
   "/wallet",
   "/activity",
+  // Legacy aliases stay protected so a missing session goes to /login before normalization.
+  "/quests",
+  "/disputes",
+  "/reports",
+  "/users",
 ] as const;
 
 function safeLegacyIdentifier(value: string | null): string | null {
@@ -93,8 +98,6 @@ export function canonicalRouteForLegacyUrl(url: LegacyUrl): string | null {
       case "users":
         return memberRoutes.list();
       case "wallets":
-        return walletRoutes.list();
-      case "topups":
         return walletRoutes.list();
       case "activity":
         return activityRoutes.list();

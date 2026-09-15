@@ -65,12 +65,16 @@ describe("Admin route helpers", () => {
 });
 
 describe("Admin route protection", () => {
-  it("protects canonical Admin paths only", () => {
+  it("protects canonical Admin paths and legacy aliases only", () => {
     expect(isAdminProtectedPath("/")).toBe(true);
     expect(isAdminProtectedPath("/overview")).toBe(true);
     expect(isAdminProtectedPath("/quest/QST-1")).toBe(true);
-    expect(isAdminProtectedPath("/users/member-1")).toBe(false);
+    expect(isAdminProtectedPath("/quests/QST-1")).toBe(true);
+    expect(isAdminProtectedPath("/disputes/DSP-1")).toBe(true);
+    expect(isAdminProtectedPath("/reports/RPT-1")).toBe(true);
+    expect(isAdminProtectedPath("/users/member-1")).toBe(true);
     expect(isAdminProtectedPath("/questing")).toBe(false);
+    expect(isAdminProtectedPath("/usersettings")).toBe(false);
     expect(isAdminProtectedPath("/login")).toBe(false);
     expect(isAdminProtectedPath("/kuquest-logo.png")).toBe(false);
   });
@@ -86,7 +90,7 @@ describe("legacy Admin URL compatibility", () => {
     expect(canonicalRouteForLegacyUrl(legacyUrl("/?view=payouts"))).toBe("/payout");
     expect(canonicalRouteForLegacyUrl(legacyUrl("/?view=users"))).toBe("/member");
     expect(canonicalRouteForLegacyUrl(legacyUrl("/?view=wallets"))).toBe("/wallet");
-    expect(canonicalRouteForLegacyUrl(legacyUrl("/?view=topups"))).toBe("/wallet");
+    expect(canonicalRouteForLegacyUrl(legacyUrl("/?view=topups"))).toBe("/overview");
     expect(canonicalRouteForLegacyUrl(legacyUrl("/?view=activity"))).toBe("/activity");
   });
 

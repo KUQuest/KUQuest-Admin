@@ -4,6 +4,7 @@ import type {
 } from "../api/admin-api";
 import { adminApi } from "../api/admin-api";
 import { adminApiRequestOptions } from "../api/admin-api-request-options";
+import { loadAllWalletLedgerTransactions } from "../wallet/wallet-service";
 import {
   memberListModelFromApi,
   memberModelFromApi,
@@ -44,12 +45,12 @@ export async function loadMemberDetailFromApi(
     adminApi.getMemberFinance(memberId, options),
     adminApi.listReports(reportQuery(memberId), options),
     detail.wallet
-      ? adminApi.listLedgerTransactions({ walletId: detail.wallet.id, limit: 50 }, options)
-      : Promise.resolve({ items: [], nextCursor: null }),
+      ? loadAllWalletLedgerTransactions(detail.wallet.id, options)
+      : Promise.resolve([]),
   ]);
   const finance = financeResult.status === "fulfilled" ? financeResult.value : null;
   const reports = reportsResult.status === "fulfilled" ? reportsResult.value.items : [];
-  const ledger = ledgerResult.status === "fulfilled" ? ledgerResult.value.items : [];
+  const ledger = ledgerResult.status === "fulfilled" ? ledgerResult.value : [];
   const errors = {
     finance: financeResult.status === "rejected" ? errorMessage(financeResult.reason, "Member finance is not available from the Admin API.") : null,
     reports: reportsResult.status === "rejected" ? errorMessage(reportsResult.reason, "Member reports are not available from the Admin API.") : null,
