@@ -23,6 +23,9 @@ test.describe("Wallet App Router board", () => {
     await expect(page.locator('a[href*="/wallet/"]')).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Open Member Akarin Ariyawat" })).toHaveAttribute("href", "/member/68000000");
     expect(walletApiRequests).toBe(0);
+    await page.reload();
+    await expect(page.getByRole("heading", { level: 1, name: "Wallets" })).toBeVisible();
+    await expect(page.locator("[data-wallet-row]")).toHaveCount(5);
   });
 
   test("keeps Wallet status filters and search separate from Member status", async ({ page }) => {

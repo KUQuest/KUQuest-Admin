@@ -16,7 +16,7 @@ export default defineConfig({
   webServer: {
     command: "node scripts/run-with-env.mjs NEXT_DIST_DIR=.next-quest-api NEXT_PUBLIC_ADMIN_DATA_SOURCE=api NEXT_PUBLIC_API_URL=http://localhost:5000 -- npm run dev -- --port 3000",
     url: "http://localhost:3000",
-    reuseExistingServer: true,
+    reuseExistingServer: false,
     timeout: 120_000,
   },
 });
