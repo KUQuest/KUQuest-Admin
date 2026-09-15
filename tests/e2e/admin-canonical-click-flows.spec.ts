@@ -105,6 +105,7 @@ test.describe("Admin canonical click flows", () => {
     await page.locator('.admin-shell aside a[href="/payout"]').click();
     await expect(page).toHaveURL(/\/payout$/);
     await expect(page.getByRole("heading", { level: 1, name: "Payouts" })).toBeVisible();
+    await page.waitForLoadState("networkidle");
     await page.getByRole("link", { name: "Open Payout PAY-9637" }).click();
     await expect(page).toHaveURL(/\/payout\/PAY-9637$/);
     const payoutDrawer = page.getByRole("dialog", { name: "PAY-9637" });
