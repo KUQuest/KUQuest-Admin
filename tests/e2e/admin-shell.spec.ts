@@ -78,6 +78,7 @@ test.describe("shared Admin shell", () => {
       ["/?view=activity", "/activity"],
       ["/?view=unknown", "/overview"],
       ["/?user=..", "/overview"],
+      ["/?view=disputes&openDispute=DSP-5201", "/dispute/DSP-5201"],
       ["/users/%2E%2E", "/overview"],
       ["/quests/QST-12001", "/quest/QST-12001"],
       ["/disputes/DSP-5201", "/dispute/DSP-5201"],

@@ -100,6 +100,20 @@ describe("legacy Admin URL compatibility", () => {
     expect(canonicalRouteForLegacyUrl(legacyUrl("/login"))).toBeNull();
   });
 
+  it("maps the legacy openDispute deep link after the Member keys", () => {
+    expect(canonicalRouteForLegacyUrl(legacyUrl("/?view=disputes&openDispute=DSP-1"))).toBe("/dispute/DSP-1");
+    expect(canonicalRouteForLegacyUrl(legacyUrl("/?openDispute=DSP%2F1"))).toBe("/dispute/DSP%2F1");
+    expect(canonicalRouteForLegacyUrl(legacyUrl("/?openUser=member-2&openDispute=DSP-1"))).toBe("/member/member-2");
+    expect(canonicalRouteForLegacyUrl(legacyUrl("/?view=disputes&openDispute=.."))).toBe("/dispute");
+  });
+
+  it("rejects encoded dot segments in legacy paths", () => {
+    const searchParams = new URLSearchParams();
+    expect(canonicalRouteForLegacyUrl({ pathname: "/users/%2E%2E", searchParams })).toBeNull();
+    expect(canonicalRouteForLegacyUrl({ pathname: "/quests/%2E", searchParams })).toBeNull();
+    expect(canonicalRouteForLegacyUrl({ pathname: "/member/%2E%2E/wallet-statement", searchParams })).toBeNull();
+  });
+
   it("maps old plural detail paths and the old Wallet Statement page", () => {
     expect(canonicalRouteForLegacyUrl(legacyUrl("/quests/QST-1"))).toBe("/quest/QST-1");
     expect(canonicalRouteForLegacyUrl(legacyUrl("/disputes/DSP-1"))).toBe("/dispute/DSP-1");

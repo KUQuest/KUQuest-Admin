@@ -76,6 +76,9 @@ export function canonicalRouteForLegacyUrl(url: LegacyUrl): string | null {
     const memberId = memberIdFromLegacyUrl(url);
     if (memberId) return memberDetailRouteFromLegacyUrl(url, memberId);
 
+    const disputeId = safeLegacyIdentifier(url.searchParams.get("openDispute"));
+    if (disputeId) return disputeRoutes.detail(disputeId);
+
     switch (url.searchParams.get("view")) {
       case "quests":
         return questRoutes.list();
@@ -103,7 +106,7 @@ export function canonicalRouteForLegacyUrl(url: LegacyUrl): string | null {
   }
 
   const walletStatementMemberId = memberWalletStatementId(url.pathname);
-  if (walletStatementMemberId) return `${memberRoutes.detail(walletStatementMemberId)}?tab=wallet-statement`;
+  if (walletStatementMemberId) return memberTabHref(walletStatementMemberId, "wallet-statement");
 
   const questId = legacyDetailId(url.pathname, "/quests");
   if (questId) return questRoutes.detail(questId);
