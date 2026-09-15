@@ -7,8 +7,8 @@ Scope: Issue 81, the Admin App Router migration under parent Issue 68.
 ## Evidence
 
 - `bun run check` passes. Oxlint reports existing warnings, but no lint error. Typecheck, unit tests, and the production build pass.
-- `bun run test:e2e` passes 89 local tests: 83 canonical Admin route tests, 4 API-mode security tests, and 2 Wallet error-fixture tests.
-- The live Quest, Payout, and Wallet suites each pass when run with the supplied Admin credentials. The credentials are provided at runtime only and are not stored in the repository.
+- `bun run test:e2e` passes 92 local tests: 84 canonical Admin route tests, 6 API-mode security tests, and 2 Wallet error-fixture tests.
+- `bun run test:e2e:live` is the required live gate. It fails fast when a live Admin credential variable is missing. With the supplied Admin credentials, the Quest, Activity Log, Payout, and Wallet suites each pass.
 - `bun run test:e2e:security` checks a missing Session, an invalid Session, a disabled Admin, public static assets, and protection of a private route.
 - The canonical route suites cover Quest, Dispute Case, Report Case, Conduct Report, Payout, Member, Wallet, and Activity Log routes, including navigation, drawers, language, theme, responsive behavior, search, filters, pagination, empty states, loading states, and error states where the current test data supports them.
 - Admin API requests continue to use the existing `adminApi` boundary. The parity work does not change an Admin API path, request command, response envelope, status code, or authorization rule.
@@ -36,6 +36,7 @@ The following gaps are documented in `tests/e2e-legacy/README.md`. They need a p
 | Temporary ban expiry and note, Report Case evidence file, and saved Report Case demo data | Admin App maintainer + Admin Operations Domain Owner | Defer. Confirm the required Admin operation and persistence contract first. |
 | Dispute Case drawer refresh and final Quest status after resolution | Admin App maintainer + Quest Domain Owner | Defer. Decide whether mock mode must simulate Admin commands or whether API-mode coverage is sufficient. |
 | Quest hide persistence, Activity Log search in mock mode, and larger mock Quest data | Admin App test maintainer | Defer. Keep command assertions at the Admin API boundary until mock command and pagination fixtures are defined. |
+| Activity Log mobile, language, theme, export, pagination, loading/error states, and live disabled-Admin coverage | Admin App test maintainer + Admin API Security Owner | Defer. Add dedicated API fixtures and a known disabled Admin identity before enabling these checks. |
 | Legacy-runtime-only checks | Admin App maintainer | Retain the Legacy Implementation for rollback evidence. Do not port these checks without a product requirement for the canonical route. |
 
 The legacy source is intentionally retained. Retirement is not approved until the live API evidence and the follow-up decisions above are complete.

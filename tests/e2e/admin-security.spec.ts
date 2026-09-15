@@ -35,6 +35,87 @@ test.describe("Admin session and private-route boundary", () => {
     await expect(page.getByRole("heading", { name: "Wallets" })).toHaveCount(0);
   });
 
+  test("loads Activity Log records through the Admin API", async ({ context, page }) => {
+    await addAdminCookie(context, "valid-session");
+    await page.goto("/activity");
+
+    const main = page.locator("#activity-main");
+    await expect(main.getByRole("heading", { level: 1, name: "Activity Log" })).toBeVisible();
+    await expect(main.locator("tbody tr")).toHaveCount(2);
+    await expect(main.locator("tbody tr").first()).toContainText("QUEST_HIDDEN");
+
+    await main.getByLabel("Search loaded activity").fill("PAYOUT_APPROVED");
+    await expect(main.locator("tbody tr")).toHaveCount(1);
+    await expect(main.locator("tbody tr").first()).toContainText("PAYOUT_APPROVED");
+
+    const activityRequests: string[] = [];
+    page.on("request", (request) => {
+      if (request.url().includes("/api/v1/admin/activity-log")) activityRequests.push(request.url());
+    });
+    const filterRequest = page.waitForRequest((request) => (
+      request.url().includes("/api/v1/admin/activity-log")
+      && request.url().includes("action=PAYOUT_APPROVED")
+      && request.url().includes("sort=oldest")
+    ));
+    await main.getByLabel("Action filter").fill("PAYOUT_APPROVED");
+    await main.getByLabel("Sort activity").selectOption("oldest");
+    await main.getByRole("button", { name: "Apply filters" }).click();
+    await filterRequest;
+    expect(activityRequests.some((url) => url.includes("action=PAYOUT_APPROVED") && url.includes("sort=oldest"))).toBe(true);
+    await expect(main.locator("tbody tr")).toHaveCount(1);
+    await expect(main.locator("tbody tr").first()).toContainText("PAYOUT_APPROVED");
+
+    await main.getByLabel("Search loaded activity").fill("");
+    await main.getByRole("button", { name: "Clear filters" }).click();
+    await expect(main.locator("tbody tr")).toHaveCount(2);
+    const opener = main.getByRole("button", { name: "View activity details" }).first();
+    await opener.focus();
+    await opener.click();
+    const detail = page.getByRole("dialog", { name: "QUEST_HIDDEN" });
+    await expect(detail).toBeVisible();
+    await expect(detail).toContainText("POLICY_REVIEW");
+    await page.keyboard.press("Escape");
+    await expect(detail).toHaveCount(0);
+    await expect(opener).toBeFocused();
+
+    await opener.click();
+    await expect(detail).toBeVisible();
+    await detail.getByRole("button", { name: "Close", exact: true }).last().click();
+    await expect(detail).toHaveCount(0);
+
+    await opener.click();
+    await expect(detail).toBeVisible();
+    await page.reload();
+    await expect(page.locator("#activity-main")).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "QUEST_HIDDEN" })).toHaveCount(0);
+  });
+
+  test("protects Activity Log records at the Admin API boundary", async ({ page }) => {
+    const apiUrl = "http://localhost:5002/api/v1/admin/activity-log";
+    const noSession = await page.request.get(apiUrl);
+    expect(noSession.status()).toBe(401);
+
+    const invalidSession = await page.request.get(apiUrl, {
+      headers: { cookie: "kuquest-admin.session_token=invalid-session" },
+    });
+    expect(invalidSession.status()).toBe(401);
+
+    const disabledAdmin = await page.request.get(apiUrl, {
+      headers: { cookie: "kuquest-admin.session_token=disabled-session" },
+    });
+    expect(disabledAdmin.status()).toBe(403);
+
+    const unknownSession = await page.request.get(apiUrl, {
+      headers: { cookie: "kuquest-admin.session_token=unknown-session" },
+    });
+    expect(unknownSession.status()).toBe(401);
+
+    const spoofedCookieName = await page.request.get(apiUrl, {
+      headers: { cookie: "attacker=kuquest-admin" },
+    });
+    expect(spoofedCookieName.status()).toBe(401);
+  });
+
   test("keeps public assets available and private data protected", async ({ page }) => {
     const assetResponse = await page.request.get("/kuquest-logo.png");
     expect(assetResponse.status()).toBe(200);

@@ -16,6 +16,9 @@ test.describe("Payout App Router route family", () => {
     await expect(page.getByRole("button", { name: /Needs review/ })).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByRole("link", { name: "Open Payout PAY-9637" })).toBeVisible();
     await expect(page.getByText("PAY-9638", { exact: true })).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByRole("heading", { level: 1, name: "Payouts" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Open Payout PAY-9637" })).toBeVisible();
     expect(payoutApiRequests).toBe(0);
   });
 
@@ -116,7 +119,7 @@ test.describe("Payout App Router route family", () => {
     await expect(page.getByRole("dialog", { name: "PAY-9637" })).toHaveCount(0);
   });
 
-  test("keeps Payout approval and rejection requirements in the command dialogs", async ({ page }) => {
+  test("keeps Payout approval requirements in the command dialog", async ({ page }) => {
     await signIn(page);
     await page.goto("/payout/PAY-9637");
 
@@ -136,7 +139,14 @@ test.describe("Payout App Router route family", () => {
     await expect(payoutSummary.getByText("Sent", { exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Transfer submitted" })).toBeVisible();
 
+  });
+
+  test("keeps Payout rejection requirements in the command dialog", async ({ page }) => {
+    await signIn(page);
     await page.goto("/payout/PAY-9637");
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("button", { name: "Reject Payout" })).toBeVisible();
+
     await page.getByRole("button", { name: "Reject Payout" }).click();
     const rejection = page.getByRole("dialog", { name: "Reject Payout" });
     await expect(rejection.getByRole("button", { name: "Reject Payout" })).toBeDisabled();

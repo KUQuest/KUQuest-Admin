@@ -122,6 +122,9 @@ test.describe("shared Admin shell", () => {
     const main = page.locator("#conduct-report-main");
     await expect(main.getByRole("heading", { level: 1, name: "Conduct Reports" })).toBeVisible();
     await expect(main.locator("tbody tr[data-conduct-report-id]")).toHaveCount(3);
+    await page.reload();
+    await expect(main.getByRole("heading", { level: 1, name: "Conduct Reports" })).toBeVisible();
+    await expect(main.locator("tbody tr[data-conduct-report-id]")).toHaveCount(3);
     await expect(main.getByText("Report Case", { exact: true })).toHaveCount(0);
     await expect(main.locator('a[href*="/conduct-report/"]')).toHaveCount(0);
 
@@ -165,12 +168,22 @@ test.describe("shared Admin shell", () => {
     await expect(firstRow.locator("td").first()).toContainText("DSP-5201");
     await expect(firstRow).not.toContainText("undefined");
 
+    await page.reload();
+    await expect(main.getByRole("heading", { level: 1, name: "Dispute Cases" })).toBeVisible();
+    await expect(firstRow).toHaveCount(1);
+
     await firstRow.click();
     await expect(page).toHaveURL(/\/dispute\/DSP-5201$/);
     const drawer = page.getByRole("dialog", { name: "Dispute Case details" });
     await expect(drawer).toBeVisible();
     await expect(drawer.getByRole("link", { name: "Quest detail" })).toHaveAttribute("href", "/quest/QST-12001");
     await expect(drawer.getByText("Hirer wins", { exact: true })).toBeVisible();
+    await page.goBack();
+    await expect(page).toHaveURL(/\/dispute$/);
+    await expect(drawer).toHaveCount(0);
+
+    await firstRow.click();
+    await expect(drawer).toBeVisible();
     await drawer.getByLabel(/Worker wins/).check();
     await drawer.getByRole("button", { name: "Record Dispute Case decision" }).click();
     const decisionDialog = page.getByRole("dialog", { name: "Confirm Worker allocation" });
@@ -188,12 +201,19 @@ test.describe("shared Admin shell", () => {
     await expect(page.locator(".dispute-case-detail .full-record-grid")).toBeVisible();
     await expect(page.getByRole("heading", { level: 1, name: "Verify dorm fire exits" })).toBeVisible();
     await expect(page.getByText("Invalid Date", { exact: true })).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByRole("heading", { level: 1, name: "Verify dorm fire exits" })).toBeVisible();
+    await page.goBack();
+    await expect(page).toHaveURL(/\/dispute$/);
+    await expect(page.locator("#dispute-main")).toBeVisible();
   });
 
   test("renders the Overview dashboard and searches canonical records", async ({ page }) => {
     await signIn(page);
 
     const dashboard = page.locator("#dashboard-main");
+    await expect(dashboard).toBeVisible();
+    await page.reload();
     await expect(dashboard).toBeVisible();
     await expect(dashboard.locator(".overview-command-center-header")).toHaveCSS("position", "static");
     await expect(dashboard.getByText("Work left", { exact: true })).toBeVisible();

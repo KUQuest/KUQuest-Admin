@@ -11,14 +11,34 @@ test.describe("Member route family", () => {
     await expect(board.getByRole("heading", { level: 1, name: "Members" })).toBeVisible();
     await expect(board.locator("tbody tr[data-member-id]")).toHaveCount(3);
     await expect(board.getByRole("searchbox", { name: "Search Members" })).toBeVisible();
+    await page.reload();
+    await expect(board.getByRole("heading", { level: 1, name: "Members" })).toBeVisible();
+    await expect(board.locator("tbody tr[data-member-id]")).toHaveCount(3);
 
-    await board.getByRole("button", { name: "Open Member 68000000" }).click();
+    const opener = board.getByRole("button", { name: "Open Member 68000000" });
+    await opener.click();
     await expect(page).toHaveURL(/\/member\/68000000$/);
-    await expect(page.getByRole("dialog", { name: "Record details" })).toBeVisible();
-    await expect(page.getByRole("dialog", { name: "Record details" })).toContainText("Akarin Ariyawat");
+    const drawer = page.getByRole("dialog", { name: "Record details" });
+    await expect(drawer).toBeVisible();
+    await expect(drawer).toContainText("Akarin Ariyawat");
+    await page.goBack();
+    await expect(page).toHaveURL(/\/member$/);
+    await expect(drawer).toHaveCount(0);
 
-    await page.getByRole("dialog", { name: "Record details" }).getByRole("link", { name: "See full Member profile" }).click();
-    await expect(page.getByRole("dialog", { name: "Record details" })).toHaveCount(0);
+    await opener.click();
+    await expect(page).toHaveURL(/\/member\/68000000$/);
+    await expect(drawer).toBeVisible();
+
+    await drawer.getByRole("button", { name: "Close drawer" }).click();
+    await expect(page).toHaveURL(/\/member$/);
+    await expect(drawer).toHaveCount(0);
+
+    await opener.click();
+    await expect(page).toHaveURL(/\/member\/68000000$/);
+    await expect(drawer).toBeVisible();
+
+    await drawer.getByRole("link", { name: "See full Member profile" }).click();
+    await expect(drawer).toHaveCount(0);
     await expect(page.locator(".user-detail-page")).toBeVisible();
     await page.goto("/member");
   });
@@ -28,6 +48,8 @@ test.describe("Member route family", () => {
     await page.goto("/member/68000000");
 
     await expect(page.getByRole("heading", { level: 1, name: "Akarin Ariyawat" })).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole("heading", { level: 1, name: "Akarin Ariyawat" })).toBeVisible();
     const tabs = page.getByRole("navigation", { name: "Member detail sections" });
     await expect(tabs.getByRole("link", { name: "Wallet Statement", exact: true })).toBeVisible();
     await expect(tabs.getByRole("link", { name: "Penalty History", exact: true })).toBeVisible();
@@ -36,6 +58,9 @@ test.describe("Member route family", () => {
     await expect(page).toHaveURL(/\/member\/68000000\?tab=wallet-statement$/);
     await expect(page.locator("[data-user-wallet-statement]")).toBeVisible();
     await expect(page.locator("[data-user-wallet-statement] .wallet-statement-table tbody tr")).toHaveCount(25);
+    await page.goBack();
+    await expect(page).toHaveURL(/\/member\/68000000$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Akarin Ariyawat" })).toBeVisible();
   });
 
   test("keeps Member actions usable on a mobile viewport", async ({ page }) => {

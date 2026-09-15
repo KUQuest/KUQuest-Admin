@@ -1,6 +1,7 @@
 import { mockWalletFinanceSummary } from "../../src/features/admin/wallet/wallet-mock-data";
 
 const adminOrigin = "http://localhost:3006";
+const adminSessionCookieName = "kuquest-admin.session_token";
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -12,6 +13,51 @@ function json(body: unknown, status = 200): Response {
     },
   });
 }
+
+function cookieValue(cookie: string, name: string): string | null {
+  const prefix = `${name}=`;
+  const part = cookie.split(";").map((item) => item.trim()).find((item) => item.startsWith(prefix));
+  return part ? part.slice(prefix.length) : null;
+}
+
+function adminApiAuthorizationResponse(cookie: string): Response | null {
+  const sessionToken = cookieValue(cookie, adminSessionCookieName);
+  if (sessionToken === "disabled-session") {
+    return json({ success: false, error: { code: "FORBIDDEN", message: "Admin is disabled." } }, 403);
+  }
+  if (sessionToken !== "valid-session") {
+    return json({ success: false, error: { code: "UNAUTHORIZED", message: "Admin Session required." } }, 401);
+  }
+
+  return null;
+}
+
+const activityLogItems = [
+  {
+    id: "activity-1",
+    admin: { id: "valid-admin", firstName: "Test", lastName: "Admin" },
+    action: "QUEST_HIDDEN",
+    resourceType: "QUEST",
+    resourceId: "quest-1",
+    reasonCode: "POLICY_REVIEW",
+    reasonCatalogVersion: 1,
+    resultVersion: 2,
+    resultTimestamp: "2026-09-15T00:00:00.000Z",
+    createdAt: "2026-09-15T00:00:00.000Z",
+  },
+  {
+    id: "activity-2",
+    admin: { id: "valid-admin", firstName: "Test", lastName: "Admin" },
+    action: "PAYOUT_APPROVED",
+    resourceType: "PAYOUT",
+    resourceId: "payout-1",
+    reasonCode: "PAYOUT_REVIEWED",
+    reasonCatalogVersion: 1,
+    resultVersion: 3,
+    resultTimestamp: "2026-09-14T00:00:00.000Z",
+    createdAt: "2026-09-14T00:00:00.000Z",
+  },
+];
 
 const server = Bun.serve({
   port: 5002,
@@ -33,11 +79,11 @@ const server = Bun.serve({
     if (url.pathname === "/health") return json({ ok: true });
 
     if (url.pathname === "/api/admin/auth/get-session") {
-      if (cookie.includes("invalid-session")) return json({ success: false }, 401);
-      if (!cookie.includes("kuquest-admin")) return json({ success: false }, 401);
-      if (cookie.includes("disabled-session")) {
+      const sessionToken = cookieValue(cookie, adminSessionCookieName);
+      if (sessionToken === "disabled-session") {
         return json({ success: false }, 403);
       }
+      if (sessionToken !== "valid-session") return json({ success: false }, 401);
       return json({
         session: { id: "valid-session", userId: "valid-admin" },
         user: {
@@ -48,6 +94,11 @@ const server = Bun.serve({
           disabledAt: null,
         },
       });
+    }
+
+    if (url.pathname.startsWith("/api/v1/admin/")) {
+      const authorizationResponse = adminApiAuthorizationResponse(cookie);
+      if (authorizationResponse) return authorizationResponse;
     }
 
     if (url.pathname === "/api/v1/admin/overview") {
@@ -86,7 +137,27 @@ const server = Bun.serve({
       return json({ success: true, data: { items: [], nextCursor: null } });
     }
 
-    return json({ success: true, data: {} });
+    if (url.pathname === "/api/v1/admin/activity-log") {
+      const filters = ["action", "resourceType", "resourceId", "adminId"] as const;
+      const filteredItems = activityLogItems.filter((item) => filters.every((filter) => {
+        const value = url.searchParams.get(filter);
+        const itemValue = filter === "adminId" ? item.admin.id : item[filter];
+        return !value || itemValue.includes(value);
+      }));
+      filteredItems.sort((left, right) => {
+        const direction = url.searchParams.get("sort") === "oldest" ? 1 : -1;
+        return direction * (Date.parse(left.createdAt) - Date.parse(right.createdAt));
+      });
+      return json({
+        success: true,
+        data: {
+          items: filteredItems,
+          nextCursor: null,
+        },
+      });
+    }
+
+    return json({ success: false, error: { code: "NOT_FOUND", message: "Admin API route not found." } }, 404);
   },
 });
 
