@@ -14,6 +14,7 @@
     "test:e2e": "node scripts/run-e2e.mjs",
     "test:e2e:mock": "playwright test --config=playwright.config.ts",
     "test:e2e:admin-shell": "playwright test --config=playwright.admin-shell.config.ts",
+    "test:e2e:security": "playwright test --config=playwright.admin-security.config.ts",
     "test:e2e:quest": "playwright test --config=playwright.quest.config.ts",
     "test:e2e:quest:api": "playwright test --config=playwright.quest-api.config.ts",
     "test:e2e:payout:live": "playwright test --config=playwright.payout-live.config.ts",

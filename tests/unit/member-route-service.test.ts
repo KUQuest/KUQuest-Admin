@@ -142,7 +142,7 @@ describe("Member detail route service", () => {
     const ledgerRequests = requests.filter((request) => new URL(request.url).pathname.endsWith("/ledger/transactions"));
     expect(ledgerRequests).toHaveLength(2);
     expect(ledgerRequests[0]?.url).toContain("walletId=wallet-1");
-    expect(ledgerRequests[0]?.url).toContain("limit=100");
+    expect(ledgerRequests[0]?.url).toContain("limit=50");
     expect(ledgerRequests[1]?.url).toContain("cursor=ledger-next");
   });
 });

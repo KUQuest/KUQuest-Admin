@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 const playwright = process.platform === "win32" ? "npx.cmd" : "npx";
 const configs = [
   "playwright.config.ts",
+  "playwright.admin-security.config.ts",
   "playwright.quest-api.config.ts",
   "playwright.payout-live.config.ts",
   "playwright.wallet-live.config.ts",
