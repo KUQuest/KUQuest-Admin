@@ -87,6 +87,9 @@ describe("Wallet route service boundary", () => {
     expect(requests).toHaveLength(3);
     expect(requests.every((request) => request.headers.get("cookie") === "kuquest-admin=session")).toBe(true);
     expect(requests.every((request) => request.cache === "no-store")).toBe(true);
+    const walletRequests = requests.filter((request) => new URL(request.url).pathname === "/api/v1/admin/wallets");
+    expect(walletRequests).toHaveLength(2);
+    expect(walletRequests.every((request) => new URL(request.url).searchParams.get("limit") === "50")).toBe(true);
     expect(requests.some((request) => new URL(request.url).searchParams.get("cursor") === "wallet-next")).toBe(true);
   });
 
@@ -216,7 +219,7 @@ describe("Wallet route service boundary", () => {
     const ledgerRequests = requests.filter((request) => new URL(request.url).pathname.endsWith("/ledger/transactions"));
     expect(ledgerRequests).toHaveLength(2);
     expect(ledgerRequests[0]?.url).toContain("walletId=WAL-1001");
-    expect(ledgerRequests[0]?.url).toContain("limit=100");
+    expect(ledgerRequests[0]?.url).toContain("limit=50");
     expect(ledgerRequests[1]?.url).toContain("cursor=ledger-next");
     expect(requests.every((request) => request.headers.get("cookie") === "kuquest-admin=session")).toBe(true);
     expect(requests.every((request) => request.cache === "no-store")).toBe(true);

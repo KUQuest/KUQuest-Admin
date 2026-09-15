@@ -10,7 +10,7 @@ export async function loadAllWalletLedgerTransactions(
   let cursor: string | undefined;
 
   do {
-    const page = await adminApi.listLedgerTransactions({ walletId, limit: 100, cursor }, options);
+    const page = await adminApi.listLedgerTransactions({ walletId, limit: 50, cursor }, options);
     transactions.push(...page.items);
     const nextCursor = page.nextCursor ?? undefined;
     if (nextCursor === cursor) break;
