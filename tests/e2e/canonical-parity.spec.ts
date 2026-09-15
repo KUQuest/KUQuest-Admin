@@ -9,6 +9,8 @@ const mobileViewport = { width: 390, height: 844 };
 
 async function signIn(page: Page) {
   await page.goto("/login");
+  // Wait for hydration: an early click submits the form natively and stays on /login.
+  await page.waitForLoadState("networkidle");
   await page.getByLabel("University email").fill("admin@ku.th");
   await page.getByLabel("Password").fill("password123");
   await page.getByRole("button", { name: "Sign in" }).click();
