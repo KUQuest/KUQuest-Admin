@@ -10,6 +10,7 @@ export type AdminSignInOptions = {
 
 export async function signIn(page: Page, options: AdminSignInOptions = {}): Promise<void> {
   await page.goto("/login");
+  await page.waitForLoadState("networkidle");
   const email = page.getByLabel("University email");
   if (options.expectEmailFocused) await expect(email).toBeFocused();
   await email.fill(options.email ?? "admin@ku.th");

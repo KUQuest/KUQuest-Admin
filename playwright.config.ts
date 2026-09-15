@@ -2,7 +2,7 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  testMatch: /(?:admin-canonical-click-flows|admin-shell|canonical-input-responsive|canonical-language-detail|member-route|payout-route|quest-route|report-route|wallet-route)\.spec\.ts/,
+  testMatch: /(?:admin-canonical-click-flows|admin-shell|canonical-input-responsive|canonical-language-detail|canonical-parity|member-route|payout-route|quest-route|report-route|wallet-route)\.spec\.ts/,
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,

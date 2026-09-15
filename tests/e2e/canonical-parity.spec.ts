@@ -1,22 +1,12 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 import { MOCK_OPEN_QUEST_ID } from "../../src/features/admin/quest/quest-mock-data";
+import { signIn } from "./support/admin-auth";
 
 // Ports the legacy suite assertions (tests/e2e-legacy) to canonical routes.
 // Legacy checks for features that the canonical routes do not have yet are listed in tests/e2e-legacy/README.md.
 
 const mobileViewport = { width: 390, height: 844 };
-
-async function signIn(page: Page) {
-  await page.goto("/login");
-  // Wait for hydration: an early click submits the form natively and stays on /login.
-  await page.waitForLoadState("networkidle");
-  await page.getByLabel("University email").fill("admin@ku.th");
-  await page.getByLabel("Password").fill("password123");
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/overview$/);
-  await expect(page.getByRole("heading", { level: 1, name: "Overview" })).toBeVisible();
-}
 
 async function switchToThai(page: Page) {
   await page.waitForLoadState("networkidle");
