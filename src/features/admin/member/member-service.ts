@@ -1,11 +1,10 @@
 import type {
-  AdminApiRequestOptions,
-  AdminLedgerTransaction,
   AdminMemberListQuery,
   AdminReportListQuery,
 } from "../api/admin-api";
 import { adminApi } from "../api/admin-api";
 import { adminApiRequestOptions } from "../api/admin-api-request-options";
+import { loadAllWalletLedgerTransactions } from "../wallet/wallet-ledger-pages";
 import {
   memberListModelFromApi,
   memberModelFromApi,
@@ -18,26 +17,6 @@ function reportQuery(memberId: string): AdminReportListQuery {
 }
 function errorMessage(reason: unknown, fallback: string): string {
   return reason instanceof Error ? reason.message : fallback;
-}
-
-async function loadAllMemberLedgerTransactions(
-  walletId: string,
-  options: AdminApiRequestOptions,
-) {
-  const transactions = [] as Awaited<ReturnType<typeof adminApi.listLedgerTransactions>>["items"];
-  let cursor: string | undefined;
-
-  do {
-    // Each request needs the cursor returned by the previous page.
-    // eslint-disable-next-line no-await-in-loop
-    const page = await adminApi.listLedgerTransactions({ walletId, limit: 100, cursor }, options);
-    transactions.push(...page.items);
-    const nextCursor = page.nextCursor ?? undefined;
-    if (nextCursor === cursor) break;
-    cursor = nextCursor;
-  } while (cursor);
-
-  return transactions;
 }
 
 export async function loadMemberPageData(
@@ -66,8 +45,8 @@ export async function loadMemberDetailFromApi(
     adminApi.getMemberFinance(memberId, options),
     adminApi.listReports(reportQuery(memberId), options),
     detail.wallet
-      ? loadAllMemberLedgerTransactions(detail.wallet.id, options)
-      : Promise.resolve([] as AdminLedgerTransaction[]),
+      ? loadAllWalletLedgerTransactions(detail.wallet.id, options)
+      : Promise.resolve([]),
   ]);
   const finance = financeResult.status === "fulfilled" ? financeResult.value : null;
   const reports = reportsResult.status === "fulfilled" ? reportsResult.value.items : [];

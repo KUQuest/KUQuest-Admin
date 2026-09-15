@@ -62,12 +62,16 @@ describe("Admin route helpers", () => {
 });
 
 describe("Admin route protection", () => {
-  it("protects canonical and legacy Admin paths", () => {
+  it("protects canonical Admin paths and legacy aliases only", () => {
     expect(isAdminProtectedPath("/")).toBe(true);
     expect(isAdminProtectedPath("/overview")).toBe(true);
     expect(isAdminProtectedPath("/quest/QST-1")).toBe(true);
+    expect(isAdminProtectedPath("/quests/QST-1")).toBe(true);
+    expect(isAdminProtectedPath("/disputes/DSP-1")).toBe(true);
+    expect(isAdminProtectedPath("/reports/RPT-1")).toBe(true);
     expect(isAdminProtectedPath("/users/member-1")).toBe(true);
     expect(isAdminProtectedPath("/questing")).toBe(false);
+    expect(isAdminProtectedPath("/usersettings")).toBe(false);
     expect(isAdminProtectedPath("/login")).toBe(false);
     expect(isAdminProtectedPath("/kuquest-logo.png")).toBe(false);
   });
@@ -95,6 +99,20 @@ describe("legacy Admin URL compatibility", () => {
     expect(canonicalRouteForLegacyUrl(legacyUrl("/?user=..&openUser=member-2"))).toBe("/member/member-2");
     expect(canonicalRouteForLegacyUrl(legacyUrl("/?user=."))).toBe("/overview");
     expect(canonicalRouteForLegacyUrl(legacyUrl("/login"))).toBeNull();
+  });
+
+  it("maps the legacy openDispute deep link after the Member keys", () => {
+    expect(canonicalRouteForLegacyUrl(legacyUrl("/?view=disputes&openDispute=DSP-1"))).toBe("/dispute/DSP-1");
+    expect(canonicalRouteForLegacyUrl(legacyUrl("/?openDispute=DSP%2F1"))).toBe("/dispute/DSP%2F1");
+    expect(canonicalRouteForLegacyUrl(legacyUrl("/?openUser=member-2&openDispute=DSP-1"))).toBe("/member/member-2");
+    expect(canonicalRouteForLegacyUrl(legacyUrl("/?view=disputes&openDispute=.."))).toBe("/dispute");
+  });
+
+  it("rejects encoded dot segments in legacy paths", () => {
+    const searchParams = new URLSearchParams();
+    expect(canonicalRouteForLegacyUrl({ pathname: "/users/%2E%2E", searchParams })).toBeNull();
+    expect(canonicalRouteForLegacyUrl({ pathname: "/quests/%2E", searchParams })).toBeNull();
+    expect(canonicalRouteForLegacyUrl({ pathname: "/member/%2E%2E/wallet-statement", searchParams })).toBeNull();
   });
 
   it("maps old plural detail paths and the old Wallet Statement page", () => {
