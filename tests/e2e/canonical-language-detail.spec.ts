@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { MOCK_OPEN_QUEST_ID as OPEN_QUEST_ID } from "../../src/features/admin/quest/quest-mock-data";
 import { signIn } from "./support/admin-auth";
 
 async function switchToThai(page: Page) {
@@ -43,5 +44,21 @@ test.describe("Thai language on canonical routes", () => {
 
     await expect(page.getByText("คดีรายงานที่เปิดอยู่ — ต้องตรวจสอบ", { exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "ดูโปรไฟล์ Member", exact: true }).first()).toBeVisible();
+  });
+
+  test("keeps the Quest Export log control on the canonical route", async ({ page }) => {
+    await signIn(page, { expectLanguageOptions: true, waitForNetworkIdle: true });
+    await switchToThai(page);
+    await page.goto(`/quest/${OPEN_QUEST_ID}`);
+
+    const exportLog = page.getByRole("button", { name: "ส่งออกบันทึก", exact: true });
+    await expect(exportLog).toBeVisible();
+    await expect(exportLog).toHaveAttribute("data-functional-action", "export-log");
+
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      exportLog.click(),
+    ]);
+    expect(download.suggestedFilename()).toBe("kuquest-admin-export.csv");
   });
 });

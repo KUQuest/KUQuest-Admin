@@ -79,6 +79,22 @@ test.describe("Wallet App Router board", () => {
     await expect(page.getByText("Committed and sealed Ledger Transactions affecting this Wallet.", { exact: true })).toBeVisible();
   });
 
+  test("keeps Wallet Statement pagination and filters on the canonical Member route", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/member/68000000?tab=wallet-statement");
+
+    const statement = page.locator("[data-user-wallet-statement]");
+    await expect(statement.locator(".wallet-statement-table tbody tr")).toHaveCount(25);
+    await expect(statement.getByRole("button", { name: "Load more" })).toBeVisible();
+
+    await statement.getByRole("button", { name: "Load more" }).click();
+    await expect(statement.locator(".wallet-statement-table tbody tr")).toHaveCount(50);
+
+    await statement.getByLabel("Event type").selectOption("TOP_UP");
+    await statement.getByRole("button", { name: "Apply filters" }).click();
+    await expect(statement.locator(".wallet-statement-table tbody tr")).toHaveCount(11);
+  });
+
   test("does not create a Wallet detail route", async ({ page }) => {
     await signIn(page);
     const response = await page.request.get("/wallet/WAL-1001");

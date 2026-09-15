@@ -133,6 +133,8 @@ const thaiTranslations: Record<string, string> = {
   "An audit trail of administrative decisions.": "ประวัติการตรวจสอบการตัดสินใจของ Admin",
   "Review the administrative audit trail.": "ตรวจสอบประวัติการดำเนินการของ Admin",
   "Export CSV": "ส่งออก CSV",
+  "Export log": "ส่งออกบันทึก",
+  "Overall Quest timeline": "ลำดับเหตุการณ์ของ Quest ทั้งหมด",
   "Admin API is required to display this read-only log.": "ต้องใช้ Admin API เพื่อแสดงบันทึกแบบอ่านอย่างเดียวนี้",
   "Action filter": "ตัวกรองการดำเนินการ",
   "Resource type filter": "ตัวกรองประเภททรัพยากร",
