@@ -49,5 +49,8 @@ jobs:
       - name: Admin shell browser tests
         run: bun run test:e2e:admin-shell
 
+      - name: Browser tests
+        run: bun run test:e2e
+
       - name: Build
         run: bun run build
