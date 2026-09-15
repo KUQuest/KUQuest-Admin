@@ -1,21 +1,21 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
-function requiredEnvironment(name: string): string {
-  const value = process.env[name];
-  if (!value) throw new Error(`${name} is required for the live Wallet browser test.`);
-  return value;
-}
+import { signIn } from "./support/admin-auth";
 
-async function signIn(page: Page) {
-  await page.goto("/login");
-  await page.getByLabel("University email").fill(requiredEnvironment("LIVE_ADMIN_EMAIL"));
-  await page.getByLabel("Password").fill(requiredEnvironment("LIVE_ADMIN_PASSWORD"));
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/overview$/);
-}
+const liveAdminEmail = process.env.LIVE_ADMIN_EMAIL;
+const liveAdminPassword = process.env.LIVE_ADMIN_PASSWORD;
+const liveAdminCredentials = {
+  email: liveAdminEmail ?? "",
+  password: liveAdminPassword ?? "",
+};
+
+test.skip(
+  !liveAdminCredentials.email || !liveAdminCredentials.password,
+  "Set LIVE_ADMIN_EMAIL and LIVE_ADMIN_PASSWORD to run the live Wallet browser test.",
+);
 
 test("renders Wallet data and the Wallet Statement through the live Admin API", async ({ page }) => {
-  await signIn(page);
+  await signIn(page, liveAdminCredentials);
   await page.goto("/wallet");
 
   await expect(page.getByRole("heading", { level: 1, name: "Wallets" })).toBeVisible();
@@ -31,10 +31,10 @@ test("renders Wallet data and the Wallet Statement through the live Admin API", 
   const statementLink = drawer.getByRole("link", { name: "See Wallet Statement" });
   await expect(statementLink).toBeVisible();
   const statementHref = await statementLink.getAttribute("href");
-  expect(statementHref).toMatch(/^\/member\/[^/]+\/wallet-statement$/);
+  expect(statementHref).toMatch(/^\/member\/[^/?]+\?tab=wallet-statement$/);
 
   await statementLink.click();
   await expect(page).toHaveURL(statementHref!);
-  await expect(page.getByRole("heading", { level: 1, name: "Wallet Statement" })).toBeVisible();
-  await expect(page.getByText("Every committed and sealed Ledger Transaction for this Wallet, newest first.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Wallet Statement" })).toBeVisible();
+  await expect(page.getByText("Committed and sealed Ledger Transactions affecting this Wallet.", { exact: true })).toBeVisible();
 });

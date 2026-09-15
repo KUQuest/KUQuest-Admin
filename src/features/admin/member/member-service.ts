@@ -4,6 +4,7 @@ import type {
 } from "../api/admin-api";
 import { adminApi } from "../api/admin-api";
 import { adminApiRequestOptions } from "../api/admin-api-request-options";
+import { loadAllWalletLedgerTransactions } from "../wallet/wallet-ledger-pages";
 import {
   memberListModelFromApi,
   memberModelFromApi,
@@ -40,20 +41,26 @@ export async function loadMemberDetailFromApi(
 ): Promise<MemberModel | null> {
   const options = adminApiRequestOptions(cookieHeader);
   const detail = await adminApi.getMember(memberId, options);
-  const [financeResult, reportsResult, ledgerResult] = await Promise.allSettled([
+  const [financeResult, reportsResult] = await Promise.allSettled([
     adminApi.getMemberFinance(memberId, options),
     adminApi.listReports(reportQuery(memberId), options),
-    detail.wallet
-      ? adminApi.listLedgerTransactions({ walletId: detail.wallet.id, limit: 50 }, options)
-      : Promise.resolve({ items: [], nextCursor: null }),
   ]);
   const finance = financeResult.status === "fulfilled" ? financeResult.value : null;
   const reports = reportsResult.status === "fulfilled" ? reportsResult.value.items : [];
-  const ledger = ledgerResult.status === "fulfilled" ? ledgerResult.value.items : [];
+  const effectiveWallet = finance?.wallet ?? detail.wallet;
+  let ledger: Awaited<ReturnType<typeof loadAllWalletLedgerTransactions>> = [];
+  let ledgerError: unknown = null;
+  if (effectiveWallet) {
+    try {
+      ledger = await loadAllWalletLedgerTransactions(effectiveWallet.id, options);
+    } catch (error) {
+      ledgerError = error;
+    }
+  }
   const errors = {
     finance: financeResult.status === "rejected" ? errorMessage(financeResult.reason, "Member finance is not available from the Admin API.") : null,
     reports: reportsResult.status === "rejected" ? errorMessage(reportsResult.reason, "Member reports are not available from the Admin API.") : null,
-    ledger: ledgerResult.status === "rejected" ? errorMessage(ledgerResult.reason, "Wallet Statement is not available from the Admin API.") : null,
+    ledger: ledgerError ? errorMessage(ledgerError, "Wallet Statement is not available from the Admin API.") : null,
   };
   const model = memberModelFromApi(detail, finance, reports, ledger, errors);
   return model.id === memberId ? model : null;

@@ -2,6 +2,9 @@ function pathSegment(identifier: string): string {
   if (!identifier.trim()) {
     throw new Error("Admin route identifier cannot be empty.");
   }
+  if (identifier === "." || identifier === "..") {
+    throw new Error("Admin route identifier cannot be a dot path segment.");
+  }
   return encodeURIComponent(identifier);
 }
 
@@ -36,7 +39,6 @@ export const payoutRoutes = {
 export const memberRoutes = {
   list: () => "/member",
   detail: (id: string) => `/member/${pathSegment(id)}`,
-  walletStatement: (id: string) => `/member/${pathSegment(id)}/wallet-statement`,
 } as const;
 
 export const walletRoutes = {

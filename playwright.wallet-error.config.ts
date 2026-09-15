@@ -20,7 +20,7 @@ export default defineConfig({
       timeout: 120_000,
     },
     {
-      command: "NEXT_PUBLIC_API_URL=http://localhost:5001 NEXT_PUBLIC_ADMIN_DATA_SOURCE=api npm run dev -- --port 3004",
+      command: "node scripts/run-with-env.mjs NEXT_PUBLIC_API_URL=http://localhost:5001 NEXT_PUBLIC_ADMIN_DATA_SOURCE=api -- npm run dev -- --port 3004",
       url: "http://localhost:3004/login",
       stdout: "pipe",
       reuseExistingServer: false,

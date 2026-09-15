@@ -1,26 +1,21 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
-function requiredEnvironment(name: string): string {
-  const value = process.env[name];
-  if (!value)
-    throw new Error(`${name} is required for the live Payout browser test.`);
-  return value;
-}
+import { signIn } from "./support/admin-auth";
 
-async function signIn(page: Page) {
-  await page.goto("/login");
-  await page
-    .getByLabel("University email")
-    .fill(requiredEnvironment("LIVE_ADMIN_EMAIL"));
-  await page
-    .getByLabel("Password")
-    .fill(requiredEnvironment("LIVE_ADMIN_PASSWORD"));
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/overview$/);
-}
+const liveAdminEmail = process.env.LIVE_ADMIN_EMAIL;
+const liveAdminPassword = process.env.LIVE_ADMIN_PASSWORD;
+const liveAdminCredentials = {
+  email: liveAdminEmail ?? "",
+  password: liveAdminPassword ?? "",
+};
+
+test.skip(
+  !liveAdminCredentials.email || !liveAdminCredentials.password,
+  "Set LIVE_ADMIN_EMAIL and LIVE_ADMIN_PASSWORD to run the live Payout browser test.",
+);
 
 test("renders a Payout from the live Admin API", async ({ page }) => {
-  await signIn(page);
+  await signIn(page, liveAdminCredentials);
   await page.goto("/payout");
 
   await expect(

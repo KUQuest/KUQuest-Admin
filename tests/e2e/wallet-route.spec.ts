@@ -1,12 +1,6 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
-async function signIn(page: Page) {
-  await page.goto("/login");
-  await page.getByLabel("University email").fill("admin@ku.th");
-  await page.getByLabel("Password").fill("password123");
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/overview$/);
-}
+import { signIn } from "./support/admin-auth";
 
 test.describe("Wallet App Router board", () => {
   test("renders Wallet data without a client API read or fake Wallet detail link", async ({ page }) => {
@@ -62,7 +56,7 @@ test.describe("Wallet App Router board", () => {
     await opener.click();
     await expect(page.locator("dialog.wallet-drawer")).toBeVisible();
     await expect(page.getByText("Wallet balances", { exact: true })).toBeVisible();
-    await expect(page.getByRole("link", { name: "See Wallet Statement" })).toHaveAttribute("href", "/member/68000000/wallet-statement");
+    await expect(page.getByRole("link", { name: "See Wallet Statement" })).toHaveAttribute("href", "/member/68000000?tab=wallet-statement");
     await page.locator("button.scrim").click({ position: { x: 8, y: 8 } });
     await expect(page.locator("dialog.wallet-drawer")).toHaveCount(0);
     await expect(opener).toBeFocused();
@@ -73,16 +67,32 @@ test.describe("Wallet App Router board", () => {
     await expect(opener).toBeFocused();
   });
 
-  test("opens the full Wallet Statement route from the drawer", async ({ page }) => {
+  test("opens the Wallet Statement tab from the drawer", async ({ page }) => {
     await signIn(page);
     await page.goto("/wallet");
 
     await page.getByRole("button", { name: "Open Wallet WAL-1001" }).click();
     await page.getByRole("link", { name: "See Wallet Statement" }).click();
 
-    await expect(page).toHaveURL("/member/68000000/wallet-statement");
-    await expect(page.getByRole("heading", { level: 1, name: "Wallet Statement" })).toBeVisible();
-    await expect(page.getByText("Every committed and sealed Ledger Transaction for this Wallet, newest first.", { exact: true })).toBeVisible();
+    await expect(page).toHaveURL("/member/68000000?tab=wallet-statement");
+    await expect(page.getByRole("heading", { name: "Wallet Statement" })).toBeVisible();
+    await expect(page.getByText("Committed and sealed Ledger Transactions affecting this Wallet.", { exact: true })).toBeVisible();
+  });
+
+  test("keeps Wallet Statement pagination and filters on the canonical Member route", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/member/68000000?tab=wallet-statement");
+
+    const statement = page.locator("[data-user-wallet-statement]");
+    await expect(statement.locator(".wallet-statement-table tbody tr")).toHaveCount(25);
+    await expect(statement.getByRole("button", { name: "Load more" })).toBeVisible();
+
+    await statement.getByRole("button", { name: "Load more" }).click();
+    await expect(statement.locator(".wallet-statement-table tbody tr")).toHaveCount(50);
+
+    await statement.getByLabel("Event type").selectOption("TOP_UP");
+    await statement.getByRole("button", { name: "Apply filters" }).click();
+    await expect(statement.locator(".wallet-statement-table tbody tr")).toHaveCount(11);
   });
 
   test("does not create a Wallet detail route", async ({ page }) => {
