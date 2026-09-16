@@ -345,8 +345,10 @@ describe("Admin API boundary", () => {
   it("reads the current Admin session without the shared envelope", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     let request: Request | undefined;
+    let requestCache: RequestCache | undefined;
 
     mockFetch(async (input, init) => {
+      requestCache = init?.cache;
       request = new Request(input, init);
       return jsonResponse({
         session: {
@@ -372,7 +374,7 @@ describe("Admin API boundary", () => {
     expect(request?.method).toBe("GET");
     expect(request?.url).toBe("https://api.example.test/api/admin/auth/get-session");
     expect(request?.credentials).toBe("include");
-    expect(request?.cache).toBe("no-store");
+    expect(requestCache).toBe("no-store");
   });
 
   it("sends the Payout cancellation contract", async () => {
@@ -772,7 +774,9 @@ describe("Admin API boundary", () => {
   it("forwards server request options when reading Wallets", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     let request: Request | undefined;
+    let requestCache: RequestCache | undefined;
     mockFetch(async (input, init) => {
+      requestCache = init?.cache;
       request = new Request(input, init);
       return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
     });
@@ -787,7 +791,7 @@ describe("Admin API boundary", () => {
     expect(url.searchParams.get("status")).toBe("FROZEN");
     expect(url.searchParams.get("search")).toBe("member-1");
     expect(request?.headers.get("cookie")).toBe("kuquest-admin=session");
-    expect(request?.cache).toBe("no-store");
+    expect(requestCache).toBe("no-store");
   });
 
   it("loads Wallet Statement rows through the Finance Ledger endpoint", async () => {

@@ -169,6 +169,9 @@ test.describe("Quest route family", () => {
     await expect(page).toHaveURL(/\/quest$/);
     await expect(page.getByRole("heading", { level: 1, name: "Quests" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Open Quest QST-OPEN" })).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole("heading", { level: 1, name: "Quests" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Open Quest QST-OPEN" })).toBeVisible();
 
     await page.getByPlaceholder("Search Quests…").fill("library");
     await expect(page.locator("tbody tr")).toHaveCount(1);

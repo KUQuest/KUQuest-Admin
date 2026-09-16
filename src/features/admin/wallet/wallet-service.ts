@@ -150,7 +150,7 @@ async function listRemainingWallets(
 
   try {
     while (cursor) {
-      const page = await adminApi.listWallets({ limit: 100, cursor }, options);
+      const page = await adminApi.listWallets({ limit: 50, cursor }, options);
       items.push(...page.items);
       const nextCursor = page.nextCursor ?? undefined;
       if (nextCursor === cursor) break;
@@ -179,7 +179,7 @@ export async function loadWalletBoardPageData(
 
   const options = adminApiRequestOptions(cookieHeader);
   const [walletsResult, summaryResult] = await Promise.allSettled([
-    adminApi.listWallets({ limit: 100 }, options),
+    adminApi.listWallets({ limit: 50 }, options),
     adminApi.getFinanceOverview(options),
   ]);
   if (walletsResult.status === "rejected") {

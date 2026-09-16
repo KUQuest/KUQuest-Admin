@@ -14,7 +14,7 @@ export default defineConfig({
     command:
       "node scripts/run-with-env.mjs NEXT_PUBLIC_API_URL=http://localhost:5000 NEXT_PUBLIC_ADMIN_DATA_SOURCE=api -- npm run dev -- --port 3000",
     url: "http://localhost:3000/login",
-    reuseExistingServer: true,
+    reuseExistingServer: false,
     timeout: 120_000,
   },
 });

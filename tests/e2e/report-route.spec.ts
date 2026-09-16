@@ -11,12 +11,22 @@ test.describe("Report Case routes", () => {
     await expect(main.getByRole("heading", { level: 1, name: "Report Cases" })).toBeVisible();
     await expect(main.locator("tbody tr[data-report-id]")).toHaveCount(2);
     await expect(main.getByText("Conduct Report", { exact: true })).toHaveCount(0);
+    await page.reload();
+    await expect(main.getByRole("heading", { level: 1, name: "Report Cases" })).toBeVisible();
+    await expect(main.locator("tbody tr[data-report-id]")).toHaveCount(2);
 
     await main.locator("tbody tr[data-report-id]").first().click();
     await expect(page).toHaveURL(/\/report\/RPT-8201$/);
     await expect(page.locator("#report-main")).toBeVisible();
     await expect(page.locator("dialog.drawer.open")).toBeVisible();
     await expect(page.locator("dialog.drawer.open").getByText("Report detail", { exact: true })).toBeVisible();
+
+    await page.goBack();
+    await expect(page).toHaveURL(/\/report$/);
+    await expect(page.locator("dialog.drawer.open")).toHaveCount(0);
+
+    await main.locator("tbody tr[data-report-id]").first().click();
+    await expect(page.locator("dialog.drawer.open")).toBeVisible();
 
     await page.getByRole("button", { name: "Close drawer" }).click();
     await expect(page).toHaveURL(/\/report$/);
