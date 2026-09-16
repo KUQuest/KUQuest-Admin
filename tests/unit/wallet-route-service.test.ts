@@ -46,7 +46,9 @@ describe("Wallet route service boundary", () => {
   it("reads Wallet rows and Finance Overview through the Admin API with the server cookie", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     const requests: Request[] = [];
+    const cacheModes: (RequestCache | undefined)[] = [];
     globalThis.fetch = (async (input, init) => {
+      cacheModes.push(init?.cache);
       const request = new Request(input, init);
       requests.push(request);
       const url = new URL(request.url);
@@ -86,7 +88,7 @@ describe("Wallet route service boundary", () => {
     expect(result.dataSource).toBe("api");
     expect(requests).toHaveLength(3);
     expect(requests.every((request) => request.headers.get("cookie") === "kuquest-admin=session")).toBe(true);
-    expect(requests.every((request) => request.cache === "no-store")).toBe(true);
+    expect(cacheModes.every((cache) => cache === "no-store")).toBe(true);
     const walletRequests = requests.filter((request) => new URL(request.url).pathname === "/api/v1/admin/wallets");
     expect(walletRequests).toHaveLength(2);
     expect(walletRequests.every((request) => new URL(request.url).searchParams.get("limit") === "50")).toBe(true);
@@ -96,7 +98,9 @@ describe("Wallet route service boundary", () => {
   it("loads Wallet drawer data through the service with the server cookie", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     const requests: Request[] = [];
+    const cacheModes: (RequestCache | undefined)[] = [];
     globalThis.fetch = (async (input, init) => {
+      cacheModes.push(init?.cache);
       const request = new Request(input, init);
       requests.push(request);
       const url = new URL(request.url);
@@ -141,13 +145,15 @@ describe("Wallet route service boundary", () => {
     expect(result.ledger[0]?.businessReference).toBe("TOPUP-1001");
     expect(requests).toHaveLength(3);
     expect(requests.every((request) => request.headers.get("cookie") === "kuquest-admin=session")).toBe(true);
-    expect(requests.every((request) => request.cache === "no-store")).toBe(true);
+    expect(cacheModes.every((cache) => cache === "no-store")).toBe(true);
   });
 
   it("loads every Ledger page for the full Wallet Statement", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     const requests: Request[] = [];
+    const cacheModes: (RequestCache | undefined)[] = [];
     globalThis.fetch = (async (input, init) => {
+      cacheModes.push(init?.cache);
       const request = new Request(input, init);
       requests.push(request);
       const url = new URL(request.url);
@@ -222,13 +228,15 @@ describe("Wallet route service boundary", () => {
     expect(ledgerRequests[0]?.url).toContain("limit=50");
     expect(ledgerRequests[1]?.url).toContain("cursor=ledger-next");
     expect(requests.every((request) => request.headers.get("cookie") === "kuquest-admin=session")).toBe(true);
-    expect(requests.every((request) => request.cache === "no-store")).toBe(true);
+    expect(cacheModes.every((cache) => cache === "no-store")).toBe(true);
   });
 
   it("loads Wallet verification through the service with the server cookie", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     const requests: Request[] = [];
+    let requestCache: RequestCache | undefined;
     globalThis.fetch = (async (input, init) => {
+      requestCache = init?.cache;
       const request = new Request(input, init);
       requests.push(request);
       return jsonResponse({
@@ -246,7 +254,7 @@ describe("Wallet route service boundary", () => {
 
     expect(result).toEqual({ matches: false, activityCountMatches: true, projectedTotal: 300, ledgerTotal: 290 });
     expect(requests[0]?.headers.get("cookie")).toBe("kuquest-admin=session");
-    expect(requests[0]?.cache).toBe("no-store");
+    expect(requestCache).toBe("no-store");
   });
 
   it("returns the first Wallet page while later pages load in the background", async () => {

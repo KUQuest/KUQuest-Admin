@@ -1,7 +1,7 @@
-import { execFileSync } from "node:child_process";
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
-const playwright = process.platform === "win32" ? "npx.cmd" : "npx";
+const playwrightCli = fileURLToPath(new URL("../node_modules/@playwright/test/cli.js", import.meta.url));
 let activeChild = null;
 let receivedSignal = null;
 
@@ -81,7 +81,7 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
 export async function runPlaywrightConfigs(configs, extraArgs = []) {
   for (const config of configs) {
     const code = await new Promise((resolve, reject) => {
-      const child = spawn(playwright, ["playwright", "test", `--config=${config}`, ...extraArgs], {
+      const child = spawn(process.execPath, [playwrightCli, "test", `--config=${config}`, ...extraArgs], {
         detached: process.platform !== "win32",
         env: process.env,
         stdio: "inherit",

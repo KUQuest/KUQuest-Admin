@@ -39,7 +39,9 @@ describe("Payout service boundary", () => {
   it("reads the Payout board through the Admin API and forwards the server cookie", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     const requests: Request[] = [];
+    const cacheModes: (RequestCache | undefined)[] = [];
     globalThis.fetch = (async (input, init) => {
+      cacheModes.push(init?.cache);
       const request = new Request(input, init);
       requests.push(request);
       const cursor = new URL(request.url).searchParams.get("cursor");
@@ -68,13 +70,15 @@ describe("Payout service boundary", () => {
     expect(new Set(requests.map((request) => new URL(request.url).searchParams.get("limit")))).toEqual(new Set(["50"]));
     expect(requests[0]?.headers.get("cookie")).toBe("kuquest-admin=session");
     expect(requests.find((request) => new URL(request.url).searchParams.get("cursor") === "next-page")).toBeDefined();
-    expect(requests.every((request) => request.cache === "no-store")).toBe(true);
+    expect(cacheModes.every((cache) => cache === "no-store")).toBe(true);
   });
 
   it("maps a live Payout detail and returns null for an API 404", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     let request: Request | undefined;
+    let requestCache: RequestCache | undefined;
     globalThis.fetch = (async (input, init) => {
+      requestCache = init?.cache;
       request = new Request(input, init);
       const url = new URL(request.url);
       if (url.pathname.endsWith("/missing")) return jsonResponse({ success: false, error: { code: "NOT_FOUND", message: "Payout not found." } }, 404);
@@ -86,7 +90,7 @@ describe("Payout service boundary", () => {
     expect(result?.detail.id).toBe("PAY-9637");
     expect(result?.detail.destination.maskedValue).toBe("•••• 9637");
     expect(request?.headers.get("cookie")).toBe("kuquest-admin=session");
-    expect(request?.cache).toBe("no-store");
+    expect(requestCache).toBe("no-store");
 
     await expect(loadPayoutDetailPageData("missing", "kuquest-admin=session", "api")).resolves.toBeNull();
   });
