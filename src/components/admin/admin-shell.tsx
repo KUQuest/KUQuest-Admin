@@ -18,6 +18,8 @@ import { isAdminMockEnabled } from "../../lib/auth/admin-auth-mode";
 import { AdminHeader } from "./admin-header";
 import { AdminSidebar } from "./admin-sidebar";
 import { AdminShellProvider } from "./admin-shell-context";
+import { ADMIN_SESSION_KEY } from "../../features/admin/legacy/auth";
+import { ADMIN_MOCK_SESSION_COOKIE } from "../../lib/auth/admin-session-policy";
 
 type AdminShellProps = {
   identity: AdminIdentity;
@@ -45,6 +47,22 @@ export function AdminShell({ identity, children }: AdminShellProps) {
   }, []);
   const openGlobalSearch = useCallback(() => setGlobalSearchOpen(true), []);
   const closeGlobalSearch = useCallback(() => setGlobalSearchOpen(false), []);
+  const handleLogout = useCallback(() => {
+    const finishLogout = () => {
+      window.localStorage.removeItem(ADMIN_SESSION_KEY);
+      document.cookie = `${ADMIN_MOCK_SESSION_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax`;
+      window.location.assign("/login");
+    };
+
+    if (isAdminMockEnabled()) {
+      finishLogout();
+      return;
+    }
+
+    void adminApi.signOut()
+      .catch((error: unknown) => console.error("Admin sign-out failed", error))
+      .finally(finishLogout);
+  }, []);
   const translateText = useCallback(
     (value: string) => translateAdminText(language, value),
     [language],
@@ -104,6 +122,7 @@ export function AdminShell({ identity, children }: AdminShellProps) {
           counts={navigationCounts}
           language={language}
           onLanguageChange={changeLanguage}
+          onLogout={handleLogout}
           translateText={translateText}
         />
         <AdminHeader

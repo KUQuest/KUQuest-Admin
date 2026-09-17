@@ -1,8 +1,10 @@
 import { describe, expect, it } from "bun:test";
 
+import type { PersistedAdminData } from "../../src/features/admin/data/admin-records";
 import {
   overviewFallbackWithoutApiData,
   overviewQueueCaseIndexFor,
+  overviewModelFromMockData,
   overviewModelFromApi,
   overviewSearchResultsFromApi,
   overviewSearchResultsFromMockData,
@@ -174,6 +176,31 @@ describe("Overview model", () => {
     expect(overviewQueueCaseIndexFor("disputes", "DSP-5202")).toBe(1);
     expect(overviewQueueCaseIndexFor("conductReports", null)).toBeNull();
     expect(overviewQueueCaseIndexFor("reports", "unknown-case")).toBeNull();
+  });
+
+  it("selects the oldest Mock case for each Queue map row", () => {
+    const data: PersistedAdminData = {
+      version: "test",
+      collections: {
+        users: [],
+        quests: [],
+        payouts: [{ id: "PAY-1", status: "PENDING_ADMIN_APPROVAL" }],
+        disputes: [{ id: "DSP-1", status: "DISPUTE_CASE_PENDING" }],
+        reports: [
+          { id: "RPT-1", status: "REPORT_CASE_PENDING" },
+          { id: "CND-1", status: "CONDUCT_REPORT_PENDING", conductReportStatus: "CONDUCT_REPORT_PENDING" },
+        ],
+      },
+    };
+
+    const model = overviewModelFromMockData(data, [], Date.parse("2026-09-17T04:00:00.000Z"));
+
+    expect(model.queues.map((row) => row.oldestId)).toEqual([
+      "PAY-9637",
+      "DSP-5201",
+      "RPT-8201",
+      "CND-8302",
+    ]);
   });
 
   it("does not invent local values when the API only returns summary fields", () => {

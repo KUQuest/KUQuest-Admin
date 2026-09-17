@@ -3,6 +3,7 @@ import type {
   AdminQuest,
   AdminQuestDetail,
   AdminQuestFinance,
+  AdminQuestMember,
 } from "../api/admin-api";
 import { mockDemoMemberSeeds } from "../data/mock-demo-fixtures";
 
@@ -103,6 +104,13 @@ const demoQuestStates = [
   "QUEST_CANCELLED",
 ] as const;
 
+const teamQuestTitles = [
+  "Audit campus accessibility",
+  "Photograph event spaces",
+  "Map shared study areas",
+  "Review community garden signs",
+] as const;
+
 type DemoQuestMember = {
   id: string;
   firstName: string;
@@ -132,6 +140,8 @@ function demoQuestMemberFor(index: number): DemoQuestMember {
 
 function makeDemoQuest(index: number): AdminQuest {
   const state = demoQuestStates[index % demoQuestStates.length];
+  const isTeamQuest = index % 7 === 3;
+  const teamHeadcount = 2 + (index % 3);
   const rewardSatang = index % 7 === 0 ? null : 7000 + index * 500;
   // Keep canonical workflow records at the top of the default newest-first
   // board while the generated records still span many older dates.
@@ -140,11 +150,13 @@ function makeDemoQuest(index: number): AdminQuest {
   return mockQuestSummary({
     id: `00000000-0000-0000-0000-${String(600 + index).padStart(12, "0")}`,
     displayId: `QST-${12011 + index}`,
-    title: `Demo Quest ${String(index + 1).padStart(2, "0")}`,
+    title: isTeamQuest
+      ? `Team Quest ${String(index + 1).padStart(2, "0")} · ${teamQuestTitles[index % teamQuestTitles.length]}`
+      : `Demo Quest ${String(index + 1).padStart(2, "0")}`,
     questStatus: state,
     mode: index % 2 === 0 ? "FIRST_COME_FIRST_SERVED" : "CANDIDATE",
-    participation: "SINGLE",
-    headcount: 1,
+    participation: isTeamQuest ? "GROUP" : "SINGLE",
+    headcount: isTeamQuest ? teamHeadcount : 1,
     rewardSatang,
     questFundingTotalSatang: rewardSatang === null ? null : rewardSatang + 240,
     startTime: new Date(Date.UTC(2026, 7, 2, 8, 0, 0) - index * 86_400_000).toISOString(),
@@ -168,7 +180,11 @@ const mockCoreQuests: AdminQuest[] = [
     displayId: "QST-TEAM",
     title: "Map library access points",
     questStatus: "QUEST_ASSIGNED",
+    mode: "CANDIDATE",
     participation: "GROUP",
+    headcount: 3,
+    rewardSatang: 18000,
+    questFundingTotalSatang: 18240,
   }),
   mockQuestSummary({
     id: MOCK_FAILED_QUEST_ID,
@@ -221,7 +237,126 @@ export const mockAllQuests: AdminQuest[] = [
   ...mockDisputeQuestAliases,
 ];
 
+const teamRosterStates: readonly AdminApiQuestStatus[] = [
+  "QUEST_ASSIGNED",
+  "QUEST_IN_PROGRESS",
+  "QUEST_SUBMITTED",
+  "QUEST_APPROVED",
+  "QUEST_REWORK",
+  "QUEST_COMPLETED",
+  "QUEST_FAILED",
+  "QUEST_DISPUTED",
+];
+
+const teamProofStates: readonly AdminApiQuestStatus[] = [
+  "QUEST_SUBMITTED",
+  "QUEST_APPROVED",
+  "QUEST_REWORK",
+  "QUEST_COMPLETED",
+  "QUEST_FAILED",
+  "QUEST_DISPUTED",
+];
+
+function teamMembersFor(quest: AdminQuest): AdminQuestMember[] {
+  const memberCount = Math.max(2, Math.min(quest.headcount, 20));
+  if (quest.id === MOCK_TEAM_QUEST_ID) {
+    return [assignedWorker, demoQuestMemberFor(1), demoQuestMemberFor(2)].slice(0, memberCount);
+  }
+
+  const numericId = Number.parseInt(quest.id.slice(-3), 10);
+  const baseIndex = 24 + (Number.isFinite(numericId) ? numericId % 120 : 0);
+  return Array.from({ length: memberCount }, (_, index) => demoQuestMemberFor(baseIndex + index));
+}
+
+function teamNameFor(quest: AdminQuest): string {
+  return `${quest.displayId ?? "Quest"} Field Team`;
+}
+
+function teamCandidatesFor(
+  quest: AdminQuest,
+  members: readonly AdminQuestMember[],
+): AdminQuestDetail["candidates"]["teams"] {
+  if (quest.participation !== "GROUP" || quest.mode !== "CANDIDATE" || quest.questStatus === "QUEST_DRAFT") return [];
+
+  const forming = quest.questStatus === "QUEST_OPEN";
+  const teamMembers = members.slice(0, forming ? Math.max(1, members.length - 1) : members.length);
+  return [{
+    id: `${quest.id}-team`,
+    name: teamNameFor(quest),
+    teamStatus: forming
+      ? "TEAM_FORMING"
+      : quest.questStatus === "QUEST_CANCELLED" ? "TEAM_REJECTED" : "TEAM_SELECTED",
+    reworkLimit: 0,
+    leaderId: teamMembers[0]?.id ?? members[0]?.id ?? mockHirer.id,
+    createdAt: quest.createdAt,
+    members: teamMembers.map((member, index) => ({
+      member,
+      joinedAt: new Date(Date.parse(quest.createdAt) + index * 60_000).toISOString(),
+    })),
+  }];
+}
+
+function teamAssignmentsFor(
+  quest: AdminQuest,
+  members: readonly AdminQuestMember[],
+): AdminQuestDetail["assignments"] {
+  if (quest.participation !== "GROUP" || !teamRosterStates.includes(quest.questStatus)) return [];
+
+  const completed = quest.questStatus === "QUEST_COMPLETED" || quest.questStatus === "QUEST_APPROVED";
+  const incomplete = quest.questStatus === "QUEST_FAILED" || quest.questStatus === "QUEST_DISPUTED";
+  const started = quest.questStatus !== "QUEST_ASSIGNED";
+  return members.map((worker, index) => ({
+    id: `${quest.id}-assignment-${index + 1}`,
+    worker,
+    assignmentStatus: completed
+      ? "ASSIGNMENT_COMPLETED"
+      : incomplete ? "ASSIGNMENT_INCOMPLETE" : "ASSIGNMENT_ACTIVE",
+    startedAt: started ? quest.startTime : null,
+    createdAt: quest.createdAt,
+  }));
+}
+
+function teamProofSubmissionsFor(
+  quest: AdminQuest,
+  members: readonly AdminQuestMember[],
+): AdminQuestDetail["proofSubmissions"] {
+  if (quest.participation !== "GROUP" || !teamProofStates.includes(quest.questStatus)) return [];
+
+  const approved = quest.questStatus === "QUEST_APPROVED" || quest.questStatus === "QUEST_COMPLETED";
+  const rejected = quest.questStatus === "QUEST_FAILED" || quest.questStatus === "QUEST_DISPUTED";
+  const submittedBy = members[0] ?? assignedWorker;
+  return [{
+    id: `${quest.id}-proof-1`,
+    worker: null,
+    team: { id: `${quest.id}-team`, name: teamNameFor(quest) },
+    submittedBy,
+    content: "The Team submitted the requested work and evidence.",
+    submissionStatus: approved ? "PROOF_APPROVED" : rejected ? "PROOF_NOT_APPROVED" : "PROOF_SUBMITTED",
+    reviewNote: approved ? "Team evidence accepted by the Hirer." : rejected ? "Team evidence was not approved." : null,
+    submittedAt: quest.updatedAt,
+    reviewedAt: approved || rejected ? quest.updatedAt : null,
+    files: [{
+      fileId: `${quest.id}-proof-file-1`,
+      contentType: "image/jpeg",
+      sizeBytes: 245_000,
+      position: 0,
+    }],
+  }];
+}
+
 export function mockQuestDetail(quest: AdminQuest): AdminQuestDetail {
+  const teamMembers = quest.participation === "GROUP" ? teamMembersFor(quest) : [];
+  const teamAssignments = teamAssignmentsFor(quest, teamMembers);
+  const teamCandidates = teamCandidatesFor(quest, teamMembers);
+  const teamApplications = quest.participation === "GROUP" && quest.mode === "CANDIDATE" && quest.questStatus === "QUEST_OPEN"
+    ? [{
+        id: `${quest.id}-application-1`,
+        worker: demoQuestMemberFor(80),
+        applicationStatus: "APPLICATION_PENDING",
+        reworkLimit: 0,
+        appliedAt: quest.createdAt,
+      }]
+    : [];
   const detail: AdminQuestDetail = {
     ...quest,
     description: `Full description for ${quest.title}.`,
@@ -236,12 +371,14 @@ export function mockQuestDetail(quest: AdminQuest): AdminQuestDetail {
     policyRevisionId: "00000000-0000-0000-0000-000000000202",
     platformFeeBps: 200,
     platformFeePerWorkerSatang: 240,
-    questEscrowSatang: 12240,
+    questEscrowSatang: quest.questFundingTotalSatang,
     cancelledAt: null,
     cancelledByUserId: null,
     cancelledByAdminId: null,
-    candidates: { applications: [], teams: [] },
-    assignments: quest.id === MOCK_UNLINKED_FAILED_QUEST_ID || quest.id === MOCK_TEAM_QUEST_ID
+    candidates: { applications: teamApplications, teams: teamCandidates },
+    assignments: teamAssignments.length
+      ? teamAssignments
+      : quest.id === MOCK_UNLINKED_FAILED_QUEST_ID
       ? [{
           id: "00000000-0000-0000-0000-000000000420",
           worker: assignedWorker,
@@ -250,7 +387,7 @@ export function mockQuestDetail(quest: AdminQuest): AdminQuestDetail {
           createdAt: "2026-09-14T08:50:00.000Z",
         }]
       : [],
-    proofSubmissions: [],
+    proofSubmissions: teamProofSubmissionsFor(quest, teamMembers),
     editHistory: [],
     timeline: questTimelineFor(quest),
     adminActions: [],
@@ -283,12 +420,12 @@ export function mockQuestDetail(quest: AdminQuest): AdminQuestDetail {
       createdAt: "2026-09-14T09:15:00.000Z",
       expiresAt: "2026-09-14T09:25:00.000Z",
       resolvedAt: null,
-      responses: [{
-        workerId: MOCK_ASSIGNED_WORKER_ID,
+      responses: teamMembers.map((member) => ({
+        workerId: member.id,
         decision: null,
         reason: null,
         respondedAt: null,
-      }],
+      })),
     }];
   }
 
@@ -303,6 +440,7 @@ export function mockQuestDetailForId(questId: string): AdminQuestDetail | null {
 }
 
 export function mockQuestFinance(quest: AdminQuest): AdminQuestFinance {
+  const fundingTotalSatang = quest.questFundingTotalSatang;
   return {
     quest: {
       id: quest.id,
@@ -310,19 +448,19 @@ export function mockQuestFinance(quest: AdminQuest): AdminQuestFinance {
       questStatus: quest.questStatus,
       headcount: quest.headcount,
       rewardSatang: quest.rewardSatang,
-      platformFeePerWorkerSatang: 240,
-      questFundingTotalSatang: quest.questFundingTotalSatang,
+      platformFeePerWorkerSatang: fundingTotalSatang === null ? null : 240,
+      questFundingTotalSatang: fundingTotalSatang,
       hirer: { ...mockHirer, studentId: "6599900015" },
     },
-    reservation: {
+    reservation: fundingTotalSatang === null ? null : {
       id: "00000000-0000-0000-0000-000000000201",
       status: "ACTIVE",
-      totalReservedSatang: 12240,
-      remainingSatang: 12240,
+      totalReservedSatang: fundingTotalSatang,
+      remainingSatang: fundingTotalSatang,
       createdAt: "2026-09-14T08:48:00.000Z",
     },
     transfers: [],
-    ledgerTransactions: [{
+    ledgerTransactions: fundingTotalSatang === null ? [] : [{
       id: "00000000-0000-0000-0000-000000000401",
       businessReference: "QUEST-FUNDING-OPEN",
       eventType: "QUEST_FUNDING_RESERVED",
@@ -335,7 +473,7 @@ export function mockQuestFinance(quest: AdminQuest): AdminQuestFinance {
         accountType: "FUNDING_RESERVED",
         walletId: "00000000-0000-0000-0000-000000000010",
         ownerUserId: mockHirer.id,
-        amountSatang: 12240,
+        amountSatang: fundingTotalSatang,
       }],
     }],
   };

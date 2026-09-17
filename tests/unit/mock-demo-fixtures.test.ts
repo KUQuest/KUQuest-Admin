@@ -16,6 +16,7 @@ import { payoutDetailViewFromApi } from "../../src/features/admin/payout/payout-
 import { mockAllWallets } from "../../src/features/admin/wallet/wallet-mock-data";
 import {
   MOCK_UNLINKED_FAILED_QUEST_ID,
+  mockAllQuests,
   mockDisputeIdForQuest,
   mockQuestDetailForId,
   mockQuests,
@@ -188,6 +189,23 @@ describe("expanded mock demo fixtures", () => {
     expect(questStates.has("QUEST_CANCELLED")).toBe(true);
     expect(mockQuests.some((quest) => quest.dueAt === null)).toBe(true);
     expect(mockQuests.some((quest) => quest.rewardSatang === null)).toBe(true);
+  });
+
+  it("provides multiple valid Team Quest examples with roster details", () => {
+    const teamQuests = mockAllQuests.filter((quest) => quest.participation === "GROUP");
+    const teamModes = new Set(teamQuests.map((quest) => quest.mode));
+
+    expect(teamQuests.length).toBeGreaterThanOrEqual(20);
+    expect(teamQuests.every((quest) => quest.headcount >= 2 && quest.headcount <= 20)).toBe(true);
+    expect(teamModes).toEqual(new Set(["FIRST_COME_FIRST_SERVED", "CANDIDATE"]));
+
+    const assignedTeam = teamQuests.find((quest) => quest.questStatus === "QUEST_ASSIGNED");
+    const assignedDetail = assignedTeam ? mockQuestDetailForId(assignedTeam.id) : null;
+    expect(assignedDetail?.assignments.length).toBeGreaterThanOrEqual(2);
+
+    const completedTeam = teamQuests.find((quest) => quest.questStatus === "QUEST_COMPLETED");
+    const completedDetail = completedTeam ? mockQuestDetailForId(completedTeam.id) : null;
+    expect(completedDetail?.proofSubmissions[0]?.submissionStatus).toBe("PROOF_APPROVED");
   });
 
   it("provides a real review queue and complete Payout timelines", () => {

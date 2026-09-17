@@ -91,6 +91,7 @@ export type OverviewQueueCase = {
   title: string;
   detail: string;
   status: string;
+  createdAt: string;
   priority: OverviewQueuePriority;
   age: string;
   slaState: OverviewQueueSla;
@@ -324,6 +325,7 @@ const mockQueueCases: Record<OverviewQueueId, OverviewQueueCase[]> = {
       title: "Payout approval · Darin Intharawong",
       detail: "Payout Reserve is waiting for an Admin decision.",
       status: "PENDING_ADMIN_APPROVAL",
+      createdAt: "2026-09-15T04:00:00.000Z",
       priority: "High",
       age: "2 days ago",
       slaState: "Due soon",
@@ -336,6 +338,7 @@ const mockQueueCases: Record<OverviewQueueId, OverviewQueueCase[]> = {
       title: "Payout approval · Fah Lertwiroj",
       detail: "Masked Payout Destination is ready for review.",
       status: "PENDING_ADMIN_APPROVAL",
+      createdAt: "2026-09-16T04:00:00.000Z",
       priority: "Medium",
       age: "1 day ago",
       slaState: "On track",
@@ -350,6 +353,7 @@ const mockQueueCases: Record<OverviewQueueId, OverviewQueueCase[]> = {
       title: "Dispute Case · Verify dorm fire exits",
       detail: "QUEST_FAILED case with money at risk.",
       status: "DISPUTE_CASE_PENDING",
+      createdAt: "2026-09-14T04:00:00.000Z",
       priority: "High",
       age: "3 days ago",
       slaState: "Overdue",
@@ -362,6 +366,7 @@ const mockQueueCases: Record<OverviewQueueId, OverviewQueueCase[]> = {
       title: "Dispute Case · Design orientation social cards",
       detail: "Evidence review is waiting for a first decision.",
       status: "DISPUTE_CASE_PENDING",
+      createdAt: "2026-09-15T04:00:00.000Z",
       priority: "High",
       age: "2 days ago",
       slaState: "Due soon",
@@ -376,6 +381,7 @@ const mockQueueCases: Record<OverviewQueueId, OverviewQueueCase[]> = {
       title: "Report Case · Harassment or abuse",
       detail: "Message Evidence Reference is waiting for review.",
       status: "REPORT_CASE_PENDING",
+      createdAt: "2026-09-16T04:00:00.000Z",
       priority: "Medium",
       age: "1 day ago",
       slaState: "Due soon",
@@ -388,6 +394,7 @@ const mockQueueCases: Record<OverviewQueueId, OverviewQueueCase[]> = {
       title: "Report Case · Fraud or payment issue",
       detail: "Related Message evidence is ready for review.",
       status: "REPORT_CASE_PENDING",
+      createdAt: "2026-09-16T08:00:00.000Z",
       priority: "Medium",
       age: "1 day ago",
       slaState: "On track",
@@ -402,6 +409,7 @@ const mockQueueCases: Record<OverviewQueueId, OverviewQueueCase[]> = {
       title: "Conduct Report · Quest abandonment",
       detail: "Quest record and Proof Submission need review.",
       status: "CONDUCT_REPORT_PENDING",
+      createdAt: "2026-09-16T23:00:00.000Z",
       priority: "High",
       age: "5 hours ago",
       slaState: "On track",
@@ -414,6 +422,7 @@ const mockQueueCases: Record<OverviewQueueId, OverviewQueueCase[]> = {
       title: "Conduct Report · Out-of-scope work",
       detail: "Quest conduct record is waiting for confirmation.",
       status: "CONDUCT_REPORT_PENDING",
+      createdAt: "2026-09-15T23:00:00.000Z",
       priority: "Medium",
       age: "1 day ago",
       slaState: "Due soon",
@@ -423,14 +432,35 @@ const mockQueueCases: Record<OverviewQueueId, OverviewQueueCase[]> = {
   ],
 };
 
+function sortedMockQueueCases(queueId: OverviewQueueId): OverviewQueueCase[] {
+  return mockQueueCases[queueId].toSorted((left, right) => {
+    const leftCreatedAt = Date.parse(left.createdAt);
+    const rightCreatedAt = Date.parse(right.createdAt);
+    const leftHasTimestamp = Number.isFinite(leftCreatedAt);
+    const rightHasTimestamp = Number.isFinite(rightCreatedAt);
+
+    if (!leftHasTimestamp || !rightHasTimestamp) {
+      if (leftHasTimestamp) return -1;
+      if (rightHasTimestamp) return 1;
+      return left.id.localeCompare(right.id);
+    }
+
+    return leftCreatedAt - rightCreatedAt || left.id.localeCompare(right.id);
+  });
+}
+
+function oldestMockQueueCase(queueId: OverviewQueueId): OverviewQueueCase | null {
+  return sortedMockQueueCases(queueId)[0] ?? null;
+}
+
 export function overviewQueueCasesFor(queueId: OverviewQueueId): OverviewQueueCase[] {
-  return mockQueueCases[queueId].map((queueCase) => ({ ...queueCase }));
+  return sortedMockQueueCases(queueId).map((queueCase) => ({ ...queueCase }));
 }
 
 /** Resolve a queue's named oldest case to the mock work list without guessing. */
 export function overviewQueueCaseIndexFor(queueId: OverviewQueueId, caseId: string | null): number | null {
   if (!caseId?.trim()) return null;
-  const caseIndex = mockQueueCases[queueId].findIndex((queueCase) => queueCase.id === caseId);
+  const caseIndex = sortedMockQueueCases(queueId).findIndex((queueCase) => queueCase.id === caseId);
   return caseIndex >= 0 ? caseIndex : null;
 }
 
@@ -569,11 +599,15 @@ export function overviewModelFromMockData(
     questCounts.set(status, (questCounts.get(status) ?? 0) + 1);
   });
   const questTotal = data.collections.quests.length;
+  const oldestPayout = oldestMockQueueCase("payouts");
+  const oldestDispute = oldestMockQueueCase("disputes");
+  const oldestReport = oldestMockQueueCase("reports");
+  const oldestConductReport = oldestMockQueueCase("conductReports");
   const queues = [
-    queue({ id: "payouts", title: "Payout Approvals", count: payouts, source: "Local fallback", status: "Needs review", oldest: "Payout approval · Darin Intharawong", oldestId: "PAY-9637", waiting: "2 days ago", tone: "overview-queue-status-review", priority: "High", slaState: "Due soon", assignedAdmin: "Unassigned" }),
-    queue({ id: "disputes", title: "Dispute Cases", count: disputes, source: "Local fallback", status: disputes ? "Open" : "Clear", oldest: "Dispute Case · Verify dorm fire exits", oldestId: "DSP-5201", waiting: "3 days ago", tone: disputes ? "overview-queue-status-overdue" : "", priority: disputes ? "High" : "Not provided", slaState: disputes ? "Overdue" : "Not provided", assignedAdmin: disputes ? "Supansa Admin" : "Not assigned" }),
-    queue({ id: "reports", title: "Report Cases", count: reportCases, source: "Local fallback", status: reportCases ? "Open" : "Clear", oldest: "Report Case · Harassment or abuse", oldestId: "RPT-8201", waiting: "1 day ago", tone: reportCases ? "overview-queue-status-review" : "", priority: reportCases ? "Medium" : "Not provided", slaState: reportCases ? "Due soon" : "Not provided", assignedAdmin: reportCases ? "Unassigned" : "Not assigned" }),
-  queue({ id: "conductReports", title: "Conduct Reports", count: conductReports, source: "Local fallback", status: conductReports ? "Open" : "Clear", oldest: "Conduct Report · Quest abandonment", oldestId: "CND-8301", waiting: "5 hours ago", tone: conductReports ? "overview-queue-status-review" : "", priority: conductReports ? "High" : "Not provided", slaState: conductReports ? "On track" : "Not provided", assignedAdmin: conductReports ? "Supansa Admin" : "Not assigned" }),
+    queue({ id: "payouts", title: "Payout Approvals", count: payouts, source: "Local fallback", status: "Needs review", oldest: oldestPayout?.title ?? "Oldest record not provided", oldestId: oldestPayout?.id, waiting: oldestPayout?.age ?? "—", tone: "overview-queue-status-review", priority: oldestPayout?.priority ?? "Not provided", slaState: oldestPayout?.slaState ?? "Not provided", assignedAdmin: oldestPayout?.assignedAdmin ?? "Not assigned" }),
+    queue({ id: "disputes", title: "Dispute Cases", count: disputes, source: "Local fallback", status: disputes ? "Open" : "Clear", oldest: oldestDispute?.title ?? "Oldest record not provided", oldestId: oldestDispute?.id, waiting: oldestDispute?.age ?? "—", tone: disputes ? "overview-queue-status-overdue" : "", priority: disputes ? oldestDispute?.priority ?? "Not provided" : "Not provided", slaState: disputes ? oldestDispute?.slaState ?? "Not provided" : "Not provided", assignedAdmin: disputes ? oldestDispute?.assignedAdmin ?? "Not assigned" : "Not assigned" }),
+    queue({ id: "reports", title: "Report Cases", count: reportCases, source: "Local fallback", status: reportCases ? "Open" : "Clear", oldest: oldestReport?.title ?? "Oldest record not provided", oldestId: oldestReport?.id, waiting: oldestReport?.age ?? "—", tone: reportCases ? "overview-queue-status-review" : "", priority: reportCases ? oldestReport?.priority ?? "Not provided" : "Not provided", slaState: reportCases ? oldestReport?.slaState ?? "Not provided" : "Not provided", assignedAdmin: reportCases ? oldestReport?.assignedAdmin ?? "Not assigned" : "Not assigned" }),
+    queue({ id: "conductReports", title: "Conduct Reports", count: conductReports, source: "Local fallback", status: conductReports ? "Open" : "Clear", oldest: oldestConductReport?.title ?? "Oldest record not provided", oldestId: oldestConductReport?.id, waiting: oldestConductReport?.age ?? "—", tone: conductReports ? "overview-queue-status-review" : "", priority: conductReports ? oldestConductReport?.priority ?? "Not provided" : "Not provided", slaState: conductReports ? oldestConductReport?.slaState ?? "Not provided" : "Not provided", assignedAdmin: conductReports ? oldestConductReport?.assignedAdmin ?? "Not assigned" : "Not assigned" }),
   ];
   const walletCounts = data.collections.users.reduce(
     (counts, record) => {

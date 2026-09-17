@@ -24,6 +24,7 @@ type AdminSidebarProps = {
   counts: AdminNavigationCounts | null;
   language: AdminLanguage;
   onLanguageChange: (language: AdminLanguage) => void;
+  onLogout: () => void;
   translateText: (value: string) => string;
 };
 
@@ -84,6 +85,7 @@ export function AdminSidebar({
   counts,
   language,
   onLanguageChange,
+  onLogout,
   translateText,
 }: AdminSidebarProps) {
   const pathname = usePathname();
@@ -160,6 +162,9 @@ export function AdminSidebar({
           <strong>{adminName}</strong>
           <small>{translateText("Admin")}</small>
         </div>
+        <button className="logout-button" type="button" onClick={onLogout}>
+          {translateText("Log out")}
+        </button>
       </div>
     </aside>
   );

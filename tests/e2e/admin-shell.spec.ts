@@ -350,7 +350,7 @@ test.describe("shared Admin shell", () => {
     await expect(queueMap).toContainText("PAY-9637");
     await expect(queueMap).toContainText("DSP-5201");
     await expect(queueMap).toContainText("RPT-8201");
-    await expect(queueMap).toContainText("CND-8301");
+    await expect(queueMap).toContainText("CND-8302");
     await expect(queueMap).not.toContainText("SLA");
     await expect(dashboard.locator(".overview-command-center-activity")).toContainText("Dispute Case Resolved");
     await expect(dashboard.locator(".overview-command-center-activity")).toContainText("DSP-5201");

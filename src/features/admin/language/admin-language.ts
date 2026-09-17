@@ -274,6 +274,7 @@ const thaiTranslations: Record<string, string> = {
   "Read the Admin API to search Quest, Member, and Payout records.": "อ่านข้อมูลจาก Admin API เพื่อค้นหา Quest Member และ Payout",
   SYSTEM: "ระบบ",
   Admin: "ผู้ดูแลระบบ",
+  "Log out": "ออกจากระบบ",
   Theme: "ธีม",
   "Choose a theme": "เลือกธีม",
   "Theme options": "ตัวเลือกธีม",
