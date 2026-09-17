@@ -195,6 +195,7 @@ test.describe("Payout App Router route family", () => {
     const rejection = page.getByRole("dialog", { name: "Reject Payout" });
     await expect(rejection.getByRole("button", { name: "Reject Payout" })).toBeDisabled();
     await rejection.getByLabel(/Reason code/).selectOption("PAYOUT_INVALID_DESTINATION");
+    await rejection.getByLabel(/Reason \*/).fill("The destination details do not match the verified Member record.");
     await expect(rejection.getByRole("button", { name: "Reject Payout" })).toBeEnabled();
     await rejection.getByRole("button", { name: "Reject Payout" }).click();
     await expect(page.getByText("Cancelled", { exact: true }).first()).toBeVisible();

@@ -1,4 +1,5 @@
 import type {
+  AdminApiQuestStatus,
   AdminQuest,
   AdminQuestDetail,
   AdminQuestFinance,
@@ -11,6 +12,14 @@ export type QuestMemberView = {
   firstName: string;
   lastName: string;
   email: string;
+};
+
+export type QuestTimelineView = {
+  event: string;
+  status: AdminApiQuestStatus | null;
+  occurredAt: string;
+  actorId: string | null;
+  reasonCode: string | null;
 };
 
 type QuestModeView = "FIRST_COME_FIRST_SERVED" | "CANDIDATE";
@@ -122,6 +131,7 @@ export type QuestDetailView = {
         }>;
       }
   >;
+  timeline: QuestTimelineView[];
   adminActions: Array<{
     id: string;
     admin: { id: string; firstName: string; lastName: string };
@@ -360,6 +370,13 @@ export function questDetailViewFromApi(detail: AdminQuestDetail): QuestDetailVie
       action: action.action,
       reasonCode: action.reasonCode,
       createdAt: action.createdAt,
+    })),
+    timeline: (detail.timeline ?? []).map((entry) => ({
+      event: entry.event,
+      status: entry.status,
+      occurredAt: entry.occurredAt,
+      actorId: entry.actorId,
+      reasonCode: entry.reasonCode,
     })),
   };
 

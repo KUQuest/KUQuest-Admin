@@ -12,7 +12,6 @@ import {
   adminApi,
   type AdminQuestReasonCode,
 } from "../api/admin-api";
-import { isAdminApiEnabled } from "../api/admin-provider";
 import { canHideQuest, isQuestTerminal, type QuestState } from "../domain/rulebook";
 import {
   formatQuestDate,
@@ -35,6 +34,13 @@ import {
   type QuestSortKey,
 } from "./quest-model";
 import type { QuestBoardPageData, QuestDetailPageData } from "./quest-service";
+import {
+  applyMockQuestCommand,
+  applyMockQuestOverride,
+  questMockOverrideFromDetail,
+  readMockQuestOverride,
+  saveMockQuestOverride,
+} from "./quest-mock-state";
 
 type QuestPresentation = "page" | "drawer";
 type QuestCommand = "hide" | "restore" | "terminate";
@@ -48,6 +54,7 @@ type QuestDetailPageProps = {
   questId: string;
   presentation?: QuestPresentation;
   initialData: QuestDetailPageData;
+  dataSource: "api" | "mock";
 };
 
 const reasonCodes: Array<{ value: AdminQuestReasonCode; label: string }> = [
@@ -114,7 +121,7 @@ function currentQuestValue(detail: QuestDetailView, field: string): unknown {
     case "proofRequired": return detail.proofRequired;
     case "locations": return detail.locations.map((location) => location.label);
     case "images": return detail.images?.map((image) => image.fileId);
-    default: return "Current accepted value not provided by the Admin API.";
+    default: return "Current accepted value not provided.";
   }
 }
 
@@ -193,18 +200,35 @@ function QuestDetailContent({
   const fundingTotal = financeQuest?.questFundingTotalSatang ?? detail.questFundingTotalSatang;
   const reward = financeQuest?.rewardSatang ?? detail.rewardSatang;
   const platformFee = financeQuest?.platformFeePerWorkerSatang ?? detail.platformFeePerWorkerSatang;
-  const timeline = detail.adminActions.length
-    ? detail.adminActions.map((action) => ({
-        id: action.id,
-        title: readableValue(action.action),
-        time: formatQuestDate(action.createdAt),
-        detail: action.reasonCode ? readableValue(action.reasonCode) : "No reason code",
-      }))
+  const statusTimeline = detail.timeline
+    .filter((entry) => entry.status !== null)
+    .map((entry, index, entries) => {
+      const previousStatus = entries[index - 1]?.status;
+      const status = entry.status as string;
+      const statusLabel = readableValue(status.replace("QUEST_", ""));
+      const previousLabel = previousStatus ? readableValue(previousStatus.replace("QUEST_", "")) : null;
+      const transition = previousLabel && previousLabel !== statusLabel
+        ? `${previousLabel} → ${statusLabel}`
+        : statusLabel;
+      const detailText = [
+        readableValue(entry.event),
+        entry.reasonCode ? `Reason code: ${readableValue(entry.reasonCode)}` : null,
+        entry.actorId ? `Actor: ${entry.actorId}` : null,
+      ].filter(Boolean).join(" · ");
+      return {
+        id: `${entry.event}-${entry.occurredAt}-${index}`,
+        title: transition,
+        time: formatQuestDate(entry.occurredAt),
+        detail: detailText || "Quest State recorded.",
+      };
+    });
+  const timeline = statusTimeline.length
+    ? statusTimeline
     : [{
         id: "current-state",
         title: readableValue(state.replace("QUEST_", "")),
         time: formatQuestDate(detail.updatedAt),
-        detail: "Current Quest State recorded by the Admin API.",
+        detail: "Quest State history is not provided.",
       }];
 
   return (
@@ -220,10 +244,10 @@ function QuestDetailContent({
       </Section>
 
       <Section title="Quest description">
-        <p className="record-description">{detail.description || "No Quest description recorded by the Admin API."}</p>
+        <p className="record-description">{detail.description || "No Quest description recorded."}</p>
         <div className="requirement-box">
           <strong>Quest Condition</strong>
-          <p>{detail.condition.text || "No Quest Condition text recorded by the Admin API."}</p>
+          <p>{detail.condition.text || "No Quest Condition text recorded."}</p>
           {detail.condition.items.length ? (
             <ol>
               {detail.condition.items.map((item) => <li key={`${item.position}-${item.text}`}>{item.text}</li>)}
@@ -234,7 +258,7 @@ function QuestDetailContent({
 
       <Section title="Hirer attachments" count={detail.images?.length ?? 0}>
         {detail.images === undefined ? (
-          <p className="audit-note">Hirer attachments are not available from the Admin API.</p>
+          <p className="audit-note">Hirer attachments are not available.</p>
         ) : detail.images.length ? (
           <div className="related-list">
             {detail.images.map((image) => (
@@ -254,7 +278,7 @@ function QuestDetailContent({
               </a>
             ))}
           </div>
-        ) : <ListEmpty>No Hirer attachments were returned by the Admin API.</ListEmpty>}
+        ) : <ListEmpty>No Hirer attachments were returned.</ListEmpty>}
       </Section>
 
       {pendingHirerChange ? (
@@ -267,7 +291,7 @@ function QuestDetailContent({
           </div>
           <div className="change-meta">
             <div><span>Status</span><strong>{pendingHirerChange.requestStatus}</strong></div>
-            <div><span>Requested by</span><strong>{pendingHirerChange.requestedByUserId === detail.hirer.id ? `${questMemberName(detail.hirer)} · Hirer` : pendingHirerChange.requestedByUserId ?? "Hirer not provided by the Admin API."}</strong></div>
+            <div><span>Requested by</span><strong>{pendingHirerChange.requestedByUserId === detail.hirer.id ? `${questMemberName(detail.hirer)} · Hirer` : pendingHirerChange.requestedByUserId ?? "Hirer not provided."}</strong></div>
             <div><span>Requested at</span><strong>{formatQuestDate(pendingHirerChange.createdAt)}</strong></div>
             <div><span>Expires at</span><strong>{formatQuestDate(pendingHirerChange.expiresAt)}</strong></div>
           </div>
@@ -282,7 +306,7 @@ function QuestDetailContent({
                 </div>
               ))}
             </div>
-          ) : <p className="audit-note">The Admin API did not return the proposed changes.</p>}
+          ) : <p className="audit-note">The proposed changes were not provided.</p>}
           <div className="response-block">
             <h3>Participant consent</h3>
             {pendingHirerChange.responses.length ? (
@@ -298,7 +322,7 @@ function QuestDetailContent({
                   );
                 })}
               </div>
-            ) : <ListEmpty>No Worker responses were returned by the Admin API.</ListEmpty>}
+            ) : <ListEmpty>No Worker responses were returned.</ListEmpty>}
           </div>
         </Section>
       ) : null}
@@ -319,8 +343,8 @@ function QuestDetailContent({
           <span className="fact-label">Location</span>
           <strong className="quest-detail-list-value">
             {detail.locations.length
-              ? detail.locations.map((location) => location.label || "Location label not provided by the Admin API.").join(" · ")
-              : "Location not provided by the Admin API."}
+              ? detail.locations.map((location) => location.label || "Location label not provided.").join(" · ")
+              : "Location not provided."}
           </strong>
         </div>
       </Section>
@@ -359,7 +383,7 @@ function QuestDetailContent({
             ))}
           </div>
         ) : null}
-        {!detail.candidates.applications.length && !detail.candidates.teams.length && !detail.assignments.length ? <ListEmpty>No Candidates, Candidate Teams, or Assignments returned by the Admin API.</ListEmpty> : null}
+        {!detail.candidates.applications.length && !detail.candidates.teams.length && !detail.assignments.length ? <ListEmpty>No Candidates, Candidate Teams, or Assignments returned.</ListEmpty> : null}
       </Section>
 
       <Section title="Proof Submissions" count={detail.proofSubmissions.length}>
@@ -372,21 +396,21 @@ function QuestDetailContent({
               </div>
             ))}
           </div>
-        ) : <ListEmpty>No Proof Submissions returned by the Admin API.</ListEmpty>}
+        ) : <ListEmpty>No Proof Submissions returned.</ListEmpty>}
       </Section>
 
       <Section title="Financial record">
         <div className="financial-line"><span>Quest Funding Total</span><strong>{formatQuestMoney(fundingTotal)}</strong></div>
         <div className="financial-line"><span>Quest Reward</span><strong>{formatQuestMoney(reward)}</strong></div>
         <div className="financial-line"><span>Platform Fee per Worker</span><strong>{formatQuestMoney(platformFee)}</strong></div>
-        <div className="financial-line"><span>Platform Fee policy</span><strong>{detail.platformFeeBps === null ? "Not provided by the Admin API" : `${detail.platformFeeBps / 100}%`}</strong></div>
+        <div className="financial-line"><span>Platform Fee policy</span><strong>{detail.platformFeeBps === null ? "Not provided" : `${detail.platformFeeBps / 100}%`}</strong></div>
         {finance?.reservation ? (
           <>
             <div className="financial-line"><span>Funding Reservation</span><strong>{readableValue(finance.reservation.status)}</strong></div>
             <div className="financial-line"><span>Reserved</span><strong>{formatQuestMoney(finance.reservation.totalReservedSatang)}</strong></div>
             <div className="financial-line"><span>Remaining</span><strong>{formatQuestMoney(finance.reservation.remainingSatang)}</strong></div>
           </>
-        ) : <p className="audit-note">No Funding Reservation was returned by the Finance API.</p>}
+        ) : <p className="audit-note">No Funding Reservation was returned.</p>}
         {finance?.transfers.length ? (
           <div className="quest-finance-list">
             <h3>Money movements</h3>
@@ -401,16 +425,16 @@ function QuestDetailContent({
                 <li className="related-row" key={transaction.id}>
                   <span>
                     <strong>{readableValue(transaction.eventType)}</strong>
-                    <small>{formatQuestDate(transaction.createdAt)} · {transaction.businessReference || "Business reference not provided by the Finance API."}</small>
-                    <small>{transaction.description || "Description not provided by the Finance API."}</small>
+                    <small>{formatQuestDate(transaction.createdAt)} · {transaction.businessReference || "Business reference not provided."}</small>
+                    <small>{transaction.description || "Description not provided."}</small>
                   </span>
                   <span>{transaction.postings.length} Ledger Posting{transaction.postings.length === 1 ? "" : "s"}</span>
                 </li>
               ))}
             </ul>
           </div>
-        ) : finance ? <p className="audit-note">No Ledger Transactions were returned by the Finance API.</p> : null}
-        {!finance ? <p className="audit-note">Quest finance data is not available from the Admin API.</p> : null}
+        ) : finance ? <p className="audit-note">No Ledger Transactions were returned.</p> : null}
+        {!finance ? <p className="audit-note">Quest finance data is not available.</p> : null}
       </Section>
 
       <Section title="Quest edit history" count={detail.editHistory.length}>
@@ -429,7 +453,7 @@ function QuestDetailContent({
               );
             })}
           </div>
-        ) : <ListEmpty>No Quest edits returned by the Admin API.</ListEmpty>}
+        ) : <ListEmpty>No Quest edits returned.</ListEmpty>}
       </Section>
 
       <Section title="Dispute and risk">
@@ -442,7 +466,7 @@ function QuestDetailContent({
           </>
         ) : state === "QUEST_FAILED" ? (
           <>
-            <p className="audit-note">This Quest is in QUEST_FAILED, but no linked Dispute Case was returned by the Admin API.</p>
+            <p className="audit-note">This Quest is in QUEST_FAILED, but no linked Dispute Case was returned.</p>
             {detail.assignments.length ? (
               <form
                 className="dispute-open-form"
@@ -474,9 +498,9 @@ function QuestDetailContent({
                 </button>
                 <p className="audit-note">Select the assigned Worker for this failed Quest.</p>
               </form>
-            ) : <p className="audit-note">No assigned Worker was returned by the Admin API.</p>}
+            ) : <p className="audit-note">No assigned Worker was returned.</p>}
           </>
-        ) : <p className="audit-note">No linked Dispute Case was returned by the Admin API.</p>}
+        ) : <p className="audit-note">No linked Dispute Case was returned.</p>}
       </Section>
 
       <Section title="Overall Quest timeline" count={timeline.length}>
@@ -498,6 +522,7 @@ function QuestDetailContent({
 function QuestCommandDialog({
   detail,
   command,
+  dataSource,
   onCancel,
   onSubmit,
   error,
@@ -505,6 +530,7 @@ function QuestCommandDialog({
 }: {
   detail: QuestDetailView;
   command: QuestCommand;
+  dataSource: "api" | "mock";
   onCancel: () => void;
   onSubmit: (submission: QuestCommandSubmission) => void;
   error: string | null;
@@ -513,19 +539,19 @@ function QuestCommandDialog({
   // The API requires a Restore reason. Mock mode keeps the same field visible
   // so the UI remains close to the live flow, but the fixture path allows an
   // Admin to submit Restore without a reason while the API contract is pending.
-  const reasonRequired = command !== "restore" || isAdminApiEnabled();
+  const reasonRequired = command !== "restore" || dataSource === "api";
   const [reason, setReason] = useState("");
   const [reasonCode, setReasonCode] = useState<AdminQuestReasonCode | "">("");
   const [validationError, setValidationError] = useState<string | null>(null);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (reasonRequired && reason.trim().length < 8) {
-      setValidationError("Enter at least 8 characters for the reason.");
-      return;
-    }
     if (reasonRequired && !reasonCode) {
       setValidationError("Select a reason code.");
+      return;
+    }
+    if (reasonRequired && reason.trim().length < 8) {
+      setValidationError("Enter at least 8 characters for the reason.");
       return;
     }
     onSubmit({ command, reason: reason.trim(), reasonCode: reasonCode || "POLICY_REVIEW" });
@@ -551,8 +577,8 @@ function QuestCommandDialog({
             reversibility={command === "terminate" ? "This is a terminal Quest State. It has no restore path." : "An Admin can reverse this discovery visibility change with the opposite command."}
             warning={command === "restore" && !reasonRequired ? "Restore reason is optional in mock mode. The visibility change is still recorded as an Admin Action." : "The API Server remains the authority for the final Quest result."}
           />
-          <label htmlFor="quest-command-reason">Reason{reasonRequired ? <span aria-hidden="true"> *</span> : null}<textarea id="quest-command-reason" aria-required={reasonRequired} value={reason} onChange={(event) => setReason(event.target.value)} rows={4} /></label>
-          <label htmlFor="quest-command-reason-code">Reason code{reasonRequired ? <span aria-hidden="true"> *</span> : null}<select id="quest-command-reason-code" aria-required={reasonRequired} value={reasonCode} onChange={(event) => setReasonCode(event.target.value as AdminQuestReasonCode | "")}><option value="">{reasonRequired ? "Select a reason code" : "No reason code"}</option>{reasonCodes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
+          <label htmlFor="quest-command-reason-code">Reason code{reasonRequired ? <span aria-hidden="true"> *</span> : null}<select id="quest-command-reason-code" required={reasonRequired} value={reasonCode} onChange={(event) => setReasonCode(event.target.value as AdminQuestReasonCode | "")} autoFocus><option value="">{reasonRequired ? "Select a reason code" : "No reason code"}</option>{reasonCodes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
+          <label htmlFor="quest-command-reason">Reason{reasonRequired ? <span aria-hidden="true"> *</span> : null}<textarea id="quest-command-reason" required={reasonRequired} minLength={reasonRequired ? 8 : undefined} maxLength={500} value={reason} onChange={(event) => { setReason(event.target.value); setValidationError(null); }} rows={4} /></label>
           {validationError || error ? <p className="field-error" role="alert">{validationError || error}</p> : null}
           <div className="dialog-actions"><button className="btn" type="button" onClick={onCancel} disabled={pending}>Cancel</button><button className={`btn ${command === "terminate" ? "danger" : "primary"}`} type="submit" disabled={pending}>{pending ? "Saving…" : "Confirm"}</button></div>
         </form>
@@ -561,7 +587,7 @@ function QuestCommandDialog({
   );
 }
 
-export function QuestDetailPage({ questId, presentation = "page", initialData }: QuestDetailPageProps) {
+export function QuestDetailPage({ questId, presentation = "page", initialData, dataSource }: QuestDetailPageProps) {
   const router = useRouter();
   const drawerRef = useRef<HTMLDialogElement>(null);
   const drawerOpenerRef = useRef<HTMLElement | null>(null);
@@ -583,12 +609,15 @@ export function QuestDetailPage({ questId, presentation = "page", initialData }:
   } | null>(null);
 
   useEffect(() => {
-    setDetail(initialData.detail);
+    const persistedDetail = dataSource === "mock" && typeof window !== "undefined"
+      ? applyMockQuestOverride(initialData.detail, readMockQuestOverride(window.localStorage, initialData.detail.id))
+      : initialData.detail;
+    setDetail(persistedDetail);
     setFinance(initialData.finance);
     setLinkedDisputeId(initialData.linkedDisputeId);
     setDisputeLookupError(initialData.disputeLookupError);
     setDisputeError(null);
-  }, [initialData]);
+  }, [initialData, dataSource]);
 
   useEffect(() => {
     if (presentation !== "drawer") return;
@@ -712,23 +741,30 @@ export function QuestDetailPage({ questId, presentation = "page", initialData }:
       expectedVersion: detail.version,
     };
     try {
-      if (submission.command === "hide") {
-        await adminApi.hideQuest(detail.id, { ...options, reason: submission.reason, reasonCode: submission.reasonCode });
-      } else if (submission.command === "restore") {
-        await adminApi.restoreQuest(detail.id, { ...options, reason: submission.reason, reasonCode: submission.reasonCode });
+      if (dataSource === "api") {
+        if (submission.command === "hide") {
+          await adminApi.hideQuest(detail.id, { ...options, reason: submission.reason, reasonCode: submission.reasonCode });
+        } else if (submission.command === "restore") {
+          await adminApi.restoreQuest(detail.id, { ...options, reason: submission.reason, reasonCode: submission.reasonCode });
+        } else {
+          await adminApi.terminateQuest(detail.id, { ...options, reason: submission.reason, reasonCode: submission.reasonCode });
+        }
       } else {
-        await adminApi.terminateQuest(detail.id, { ...options, reason: submission.reason, reasonCode: submission.reasonCode });
-      }
-      setCommand(null);
-      if (!isAdminApiEnabled()) {
+        const occurredAt = new Date().toISOString();
+        const nextDetail = applyMockQuestCommand(detail, submission.command, submission.reason, submission.reasonCode, occurredAt);
+        setDetail(nextDetail);
+        if (typeof window !== "undefined") {
+          saveMockQuestOverride(window.localStorage, nextDetail.id, questMockOverrideFromDetail(nextDetail));
+        }
         setActionReceipt({
           action: submission.command === "hide" ? "Hide Quest" : submission.command === "restore" ? "Restore Quest" : "Terminate Quest",
           status: submission.command === "hide" ? "HIDDEN" : submission.command === "restore" ? "DISCOVERABLE" : "QUEST_CANCELLED",
           reason: submission.reason || "No reason required for Quest Restore in mock mode.",
-          occurredAt: new Date().toISOString(),
+          occurredAt,
         });
       }
-      router.refresh();
+      setCommand(null);
+      if (dataSource === "api") router.refresh();
     } catch (commandErrorValue: unknown) {
       setCommandError(errorMessage(commandErrorValue, "Quest command failed."));
     } finally {
@@ -754,7 +790,7 @@ export function QuestDetailPage({ questId, presentation = "page", initialData }:
           <div className="drawer-top"><div><strong id="quest-drawer-title">{detail.title}</strong><small>Quest {questDisplayIdFor(detail.id, detail.displayId)} · Quest detail drawer</small></div><button className="icon" type="button" aria-label="Close Quest detail" onClick={closeDrawer}><span className="close-lines" /></button></div>
           <div className="drawer-body">{content}</div>
         </dialog>
-        {command ? <QuestCommandDialog detail={detail} command={command} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandPending} /> : null}
+        {command ? <QuestCommandDialog detail={detail} command={command} dataSource={dataSource} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandPending} /> : null}
       </>
     );
   }
@@ -763,7 +799,7 @@ export function QuestDetailPage({ questId, presentation = "page", initialData }:
     <main className="admin-route-page quest-detail-page" tabIndex={-1}>
       <div className="page-head"><div><p className="admin-route-kicker">Quest</p><h1>{detail.title}</h1><p>Created by {questMemberName(detail.hirer)}</p></div><Link className="btn" href={questRoutes.list()}>Back to Quests</Link></div>
       <div className="quest-detail-grid">{content}</div>
-      {command ? <QuestCommandDialog detail={detail} command={command} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandPending} /> : null}
+      {command ? <QuestCommandDialog detail={detail} command={command} dataSource={dataSource} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandPending} /> : null}
     </main>
   );
 }

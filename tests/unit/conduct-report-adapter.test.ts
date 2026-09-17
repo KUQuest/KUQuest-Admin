@@ -5,6 +5,7 @@ import {
   saveMockConductReportDecision,
 } from "../../src/features/admin/conduct-report/conduct-report-adapter";
 import { ADMIN_DEMO_DATA_KEY } from "../../src/features/admin/data/legacy-admin-data-adapter";
+import { findMemberFromMock } from "../../src/features/admin/member/member-adapter";
 
 function memoryStorage() {
   const values = new Map<string, string>();
@@ -58,6 +59,39 @@ describe("Conduct Report mock adapter", () => {
       "CONDUCT_REPORT_DISMISSED",
       "This command must stay within the Conduct Report boundary.",
     )).toBeNull();
+  });
+
+  it("applies the next Misconduct tier, including Wallet auto-freeze", () => {
+    const storage = memoryStorage();
+    storage.setItem(ADMIN_DEMO_DATA_KEY, JSON.stringify({
+      version: "test",
+      collections: {
+        users: [{
+          id: "member-conduct",
+          title: "Reported Member",
+          memberStatus: "Flag",
+          walletStatus: "ACTIVE",
+          confirmedViolationCount: 1,
+        }],
+        quests: [],
+        payouts: [],
+        disputes: [],
+        reports: [{
+          id: "CND-1",
+          reportedMemberId: "member-conduct",
+          status: "CONDUCT_REPORT_PENDING",
+          conductReportStatus: "CONDUCT_REPORT_PENDING",
+        }],
+      },
+    }));
+
+    saveMockConductReportDecision(storage, "CND-1", "CONDUCT_REPORT_UPHELD", "Quest evidence confirms a violation.");
+
+    expect(findMemberFromMock(storage, "member-conduct")).toMatchObject({
+      memberStatus: "Temp Ban",
+      walletStatus: "FROZEN",
+      confirmedViolationCount: 2,
+    });
   });
 
   it("adds the Conduct Report seed to the previous dashboard seed", () => {

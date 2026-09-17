@@ -184,6 +184,14 @@ export type AdminQuest = {
   hirer: AdminQuestMember;
 };
 
+export type AdminQuestTimelineEntry = {
+  event: string;
+  status: AdminApiQuestStatus | null;
+  occurredAt: string;
+  actorId: string | null;
+  reasonCode: string | null;
+};
+
 export type AdminQuestDetail = AdminQuest & {
   description: string | null;
   condition: { text: string; items: Array<{ position: number; text: string }> };
@@ -272,6 +280,8 @@ export type AdminQuestDetail = AdminQuest & {
         }>;
       }
   >;
+  /** The complete Quest lifecycle, when the Admin API provides it. */
+  timeline?: AdminQuestTimelineEntry[];
   adminActions: Array<{
     id: string;
     admin: { id: string; firstName: string; lastName: string };
@@ -1270,7 +1280,10 @@ export const adminApi = {
       {
         method: "POST",
         headers: payoutCommandHeaders(options),
-        body: { reasonCode: options.reasonCode },
+        body: {
+          reasonCode: options.reasonCode,
+          ...(options.reason?.trim() ? { reason: options.reason.trim() } : {}),
+        },
       },
     );
   },

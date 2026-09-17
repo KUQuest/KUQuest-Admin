@@ -1,4 +1,9 @@
-import type { AdminQuest, AdminQuestDetail, AdminQuestFinance } from "../api/admin-api";
+import type {
+  AdminApiQuestStatus,
+  AdminQuest,
+  AdminQuestDetail,
+  AdminQuestFinance,
+} from "../api/admin-api";
 import { mockDemoMemberSeeds } from "../data/mock-demo-fixtures";
 
 export const MOCK_OPEN_QUEST_ID = "00000000-0000-0000-0000-000000000001";
@@ -53,6 +58,42 @@ export const mockUnlinkedFailedQuest = mockQuestSummary({
   title: "Failed Quest without a Dispute Case",
   questStatus: "QUEST_FAILED",
 });
+
+const questStatusPaths: Record<AdminApiQuestStatus, AdminApiQuestStatus[]> = {
+  QUEST_DRAFT: ["QUEST_DRAFT"],
+  QUEST_OPEN: ["QUEST_DRAFT", "QUEST_OPEN"],
+  QUEST_AWAITING_CONSENT: ["QUEST_DRAFT", "QUEST_OPEN", "QUEST_AWAITING_CONSENT"],
+  QUEST_ASSIGNED: ["QUEST_DRAFT", "QUEST_OPEN", "QUEST_ASSIGNED"],
+  QUEST_IN_PROGRESS: ["QUEST_DRAFT", "QUEST_OPEN", "QUEST_ASSIGNED", "QUEST_IN_PROGRESS"],
+  QUEST_SUBMITTED: ["QUEST_DRAFT", "QUEST_OPEN", "QUEST_ASSIGNED", "QUEST_IN_PROGRESS", "QUEST_SUBMITTED"],
+  QUEST_APPROVED: ["QUEST_DRAFT", "QUEST_OPEN", "QUEST_ASSIGNED", "QUEST_IN_PROGRESS", "QUEST_SUBMITTED", "QUEST_APPROVED"],
+  QUEST_REWORK: ["QUEST_DRAFT", "QUEST_OPEN", "QUEST_ASSIGNED", "QUEST_IN_PROGRESS", "QUEST_SUBMITTED", "QUEST_REWORK"],
+  QUEST_COMPLETED: ["QUEST_DRAFT", "QUEST_OPEN", "QUEST_ASSIGNED", "QUEST_IN_PROGRESS", "QUEST_SUBMITTED", "QUEST_APPROVED", "QUEST_COMPLETED"],
+  QUEST_CANCELLED: ["QUEST_DRAFT", "QUEST_OPEN", "QUEST_CANCELLED"],
+  QUEST_DISPUTED: ["QUEST_DRAFT", "QUEST_OPEN", "QUEST_ASSIGNED", "QUEST_IN_PROGRESS", "QUEST_FAILED", "QUEST_DISPUTED"],
+  QUEST_FAILED: ["QUEST_DRAFT", "QUEST_OPEN", "QUEST_ASSIGNED", "QUEST_IN_PROGRESS", "QUEST_FAILED"],
+};
+
+function questTimelineFor(quest: AdminQuest): AdminQuestDetail["timeline"] {
+  const statuses = questStatusPaths[quest.questStatus];
+  const createdAt = Date.parse(quest.createdAt);
+  const updatedAt = Date.parse(quest.updatedAt);
+  const timelineStart = Number.isFinite(createdAt) ? createdAt : Date.now();
+  const hasDateRange = Number.isFinite(createdAt) && Number.isFinite(updatedAt) && updatedAt >= createdAt;
+  const timelineEnd = hasDateRange ? updatedAt : timelineStart;
+  const elapsed = Math.max(0, timelineEnd - timelineStart);
+  const interval = statuses.length > 1 ? Math.max(1, Math.floor(elapsed / (statuses.length - 1))) : 0;
+
+  return statuses.map((status, index) => ({
+    event: index === 0 ? "QUEST_CREATED" : "QUEST_STATUS_CHANGED",
+    status,
+    occurredAt: index === statuses.length - 1 && hasDateRange
+      ? quest.updatedAt
+      : new Date(timelineStart + interval * index).toISOString(),
+    actorId: null,
+    reasonCode: null,
+  }));
+}
 
 const demoQuestStates = [
   "QUEST_OPEN",
@@ -211,6 +252,7 @@ export function mockQuestDetail(quest: AdminQuest): AdminQuestDetail {
       : [],
     proofSubmissions: [],
     editHistory: [],
+    timeline: questTimelineFor(quest),
     adminActions: [],
   };
 

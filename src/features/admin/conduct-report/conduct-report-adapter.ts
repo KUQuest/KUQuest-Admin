@@ -2,6 +2,8 @@ import type { PersistedAdminData } from "../data/admin-records";
 import { ADMIN_DEMO_DATA_KEY, type BrowserStorage } from "../data/legacy-admin-data-adapter";
 import { pageMockItems } from "../data/mock-pagination";
 import { loadDashboardData } from "../dashboard/dashboard-bootstrap";
+import { conductReportRoutes } from "../admin-routes";
+import { recordMemberViolationInData } from "../member/member-adapter";
 import {
   conductReportDecisionDetailsForCommand,
   conductReportModelFromRecord,
@@ -102,6 +104,27 @@ export function saveMockConductReportDecision(
     ? "Violation confirmed; the Member Misconduct ladder was applied."
     : "Conduct Report dismissed; no policy violation found.";
   if (typeof report.version === "number") report.version += 1;
+
+  if (decision === "CONDUCT_REPORT_UPHELD") {
+    const memberResult = recordMemberViolationInData(
+      data,
+      typeof report.reportedMemberId === "string" ? report.reportedMemberId : "",
+      reason,
+      "",
+      {
+        caseId: report.id,
+        caseType: "Conduct Report",
+        caseHref: conductReportRoutes.detail(report.id),
+      },
+    );
+    if (memberResult) {
+      report.reportedMemberStatus = memberResult.model.memberStatus;
+      report.confirmedViolationCount = memberResult.model.confirmedViolationCount;
+      report.previousModerationActions = memberResult.model.penaltyHistory
+        .slice(0, 10)
+        .map((entry) => entry.event);
+    }
+  }
   persist(storage, data);
   return report;
 }

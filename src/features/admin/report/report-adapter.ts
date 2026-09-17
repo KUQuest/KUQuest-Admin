@@ -2,9 +2,12 @@ import type { PersistedAdminData } from "../data/admin-records";
 import { ADMIN_DEMO_DATA_KEY, type BrowserStorage } from "../data/legacy-admin-data-adapter";
 import { pageMockItems } from "../data/mock-pagination";
 import { loadDashboardData } from "../dashboard/dashboard-bootstrap";
+import { reportRoutes } from "../admin-routes";
+import { recordMemberViolationInData } from "../member/member-adapter";
 import {
   reportCaseDecisionDetailsForCommand,
   isReportCaseRecord,
+  reportCaseStatusFromRecord,
   reportCaseModelFromRecord,
   reportCasesOnly,
   type ReportCaseCommand,
@@ -82,6 +85,7 @@ export function saveMockReportDecision(
   const report = reportRecords(data).find((candidate) => candidate.id === reportId);
   if (!report || !isReportCaseRecord(report)) return null;
 
+  const previousStatus = reportCaseStatusFromRecord(report);
   const now = new Date().toISOString();
   const metadata = reportCaseDecisionDetailsForCommand(decision);
   report.status = decision;
@@ -97,6 +101,31 @@ export function saveMockReportDecision(
     : metadata.label;
   if (decision !== "REPORT_CASE_HIDDEN") report.closedAt = now;
   if (typeof report.version === "number") report.version += 1;
+
+  // A confirmed Report Case is a Misconduct strike on its reported Member.
+  // Apply it to the same loaded data set so the case and Member update are
+  // persisted together. Do not add a second strike when a hidden case is
+  // re-evaluated with the same decision.
+  if (decision === "REPORT_CASE_HIDDEN" && previousStatus !== "REPORT_CASE_HIDDEN") {
+    const memberResult = recordMemberViolationInData(
+      data,
+      typeof report.reportedMemberId === "string" ? report.reportedMemberId : "",
+      reason,
+      "",
+      {
+        caseId: report.id,
+        caseType: "Report Case",
+        caseHref: reportRoutes.detail(report.id),
+      },
+    );
+    if (memberResult) {
+      report.reportedMemberStatus = memberResult.model.memberStatus;
+      report.confirmedViolationCount = memberResult.model.confirmedViolationCount;
+      report.previousModerationActions = memberResult.model.penaltyHistory
+        .slice(0, 10)
+        .map((entry) => entry.event);
+    }
+  }
   persist(storage, data);
   return report;
 }

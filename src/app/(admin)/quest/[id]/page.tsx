@@ -22,5 +22,5 @@ export default async function QuestRoute({ params }: { params: Promise<{ id: str
     dataSource,
   );
   if (!initialData) notFound();
-  return <QuestDetailPage questId={id} initialData={initialData} />;
+  return <QuestDetailPage questId={id} initialData={initialData} dataSource={dataSource} />;
 }

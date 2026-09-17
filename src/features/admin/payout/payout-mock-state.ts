@@ -138,6 +138,7 @@ export function applyMockPayoutDecision(
   command: "approve" | "reject",
   reason: string | null,
   occurredAt: string,
+  reasonCode: string | null = reason,
 ): PayoutDetailView {
   const nextStatus: PayoutStatus = command === "approve" ? "SUBMITTED_TO_PROVIDER" : "CANCELLED";
   return {
@@ -146,7 +147,7 @@ export function applyMockPayoutDecision(
     decisionContext: payoutDecisionContext(nextStatus),
     version: detail.version + 1,
     updatedAt: occurredAt,
-    cancellationReasonCode: command === "reject" ? reason : detail.cancellationReasonCode,
+    cancellationReasonCode: command === "reject" ? reasonCode : detail.cancellationReasonCode,
     history: [...detail.history, {
       id: `local-${command}-${Date.now()}`,
       fromStatus: detail.status,

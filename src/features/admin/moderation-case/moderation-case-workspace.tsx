@@ -57,7 +57,7 @@ function ModerationHistoryPanel({
   translateText: (value: string) => string;
   compact: boolean;
 }) {
-  const fallback = translateText("Not provided by the current mock record.");
+  const fallback = translateText("Not provided.");
   const panelClass = compact ? "section moderation-case-history" : "record-panel moderation-case-history";
   const actionText = summary.previousActions.length
     ? summary.previousActions.join(" · ")
@@ -108,7 +108,7 @@ function CaseContextPanel({
   translateText,
   compact,
 }: Omit<ModerationCaseWorkspaceProps, "children">) {
-  const fallback = translateText("Not provided by the current mock record.");
+  const fallback = translateText("Not provided.");
   const panelClass = compact ? "section moderation-case-context" : "record-panel moderation-case-context";
 
   return (

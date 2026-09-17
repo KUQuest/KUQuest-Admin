@@ -224,7 +224,7 @@ export function AdminGlobalSearch({ open, onClose, initialData, initialError }: 
         {saveMessage ? <output className="admin-global-search-message">{saveMessage}</output> : null}
         <div id="admin-global-search-results" aria-live="polite">
           {initialError && !data ? <p className="empty">{translateText(initialError)}</p> : null}
-          {data?.source === "mock" ? <p className="api-data-notice admin-global-search-notice">{translateText("Fixture search is active. Server-side search will replace this data when the Admin API is ready.")}</p> : null}
+          {data?.source === "mock" ? <p className="api-data-notice admin-global-search-notice">{translateText("Fixture search is active. Results use local demo records.")}</p> : null}
           {groups.map((group) => (
             <section key={group.kind} className="admin-global-search-group" aria-labelledby={`admin-global-search-group-${group.kind}`}>
               <h3 id={`admin-global-search-group-${group.kind}`}>{translateText(overviewSearchResultLabel(group.kind))}<span>{group.items.length}</span></h3>

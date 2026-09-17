@@ -183,7 +183,7 @@ test.describe("Quest route family", () => {
     await expect(page.locator("tbody tr").first()).toContainText("Map library access points");
 
     await page.getByRole("button", { name: "Failed", exact: true }).click();
-    await expect(page.locator("tbody tr")).toHaveCount(2);
+    await expect(page.locator("tbody tr")).toHaveCount(9);
     await expect(page.locator("tbody tr").first()).toContainText("Review flood route markers");
   });
 
@@ -215,7 +215,8 @@ test.describe("Quest route family", () => {
     await expect(page.getByText("Funding Reservation created for the Quest.", { exact: true })).toBeVisible();
     await expect(page.getByText("API version", { exact: true })).toHaveCount(0);
     const timeline = page.locator("section.panel").filter({ has: page.getByRole("heading", { name: "Overall Quest timeline" }) });
-    await expect(timeline.locator(".section-count")).toHaveText("1");
+    await expect(timeline.locator(".section-count")).toHaveText("2");
+    await expect(timeline).toContainText("Draft → Open");
     await expect(page.getByRole("link", { name: "Full Quest detail" })).toHaveCount(0);
 
     await page.reload();
@@ -253,7 +254,7 @@ test.describe("Quest route family", () => {
     await page.getByRole("link", { name: "Open Quest QST-OPEN" }).click();
 
     await expect(page.locator(".quest-drawer")).toBeVisible();
-    await page.locator(".scrim").click();
+    await page.locator(".scrim").click({ position: { x: 20, y: 20 } });
 
     await expect(page).toHaveURL(/\/quest$/);
     await expect(page.locator(".quest-drawer")).toHaveCount(0);
@@ -318,7 +319,7 @@ test.describe("Quest route family", () => {
     await expect(page.locator(".response-table").getByText("Nicha Worker", { exact: true })).toBeVisible();
   });
 
-  test("preserves Quest Hide command reason code and concurrency headers", async ({ page }) => {
+  test("records a Mock Quest Hide command and closes the popup", async ({ page }) => {
     await page.goto(`/quest/${OPEN_QUEST_ID}`);
     await page.getByRole("button", { name: "Hide Quest", exact: true }).click();
 
@@ -327,19 +328,13 @@ test.describe("Quest route family", () => {
     await dialog.getByRole("combobox", { name: /Reason code/ }).selectOption("POLICY_REVIEW");
     await dialog.getByRole("button", { name: "Confirm", exact: true }).click();
 
-    await expect.poll(() => lastCommandRequests.length).toBe(1);
-    expect(lastCommandRequests[0]).toMatchObject({
-      action: "hide",
-      body: {
-        reason: "Unsafe content requires policy review.",
-        reasonCode: "POLICY_REVIEW",
-      },
-      resourceVersion: "4",
-    });
-    expect(lastCommandRequests[0]?.idempotencyKey).toMatch(/^admin-hide-quest-/);
+    await expect(page.locator(".quest-command-dialog")).toHaveCount(0);
+    await expect(page.locator(".admin-action-receipt")).toBeVisible();
+    await expect(page.getByText("Hidden", { exact: true }).first()).toBeVisible();
+    expect(lastCommandRequests).toHaveLength(0);
   });
 
-  test("preserves Quest Restore reason and reason code with concurrency headers", async ({ page }) => {
+  test("records a Mock Quest Restore command and closes the popup", async ({ page }) => {
     await page.goto(`/quest/${HIDDEN_QUEST_ID}`);
     await page.getByRole("button", { name: "Restore Quest", exact: true }).click();
 
@@ -348,19 +343,13 @@ test.describe("Quest route family", () => {
     await dialog.getByRole("combobox", { name: /Reason code/ }).selectOption("SAFETY_REVIEW");
     await dialog.getByRole("button", { name: "Confirm", exact: true }).click();
 
-    await expect.poll(() => lastCommandRequests.length).toBe(1);
-    expect(lastCommandRequests[0]).toMatchObject({
-      action: "restore",
-      body: {
-        reason: "The Quest is safe after review.",
-        reasonCode: "SAFETY_REVIEW",
-      },
-      resourceVersion: "5",
-    });
-    expect(lastCommandRequests[0]?.idempotencyKey).toMatch(/^admin-restore-quest-/);
+    await expect(page.locator(".quest-command-dialog")).toHaveCount(0);
+    await expect(page.locator(".admin-action-receipt")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Restore Quest" })).toHaveCount(0);
+    expect(lastCommandRequests).toHaveLength(0);
   });
 
-  test("preserves Quest Terminate reason code and concurrency headers", async ({ page }) => {
+  test("records a Mock Quest Terminate command and closes the popup", async ({ page }) => {
     await page.goto(`/quest/${OPEN_QUEST_ID}`);
     await page.getByRole("button", { name: "Terminate Quest", exact: true }).click();
 
@@ -369,16 +358,10 @@ test.describe("Quest route family", () => {
     await dialog.getByRole("combobox", { name: /Reason code/ }).selectOption("SAFETY_REVIEW");
     await dialog.getByRole("button", { name: "Confirm", exact: true }).click();
 
-    await expect.poll(() => lastCommandRequests.length).toBe(1);
-    expect(lastCommandRequests[0]).toMatchObject({
-      action: "terminate",
-      body: {
-        reason: "The Quest violates the safety policy.",
-        reasonCode: "SAFETY_REVIEW",
-      },
-      resourceVersion: "4",
-    });
-    expect(lastCommandRequests[0]?.idempotencyKey).toMatch(/^admin-terminate-quest-/);
+    await expect(page.locator(".quest-command-dialog")).toHaveCount(0);
+    await expect(page.locator(".admin-action-receipt")).toBeVisible();
+    await expect(page.getByText("Cancelled", { exact: true }).first()).toBeVisible();
+    expect(lastCommandRequests).toHaveLength(0);
   });
 
   test("shows not-found behavior for an unknown Quest", async ({ page }) => {

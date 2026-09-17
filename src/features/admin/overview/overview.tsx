@@ -77,7 +77,7 @@ function FinanceOverviewSection({
 }) {
   const sourceLabel = isAdminApiEnabled() ? "Admin API" : "Local demo data";
   if (loading) {
-    return <section className="overview-command-center-finance overview-command-center-finance-member-focused" aria-labelledby="overview-finance-heading"><div className="overview-command-center-section-head"><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p>{translateText("Member Wallet totals and lifetime volume.")}</p></div><span>{translateText(sourceLabel)}</span></div><p className="overview-command-center-note">{translateText("Reading the Finance Overview from the Admin API…")}</p></section>;
+    return <section className="overview-command-center-finance overview-command-center-finance-member-focused" aria-labelledby="overview-finance-heading"><div className="overview-command-center-section-head"><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p>{translateText("Member Wallet totals and lifetime volume.")}</p></div><span>{translateText(sourceLabel)}</span></div><p className="overview-command-center-note">{translateText(isAdminApiEnabled() ? "Reading the Finance Overview from the Admin API…" : "Loading the Finance Overview…")}</p></section>;
   }
   if (error || !overview) {
     return <section className="overview-command-center-finance overview-command-center-finance-member-focused" aria-labelledby="overview-finance-heading"><div className="overview-command-center-section-head"><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p>{translateText("Member Wallet totals and lifetime volume.")}</p></div><span>{translateText("Unavailable")}</span></div><p className="overview-command-center-note">{error ? translateText(error) : translateText("Finance Overview is not available.")}</p></section>;
@@ -121,7 +121,7 @@ export function AdminOverview({
       if (!cancelled) setModel(nextModel);
     } catch (error: unknown) {
       console.error("Overview failed to load", error);
-      if (!cancelled) setLoadError(error instanceof Error ? error.message : "The Admin API is unavailable.");
+      if (!cancelled) setLoadError(error instanceof Error ? error.message : (isAdminApiEnabled() ? "The Admin API is unavailable." : "The Overview could not load."));
     }
 
     return () => {

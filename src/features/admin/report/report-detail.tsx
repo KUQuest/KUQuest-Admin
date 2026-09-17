@@ -155,7 +155,7 @@ function ReportDecisionDialog({
 
 function evidenceContext(value: unknown, translateText: (value: string) => string): string {
   if (value === null || value === undefined || value === "") {
-    return translateText("The Admin API did not return bounded Evidence Reference context.");
+    return translateText("Bounded Evidence Reference context was not provided.");
   }
   if (typeof value === "string") return value;
   try {
@@ -667,7 +667,7 @@ export function ReportCaseDetail({
         : saveMockReportDecision(localStorage, model.id, decision, reason);
       const updatedModel = reportCaseModelFromRecord(updated);
       if (!updatedModel || updatedModel.id !== model.id) {
-        throw new Error("The Admin API returned an invalid Report Case.");
+        throw new Error(isAdminApiEnabled() ? "The Admin API returned an invalid Report Case." : "The Report Case record is invalid.");
       }
       setReportModel(updatedModel);
       window.dispatchEvent(new CustomEvent(REPORT_CASE_UPDATED_EVENT, { detail: updatedModel }));

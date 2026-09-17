@@ -269,7 +269,7 @@ function reportFromApi(report: AdminReportCase): MemberReportEntry {
   return {
     id: report.id,
     category: text(record.category ?? record.reportType ?? record.reasonCode, "Report Case"),
-    detail: text(record.details ?? record.description ?? record.detail, "No report detail was provided by the Admin API."),
+    detail: text(record.details ?? record.description ?? record.detail, "No report detail was provided."),
     reporterId,
     reporterName: text(record.reporterName ?? record.submittedByMemberName ?? reporterId, "Reporter not provided"),
     status,

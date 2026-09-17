@@ -196,7 +196,7 @@ function Timeline({ model, translateText }: { model: DisputeCaseModel; translate
 
 function DecisionDetails({ model, translateText }: { model: DisputeCaseModel; translateText: (value: string) => string }) {
   if (!model.decisionReason && !model.resolution && !model.resolvedBy) return null;
-  return <div className="overview-group"><span>{translateText("Reason for decision")}</span><p>{model.decisionReason ?? translateText("Reason not provided by the Admin API.")}</p><dl className="overview-meta dispute-resolution-meta"><div><dt>{translateText("Outcome")}</dt><dd>{model.decisionLabel ?? model.statusLabel}</dd></div>{model.resolvedAmountLabel && <div><dt>{translateText("Allocated")}</dt><dd>{model.resolvedAmountLabel}</dd></div>}{model.resolvedBy && <div><dt>{translateText("Resolved by")}</dt><dd>{model.resolvedBy}</dd></div>}</dl></div>;
+  return <div className="overview-group"><span>{translateText("Reason for decision")}</span><p>{model.decisionReason ?? translateText("Reason not provided.")}</p><dl className="overview-meta dispute-resolution-meta"><div><dt>{translateText("Outcome")}</dt><dd>{model.decisionLabel ?? model.statusLabel}</dd></div>{model.resolvedAmountLabel && <div><dt>{translateText("Allocated")}</dt><dd>{model.resolvedAmountLabel}</dd></div>}{model.resolvedBy && <div><dt>{translateText("Resolved by")}</dt><dd>{model.resolvedBy}</dd></div>}</dl></div>;
 }
 
 function MemberSummary({ heading, id, name, href, translateText }: { heading: string; id: string | null; name: string; href: string | null; translateText: (value: string) => string }) {
@@ -258,7 +258,7 @@ function DecisionDialog({
             nextState={nextState}
             effect={translateText(effect)}
             reversibility={translateText(choice === "resolve" ? "The first confirmed decision is final. The money movement cannot be reversed by another Dispute Case decision." : "The decision is retained as an immutable audit record.")}
-            warning={translateText(model.sharedCapSatang === null ? "The current shared cap is not provided by the Admin API. Verify the Funding Reservation before resolving." : "The entered allocation must be positive and must not exceed the current per-Quest shared cap.")}
+            warning={translateText(model.sharedCapSatang === null ? "The current shared cap is not provided. Verify the Funding Reservation before resolving." : "The entered allocation must be positive and must not exceed the current per-Quest shared cap.")}
           /> : null}
           <label htmlFor="dispute-reason-code">{translateText("Reason code")}</label>
           <select id="dispute-reason-code" name="reasonCode" value={reasonCode} onChange={(event) => setReasonCode(event.target.value as AdminDisputeReasonCode | "")} required><option value="">{translateText("Select a reason code")}</option><option value="DISPUTE_EVIDENCE_REVIEW">{translateText("Evidence review")}</option><option value="DISPUTE_POLICY_REVIEW">{translateText("Policy review")}</option></select>
@@ -273,7 +273,7 @@ function DecisionDialog({
 
 function EvidencePreview({ state, translateText, onClose }: { state: EvidenceState; translateText: (value: string) => string; onClose: () => void }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  let display = translateText("The Admin API did not return bounded Evidence Reference context.");
+  let display = translateText("Bounded Evidence Reference context was not provided.");
   if (state.value !== null && state.value !== undefined) {
     display = typeof state.value === "string" ? state.value : JSON.stringify(state.value, null, 2);
   }
@@ -284,7 +284,7 @@ function EvidencePreview({ state, translateText, onClose }: { state: EvidenceSta
 function DecisionControls({ model, translateText, selectedChoice, commandError, onSelect, onStart }: { model: DisputeCaseModel; translateText: (value: string) => string; selectedChoice: DisputeCaseDecisionChoice | null; commandError: string | null; onSelect: (choice: DisputeCaseDecisionChoice) => void; onStart: () => void }) {
   if (!model.isActionable) return <><p className="audit-note">{translateText("Decision recorded:")} <strong>{model.decisionLabel ?? model.statusLabel}</strong>.</p><DecisionDetails model={model} translateText={translateText} /></>;
   const workerAvailable = Boolean(model.workerId);
-  return <><p className="audit-note">{translateText("The Quest remains in QUEST_FAILED. Choose the financial outcome, then provide a reason code, allocation, and reason.")}</p><fieldset className="report-decision-options dispute-decision-options"><legend className="visually-hidden">{translateText("Dispute Case decision")}</legend><div className={`report-decision-option ${selectedChoice === "dismiss" ? "selected" : ""}`}><input id={`dispute-decision-${model.id}-dismiss`} type="radio" name={`dispute-decision-${model.id}`} value="dismiss" data-dispute-decision="dismiss" checked={selectedChoice === "dismiss"} onChange={() => onSelect("dismiss")} /><label htmlFor={`dispute-decision-${model.id}-dismiss`}><strong>{translateText("Hirer wins")}</strong><small>{translateText("Dismiss the Dispute Case. No money movement.")}</small></label></div><div className={`report-decision-option ${selectedChoice === "resolve" ? "selected" : ""}`}><input id={`dispute-decision-${model.id}-resolve`} type="radio" name={`dispute-decision-${model.id}`} value="resolve" data-dispute-decision="resolve" checked={selectedChoice === "resolve"} onChange={() => onSelect("resolve")} disabled={!workerAvailable} /><label htmlFor={`dispute-decision-${model.id}-resolve`}><strong>{translateText("Worker wins")}</strong><small>{workerAvailable ? translateText("Enter the explicit positive Satang allocation in the confirmation form.") : translateText("Worker ID was not provided by the Admin API.")}</small></label></div></fieldset>{commandError && <p className="field-error" role="alert">{translateText(commandError)}</p>}<button className="btn danger full-width" type="button" data-dispute-resolve="Resolve Dispute Case" onClick={onStart} disabled={model.version === undefined}>{translateText("Record Dispute Case decision")}</button>{model.version === undefined && <p className="field-error" role="alert">{translateText("The current Dispute Case version was not provided by the Admin API.")}</p>}</>;
+  return <><p className="audit-note">{translateText("The Quest remains in QUEST_FAILED. Choose the financial outcome, then provide a reason code, allocation, and reason.")}</p><fieldset className="report-decision-options dispute-decision-options"><legend className="visually-hidden">{translateText("Dispute Case decision")}</legend><div className={`report-decision-option ${selectedChoice === "dismiss" ? "selected" : ""}`}><input id={`dispute-decision-${model.id}-dismiss`} type="radio" name={`dispute-decision-${model.id}`} value="dismiss" data-dispute-decision="dismiss" checked={selectedChoice === "dismiss"} onChange={() => onSelect("dismiss")} /><label htmlFor={`dispute-decision-${model.id}-dismiss`}><strong>{translateText("Hirer wins")}</strong><small>{translateText("Dismiss the Dispute Case. No money movement.")}</small></label></div><div className={`report-decision-option ${selectedChoice === "resolve" ? "selected" : ""}`}><input id={`dispute-decision-${model.id}-resolve`} type="radio" name={`dispute-decision-${model.id}`} value="resolve" data-dispute-decision="resolve" checked={selectedChoice === "resolve"} onChange={() => onSelect("resolve")} disabled={!workerAvailable} /><label htmlFor={`dispute-decision-${model.id}-resolve`}><strong>{translateText("Worker wins")}</strong><small>{workerAvailable ? translateText("Enter the explicit positive Satang allocation in the confirmation form.") : translateText("Worker ID was not provided.")}</small></label></div></fieldset>{commandError && <p className="field-error" role="alert">{translateText(commandError)}</p>}<button className="btn danger full-width" type="button" data-dispute-resolve="Resolve Dispute Case" onClick={onStart} disabled={model.version === undefined}>{translateText("Record Dispute Case decision")}</button>{model.version === undefined && <p className="field-error" role="alert">{translateText("The current Dispute Case version was not provided.")}</p>}</>;
 }
 
 function FullSections({ model, translateText, onOpenEvidence, selectedChoice, commandError, onSelectChoice, onStartDecision, actionReceipt }: { model: DisputeCaseModel; translateText: (value: string) => string; onOpenEvidence: (reference: string) => void; selectedChoice: DisputeCaseDecisionChoice | null; commandError: string | null; onSelectChoice: (choice: DisputeCaseDecisionChoice) => void; onStartDecision: () => void; actionReceipt?: ReactNode }) {
@@ -302,13 +302,13 @@ function FullSections({ model, translateText, onOpenEvidence, selectedChoice, co
     evidenceCount={model.evidence.length}
     financialSummary={[
       { label: "Amount at risk", value: model.amountAtRiskLabel },
-      { label: "7-day money hold deadline", value: model.moneyHoldDeadline ?? translateText("Not provided by the current mock record.") },
+      { label: "7-day money hold deadline", value: model.moneyHoldDeadline ?? translateText("Not provided.") },
     ]}
     moderationHistory={model.moderationHistory}
     policyNote="Dispute Cases apply only to QUEST_FAILED Quests. The 7-day money hold remains in the Funding Reservation; money can move only Hirer to Worker."
     translateText={translateText}
   >
-    <div className="full-record-grid"><div className="record-primary"><Overview model={model} translateText={translateText} /><PartyStatements model={model} translateText={translateText} /><EvidenceSection model={model} translateText={translateText} onOpen={onOpenEvidence} /><Timeline model={model} translateText={translateText} /></div><aside className="record-side"><MemberSummary heading="Filer" id={model.filerId} name={model.filerName} href={model.filerHref} translateText={translateText} /><MemberSummary heading="Worker" id={model.workerId} name={model.workerName} href={model.workerHref} translateText={translateText} /><section className="record-panel"><h2>{translateText("Related Quest")}</h2><div className="side-facts"><div><span>{translateText("Quest")}</span><strong>{model.questTitle}</strong></div><div><span>{translateText("Quest State")}</span><strong>{model.questState}</strong></div><div><span>{translateText("Failed at")}</span><strong>{model.questFailedAt ? model.questFailedAt : translateText("Not provided by the Admin API.")}</strong></div></div><Link className="btn full-width" href={model.questHref ?? questRoutes.list()}>{translateText("Open Quest detail")}</Link></section><section className="record-panel dispute-decision-panel"><h2>{model.isActionable ? translateText("Dispute decision") : translateText("Recorded outcome")}</h2><DecisionControls model={model} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelect={onSelectChoice} onStart={onStartDecision} /></section></aside></div>{actionReceipt}
+    <div className="full-record-grid"><div className="record-primary"><Overview model={model} translateText={translateText} /><PartyStatements model={model} translateText={translateText} /><EvidenceSection model={model} translateText={translateText} onOpen={onOpenEvidence} /><Timeline model={model} translateText={translateText} /></div><aside className="record-side"><MemberSummary heading="Filer" id={model.filerId} name={model.filerName} href={model.filerHref} translateText={translateText} /><MemberSummary heading="Worker" id={model.workerId} name={model.workerName} href={model.workerHref} translateText={translateText} /><section className="record-panel"><h2>{translateText("Related Quest")}</h2><div className="side-facts"><div><span>{translateText("Quest")}</span><strong>{model.questTitle}</strong></div><div><span>{translateText("Quest State")}</span><strong>{model.questState}</strong></div><div><span>{translateText("Failed at")}</span><strong>{model.questFailedAt ? model.questFailedAt : translateText("Not provided.")}</strong></div></div><Link className="btn full-width" href={model.questHref ?? questRoutes.list()}>{translateText("Open Quest detail")}</Link></section><section className="record-panel dispute-decision-panel"><h2>{model.isActionable ? translateText("Dispute decision") : translateText("Recorded outcome")}</h2><DecisionControls model={model} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelect={onSelectChoice} onStart={onStartDecision} /></section></aside></div>{actionReceipt}
   </ModerationCaseWorkspace>;
 }
 
@@ -325,7 +325,7 @@ function DrawerSections({ model, translateText, onOpenEvidence, selectedChoice, 
     reporter={{ id: model.filerId, name: model.filerName, href: model.filerHref, role: model.filerRole }}
     relatedRecord={{ id: model.questId, title: model.questTitle, href: model.questHref, state: model.questState }}
     evidenceCount={model.evidence.length}
-    financialSummary={[{ label: "Amount at risk", value: model.amountAtRiskLabel }, { label: "7-day money hold deadline", value: model.moneyHoldDeadline ?? translateText("Not provided by the current mock record.") }]}
+    financialSummary={[{ label: "Amount at risk", value: model.amountAtRiskLabel }, { label: "7-day money hold deadline", value: model.moneyHoldDeadline ?? translateText("Not provided.") }]}
     moderationHistory={model.moderationHistory}
     policyNote="Dispute Cases apply only to QUEST_FAILED Quests. The 7-day money hold remains in the Funding Reservation; money can move only Hirer to Worker."
     translateText={translateText}
@@ -400,7 +400,7 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
   const confirmDecision = async (reason: string, reasonCode: AdminDisputeReasonCode, amountSatang: number | null) => {
     if (!selectedChoice) return;
     if (model.version === undefined) {
-      setCommandError("The current Dispute Case version was not provided by the Admin API.");
+      setCommandError("The current Dispute Case version was not provided.");
       return;
     }
     const command = disputeCaseDecisionFor(selectedChoice);
@@ -441,7 +441,7 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
           : { resolvedWorkerId: null, resolvedAmountSatang: null }),
         ...(resourceVersion !== undefined && { version: resourceVersion }),
       }, isAdminApiEnabled() ? "api" : "mock");
-      if (!updatedModel || updatedModel.id !== model.id) throw new Error("The Admin API returned an invalid Dispute Case.");
+      if (!updatedModel || updatedModel.id !== model.id) throw new Error(isAdminApiEnabled() ? "The Admin API returned an invalid Dispute Case." : "The Dispute Case record is invalid.");
       setDisputeModel(updatedModel);
       window.dispatchEvent(new CustomEvent(DISPUTE_CASE_UPDATED_EVENT, { detail: updatedModel }));
       onUpdated?.(updatedModel);

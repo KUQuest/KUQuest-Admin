@@ -243,7 +243,7 @@ export function reportCaseModelFromRecord(value: unknown): ReportCaseModel | nul
     relatedQuestTitle,
     relatedQuestHref: relatedQuestId ? questRoutes.detail(relatedQuestId) : null,
     moderationHistory: moderationHistoryFromRecord(record),
-    detail: firstText(record.details, record.description) ?? "No report detail was provided by the Admin API.",
+    detail: firstText(record.details, record.description) ?? "No Report Case detail was provided.",
     submittedAt: firstText(record.reportedAt, record.submittedAt, record.createdAt) ?? "Time not provided",
     evidence,
     decisionLabel,

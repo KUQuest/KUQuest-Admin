@@ -86,7 +86,18 @@ export function saveMemberNote(
   return memberModelFromMockRecord(record, data);
 }
 
-function addMemberHistory(record: Record<string, unknown>, outcome: MemberActionOutcome, reason: string): void {
+export type MemberViolationContext = {
+  caseId?: string;
+  caseType?: "Report Case" | "Conduct Report";
+  caseHref?: string;
+};
+
+function addMemberHistory(
+  record: Record<string, unknown>,
+  outcome: MemberActionOutcome,
+  reason: string,
+  context?: MemberViolationContext,
+): void {
   const history = Array.isArray(record.moderationHistory) ? record.moderationHistory : [];
   record.moderationHistory = [
     {
@@ -97,18 +108,22 @@ function addMemberHistory(record: Record<string, unknown>, outcome: MemberAction
       previousStatus: record.walletStatus ?? record.status,
       newStatus: outcome.walletStatus,
       outcome: outcome.label,
+      ...(context?.caseId ? { caseId: context.caseId } : {}),
+      ...(context?.caseType ? { caseType: context.caseType } : {}),
+      ...(context?.caseHref ? { caseHref: context.caseHref } : {}),
     },
     ...history,
   ];
 }
 
-export function recordMemberViolation(
-  storage: BrowserStorage,
+/** Apply one confirmed Misconduct violation to a loaded Mock data set. */
+export function recordMemberViolationInData(
+  data: PersistedAdminData,
   memberId: string,
   reason: string,
   note = "",
+  context?: MemberViolationContext,
 ): { model: MemberModel; outcome: MemberActionOutcome } | null {
-  const data = loadDashboardData(storage);
   const record = memberRecord(data, memberId);
   if (!record) return null;
   const current = memberModelFromMockRecord(record, data);
@@ -147,18 +162,31 @@ export function recordMemberViolation(
     };
   }
   record.age = expiresAt ? `${outcome.label} · expires ${expiresAt}` : outcome.label;
-  addMemberHistory(record, outcome, reason);
+  addMemberHistory(record, outcome, reason, context);
   if (note.trim()) {
     const notes = Array.isArray(record.adminNotes) ? record.adminNotes : [];
     record.adminNotes = [{ at: appliedAt.toISOString(), by: "Admin", note: note.trim() }, ...notes];
   }
-  persist(storage, data);
   const model = memberModelFromMockRecord(record, data);
   if (!model) return null;
   if (previousWalletStatus === outcome.walletStatus) {
     model.statusReason = reason;
   }
   return { model, outcome };
+}
+
+export function recordMemberViolation(
+  storage: BrowserStorage,
+  memberId: string,
+  reason: string,
+  note = "",
+  context?: MemberViolationContext,
+): { model: MemberModel; outcome: MemberActionOutcome } | null {
+  const data = loadDashboardData(storage);
+  const result = recordMemberViolationInData(data, memberId, reason, note, context);
+  if (!result) return null;
+  persist(storage, data);
+  return result;
 }
 
 export function submitMemberReport(

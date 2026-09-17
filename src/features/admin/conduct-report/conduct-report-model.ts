@@ -246,7 +246,7 @@ export function conductReportModelFromRecord(value: unknown): ConductReportModel
     reporterHref: reporterId ? memberRoutes.detail(reporterId) : null,
     moderationHistory: moderationHistoryFromRecord(record),
     detail: firstText(record.details, record.description)
-      ?? "No Conduct Report detail was provided by the Admin API.",
+      ?? "No Conduct Report detail was provided.",
     submittedAt: firstText(record.reportedAt, record.submittedAt, record.createdAt)
       ?? "Time not provided",
     decisionLabel,

@@ -390,6 +390,7 @@ describe("Admin API boundary", () => {
       idempotencyKey: "reject-payout-1",
       expectedVersion: 4,
       reasonCode: "PAYOUT_INVALID_DESTINATION",
+      reason: "The destination account does not match the verified Member details.",
     });
 
     expect(request?.url).toBe("https://api.example.test/api/v1/admin/payouts/payout%2F1/cancel");
@@ -397,6 +398,7 @@ describe("Admin API boundary", () => {
     expect(request?.headers.get("if-match")).toBe("4");
     expect(await request?.json()).toEqual({
       reasonCode: "PAYOUT_INVALID_DESTINATION",
+      reason: "The destination account does not match the verified Member details.",
     });
   });
 

@@ -9,7 +9,11 @@ import {
   mockDemoMemberRecord,
   mockDemoMemberSeeds,
 } from "../data/mock-demo-fixtures";
-import { isConductReportStatus } from "../domain/rulebook";
+import {
+  isConductReportStatus,
+  isDisputeCaseStatus,
+  isReportCaseStatus,
+} from "../domain/rulebook";
 import { mockDemoPayoutStatusFor } from "../payout/payout-mock-data";
 
 const dashboardSeedVersion = "dashboard-bootstrap-v4-expanded-mock-fixtures";
@@ -106,7 +110,8 @@ const dashboardDemoReportSeedData = Array.from({ length: MOCK_DEMO_RECORD_COUNT 
     id: `RPT-${8210 + index}`,
     reportedMemberId: reported?.id,
     reportedUserName: reported?.title,
-    ...(index % 6 === 0 ? {} : { reporterId: reporter?.id, reporterName: reporter?.title }),
+    reporterId: reporter?.id,
+    reporterName: reporter?.title,
     category: ["Harassment or abuse", "Spam", "Fraud or payment issue", "Unsafe content"][index % 4],
     details: index % 4 === 0 ? "Demo Report Case with a short description." : "Demo Report Case requires Admin review of the supplied evidence.",
     ...(hasEvidence ? { evidence: "Demo message capture", evidenceRefs: [`evidence-rpt-${8210 + index}`] } : { evidenceRefs: [] }),
@@ -146,17 +151,19 @@ const dashboardDemoConductReportSeedData = Array.from({ length: MOCK_DEMO_RECORD
   const reported = mockDemoMemberSeeds[(index + 2) % mockDemoMemberSeeds.length];
   const reporter = mockDemoMemberSeeds[(index + 3) % mockDemoMemberSeeds.length];
   const status = demoConductStatuses[index % demoConductStatuses.length];
-  const hasQuest = index % 6 !== 0;
+  const questId = `QST-${12011 + (index % MOCK_DEMO_RECORD_COUNT)}`;
+  const questTitle = `Demo Quest ${String((index % MOCK_DEMO_RECORD_COUNT) + 1).padStart(3, "0")}`;
   return {
     id: `CND-${8310 + index}`,
     reportedMemberId: reported?.id,
     reportedUserName: reported?.title,
-    reporterId: index % 7 === 0 ? undefined : reporter?.id,
-    reporterName: index % 7 === 0 ? undefined : reporter?.title,
+    reporterId: reporter?.id,
+    reporterName: reporter?.title,
     reasonCode: ["CONDUCT_ABANDONED", "CONDUCT_NO_SHOW", "CONDUCT_OUT_OF_SCOPE"][index % 3],
-    ...(hasQuest ? { questId: `QST-${12011 + (index % MOCK_DEMO_RECORD_COUNT)}`, questTitle: `Demo Quest ${String((index % MOCK_DEMO_RECORD_COUNT) + 1).padStart(3, "0")}` } : {}),
-    questRecord: hasQuest ? "Assignment accepted · Proof Submission record is available." : null,
-    details: index % 5 === 0 ? "Demo Conduct Report without a Quest link." : "Demo Conduct Report requires review of the Quest record.",
+    questId,
+    questTitle,
+    questRecord: "Assignment accepted · Proof Submission record is available.",
+    details: "Demo Conduct Report requires review of the Quest record.",
     reportedMemberStatus: reported?.memberStatus,
     previousReportCount: index % 5,
     confirmedViolationCount: reported?.memberStatus === "Normal" ? 0 : index % 3,
@@ -201,11 +208,11 @@ const dashboardDemoDisputeSeedData = Array.from({ length: MOCK_DEMO_RECORD_COUNT
     filerUserId: filer?.id,
     filerRole: "Hirer",
     filerName: filer?.title,
-    respondentUserId: index % 8 === 0 ? undefined : respondent?.id,
+    respondentUserId: respondent?.id,
     respondentRole: "Worker",
-    respondentName: index % 8 === 0 ? undefined : respondent?.title,
+    respondentName: respondent?.title,
     filerStatement: "The submitted Proof Submission did not satisfy the Quest Condition.",
-    respondentStatement: index % 8 === 0 ? undefined : "The Proof Submission records the work completed before the Quest failed.",
+    respondentStatement: "The Proof Submission records the work completed before the Quest failed.",
     failedAt: demoIsoDate(index + 3, 8),
     reportedMemberStatus: respondent?.memberStatus,
     previousReportCount: index % 4,
@@ -328,6 +335,46 @@ function mergeSeedRecords(existing: unknown[], seeded: readonly unknown[]): { re
   return { records: missing.length ? [...existing, ...missing] : existing, changed: missing.length > 0 };
 }
 
+function isMissingSeedValue(value: unknown): boolean {
+  return value === undefined || value === null || (typeof value === "string" && value.trim() === "");
+}
+
+function repairMissingSeedFields(
+  existing: unknown[],
+  seeded: readonly unknown[],
+  fields: readonly string[],
+  shouldRepair: (record: Record<string, unknown>) => boolean,
+): { records: unknown[]; changed: boolean } {
+  const seedById = new Map<string, Record<string, unknown>>();
+  for (const value of seeded) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+    const record = value as Record<string, unknown>;
+    if (typeof record.id === "string") seedById.set(record.id, record);
+  }
+
+  let changed = false;
+  const records = existing.map((value) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+    const record = value as Record<string, unknown>;
+    if (typeof record.id !== "string" || !shouldRepair(record)) return value;
+    const seed = seedById.get(record.id);
+    if (!seed) return value;
+
+    let recordChanged = false;
+    const repaired = { ...record };
+    for (const field of fields) {
+      if (!isMissingSeedValue(repaired[field]) || isMissingSeedValue(seed[field])) continue;
+      repaired[field] = seed[field];
+      recordChanged = true;
+    }
+    if (!recordChanged) return value;
+    changed = true;
+    return repaired;
+  });
+
+  return { records, changed };
+}
+
 function migrateExpandedMockSeed(storage: BrowserStorage, data: PersistedAdminData): PersistedAdminData {
   const seeded = dashboardSeedData.collections;
   const users = mergeSeedRecords(data.collections.users, seeded.users);
@@ -335,7 +382,27 @@ function migrateExpandedMockSeed(storage: BrowserStorage, data: PersistedAdminDa
   const payouts = mergeSeedRecords(data.collections.payouts, seeded.payouts);
   const disputes = mergeSeedRecords(data.collections.disputes, seeded.disputes);
   const reports = mergeSeedRecords(data.collections.reports, seeded.reports);
-  if (!users.changed && !quests.changed && !payouts.changed && !disputes.changed && !reports.changed && data.version === dashboardSeedVersion) {
+  const repairedDisputes = repairMissingSeedFields(
+    disputes.records,
+    seeded.disputes,
+    ["questId", "title", "filerUserId", "filerName", "respondentUserId", "respondentName", "respondentStatement"],
+    (record) => isDisputeCaseStatus(record.status) || isDisputeCaseStatus(record.disputeCaseStatus),
+  );
+  const repairedConductReports = repairMissingSeedFields(
+    reports.records,
+    seeded.reports,
+    ["questId", "questTitle", "questRecord", "reportedMemberId", "reportedUserName", "reporterId", "reporterName"],
+    (record) => isConductReportStatus(record.status) || isConductReportStatus(record.conductReportStatus),
+  );
+  const repairedReportCases = repairMissingSeedFields(
+    repairedConductReports.records,
+    seeded.reports,
+    ["reportedMemberId", "reportedUserName", "reporterId", "reporterName"],
+    (record) => isReportCaseStatus(record.status) || isReportCaseStatus(record.reportCaseStatus),
+  );
+  const repairedReportsChanged = reports.changed || repairedConductReports.changed || repairedReportCases.changed;
+  const repairedDisputesChanged = disputes.changed || repairedDisputes.changed;
+  if (!users.changed && !quests.changed && !payouts.changed && !repairedDisputesChanged && !repairedReportsChanged && data.version === dashboardSeedVersion) {
     return data;
   }
 
@@ -346,8 +413,8 @@ function migrateExpandedMockSeed(storage: BrowserStorage, data: PersistedAdminDa
       users: users.records as PersistedAdminData["collections"]["users"],
       quests: quests.records,
       payouts: payouts.records,
-      disputes: disputes.records,
-      reports: reports.records,
+      disputes: repairedDisputes.records,
+      reports: repairedReportCases.records,
     },
   };
   try {

@@ -59,7 +59,7 @@ type PayoutCommand = "approve" | "reject";
 type RejectionReasonCode = PayoutRejection["reasonCode"];
 type PayoutCommandSubmission =
   | { command: "approve" }
-  | { command: "reject"; reasonCode: RejectionReasonCode };
+  | { command: "reject"; reasonCode: RejectionReasonCode; reason: string };
 
 const rejectionReasonCodes: Array<{ value: RejectionReasonCode; label: string }> = [
   { value: "PAYOUT_POLICY_REVIEW", label: "Policy review" },
@@ -84,6 +84,10 @@ function readableValue(value: string): string {
     .replaceAll("_", " ")
     .toLocaleLowerCase()
     .replace(/\b\w/g, (letter) => letter.toLocaleUpperCase());
+}
+
+function payoutReasonLabel(value: string): string {
+  return /^[A-Z0-9]+(?:_[A-Z0-9]+)+$/.test(value) ? readableValue(value) : value;
 }
 
 function Badge({ status }: { status: PayoutStatus }) {
@@ -235,10 +239,10 @@ function PayoutDetailContent({
               <div><span>Status</span><strong>{payoutStatusLabel(entry.toStatus)}</strong></div>
               <div><span>Occurred at</span><strong>{formatPayoutDate(entry.occurredAt)}</strong></div>
               {entry.fromStatus ? <div><span>Previous status</span><strong>{payoutStatusLabel(entry.fromStatus)}</strong></div> : null}
-              {entry.reason ? <div><span>Reason code</span><strong>{readableValue(entry.reason)}</strong></div> : null}
+              {entry.reason ? <div><span>Reason</span><strong>{entry.reason}</strong></div> : null}
               {entry.actorAdminId ? <div><span>Admin</span><strong>{entry.actorAdminId}</strong></div> : null}
             </div>
-          )) : <p className="audit-note">No Payout history was returned by the Admin API.</p>}
+          )) : <p className="audit-note">No Payout history is available.</p>}
         </div>
       </Section>
 
@@ -261,7 +265,7 @@ function PayoutDetailContent({
       {outcomeReason && (detail.status === "CANCELLED" || detail.status === "FAILED") ? (
         <section className="section payout-outcome payout-outcome-section">
           <h3>{detail.status === "FAILED" ? "Transfer failure reason" : "Rejection reason"}</h3>
-          <p>{readableValue(outcomeReason)}</p>
+          <p>{payoutReasonLabel(outcomeReason)}</p>
         </section>
       ) : null}
 
@@ -273,7 +277,7 @@ function PayoutDetailContent({
           status={actionReceipt.status}
           occurredAt={actionReceipt.occurredAt}
           mock
-          details={actionReceipt.reason ? <p>Reason: {readableValue(actionReceipt.reason)}</p> : undefined}
+          details={actionReceipt.reason ? <p>Reason: {actionReceipt.reason}</p> : undefined}
         />
       ) : null}
 
@@ -318,8 +322,9 @@ function PayoutCommandDialog({
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [reasonCode, setReasonCode] = useState("");
+  const [reason, setReason] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
-  const submitDisabled = pending || command === "reject" && !reasonCode;
+  const submitDisabled = pending || command === "reject" && (!reasonCode || reason.trim().length < 8);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -362,11 +367,15 @@ function PayoutCommandDialog({
       setValidationError("Select a reason code.");
       return;
     }
+    if (command === "reject" && reason.trim().length < 8) {
+      setValidationError("Enter at least 8 characters for the rejection reason.");
+      return;
+    }
     setValidationError(null);
     if (command === "approve") {
       onSubmit({ command });
     } else {
-      onSubmit({ command, reasonCode: reasonCode as RejectionReasonCode });
+      onSubmit({ command, reasonCode: reasonCode as RejectionReasonCode, reason: reason.trim() });
     }
   }
 
@@ -388,12 +397,17 @@ function PayoutCommandDialog({
             reversibility="The Admin decision is final. Provider status changes are separate."
           />
           {command === "reject" ? (
-            <label htmlFor="payout-reason-code">Reason code <span aria-hidden="true">*</span>
-              <select id="payout-reason-code" value={reasonCode} onChange={(event) => setReasonCode(event.target.value)} autoFocus>
-                <option value="">Choose a reason</option>
-                {rejectionReasonCodes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-              </select>
-            </label>
+            <>
+              <label htmlFor="payout-reason-code">Reason code <span aria-hidden="true">*</span>
+                <select id="payout-reason-code" required value={reasonCode} onChange={(event) => setReasonCode(event.target.value)} autoFocus>
+                  <option value="">Choose a reason</option>
+                  {rejectionReasonCodes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                </select>
+              </label>
+              <label htmlFor="payout-reason">Reason <span aria-hidden="true">*</span>
+                <textarea id="payout-reason" name="reason" rows={4} minLength={8} maxLength={500} required value={reason} onChange={(event) => { setReason(event.target.value); setValidationError(null); }} />
+              </label>
+            </>
           ) : null}
           {validationError || error ? <p className="field-error" role="alert">{validationError ?? error}</p> : null}
           <div className="dialog-actions">
@@ -466,12 +480,14 @@ export function AdminPayoutDetailPage({
           await adminApi.rejectPayout(detail.id, {
             ...options,
             reasonCode: submission.reasonCode,
+            reason: submission.reason,
           });
         }
       } else {
-        const decisionReason = submission.command === "reject" ? submission.reasonCode : null;
+        const decisionReason = submission.command === "reject" ? submission.reason : null;
+        const decisionReasonCode = submission.command === "reject" ? submission.reasonCode : null;
         const occurredAt = new Date().toISOString();
-        const nextDetail = applyMockPayoutDecision(detail, submission.command, decisionReason, occurredAt);
+        const nextDetail = applyMockPayoutDecision(detail, submission.command, decisionReason, occurredAt, decisionReasonCode);
         setDetail(nextDetail);
         if (typeof window !== "undefined") {
           saveMockPayoutOverride(window.localStorage, { id: nextDetail.id, ...payoutMockOverrideFromDetail(nextDetail) });

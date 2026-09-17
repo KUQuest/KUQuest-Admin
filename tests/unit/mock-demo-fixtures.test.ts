@@ -4,11 +4,13 @@ import { loadDashboardData } from "../../src/features/admin/dashboard/dashboard-
 import { ADMIN_DEMO_DATA_KEY } from "../../src/features/admin/data/legacy-admin-data-adapter";
 import { loadMembersFromMock } from "../../src/features/admin/member/member-adapter";
 import { loadConductReportsFromMock } from "../../src/features/admin/conduct-report/conduct-report-adapter";
+import { conductReportsOnly } from "../../src/features/admin/conduct-report/conduct-report-model";
 import {
   loadAllDisputeCasesFromMock,
   loadDisputeCasesFromMock,
 } from "../../src/features/admin/dispute/dispute-adapter";
 import { loadReportCasesFromMock } from "../../src/features/admin/report/report-adapter";
+import { reportCasesOnly } from "../../src/features/admin/report/report-model";
 import { mockAllPayoutDetails, mockPayoutDetail } from "../../src/features/admin/payout/payout-mock-data";
 import { payoutDetailViewFromApi } from "../../src/features/admin/payout/payout-model";
 import { mockAllWallets } from "../../src/features/admin/wallet/wallet-mock-data";
@@ -25,6 +27,12 @@ function memoryStorage() {
     getItem: (key: string) => values.get(key) ?? null,
     setItem: (key: string, value: string) => values.set(key, value),
   };
+}
+
+function recordValue(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
 }
 
 describe("expanded mock demo fixtures", () => {
@@ -60,6 +68,78 @@ describe("expanded mock demo fixtures", () => {
     expect(data.collections.users.some((member) => member.id === "manual-member")).toBe(true);
     expect(data.collections.users.length).toBeGreaterThan(20);
     expect(data.collections.reports.length).toBeGreaterThan(20);
+  });
+
+  it("keeps required moderation relationships complete in Mock fixtures", () => {
+    const data = loadDashboardData(memoryStorage());
+    const conductReports = conductReportsOnly(data.collections.reports);
+    const reportCases = reportCasesOnly(data.collections.reports);
+
+    expect(conductReports).toHaveLength(203);
+    expect(conductReports.every((report) => (
+      typeof report.questId === "string" && report.questId.trim().length > 0
+      && typeof report.questTitle === "string" && report.questTitle.trim().length > 0
+      && typeof report.questRecord === "string" && report.questRecord.trim().length > 0
+      && typeof report.reportedMemberId === "string" && report.reportedMemberId.trim().length > 0
+      && typeof report.reportedUserName === "string" && report.reportedUserName.trim().length > 0
+      && typeof report.reporterId === "string" && report.reporterId.trim().length > 0
+      && typeof report.reporterName === "string" && report.reporterName.trim().length > 0
+    ))).toBe(true);
+    expect(reportCases.every((report) => (
+      typeof report.reportedMemberId === "string" && report.reportedMemberId.trim().length > 0
+      && typeof report.reportedUserName === "string" && report.reportedUserName.trim().length > 0
+      && typeof report.reporterId === "string" && report.reporterId.trim().length > 0
+      && typeof report.reporterName === "string" && report.reporterName.trim().length > 0
+    ))).toBe(true);
+  });
+
+  it("repairs missing moderation relationships in an existing Mock session", () => {
+    const source = loadDashboardData(memoryStorage());
+    const incompleteConduct = source.collections.reports.find((record) => recordValue(record)?.id === "CND-8310");
+    const incompleteReport = source.collections.reports.find((record) => recordValue(record)?.id === "RPT-8210");
+    expect(incompleteConduct).toBeTruthy();
+    expect(incompleteReport).toBeTruthy();
+
+    const storage = memoryStorage();
+    storage.setItem(ADMIN_DEMO_DATA_KEY, JSON.stringify({
+      ...source,
+      collections: {
+        ...source.collections,
+        reports: source.collections.reports.map((record) => {
+          const value = recordValue(record);
+          if (!value) return record;
+          if (value.id === "CND-8310") {
+            return {
+              ...value,
+              questId: undefined,
+              questTitle: undefined,
+              questRecord: null,
+              reporterId: undefined,
+              reporterName: undefined,
+              status: "CONDUCT_REPORT_PENDING",
+              conductReportStatus: "CONDUCT_REPORT_PENDING",
+            };
+          }
+          if (value.id === "RPT-8210") {
+            return { ...value, reporterId: undefined, reporterName: undefined };
+          }
+          return record;
+        }),
+      },
+    }));
+
+    const repaired = loadDashboardData(storage);
+    const repairedConduct = recordValue(repaired.collections.reports.find((record) => recordValue(record)?.id === "CND-8310"));
+    const repairedReport = recordValue(repaired.collections.reports.find((record) => recordValue(record)?.id === "RPT-8210"));
+
+    expect(repairedConduct?.questId).toBe("QST-12011");
+    expect(repairedConduct?.questTitle).toBe("Demo Quest 001");
+    expect(repairedConduct?.questRecord).toBeTruthy();
+    expect(repairedConduct?.reporterId).toBeTruthy();
+    expect(repairedConduct?.reporterName).toBeTruthy();
+    expect(repairedConduct?.status).toBe("CONDUCT_REPORT_PENDING");
+    expect(repairedReport?.reporterId).toBeTruthy();
+    expect(repairedReport?.reporterName).toBeTruthy();
   });
 
   it("keeps mock pagination deterministic for each moderation board", () => {

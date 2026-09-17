@@ -530,7 +530,7 @@ export function ConductReportDrawer({
         : saveMockConductReportDecision(localStorage, reportModel.id, decision, reason);
       const updatedModel = conductReportModelFromRecord(updated);
       if (!updatedModel || updatedModel.id !== reportModel.id) {
-        throw new Error("The Admin API returned an invalid Conduct Report.");
+        throw new Error(isAdminApiEnabled() ? "The Admin API returned an invalid Conduct Report." : "The Conduct Report record is invalid.");
       }
       setReportModel(updatedModel);
       window.dispatchEvent(new CustomEvent(CONDUCT_REPORT_UPDATED_EVENT, { detail: updatedModel }));
