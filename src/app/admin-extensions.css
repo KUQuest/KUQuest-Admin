@@ -186,7 +186,8 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
 .admin-modal-layer > dialog.report-decision-dialog,
 .admin-modal-layer > dialog.dispute-decision-dialog,
 .admin-modal-layer > dialog.report-evidence-dialog,
-.admin-modal-layer > dialog.dispute-evidence-dialog {
+.admin-modal-layer > dialog.dispute-evidence-dialog,
+.admin-modal-layer > dialog.member-action-dialog {
   position: relative;
   inset: auto;
   width: min(560px, 100%);
@@ -200,6 +201,24 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
   color: var(--text);
   box-shadow: var(--shadow);
   font-size: 16px;
+}
+
+.admin-modal-layer > dialog.member-action-dialog > .party-chat-modal {
+  width: 100%;
+  max-width: none;
+  max-height: inherit;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.admin-modal-layer > dialog.member-action-dialog .dialog-body {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.admin-modal-layer > dialog.member-action-dialog .dialog-actions {
+  flex: 0 0 auto;
 }
 
 .admin-modal-layer > dialog.report-decision-dialog > form,
@@ -333,7 +352,8 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
   .admin-modal-layer > dialog.report-decision-dialog,
   .admin-modal-layer > dialog.dispute-decision-dialog,
   .admin-modal-layer > dialog.report-evidence-dialog,
-  .admin-modal-layer > dialog.dispute-evidence-dialog {
+  .admin-modal-layer > dialog.dispute-evidence-dialog,
+  .admin-modal-layer > dialog.member-action-dialog {
     max-height: calc(100dvh - 24px);
   }
 
@@ -341,7 +361,8 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
   .admin-modal-layer > dialog.conduct-report-decision-dialog .dialog-body,
   .admin-modal-layer > dialog.dispute-decision-dialog .dialog-body,
   .admin-modal-layer > dialog.report-evidence-dialog > .dialog-body,
-  .admin-modal-layer > dialog.dispute-evidence-dialog > .dialog-body {
+  .admin-modal-layer > dialog.dispute-evidence-dialog > .dialog-body,
+  .admin-modal-layer > dialog.member-action-dialog .dialog-body {
     padding: 20px;
   }
 
@@ -384,6 +405,12 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
 }
 .activity-log-detail .drawer-actions {
   margin-top: 22px;
+}
+
+/* Keep the Member report flow available for future entry points without
+   exposing its action in the Member drawer. */
+.user-drawer-detail .drawer-actions > [hidden] {
+  display: none !important;
 }
 @media (max-width: 700px) {
   .activity-log-dialog {
@@ -3975,6 +4002,15 @@ dialog.drawer.dispute-case-drawer .timeline strong {
 }
 .admin-global-search-group .result {
   grid-template-columns: 35px minmax(0, 1fr) auto;
+}
+.admin-global-search-group .result,
+.admin-global-search-group .result:visited {
+  color: var(--text);
+  text-decoration: none;
+}
+.admin-global-search-group .result:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 .admin-global-search-marker {
   color: var(--accent);

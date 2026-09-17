@@ -189,6 +189,97 @@ export function recordMemberViolation(
   return result;
 }
 
+export type MemberPenaltyRemovalResult = {
+  model: MemberModel;
+  previousStatus: string;
+  nextStatus: string;
+};
+
+/**
+ * Remove one active Mock Member penalty while keeping an immutable reversal
+ * entry in the moderation history. The real Admin API does not expose this
+ * command; the UI uses it only for Mock fixture workflows.
+ */
+export function removeMemberPenaltyInData(
+  data: PersistedAdminData,
+  memberId: string,
+  reason: string,
+): MemberPenaltyRemovalResult | null {
+  const record = memberRecord(data, memberId);
+  if (!record) return null;
+  const current = memberModelFromMockRecord(record, data);
+  if (!current || current.source !== "mock" || current.confirmedViolationCount === null || current.confirmedViolationCount < 1) {
+    return null;
+  }
+  if (!current.memberStatus || current.memberStatus === "Normal") return null;
+
+  const previousStatus = current.memberStatus;
+  const nextViolationCount = Math.max(0, current.confirmedViolationCount - 1);
+  const nextMemberStatus = nextViolationCount >= 3
+    ? "Perm Ban"
+    : nextViolationCount === 2
+      ? "Temp Ban"
+      : nextViolationCount === 1
+        ? "Flag"
+        : "Normal";
+  const nextWalletStatus = nextMemberStatus === "Temp Ban" || nextMemberStatus === "Perm Ban" ? "FROZEN" : "ACTIVE";
+  const now = new Date().toISOString();
+  const history = Array.isArray(record.moderationHistory) ? record.moderationHistory : [];
+
+  record.confirmedViolationCount = nextViolationCount;
+  record.memberStatus = nextMemberStatus;
+  record.walletStatus = nextWalletStatus;
+  record.status = nextWalletStatus;
+  record.tone = nextMemberStatus === "Normal" ? "success" : nextWalletStatus === "ACTIVE" ? "warning" : "danger";
+  record.statusReason = nextMemberStatus === "Normal" ? undefined : "Previous penalty remains active after the latest reversal.";
+  record.statusAppliedAt = now;
+  record.statusAppliedBy = "Admin";
+  record.redFlagExpiresAt = undefined;
+  record.banExpiresAt = undefined;
+  if (nextMemberStatus === "Normal") {
+    delete record.penalty;
+    record.age = "No active penalty";
+  } else {
+    const nextPenaltyLabel = nextMemberStatus === "Flag" ? "Red Flag" : nextMemberStatus === "Temp Ban" ? "Temporary ban" : "Permanent ban";
+    record.penalty = {
+      label: nextPenaltyLabel,
+      reason: "Previous penalty remains active after the latest reversal.",
+      recordedAt: now,
+      appliedBy: "Admin",
+      ...(nextMemberStatus === "Flag" || nextMemberStatus === "Temp Ban" ? { durationDays: 7 } : {}),
+    };
+    record.age = nextPenaltyLabel;
+  }
+  record.moderationHistory = [
+    {
+      event: "Member penalty removed",
+      at: now,
+      by: "Admin",
+      reason,
+      previousStatus,
+      newStatus: nextMemberStatus,
+      outcome: "Penalty removed",
+    },
+    ...history,
+  ];
+
+  const model = memberModelFromMockRecord(record, data);
+  if (!model) return null;
+  return { model, previousStatus, nextStatus: nextMemberStatus };
+}
+
+export function removeMemberPenalty(
+  storage: BrowserStorage,
+  memberId: string,
+  reason: string,
+): MemberPenaltyRemovalResult | null {
+  const data = loadDashboardData(storage);
+  const result = removeMemberPenaltyInData(data, memberId, reason);
+  if (!result) return null;
+  persist(storage, data);
+  return result;
+}
+
 export function submitMemberReport(
   storage: BrowserStorage,
   memberId: string,

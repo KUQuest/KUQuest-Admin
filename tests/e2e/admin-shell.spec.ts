@@ -363,10 +363,18 @@ test.describe("shared Admin shell", () => {
     };
 
     let dialog = await openSearch();
+    const closeSearch = dialog.locator(".command-input button[aria-label=\"Close search\"]");
+    await expect(closeSearch).toBeVisible();
+    await expect(dialog.locator("kbd")).toHaveCount(0);
+    await closeSearch.click();
+    await expect(dialog).toHaveCount(0);
+    dialog = await openSearch();
     const searchInput = dialog.getByRole("searchbox", { name: "Search marketplace records" });
     await searchInput.fill("QST-12001");
-    await expect(dialog.getByRole("link", { name: /QST-12001/ })).toHaveAttribute("href", "/quest/QST-12001");
-    await dialog.getByRole("link", { name: /QST-12001/ }).click();
+    const questResult = dialog.getByRole("link", { name: /QST-12001/ });
+    await expect(questResult).toHaveAttribute("href", "/quest/QST-12001");
+    await expect(questResult).toHaveCSS("text-decoration-line", "none");
+    await questResult.click();
     await expect(page).toHaveURL(/\/quest\/QST-12001$/);
 
     await page.goto("/overview");

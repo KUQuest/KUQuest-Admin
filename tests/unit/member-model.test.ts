@@ -3,7 +3,7 @@ import {
   ADMIN_DEMO_DATA_KEY,
   type BrowserStorage,
 } from "../../src/features/admin/data/legacy-admin-data-adapter";
-import { recordMemberViolation } from "../../src/features/admin/member/member-adapter";
+import { recordMemberViolation, removeMemberPenalty } from "../../src/features/admin/member/member-adapter";
 
 import type { AdminMemberDetail } from "../../src/features/admin/api/admin-api";
 import {
@@ -246,5 +246,47 @@ describe("Member route model", () => {
     expect(result?.model.memberStatus).toBe("Normal");
     expect(result?.model.confirmedViolationCount).toBe(1);
     expect(result?.model.newUserExemptionRemaining).toBe(0);
+  });
+
+  it("removes one active Mock penalty and keeps a reversal history entry", () => {
+    const data = mockData();
+    data.collections.users.push({
+      id: "member-penalty",
+      title: "Penalty Member",
+      person: "penalty@ku.th",
+      memberStatus: "Temp Ban",
+      walletStatus: "FROZEN",
+      confirmedViolationCount: 2,
+      penalty: {
+        label: "Temporary ban",
+        reason: "Repeated policy violations.",
+        recordedAt: "2026-09-10T09:00:00.000Z",
+        appliedBy: "Admin",
+        durationDays: 7,
+      },
+    });
+    const values: Record<string, string> = {
+      [ADMIN_DEMO_DATA_KEY]: JSON.stringify(data),
+    };
+    const storage: BrowserStorage = {
+      getItem: (key) => values[key] ?? null,
+      setItem: (key, value) => {
+        values[key] = value;
+      },
+    };
+
+    const result = removeMemberPenalty(storage, "member-penalty", "The original decision was corrected.");
+
+    expect(result?.previousStatus).toBe("Temp Ban");
+    expect(result?.nextStatus).toBe("Flag");
+    expect(result?.model.confirmedViolationCount).toBe(1);
+    expect(result?.model.memberStatus).toBe("Flag");
+    expect(result?.model.walletStatus).toBe("ACTIVE");
+    expect(result?.model.penaltyHistory[0]).toMatchObject({
+      event: "Member penalty removed",
+      reason: "The original decision was corrected.",
+      previousStatus: "Temp Ban",
+      newStatus: "Flag",
+    });
   });
 });

@@ -198,7 +198,9 @@ export function AdminGlobalSearch({ open, onClose, initialData, initialError }: 
               syncSearchParams(event.target.value, kind);
             }}
           />
-          <kbd>Esc</kbd>
+          <button className="icon" type="button" aria-label={translateText("Close search")} onClick={onClose}>
+            <span className="close-lines" />
+          </button>
         </div>
         <div className="admin-global-search-controls">
           <label htmlFor="admin-global-search-type">{translateText("Search type")}

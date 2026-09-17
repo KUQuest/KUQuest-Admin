@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { AdminLoading } from "../../../components/admin/admin-feedback";
+import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { ADMIN_LEDGER_EVENT_TYPES, adminApi } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
@@ -14,6 +15,7 @@ import { filterReviews, type ReviewFilter } from "../user-reviews/review-model";
 import {
   findMemberFromMock,
   recordMemberViolation,
+  removeMemberPenalty,
   saveMemberNote,
   submitMemberReport,
 } from "./member-adapter";
@@ -329,7 +331,20 @@ function PenaltyDialog({ model, open, busy, error, translateText, onCancel, onCo
     }
   }, [open, model.id]);
   if (!open) return null;
-  return <dialog open className="party-chat-overlay" aria-modal="true" aria-label={translateText(`Confirm violation for ${model.title}`)}><form className="party-chat-modal penalty-modal" onSubmit={(event) => { event.preventDefault(); const value = reason.trim(); if (value.length < 8) { setValidationError("Enter at least 8 characters explaining this confirmed violation."); return; } onConfirm(value, note.trim()); }}><div className="chat-modal-head"><div><strong>{translateText("Confirm violation")}</strong><small>{model.title} · {model.id}</small></div><button className="icon" type="button" aria-label={translateText("Close penalty form")} onClick={onCancel}><span className="close-lines" /></button></div><div className="dialog-body"><p className="chat-intro">{translateText("Confirm that this account committed an actual policy violation. The SRS penalty ladder applies the next consequence automatically.")}</p><section className="penalty-policy-note" aria-label={translateText("Penalty ladder")}><strong>{translateText("Penalty ladder")}</strong><span>{translateText("Next outcome")} {translateText(outcome.label)}{outcome.durationDays ? ` · ${outcome.durationDays} ${translateText("days")}` : ""}</span></section><div className="penalty-preview"><div><span>{translateText("Member")}</span><strong>{model.title}</strong></div><div><span>{translateText("Confirmed violations")}</span><strong>{model.confirmedViolationCount}</strong></div><div><span>{translateText("Next outcome")}</span><strong>{translateText(outcome.label)}</strong></div></div><label htmlFor="member-penalty-reason">{translateText("Reason for confirmed violation")}</label><textarea id="member-penalty-reason" name="reason" rows={4} minLength={8} maxLength={500} required value={reason} onChange={(event) => { setReason(event.target.value); setValidationError(null); }} /><label htmlFor="member-penalty-note">{translateText("Internal admin note (optional)")}</label><textarea id="member-penalty-note" name="note" rows={3} maxLength={500} value={note} onChange={(event) => setNote(event.target.value)} />{(validationError || error) && <p className="field-error" role="alert">{translateText(validationError || error || "")}</p>}</div><div className="dialog-actions"><button className="btn" type="button" onClick={onCancel} disabled={busy}>{translateText("Cancel")}</button><button className="btn danger" type="submit" disabled={busy}>{busy ? translateText("Saving…") : translateText("Confirm violation")}</button></div></form></dialog>;
+  return <AdminModalPortal open onClose={onCancel}><dialog open className="member-action-dialog" aria-modal="true" aria-label={translateText(`Confirm violation for ${model.title}`)}><form className="party-chat-modal penalty-modal" onSubmit={(event) => { event.preventDefault(); const value = reason.trim(); if (value.length < 8) { setValidationError("Enter at least 8 characters explaining this confirmed violation."); return; } onConfirm(value, note.trim()); }}><div className="chat-modal-head"><div><strong>{translateText("Confirm violation")}</strong><small>{model.title} · {model.id}</small></div><button className="icon" type="button" aria-label={translateText("Close penalty form")} onClick={onCancel}><span className="close-lines" /></button></div><div className="dialog-body"><p className="chat-intro">{translateText("Confirm that this account committed an actual policy violation. The SRS penalty ladder applies the next consequence automatically.")}</p><section className="penalty-policy-note" aria-label={translateText("Penalty ladder")}><strong>{translateText("Penalty ladder")}</strong><span>{translateText("Next outcome")} {translateText(outcome.label)}{outcome.durationDays ? ` · ${outcome.durationDays} ${translateText("days")}` : ""}</span></section><div className="penalty-preview"><div><span>{translateText("Member")}</span><strong>{model.title}</strong></div><div><span>{translateText("Confirmed violations")}</span><strong>{model.confirmedViolationCount}</strong></div><div><span>{translateText("Next outcome")}</span><strong>{translateText(outcome.label)}</strong></div></div><label htmlFor="member-penalty-reason">{translateText("Reason for confirmed violation")}</label><textarea id="member-penalty-reason" name="reason" rows={4} minLength={8} maxLength={500} required value={reason} onChange={(event) => { setReason(event.target.value); setValidationError(null); }} /><label htmlFor="member-penalty-note">{translateText("Internal admin note (optional)")}</label><textarea id="member-penalty-note" name="note" rows={3} maxLength={500} value={note} onChange={(event) => setNote(event.target.value)} />{(validationError || error) && <p className="field-error" role="alert">{translateText(validationError || error || "")}</p>}</div><div className="dialog-actions"><button className="btn" type="button" onClick={onCancel} disabled={busy}>{translateText("Cancel")}</button><button className="btn danger" type="submit" disabled={busy}>{busy ? translateText("Saving…") : translateText("Confirm violation")}</button></div></form></dialog></AdminModalPortal>;
+}
+
+function RemovePenaltyDialog({ model, open, busy, error, translateText, onCancel, onConfirm }: { model: MemberModel; open: boolean; busy: boolean; error: string | null; translateText: (value: string) => string; onCancel: () => void; onConfirm: (reason: string) => void }) {
+  const [reason, setReason] = useState("");
+  const [validationError, setValidationError] = useState<string | null>(null);
+  useEffect(() => {
+    if (open) {
+      setReason("");
+      setValidationError(null);
+    }
+  }, [open, model.id]);
+  if (!open) return null;
+  return <AdminModalPortal open onClose={onCancel}><dialog open className="member-action-dialog" aria-modal="true" aria-label={translateText(`Remove penalty for ${model.title}`)}><form className="party-chat-modal penalty-modal" onSubmit={(event) => { event.preventDefault(); const value = reason.trim(); if (value.length < 8) { setValidationError("Enter at least 8 characters explaining the penalty removal."); return; } onConfirm(value); }}><div className="chat-modal-head"><div><strong>{translateText("Remove penalty")}</strong><small>{model.title} · {model.id}</small></div><button className="icon" type="button" aria-label={translateText("Close remove penalty form")} onClick={onCancel}><span className="close-lines" /></button></div><div className="dialog-body"><p className="chat-intro">{translateText("Remove one active Mock penalty from this Member. The moderation history is retained and a reversal entry is recorded.")}</p><section className="penalty-policy-note" aria-label={translateText("Current penalty")}><strong>{translateText("Current penalty")}</strong><span>{translateText("Confirmed violations")} {model.confirmedViolationCount ?? 0} · {translateText(memberStatusText(model))}</span></section><label htmlFor="member-remove-penalty-reason">{translateText("Reason for removing the penalty")}</label><textarea id="member-remove-penalty-reason" name="reason" rows={4} minLength={8} maxLength={500} required value={reason} onChange={(event) => { setReason(event.target.value); setValidationError(null); }} />{(validationError || error) && <p className="field-error" role="alert">{translateText(validationError || error || "")}</p>}</div><div className="dialog-actions"><button className="btn" type="button" onClick={onCancel} disabled={busy}>{translateText("Cancel")}</button><button className="btn danger" type="submit" disabled={busy}>{busy ? translateText("Saving…") : translateText("Remove penalty")}</button></div></form></dialog></AdminModalPortal>;
 }
 
 function NoteDialog({ model, open, busy, error, translateText, onCancel, onConfirm }: { model: MemberModel; open: boolean; busy: boolean; error: string | null; translateText: (value: string) => string; onCancel: () => void; onConfirm: (note: string) => void }) {
@@ -344,7 +359,7 @@ function ReportMemberDialog({ model, open, busy, error, translateText, onCancel,
   const [details, setDetails] = useState("");
   useEffect(() => { if (open) { setCategory("Harassment or abuse"); setDetails(""); } }, [open, model.id]);
   if (!open) return null;
-  return <dialog open className="party-chat-overlay" aria-modal="true" aria-label={translateText(`Report ${model.title}`)}><form className="party-chat-modal report-modal" onSubmit={(event) => { event.preventDefault(); if (details.trim().length < 20) return; onConfirm(category, details.trim()); }}><div className="chat-modal-head"><div><strong>{translateText("Report Member")}</strong><small>{model.title} · {model.id}</small></div><button className="icon" type="button" aria-label={translateText("Close report form")} onClick={onCancel}><span className="close-lines" /></button></div><div className="dialog-body"><p className="chat-intro">{translateText("Record a report submitted by one KUQuest Member about another. This report does not apply a penalty automatically.")}</p><div className="report-selected-user" role="group" aria-label={translateText("Reported Member")}><span>{translateText("Reported Member")}</span><strong>{model.title}</strong><small>Student ID · {model.studentId}</small></div><label htmlFor="member-report-category">{translateText("Report type")}</label><select id="member-report-category" aria-label={translateText("Report type")} value={category} onChange={(event) => setCategory(event.target.value)}><option>Harassment or abuse</option><option>Fraud or payment issue</option><option>Other policy concern</option></select><label htmlFor="member-report-details">{translateText("What happened?")}</label><textarea id="member-report-details" aria-label={translateText("What happened?")} minLength={20} maxLength={500} rows={5} required value={details} onChange={(event) => setDetails(event.target.value)} />{(error || (details.length > 0 && details.trim().length < 20)) && <p className="field-error" role="alert">{translateText(error || "Enter at least 20 characters describing the report.")}</p>}</div><div className="dialog-actions"><button className="btn" type="button" onClick={onCancel} disabled={busy}>{translateText("Cancel")}</button><button className="btn primary" type="submit" disabled={busy || details.trim().length < 20}>{busy ? translateText("Saving…") : translateText("Submit report")}</button></div></form></dialog>;
+  return <AdminModalPortal open onClose={onCancel}><dialog open className="member-action-dialog" aria-modal="true" aria-label={translateText(`Report ${model.title}`)}><form className="party-chat-modal report-modal" onSubmit={(event) => { event.preventDefault(); if (details.trim().length < 20) return; onConfirm(category, details.trim()); }}><div className="chat-modal-head"><div><strong>{translateText("Report Member")}</strong><small>{model.title} · {model.id}</small></div><button className="icon" type="button" aria-label={translateText("Close report form")} onClick={onCancel}><span className="close-lines" /></button></div><div className="dialog-body"><p className="chat-intro">{translateText("Record a report submitted by one KUQuest Member about another. This report does not apply a penalty automatically.")}</p><div className="report-selected-user" role="group" aria-label={translateText("Reported Member")}><span>{translateText("Reported Member")}</span><strong>{model.title}</strong><small>Student ID · {model.studentId}</small></div><label htmlFor="member-report-category">{translateText("Report type")}</label><select id="member-report-category" aria-label={translateText("Report type")} value={category} onChange={(event) => setCategory(event.target.value)}><option>Harassment or abuse</option><option>Fraud or payment issue</option><option>Other policy concern</option></select><label htmlFor="member-report-details">{translateText("What happened?")}</label><textarea id="member-report-details" aria-label={translateText("What happened?")} minLength={20} maxLength={500} rows={5} required value={details} onChange={(event) => setDetails(event.target.value)} />{(error || (details.length > 0 && details.trim().length < 20)) && <p className="field-error" role="alert">{translateText(error || "Enter at least 20 characters describing the report.")}</p>}</div><div className="dialog-actions"><button className="btn" type="button" onClick={onCancel} disabled={busy}>{translateText("Cancel")}</button><button className="btn primary" type="submit" disabled={busy || details.trim().length < 20}>{busy ? translateText("Saving…") : translateText("Submit report")}</button></div></form></dialog></AdminModalPortal>;
 }
 
 function DetailTabs({ model, activeTab, translateText }: { model: MemberModel; activeTab: MemberTab; translateText: (value: string) => string }) {
@@ -352,10 +367,14 @@ function DetailTabs({ model, activeTab, translateText }: { model: MemberModel; a
   return <nav className="user-detail-tabs" aria-label={translateText("Member detail sections")}>{Object.entries(labels).map(([value, label]) => <a className={activeTab === value ? "active" : ""} aria-current={activeTab === value ? "page" : undefined} key={value} href={memberTabHref(model.id, value as MemberTab)}>{translateText(label)}</a>)}</nav>;
 }
 
-function DrawerContent({ model, translateText, onRecordViolation, onReport }: { model: MemberModel; translateText: (value: string) => string; onRecordViolation: () => void; onReport: () => void }) {
+function DrawerContent({ model, translateText, onRecordViolation, onRemovePenalty, onReport }: { model: MemberModel; translateText: (value: string) => string; onRecordViolation: () => void; onRemovePenalty: () => void; onReport: () => void }) {
   const canRecord = model.source === "mock"
     && model.confirmedViolationCount !== null
     && !["FROZEN", "SUSPENDED", "CLOSED"].includes(model.walletStatus || "");
+  const canRemovePenalty = model.source === "mock"
+    && model.confirmedViolationCount !== null
+    && model.confirmedViolationCount > 0
+    && model.memberStatus !== "Normal";
   const latestTransactionAt = latestWalletTransactionAt(model);
   return (
     <div className="drawer-body user-drawer-detail">
@@ -364,7 +383,7 @@ function DrawerContent({ model, translateText, onRecordViolation, onReport }: { 
       <section className="section"><h3>{translateText("Wallet")}</h3><div className="user-context-list"><div><span>{translateText("Wallet record")}</span><strong>{model.walletId || "—"}</strong></div><div><span>{translateText("Wallet Status")}</span><strong>{walletBadge(model, translateText)}</strong></div><div><span>{translateText("Current Wallet Balance")}</span><strong>{model.walletBalances ? formatMoneySatang(currentWalletBalance(model.walletBalances)) : "—"}</strong></div><div><span>{translateText("Latest Wallet Transaction Date")}</span><strong>{latestTransactionAt ? formatWalletDate(latestTransactionAt) : "—"}</strong></div></div></section>
       <section className="section"><h3>{translateText("Moderation")}</h3><div className="user-context-list"><div><span>{translateText("Member Status")}</span><strong>{statusBadge(model, translateText)}</strong></div><div><span>{translateText("Confirmed violations")}</span><strong>{model.confirmedViolationCount === null ? translateText("Not provided by the Admin API") : model.confirmedViolationCount}</strong></div><div><span>{translateText("Reason")}</span><strong>{model.statusReason || translateText("No reason recorded.")}</strong></div></div></section>
       <section className="section"><h3>{translateText("Activity summary")}</h3><div className="user-activity-list"><div><span>{translateText("Completed quests")}</span><strong>{completedQuestCount(model)}</strong></div><div><span>{translateText("Reports received")}</span><strong>{model.reports.length}</strong></div></div></section>
-      <div className="drawer-actions"><button className="btn" type="button" onClick={onReport}>{translateText("Report Member")}</button>{canRecord && <button className="btn primary" type="button" onClick={onRecordViolation}>{translateText("Record violation")}</button>}<a className="btn" href={memberRoutes.detail(model.id)}>{translateText("See full Member profile")}</a></div>
+      <div className="drawer-actions"><button className="btn" type="button" onClick={onReport} hidden>{translateText("Report Member")}</button>{canRecord && <button className="btn primary" type="button" onClick={onRecordViolation}>{translateText("Record violation")}</button>}{canRemovePenalty && <button className="btn danger" type="button" onClick={onRemovePenalty}>{translateText("Remove penalty")}</button>}<a className="btn" href={memberRoutes.detail(model.id)}>{translateText("See full Member profile")}</a></div>
     </div>
   );
 }
@@ -377,6 +396,7 @@ export function MemberDetail({ memberId, initialModel = null, initialTab = "over
   const [loading, setLoading] = useState(!initialModel);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [penaltyOpen, setPenaltyOpen] = useState(false);
+  const [removePenaltyOpen, setRemovePenaltyOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
@@ -433,6 +453,23 @@ export function MemberDetail({ memberId, initialModel = null, initialTab = "over
     setActionBusy(false);
   };
 
+  const removePenalty = (reason: string) => {
+    if (!model) return;
+    if (isAdminApiEnabled()) {
+      setActionError("Member penalty commands are not available from the Admin API.");
+      return;
+    }
+    setActionBusy(true);
+    setActionError(null);
+    const result = removeMemberPenalty(localStorage, model.id, reason);
+    if (!result) setActionError("The Member penalty could not be removed.");
+    else {
+      updateModel(result.model);
+      setRemovePenaltyOpen(false);
+    }
+    setActionBusy(false);
+  };
+
   const saveNote = (note: string) => {
     if (!model) return;
     if (isAdminApiEnabled()) {
@@ -470,10 +507,10 @@ export function MemberDetail({ memberId, initialModel = null, initialTab = "over
     return <main className={drawer ? "drawer-body" : "admin-feedback"}><section className="panel"><h1>{translateText("Member not found")}</h1><p>{translateText(loadError || "No Member record matches this identifier.")}</p>{!drawer && <Link className="btn primary" href={memberRoutes.list()}>{translateText("Return to Members")}</Link>}</section></main>;
   }
 
-  const overlays = <><PenaltyDialog model={model} open={penaltyOpen} busy={actionBusy} error={actionError} translateText={translateText} onCancel={() => { if (!actionBusy) { setPenaltyOpen(false); setActionError(null); } }} onConfirm={confirmPenalty} /><NoteDialog model={model} open={noteOpen} busy={actionBusy} error={actionError} translateText={translateText} onCancel={() => { if (!actionBusy) { setNoteOpen(false); setActionError(null); } }} onConfirm={saveNote} /><ReportMemberDialog model={model} open={reportOpen} busy={actionBusy} error={actionError} translateText={translateText} onCancel={() => { if (!actionBusy) { setReportOpen(false); setActionError(null); } }} onConfirm={submitReport} /></>;
+  const overlays = <><PenaltyDialog model={model} open={penaltyOpen} busy={actionBusy} error={actionError} translateText={translateText} onCancel={() => { if (!actionBusy) { setPenaltyOpen(false); setActionError(null); } }} onConfirm={confirmPenalty} /><RemovePenaltyDialog model={model} open={removePenaltyOpen} busy={actionBusy} error={actionError} translateText={translateText} onCancel={() => { if (!actionBusy) { setRemovePenaltyOpen(false); setActionError(null); } }} onConfirm={removePenalty} /><NoteDialog model={model} open={noteOpen} busy={actionBusy} error={actionError} translateText={translateText} onCancel={() => { if (!actionBusy) { setNoteOpen(false); setActionError(null); } }} onConfirm={saveNote} /><ReportMemberDialog model={model} open={reportOpen} busy={actionBusy} error={actionError} translateText={translateText} onCancel={() => { if (!actionBusy) { setReportOpen(false); setActionError(null); } }} onConfirm={submitReport} /></>;
 
   if (drawer) {
-    return <>{overlays}<DrawerContent model={model} translateText={translateText} onRecordViolation={() => { setActionError(null); setPenaltyOpen(true); }} onReport={() => { setActionError(null); setReportOpen(true); }} /></>;
+    return <>{overlays}<DrawerContent model={model} translateText={translateText} onRecordViolation={() => { setActionError(null); setPenaltyOpen(true); }} onRemovePenalty={() => { setActionError(null); setRemovePenaltyOpen(true); }} onReport={() => { setActionError(null); setReportOpen(true); }} /></>;
   }
 
   const tabContent = activeTab === "activity"
