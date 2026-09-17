@@ -12,6 +12,8 @@ export type { ActivityLogEntry, ActivityLogFilters, ActivityLogPageData } from "
 export {
   activityLogCsv,
   activityLogMatchesSearch,
+  activityLogEntryMatchesFilters,
+  activityLogFixturePageData,
   activityLogTargetLabel,
   activityTargetHref,
   DEFAULT_ACTIVITY_LOG_FILTERS,

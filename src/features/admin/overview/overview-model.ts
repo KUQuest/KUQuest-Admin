@@ -5,11 +5,13 @@ import type {
 import { adminNavigationCountsFromMockData } from "../admin-navigation";
 import {
   conductReportRoutes,
+  activityRoutes,
   disputeRoutes,
   memberRoutes,
   payoutRoutes,
   questRoutes,
   reportRoutes,
+  walletRoutes,
 } from "../admin-routes";
 import {
   MEMBER_STATUSES,
@@ -20,6 +22,7 @@ import {
   questStateFor,
   questStateLabel,
   walletStatusFor,
+  isConductReportStatus,
   type MemberStatus,
   type QuestState,
   type WalletStatus,
@@ -28,8 +31,10 @@ import type { PersistedAdminData } from "../data/admin-records";
 import type { DashboardActivity } from "../dashboard/dashboard-model";
 
 type OverviewCount = number | null;
-type OverviewQueueId = "payouts" | "disputes" | "reports" | "conductReports";
+export type OverviewQueueId = "payouts" | "disputes" | "reports" | "conductReports";
 type OverviewSource = "Admin API" | "Local fallback" | "Unavailable";
+export type OverviewQueuePriority = "High" | "Medium" | "Low" | "Not provided";
+export type OverviewQueueSla = "Overdue" | "Due soon" | "On track" | "Not provided";
 
 type OverviewQueueRoute = {
   list: () => string;
@@ -46,6 +51,9 @@ type OverviewQueueInput = {
   waiting: string;
   tone: string;
   oldestId?: string | null;
+  priority?: OverviewQueuePriority;
+  slaState?: OverviewQueueSla;
+  assignedAdmin?: string;
 };
 
 type OverviewApiQueueConfig = {
@@ -65,12 +73,29 @@ export type OverviewQueue = {
   title: string;
   count: OverviewCount;
   oldest: string;
+  oldestId: string | null;
   oldestHref: string | null;
   listHref: string;
   status: string;
   waiting: string;
   tone: string;
   source: OverviewSource;
+  priority: OverviewQueuePriority;
+  slaState: OverviewQueueSla;
+  assignedAdmin: string;
+};
+
+export type OverviewQueueCase = {
+  id: string;
+  queueId: OverviewQueueId;
+  title: string;
+  detail: string;
+  status: string;
+  priority: OverviewQueuePriority;
+  age: string;
+  slaState: OverviewQueueSla;
+  assignedAdmin: string;
+  href: string;
 };
 
 export type OverviewQuestState = {
@@ -111,7 +136,7 @@ export type OverviewFallback = {
 };
 
 export type OverviewSearchResult = {
-  kind: "quest" | "member" | "payout";
+  kind: "quest" | "member" | "payout" | "dispute" | "report" | "conduct-report" | "wallet" | "activity";
   id: string;
   title: string;
   detail: string;
@@ -123,6 +148,9 @@ export type OverviewApiSearchData = {
   quests: Array<{ id: string; displayId?: string; title: string }>;
   members: Array<{ id: string; firstName: string; lastName: string; studentId: string | null }>;
   payouts: Array<{ id: string; student: { firstName: string; lastName: string } }>;
+  disputes?: Array<{ id: string; title: string; questId?: string }>;
+  reports?: Array<{ id: string; title: string; reportedMemberId?: string; conduct?: boolean }>;
+  wallets?: Array<{ id: string; memberId: string; memberName: string; status?: string }>;
 };
 
 const questStateTones: Record<QuestState, string> = {
@@ -250,9 +278,19 @@ function questStatesFromCounts(byState: Record<string, number>, total: number): 
 }
 
 function queue(input: OverviewQueueInput): OverviewQueue {
-  const { oldestId, ...queueData } = input;
+  const {
+    oldestId,
+    priority = "Not provided",
+    slaState = "Not provided",
+    assignedAdmin = "Not assigned",
+    ...queueData
+  } = input;
   return {
     ...queueData,
+    oldestId: oldestId ?? null,
+    priority,
+    slaState,
+    assignedAdmin,
     oldestHref: oldestId ? queueOldestHref(input.id, oldestId) : null,
     listHref: queueListHref(input.id),
   };
@@ -262,7 +300,7 @@ const overviewQueueRoutes: Record<OverviewQueueId, OverviewQueueRoute> = {
   payouts: { list: payoutRoutes.list, detail: payoutRoutes.detail },
   disputes: { list: disputeRoutes.list, detail: disputeRoutes.detail },
   reports: { list: reportRoutes.list, detail: reportRoutes.detail },
-  conductReports: { list: conductReportRoutes.list },
+  conductReports: { list: conductReportRoutes.list, detail: conductReportRoutes.detail },
 };
 
 const overviewQueueIds: OverviewQueueId[] = ["payouts", "disputes", "reports", "conductReports"];
@@ -276,6 +314,124 @@ function queueOldestHref(id: OverviewQueueId, identifier: string): string | null
   if (!trimmedIdentifier) return null;
   const route = overviewQueueRoutes[id];
   return route.detail ? route.detail(trimmedIdentifier) : route.list();
+}
+
+const mockQueueCases: Record<OverviewQueueId, OverviewQueueCase[]> = {
+  payouts: [
+    {
+      id: "PAY-9637",
+      queueId: "payouts",
+      title: "Payout approval · Darin Intharawong",
+      detail: "Payout Reserve is waiting for an Admin decision.",
+      status: "PENDING_ADMIN_APPROVAL",
+      priority: "High",
+      age: "2 days ago",
+      slaState: "Due soon",
+      assignedAdmin: "Unassigned",
+      href: payoutRoutes.detail("PAY-9637"),
+    },
+    {
+      id: "PAY-9631",
+      queueId: "payouts",
+      title: "Payout approval · Fah Lertwiroj",
+      detail: "Masked Payout Destination is ready for review.",
+      status: "PENDING_ADMIN_APPROVAL",
+      priority: "Medium",
+      age: "1 day ago",
+      slaState: "On track",
+      assignedAdmin: "Narin Admin",
+      href: payoutRoutes.detail("PAY-9631"),
+    },
+  ],
+  disputes: [
+    {
+      id: "DSP-5201",
+      queueId: "disputes",
+      title: "Dispute Case · Verify dorm fire exits",
+      detail: "QUEST_FAILED case with money at risk.",
+      status: "DISPUTE_CASE_PENDING",
+      priority: "High",
+      age: "3 days ago",
+      slaState: "Overdue",
+      assignedAdmin: "Supansa Admin",
+      href: disputeRoutes.detail("DSP-5201"),
+    },
+    {
+      id: "DSP-5202",
+      queueId: "disputes",
+      title: "Dispute Case · Design orientation social cards",
+      detail: "Evidence review is waiting for a first decision.",
+      status: "DISPUTE_CASE_PENDING",
+      priority: "High",
+      age: "2 days ago",
+      slaState: "Due soon",
+      assignedAdmin: "Unassigned",
+      href: disputeRoutes.detail("DSP-5202"),
+    },
+  ],
+  reports: [
+    {
+      id: "RPT-8201",
+      queueId: "reports",
+      title: "Report Case · Harassment or abuse",
+      detail: "Message Evidence Reference is waiting for review.",
+      status: "REPORT_CASE_PENDING",
+      priority: "Medium",
+      age: "1 day ago",
+      slaState: "Due soon",
+      assignedAdmin: "Unassigned",
+      href: reportRoutes.detail("RPT-8201"),
+    },
+    {
+      id: "RPT-8202",
+      queueId: "reports",
+      title: "Report Case · Fraud or payment issue",
+      detail: "Related Message evidence is ready for review.",
+      status: "REPORT_CASE_PENDING",
+      priority: "Medium",
+      age: "1 day ago",
+      slaState: "On track",
+      assignedAdmin: "Narin Admin",
+      href: reportRoutes.detail("RPT-8202"),
+    },
+  ],
+  conductReports: [
+    {
+      id: "CND-8301",
+      queueId: "conductReports",
+      title: "Conduct Report · Quest abandonment",
+      detail: "Quest record and Proof Submission need review.",
+      status: "CONDUCT_REPORT_PENDING",
+      priority: "High",
+      age: "5 hours ago",
+      slaState: "On track",
+      assignedAdmin: "Supansa Admin",
+      href: conductReportRoutes.detail("CND-8301"),
+    },
+    {
+      id: "CND-8302",
+      queueId: "conductReports",
+      title: "Conduct Report · Out-of-scope work",
+      detail: "Quest conduct record is waiting for confirmation.",
+      status: "CONDUCT_REPORT_PENDING",
+      priority: "Medium",
+      age: "1 day ago",
+      slaState: "Due soon",
+      assignedAdmin: "Unassigned",
+      href: conductReportRoutes.detail("CND-8302"),
+    },
+  ],
+};
+
+export function overviewQueueCasesFor(queueId: OverviewQueueId): OverviewQueueCase[] {
+  return mockQueueCases[queueId].map((queueCase) => ({ ...queueCase }));
+}
+
+/** Resolve a queue's named oldest case to the mock work list without guessing. */
+export function overviewQueueCaseIndexFor(queueId: OverviewQueueId, caseId: string | null): number | null {
+  if (!caseId?.trim()) return null;
+  const caseIndex = mockQueueCases[queueId].findIndex((queueCase) => queueCase.id === caseId);
+  return caseIndex >= 0 ? caseIndex : null;
 }
 
 function sumCounts(left: OverviewCount, right: OverviewCount): OverviewCount {
@@ -355,7 +511,7 @@ export function overviewModelFromApi(
       ? countValue(overview.wallets.byStatus.SUSPENDED)
       : countValue(overview.members.suspendedWallets),
     inFlightPayouts: countValue(overview.payouts.inFlight),
-    activity: activity.slice(0, 4),
+    activity: activity.slice(0, 10),
   };
 }
 
@@ -414,10 +570,10 @@ export function overviewModelFromMockData(
   });
   const questTotal = data.collections.quests.length;
   const queues = [
-    queue({ id: "payouts", title: "Payout Approvals", count: payouts, source: "Local fallback", status: "Needs review", oldest: "Local demo queue", waiting: "—", tone: "overview-queue-status-review" }),
-    queue({ id: "disputes", title: "Dispute Cases", count: disputes, source: "Local fallback", status: disputes ? "Open" : "Clear", oldest: "Local demo queue", waiting: "—", tone: disputes ? "overview-queue-status-overdue" : "" }),
-    queue({ id: "reports", title: "Report Cases", count: reportCases, source: "Local fallback", status: reportCases ? "Open" : "Clear", oldest: "Local demo queue", waiting: "—", tone: reportCases ? "overview-queue-status-review" : "" }),
-    queue({ id: "conductReports", title: "Conduct Reports", count: conductReports, source: "Local fallback", status: conductReports ? "Open" : "Clear", oldest: "Local demo queue", waiting: "—", tone: conductReports ? "overview-queue-status-review" : "" }),
+    queue({ id: "payouts", title: "Payout Approvals", count: payouts, source: "Local fallback", status: "Needs review", oldest: "Payout approval · Darin Intharawong", oldestId: "PAY-9637", waiting: "2 days ago", tone: "overview-queue-status-review", priority: "High", slaState: "Due soon", assignedAdmin: "Unassigned" }),
+    queue({ id: "disputes", title: "Dispute Cases", count: disputes, source: "Local fallback", status: disputes ? "Open" : "Clear", oldest: "Dispute Case · Verify dorm fire exits", oldestId: "DSP-5201", waiting: "3 days ago", tone: disputes ? "overview-queue-status-overdue" : "", priority: disputes ? "High" : "Not provided", slaState: disputes ? "Overdue" : "Not provided", assignedAdmin: disputes ? "Supansa Admin" : "Not assigned" }),
+    queue({ id: "reports", title: "Report Cases", count: reportCases, source: "Local fallback", status: reportCases ? "Open" : "Clear", oldest: "Report Case · Harassment or abuse", oldestId: "RPT-8201", waiting: "1 day ago", tone: reportCases ? "overview-queue-status-review" : "", priority: reportCases ? "Medium" : "Not provided", slaState: reportCases ? "Due soon" : "Not provided", assignedAdmin: reportCases ? "Unassigned" : "Not assigned" }),
+  queue({ id: "conductReports", title: "Conduct Reports", count: conductReports, source: "Local fallback", status: conductReports ? "Open" : "Clear", oldest: "Conduct Report · Quest abandonment", oldestId: "CND-8301", waiting: "5 hours ago", tone: conductReports ? "overview-queue-status-review" : "", priority: conductReports ? "High" : "Not provided", slaState: conductReports ? "On track" : "Not provided", assignedAdmin: conductReports ? "Supansa Admin" : "Not assigned" }),
   ];
   const walletCounts = data.collections.users.reduce(
     (counts, record) => {
@@ -453,7 +609,7 @@ export function overviewModelFromMockData(
     frozenWallets: walletCounts.frozen,
     suspendedWallets: walletCounts.suspended,
     inFlightPayouts: null,
-    activity: activity.slice(0, 4),
+    activity: activity.slice(0, 10),
   };
 }
 
@@ -499,7 +655,40 @@ export function overviewSearchResultsFromMockData(
     const title = recordText(record, "title");
     return id && title ? [{ kind: "payout", id, title, detail: "Payout", href: payoutRoutes.detail(id) }] : [];
   });
-  return matchingSearchResults([...members, ...quests, ...payouts], query);
+  const disputes = data.collections.disputes.flatMap((record): OverviewSearchResult[] => {
+    const id = recordText(record, "displayId") || recordText(record, "id");
+    const title = recordText(record, "title") || "Dispute Case";
+    const questId = recordText(record, "questId");
+    return id
+      ? [{ kind: "dispute", id, title, detail: "Dispute Case", href: disputeRoutes.detail(recordText(record, "id") || id), searchText: `${questId} ${recordText(record, "status")} ${recordText(record, "filerName")}` }]
+      : [];
+  });
+  const reports = data.collections.reports.flatMap((record): OverviewSearchResult[] => {
+    const id = recordText(record, "id");
+    const conduct = isConductReportStatus(recordText(record, "status")) || isConductReportStatus(recordText(record, "conductReportStatus"));
+    const title = recordText(record, conduct ? "reasonCode" : "category") || (conduct ? "Conduct Report" : "Report Case");
+    const href = conduct ? conductReportRoutes.detail(id) : reportRoutes.detail(id);
+    return id
+      ? [{ kind: conduct ? "conduct-report" : "report", id, title, detail: conduct ? "Conduct Report" : "Report Case", href, searchText: `${recordText(record, "reportedMemberId")} ${recordText(record, "reportedUserName")} ${recordText(record, "questId")} ${recordText(record, "details")}` }]
+      : [];
+  });
+  const wallets = data.collections.users.map((member): OverviewSearchResult => ({
+    kind: "wallet",
+    id: `WLT-${member.id}`,
+    title: `${member.title} Wallet`,
+    detail: "Wallet",
+    href: walletRoutes.list(),
+    searchText: `${member.id} ${recordText(member, "walletStatus")} ${recordText(member, "studentId")}`,
+  }));
+  const activity: OverviewSearchResult = {
+    kind: "activity",
+    id: "ACTIVITY-LOG",
+    title: "Activity Log",
+    detail: "Activity Log",
+    href: activityRoutes.list(),
+    searchText: "audit administrative action history",
+  };
+  return matchingSearchResults([...members, ...quests, ...payouts, ...disputes, ...reports, ...wallets, activity], query);
 }
 
 function memberName(member: { firstName: string; lastName: string }): string {
@@ -532,5 +721,42 @@ export function overviewSearchResultsFromApi(
     detail: "Payout",
     href: payoutRoutes.detail(payout.id),
   }));
-  return matchingSearchResults([...members, ...quests, ...payouts], query);
+  const disputes = (records.disputes ?? []).map((dispute): OverviewSearchResult => ({
+    kind: "dispute",
+    id: dispute.id,
+    title: dispute.title,
+    detail: "Dispute Case",
+    href: disputeRoutes.detail(dispute.id),
+    searchText: dispute.questId ?? "",
+  }));
+  const reports = (records.reports ?? []).map((report): OverviewSearchResult => ({
+    kind: report.conduct ? "conduct-report" : "report",
+    id: report.id,
+    title: report.title,
+    detail: report.conduct ? "Conduct Report" : "Report Case",
+    href: report.conduct ? conductReportRoutes.detail(report.id) : reportRoutes.detail(report.id),
+    searchText: report.reportedMemberId ?? "",
+  }));
+  const wallets = (records.wallets ?? []).map((wallet): OverviewSearchResult => ({
+    kind: "wallet",
+    id: wallet.id,
+    title: `${wallet.memberName} Wallet`,
+    detail: "Wallet",
+    href: walletRoutes.list(),
+    searchText: `${wallet.memberId} ${wallet.status ?? ""}`,
+  }));
+  return matchingSearchResults([...members, ...quests, ...payouts, ...disputes, ...reports, ...wallets], query);
+}
+
+export function overviewSearchResultLabel(kind: OverviewSearchResult["kind"]): string {
+  switch (kind) {
+    case "member": return "Member";
+    case "quest": return "Quest";
+    case "payout": return "Payout";
+    case "dispute": return "Dispute Case";
+    case "report": return "Report Case";
+    case "conduct-report": return "Conduct Report";
+    case "wallet": return "Wallet";
+    case "activity": return "Activity Log";
+  }
 }

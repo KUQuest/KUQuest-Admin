@@ -107,7 +107,13 @@
   line-height: 1.35;
 }
 a.activity-log-target {
+  color: var(--text);
+  text-decoration: none;
+}
+a.activity-log-target:hover {
   color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .activity-log-detail-button {
   white-space: nowrap;
@@ -135,6 +141,215 @@ a.activity-log-target {
 }
 .activity-log-toolbar {
   margin-bottom: 12px;
+}
+@media (max-width: 720px) {
+  .activity-log-toolbar .count {
+    display: block;
+    width: 100%;
+    margin-inline-start: 0;
+  }
+}
+
+/* Decision choices in a drawer use the same readable type as the centered
+   confirmation form. Keep the supporting explanation on its own line. */
+dialog.drawer.report-case-drawer .report-decision-option,
+dialog.drawer.conduct-report-drawer .report-decision-option,
+dialog.drawer.dispute-case-drawer .report-decision-option {
+  column-gap: 12px;
+  padding: 14px;
+}
+dialog.drawer.report-case-drawer .report-decision-option strong,
+dialog.drawer.conduct-report-drawer .report-decision-option strong,
+dialog.drawer.dispute-case-drawer .report-decision-option strong {
+  font-size: 15px;
+  line-height: 1.35;
+}
+dialog.drawer.report-case-drawer .report-decision-option small,
+dialog.drawer.conduct-report-drawer .report-decision-option small,
+dialog.drawer.dispute-case-drawer .report-decision-option small {
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+/* Decision and evidence forms must not inherit the drawer's transformed
+   scroll area. Keep one centered surface for every moderation confirmation. */
+.admin-modal-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: var(--scrim-dialog);
+}
+
+.admin-modal-layer > dialog.report-decision-dialog,
+.admin-modal-layer > dialog.dispute-decision-dialog,
+.admin-modal-layer > dialog.report-evidence-dialog,
+.admin-modal-layer > dialog.dispute-evidence-dialog {
+  position: relative;
+  inset: auto;
+  width: min(560px, 100%);
+  max-width: 100%;
+  max-height: min(760px, calc(100dvh - 32px));
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  font-size: 16px;
+}
+
+.admin-modal-layer > dialog.report-decision-dialog > form,
+.admin-modal-layer > dialog.conduct-report-decision-dialog > form,
+.admin-modal-layer > dialog.dispute-decision-dialog > form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: inherit;
+}
+
+.admin-modal-layer > dialog.report-decision-dialog .dialog-body,
+.admin-modal-layer > dialog.conduct-report-decision-dialog .dialog-body,
+.admin-modal-layer > dialog.dispute-decision-dialog .dialog-body {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.admin-modal-layer > dialog.report-evidence-dialog > .dialog-body,
+.admin-modal-layer > dialog.dispute-evidence-dialog > .dialog-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: inherit;
+  overflow: hidden;
+  padding: 24px;
+}
+
+.admin-modal-layer > dialog.report-evidence-dialog .report-evidence-context,
+.admin-modal-layer > dialog.dispute-evidence-dialog .report-evidence-context {
+  min-height: 0;
+  max-height: none;
+  flex: 1 1 auto;
+  overflow: auto;
+}
+
+.admin-modal-layer > dialog.report-decision-dialog .dialog-actions,
+.admin-modal-layer > dialog.conduct-report-decision-dialog .dialog-actions,
+.admin-modal-layer > dialog.dispute-decision-dialog .dialog-actions {
+  flex: 0 0 auto;
+  padding: 16px 24px 24px;
+}
+
+.admin-modal-layer > dialog.report-evidence-dialog .dialog-actions,
+.admin-modal-layer > dialog.dispute-evidence-dialog .dialog-actions {
+  flex: 0 0 auto;
+  margin-top: 16px;
+  padding: 16px 0 0;
+  border-top: 1px solid var(--border);
+  background: transparent;
+}
+
+.admin-modal-layer > dialog h2 {
+  font-size: 20px;
+  line-height: 1.3;
+}
+
+.admin-modal-layer > dialog p {
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.admin-modal-layer > dialog label {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.admin-modal-layer > dialog input,
+.admin-modal-layer > dialog select,
+.admin-modal-layer > dialog textarea {
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.admin-modal-layer .report-decision-option {
+  column-gap: 12px;
+  padding: 14px;
+}
+
+.admin-modal-layer .report-decision-option strong {
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.admin-modal-layer .report-decision-option small {
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.admin-modal-layer .field-help {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.admin-modal-layer .field-error {
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.admin-modal-layer .dialog-actions .btn {
+  min-height: 42px;
+  font-size: 15px;
+}
+
+/* Keep record links keyboard-accessible without the blue/underlined link
+   treatment that makes table rows look like a separate visual system. */
+.admin-shell table.data a,
+.admin-shell table.data a:visited,
+.admin-shell table.data a:hover,
+.admin-shell table.data button.table-link,
+.admin-shell table.data button.table-link:hover,
+.admin-shell table.data button.row-record-button,
+.admin-shell table.data button.row-record-button:hover {
+  color: inherit !important;
+  text-decoration: none !important;
+}
+
+.admin-shell table.data a:focus-visible,
+.admin-shell table.data button.table-link:focus-visible,
+.admin-shell table.data button.row-record-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .admin-modal-layer {
+    padding: 12px;
+  }
+
+  .admin-modal-layer > dialog.report-decision-dialog,
+  .admin-modal-layer > dialog.dispute-decision-dialog,
+  .admin-modal-layer > dialog.report-evidence-dialog,
+  .admin-modal-layer > dialog.dispute-evidence-dialog {
+    max-height: calc(100dvh - 24px);
+  }
+
+  .admin-modal-layer > dialog.report-decision-dialog .dialog-body,
+  .admin-modal-layer > dialog.conduct-report-decision-dialog .dialog-body,
+  .admin-modal-layer > dialog.dispute-decision-dialog .dialog-body,
+  .admin-modal-layer > dialog.report-evidence-dialog > .dialog-body,
+  .admin-modal-layer > dialog.dispute-evidence-dialog > .dialog-body {
+    padding: 20px;
+  }
+
+  .admin-modal-layer > dialog.report-decision-dialog .dialog-actions,
+  .admin-modal-layer > dialog.conduct-report-decision-dialog .dialog-actions,
+  .admin-modal-layer > dialog.dispute-decision-dialog .dialog-actions {
+    padding: 14px 20px 20px;
+  }
 }
 .activity-log-dialog-backdrop {
   position: fixed;
@@ -1845,6 +2060,117 @@ a.activity-log-target {
   font-size: 11px;
 }
 
+/* Payout full detail uses the same record treatment as the other Admin detail pages. */
+.payout-page-alert.open {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.payout-page-alert.open .badge {
+  color: var(--warn);
+  background: var(--surface);
+}
+.payout-page-alert.closed {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.payout-page-alert.closed .badge {
+  color: var(--success);
+  background: var(--surface);
+}
+.payout-page-alert.failed {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.payout-page-alert.failed .badge {
+  color: var(--danger);
+  background: var(--surface);
+}
+.payout-detail-page .payout-detail-grid {
+  display: grid;
+  gap: 18px;
+}
+.payout-detail-page .payout-detail-stack {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(290px, 0.72fr);
+  align-items: start;
+  gap: 18px;
+}
+.payout-detail-page .payout-detail-stack > .section {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+.payout-detail-page .payout-detail-stack > .section h3 {
+  margin-bottom: 14px;
+  font-size: 15px;
+}
+.payout-detail-page .payout-detail-stack > .section > p:not(.audit-note) {
+  max-width: 74ch;
+  color: var(--text);
+}
+.payout-detail-page .payout-detail-stack > .payout-summary-section {
+  grid-column: 1 / -1;
+}
+.payout-detail-page .payout-detail-stack > .payout-amounts-section,
+.payout-detail-page .payout-detail-stack > .payout-timing-section,
+.payout-detail-page .payout-detail-stack > .payout-history-section {
+  grid-column: 1;
+}
+.payout-detail-page .payout-detail-stack > .payout-destination-section,
+.payout-detail-page .payout-detail-stack > .payout-decision-context-section,
+.payout-detail-page .payout-detail-stack > .payout-decision-section,
+.payout-detail-page .payout-detail-stack > .payout-outcome-section {
+  grid-column: 2;
+}
+.payout-detail-page .payout-detail-stack > .admin-action-receipt {
+  grid-column: 1 / -1;
+}
+.payout-detail-page .payout-detail-stack > .section .audit-note {
+  margin-top: 14px;
+  padding: 11px 12px;
+  border-radius: 9px;
+  background: var(--soft);
+}
+.payout-detail-page .payout-record-status-bar strong {
+  overflow-wrap: anywhere;
+}
+.payout-detail-page .payout-outcome {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+.payout-detail-page .payout-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.payout-detail-page .payout-detail-actions .btn {
+  min-width: 150px;
+}
+
+@media (max-width: 1000px) {
+  .payout-detail-page .payout-detail-stack {
+    grid-template-columns: 1fr;
+  }
+  .payout-detail-page .payout-detail-stack > .section,
+  .payout-detail-page .payout-detail-stack > .payout-summary-section,
+  .payout-detail-page .payout-detail-stack > .payout-amounts-section,
+  .payout-detail-page .payout-detail-stack > .payout-timing-section,
+  .payout-detail-page .payout-detail-stack > .payout-history-section,
+  .payout-detail-page .payout-detail-stack > .payout-destination-section,
+  .payout-detail-page .payout-detail-stack > .payout-decision-context-section,
+  .payout-detail-page .payout-detail-stack > .payout-decision-section,
+  .payout-detail-page .payout-detail-stack > .payout-outcome-section {
+    grid-column: 1;
+  }
+}
+
 .payout-previous-list {
   display: grid;
   border: 1px solid var(--border);
@@ -2007,6 +2333,42 @@ a.activity-log-target {
   border-radius: 8px;
   background: var(--surface);
   color: var(--text);
+}
+dialog.drawer.payout-drawer {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+dialog.drawer.payout-drawer > .drawer-body {
+  min-height: 0;
+  overflow: auto;
+}
+dialog.drawer.payout-drawer > .drawer-actions {
+  z-index: 4;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  box-shadow: 0 -6px 18px color-mix(in srgb, var(--text) 9%, transparent);
+}
+.payout-drawer-action-label,
+.payout-drawer-action-feedback {
+  flex: 1 0 100%;
+}
+.payout-drawer-action-label {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.payout-drawer-action-label strong {
+  font-size: 12px;
+}
+.payout-drawer-action-label small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.payout-drawer-action-feedback {
+  margin: 0;
+  font-size: 11px;
 }
 @media (max-width: 420px) {
   .payout-summary-grid {
@@ -2348,6 +2710,7 @@ dialog.command::backdrop { background: transparent; }
 .overview-command-center-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(320px, .75fr);
+  align-items: start;
   gap: 18px;
   margin-top: 10px;
 }
@@ -2436,6 +2799,12 @@ dialog.command::backdrop { background: transparent; }
 .overview-command-center-timeline {
   padding: 7px 18px 10px;
 }
+.overview-command-center-timeline-scrollable {
+  max-block-size: 360px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
 .overview-command-center-timeline li {
   display: grid;
   grid-template-columns: 20px 32px minmax(0, 1fr);
@@ -2486,21 +2855,24 @@ dialog.command::backdrop { background: transparent; }
   grid-template-columns: repeat(4, minmax(0, 1fr));
   border-top: 1px solid var(--border);
 }
+.overview-command-center-finance-member-focused .overview-command-center-finance-groups {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
 .overview-command-center-finance-group {
   min-width: 0;
   padding: 15px 18px 17px;
   border-right: 1px solid var(--border);
 }
 .overview-command-center-finance-group:last-child { border-right: 0; }
-.overview-command-center-finance-group h3 { margin: 0 0 12px; color: var(--overview-ink); font-size: 12px; }
+.overview-command-center-finance-group h3 { margin: 0 0 12px; color: var(--overview-ink); font-size: 13px; }
 .overview-command-center-finance-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
 .overview-command-center-finance-metric { display: grid; gap: 4px; min-width: 0; }
 .overview-command-center-finance-metric span,
-.overview-command-center-finance-integrity span { color: var(--muted); font-size: 10px; line-height: 1.3; }
-.overview-command-center-finance-metric strong { color: var(--overview-ink); font-size: 14px; font-variant-numeric: tabular-nums; }
+.overview-command-center-finance-integrity span { color: var(--muted); font-size: 11px; line-height: 1.3; }
+.overview-command-center-finance-metric strong { color: var(--overview-ink); font-size: 16px; font-variant-numeric: tabular-nums; }
 .overview-command-center-finance-integrity { display: grid; gap: 10px; }
 .overview-command-center-finance-integrity > div { display: grid; gap: 4px; }
-.overview-command-center-finance-integrity strong { color: var(--overview-ink); font-size: 13px; font-variant-numeric: tabular-nums; }
+.overview-command-center-finance-integrity strong { color: var(--overview-ink); font-size: 14px; font-variant-numeric: tabular-nums; }
 .overview-command-center-finance-integrity strong.is-balanced { color: var(--success); }
 .overview-command-center-finance-integrity strong.needs-review { color: var(--danger); }
 .overview-command-center-state-list { padding: 9px 18px 16px; }
@@ -2648,6 +3020,7 @@ dialog.command::backdrop { background: transparent; }
   .overview-command-center-snapshot { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .overview-command-center-health { grid-column: 1 / -1; }
   .overview-command-center-finance-groups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .overview-command-center-finance-member-focused .overview-command-center-finance-groups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .overview-command-center-finance-group:nth-child(2) { border-right: 0; }
   .overview-command-center-finance-group:nth-child(-n + 2) { border-bottom: 1px solid var(--border); }
 }
@@ -2657,6 +3030,7 @@ dialog.command::backdrop { background: transparent; }
   .overview-command-center-hero { grid-template-columns: 1fr; gap: 20px; }
   .overview-command-center-hero-copy { padding-bottom: 20px; border-right: 0; border-bottom: 1px solid color-mix(in srgb, var(--ink-inverse) 25%, transparent); }
   .overview-command-center-grid { grid-template-columns: 1fr; }
+  .overview-command-center-timeline-scrollable { max-block-size: min(520px, 60vh); }
 }
 @media (max-width: 560px) {
   .overview-command-center-header,
@@ -2669,6 +3043,7 @@ dialog.command::backdrop { background: transparent; }
   .overview-command-center-streams,
   .overview-command-center-snapshot { grid-template-columns: 1fr; }
   .overview-command-center-finance-groups { grid-template-columns: 1fr; }
+  .overview-command-center-finance-member-focused .overview-command-center-finance-groups { grid-template-columns: 1fr; }
   .overview-command-center-finance-group,
   .overview-command-center-finance-group:nth-child(2) { border-right: 0; border-bottom: 1px solid var(--border); }
   .overview-command-center-finance-group:last-child { border-bottom: 0; }
@@ -2705,6 +3080,191 @@ dialog.command::backdrop { background: transparent; }
 .wallet-finance-summary-metric { display: grid; gap: 3px; min-width: 0; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
 .wallet-finance-summary-metric span { overflow: hidden; font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .wallet-finance-summary-metric strong { font-size: 15px; }
+.wallet-status-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.wallet-status-actions .btn {
+  flex: 1 1 170px;
+}
+.wallet-status-command-dialog {
+  width: min(560px, calc(100vw - 28px));
+  max-height: min(760px, calc(100vh - 32px));
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+}
+.wallet-status-command-dialog::backdrop {
+  background: var(--scrim-dialog);
+}
+.wallet-status-command-form {
+  display: flex;
+  max-height: min(760px, calc(100vh - 32px));
+  flex-direction: column;
+}
+.wallet-command-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.wallet-command-head strong,
+.wallet-command-head small {
+  display: block;
+}
+.wallet-command-head strong {
+  font-size: 15px;
+}
+.wallet-command-head small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.wallet-command-body {
+  display: grid;
+  gap: 12px;
+  min-height: 0;
+  padding: 18px;
+  overflow-y: auto;
+}
+.wallet-command-intro,
+.wallet-command-help {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.wallet-status-preview {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--soft);
+}
+.wallet-status-preview > div {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+}
+.wallet-status-preview span {
+  color: var(--muted);
+}
+.wallet-status-preview strong {
+  max-width: 70%;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+.wallet-status-preview-transition strong {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+}
+.wallet-status-preview-transition strong span[aria-hidden="true"] {
+  color: var(--muted);
+}
+.wallet-status-consequences {
+  padding: 12px;
+  border: 1px solid var(--info);
+  border-radius: 10px;
+  background: var(--info-soft);
+  color: var(--text);
+}
+.wallet-status-consequences-active {
+  border-color: var(--success);
+  background: var(--success-soft);
+}
+.wallet-status-consequences-suspended {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+.wallet-status-consequences strong {
+  display: block;
+  font-size: 12px;
+}
+.wallet-status-consequences ul {
+  display: grid;
+  gap: 5px;
+  margin: 7px 0 0;
+  padding-left: 18px;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.wallet-status-command-form label {
+  display: grid;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.wallet-status-command-form textarea,
+.wallet-status-command-form select {
+  width: 100%;
+  border: 1px solid var(--strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+.wallet-status-command-form textarea {
+  min-height: 92px;
+  padding: 9px 10px;
+  resize: vertical;
+}
+.wallet-status-command-form select {
+  min-height: 36px;
+  padding: 0 9px;
+  font-size: 12px;
+}
+.wallet-status-command-form textarea[aria-invalid="true"] {
+  border-color: var(--danger);
+  outline: 3px solid var(--danger-soft);
+}
+.wallet-fixture-field {
+  color: var(--muted);
+}
+.wallet-fixture-field span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 500;
+}
+.wallet-status-command-form .dialog-actions {
+  flex: 0 0 auto;
+}
+.wallet-action-receipt {
+  margin: 18px 0;
+  padding: 14px;
+  border: 1px solid var(--success);
+  border-radius: 10px;
+  background: var(--success-soft);
+}
+.wallet-action-receipt h3 {
+  margin: 0 0 10px;
+  font-size: 13px;
+}
+.wallet-action-receipt .wallet-status-preview {
+  background: var(--surface);
+}
+.wallet-action-receipt .audit-note {
+  margin-bottom: 0;
+}
+.wallet-drawer .timeline li small {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+}
+.wallet-mobile-key-facts {
+  display: none;
+}
 @media (max-width: 900px) {
   .wallet-finance-summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
@@ -2749,6 +3309,24 @@ dialog.command::backdrop { background: transparent; }
 .wallet-statement-filters select,
 .wallet-statement-filters input { width: 100%; min-height: 35px; padding: 0 8px; border: 1px solid var(--strong); border-radius: 7px; background: var(--surface); color: var(--text); }
 .wallet-statement-filters .btn { min-height: 35px; }
+.wallet-statement-table-block { min-width: 0; }
+.wallet-statement-scroll-hint {
+  display: none;
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--soft);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.wallet-statement-table-block > .wallet-statement-scroll-hint {
+  margin: 0 0 8px;
+}
+.wallet-statement-table-wrap {
+  scrollbar-gutter: stable;
+}
 .wallet-statement-table { min-width: 760px; }
 .wallet-statement-table .money { white-space: nowrap; }
 .wallet-statement-table .wallet-statement-movement { min-width: 220px; }
@@ -2763,6 +3341,45 @@ dialog.command::backdrop { background: transparent; }
   .wallet-statement-balance-grid { grid-template-columns: 1fr; }
   .wallet-statement-filters { grid-template-columns: 1fr; }
   .wallet-statement-filters label:first-child { grid-column: auto; }
+  .wallet-status-preview > div { display: grid; gap: 3px; }
+  .wallet-status-preview strong { max-width: none; text-align: left; }
+  .wallet-status-preview-transition strong { justify-content: flex-start; }
+}
+@media (max-width: 600px) {
+  .wallet-board-table td:first-child {
+    min-width: 172px;
+    vertical-align: top;
+  }
+  .wallet-mobile-key-facts {
+    display: grid;
+    gap: 6px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+  .wallet-mobile-key-facts > div {
+    display: grid;
+    gap: 2px;
+  }
+  .wallet-mobile-key-facts span {
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+  .wallet-mobile-key-facts strong {
+    font-size: 11px;
+    line-height: 1.3;
+  }
+  .wallet-mobile-key-facts .badge {
+    width: max-content;
+  }
+  .wallet-statement-scroll-hint {
+    display: block;
+  }
+  .wallet-statement-table-wrap {
+    overscroll-behavior-inline: contain;
+  }
 }
 
 .quest-board {
@@ -2941,6 +3558,167 @@ dialog.command::backdrop { background: transparent; }
 .quest-command-dialog .dialog-actions {
   margin-top: 4px;
 }
+
+/* Moderation drawers keep the case record readable while the footer stays in
+   the document flow. The body is the only scrolling region, so its last
+   fields cannot disappear under a sticky action bar. */
+dialog.drawer.report-case-drawer,
+dialog.drawer.conduct-report-drawer,
+dialog.drawer.dispute-case-drawer {
+  display: flex;
+  flex-direction: column;
+  inline-size: min(600px, 100dvw);
+  width: min(600px, 100dvw);
+  overflow: hidden;
+}
+
+dialog.drawer.report-case-drawer > .drawer-top,
+dialog.drawer.conduct-report-drawer > .drawer-top,
+dialog.drawer.dispute-case-drawer > .drawer-top {
+  flex: 0 0 auto;
+}
+
+dialog.drawer.report-case-drawer > .drawer-body,
+dialog.drawer.conduct-report-drawer > .drawer-body,
+dialog.drawer.dispute-case-drawer > .drawer-body {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  min-inline-size: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  padding-block: 24px 28px;
+}
+
+dialog.drawer.report-case-drawer > .drawer-body .drawer-actions,
+dialog.drawer.conduct-report-drawer > .drawer-body .drawer-actions,
+dialog.drawer.dispute-case-drawer > .drawer-body .drawer-actions {
+  position: static;
+  margin-block-start: 24px;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+/* The current Admin type is intentionally compact. Add two pixels to the
+   moderation decision surface only, where small text can hide case context.
+   Tables and the rest of the shell keep their existing density. */
+dialog.drawer.report-case-drawer,
+dialog.drawer.conduct-report-drawer,
+dialog.drawer.dispute-case-drawer {
+  font-size: 16px;
+}
+
+dialog.drawer.report-case-drawer .drawer-title h2,
+dialog.drawer.conduct-report-drawer .drawer-title h2,
+dialog.drawer.dispute-case-drawer .drawer-title h2 {
+  font-size: 21px;
+}
+
+dialog.drawer.report-case-drawer .drawer-title p,
+dialog.drawer.conduct-report-drawer .drawer-title p,
+dialog.drawer.dispute-case-drawer .drawer-title p,
+dialog.drawer.report-case-drawer .section > p,
+dialog.drawer.conduct-report-drawer .section > p,
+dialog.drawer.dispute-case-drawer .section > p,
+dialog.drawer.report-case-drawer .overview-group > p,
+dialog.drawer.conduct-report-drawer .overview-group > p,
+dialog.drawer.dispute-case-drawer .overview-group > p {
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+dialog.drawer.report-case-drawer .section h3,
+dialog.drawer.conduct-report-drawer .section h3,
+dialog.drawer.dispute-case-drawer .section h3,
+dialog.drawer.report-case-drawer .record-panel-head h3,
+dialog.drawer.conduct-report-drawer .record-panel-head h3,
+dialog.drawer.dispute-case-drawer .record-panel-head h3 {
+  font-size: 15px;
+}
+
+dialog.drawer.report-case-drawer .fact span,
+dialog.drawer.conduct-report-drawer .fact span,
+dialog.drawer.dispute-case-drawer .fact span,
+dialog.drawer.report-case-drawer .party-grid span,
+dialog.drawer.conduct-report-drawer .party-grid span,
+dialog.drawer.dispute-case-drawer .party-grid span,
+dialog.drawer.report-case-drawer .overview-meta dt,
+dialog.drawer.conduct-report-drawer .overview-meta dt,
+dialog.drawer.dispute-case-drawer .overview-meta dt,
+dialog.drawer.report-case-drawer .overview-group > span,
+dialog.drawer.conduct-report-drawer .overview-group > span,
+dialog.drawer.dispute-case-drawer .overview-group > span {
+  font-size: 13px;
+}
+
+dialog.drawer.report-case-drawer .fact strong,
+dialog.drawer.conduct-report-drawer .fact strong,
+dialog.drawer.dispute-case-drawer .fact strong,
+dialog.drawer.report-case-drawer .party-grid strong,
+dialog.drawer.conduct-report-drawer .party-grid strong,
+dialog.drawer.dispute-case-drawer .party-grid strong,
+dialog.drawer.report-case-drawer .overview-meta dd,
+dialog.drawer.conduct-report-drawer .overview-meta dd,
+dialog.drawer.dispute-case-drawer .overview-meta dd {
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+dialog.drawer.report-case-drawer .badge,
+dialog.drawer.conduct-report-drawer .badge,
+dialog.drawer.dispute-case-drawer .badge,
+dialog.drawer.report-case-drawer .section-count,
+dialog.drawer.conduct-report-drawer .section-count,
+dialog.drawer.dispute-case-drawer .section-count,
+dialog.drawer.report-case-drawer .audit-note,
+dialog.drawer.conduct-report-drawer .audit-note,
+dialog.drawer.dispute-case-drawer .audit-note,
+dialog.drawer.report-case-drawer .evidence-item small,
+dialog.drawer.conduct-report-drawer .evidence-item small,
+dialog.drawer.dispute-case-drawer .evidence-item small,
+dialog.drawer.report-case-drawer .evidence-item > span:last-child,
+dialog.drawer.conduct-report-drawer .evidence-item > span:last-child,
+dialog.drawer.dispute-case-drawer .evidence-item > span:last-child,
+dialog.drawer.report-case-drawer .timeline time,
+dialog.drawer.conduct-report-drawer .timeline time,
+dialog.drawer.dispute-case-drawer .timeline time,
+dialog.drawer.report-case-drawer .timeline span,
+dialog.drawer.conduct-report-drawer .timeline span,
+dialog.drawer.dispute-case-drawer .timeline span {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+dialog.drawer.report-case-drawer .timeline strong,
+dialog.drawer.conduct-report-drawer .timeline strong,
+dialog.drawer.dispute-case-drawer .timeline strong {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+@media (max-width: 600px) {
+  dialog.drawer.report-case-drawer,
+  dialog.drawer.conduct-report-drawer,
+  dialog.drawer.dispute-case-drawer {
+    inline-size: 100dvw;
+    width: 100dvw;
+  }
+
+  dialog.drawer.report-case-drawer > .drawer-body,
+  dialog.drawer.conduct-report-drawer > .drawer-body,
+  dialog.drawer.dispute-case-drawer > .drawer-body {
+    padding-block: 20px 24px;
+    padding-inline: 16px;
+  }
+
+  dialog.drawer.report-case-drawer > .drawer-body .drawer-actions,
+  dialog.drawer.conduct-report-drawer > .drawer-body .drawer-actions,
+  dialog.drawer.dispute-case-drawer > .drawer-body .drawer-actions {
+    margin-inline: -16px;
+    padding-inline: 16px;
+  }
+}
+
 @media (max-width: 720px) {
   .quest-detail-facts {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2953,4 +3731,636 @@ dialog.command::backdrop { background: transparent; }
   .quest-detail-facts {
     grid-template-columns: 1fr;
   }
+}
+
+/* Mock-first operating controls for the Admin queue, Activity Log, and global search. */
+.overview-command-center-queue-title {
+  min-width: 0;
+}
+.overview-command-center-queue-title .overview-queue-process {
+  justify-self: start;
+  margin-top: 2px;
+  padding: 0;
+  font-size: 11px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.overview-command-center-queue-status {
+  display: grid;
+  gap: 3px;
+}
+.overview-command-center-queue-status strong {
+  color: inherit;
+  font-size: 10px;
+}
+.overview-command-center-queue-status small,
+.overview-command-center-queue-waiting small {
+  color: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.overview-command-center-queue-waiting {
+  display: grid;
+  gap: 3px;
+}
+.overview-command-center-queue-waiting strong {
+  color: var(--overview-ink);
+  font-size: 11px;
+}
+.overview-command-center-queue-waiting small {
+  color: var(--muted);
+}
+.overview-queue-work-drawer .case-heading {
+  align-items: flex-start;
+}
+.overview-queue-work-drawer .case-heading h2 {
+  max-width: 34ch;
+}
+.overview-queue-work-priority {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: var(--info-soft);
+  color: var(--info);
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.overview-queue-work-priority.high {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.overview-queue-work-priority.medium {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.overview-queue-work-priority.not-provided {
+  background: var(--soft);
+  color: var(--muted);
+}
+.overview-queue-work-fixture-note,
+.overview-queue-work-message,
+.overview-queue-work-submitted {
+  display: block;
+  margin-top: 10px !important;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 11px;
+}
+.overview-queue-work-fixture-note {
+  color: var(--info) !important;
+  background: var(--info-soft);
+}
+.overview-queue-work-message,
+.overview-queue-work-submitted {
+  color: var(--success) !important;
+  background: var(--success-soft);
+}
+.activity-log-fixture-notice {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+}
+.activity-log-state-change {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+.activity-log-state-change > div {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--soft);
+}
+.activity-log-state-change span,
+.activity-log-state-change strong {
+  display: block;
+}
+.activity-log-state-change span {
+  color: var(--muted);
+  font-size: 10px;
+}
+.activity-log-state-change strong {
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.activity-log-state-arrow {
+  color: var(--accent);
+  font-size: 18px;
+  font-weight: 800;
+}
+.activity-log-missing-context,
+.activity-log-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.activity-log-note {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--soft);
+}
+.admin-global-search-trigger {
+  flex: 0 1 360px;
+  width: min(360px, 40vw);
+}
+.admin-global-search-box {
+  width: min(760px, calc(100vw - 28px));
+  max-height: min(78vh, 760px);
+}
+.admin-global-search-controls {
+  display: grid;
+  grid-template-columns: minmax(160px, .7fr) minmax(0, 1.3fr);
+  align-items: end;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--soft);
+}
+.admin-global-search-controls label,
+.admin-global-search-save label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+.admin-global-search-controls select,
+.admin-global-search-controls input {
+  min-height: 36px;
+  width: 100%;
+  padding: 0 9px;
+  border: 1px solid var(--strong);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+}
+.admin-global-search-save {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+}
+.admin-global-search-save .btn {
+  min-height: 36px;
+}
+.admin-global-search-saved {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.admin-global-search-saved > span {
+  margin-right: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+.admin-global-search-saved .link {
+  min-height: 28px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.admin-global-search-message {
+  display: block;
+  margin: 10px 16px 0;
+  color: var(--success);
+  font-size: 11px;
+}
+.admin-global-search-notice {
+  margin: 12px 16px 4px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+}
+.admin-global-search-group h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 16px 7px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.admin-global-search-group h3 span {
+  min-width: 19px;
+  padding: 2px 5px;
+  border-radius: 999px;
+  background: var(--soft);
+  color: var(--text);
+  font-size: 10px;
+  letter-spacing: 0;
+  text-align: center;
+}
+.admin-global-search-group .result {
+  grid-template-columns: 35px minmax(0, 1fr) auto;
+}
+.admin-global-search-marker {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+}
+@media (max-width: 600px) {
+  .activity-log-state-change {
+    grid-template-columns: 1fr;
+  }
+  .activity-log-state-arrow {
+    justify-self: center;
+    transform: rotate(90deg);
+  }
+  .admin-global-search-controls {
+    grid-template-columns: 1fr;
+  }
+  .admin-global-search-trigger {
+    width: 44px;
+  }
+  .admin-global-search-group .result {
+    grid-template-columns: 35px minmax(0, 1fr);
+  }
+  .admin-global-search-group .result > small:last-child {
+    display: none;
+  }
+}
+
+/* Keep the shell search compact on phones so the page title stays readable. */
+@media (max-width: 600px) {
+  .admin-global-search-trigger {
+    flex: 0 0 44px;
+  }
+  .admin-shell-title {
+    white-space: nowrap;
+  }
+}
+
+/* Preserve the record key while an Admin scans wide tables on a narrow screen. */
+@media (max-width: 600px) {
+  .table-wrap {
+    overscroll-behavior-inline: contain;
+    scrollbar-color: var(--strong) var(--soft);
+  }
+  .data th:first-child,
+  .data td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+  }
+  .data th:first-child {
+    background: var(--soft);
+  }
+  .data td:first-child {
+    background: var(--surface);
+  }
+  .data tbody tr:hover td:first-child {
+    background: var(--hover);
+  }
+}
+
+/* Keep every Admin drawer readable at the requested larger type size. The
+   board tables keep their compact density so an Admin can scan many records. */
+.admin-shell {
+  font-size: 16px;
+}
+.admin-shell dialog.drawer {
+  font-size: 16px;
+}
+.admin-shell dialog.drawer .drawer-top > div small {
+  font-size: 13px;
+}
+.admin-shell dialog.drawer .drawer-title h2 {
+  font-size: 21px;
+}
+.admin-shell dialog.drawer .drawer-title p,
+.admin-shell dialog.drawer .section > p,
+.admin-shell dialog.drawer .panel-head p,
+.admin-shell dialog.drawer .overview-group > p {
+  font-size: 16px;
+  line-height: 1.5;
+}
+.admin-shell dialog.drawer .section h3,
+.admin-shell dialog.drawer .panel-head h2 {
+  font-size: 15px;
+}
+.admin-shell dialog.drawer .fact span,
+.admin-shell dialog.drawer .fact small,
+.admin-shell dialog.drawer .party-grid span,
+.admin-shell dialog.drawer .overview-meta dt,
+.admin-shell dialog.drawer .overview-group > span,
+.admin-shell dialog.drawer .section-count,
+.admin-shell dialog.drawer .audit-note,
+.admin-shell dialog.drawer .evidence-item small,
+.admin-shell dialog.drawer .related-row small,
+.admin-shell dialog.drawer .file-row small,
+.admin-shell dialog.drawer .timeline time,
+.admin-shell dialog.drawer .timeline span,
+.admin-shell dialog.drawer .quest-dispute-link,
+.admin-shell dialog.drawer .payout-summary-grid span,
+.admin-shell dialog.drawer .payout-audit-list span,
+.admin-shell dialog.drawer .payout-previous-row small {
+  font-size: 13px;
+}
+.admin-shell dialog.drawer .fact strong,
+.admin-shell dialog.drawer .party-grid strong,
+.admin-shell dialog.drawer .overview-meta dd,
+.admin-shell dialog.drawer .timeline strong,
+.admin-shell dialog.drawer .payout-summary-grid strong,
+.admin-shell dialog.drawer .payout-audit-list strong {
+  font-size: 15px;
+  line-height: 1.4;
+}
+.admin-shell dialog.drawer .badge,
+.admin-shell dialog.drawer .evidence-item > span:last-child,
+.admin-shell dialog.drawer .financial-line,
+.admin-shell dialog.drawer .requirement-box strong,
+.admin-shell dialog.drawer .requirement-box ul {
+  font-size: 14px;
+}
+.admin-shell dialog.drawer .payout-drawer-action-label strong {
+  font-size: 14px;
+}
+.admin-shell dialog.drawer .payout-drawer-action-label small,
+.admin-shell dialog.drawer .payout-drawer-action-feedback {
+  font-size: 13px;
+}
+
+.admin-shell .activity-log-dialog {
+  font-size: 16px;
+}
+.admin-shell .activity-log-dialog .drawer-title h2 {
+  font-size: 21px;
+}
+.admin-shell .activity-log-dialog .drawer-title p,
+.admin-shell .activity-log-dialog .section > p {
+  font-size: 16px;
+  line-height: 1.5;
+}
+.admin-shell .activity-log-dialog .section h3 {
+  font-size: 15px;
+}
+.admin-shell .activity-log-dialog .fact span {
+  font-size: 13px;
+}
+.admin-shell .activity-log-dialog .fact strong {
+  font-size: 15px;
+}
+
+/* Activity Log uses one explicit action for navigation. Keep the target as
+   readable record text instead of showing a second hyperlink control. */
+.activity-log-target {
+  display: block;
+  min-width: 0;
+  color: var(--text);
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+a.activity-log-target,
+a.activity-log-target:hover {
+  color: var(--text);
+  text-decoration: none;
+}
+.activity-log-linked-detail-button {
+  flex: 1.35;
+  min-width: 0;
+}
+.activity-log-dialog .drawer-actions {
+  align-items: stretch;
+}
+
+/* Show the amount of open work without changing the tab's accessible name. */
+.tab-count {
+  display: inline;
+  min-inline-size: auto;
+  margin-inline-start: 0;
+  padding-inline: 0;
+  background: transparent;
+  color: currentColor;
+  font-size: inherit;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: inherit;
+}
+.tab.active .tab-count {
+  background: transparent;
+}
+
+/* Keep related case information readable at a glance. Long IDs and policy
+   text get their own line instead of competing with adjacent facts. */
+.overview-command-center-queue-oldest {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.overview-command-center-queue-oldest a {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.overview-command-center-queue-oldest small {
+  color: var(--faint);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+}
+
+/* Reflow moderation drawers into two readable fact columns and full-width
+   narrative rows. This prevents names, timestamps, and policy notes from
+   being squeezed into a three-column strip. */
+dialog.drawer.report-case-drawer,
+dialog.drawer.conduct-report-drawer,
+dialog.drawer.dispute-case-drawer {
+  width: min(640px, 100dvw);
+  inline-size: min(640px, 100dvw);
+}
+dialog.drawer.report-case-drawer .facts,
+dialog.drawer.conduct-report-drawer .facts,
+dialog.drawer.dispute-case-drawer .facts,
+dialog.drawer.report-case-drawer .overview-meta,
+dialog.drawer.conduct-report-drawer .overview-meta,
+dialog.drawer.dispute-case-drawer .overview-meta {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.15rem 1.35rem;
+}
+dialog.drawer.report-case-drawer .fact,
+dialog.drawer.conduct-report-drawer .fact,
+dialog.drawer.dispute-case-drawer .fact,
+dialog.drawer.report-case-drawer .overview-meta > div,
+dialog.drawer.conduct-report-drawer .overview-meta > div,
+dialog.drawer.dispute-case-drawer .overview-meta > div,
+dialog.drawer.report-case-drawer .party-grid > div,
+dialog.drawer.conduct-report-drawer .party-grid > div,
+dialog.drawer.dispute-case-drawer .party-grid > div {
+  min-width: 0;
+}
+dialog.drawer.report-case-drawer .fact strong,
+dialog.drawer.conduct-report-drawer .fact strong,
+dialog.drawer.dispute-case-drawer .fact strong,
+dialog.drawer.report-case-drawer .overview-meta dd,
+dialog.drawer.conduct-report-drawer .overview-meta dd,
+dialog.drawer.dispute-case-drawer .overview-meta dd,
+dialog.drawer.report-case-drawer .party-grid strong,
+dialog.drawer.conduct-report-drawer .party-grid strong,
+dialog.drawer.dispute-case-drawer .party-grid strong {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+dialog.drawer.report-case-drawer .overview-group,
+dialog.drawer.conduct-report-drawer .overview-group,
+dialog.drawer.dispute-case-drawer .overview-group,
+dialog.drawer.report-case-drawer .moderation-case-related-record,
+dialog.drawer.conduct-report-drawer .moderation-case-related-record,
+dialog.drawer.dispute-case-drawer .moderation-case-related-record {
+  min-width: 0;
+}
+dialog.drawer.report-case-drawer .overview-group > p,
+dialog.drawer.conduct-report-drawer .overview-group > p,
+dialog.drawer.dispute-case-drawer .overview-group > p,
+dialog.drawer.report-case-drawer .moderation-case-related-record p,
+dialog.drawer.conduct-report-drawer .moderation-case-related-record p,
+dialog.drawer.dispute-case-drawer .moderation-case-related-record p {
+  max-width: 68ch;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+dialog.drawer.report-case-drawer .moderation-case-related-record p,
+dialog.drawer.conduct-report-drawer .moderation-case-related-record p,
+dialog.drawer.dispute-case-drawer .moderation-case-related-record p {
+  display: block;
+}
+
+@media (max-width: 600px) {
+  .activity-log-dialog .drawer-actions {
+    flex-direction: column;
+  }
+  .activity-log-dialog .drawer-actions .btn {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+  dialog.drawer.report-case-drawer .facts,
+  dialog.drawer.conduct-report-drawer .facts,
+  dialog.drawer.dispute-case-drawer .facts,
+  dialog.drawer.report-case-drawer .overview-meta,
+  dialog.drawer.conduct-report-drawer .overview-meta,
+  dialog.drawer.dispute-case-drawer .overview-meta {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Use one drawer width for every Admin record surface. A single width makes
+   navigation predictable and gives decision context enough room to wrap. */
+.admin-shell dialog.drawer,
+.admin-shell .activity-log-dialog {
+  inline-size: min(640px, 100dvw);
+  width: min(640px, 100dvw);
+}
+
+.admin-shell dialog.drawer > .drawer-body,
+.admin-shell .activity-log-dialog .drawer-body {
+  padding-inline: 24px;
+}
+
+/* Drawer context uses text for people and related records. The footer buttons
+   remain the explicit navigation controls. */
+.admin-shell dialog.drawer .moderation-case-workspace a:not(.btn) {
+  color: inherit;
+  text-decoration: none;
+  cursor: default;
+}
+
+/* Separate decision facts and narrative blocks so the Admin can scan them
+   without reading one compressed text strip. */
+.admin-shell dialog.drawer .moderation-case-context-grid,
+.admin-shell dialog.drawer .moderation-case-history-grid {
+  row-gap: 1.35rem;
+}
+.admin-shell dialog.drawer .moderation-case-parties {
+  gap: 1.35rem;
+  margin-top: 1.35rem;
+}
+.admin-shell dialog.drawer .moderation-case-context .overview-group {
+  margin-top: 1.35rem;
+}
+.admin-shell dialog.drawer .moderation-case-context .moderation-case-history {
+  margin-top: 1.5rem;
+}
+
+/* Keep table typography consistent across Quest, Member, Wallet, Payout,
+   Dispute Case, Report Case, Conduct Report, and Activity Log boards. */
+.admin-shell table.data th {
+  font-size: 14px;
+  line-height: 1.35;
+}
+.admin-shell table.data td,
+.admin-shell table.data td > *,
+.admin-shell table.data td a,
+.admin-shell table.data td button,
+.admin-shell table.data td strong {
+  font-size: 14px;
+  line-height: 1.4;
+}
+.admin-shell table.data td small {
+  font-size: 12px;
+  line-height: 1.35;
+}
+.admin-shell table.data .badge {
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+@media (max-width: 720px) {
+  .admin-shell dialog.drawer > .drawer-body,
+  .admin-shell .activity-log-dialog .drawer-body {
+    padding-inline: 16px;
+  }
+  .admin-shell dialog.drawer.report-case-drawer .facts,
+  .admin-shell dialog.drawer.conduct-report-drawer .facts,
+  .admin-shell dialog.drawer.dispute-case-drawer .facts,
+  .admin-shell dialog.drawer.report-case-drawer .overview-meta,
+  .admin-shell dialog.drawer.conduct-report-drawer .overview-meta,
+  .admin-shell dialog.drawer.dispute-case-drawer .overview-meta,
+  .admin-shell dialog.drawer.report-case-drawer .party-grid,
+  .admin-shell dialog.drawer.conduct-report-drawer .party-grid,
+  .admin-shell dialog.drawer.dispute-case-drawer .party-grid,
+  .admin-shell .activity-log-dialog .facts {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Keep each moderation choice readable: the label and its explanation are
+   separate lines instead of one joined text run. */
+.report-decision-option > label,
+.admin-modal-layer .report-decision-option > label {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  margin: 0;
+}
+.report-decision-option > label small,
+.admin-modal-layer .report-decision-option > label small {
+  display: block;
+}
+
+dialog.drawer.report-case-drawer .field-error,
+dialog.drawer.conduct-report-drawer .field-error,
+dialog.drawer.dispute-case-drawer .field-error {
+  font-size: 14px;
+  line-height: 1.45;
 }

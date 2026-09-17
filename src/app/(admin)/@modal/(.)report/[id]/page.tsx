@@ -12,10 +12,7 @@ export default async function ReportCaseModalPage({ params }: AdminDetailRoutePa
   if (!isAdminApiEnabled()) return <ReportCaseDrawerRoute reportId={id} />;
 
   const cookieStore = await cookies();
-  const model = await loadReportCaseDetailFromApi(
-    id,
-    adminSessionCookieHeader(cookieStore.getAll()),
-  );
+  const model = await loadReportCaseDetailFromApi(id, adminSessionCookieHeader(cookieStore.getAll()));
   if (!model) notFound();
   return <ReportCaseDrawerRoute reportId={id} initialModel={model} />;
 }

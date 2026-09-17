@@ -6,12 +6,14 @@ import { useEffect, useRef } from "react";
 type AdminHeaderProps = {
   mobileNavigationOpen: boolean;
   onToggleNavigation: () => void;
+  onOpenSearch: () => void;
   translateText: (value: string) => string;
 };
 
 export function AdminHeader({
   mobileNavigationOpen,
   onToggleNavigation,
+  onOpenSearch,
   translateText,
 }: AdminHeaderProps) {
   const pathname = usePathname();
@@ -54,6 +56,13 @@ export function AdminHeader({
         </svg>
       </button>
       <span className="admin-shell-title">KUQuest Admin</span>
+      <button className="search admin-global-search-trigger" type="button" aria-label={translateText("Search marketplace records")} onClick={onOpenSearch}>
+        <svg className="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-4-4" />
+        </svg>
+        <span>{translateText("Search marketplace records")}</span>
+      </button>
       <span className="demo"><i />{pathname}</span>
     </header>
   );

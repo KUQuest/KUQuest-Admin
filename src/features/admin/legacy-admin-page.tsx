@@ -489,7 +489,6 @@ export function LegacyAdminPage({
               <button className="search" id="open-search" aria-label="Search quests, users, and payouts" type="button" onClick={reactDashboard ? () => setDashboardSearchOpen(true) : undefined}>
                 {reactDashboard ? <DashboardIcon name="search" /> : <span data-static-icon="search" />}
                 <span>Search quests, users, payouts…</span>
-                <kbd>⌘ K</kbd>
               </button>
             </>
           )}

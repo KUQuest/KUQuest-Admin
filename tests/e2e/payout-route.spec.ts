@@ -36,6 +36,9 @@ test.describe("Payout App Router route family", () => {
     await page.goto("/payout/PAY-9637");
 
     await expect(page.getByRole("heading", { level: 1, name: "PAY-9637" })).toBeVisible();
+    await expect(page.locator(".payout-page-alert")).toContainText("Payout approval is required");
+    await expect(page.locator(".payout-record-status-bar")).toBeVisible();
+    await expect(page.locator(".payout-detail-page .payout-detail-stack > .section")).toHaveCount(7);
     for (const section of ["Payout summary", "Payout amounts", "Payout Destination", "Payout timing", "Why your approval is needed", "Payout history"]) {
       await expect(page.getByRole("heading", { name: section })).toBeVisible();
     }
@@ -73,10 +76,11 @@ test.describe("Payout App Router route family", () => {
 
     const closeButton = drawer.getByRole("button", { name: "Close Payout detail" });
     const fullDetailLink = drawer.getByRole("link", { name: "Full Payout detail" });
+    const approveButton = drawer.getByRole("button", { name: "Approve Payout" });
     await fullDetailLink.focus();
     await page.keyboard.press("Tab");
-    await expect(closeButton).toBeFocused();
-    await closeButton.focus();
+    await expect(approveButton).toBeFocused();
+    await approveButton.focus();
     await page.keyboard.press("Shift+Tab");
     await expect(fullDetailLink).toBeFocused();
 
@@ -119,26 +123,66 @@ test.describe("Payout App Router route family", () => {
     await expect(page.getByRole("dialog", { name: "PAY-9637" })).toHaveCount(0);
   });
 
-  test("keeps Payout approval requirements in the command dialog", async ({ page }) => {
+  test("keeps Payout decision actions visible while reviewing the detail drawer", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/payout");
+    await page.getByRole("link", { name: "Open Payout PAY-9637" }).click();
+
+    const drawer = page.getByRole("dialog", { name: "PAY-9637" });
+    const actionBar = drawer.locator(":scope > .drawer-actions");
+    const approveButton = actionBar.getByRole("button", { name: "Approve Payout" });
+    const rejectButton = actionBar.getByRole("button", { name: "Reject Payout" });
+
+    await expect(actionBar).toBeVisible();
+    await expect(approveButton).toBeInViewport();
+    await expect(rejectButton).toBeInViewport();
+
+    await drawer.locator(":scope > .drawer-body").evaluate((body) => {
+      body.scrollTop = body.scrollHeight;
+    });
+    await expect(approveButton).toBeInViewport();
+    await expect(rejectButton).toBeInViewport();
+  });
+
+  test("does not require a reason code to approve a Payout", async ({ page }) => {
     await signIn(page);
     await page.goto("/payout/PAY-9637");
 
     await page.getByRole("button", { name: "Approve Payout" }).click();
     const approval = page.getByRole("dialog", { name: "Approve Payout" });
-    await expect(approval.getByRole("button", { name: "Approve Payout" })).toBeDisabled();
-    await page.keyboard.press("Escape");
-    await expect(approval).toHaveCount(0);
-
-    await page.getByRole("button", { name: "Approve Payout" }).click();
-    const reopenedApproval = page.getByRole("dialog", { name: "Approve Payout" });
-    await reopenedApproval.getByLabel(/Reason code/).selectOption("PAYOUT_POLICY_REVIEW");
-    await expect(reopenedApproval.getByRole("button", { name: "Approve Payout" })).toBeEnabled();
-    await reopenedApproval.getByRole("button", { name: "Approve Payout" }).click();
+    await expect(approval.getByLabel(/Reason code/)).toHaveCount(0);
+    await expect(approval.getByRole("button", { name: "Approve Payout" })).toBeEnabled();
+    await approval.getByRole("button", { name: "Approve Payout" }).click();
     await expect(page).toHaveURL(/\/payout\/PAY-9637$/);
     const payoutSummary = page.getByRole("heading", { name: "Payout summary" }).locator("..");
     await expect(payoutSummary.getByText("Sent", { exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Transfer submitted" })).toBeVisible();
 
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Payout summary" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Transfer submitted" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Payout summary" }).locator("..").getByText("Sent", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Approve Payout" })).toHaveCount(0);
+
+  });
+
+  test("keeps a Mock Payout approval in the drawer and board", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/payout");
+    await page.getByRole("link", { name: "Open Payout PAY-9700" }).click();
+
+    const drawer = page.getByRole("dialog", { name: "PAY-9700" });
+    await drawer.getByRole("button", { name: "Approve Payout" }).click();
+    await page.getByRole("dialog", { name: "Approve Payout" }).getByRole("button", { name: "Approve Payout" }).click();
+    await expect(drawer.getByRole("heading", { name: "Transfer submitted" })).toBeVisible();
+    await expect(drawer.locator(".admin-action-receipt")).toHaveCSS("display", "block");
+    await expect(drawer.getByRole("link", { name: "Full Payout detail" })).toBeVisible();
+
+    await drawer.getByRole("button", { name: "Close Payout detail" }).click();
+    await expect(page).toHaveURL(/\/payout$/);
+    await page.getByRole("button", { name: /Sent/ }).click();
+    await page.getByPlaceholder("Search Payouts…").fill("PAY-9700");
+    await expect(page.locator(".table-wrap").getByText("Sent", { exact: true })).toBeVisible();
   });
 
   test("keeps Payout rejection requirements in the command dialog", async ({ page }) => {
@@ -163,5 +207,33 @@ test.describe("Payout App Router route family", () => {
     await page.goto("/payout/PAY-9638");
 
     await expect(page.getByRole("button", { name: "Reconcile with provider" })).toHaveCount(0);
+  });
+
+  test("supports a large review queue and shows Student Payout history", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/payout");
+
+    const reviewRows = page.locator("tbody .payout-row");
+    await expect(reviewRows).toHaveCount(10);
+
+    await page.getByRole("button", { name: "Show 50" }).click();
+    await expect(reviewRows).toHaveCount(50);
+    await page.getByRole("button", { name: "Next" }).click();
+    await expect(reviewRows).not.toHaveCount(0);
+
+    await page.getByRole("button", { name: "Show all" }).click();
+    expect(await reviewRows.count()).toBeGreaterThanOrEqual(51);
+
+    await page.goto("/payout/PAY-9700");
+    const payoutHistory = page.getByRole("heading", { name: "Payout history" }).locator("..");
+    for (const payoutId of ["PAY-9701", "PAY-9702", "PAY-9703"]) {
+      await expect(payoutHistory.getByText(payoutId, { exact: true })).toBeVisible();
+    }
+
+    await page.goto("/payout/PAY-9703");
+    const payoutTiming = page.getByRole("heading", { name: "Payout timing" }).locator("..");
+    for (const status of ["Needs review", "Sent", "Processing", "Paid"]) {
+      await expect(payoutTiming.getByText(status, { exact: true }).first()).toBeVisible();
+    }
   });
 });

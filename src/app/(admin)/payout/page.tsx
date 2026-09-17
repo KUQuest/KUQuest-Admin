@@ -11,5 +11,5 @@ export default async function PayoutPage() {
     dataSource,
   );
 
-  return <AdminPayoutPage initialData={initialData} />;
+  return <AdminPayoutPage initialData={initialData} dataSource={dataSource} />;
 }

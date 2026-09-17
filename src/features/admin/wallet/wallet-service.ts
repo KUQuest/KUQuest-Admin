@@ -6,7 +6,13 @@ import { adminApiRequestOptions } from "../api/admin-api-request-options";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { adminSessionCookieHeader } from "../../../lib/auth/admin-session-policy";
 import { loadAllWalletLedgerTransactions } from "./wallet-ledger-pages";
-import { mockWalletFinanceSummary, mockWallets } from "./wallet-mock-data";
+import {
+  mockAllWallets,
+  mockWalletFinanceSummary,
+  mockWalletLedgerTransactions,
+  mockWalletStatusHistory,
+  mockWallets,
+} from "./wallet-mock-data";
 import {
   walletDetailFromApi,
   walletHistoryFromApi,
@@ -32,6 +38,7 @@ export type RemainingWalletRows = {
 
 export type WalletBoardPageData = {
   rows: WalletBoardRow[];
+  allRows?: WalletBoardRow[];
   remainingRows: Promise<RemainingWalletRows> | null;
   summary: WalletFinanceSummary | null;
   summaryError: string | null;
@@ -71,12 +78,16 @@ export async function loadWalletDrawerData(
   dataSource: WalletDataSource,
 ): Promise<WalletDrawerData> {
   if (dataSource === "mock") {
-    const wallet = mockWallets.find((item) => item.id === walletId);
+    const wallet = mockAllWallets.find((item) => item.id === walletId);
     if (!wallet) throw new Error("Wallet detail is not available.");
     return {
       detail: walletDetailFromApi({ ...wallet, projectionMatchesLedger: true }),
-      history: [],
-      ledger: [],
+      history: walletHistoryFromApi(mockWalletStatusHistory[walletId] ?? []),
+      ledger: walletLedgerRowsFromApi(
+        mockWalletLedgerTransactions[walletId] ?? [],
+        wallet.id,
+        wallet.balances,
+      ),
     };
   }
 
@@ -99,11 +110,15 @@ export async function loadWalletStatementPageData(
   dataSource: WalletDataSource,
 ): Promise<WalletStatementPageData> {
   if (dataSource === "mock") {
-    const wallet = mockWallets.find((item) => item.userId === memberId);
+    const wallet = mockAllWallets.find((item) => item.userId === memberId);
     if (!wallet) throw new Error("Wallet Statement is not available for this Member.");
     return {
       wallet: walletStatementPageFromApi(wallet),
-      ledger: [],
+      ledger: walletLedgerRowsFromApi(
+        mockWalletLedgerTransactions[wallet.id] ?? [],
+        wallet.id,
+        wallet.balances,
+      ),
       dataSource,
     };
   }
@@ -127,7 +142,7 @@ export async function verifyWalletProjection(
   dataSource: WalletDataSource,
 ): Promise<WalletVerificationView> {
   if (dataSource === "mock") {
-    const wallet = mockWallets.find((item) => item.id === walletId);
+    const wallet = mockAllWallets.find((item) => item.id === walletId);
     if (!wallet) throw new Error("Wallet detail is not available.");
     return {
       matches: true,
@@ -169,6 +184,7 @@ export async function loadWalletBoardPageData(
   if (dataSource === "mock") {
     return {
       rows: walletRowsFromApi(mockWallets),
+      allRows: walletRowsFromApi(mockAllWallets),
       remainingRows: null,
       summary: walletSummaryFromApi(mockWalletFinanceSummary),
       summaryError: null,

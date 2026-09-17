@@ -21,7 +21,7 @@ export async function loadOverviewFromApi(cookieHeader?: string): Promise<Overvi
   const options = adminApiRequestOptions(cookieHeader);
   const [overview, activityPage] = await Promise.all([
     adminApi.getOverview(options),
-    adminApi.listActivityLogs({ limit: 4, sort: "newest" }, options).catch(() => ({ items: [], nextCursor: null })),
+    adminApi.listActivityLogs({ limit: 10, sort: "newest" }, options).catch(() => ({ items: [], nextCursor: null })),
   ]);
   return overviewModelFromApi(
     overview,

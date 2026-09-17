@@ -1,12 +1,19 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
+import { isAdminMockEnabled } from "../../../lib/auth/admin-auth-mode";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import {
   activityLogCsv,
+  activityLogActionLabel,
+  activityLogEntryMatchesFilters,
+  activityLogFixturePageData,
   activityLogMatchesSearch,
+  activityLogReasonLabel,
+  activityLogResourceTypeLabel,
+  activityLogStateLabel,
   activityLogTargetLabel,
   activityTargetHref,
   DEFAULT_ACTIVITY_LOG_FILTERS,
@@ -14,6 +21,13 @@ import {
   formatActivityLogTimestamp,
   type ActivityLogEntry,
 } from "./activity-log-model";
+import {
+  ADMIN_BOARD_PAGE_SIZES,
+  pageCount,
+  pageRange,
+  pageRows,
+  type AdminBoardPageSize,
+} from "../data/board-pagination";
 import {
   loadActivityLogPageData,
   type ActivityLogFilters,
@@ -28,14 +42,30 @@ export type ActivityLogBoardProps = {
 type ActivityLogDetailProps = {
   entry: ActivityLogEntry;
   onClose: () => void;
+  onOpenTarget: (entry: ActivityLogEntry) => void;
 };
 const EMPTY_ACTIVITY_LOG_ENTRIES: ActivityLogEntry[] = [];
+
+function loadAllActivityLogFromMock(filters: ActivityLogFilters): ActivityLogPageData {
+  const firstPage = activityLogFixturePageData(filters);
+  const items = [...firstPage.items];
+  let cursor = firstPage.nextCursor ?? undefined;
+
+  while (cursor) {
+    const nextPage = activityLogFixturePageData(filters, cursor);
+    items.push(...nextPage.items);
+    if (nextPage.nextCursor === cursor) break;
+    cursor = nextPage.nextCursor ?? undefined;
+  }
+
+  return { ...firstPage, items, nextCursor: null };
+}
 
 function displayValue(value: string | number | null | undefined): string {
   return value === null || value === undefined || value === "" ? "Not provided" : String(value);
 }
 
-function ActivityLogDetail({ entry, onClose }: ActivityLogDetailProps) {
+function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailProps) {
   const { translateText } = useAdminShell();
   const targetHref = activityTargetHref(entry.resourceType, entry.resourceId);
   const target = activityLogTargetLabel(entry);
@@ -99,7 +129,7 @@ function ActivityLogDetail({ entry, onClose }: ActivityLogDetailProps) {
         <div className="drawer-top">
           <div>
             <strong>{translateText("Activity log entry")}</strong>
-            <small>{displayValue(entry.action)}</small>
+            <small>{activityLogActionLabel(entry.action)}</small>
           </div>
           <button ref={closeButtonRef} className="icon" type="button" aria-label={translateText("Close")} onClick={onClose}>×</button>
         </div>
@@ -107,10 +137,8 @@ function ActivityLogDetail({ entry, onClose }: ActivityLogDetailProps) {
           <div className="drawer-title">
             <span className="att-icon neutral" aria-hidden="true">↺</span>
             <div>
-              <h2 id="activity-log-detail-title">{displayValue(entry.action)}</h2>
-              <p>
-                {targetHref ? <Link href={targetHref}>{displayValue(target)}</Link> : displayValue(target)}
-              </p>
+              <h2 id="activity-log-detail-title">{activityLogActionLabel(entry.action)}</h2>
+              <p><span className="activity-log-target">{displayValue(target)}</span></p>
             </div>
           </div>
           <div className="facts">
@@ -119,17 +147,29 @@ function ActivityLogDetail({ entry, onClose }: ActivityLogDetailProps) {
             <div className="fact"><span>{translateText("Admin ID")}</span><strong>{displayValue(entry.adminId)}</strong></div>
             <div className="fact"><span>{translateText("Admin first name")}</span><strong>{displayValue(entry.admin.firstName)}</strong></div>
             <div className="fact"><span>{translateText("Admin last name")}</span><strong>{displayValue(entry.admin.lastName)}</strong></div>
-            <div className="fact"><span>{translateText("Action")}</span><strong>{displayValue(entry.action)}</strong></div>
-            <div className="fact"><span>{translateText("Resource type")}</span><strong>{displayValue(entry.resourceType)}</strong></div>
+            <div className="fact"><span>{translateText("Action")}</span><strong>{activityLogActionLabel(entry.action)}</strong></div>
+            <div className="fact"><span>{translateText("Resource type")}</span><strong>{activityLogResourceTypeLabel(entry.resourceType)}</strong></div>
             <div className="fact"><span>{translateText("Resource ID")}</span><strong>{displayValue(entry.resourceId)}</strong></div>
-            <div className="fact"><span>{translateText("Reason code")}</span><strong>{displayValue(entry.reasonCode)}</strong></div>
+            <div className="fact"><span>{translateText("Reason code")}</span><strong>{activityLogReasonLabel(entry.reasonCode)}</strong></div>
             <div className="fact"><span>{translateText("Reason catalog version")}</span><strong>{displayValue(entry.reasonCatalogVersion)}</strong></div>
             <div className="fact"><span>{translateText("Result version")}</span><strong>{displayValue(entry.resultVersion)}</strong></div>
             <div className="fact"><span>{translateText("Result timestamp")}</span><strong>{displayValue(entry.resultTimestamp)}</strong></div>
             <div className="fact"><span>{translateText("Activity ID")}</span><strong>{displayValue(entry.id)}</strong></div>
             <div className="fact"><span>{translateText("Relative time")}</span><strong>{formatActivityLogRelativeTime(entry.createdAt)}</strong></div>
           </div>
+          <section className="section activity-log-state-section" aria-labelledby="activity-log-state-heading">
+            <h3 id="activity-log-state-heading">{translateText("State change")}</h3>
+            {entry.previousState || entry.newState ? (
+              <div className="activity-log-state-change">
+                <div><span>{translateText("Previous state")}</span><strong>{activityLogStateLabel(entry.previousState)}</strong></div>
+                <span className="activity-log-state-arrow" aria-hidden="true">→</span>
+                <div><span>{translateText("New state")}</span><strong>{activityLogStateLabel(entry.newState)}</strong></div>
+              </div>
+            ) : <p className="activity-log-missing-context">{translateText("Before and after state are not provided by the Admin API yet.")}</p>}
+            {entry.note ? <p className="activity-log-note"><strong>{translateText("Admin note")}</strong>{entry.note}</p> : null}
+          </section>
           <div className="drawer-actions">
+            {targetHref ? <button className="btn primary activity-log-linked-detail-button" type="button" onClick={() => onOpenTarget(entry)}>{translateText("View linked detail")}</button> : null}
             <button className="btn" type="button" onClick={onClose}>{translateText("Close")}</button>
           </div>
         </div>
@@ -140,8 +180,10 @@ function ActivityLogDetail({ entry, onClose }: ActivityLogDetailProps) {
 
 export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoardProps) {
   const { translateText } = useAdminShell();
+  const router = useRouter();
   const apiEnabled = isAdminApiEnabled();
-  const [page, setPage] = useState<ActivityLogPageData | null>(initialData ?? null);
+  const mockEnabled = isAdminMockEnabled();
+  const [page, setPage] = useState<ActivityLogPageData | null>(initialData ?? (mockEnabled ? activityLogFixturePageData() : null));
   const [appliedFilters, setAppliedFilters] = useState<ActivityLogFilters>(DEFAULT_ACTIVITY_LOG_FILTERS);
   const [draftFilters, setDraftFilters] = useState<ActivityLogFilters>(DEFAULT_ACTIVITY_LOG_FILTERS);
   const [search, setSearch] = useState("");
@@ -149,20 +191,47 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
   const [paginationError, setPaginationError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<ActivityLogEntry | null>(null);
+  const [pageSize, setPageSize] = useState<AdminBoardPageSize>(10);
+  const [pageNumber, setPageNumber] = useState(1);
   const requestId = useRef(0);
   const closeDetails = useCallback(() => setSelectedEntry(null), []);
+  const openLinkedDetail = useCallback((entry: ActivityLogEntry) => {
+    const href = activityTargetHref(entry.resourceType, entry.resourceId);
+    if (!href) return;
+    closeDetails();
+    router.push(href, { scroll: false });
+  }, [closeDetails, router]);
 
   const entries = page?.items ?? EMPTY_ACTIVITY_LOG_ENTRIES;
-  const visibleEntries = useMemo(
-    () => entries.filter((entry) => activityLogMatchesSearch(entry, search)),
-    [entries, search],
+  const filteredEntries = useMemo(
+    () => entries
+      .filter((entry) => activityLogEntryMatchesFilters(entry, appliedFilters))
+      .filter((entry) => activityLogMatchesSearch(entry, search)),
+    [appliedFilters, entries, search],
   );
+  const totalPages = pageCount(filteredEntries.length, pageSize);
+  const currentPage = Math.min(pageNumber, Math.max(totalPages, 1));
+  const visibleEntries = useMemo(
+    () => pageRows(filteredEntries, currentPage, pageSize),
+    [currentPage, filteredEntries, pageSize],
+  );
+  const { start: pageStart, end: pageEnd } = pageRange(filteredEntries.length, currentPage, pageSize);
 
   const loadPage = useCallback(async (filters: ActivityLogFilters, cursor?: string, append = false) => {
     const currentRequestId = ++requestId.current;
     setLoading(true);
     setLoadError(null);
     if (!append) setPaginationError(null);
+    if (!apiEnabled && mockEnabled) {
+      const nextPage = cursor
+        ? activityLogFixturePageData(filters, cursor)
+        : loadAllActivityLogFromMock(filters);
+      setPage((current) => append && current
+        ? { ...nextPage, items: [...current.items, ...nextPage.items] }
+        : nextPage);
+      setLoading(false);
+      return;
+    }
     try {
       const nextPage = await loadActivityLogPageData(undefined, filters, cursor);
       if (currentRequestId !== requestId.current) return;
@@ -178,7 +247,21 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
     } finally {
       if (currentRequestId === requestId.current) setLoading(false);
     }
-  }, []);
+  }, [apiEnabled, mockEnabled]);
+
+  useEffect(() => {
+    if (apiEnabled || !mockEnabled || initialData?.source === "api") return;
+    let cancelled = false;
+    try {
+      const nextPage = loadAllActivityLogFromMock(DEFAULT_ACTIVITY_LOG_FILTERS);
+      if (!cancelled) setPage(nextPage);
+    } catch (error: unknown) {
+      if (!cancelled) setLoadError(error instanceof Error ? error.message : "The Activity Log fixtures could not load.");
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [apiEnabled, initialData, mockEnabled]);
 
   const applyFilters = useCallback((event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -187,9 +270,12 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
       resourceType: draftFilters.resourceType.trim(),
       resourceId: draftFilters.resourceId.trim(),
       adminId: draftFilters.adminId.trim(),
+      fromDate: draftFilters.fromDate,
+      toDate: draftFilters.toDate,
       sort: draftFilters.sort,
     } satisfies ActivityLogFilters;
     setAppliedFilters(nextFilters);
+    setPageNumber(1);
     setPage(null);
     void loadPage(nextFilters);
   }, [draftFilters, loadPage]);
@@ -197,6 +283,7 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
   const clearFilters = useCallback(() => {
     setDraftFilters(DEFAULT_ACTIVITY_LOG_FILTERS);
     setAppliedFilters(DEFAULT_ACTIVITY_LOG_FILTERS);
+    setPageNumber(1);
     setPage(null);
     void loadPage(DEFAULT_ACTIVITY_LOG_FILTERS);
   }, [loadPage]);
@@ -212,16 +299,16 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
   }, [appliedFilters, loadPage]);
 
   const exportCsv = useCallback(() => {
-    const csv = activityLogCsv(visibleEntries);
+    const csv = activityLogCsv(filteredEntries);
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const anchor = document.createElement("a");
     anchor.href = url;
     anchor.download = "activity-log.csv";
     anchor.click();
     URL.revokeObjectURL(url);
-  }, [visibleEntries]);
+  }, [filteredEntries]);
 
-  if (!apiEnabled) {
+  if (!apiEnabled && !mockEnabled) {
     return (
       <main id="activity-main" className="admin-route-page activity-log-board" tabIndex={-1}>
         <div className="page-head"><div><p className="admin-route-kicker">{translateText("KUQuest Admin")}</p><h1>{translateText("Activity Log")}</h1><p>{translateText("An audit trail of administrative decisions.")}</p></div></div>
@@ -237,36 +324,39 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
 
   return (
     <main id="activity-main" className="admin-route-page activity-log-board" tabIndex={-1}>
-      <div className="page-head">
+        <div className="page-head">
         <div><p className="admin-route-kicker">{translateText("KUQuest Admin")}</p><h1>{translateText("Activity Log")}</h1><p>{translateText("An audit trail of administrative decisions.")}</p></div>
         <button className="btn" type="button" onClick={exportCsv} disabled={!visibleEntries.length}>{translateText("Export CSV")}</button>
       </div>
       <section className="panel activity-log-panel" aria-labelledby="activity-log-heading">
-        <div className="panel-head"><div><h2 id="activity-log-heading">{translateText("Activity Log")}</h2><p>{translateText("Review the administrative audit trail.")}</p></div><span className="count" aria-live="polite">{visibleEntries.length} {translateText("loaded entries")}</span></div>
+        <div className="panel-head"><div><h2 id="activity-log-heading">{translateText("Activity Log")}</h2><p>{translateText("Review the administrative audit trail.")}</p></div><span className="count" aria-live="polite">{filteredEntries.length} {translateText("loaded entries")}</span></div>
         <form className="activity-log-filters" onSubmit={applyFilters}>
           <div className="activity-filter-grid">
             <label htmlFor="activity-action-filter">{translateText("Action filter")}<input id="activity-action-filter" type="search" value={draftFilters.action} onChange={(event) => setDraftFilters((current) => ({ ...current, action: event.target.value }))} /></label>
             <label htmlFor="activity-resource-type-filter">{translateText("Resource type filter")}<input id="activity-resource-type-filter" type="search" value={draftFilters.resourceType} onChange={(event) => setDraftFilters((current) => ({ ...current, resourceType: event.target.value }))} /></label>
             <label htmlFor="activity-resource-id-filter">{translateText("Resource ID filter")}<input id="activity-resource-id-filter" type="search" value={draftFilters.resourceId} onChange={(event) => setDraftFilters((current) => ({ ...current, resourceId: event.target.value }))} /></label>
             <label htmlFor="activity-admin-id-filter">{translateText("Admin ID filter")}<input id="activity-admin-id-filter" type="search" value={draftFilters.adminId} onChange={(event) => setDraftFilters((current) => ({ ...current, adminId: event.target.value }))} /></label>
+            <label htmlFor="activity-from-date-filter">{translateText("From date")}<input id="activity-from-date-filter" type="date" value={draftFilters.fromDate} onChange={(event) => setDraftFilters((current) => ({ ...current, fromDate: event.target.value }))} /></label>
+            <label htmlFor="activity-to-date-filter">{translateText("To date")}<input id="activity-to-date-filter" type="date" value={draftFilters.toDate} onChange={(event) => setDraftFilters((current) => ({ ...current, toDate: event.target.value }))} /></label>
             <label htmlFor="activity-sort">{translateText("Sort activity")}<select id="activity-sort" value={draftFilters.sort} onChange={(event) => setDraftFilters((current) => ({ ...current, sort: event.target.value === "oldest" ? "oldest" : "newest" }))}><option value="newest">{translateText("Newest first")}</option><option value="oldest">{translateText("Oldest first")}</option></select></label>
           </div>
           <div className="activity-filter-actions"><button className="btn primary" type="submit" disabled={loading}>{translateText("Apply filters")}</button><button className="btn" type="button" onClick={clearFilters} disabled={loading}>{translateText("Clear filters")}</button></div>
         </form>
-        <div className="toolbar activity-log-toolbar"><label className="inline-search" htmlFor="activity-search">{translateText("Search loaded activity")}<input id="activity-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={translateText("Search loaded activity")}/></label></div>
-        <output id="activity-status" className="activity-log-status" aria-live="polite">{loading ? translateText("Loading activity") : `${visibleEntries.length} ${translateText("loaded entries")}`}</output>
+        <div className="toolbar activity-log-toolbar"><label className="inline-search" htmlFor="activity-search">{translateText("Search loaded activity")}<input id="activity-search" type="search" value={search} onChange={(event) => { setSearch(event.target.value); setPageNumber(1); }} placeholder={translateText("Search loaded activity")}/></label><div className="page-size-controls" aria-label={translateText("Rows per page")}>{ADMIN_BOARD_PAGE_SIZES.map((size) => <button className={`page-size-button${pageSize === size ? " active" : ""}`} type="button" key={size} onClick={() => { setPageSize(size); setPageNumber(1); }}>{size === "all" ? translateText("Show all") : `${translateText("Show")} ${size}`}</button>)}</div><span className="count" aria-live="polite">{filteredEntries.length ? pageSize === "all" ? `${translateText("Showing all")} ${filteredEntries.length} ${translateText(filteredEntries.length === 1 ? "result" : "results")}` : `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${filteredEntries.length} ${translateText(filteredEntries.length === 1 ? "result" : "results")}` : translateText("Showing 0 of 0 results")}</span></div>
+        <output id="activity-status" className="activity-log-status" aria-live="polite">{loading ? translateText("Loading activity") : `${filteredEntries.length} ${translateText("loaded entries")}`}</output>
+        {mockEnabled ? <p className="api-data-notice activity-log-fixture-notice">{translateText("Fixture data is active. The Activity Log API does not provide before and after state yet.")}</p> : null}
         {loadError ? <div className="activity-log-error" role="alert"><strong>{translateText("Activity log is not available")}</strong><p>{translateText(loadError)}</p><button className="btn" type="button" onClick={retry}>{translateText("Try again")}</button></div> : null}
         {!loadError && loading && !entries.length ? <div className="empty activity-log-empty"><h3>{translateText("Loading activity")}</h3><p>{translateText("Reading the Admin API.")}</p></div> : null}
         {!loadError && !loading && !visibleEntries.length ? <div className="empty activity-log-empty"><h3>{translateText("No activity recorded")}</h3><p>{translateText("Administrative activity will appear here as actions are taken.")}</p></div> : null}
         {!loadError && visibleEntries.length ? <div className="table-wrap activity-log-table-wrap"><table className="data activity-log-table"><caption>{translateText("Activity Log records")}</caption><thead><tr><th scope="col">{translateText("Timestamp")}</th><th scope="col">{translateText("Actor")}</th><th scope="col">{translateText("Activity")}</th><th scope="col">{translateText("Target")}</th><th scope="col">{translateText("Reason")}</th><th scope="col">{translateText("Details")}</th></tr></thead><tbody>{visibleEntries.map((entry) => {
-          const targetHref = activityTargetHref(entry.resourceType, entry.resourceId);
           const target = activityLogTargetLabel(entry);
-          return <tr key={entry.id}><td>{entry.createdAt ? <time dateTime={entry.createdAt}>{formatActivityLogTimestamp(entry.createdAt)}<small>{formatActivityLogRelativeTime(entry.createdAt)}</small></time> : translateText("Not provided")}</td><td aria-label={`${entry.adminName || translateText("Not provided")} · ${entry.adminId || translateText("Not provided")}`}><span className="activity-log-actor"><span className="avatar" aria-hidden="true">{entry.adminInitials}</span><span><strong>{entry.adminName || translateText("Not provided")}</strong><small>{entry.adminId || translateText("Not provided")}</small></span></span></td><td><strong className="activity-log-action">{displayValue(entry.action)}</strong></td><td>{targetHref ? <Link className="activity-log-target" href={targetHref}>{displayValue(target)}</Link> : <span className="activity-log-target">{displayValue(target)}</span>}</td><td>{displayValue(entry.reasonCode)}</td><td><button className="btn activity-log-detail-button" type="button" onClick={() => setSelectedEntry(entry)} aria-label={translateText("View activity details")}>{translateText("View")}</button></td></tr>;
+          return <tr key={entry.id}><td>{entry.createdAt ? <time dateTime={entry.createdAt}>{formatActivityLogTimestamp(entry.createdAt)}<small>{formatActivityLogRelativeTime(entry.createdAt)}</small></time> : translateText("Not provided")}</td><td aria-label={`${entry.adminName || translateText("Not provided")} · ${entry.adminId || translateText("Not provided")}`}><span className="activity-log-actor"><span className="avatar" aria-hidden="true">{entry.adminInitials}</span><span><strong>{entry.adminName || translateText("Not provided")}</strong><small>{entry.adminId || translateText("Not provided")}</small></span></span></td><td><strong className="activity-log-action">{activityLogActionLabel(entry.action)}</strong></td><td><span className="activity-log-target">{displayValue(target)}</span></td><td>{activityLogReasonLabel(entry.reasonCode)}</td><td><button className="btn activity-log-detail-button" type="button" onClick={() => setSelectedEntry(entry)} aria-label={translateText("View activity details")}>{translateText("View")}</button></td></tr>;
         })}</tbody></table></div> : null}
+        {filteredEntries.length ? <div className="table-pagination" aria-label={translateText("Activity Log pagination")}><button className="page-nav" type="button" disabled={currentPage <= 1} onClick={() => setPageNumber((value) => value - 1)}>{translateText("Previous")}</button><span className="page-indicator">{translateText("Page")} {currentPage} {translateText("of")} {Math.max(totalPages, 1)}</span><button className="page-nav" type="button" disabled={currentPage >= totalPages} onClick={() => setPageNumber((value) => value + 1)}>{translateText("Next")}</button></div> : null}
         {paginationError ? <div className="activity-log-error" role="alert"><p>{translateText(paginationError)}</p><button className="btn" type="button" onClick={loadMore}>{translateText("Try again")}</button></div> : null}
         {page?.nextCursor ? <div className="activity-log-pagination"><button className="btn" type="button" onClick={loadMore} disabled={loading}>{translateText(loading ? "Loading more" : "Load more")}</button></div> : null}
       </section>
-      {selectedEntry ? <ActivityLogDetail entry={selectedEntry} onClose={closeDetails} /> : null}
+      {selectedEntry ? <ActivityLogDetail entry={selectedEntry} onClose={closeDetails} onOpenTarget={openLinkedDetail} /> : null}
     </main>
   );
 }

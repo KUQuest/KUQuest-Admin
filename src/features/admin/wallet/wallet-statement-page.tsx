@@ -30,15 +30,15 @@ export function AdminWalletStatementPage({ data }: { data: WalletStatementPageDa
       <section className="wallet-record">
         <div className="drawer-title"><span className="att-icon neutral">W</span><div><h2>{wallet.memberName}</h2><p>{wallet.email} · {wallet.memberId}</p></div></div>
         <div className="facts">
-          <div className="fact"><span>Status</span><strong><WalletStatusBadge status={wallet.status} /></strong></div>
+          <div className="fact"><span>Wallet Status</span><strong><WalletStatusBadge status={wallet.status} /></strong></div>
           <div className="fact"><span>Current Wallet Balance</span><strong>{formatWalletMoney(wallet.currentBalanceSatang)}</strong></div>
           <div className="fact"><span>Wallet record</span><strong>{wallet.id}</strong></div>
-          <div className="fact"><span>Latest Wallet Transaction</span><strong>{formatWalletDate(wallet.latestTransactionAt)}</strong></div>
+          <div className="fact"><span>Latest Wallet Transaction Date</span><strong>{formatWalletDate(wallet.latestTransactionAt)}</strong></div>
         </div>
       </section>
       <section className="section">
         <h2>Wallet Statement</h2>
-        <p>Every committed and sealed Ledger Transaction for this Wallet, newest first.</p>
+        <p>Committed and sealed Ledger Transactions affecting this Wallet.</p>
         <WalletStatementTable transactions={ledger} />
       </section>
     </section>

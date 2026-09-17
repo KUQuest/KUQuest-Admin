@@ -54,6 +54,9 @@ describe("Report Case model", () => {
       category: "Harassment",
       details: "The submitted report requires review.",
       evidenceRefs: ["evidence-42"],
+      questId: "QST-42",
+      questTitle: "Verify dorm fire exits",
+      reportedMemberStatus: "ACTIVE",
       submittedAt: "2026-09-12T12:00:00.000Z",
       version: 3,
     });
@@ -72,6 +75,8 @@ describe("Report Case model", () => {
     });
     expect(model?.reportedMemberHref).toBe("/member/member-reported");
     expect(model?.reporterHref).toBe("/member/member-reporter");
+    expect(model?.relatedQuestHref).toBe("/quest/QST-42");
+    expect(model?.moderationHistory.currentMemberStatus).toBe("ACTIVE");
     expect(model?.evidence).toEqual([{ reference: "evidence-42", label: "Evidence Reference 1" }]);
     expect(model?.reportedMemberHref).not.toContain("/users/");
   });

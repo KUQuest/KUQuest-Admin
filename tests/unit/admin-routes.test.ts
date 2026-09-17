@@ -40,6 +40,7 @@ describe("Admin route helpers", () => {
     expect(disputeRoutes.list()).toBe("/dispute");
     expect(reportRoutes.list()).toBe("/report");
     expect(conductReportRoutes.list()).toBe("/conduct-report");
+    expect(conductReportRoutes.detail("CND-1")).toBe("/conduct-report/CND-1");
     expect(payoutRoutes.list()).toBe("/payout");
     expect(memberRoutes.list()).toBe("/member");
     expect(walletRoutes.list()).toBe("/wallet");
@@ -50,6 +51,7 @@ describe("Admin route helpers", () => {
     expect(questRoutes.detail("QST/1")).toBe("/quest/QST%2F1");
     expect(disputeRoutes.detail("case 1")).toBe("/dispute/case%201");
     expect(reportRoutes.detail("RPT-1")).toBe("/report/RPT-1");
+    expect(conductReportRoutes.detail("CND/1")).toBe("/conduct-report/CND%2F1");
     expect(payoutRoutes.detail("PAY-1")).toBe("/payout/PAY-1");
     expect(memberRoutes.detail("member/1")).toBe("/member/member%2F1");
   });

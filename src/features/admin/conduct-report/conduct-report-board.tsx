@@ -1,13 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { isAdminApiEnabled } from "../api/admin-provider";
-import { loadConductReportsFromMock } from "./conduct-report-adapter";
-import { ConductReportDrawer } from "./conduct-report-detail";
+import { conductReportRoutes } from "../admin-routes";
+import { loadAllConductReportsFromMock as loadAllConductReportsFromMockData, loadConductReportsFromMock } from "./conduct-report-adapter";
+import {
+  ADMIN_BOARD_PAGE_SIZES,
+  pageCount,
+  pageRange,
+  pageRows,
+  type AdminBoardPageSize,
+} from "../data/board-pagination";
 import {
   CONDUCT_REPORT_UPDATED_EVENT,
   type ConductReportModel,
@@ -17,8 +25,8 @@ import { loadConductReportPageData, type ConductReportPageData } from "./conduct
 type ConductReportTab = "all" | "open" | "confirmed" | "dismissed";
 
 const tabs: Array<{ id: ConductReportTab; label: string }> = [
-  { id: "all", label: "All" },
   { id: "open", label: "Open" },
+  { id: "all", label: "All" },
   { id: "confirmed", label: "Confirmed" },
   { id: "dismissed", label: "Dismissed" },
 ];
@@ -52,6 +60,10 @@ function modelMatchesQuery(model: ConductReportModel, query: string): boolean {
   ].some((field) => field !== null && field.toLowerCase().includes(value));
 }
 
+function loadAllConductReportsFromMock(storage: Storage): ConductReportPageData {
+  return loadAllConductReportsFromMockData(storage);
+}
+
 export function ConductReportBoard({
   initialData,
 }: {
@@ -64,13 +76,15 @@ export function ConductReportBoard({
   const [loadingMore, setLoadingMore] = useState(false);
   const [activeTab, setActiveTab] = useState<ConductReportTab>("all");
   const [query, setQuery] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [pageSize, setPageSize] = useState<AdminBoardPageSize>(10);
+  const [pageNumber, setPageNumber] = useState(1);
+  const router = useRouter();
 
   useEffect(() => {
     if (initialData || isAdminApiEnabled()) return;
     let cancelled = false;
     try {
-      const nextPage = loadConductReportsFromMock(localStorage);
+      const nextPage = loadAllConductReportsFromMock(localStorage);
       if (!cancelled) setPage(nextPage);
     } catch (error: unknown) {
       if (!cancelled) {
@@ -99,14 +113,41 @@ export function ConductReportBoard({
   }, []);
 
   const loadMore = async () => {
-    if (!page?.nextCursor || page.source !== "api" || loadingMore) return;
+    if (!page?.nextCursor || loadingMore) return;
     setLoadingMore(true);
     setPaginationError(null);
     try {
-      const nextPage = await loadConductReportPageData(undefined, page.nextCursor);
+      const nextPage = page.source === "mock"
+        ? loadConductReportsFromMock(localStorage, page.nextCursor)
+        : await loadConductReportPageData(undefined, page.nextCursor);
       setPage((current) => current
         ? { ...current, items: [...current.items, ...nextPage.items], nextCursor: nextPage.nextCursor }
         : current);
+    } catch (error: unknown) {
+      setPaginationError(error instanceof Error ? error.message : "More Conduct Reports could not load.");
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  const loadAllPages = async () => {
+    if (!page?.nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    setPaginationError(null);
+    try {
+      if (page.source === "mock") {
+        setPage(loadAllConductReportsFromMockData(localStorage));
+        return;
+      }
+      const items = [...page.items];
+      let cursor: string | undefined = page.nextCursor ?? undefined;
+      while (cursor) {
+        const nextPage: Pick<ConductReportPageData, "items" | "nextCursor"> = await loadConductReportPageData(undefined, cursor);
+        items.push(...nextPage.items);
+        if (nextPage.nextCursor === cursor) break;
+        cursor = nextPage.nextCursor ?? undefined;
+      }
+      setPage((current) => current ? { ...current, items, nextCursor: cursor ?? null } : current);
     } catch (error: unknown) {
       setPaginationError(error instanceof Error ? error.message : "More Conduct Reports could not load.");
     } finally {
@@ -127,9 +168,14 @@ export function ConductReportBoard({
   if (!page) return <AdminLoading message={translateText("Loading Conduct Reports…")} />;
 
   const models = page.items.filter((model) => tabMatches(model, activeTab) && modelMatchesQuery(model, query));
-  const selectedModel = selectedId
-    ? page.items.find((model) => model.id === selectedId) ?? null
-    : null;
+  const totalPages = pageCount(models.length, pageSize);
+  const currentPage = Math.min(pageNumber, Math.max(totalPages, 1));
+  const visibleModels = pageRows(models, currentPage, pageSize);
+  const { start: pageStart, end: pageEnd } = pageRange(models.length, currentPage, pageSize);
+  const openCount = page.items.filter((model) => model.status === "CONDUCT_REPORT_PENDING").length;
+  const openDrawer = (id: string) => {
+    router.push(conductReportRoutes.detail(id), { scroll: false });
+  };
 
   return (
     <>
@@ -147,7 +193,7 @@ export function ConductReportBoard({
               <h2 id="conduct-report-board-heading">{translateText("Conduct Reports")}</h2>
               <p>{translateText("Conduct Report behavior is separate from Report Case behavior.")}</p>
             </div>
-            <span className="count">{models.length} {translateText("shown")}</span>
+            <span className="count">{visibleModels.length} {translateText("shown")}</span>
           </div>
           <div className="tabs" role="tablist" aria-label={translateText("Conduct Report status filters")}>
             {tabs.map((tab) => (
@@ -156,10 +202,11 @@ export function ConductReportBoard({
                 className={`tab ${activeTab === tab.id ? "active" : ""}`}
                 type="button"
                 role="tab"
+                aria-label={tab.id === "open" ? translateText("Open") : translateText(tab.label)}
                 aria-selected={activeTab === tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => { setActiveTab(tab.id); setPageNumber(1); }}
               >
-                {translateText(tab.label)}
+                {translateText(tab.label)}{tab.id === "open" ? <span className="tab-count" aria-hidden="true"> ({openCount})</span> : null}
               </button>
             ))}
           </div>
@@ -172,9 +219,11 @@ export function ConductReportBoard({
                 aria-label={translateText("Search Conduct Reports")}
                 placeholder={translateText("Search by Conduct Report, Member, Quest, or reason")}
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={(event) => { setQuery(event.target.value); setPageNumber(1); }}
               />
             </label>
+            <div className="page-size-controls" aria-label={translateText("Rows per page")}>{ADMIN_BOARD_PAGE_SIZES.map((size) => <button key={size} className={`page-size-button${pageSize === size ? " active" : ""}`} type="button" disabled={loadingMore} onClick={() => { setPageSize(size); setPageNumber(1); if (size === "all") void loadAllPages(); }}>{size === "all" ? translateText("Show all") : `${translateText("Show")} ${size}`}</button>)}</div>
+            <span className="count" aria-live="polite">{loadingMore ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}</span>
           </div>
           <div className="table-wrap" aria-label={translateText("Conduct Reports table")}>
             <table className="data report-table">
@@ -191,18 +240,18 @@ export function ConductReportBoard({
                 </tr>
               </thead>
               <tbody>
-                {models.map((model) => (
+                {visibleModels.map((model) => (
                   <tr
                     key={model.id}
                     data-conduct-report-id={model.id}
                     data-conduct-report-status={model.status}
                     tabIndex={0}
                     aria-label={`${translateText("Open Conduct Report")} ${model.id}`}
-                    onClick={() => setSelectedId(model.id)}
+                    onClick={() => openDrawer(model.id)}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
-                        setSelectedId(model.id);
+                        openDrawer(model.id);
                       }
                     }}
                   >
@@ -210,10 +259,11 @@ export function ConductReportBoard({
                       <button
                         className="row-record-button"
                         type="button"
+                        data-conduct-report-id={model.id}
                         aria-label={`${translateText("Open Conduct Report")} ${model.id}`}
                         onClick={(event) => {
                           event.stopPropagation();
-                          setSelectedId(model.id);
+                          openDrawer(model.id);
                         }}
                       >
                         {model.id}
@@ -249,25 +299,16 @@ export function ConductReportBoard({
           </div>
           {page.nextCursor && (
             <div className="conduct-report-next-page">
+              {models.length ? <div className="table-pagination" aria-label={translateText("Conduct Reports pagination")}><button className="page-nav" type="button" disabled={currentPage <= 1} onClick={() => setPageNumber((value) => value - 1)}>{translateText("Previous")}</button><span className="page-indicator">{translateText("Page")} {currentPage} {translateText("of")} {Math.max(totalPages, 1)}</span><button className="page-nav" type="button" disabled={currentPage >= totalPages} onClick={() => setPageNumber((value) => value + 1)}>{translateText("Next")}</button></div> : null}
               <button className="btn" type="button" data-conduct-report-load-more onClick={loadMore} disabled={loadingMore}>
                 {translateText(loadingMore ? "Loading more Conduct Reports…" : "Load more Conduct Reports")}
               </button>
               {paginationError && <p className="field-error" role="alert">{translateText(paginationError)}</p>}
             </div>
           )}
+          {!page.nextCursor && models.length ? <div className="table-pagination" aria-label={translateText("Conduct Reports pagination")}><button className="page-nav" type="button" disabled={currentPage <= 1} onClick={() => setPageNumber((value) => value - 1)}>{translateText("Previous")}</button><span className="page-indicator">{translateText("Page")} {currentPage} {translateText("of")} {Math.max(totalPages, 1)}</span><button className="page-nav" type="button" disabled={currentPage >= totalPages} onClick={() => setPageNumber((value) => value + 1)}>{translateText("Next")}</button></div> : null}
         </section>
       </main>
-      {selectedModel && (
-        <ConductReportDrawer
-          model={selectedModel}
-          onClose={() => setSelectedId(null)}
-          onUpdated={(updatedModel) => {
-            setPage((current) => current
-              ? { ...current, items: current.items.map((item) => item.id === updatedModel.id ? updatedModel : item) }
-              : current);
-          }}
-        />
-      )}
     </>
   );
 }

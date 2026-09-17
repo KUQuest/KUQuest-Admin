@@ -12,7 +12,7 @@ import {
 } from "../api/admin-api";
 import { adminApiRequestOptions } from "../api/admin-api-request-options";
 import { isAdminApiEnabled } from "../api/admin-provider";
-import { mockPayoutDetail, mockPayoutDetails } from "./payout-mock-data";
+import { mockAllPayoutDetails, mockPayoutDetail } from "./payout-mock-data";
 import {
   payoutDetailViewFromApi,
   payoutRowsFromApi,
@@ -24,6 +24,7 @@ export type PayoutDataSource = "api" | "mock";
 
 export type PayoutBoardPageData = {
   rows: PayoutBoardRow[];
+  allRows?: PayoutBoardRow[];
 };
 
 export type PayoutDetailPageData = {
@@ -76,9 +77,12 @@ export async function loadPayoutBoardPageData(
   dataSource: PayoutDataSource,
 ): Promise<PayoutBoardPageData> {
   const items = dataSource === "mock"
-    ? mockPayoutDetails
+    ? mockAllPayoutDetails
     : await listAllPayouts(cookieHeader);
-  return { rows: payoutRowsFromApi(items) };
+  const rows = payoutRowsFromApi(items);
+  return dataSource === "mock"
+    ? { rows: payoutRowsFromApi(items.slice(0, 4)), allRows: rows }
+    : { rows };
 }
 
 export async function loadPayoutDetailPageData(
@@ -99,7 +103,7 @@ export async function loadPayoutDetailPageData(
   }
 
   const relatedPayouts = dataSource === "mock"
-    ? mockPayoutDetails
+    ? mockAllPayoutDetails
     : await listAllPayouts(cookieHeader);
   return detail ? { detail: payoutDetailViewFromApi(detail, relatedPayouts) } : null;
 }

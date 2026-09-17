@@ -31,3 +31,15 @@ export async function loadConductReportPageData(
     nextCursor: page.nextCursor,
   };
 }
+
+export async function loadConductReportDetailFromApi(
+  reportId: string,
+  cookieHeader?: string,
+): Promise<ConductReportModel | null> {
+  const report = await adminApi.getReport(
+    reportId,
+    adminApiRequestOptions(cookieHeader),
+  );
+  const model = conductReportModelFromRecord(report);
+  return model?.id === reportId ? model : null;
+}

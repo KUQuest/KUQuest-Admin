@@ -982,7 +982,7 @@ export type WalletStatusCommand = AdminCommandOptions & {
 
 export type PayoutApproval = Omit<AdminCommandOptions, "expectedVersion"> & {
   expectedVersion: number;
-  reasonCode: "PAYOUT_POLICY_REVIEW" | "PAYOUT_RISK_REVIEW";
+  reasonCode?: "PAYOUT_POLICY_REVIEW" | "PAYOUT_RISK_REVIEW";
   note?: string;
 };
 export type PayoutRejection = Omit<AdminCommandOptions, "expectedVersion"> & {
@@ -1259,7 +1259,7 @@ export const adminApi = {
       {
         method: "POST",
         headers: payoutCommandHeaders(options),
-        body: { reasonCode: options.reasonCode },
+        body: options.reasonCode ? { reasonCode: options.reasonCode } : {},
       },
     );
   },

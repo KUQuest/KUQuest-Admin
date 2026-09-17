@@ -70,6 +70,39 @@ describe("Member route model", () => {
     expect(walletStatementRows(model!, { eventType: "TOP_UP", from: "", to: "" }, 25)).toHaveLength(11);
   });
 
+  it("provides deterministic mock moderation history, notes, and related case links", () => {
+    const data = mockData();
+    data.collections.users.push({
+      id: "68000020",
+      title: "Amara Ariyawat",
+      person: "amara@ku.th",
+    });
+    data.collections.reports.push({
+      id: "RPT-SUBMITTED",
+      reportedMemberId: "member-1",
+      reporterId: "68000020",
+      reporterName: "Amara Ariyawat",
+      category: "Harassment",
+      status: "REPORT_CASE_PENDING",
+    });
+
+    const model = memberModelFromMockRecord(data.collections.users[0], data);
+
+    expect(model?.source).toBe("mock");
+    expect(model?.penaltyHistory[0]).toMatchObject({
+      event: "Report Case received",
+      caseId: "RPT-8201",
+      caseType: "Report Case",
+      caseHref: "/report/RPT-8201",
+    });
+    expect(model?.adminNotes[0]?.note).toContain("Evidence Reference");
+    expect(model?.reportsSubmitted[0]).toMatchObject({
+      id: "RPT-SUBMITTED",
+      kind: "Report Case",
+    });
+    expect(model?.reportsSubmittedError).toBeNull();
+  });
+
   it("keeps the complete Ledger balance when filtering displayed rows", () => {
     const data = mockData();
     data.collections.users.push({
@@ -185,6 +218,8 @@ describe("Member route model", () => {
     expect(model.memberStatus).toBeNull();
     expect(model.walletStatus).toBe("FROZEN");
     expect(model.memberStatusSource).toBe("NOT_PROVIDED_BY_API");
+    expect(model.reportsSubmitted).toEqual([]);
+    expect(model.reportsSubmittedError).toContain("not provided by the Admin API");
   });
   it("applies PC-12 Red Flag exemptions before the misconduct ladder", () => {
     const data = mockData();

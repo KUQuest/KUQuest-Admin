@@ -73,9 +73,12 @@ describe("Conduct Report mock adapter", () => {
       },
     }));
 
-    expect(loadConductReportsFromMock(storage).items).toHaveLength(3);
+    const firstPage = loadConductReportsFromMock(storage);
+    expect(firstPage.items).toHaveLength(3);
+    expect(firstPage.nextCursor).toBe("mock-page-2");
+    expect(loadConductReportsFromMock(storage, firstPage.nextCursor ?? undefined).items.length).toBeGreaterThan(0);
     expect(JSON.parse(storage.getItem(ADMIN_DEMO_DATA_KEY) ?? "{}").version).toBe(
-      "dashboard-bootstrap-v3-canonical-conduct-reports",
+      "dashboard-bootstrap-v4-expanded-mock-fixtures",
     );
   });
 });

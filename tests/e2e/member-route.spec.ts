@@ -9,11 +9,11 @@ test.describe("Member route family", () => {
 
     const board = page.locator("#member-main");
     await expect(board.getByRole("heading", { level: 1, name: "Members" })).toBeVisible();
-    await expect(board.locator("tbody tr[data-member-id]")).toHaveCount(3);
+    await expect(board.locator("tbody tr[data-member-id]")).toHaveCount(10);
     await expect(board.getByRole("searchbox", { name: "Search Members" })).toBeVisible();
     await page.reload();
     await expect(board.getByRole("heading", { level: 1, name: "Members" })).toBeVisible();
-    await expect(board.locator("tbody tr[data-member-id]")).toHaveCount(3);
+    await expect(board.locator("tbody tr[data-member-id]")).toHaveCount(10);
 
     const opener = board.getByRole("button", { name: "Open Member 68000000" });
     await opener.click();
@@ -80,6 +80,23 @@ test.describe("Member route family", () => {
     await expect(page.locator(".user-counter-list")).toContainText("1");
     await expect(page.locator(".user-detail-side-column")).toContainText("Red Flag");
   });
+
+  test("shows mock moderation history, related cases, and submitted reports", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/member/68000020?tab=penalty-history");
+
+    const history = page.locator("[data-member-moderation-history]");
+    await expect(history).toBeVisible();
+    await expect(history).toContainText("Fixture data for UI review");
+    await expect(history.getByRole("link", { name: "RPT-8201" })).toHaveAttribute("href", "/report/RPT-8201");
+    await expect(page.getByRole("heading", { name: "Admin Notes" })).toBeVisible();
+    await expect(page.getByText("Evidence Reference", { exact: false })).toBeVisible();
+
+    await page.goto("/member/68000020?tab=reports");
+    await expect(page.getByRole("heading", { name: "Reports received" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Reports submitted" })).toBeVisible();
+  });
+
   test("keeps Member board language controls available", async ({ page }) => {
     await signIn(page);
     await page.goto("/member");

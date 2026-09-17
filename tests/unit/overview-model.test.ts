@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 
 import {
   overviewFallbackWithoutApiData,
+  overviewQueueCaseIndexFor,
   overviewModelFromApi,
   overviewSearchResultsFromApi,
   overviewSearchResultsFromMockData,
@@ -26,6 +27,22 @@ function apiOverview() {
 }
 
 describe("Overview model", () => {
+  it("keeps the ten latest Activity Log entries for the Overview", () => {
+    const activity = Array.from({ length: 12 }, (_, index) => ({
+      id: `ACT-${index}`,
+      actor: "AD",
+      title: "Administrative activity",
+      detail: "Overview",
+      timestamp: 12 - index,
+    }));
+    const model = overviewModelFromApi(apiOverview(), activity, overviewFallbackWithoutApiData(), 123);
+
+    expect(model.activity).toHaveLength(10);
+    expect(model.activity.map((entry) => entry.id)).toEqual(
+      Array.from({ length: 10 }, (_, index) => `ACT-${index}`),
+    );
+  });
+
   it("maps available API counters and keeps missing fields as explicit fallback data", () => {
     const model = overviewModelFromApi(apiOverview(), [], {
       disputes: 2,
@@ -142,8 +159,21 @@ describe("Overview model", () => {
       "/payout/PAY-1",
       "/dispute/DSP-1",
       "/report/RPT-1",
-      "/conduct-report",
+      "/conduct-report/CND-1",
     ]);
+    expect(model.queues.map((row) => row.oldestId)).toEqual([
+      "PAY-1",
+      "DSP-1",
+      "RPT-1",
+      "CND-1",
+    ]);
+  });
+
+  it("resolves a mock Process next action from the queue's named oldest case", () => {
+    expect(overviewQueueCaseIndexFor("payouts", "PAY-9637")).toBe(0);
+    expect(overviewQueueCaseIndexFor("disputes", "DSP-5202")).toBe(1);
+    expect(overviewQueueCaseIndexFor("conductReports", null)).toBeNull();
+    expect(overviewQueueCaseIndexFor("reports", "unknown-case")).toBeNull();
   });
 
   it("does not invent local values when the API only returns summary fields", () => {
@@ -211,6 +241,7 @@ describe("Overview search results", () => {
     expect(results.map((result) => [result.kind, result.id, result.href])).toEqual([
       ["member", "68000000", "/member/68000000"],
       ["payout", "PAY-9637", "/payout/PAY-9637"],
+      ["wallet", "WLT-68000000", "/wallet"],
     ]);
     expect(overviewSearchResultsFromMockData({
       version: "test",

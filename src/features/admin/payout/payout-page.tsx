@@ -13,10 +13,10 @@ import {
 
 import { ApiError } from "../../../lib/api/client";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
+import { AdminActionReceipt, AdminActionSummary } from "../../../components/admin/admin-action-feedback";
 import { payoutRoutes } from "../admin-routes";
 import {
   adminApi,
-  type PayoutApproval,
   type PayoutRejection,
 } from "../api/admin-api";
 import { payoutStatusLabel, type PayoutStatus } from "../domain/rulebook";
@@ -28,7 +28,6 @@ import {
   payoutMatchesTab,
   payoutOutcomeReason,
   payoutPageCount,
-  payoutDecisionContext,
   payoutStatusClass,
   searchPayoutRows,
   sortPayoutRows,
@@ -44,22 +43,27 @@ import type {
   PayoutDataSource,
   PayoutDetailPageData,
 } from "./payout-service";
+import {
+  applyMockPayoutDecision,
+  applyMockPayoutOverride,
+  applyMockPayoutOverrideToRow,
+  PAYOUT_MOCK_UPDATED_EVENT,
+  payoutMockOverrideFromDetail,
+  readMockPayoutOverride,
+  readMockPayoutOverrides,
+  saveMockPayoutOverride,
+} from "./payout-mock-state";
 
 type PayoutPresentation = "page" | "drawer";
 type PayoutCommand = "approve" | "reject";
-type ApprovalReasonCode = PayoutApproval["reasonCode"];
 type RejectionReasonCode = PayoutRejection["reasonCode"];
 type PayoutCommandSubmission =
-  | { command: "approve"; reasonCode: ApprovalReasonCode }
+  | { command: "approve" }
   | { command: "reject"; reasonCode: RejectionReasonCode };
 
-const approvalReasonCodes: Array<{ value: ApprovalReasonCode; label: string }> = [
+const rejectionReasonCodes: Array<{ value: RejectionReasonCode; label: string }> = [
   { value: "PAYOUT_POLICY_REVIEW", label: "Policy review" },
   { value: "PAYOUT_RISK_REVIEW", label: "Risk review" },
-];
-
-const rejectionReasonCodes: Array<{ value: RejectionReasonCode; label: string }> = [
-  ...approvalReasonCodes,
   { value: "PAYOUT_INVALID_DESTINATION", label: "Invalid destination" },
 ];
 
@@ -86,9 +90,9 @@ function Badge({ status }: { status: PayoutStatus }) {
   return <span className={`badge ${payoutStatusClass(status)}`}>{payoutStatusLabel(status)}</span>;
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({ title, children, className }: { title: string; children: ReactNode; className?: string }) {
   return (
-    <section className="section">
+    <section className={`section${className ? ` ${className}` : ""}`}>
       <h3>{title}</h3>
       {children}
     </section>
@@ -97,6 +101,60 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return <div className="fact"><span>{label}</span><strong>{children}</strong></div>;
+}
+
+function PayoutDecisionActions({
+  detail,
+  onCommand,
+  onReconcile,
+  reconcilePending,
+  showReconcileAction,
+}: {
+  detail: PayoutDetailView;
+  onCommand: (command: PayoutCommand) => void;
+  onReconcile: () => void;
+  reconcilePending: boolean;
+  showReconcileAction: boolean;
+}) {
+  const canDecide = detail.status === "PENDING_ADMIN_APPROVAL";
+  const canReconcile = showReconcileAction
+    && ["SUBMITTED_TO_PROVIDER", "PROVIDER_PENDING", "FAILED"].includes(detail.status);
+
+  if (canDecide) {
+    return <>
+      <button className="btn primary" type="button" onClick={() => onCommand("approve")}>Approve Payout</button>
+      <button className="btn danger" type="button" onClick={() => onCommand("reject")}>Reject Payout</button>
+    </>;
+  }
+  if (canReconcile) {
+    return <button className="btn primary" type="button" onClick={onReconcile} disabled={reconcilePending}>
+      {reconcilePending ? "Reconciling…" : "Reconcile with provider"}
+    </button>;
+  }
+  return null;
+}
+
+function PayoutStatusAlert({ detail }: { detail: PayoutDetailView }) {
+  const needsApproval = detail.status === "PENDING_ADMIN_APPROVAL";
+  const failed = detail.status === "FAILED";
+  const tone = needsApproval ? "open" : failed ? "failed" : "closed";
+  const title = needsApproval ? "Payout approval is required" : detail.decisionContext.heading;
+  const copy = needsApproval
+    ? "Review the masked destination and API-provided amounts before approving this Payout."
+    : detail.decisionContext.copy;
+
+  return (
+    <output className={`dispute-page-alert payout-page-alert ${tone}`}>
+      <span aria-hidden="true">⚑</span>
+      <div>
+        <strong>{title}</strong>
+        <p>{copy}</p>
+      </div>
+      <span className={`badge ${payoutStatusClass(detail.status)}`}>
+        {payoutStatusLabel(detail.status)}
+      </span>
+    </output>
+  );
 }
 
 function PayoutDetailContent({
@@ -108,6 +166,8 @@ function PayoutDetailContent({
   reconcilePending,
   showReconcileAction,
   showFullDetailLink,
+  actionReceipt,
+  renderDecisionActions,
 }: {
   detail: PayoutDetailView;
   onCommand: (command: PayoutCommand) => void;
@@ -117,6 +177,13 @@ function PayoutDetailContent({
   reconcilePending: boolean;
   showReconcileAction: boolean;
   showFullDetailLink: boolean;
+  actionReceipt?: {
+    action: string;
+    status: string;
+    reason: string | null;
+    occurredAt: string;
+  } | null;
+  renderDecisionActions: boolean;
 }) {
   const canDecide = detail.status === "PENDING_ADMIN_APPROVAL";
   const canReconcile = showReconcileAction
@@ -125,7 +192,7 @@ function PayoutDetailContent({
 
   return (
     <div className="payout-detail-stack">
-      <Section title="Payout summary">
+      <Section title="Payout summary" className="payout-summary-section">
         <div className="facts payout-detail-facts">
           <Fact label="Status"><Badge status={detail.status} /></Fact>
           <Fact label="Payout record">{detail.id}</Fact>
@@ -136,7 +203,7 @@ function PayoutDetailContent({
         </div>
       </Section>
 
-      <Section title="Payout amounts">
+      <Section title="Payout amounts" className="payout-amounts-section">
         <div className="payout-summary-grid">
           <div><span>Principal</span><strong>{formatPayoutMoney(detail.amounts.principalSatang)}</strong></div>
           <div><span>Recipient receipt</span><strong>{formatPayoutMoney(detail.amounts.receiptSatang)}</strong></div>
@@ -150,7 +217,7 @@ function PayoutDetailContent({
         <p className="audit-note">Amounts come from the Payout API. The Admin client does not calculate fees, tax, or debit values.</p>
       </Section>
 
-      <Section title="Payout Destination">
+      <Section title="Payout Destination" className="payout-destination-section">
         <div className="facts">
           <Fact label="Bank">{detail.destination.bankName}</Fact>
           <Fact label="Bank code">{detail.destination.bankCode}</Fact>
@@ -161,7 +228,7 @@ function PayoutDetailContent({
         <p className="audit-note">Destination data is masked. Raw destination, encrypted payload, and Provider payload are not available to the Admin client.</p>
       </Section>
 
-      <Section title="Payout timing">
+      <Section title="Payout timing" className="payout-timing-section">
         <div className="payout-audit-list">
           {detail.history.length ? detail.history.map((entry) => (
             <div className="payout-audit-event" key={entry.id}>
@@ -175,12 +242,12 @@ function PayoutDetailContent({
         </div>
       </Section>
 
-      <Section title={detail.decisionContext.heading}>
+      <Section title={detail.decisionContext.heading} className="payout-decision-context-section">
         <p>{detail.decisionContext.copy}</p>
         <p className="audit-note">{detail.decisionContext.next}</p>
       </Section>
 
-      <Section title="Payout history">
+      <Section title="Payout history" className="payout-history-section">
         {detail.previousPayouts.length ? <div className="payout-previous-list">
           {detail.previousPayouts.map((payout) => (
             <div className="payout-previous-row" key={payout.id}>
@@ -192,27 +259,40 @@ function PayoutDetailContent({
       </Section>
 
       {outcomeReason && (detail.status === "CANCELLED" || detail.status === "FAILED") ? (
-        <section className="section payout-outcome">
+        <section className="section payout-outcome payout-outcome-section">
           <h3>{detail.status === "FAILED" ? "Transfer failure reason" : "Rejection reason"}</h3>
           <p>{readableValue(outcomeReason)}</p>
         </section>
       ) : null}
 
+      {actionReceipt ? (
+        <AdminActionReceipt
+          action={actionReceipt.action}
+          resource="Payout"
+          resourceId={detail.id}
+          status={actionReceipt.status}
+          occurredAt={actionReceipt.occurredAt}
+          mock
+          details={actionReceipt.reason ? <p>Reason: {readableValue(actionReceipt.reason)}</p> : undefined}
+        />
+      ) : null}
+
       {canDecide || canReconcile ? (
-        <Section title="Admin decision">
+        <Section title={renderDecisionActions ? "Admin decision" : "Decision context"} className="payout-decision-section">
           <p>{canDecide
             ? "Review the masked destination and API-provided amounts before deciding this Payout."
             : "The Payout needs a Provider status check before the next Admin action."}</p>
-          <div className="drawer-actions payout-detail-actions">
-            {canDecide ? <>
-              <button className="btn primary" type="button" onClick={() => onCommand("approve")}>Approve Payout</button>
-              <button className="btn danger" type="button" onClick={() => onCommand("reject")}>Reject Payout</button>
-            </> : <button className="btn primary" type="button" onClick={onReconcile} disabled={reconcilePending}>
-              {reconcilePending ? "Reconciling…" : "Reconcile with provider"}
-            </button>}
-          </div>
-          {reconcileError ? <p className="field-error" role="alert">{reconcileError}</p> : null}
-          {reconcileNotice ? <output>{reconcileNotice}</output> : null}
+          {renderDecisionActions ? <div className="payout-detail-actions">
+            <PayoutDecisionActions
+              detail={detail}
+              onCommand={onCommand}
+              onReconcile={onReconcile}
+              reconcilePending={reconcilePending}
+              showReconcileAction={showReconcileAction}
+            />
+          </div> : null}
+          {renderDecisionActions && reconcileError ? <p className="field-error" role="alert">{reconcileError}</p> : null}
+          {renderDecisionActions && reconcileNotice ? <output>{reconcileNotice}</output> : null}
         </Section>
       ) : null}
 
@@ -222,12 +302,14 @@ function PayoutDetailContent({
 }
 
 function PayoutCommandDialog({
+  detail,
   command,
   onCancel,
   onSubmit,
   error,
   pending,
 }: {
+  detail: PayoutDetailView;
   command: PayoutCommand;
   onCancel: () => void;
   onSubmit: (submission: PayoutCommandSubmission) => void;
@@ -237,8 +319,7 @@ function PayoutCommandDialog({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [reasonCode, setReasonCode] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
-  const reasonOptions = command === "approve" ? approvalReasonCodes : rejectionReasonCodes;
-  const submitDisabled = pending || !reasonCode;
+  const submitDisabled = pending || command === "reject" && !reasonCode;
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -277,13 +358,13 @@ function PayoutCommandDialog({
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!reasonCode) {
+    if (command === "reject" && !reasonCode) {
       setValidationError("Select a reason code.");
       return;
     }
     setValidationError(null);
     if (command === "approve") {
-      onSubmit({ command, reasonCode: reasonCode as ApprovalReasonCode });
+      onSubmit({ command });
     } else {
       onSubmit({ command, reasonCode: reasonCode as RejectionReasonCode });
     }
@@ -296,12 +377,24 @@ function PayoutCommandDialog({
         <form className="dialog-body" onSubmit={submit}>
           <h2 id="payout-command-title">{command === "approve" ? "Approve Payout" : "Reject Payout"}</h2>
           <p>{command === "approve" ? "Review the destination and balance before approving this Payout." : "Choose a reason for rejecting this Payout."}</p>
-          <label htmlFor="payout-reason-code">Reason code <span aria-hidden="true">*</span>
-            <select id="payout-reason-code" value={reasonCode} onChange={(event) => setReasonCode(event.target.value)} autoFocus>
-              <option value="">Choose a reason</option>
-              {reasonOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-            </select>
-          </label>
+          <AdminActionSummary
+            title={command === "approve" ? "Approval effect" : "Rejection effect"}
+            affected={`Payout ${detail.id} · ${detail.student.name}`}
+            currentState={payoutStatusLabel(detail.status)}
+            nextState={command === "approve" ? "Submitted to Provider" : "Cancelled"}
+            effect={command === "approve"
+              ? "The Payout worker may start provider processing after approval."
+              : "The full Payout Reserve returns to the Member's Earnings Balance. No provider transfer starts."}
+            reversibility="The Admin decision is final. Provider status changes are separate."
+          />
+          {command === "reject" ? (
+            <label htmlFor="payout-reason-code">Reason code <span aria-hidden="true">*</span>
+              <select id="payout-reason-code" value={reasonCode} onChange={(event) => setReasonCode(event.target.value)} autoFocus>
+                <option value="">Choose a reason</option>
+                {rejectionReasonCodes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+              </select>
+            </label>
+          ) : null}
           {validationError || error ? <p className="field-error" role="alert">{validationError ?? error}</p> : null}
           <div className="dialog-actions">
             <button className="btn" type="button" onClick={onCancel} disabled={pending}>Cancel</button>
@@ -328,6 +421,12 @@ export function AdminPayoutDetailPage({
   const [commandIdempotencyKey, setCommandIdempotencyKey] = useState<string | null>(null);
   const [commandError, setCommandError] = useState<string | null>(null);
   const [commandPending, setCommandPending] = useState(false);
+  const [actionReceipt, setActionReceipt] = useState<{
+    action: string;
+    status: string;
+    reason: string | null;
+    occurredAt: string;
+  } | null>(null);
   const [reconcileError, setReconcileError] = useState<string | null>(null);
   const [reconcileNotice, setReconcileNotice] = useState<string | null>(null);
   const [reconcilePending, setReconcilePending] = useState(false);
@@ -337,14 +436,18 @@ export function AdminPayoutDetailPage({
   }, [router]);
 
   useEffect(() => {
-    setDetail(data.detail);
+    const persistedDetail = dataSource === "mock" && typeof window !== "undefined"
+      ? applyMockPayoutOverride(data.detail, readMockPayoutOverride(window.localStorage, data.detail.id))
+      : data.detail;
+    setDetail(persistedDetail);
     setCommand(null);
     setCommandIdempotencyKey(null);
     setCommandError(null);
+    setActionReceipt(null);
     setReconcileError(null);
     setReconcileNotice(null);
     setReconcilePending(false);
-  }, [data]);
+  }, [data, dataSource]);
 
   async function submitCommand(submission: PayoutCommandSubmission) {
     setCommandError(null);
@@ -358,7 +461,6 @@ export function AdminPayoutDetailPage({
         if (submission.command === "approve") {
           await adminApi.approvePayout(detail.id, {
             ...options,
-            reasonCode: submission.reasonCode,
           });
         } else {
           await adminApi.rejectPayout(detail.id, {
@@ -367,31 +469,26 @@ export function AdminPayoutDetailPage({
           });
         }
       } else {
-        const nextStatus: PayoutStatus = submission.command === "approve" ? "SUBMITTED_TO_PROVIDER" : "CANCELLED";
-        setDetail((current) => ({
-          ...current,
-          status: nextStatus,
-          decisionContext: payoutDecisionContext(nextStatus),
-          version: current.version + 1,
-          updatedAt: new Date().toISOString(),
-          cancellationReasonCode: submission.command === "reject" ? submission.reasonCode : current.cancellationReasonCode,
-          history: [...current.history, {
-            id: `local-${submission.command}-${Date.now()}`,
-            fromStatus: current.status,
-            toStatus: nextStatus,
-            actorUserId: null,
-            actorAdminId: "mock-admin",
-            source: submission.command === "approve" ? "ADMIN_APPROVAL" : "ADMIN_REJECTION",
-            reason: submission.reasonCode,
-            occurredAt: new Date().toISOString(),
-          }],
-        }));
+        const decisionReason = submission.command === "reject" ? submission.reasonCode : null;
+        const occurredAt = new Date().toISOString();
+        const nextDetail = applyMockPayoutDecision(detail, submission.command, decisionReason, occurredAt);
+        setDetail(nextDetail);
+        if (typeof window !== "undefined") {
+          saveMockPayoutOverride(window.localStorage, { id: nextDetail.id, ...payoutMockOverrideFromDetail(nextDetail) });
+          window.dispatchEvent(new CustomEvent(PAYOUT_MOCK_UPDATED_EVENT, { detail: nextDetail }));
+        }
+        setActionReceipt({
+          action: submission.command === "approve" ? "Approve Payout" : "Reject Payout",
+          status: payoutStatusLabel(nextDetail.status),
+          reason: decisionReason,
+          occurredAt,
+        });
       }
       setCommand(null);
       setCommandIdempotencyKey(null);
-      if (presentation === "drawer") {
+      if (presentation === "drawer" && dataSource === "api") {
         closeDrawer();
-        if (dataSource === "api") window.setTimeout(() => router.refresh(), 0);
+        window.setTimeout(() => router.refresh(), 0);
       }
       else if (dataSource === "api") router.refresh();
     } catch (error) {
@@ -427,7 +524,28 @@ export function AdminPayoutDetailPage({
     reconcilePending={reconcilePending}
     showReconcileAction={dataSource === "api"}
     showFullDetailLink={presentation === "drawer"}
+    actionReceipt={actionReceipt}
+    renderDecisionActions={presentation !== "drawer"}
   />;
+
+  const canDecide = detail.status === "PENDING_ADMIN_APPROVAL";
+  const canReconcile = dataSource === "api"
+    && ["SUBMITTED_TO_PROVIDER", "PROVIDER_PENDING", "FAILED"].includes(detail.status);
+  const drawerDecisionActions = presentation === "drawer" && (canDecide || canReconcile) ? <>
+    <span className="payout-drawer-action-label">
+      <strong>{canDecide ? "Admin decision" : "Provider status check"}</strong>
+      <small>{canDecide ? "Review this Payout before choosing an outcome." : "Check the Provider status before the next Admin action."}</small>
+    </span>
+    <PayoutDecisionActions
+      detail={detail}
+      onCommand={(nextCommand) => { setCommandError(null); setCommandIdempotencyKey(newIdempotencyKey(nextCommand, detail.id)); setCommand(nextCommand); }}
+      onReconcile={() => { void reconcilePayout(); }}
+      reconcilePending={reconcilePending}
+      showReconcileAction={dataSource === "api"}
+    />
+    {reconcileError ? <p className="payout-drawer-action-feedback field-error" role="alert">{reconcileError}</p> : null}
+    {reconcileNotice ? <output className="payout-drawer-action-feedback">{reconcileNotice}</output> : null}
+  </> : undefined;
 
   if (presentation === "drawer") {
     return (
@@ -443,22 +561,36 @@ export function AdminPayoutDetailPage({
           outsideClassName="payout-command-layer"
           escapeDisabled={command !== null}
           onClose={closeDrawer}
+          actions={drawerDecisionActions}
         >
           {content}
         </AdminDrawer>
-        {command ? <PayoutCommandDialog command={command} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandPending} /> : null}
+        {command ? <PayoutCommandDialog detail={detail} command={command} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandPending} /> : null}
       </>
     );
   }
 
   return (
     <main className="admin-route-page payout-detail-page" tabIndex={-1}>
-      <div className="page-head">
-        <div><p className="admin-route-kicker">Payout</p><h1>{detail.id}</h1><p>Full Payout record for {detail.student.name}.</p></div>
-        <Link className="btn" href={payoutRoutes.list()}>Back to Payouts</Link>
+      <div className="record-breadcrumb"><Link href={payoutRoutes.list()}>Payouts</Link><span aria-hidden="true">›</span><span>{detail.id}</span></div>
+      <div className="full-record-head">
+        <div>
+          <div className="record-id">{detail.id}</div>
+          <h1>{detail.id}</h1>
+          <p>Payout for {detail.student.name} · created {formatPayoutDate(detail.createdAt)}</p>
+        </div>
+        <div className="full-record-actions"><Link className="btn" href={payoutRoutes.list()}>Back to Payouts</Link></div>
+      </div>
+      <PayoutStatusAlert detail={detail} />
+      <div className="record-status-bar payout-record-status-bar">
+        <div><span>Status</span><strong><Badge status={detail.status} /></strong></div>
+        <div><span>Student</span><strong>{detail.student.name}</strong></div>
+        <div><span>Principal</span><strong>{formatPayoutMoney(detail.amounts.principalSatang)}</strong></div>
+        <div><span>Created</span><strong>{formatPayoutDate(detail.createdAt)}</strong></div>
+        <div><span>Destination type</span><strong>{readableValue(detail.destination.type)}</strong></div>
       </div>
       <div className="payout-detail-grid">{content}</div>
-      {command ? <PayoutCommandDialog command={command} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandPending} /> : null}
+      {command ? <PayoutCommandDialog detail={detail} command={command} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandPending} /> : null}
     </main>
   );
 }
@@ -481,11 +613,15 @@ function SortableHeader({
 
 export function AdminPayoutPage({
   initialData,
+  dataSource = "mock",
 }: {
   initialData: PayoutBoardPageData;
+  dataSource?: PayoutDataSource;
 }) {
   const router = useRouter();
-  const [rows, setRows] = useState<PayoutBoardRow[]>(initialData.rows);
+  const mockAllRows = initialData.allRows;
+  const initialRows = mockAllRows ?? initialData.rows;
+  const [rows, setRows] = useState<PayoutBoardRow[]>(initialRows);
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<PayoutBoardTab>("PENDING_ADMIN_APPROVAL");
   const [pageSize, setPageSize] = useState<PayoutBoardPageSize>(10);
@@ -493,7 +629,30 @@ export function AdminPayoutPage({
   const [sortKey, setSortKey] = useState<PayoutSortKey>("createdAt");
   const [sortDirection, setSortDirection] = useState<PayoutSortDirection>("descending");
 
-  useEffect(() => { setRows(initialData.rows); }, [initialData]);
+  useEffect(() => {
+    const nextRows = initialData.allRows ?? initialData.rows;
+    if (dataSource !== "mock" || typeof window === "undefined") {
+      setRows(nextRows);
+      return;
+    }
+    const overrides = readMockPayoutOverrides(window.localStorage);
+    setRows(nextRows.map((row) => applyMockPayoutOverrideToRow(row, overrides[row.id] ?? null)));
+  }, [dataSource, initialData]);
+
+  useEffect(() => {
+    if (dataSource !== "mock") return;
+    const updateRow = (event: Event) => {
+      const nextDetail = (event as CustomEvent<PayoutDetailView>).detail;
+      if (!nextDetail?.id) return;
+      setRows((current) => current.map((row) => (
+        row.id === nextDetail.id
+          ? applyMockPayoutOverrideToRow(row, payoutMockOverrideFromDetail(nextDetail))
+          : row
+      )));
+    };
+    window.addEventListener(PAYOUT_MOCK_UPDATED_EVENT, updateRow);
+    return () => window.removeEventListener(PAYOUT_MOCK_UPDATED_EVENT, updateRow);
+  }, [dataSource]);
 
   const filteredRows = searchPayoutRows(rows, query).filter((row) => payoutMatchesTab(row, tab));
   const sortedRows = sortPayoutRows(filteredRows, sortKey, sortDirection);
@@ -503,7 +662,10 @@ export function AdminPayoutPage({
   const pageStart = visibleRows.length ? (pageSize === "all" ? 1 : (currentPage - 1) * pageSize + 1) : 0;
   const pageEnd = visibleRows.length ? pageStart + visibleRows.length - 1 : 0;
 
-  function chooseTab(nextTab: PayoutBoardTab) { setTab(nextTab); setPage(1); }
+  function chooseTab(nextTab: PayoutBoardTab) {
+    setTab(nextTab);
+    setPage(1);
+  }
   function choosePageSize(nextSize: PayoutBoardPageSize) { setPageSize(nextSize); setPage(1); }
   function sortBy(nextKey: PayoutSortKey) {
     setPage(1);

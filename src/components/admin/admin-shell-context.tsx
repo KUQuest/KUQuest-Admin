@@ -7,11 +7,13 @@ import type { AdminLanguage } from "../../features/admin/language/admin-language
 type AdminShellContextValue = {
   language: AdminLanguage;
   translateText: (value: string) => string;
+  openGlobalSearch: () => void;
 };
 
 const defaultAdminShellContext: AdminShellContextValue = {
   language: "en",
   translateText: (value) => value,
+  openGlobalSearch: () => undefined,
 };
 
 const AdminShellContext = createContext<AdminShellContextValue>(defaultAdminShellContext);
@@ -19,9 +21,10 @@ const AdminShellContext = createContext<AdminShellContextValue>(defaultAdminShel
 export function AdminShellProvider({
   language,
   translateText,
+  openGlobalSearch,
   children,
 }: AdminShellContextValue & { children: ReactNode }) {
-  const value = useMemo(() => ({ language, translateText }), [language, translateText]);
+  const value = useMemo(() => ({ language, translateText, openGlobalSearch }), [language, openGlobalSearch, translateText]);
   return (
     <AdminShellContext.Provider value={value}>
       {children}

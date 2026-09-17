@@ -1,4 +1,8 @@
-import { memberRoutes } from "../admin-routes";
+import { memberRoutes, questRoutes } from "../admin-routes";
+import {
+  moderationHistoryFromRecord,
+  type ModerationHistorySummary,
+} from "../moderation-case/moderation-case-context";
 import {
   isConductReportStatus,
   isReportCaseStatus,
@@ -58,6 +62,10 @@ export type ReportCaseModel = {
   reporterId: string | null;
   reporterName: string;
   reporterHref: string | null;
+  relatedQuestId: string | null;
+  relatedQuestTitle: string | null;
+  relatedQuestHref: string | null;
+  moderationHistory: ModerationHistorySummary;
   detail: string;
   submittedAt: string;
   evidence: ReportCaseEvidence[];
@@ -194,6 +202,9 @@ export function reportCaseModelFromRecord(value: unknown): ReportCaseModel | nul
     personName(record.reporter),
     reporterId ? `Member ${reporterId}` : "Reporter not provided",
   ) as string;
+  const quest = asRecord(record.quest);
+  const relatedQuestId = firstText(record.questId, record.relatedQuestId, quest?.id);
+  const relatedQuestTitle = firstText(record.questTitle, record.relatedQuestTitle, quest?.title);
   const evidenceRefs = stringList(record.evidenceRefs);
   const evidenceLabel = text(record.evidence);
   const evidence = evidenceRefs.length
@@ -228,6 +239,10 @@ export function reportCaseModelFromRecord(value: unknown): ReportCaseModel | nul
     reporterId,
     reporterName,
     reporterHref: reporterId ? memberRoutes.detail(reporterId) : null,
+    relatedQuestId,
+    relatedQuestTitle,
+    relatedQuestHref: relatedQuestId ? questRoutes.detail(relatedQuestId) : null,
+    moderationHistory: moderationHistoryFromRecord(record),
     detail: firstText(record.details, record.description) ?? "No report detail was provided by the Admin API.",
     submittedAt: firstText(record.reportedAt, record.submittedAt, record.createdAt) ?? "Time not provided",
     evidence,

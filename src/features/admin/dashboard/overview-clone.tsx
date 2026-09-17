@@ -303,7 +303,6 @@ export function OverviewClone() {
               </li>
             ))}
           </ul>
-          <div className="overview-command-center-status-fact"><span>Payouts in flight</span><strong>{model.inFlightPayouts === null ? "—" : countLabel(model.inFlightPayouts)}</strong></div>
           {model.walletStatusSource === "Local fallback" ? <p className="overview-command-center-note">Wallet status counts use local fallback data because the Admin API does not provide them.</p> : null}
         </section>
       </div>

@@ -17,7 +17,7 @@ import {
   mockDisputeIdForQuest,
   mockQuestDetailForId,
   mockQuestFinance,
-  mockQuests,
+  mockAllQuests,
 } from "./quest-mock-data";
 
 export type QuestDataSource = "api" | "mock";
@@ -41,7 +41,7 @@ export async function loadQuestBoardPageData(
   cookieHeader: string,
   dataSource: QuestDataSource = "api",
 ): Promise<QuestBoardPageData> {
-  if (dataSource === "mock") return { rows: questRowsFromApi(mockQuests) };
+  if (dataSource === "mock") return { rows: questRowsFromApi(mockAllQuests) };
 
   const options = apiRequestOptions(cookieHeader);
   const quests: AdminQuest[] = [];

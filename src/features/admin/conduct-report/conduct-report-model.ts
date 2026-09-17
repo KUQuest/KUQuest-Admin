@@ -1,4 +1,8 @@
-import { memberRoutes } from "../admin-routes";
+import { memberRoutes, questRoutes } from "../admin-routes";
+import {
+  moderationHistoryFromRecord,
+  type ModerationHistorySummary,
+} from "../moderation-case/moderation-case-context";
 import {
   isConductReportStatus,
   isReportCaseStatus,
@@ -42,6 +46,7 @@ export type ConductReportModel = {
   reasonCode: string | null;
   questId: string | null;
   questTitle: string;
+  questHref: string | null;
   questRecord: string | null;
   reportedMemberId: string;
   reportedMemberName: string;
@@ -49,6 +54,7 @@ export type ConductReportModel = {
   reporterId: string | null;
   reporterName: string;
   reporterHref: string | null;
+  moderationHistory: ModerationHistorySummary;
   detail: string;
   submittedAt: string;
   decisionLabel: string | null;
@@ -230,6 +236,7 @@ export function conductReportModelFromRecord(value: unknown): ConductReportModel
     reasonCode: firstText(record.reasonCode, record.conductReportReason),
     questId,
     questTitle,
+    questHref: questId ? questRoutes.detail(questId) : null,
     questRecord: firstText(record.questRecord, record.questRecordSummary, record.questEvidence),
     reportedMemberId,
     reportedMemberName,
@@ -237,6 +244,7 @@ export function conductReportModelFromRecord(value: unknown): ConductReportModel
     reporterId,
     reporterName,
     reporterHref: reporterId ? memberRoutes.detail(reporterId) : null,
+    moderationHistory: moderationHistoryFromRecord(record),
     detail: firstText(record.details, record.description)
       ?? "No Conduct Report detail was provided by the Admin API.",
     submittedAt: firstText(record.reportedAt, record.submittedAt, record.createdAt)

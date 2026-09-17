@@ -1,6 +1,12 @@
 import type { PersistedAdminData } from "../data/admin-records";
 import type { AdminActivityLog, AdminOverview } from "../api/admin-api";
 import {
+  activityLogActionLabel,
+  activityLogReasonLabel,
+  activityLogTargetLabel,
+  type ActivityLogEntry,
+} from "../activity-log/activity-log-model";
+import {
   QUEST_STATES,
   disputeCaseStatusFor,
   payoutStatusFor,
@@ -121,11 +127,18 @@ function activityInitials(entry: AdminActivityLog): string {
 }
 
 export function dashboardActivityFromApi(entry: AdminActivityLog): DashboardActivity {
+  const activityEntry: ActivityLogEntry = {
+    ...entry,
+    adminId: entry.admin.id,
+    adminName: `${entry.admin.firstName.trim()} ${entry.admin.lastName.trim()}`.trim(),
+    adminInitials: activityInitials(entry),
+    createdAtTimestamp: Date.parse(entry.createdAt) || null,
+  };
   return {
     id: entry.id,
     actor: activityInitials(entry),
-    title: entry.action,
-    detail: `${entry.resourceType} · ${entry.resourceId}${entry.reasonCode ? ` · ${entry.reasonCode}` : ""}`,
+    title: activityLogActionLabel(entry.action),
+    detail: `${activityLogTargetLabel(activityEntry)}${entry.reasonCode ? ` · ${activityLogReasonLabel(entry.reasonCode)}` : ""}`,
     timestamp: Date.parse(entry.createdAt) || 0,
   };
 }

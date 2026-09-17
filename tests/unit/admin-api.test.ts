@@ -422,6 +422,24 @@ describe("Admin API boundary", () => {
     expect(await request?.json()).toEqual({ reasonCode: "PAYOUT_RISK_REVIEW" });
   });
 
+  it("sends an empty body when approving without a reason code", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    let request: Request | undefined;
+
+    mockFetch(async (input, init) => {
+      request = new Request(input, init);
+      return jsonResponse({ success: true, data: { id: "payout-1" } });
+    });
+
+    await adminApi.approvePayout("payout-1", {
+      idempotencyKey: "approve-payout-1",
+      expectedVersion: 4,
+    });
+
+    expect(request?.url).toBe("https://api.example.test/api/v1/admin/payouts/payout-1/approve");
+    expect(await request?.json()).toEqual({});
+  });
+
   it("sends the Payout reconciliation command", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     let request: Request | undefined;

@@ -51,12 +51,12 @@ test.describe("Admin canonical click flows", () => {
     await search.fill("QST-12001");
     await expect(searchDialog.getByRole("link", { name: /QST-12001/ })).toHaveAttribute("href", "/quest/QST-12001");
     await search.fill("68000000");
-    await expect(searchDialog.getByRole("link", { name: /68000000/ })).toHaveAttribute("href", "/member/68000000");
+    await expect(searchDialog.locator('a[href="/member/68000000"]')).toHaveCount(1);
     await search.fill("PAY-9637");
     await expect(searchDialog.getByRole("link", { name: /PAY-9637/ })).toHaveAttribute("href", "/payout/PAY-9637");
   });
 
-  test("admin can filter and update Member reviews", async ({ page }) => {
+  test("admin can filter Member reviews without unsupported moderation commands", async ({ page }) => {
     await signIn(page, { expectEmailFocused: true });
     await page.goto("/member/68000000?tab=reviews");
 
@@ -71,12 +71,10 @@ test.describe("Admin canonical click flows", () => {
     await reviewFilters.getByRole("button", { name: "Reported", exact: true }).click();
     await expect(reviews.locator("tbody tr")).not.toHaveCount(0);
 
-    await reviews.locator("tbody tr").first().getByRole("button", { name: "Hide", exact: true }).click();
-    await reviewFilters.getByRole("button", { name: "Hidden", exact: true }).click();
-    await expect(reviews.locator("tbody tr")).not.toHaveCount(0);
-    await reviews.locator("tbody tr").first().getByRole("button", { name: "Unhide", exact: true }).click();
-    await reviewFilters.getByRole("button", { name: "Reported", exact: true }).click();
-    await expect(reviews.locator("tbody tr")).not.toHaveCount(0);
+    await expect(reviews.getByRole("columnheader", { name: "Action", exact: true })).toHaveCount(0);
+    await expect(page.getByText("Review records are read-only.", { exact: false })).toBeVisible();
+    await expect(reviews.getByRole("button", { name: "Hide", exact: true })).toHaveCount(0);
+    await expect(reviews.getByRole("button", { name: "Unhide", exact: true })).toHaveCount(0);
   });
 
   test("invalid Admin sign-in shows accessible validation", async ({ page }) => {
@@ -129,7 +127,8 @@ test.describe("Admin canonical click flows", () => {
     await opener.click();
     const drawer = page.locator("dialog.wallet-drawer");
     await expect(drawer).toBeVisible();
-    await expect(drawer.getByRole("heading", { name: "No Ledger Transactions" })).toBeVisible();
+    await expect(drawer.getByRole("heading", { name: "Wallet Statement" })).toBeVisible();
+    await expect(drawer.locator(".wallet-statement-table tbody tr")).toHaveCount(5);
     await drawer.getByRole("link", { name: "See Wallet Statement" }).click();
 
     await expect(page).toHaveURL("/member/68000000?tab=wallet-statement");

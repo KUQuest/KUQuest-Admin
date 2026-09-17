@@ -1,5 +1,9 @@
 import { memberRoutes, questRoutes } from "../admin-routes";
 import {
+  moderationHistoryFromRecord,
+  type ModerationHistorySummary,
+} from "../moderation-case/moderation-case-context";
+import {
   isConductReportStatus,
   isDisputeCaseStatus,
   isReportCaseStatus,
@@ -51,6 +55,7 @@ export type DisputeCaseModel = {
   questHref: string | null;
   questState: QuestState;
   questFailedAt: string | null;
+  moneyHoldDeadline: string | null;
   category: string;
   detail: string;
   filerId: string | null;
@@ -65,11 +70,14 @@ export type DisputeCaseModel = {
   respondentStatement: string;
   amountAtRiskSatang: number | null;
   amountAtRiskLabel: string;
+  sharedCapSatang: number | null;
+  sharedCapLabel: string;
   resolvedAmountSatang: number | null;
   resolvedAmountLabel: string | null;
   workerId: string | null;
   workerName: string;
   workerHref: string | null;
+  moderationHistory: ModerationHistorySummary;
   evidence: DisputeCaseEvidence[];
   submittedAt: string;
   updatedAt: string | null;
@@ -167,6 +175,14 @@ function formatDate(value: unknown, fallback: string): string {
   }).format(new Date(timestamp)).replace(",", " ·");
 }
 
+function sevenDayHoldDeadline(value: unknown): string | null {
+  const raw = text(value);
+  if (!raw) return null;
+  const timestamp = Date.parse(raw);
+  if (Number.isNaN(timestamp)) return null;
+  return formatDate(new Date(timestamp + 7 * 24 * 60 * 60 * 1000).toISOString(), missingApiValue);
+}
+
 export function disputeCaseStatusFromRecord(value: unknown): DisputeCaseStatus | null {
   const record = asRecord(value);
   if (!record) return null;
@@ -258,6 +274,9 @@ export function disputeCaseModelFromRecord(
   const amountAtRiskSatang = positiveInteger(record.amountAtRiskSatang)
     ?? (source === "mock" ? positiveInteger(record.amountSatang) : null)
     ?? (source === "mock" && typeof record.amount === "number" ? Math.round(record.amount * 100) : null);
+  const sharedCapSatang = positiveInteger(record.remainingDisputeCapSatang)
+    ?? positiveInteger(record.remainingFundingReservationSatang)
+    ?? (source === "mock" ? amountAtRiskSatang : null);
   const resolvedAmountSatang = positiveInteger(record.resolvedAmountSatang);
   const evidenceRefs = stringList(record.evidenceRefs);
   const evidenceLabel = firstText(record.evidence);
@@ -280,6 +299,7 @@ export function disputeCaseModelFromRecord(
     record.createdAt ?? record.disputeDate,
     source === "mock" ? firstText(record.disputeDate) ?? "Time not provided" : missingApiValue,
   );
+  const questFailedAt = firstText(record.failedAt, quest?.failedAt);
 
   return {
     id,
@@ -293,7 +313,8 @@ export function disputeCaseModelFromRecord(
     questTitle,
     questHref: questId ? questRoutes.detail(questId) : null,
     questState,
-    questFailedAt: firstText(record.failedAt, quest?.failedAt),
+    questFailedAt,
+    moneyHoldDeadline: sevenDayHoldDeadline(questFailedAt),
     category: firstText(record.category, record.disputeType) ?? (source === "mock" ? "Dispute Case" : missingApiValue),
     detail: firstText(record.detail, record.details, record.description)
       ?? (source === "mock" ? "Review the Quest record and the submitted statements." : missingApiValue),
@@ -311,11 +332,14 @@ export function disputeCaseModelFromRecord(
       ?? (source === "mock" ? "The Respondent statement was not provided in the demo record." : missingApiValue),
     amountAtRiskSatang,
     amountAtRiskLabel: formatSatang(amountAtRiskSatang),
+    sharedCapSatang,
+    sharedCapLabel: formatSatang(sharedCapSatang),
     resolvedAmountSatang,
     resolvedAmountLabel: resolvedAmountSatang === null ? null : formatSatang(resolvedAmountSatang),
     workerId,
     workerName,
     workerHref: workerId ? memberRoutes.detail(workerId) : null,
+    moderationHistory: moderationHistoryFromRecord(record),
     evidence,
     submittedAt,
     updatedAt: firstText(record.updatedAt) ? formatDate(record.updatedAt, missingApiValue) : null,

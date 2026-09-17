@@ -38,6 +38,8 @@ describe("Dispute Case model", () => {
       respondentRole: "Worker",
       respondentName: "Worker One",
       amountAtRiskSatang: 12501,
+      failedAt: "2026-09-12T12:00:00.000Z",
+      reportedMemberStatus: "ACTIVE",
       createdAt: "2026-09-12T12:00:00.000Z",
       version: 3,
     }, "api");
@@ -57,6 +59,8 @@ describe("Dispute Case model", () => {
     expect(model?.workerHref).toBe("/member/member-worker");
     expect(model?.submittedAt).not.toContain("Invalid Date");
     expect(model?.displayId).toBe("DSP-42");
+    expect(model?.moneyHoldDeadline).toBe("19 Sept 2026 · 19:00");
+    expect(model?.moderationHistory.currentMemberStatus).toBe("ACTIVE");
   });
 
   it("uses canonical status values and only pending failed Quests are actionable", () => {

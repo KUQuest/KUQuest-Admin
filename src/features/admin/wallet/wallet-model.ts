@@ -66,6 +66,7 @@ export type WalletHistoryView = {
   fromStatus: WalletStatus | null;
   toStatus: WalletStatus;
   reason: string;
+  actorAdminId: string | null;
   createdAt: string;
 };
 
@@ -147,6 +148,7 @@ export function walletHistoryFromApi(
     fromStatus: entry.fromStatus,
     toStatus: entry.toStatus,
     reason: entry.reason,
+    actorAdminId: entry.actorAdminId,
     createdAt: entry.createdAt,
   }));
 }

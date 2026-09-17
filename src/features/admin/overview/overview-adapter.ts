@@ -1,5 +1,11 @@
 import type { BrowserStorage } from "../data/legacy-admin-data-adapter";
 import type { PersistedAdminData } from "../data/admin-records";
+import {
+  activityLogActionLabel,
+  activityLogFixtures,
+  activityLogReasonLabel,
+  activityLogTargetLabel,
+} from "../activity-log/activity-log-model";
 import type { DashboardActivity } from "../dashboard/dashboard-model";
 import { loadDashboardData } from "../dashboard/dashboard-bootstrap";
 import { overviewModelFromMockData, type OverviewModel } from "./overview-model";
@@ -28,10 +34,25 @@ function localActivityEvents(storage: BrowserStorage): DashboardActivity[] {
   }
 }
 
+function mockActivityEvents(): DashboardActivity[] {
+  return activityLogFixtures().map((entry) => ({
+    id: entry.id,
+    actor: entry.adminInitials,
+    title: activityLogActionLabel(entry.action),
+    detail: `${activityLogTargetLabel(entry)}${entry.reasonCode ? ` · ${activityLogReasonLabel(entry.reasonCode)}` : ""}`,
+    timestamp: entry.createdAtTimestamp ?? 0,
+  }));
+}
+
+function activityEvents(storage: BrowserStorage): DashboardActivity[] {
+  return [...localActivityEvents(storage), ...mockActivityEvents()]
+    .toSorted((left, right) => right.timestamp - left.timestamp);
+}
+
 export function loadOverviewMockData(storage: BrowserStorage): PersistedAdminData {
   return loadDashboardData(storage);
 }
 
 export function loadOverviewModelFromMock(storage: BrowserStorage): OverviewModel {
-  return overviewModelFromMockData(loadOverviewMockData(storage), localActivityEvents(storage));
+  return overviewModelFromMockData(loadOverviewMockData(storage), activityEvents(storage));
 }

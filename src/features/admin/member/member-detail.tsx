@@ -16,7 +16,6 @@ import {
   recordMemberViolation,
   saveMemberNote,
   submitMemberReport,
-  toggleMemberReview,
 } from "./member-adapter";
 import { MEMBER_UPDATED_EVENT } from "./member-board";
 import {
@@ -85,6 +84,15 @@ function walletBadge(model: MemberModel, translateText: (value: string) => strin
     : <span className="audit-note">{translateText(walletStatusText(model))}</span>;
 }
 
+function latestWalletTransactionAt(model: MemberModel): string | null {
+  return model.walletStatement
+    .filter((transaction) => transaction.sealedAt)
+    .reduce<string | null>((latest, transaction) => {
+      if (!latest || Date.parse(transaction.createdAt) > Date.parse(latest)) return transaction.createdAt;
+      return latest;
+    }, null);
+}
+
 function MemberSummary({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
   return (
     <section className="user-summary-panel">
@@ -110,9 +118,12 @@ function MemberSummary({ model, translateText }: { model: MemberModel; translate
 }
 
 function MemberAccountInfo({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
+  const latestTransactionAt = latestWalletTransactionAt(model);
   const facts: Array<[string, React.ReactNode]> = [
     ["Member status", statusBadge(model, translateText)],
     ["Wallet status", walletBadge(model, translateText)],
+    ["Current Wallet Balance", model.walletBalances ? formatMoneySatang(currentWalletBalance(model.walletBalances)) : "—"],
+    ["Latest Wallet Transaction Date", latestTransactionAt ? formatWalletDate(latestTransactionAt) : "—"],
     ["Email verified", model.source === "api" ? translateText("Not provided by the Admin API") : translateText("Yes")],
     ["Created", model.createdAt],
     ["Last active", model.lastActiveAt],
@@ -146,9 +157,10 @@ function MemberRecentReports({ model, translateText }: { model: MemberModel; tra
   return <section className="user-detail-panel"><div className="user-panel-heading"><h2>{translateText("Recent Reports")}</h2><span className="section-count">{model.reports.length}</span></div>{model.reportsError ? <p className="audit-note">{translateText(model.reportsError)}</p> : model.reports.length ? <div className="user-recent-reports">{model.reports.slice(0, 3).map((report) => <Link key={report.id} href={report.href}><span><strong>{report.id}</strong><small>{report.category}</small></span><span className="badge">{translateText(report.status)}</span></Link>)}</div> : <p className="audit-note">{translateText("No reports have been filed against this account.")}</p>}</section>;
 }
 
-function AdminNotes({ model, translateText, onAddNote }: { model: MemberModel; translateText: (value: string) => string; onAddNote: () => void }) {
+function AdminNotes({ model, translateText, onAddNote, limit }: { model: MemberModel; translateText: (value: string) => string; onAddNote: () => void; limit?: number }) {
   const unavailable = model.source === "api";
-  return <section className="user-detail-panel"><div className="user-panel-heading"><div><h2>{translateText("Admin Notes")}</h2><span className="admin-only-label">{translateText("Admin only")}</span></div>{!unavailable && <button className="link" type="button" onClick={onAddNote}>{translateText("Add note")}</button>}</div>{unavailable ? <p className="audit-note">{translateText("Admin notes are not provided by the Admin API.")}</p> : model.adminNotes.length ? <div className="user-admin-notes">{model.adminNotes.slice(0, 2).map((note) => <article key={`${note.at}-${note.note}`}><strong>{note.at}</strong><small>{note.by}</small><p>{note.note}</p></article>)}</div> : <p className="audit-note">{translateText("No internal notes recorded.")}</p>}</section>;
+  const visibleNotes = typeof limit === "number" ? model.adminNotes.slice(0, limit) : model.adminNotes;
+  return <section className="user-detail-panel"><div className="user-panel-heading"><div><h2>{translateText("Admin Notes")}</h2><span className="admin-only-label">{unavailable ? translateText("Admin only") : translateText("Fixture data · Admin only")}</span></div>{!unavailable && <button className="link" type="button" onClick={onAddNote}>{translateText("Add note")}</button>}</div>{unavailable ? <p className="audit-note">{translateText("Admin notes are not provided by the Admin API.")} {translateText("The API integration is not available in this build.")}</p> : visibleNotes.length ? <div className="user-admin-notes">{visibleNotes.map((note) => <article key={`${note.at}-${note.note}`}><strong>{note.at}</strong><small>{note.by}</small><p>{note.note}</p></article>)}</div> : <p className="audit-note">{translateText("No internal notes recorded.")}</p>}</section>;
 }
 
 function MemberAbout({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
@@ -220,17 +232,15 @@ function WalletStatementTab({ model, translateText }: { model: MemberModel; tran
   if (model.walletStatementError) {
     return <section className="user-detail-panel user-tab-panel" data-user-wallet-statement><h2>{translateText("Wallet Statement")}</h2><p className="audit-note">{translateText(model.walletStatementError)}</p></section>;
   }
-  return <section className="user-detail-panel user-tab-panel" data-user-wallet-statement><div className="user-panel-heading"><div><h2>{translateText("Wallet Statement")}</h2><p>{translateText("Committed and sealed Ledger Transactions affecting this Wallet.")}</p></div></div>{model.walletBalances ? <div className="wallet-statement-balance-grid"><div className="wallet-statement-balance"><span>{translateText("Spending Balance")}</span><strong>{formatMoneySatang(model.walletBalances.spendingBalanceSatang)}</strong></div><div className="wallet-statement-balance"><span>{translateText("Earnings Balance")}</span><strong>{formatMoneySatang(model.walletBalances.earningsBalanceSatang)}</strong></div><div className="wallet-statement-balance"><span>{translateText("Funding Reserved")}</span><strong>{formatMoneySatang(model.walletBalances.fundingReservedSatang)}</strong></div><div className="wallet-statement-balance"><span>{translateText("Reserved For Payouts")}</span><strong>{formatMoneySatang(model.walletBalances.reservedForPayoutsSatang)}</strong></div></div> : <p className="audit-note">{translateText("No Wallet is linked to this Member.")}</p>}<form className="wallet-statement-filters" onSubmit={submit}><label>{translateText("Event type")}<select name="eventType" aria-label={translateText("Event type")} defaultValue=""><option value="">{translateText("All event types")}</option>{ADMIN_LEDGER_EVENT_TYPES.map((eventType) => <option key={eventType} value={eventType}>{eventType}</option>)}</select></label><label>{translateText("From ICT date")}<input name="from" type="date" aria-label={translateText("From ICT date")} /></label><label>{translateText("To ICT date")}<input name="to" type="date" aria-label={translateText("To ICT date")} /></label><button className="btn primary" type="submit">{translateText("Apply filters")}</button><button className="btn" type="button" onClick={() => { setFilters({ eventType: "", from: "", to: "" }); setVisibleCount(25); }}>{translateText("Clear")}</button></form>{rows.length ? <div className="table-wrap" role="region" aria-label={translateText("Wallet Statement table")}><table className="data wallet-statement-table"><caption>{translateText("Wallet Statement")}</caption><thead><tr><th>{translateText("Date")}</th><th>{translateText("Event type")}</th><th>{translateText("Signed amount")}</th><th>{translateText("Compartment movement")}</th><th>{translateText("Resulting Wallet balance")}</th></tr></thead><tbody>{rows.map((row) => <tr key={row.transaction.id}><td><time dateTime={row.transaction.createdAt}>{formatWalletDate(row.transaction.createdAt)}</time><small>{row.transaction.description}</small></td><td><strong>{row.transaction.eventType}</strong><small>{row.transaction.businessReference}</small></td><td className="money">{formatMoneySatang(row.signedAmountSatang, true)}</td><td className="wallet-statement-movement">{row.movement.map((movement) => <span key={movement.accountType}>{movement.accountType}: {formatMoneySatang(movement.amountSatang, true)}</span>)}</td><td className="money">{formatMoneySatang(row.resultingWalletBalanceSatang)}</td></tr>)}</tbody></table></div> : <p className="audit-note">{translateText("No sealed Ledger Transactions match these filters.")}</p>}{model.source === "api" && model.apiError && <p className="audit-note">{translateText(model.apiError)}</p>}{filteredRows.length > rows.length && <button className="btn" type="button" onClick={() => setVisibleCount((count) => count + 25)}>{translateText("Load more")}</button>}</section>;
+  return <section className="user-detail-panel user-tab-panel" data-user-wallet-statement><div className="user-panel-heading"><div><h2>{translateText("Wallet Statement")}</h2><p>{translateText("Committed and sealed Ledger Transactions affecting this Wallet.")}</p></div></div>{model.walletBalances ? <div className="wallet-statement-balance-grid"><div className="wallet-statement-balance"><span>{translateText("Spending Balance")}</span><strong>{formatMoneySatang(model.walletBalances.spendingBalanceSatang)}</strong></div><div className="wallet-statement-balance"><span>{translateText("Earnings Balance")}</span><strong>{formatMoneySatang(model.walletBalances.earningsBalanceSatang)}</strong></div><div className="wallet-statement-balance"><span>{translateText("Funding Reserved")}</span><strong>{formatMoneySatang(model.walletBalances.fundingReservedSatang)}</strong></div><div className="wallet-statement-balance"><span>{translateText("Reserved For Payouts")}</span><strong>{formatMoneySatang(model.walletBalances.reservedForPayoutsSatang)}</strong></div></div> : <p className="audit-note">{translateText("No Wallet is linked to this Member.")}</p>}<form className="wallet-statement-filters" onSubmit={submit}><label>{translateText("Event type")}<select name="eventType" aria-label={translateText("Event type")} defaultValue=""><option value="">{translateText("All event types")}</option>{ADMIN_LEDGER_EVENT_TYPES.map((eventType) => <option key={eventType} value={eventType}>{eventType}</option>)}</select></label><label>{translateText("From ICT date")}<input name="from" type="date" aria-label={translateText("From ICT date")} /></label><label>{translateText("To ICT date")}<input name="to" type="date" aria-label={translateText("To ICT date")} /></label><button className="btn primary" type="submit">{translateText("Apply filters")}</button><button className="btn" type="button" onClick={() => { setFilters({ eventType: "", from: "", to: "" }); setVisibleCount(25); }}>{translateText("Clear")}</button></form>{rows.length ? <div className="wallet-statement-table-block"><p className="wallet-statement-scroll-hint">{translateText("On narrow screens, scroll horizontally to view all Wallet Statement columns.")}</p><div className="table-wrap wallet-statement-table-wrap" role="region" aria-label={translateText("Wallet Statement table")}><table className="data wallet-statement-table"><caption>{translateText("Wallet Statement")}</caption><thead><tr><th>{translateText("Date")}</th><th>{translateText("Event type")}</th><th>{translateText("Signed amount")}</th><th>{translateText("Compartment movement")}</th><th>{translateText("Resulting Wallet balance")}</th></tr></thead><tbody>{rows.map((row) => <tr key={row.transaction.id}><td><time dateTime={row.transaction.createdAt}>{formatWalletDate(row.transaction.createdAt)}</time><small>{row.transaction.description}</small></td><td><strong>{row.transaction.eventType}</strong><small>{row.transaction.businessReference}</small></td><td className="money">{formatMoneySatang(row.signedAmountSatang, true)}</td><td className="wallet-statement-movement">{row.movement.map((movement) => <span key={movement.accountType}>{movement.accountType}: {formatMoneySatang(movement.amountSatang, true)}</span>)}</td><td className="money">{formatMoneySatang(row.resultingWalletBalanceSatang)}</td></tr>)}</tbody></table></div></div> : <p className="audit-note">{translateText("No sealed Ledger Transactions match these filters.")}</p>}{model.source === "api" && model.apiError && <p className="audit-note">{translateText(model.apiError)}</p>}{filteredRows.length > rows.length && <button className="btn" type="button" onClick={() => setVisibleCount((count) => count + 25)}>{translateText("Load more")}</button>}</section>;
 }
 
 function ReviewsTab({
   model,
   translateText,
-  onToggleReview,
 }: {
   model: MemberModel;
   translateText: (value: string) => string;
-  onToggleReview: (index: number) => void;
 }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<ReviewFilter>("all");
@@ -274,13 +284,13 @@ function ReviewsTab({
           ))}
         </div>
       </div>
+      <p className="audit-note">{translateText("Review records are read-only. Review Hide or Unhide is not an accepted Admin moderation command.")}</p>
       {reviews.length ? (
         <div className="table-wrap">
           <table className="data user-detail-table">
-            <thead><tr><th>{translateText("Reviewer")}</th><th>{translateText("Rating")}</th><th>{translateText("Review")}</th><th>{translateText("Date")}</th><th>{translateText("Status")}</th><th>{translateText("Action")}</th></tr></thead>
+            <thead><tr><th>{translateText("Reviewer")}</th><th>{translateText("Rating")}</th><th>{translateText("Review")}</th><th>{translateText("Date")}</th><th>{translateText("Status")}</th></tr></thead>
             <tbody>{reviews.map((review) => {
-              const index = model.reviews.indexOf(review);
-              return <tr key={`${review.reviewer}-${review.date}`}><td>{review.reviewer}</td><td>{"★".repeat(review.rating)}</td><td>{review.review}</td><td>{review.date}</td><td>{translateText(review.status)}</td><td><button className="link" type="button" onClick={() => onToggleReview(index)}>{translateText(review.status === "Hidden" ? "Unhide" : "Hide")}</button></td></tr>;
+              return <tr key={`${review.reviewer}-${review.date}`}><td>{review.reviewer}</td><td>{"★".repeat(review.rating)}</td><td>{review.review}</td><td>{review.date}</td><td>{translateText(review.status)}</td></tr>;
             })}</tbody>
           </table>
         </div>
@@ -289,13 +299,21 @@ function ReviewsTab({
   );
 }
 
-function ReportsTab({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
-  return <section className="user-detail-panel user-tab-panel"><div className="user-panel-heading"><div><h2>{translateText("Reports")}</h2><p>{translateText("Reports filed against this account.")}</p></div><span className="section-count">{model.reports.length}</span></div>{model.reportsError ? <p className="audit-note">{translateText(model.reportsError)}</p> : model.reports.length ? <div className="table-wrap"><table className="data user-detail-table"><thead><tr><th>{translateText("Report")}</th><th>{translateText("Type")}</th><th>{translateText("Reported by")}</th><th>{translateText("Reason")}</th><th>{translateText("Status")}</th><th>{translateText("Reported")}</th></tr></thead><tbody>{model.reports.map((report) => <tr key={report.id}><td><Link href={report.href}>{report.id}</Link></td><td>{report.category}</td><td>{report.reporterName}</td><td>{report.detail}</td><td>{translateText(report.status)}</td><td>{report.reportedAt}</td></tr>)}</tbody></table></div> : <p className="audit-note">{translateText("No reports have been filed against this account.")}</p>}</section>;
+function ReportsTable({ reports, translateText }: { reports: MemberModel["reports"]; translateText: (value: string) => string }) {
+  return reports.length ? <div className="table-wrap"><table className="data user-detail-table"><thead><tr><th>{translateText("Case")}</th><th>{translateText("Type")}</th><th>{translateText("Reported by")}</th><th>{translateText("Reason")}</th><th>{translateText("Status")}</th><th>{translateText("Reported")}</th></tr></thead><tbody>{reports.map((report) => <tr key={report.id}><td><Link href={report.href}>{report.id}</Link></td><td>{translateText(report.kind)}</td><td>{report.reporterName}</td><td>{report.detail}</td><td>{translateText(report.status)}</td><td>{report.reportedAt}</td></tr>)}</tbody></table></div> : <p className="audit-note">{translateText("No related cases are available.")}</p>;
 }
 
-function PenaltyHistoryTab({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
+function ReportsTab({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
+  return <section className="user-detail-panel user-tab-panel"><div className="user-reports-tab-content"><div className="user-panel-heading"><div><h2>{translateText("Reports and Conduct Reports")}</h2><p>{translateText("Cases received against this Member and cases submitted by this Member.")}</p></div><span className="section-count">{model.reports.length + model.reportsSubmitted.length}</span></div><section className="user-detail-panel"><div className="user-panel-heading"><div><h3>{translateText("Reports received")}</h3><p>{translateText("Report Cases and Conduct Reports filed against this Member.")}</p></div><span className="section-count">{model.reports.length}</span></div>{model.reportsError ? <p className="audit-note">{translateText(model.reportsError)}</p> : <ReportsTable reports={model.reports} translateText={translateText} />}</section><section className="user-detail-panel"><div className="user-panel-heading"><div><h3>{translateText("Reports submitted")}</h3><p>{translateText("Cases submitted by this Member about another Member or Quest.")}</p></div><span className="section-count">{model.reportsSubmitted.length}</span></div>{model.reportsSubmittedError ? <p className="audit-note">{translateText(model.reportsSubmittedError)} {translateText("This data is shown only in the mock UI.")}</p> : <ReportsTable reports={model.reportsSubmitted} translateText={translateText} />}</section></div></section>;
+}
+
+function MemberModerationTimeline({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
   const unavailable = model.source === "api" && !model.penaltyHistory.length;
-  return <section className="user-detail-panel user-tab-panel"><div className="user-panel-heading"><div><h2>{translateText("Penalty History")}</h2><p>{translateText("Penalty and moderation events recorded for this account.")}</p></div></div>{unavailable ? <p className="audit-note">{translateText("Penalty history is not provided by the Admin API.")}</p> : <div className="table-wrap"><table className="data user-detail-table"><thead><tr><th>{translateText("Date")}</th><th>{translateText("Admin")}</th><th>{translateText("Action")}</th><th>{translateText("Reason")}</th></tr></thead><tbody>{model.penaltyHistory.map((entry, index) => <tr key={`${entry.at}-${entry.event}-${index}`}><td>{entry.at}</td><td>{entry.by}</td><td>{entry.event}</td><td>{entry.reason || entry.outcome || "—"}</td></tr>)}</tbody></table></div>}</section>;
+  return unavailable ? <p className="audit-note">{translateText("Penalty history is not provided by the Admin API.")} {translateText("The API integration is not available in this build.")}</p> : model.penaltyHistory.length ? <div className="user-simple-list" data-member-moderation-history><p className="audit-note">{model.source === "mock" ? translateText("Fixture data for UI review. It is not a server record.") : translateText("Moderation history provided by the Admin API.")}</p>{model.penaltyHistory.map((entry) => <article key={`${entry.at}-${entry.event}-${entry.caseId || entry.outcome || "event"}`}><strong>{entry.event}</strong><span>{entry.at} · {translateText("by")} {entry.by}</span>{entry.reason && <p>{entry.reason}</p>}{(entry.previousStatus || entry.newStatus || entry.outcome || entry.durationDays || entry.expiresAt) && <p>{entry.previousStatus && `${translateText("Previous status")}: ${entry.previousStatus}`}{entry.previousStatus && entry.newStatus ? " · " : ""}{entry.newStatus && `${translateText("New status")}: ${entry.newStatus}`}{(entry.previousStatus || entry.newStatus) && entry.outcome ? " · " : ""}{entry.outcome && `${translateText("Outcome")}: ${entry.outcome}`}{entry.durationDays ? ` · ${entry.durationDays} ${translateText("days")}` : ""}{entry.expiresAt ? ` · ${translateText("Expires")} ${entry.expiresAt}` : ""}</p>}{entry.caseId && <p><span>{translateText(entry.caseType || "Related case")}:</span> {entry.caseHref ? <Link href={entry.caseHref} aria-label={`${translateText("Open related case")} ${entry.caseId}`}>{entry.caseId}</Link> : <strong>{entry.caseId}</strong>}</p>}</article>)}</div> : <p className="audit-note">{translateText("No moderation events are recorded for this Member.")}</p>;
+}
+
+function PenaltyHistoryTab({ model, translateText, onAddNote }: { model: MemberModel; translateText: (value: string) => string; onAddNote: () => void }) {
+  return <section className="user-detail-panel user-tab-panel"><div className="user-reports-tab-content"><div className="user-panel-heading"><div><h2>{translateText("Moderation History")}</h2><p>{translateText("Factual Red Flag, Member Ban, Report Case, and Conduct Report events for this Member.")}</p></div><span className="section-count">{model.penaltyHistory.length}</span></div><MemberModerationTimeline model={model} translateText={translateText} /><AdminNotes model={model} translateText={translateText} onAddNote={onAddNote} /></div></section>;
 }
 
 function PenaltyDialog({ model, open, busy, error, translateText, onCancel, onConfirm }: MemberActionDialogProps) {
@@ -318,7 +336,7 @@ function NoteDialog({ model, open, busy, error, translateText, onCancel, onConfi
   const [note, setNote] = useState("");
   useEffect(() => { if (open) setNote(""); }, [open, model.id]);
   if (!open) return null;
-  return <dialog open className="party-chat-overlay" aria-modal="true" aria-label={translateText(`Add admin note for ${model.title}`)}><form className="party-chat-modal" onSubmit={(event) => { event.preventDefault(); if (note.trim().length < 4) return; onConfirm(note.trim()); }}><div className="chat-modal-head"><div><strong>{translateText("Add admin note")}</strong><small>{model.title} · {model.id}</small></div><button className="icon" type="button" aria-label={translateText("Close admin note form")} onClick={onCancel}><span className="close-lines" /></button></div><div className="dialog-body"><label htmlFor="member-admin-note">{translateText("Internal note")}</label><textarea id="member-admin-note" rows={4} minLength={4} maxLength={500} required value={note} onChange={(event) => setNote(event.target.value)} />{error && <p className="field-error" role="alert">{translateText(error)}</p>}</div><div className="dialog-actions"><button className="btn" type="button" onClick={onCancel} disabled={busy}>{translateText("Cancel")}</button><button className="btn primary" type="submit" disabled={busy || note.trim().length < 4}>{busy ? translateText("Saving…") : translateText("Save note")}</button></div></form></dialog>;
+  return <dialog open className="party-chat-overlay" aria-modal="true" aria-label={translateText(`Add admin note for ${model.title}`)}><form className="party-chat-modal" onSubmit={(event) => { event.preventDefault(); if (note.trim().length < 4) return; onConfirm(note.trim()); }}><div className="chat-modal-head"><div><strong>{translateText("Add admin note")}</strong><small>{model.title} · {model.id}</small></div><button className="icon" type="button" aria-label={translateText("Close admin note form")} onClick={onCancel}><span className="close-lines" /></button></div><div className="dialog-body"><label htmlFor="member-admin-note">{translateText("Internal note")}</label><textarea id="member-admin-note" name="note" rows={4} minLength={4} maxLength={500} required value={note} onChange={(event) => setNote(event.target.value)} />{error && <p className="field-error" role="alert">{translateText(error)}</p>}</div><div className="dialog-actions"><button className="btn" type="button" onClick={onCancel} disabled={busy}>{translateText("Cancel")}</button><button className="btn primary" type="submit" disabled={busy || note.trim().length < 4}>{busy ? translateText("Saving…") : translateText("Save note")}</button></div></form></dialog>;
 }
 
 function ReportMemberDialog({ model, open, busy, error, translateText, onCancel, onConfirm }: { model: MemberModel; open: boolean; busy: boolean; error: string | null; translateText: (value: string) => string; onCancel: () => void; onConfirm: (category: string, details: string) => void }) {
@@ -338,11 +356,12 @@ function DrawerContent({ model, translateText, onRecordViolation, onReport }: { 
   const canRecord = model.source === "mock"
     && model.confirmedViolationCount !== null
     && !["FROZEN", "SUSPENDED", "CLOSED"].includes(model.walletStatus || "");
+  const latestTransactionAt = latestWalletTransactionAt(model);
   return (
     <div className="drawer-body user-drawer-detail">
       <div className="drawer-title"><span className="att-icon info" aria-hidden="true">◉</span><div><h2>{model.title}</h2><p>{model.email} · {model.studentId}</p></div></div>
       <section className="section"><h3>{translateText("Account")}</h3><div className="user-context-list"><div><span>{translateText("Student ID")}</span><strong>{model.studentId}</strong></div><div><span>{translateText("Member ID")}</span><strong>{model.id}</strong></div><div><span>{translateText("Created")}</span><strong>{model.createdAt}</strong></div></div></section>
-      <section className="section"><h3>{translateText("Wallet")}</h3><div className="user-context-list"><div><span>{translateText("Wallet record")}</span><strong>{model.walletId || "—"}</strong></div><div><span>{translateText("Wallet Status")}</span><strong>{walletBadge(model, translateText)}</strong></div><div><span>{translateText("Current Wallet Balance")}</span><strong>{model.walletBalances ? formatMoneySatang(currentWalletBalance(model.walletBalances)) : "—"}</strong></div></div></section>
+      <section className="section"><h3>{translateText("Wallet")}</h3><div className="user-context-list"><div><span>{translateText("Wallet record")}</span><strong>{model.walletId || "—"}</strong></div><div><span>{translateText("Wallet Status")}</span><strong>{walletBadge(model, translateText)}</strong></div><div><span>{translateText("Current Wallet Balance")}</span><strong>{model.walletBalances ? formatMoneySatang(currentWalletBalance(model.walletBalances)) : "—"}</strong></div><div><span>{translateText("Latest Wallet Transaction Date")}</span><strong>{latestTransactionAt ? formatWalletDate(latestTransactionAt) : "—"}</strong></div></div></section>
       <section className="section"><h3>{translateText("Moderation")}</h3><div className="user-context-list"><div><span>{translateText("Member Status")}</span><strong>{statusBadge(model, translateText)}</strong></div><div><span>{translateText("Confirmed violations")}</span><strong>{model.confirmedViolationCount === null ? translateText("Not provided by the Admin API") : model.confirmedViolationCount}</strong></div><div><span>{translateText("Reason")}</span><strong>{model.statusReason || translateText("No reason recorded.")}</strong></div></div></section>
       <section className="section"><h3>{translateText("Activity summary")}</h3><div className="user-activity-list"><div><span>{translateText("Completed quests")}</span><strong>{completedQuestCount(model)}</strong></div><div><span>{translateText("Reports received")}</span><strong>{model.reports.length}</strong></div></div></section>
       <div className="drawer-actions"><button className="btn" type="button" onClick={onReport}>{translateText("Report Member")}</button>{canRecord && <button className="btn primary" type="button" onClick={onRecordViolation}>{translateText("Record violation")}</button>}<a className="btn" href={memberRoutes.detail(model.id)}>{translateText("See full Member profile")}</a></div>
@@ -446,12 +465,6 @@ export function MemberDetail({ memberId, initialModel = null, initialTab = "over
     setActionBusy(false);
   };
 
-  const toggleReview = (index: number) => {
-    if (!model || isAdminApiEnabled()) return;
-    const nextModel = toggleMemberReview(localStorage, model.id, index);
-    updateModel(nextModel);
-  };
-
   if (loading && !model) return <AdminLoading message={translateText("Loading Member…")} />;
   if (!model) {
     return <main className={drawer ? "drawer-body" : "admin-feedback"}><section className="panel"><h1>{translateText("Member not found")}</h1><p>{translateText(loadError || "No Member record matches this identifier.")}</p>{!drawer && <Link className="btn primary" href={memberRoutes.list()}>{translateText("Return to Members")}</Link>}</section></main>;
@@ -470,14 +483,14 @@ export function MemberDetail({ memberId, initialModel = null, initialTab = "over
       : activeTab === "wallet-statement"
         ? <WalletStatementTab model={model} translateText={translateText} />
         : activeTab === "reviews"
-          ? <ReviewsTab model={model} translateText={translateText} onToggleReview={toggleReview} />
+          ? <ReviewsTab model={model} translateText={translateText} />
           : activeTab === "reports"
             ? <ReportsTab model={model} translateText={translateText} />
             : activeTab === "penalty-history"
-              ? <PenaltyHistoryTab model={model} translateText={translateText} />
+              ? <PenaltyHistoryTab model={model} translateText={translateText} onAddNote={() => { setActionError(null); setNoteOpen(true); }} />
               : <OverviewTab model={model} translateText={translateText} onRecordViolation={() => { setActionError(null); setPenaltyOpen(true); }} onAddNote={() => { setActionError(null); setNoteOpen(true); }} onOpenReviews={() => router.push(memberTabHref(model.id, "reviews"))} />;
 
-  return <>{overlays}<main className="admin-route-page user-detail-page" tabIndex={-1}><div className="user-detail-breadcrumb"><Link href={memberRoutes.list()}>{translateText("Members")}</Link><span>›</span><span>{model.title}</span></div><div className="page-head user-detail-page-head"><div><h1>{model.title}</h1><p>{translateText("Review Member information, activity, Payouts, and penalty history.")}</p></div></div><MemberSummary model={model} translateText={translateText} /><DetailTabs model={model} activeTab={activeTab} translateText={translateText} />{tabContent}</main></>;
+  return <>{overlays}<main className="admin-route-page user-detail-page" tabIndex={-1}><div className="user-detail-breadcrumb"><Link href={memberRoutes.list()}>{translateText("Members")}</Link><span>›</span><span>{model.title}</span></div><div className="page-head user-detail-page-head"><div><h1>{model.title}</h1><p>{translateText("Review Member information, activity, Payouts, and penalty history.")}</p>{model.source === "mock" && <p className="audit-note" data-member-fixture>{translateText("Mock data for UI review. It is not a server record.")}</p>}</div></div><MemberSummary model={model} translateText={translateText} /><DetailTabs model={model} activeTab={activeTab} translateText={translateText} />{tabContent}</main></>;
 }
 
 export function MemberDrawer({ memberId, initialModel, onClose }: { memberId: string; initialModel?: MemberModel | null; onClose: () => void }) {

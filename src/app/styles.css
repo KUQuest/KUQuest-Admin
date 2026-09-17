@@ -997,6 +997,24 @@ main {
 .data tbody tr:hover {
   background: var(--hover);
 }
+.table-link {
+  appearance: none;
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.table-link:hover {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .row-record-button {
   min-height: 32px;
   padding: 0;
@@ -1348,6 +1366,14 @@ dialog.drawer.wallet-drawer {
 }
 .drawer-body {
   padding: 20px;
+}
+.drawer-body:has(.drawer-actions) {
+  padding-bottom: 112px;
+}
+@media (max-width: 600px) {
+  .drawer-body:has(.drawer-actions) {
+    padding-bottom: 144px;
+  }
 }
 .drawer-title {
   display: flex;
@@ -2441,6 +2467,95 @@ svg.ui-icon {
   color: var(--muted);
   font-size: 12px;
 }
+.admin-action-summary,
+.admin-action-receipt {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--soft);
+}
+.admin-action-summary-heading,
+.admin-action-receipt-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+}
+.admin-action-summary-heading h3,
+.admin-action-receipt-heading strong {
+  margin: 0;
+  font-size: 13px;
+}
+.admin-action-summary-icon,
+.admin-action-receipt-icon {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  color: var(--danger);
+  background: var(--danger-soft);
+  font-size: 12px;
+  font-weight: 800;
+}
+.admin-action-receipt {
+  display: block;
+  width: 100%;
+  border-color: color-mix(in srgb, var(--success) 35%, var(--border));
+  background: color-mix(in srgb, var(--success-soft) 45%, var(--surface));
+}
+.admin-action-receipt-icon {
+  color: var(--success);
+  background: var(--success-soft);
+}
+.admin-action-receipt-heading small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.admin-action-summary-facts,
+.admin-action-receipt-facts {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+.admin-action-summary-facts > div,
+.admin-action-receipt-facts > div {
+  display: grid;
+  grid-template-columns: minmax(108px, 0.7fr) minmax(0, 1.3fr);
+  gap: 10px;
+}
+.admin-action-summary-facts dt,
+.admin-action-receipt-facts dt {
+  color: var(--muted);
+  font-size: 11px;
+}
+.admin-action-summary-facts dd,
+.admin-action-receipt-facts dd {
+  margin: 0;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+}
+.admin-action-summary-warning {
+  margin: 12px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+}
+.admin-action-receipt-details {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+}
+.admin-action-receipt > .link {
+  margin-top: 10px;
+}
 @media (max-width: 420px) {
   .party-grid {
     grid-template-columns: 1fr;
@@ -2450,5 +2565,10 @@ svg.ui-icon {
   }
   .allocation button {
     min-height: 52px;
+  }
+  .admin-action-summary-facts > div,
+  .admin-action-receipt-facts > div {
+    grid-template-columns: 1fr;
+    gap: 2px;
   }
 }

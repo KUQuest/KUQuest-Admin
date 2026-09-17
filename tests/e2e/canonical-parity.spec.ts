@@ -41,7 +41,10 @@ test.describe("legacy parity on canonical routes", () => {
     await signIn(page);
     await page.goto("/wallet");
 
-    await expect(page.locator(".wallet-funds-summary")).toContainText("Total Wallet Funds");
+    await expect(page.locator(".wallet-funds-summary")).toContainText("Member Wallet Summary");
+    for (const label of ["Spending balance", "Earnings balance", "Funding reserved", "Payout reserved", "Total circulating"]) {
+      await expect(page.locator(".wallet-funds-summary")).toContainText(label);
+    }
     await expect(page.locator(".wallet-funds-summary")).toContainText("฿");
     const header = page.locator(".wallet-board-table thead");
     await expect(header).toContainText("Current Wallet Balance");
@@ -299,20 +302,24 @@ test.describe("legacy parity for inputs on mobile", () => {
     await expect(dialog).toHaveCount(0);
   });
 
-  test("Payout approval and rejection reason codes accept input on mobile", async ({ page }) => {
+  test("Payout rejection reason code accepts input on mobile", async ({ page }) => {
     await signIn(page);
     await page.goto("/payout/PAY-9637");
 
-    for (const [command, reasonCode] of [["Approve Payout", "PAYOUT_POLICY_REVIEW"], ["Reject Payout", "PAYOUT_INVALID_DESTINATION"]] as const) {
-      await page.getByRole("button", { name: command }).click();
-      const dialog = page.getByRole("dialog", { name: command });
-      const select = dialog.getByLabel(/Reason code/);
-      await select.selectOption(reasonCode);
-      await expect(select).toHaveValue(reasonCode);
-      await expectResponsiveInput(page, select);
-      await page.keyboard.press("Escape");
-      await expect(dialog).toHaveCount(0);
-    }
+    await page.getByRole("button", { name: "Approve Payout" }).click();
+    const approval = page.getByRole("dialog", { name: "Approve Payout" });
+    await expect(approval.getByLabel(/Reason code/)).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await expect(approval).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Reject Payout" }).click();
+    const rejection = page.getByRole("dialog", { name: "Reject Payout" });
+    const select = rejection.getByLabel(/Reason code/);
+    await select.selectOption("PAYOUT_INVALID_DESTINATION");
+    await expect(select).toHaveValue("PAYOUT_INVALID_DESTINATION");
+    await expectResponsiveInput(page, select);
+    await page.keyboard.press("Escape");
+    await expect(rejection).toHaveCount(0);
   });
 
   test("Dispute Case decision reason accepts input on mobile", async ({ page }) => {

@@ -9,6 +9,7 @@ import {
 } from "../../features/admin/admin-navigation";
 import { adminApi, type AdminIdentity } from "../../features/admin/api/admin-api";
 import { loadDashboardData } from "../../features/admin/dashboard/dashboard-bootstrap";
+import { AdminGlobalSearch } from "../../features/admin/search/admin-global-search";
 import {
   translateAdminText,
   type AdminLanguage,
@@ -31,6 +32,7 @@ export function AdminShell({ identity, children }: AdminShellProps) {
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [language, setLanguage] = useState<AdminLanguage>("en");
   const [navigationCounts, setNavigationCounts] = useState<AdminNavigationCounts | null>(null);
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const adminName = identityName(identity);
 
   const closeMobileNavigation = useCallback(() => setMobileNavigationOpen(false), []);
@@ -41,6 +43,8 @@ export function AdminShell({ identity, children }: AdminShellProps) {
   const changeLanguage = useCallback((nextLanguage: AdminLanguage) => {
     setLanguage(nextLanguage);
   }, []);
+  const openGlobalSearch = useCallback(() => setGlobalSearchOpen(true), []);
+  const closeGlobalSearch = useCallback(() => setGlobalSearchOpen(false), []);
   const translateText = useCallback(
     (value: string) => translateAdminText(language, value),
     [language],
@@ -71,6 +75,17 @@ export function AdminShell({ identity, children }: AdminShellProps) {
   }, []);
 
   useEffect(() => {
+    const openSearchWithShortcut = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setGlobalSearchOpen(true);
+      }
+    };
+    document.addEventListener("keydown", openSearchWithShortcut);
+    return () => document.removeEventListener("keydown", openSearchWithShortcut);
+  }, []);
+
+  useEffect(() => {
     if (!mobileNavigationOpen) return;
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") setMobileNavigationOpen(false);
@@ -80,7 +95,7 @@ export function AdminShell({ identity, children }: AdminShellProps) {
   }, [mobileNavigationOpen]);
 
   return (
-    <AdminShellProvider language={language} translateText={translateText}>
+    <AdminShellProvider language={language} translateText={translateText} openGlobalSearch={openGlobalSearch}>
       <div className="shell admin-shell">
         <AdminSidebar
           open={mobileNavigationOpen}
@@ -94,9 +109,11 @@ export function AdminShell({ identity, children }: AdminShellProps) {
         <AdminHeader
           mobileNavigationOpen={mobileNavigationOpen}
           onToggleNavigation={toggleMobileNavigation}
+          onOpenSearch={openGlobalSearch}
           translateText={translateText}
         />
         {children}
+        <AdminGlobalSearch open={globalSearchOpen} onClose={closeGlobalSearch} />
       </div>
     </AdminShellProvider>
   );

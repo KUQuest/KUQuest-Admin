@@ -9,13 +9,19 @@ import type { AdminReview, PersistedAdminData } from "../data/admin-records";
 import {
   memberStatusFor,
   memberStatusLabel,
+  isConductReportStatus,
   walletStatusFor,
   walletStatusLabel,
   type MemberStatus,
   type WalletStatus,
 } from "../domain/rulebook";
 import { statusBadgeClass } from "../status-badge";
-import { memberRoutes, reportRoutes, questRoutes } from "../admin-routes";
+import {
+  conductReportRoutes,
+  memberRoutes,
+  questRoutes,
+  reportRoutes,
+} from "../admin-routes";
 
 export const MEMBER_TABS = [
   "overview",
@@ -80,6 +86,7 @@ export type MemberReportEntry = {
   status: string;
   reportedAt: string;
   href: string;
+  kind: "Report Case" | "Conduct Report";
 };
 
 export type MemberPenaltyHistoryEntry = {
@@ -90,6 +97,11 @@ export type MemberPenaltyHistoryEntry = {
   previousStatus?: string;
   newStatus?: string;
   outcome?: string;
+  durationDays?: number;
+  expiresAt?: string;
+  caseId?: string;
+  caseType?: "Report Case" | "Conduct Report";
+  caseHref?: string;
 };
 
 export type MemberAdminNote = {
@@ -135,6 +147,7 @@ export type MemberModel = {
   quests: MemberQuestHistoryEntry[];
   payouts: Array<{ id: string; status: string; amountSatang: number | null; createdAt: string }>;
   reports: MemberReportEntry[];
+  reportsSubmitted: MemberReportEntry[];
   penaltyHistory: MemberPenaltyHistoryEntry[];
   adminNotes: MemberAdminNote[];
   walletStatement: MemberWalletTransaction[];
@@ -149,6 +162,7 @@ export type MemberModel = {
   source: "api" | "mock";
   apiError?: string | null;
   reportsError: string | null;
+  reportsSubmittedError: string | null;
   walletStatementError: string | null;
 };
 
@@ -250,15 +264,18 @@ function reportFromApi(report: AdminReportCase): MemberReportEntry {
   const record = report as Record<string, unknown>;
   const reporterId = nullableText(record.reporterId ?? record.submittedByUserId ?? record.submittedByMemberId);
   const reportedAt = dateLabel(record.reportedAt ?? record.submittedAt ?? record.createdAt);
+  const status = text(record.status ?? record.reportCaseStatus ?? record.conductReportStatus, "REPORT_CASE_PENDING");
+  const kind = isConductReportStatus(status) ? "Conduct Report" : "Report Case";
   return {
     id: report.id,
     category: text(record.category ?? record.reportType ?? record.reasonCode, "Report Case"),
     detail: text(record.details ?? record.description ?? record.detail, "No report detail was provided by the Admin API."),
     reporterId,
     reporterName: text(record.reporterName ?? record.submittedByMemberName ?? reporterId, "Reporter not provided"),
-    status: text(record.status, "REPORT_CASE_PENDING"),
+    status,
     reportedAt,
-    href: reportRoutes.detail(report.id),
+    href: kind === "Conduct Report" ? conductReportRoutes.detail(report.id) : reportRoutes.detail(report.id),
+    kind,
   };
 }
 
@@ -268,15 +285,18 @@ function reportFromMock(value: unknown): MemberReportEntry | null {
   const id = nullableText(record.id);
   const memberId = nullableText(record.reportedMemberId ?? record.reportedUserId);
   if (!id || !memberId) return null;
+  const status = text(record.status ?? record.reportCaseStatus ?? record.conductReportStatus, "REPORT_CASE_PENDING");
+  const kind = isConductReportStatus(status) ? "Conduct Report" : "Report Case";
   return {
     id,
     category: text(record.category ?? record.reportType ?? record.reasonCode, "Report Case"),
     detail: text(record.details ?? record.description ?? record.detail, "No report detail was provided."),
     reporterId: nullableText(record.reporterId),
     reporterName: text(record.reporterName, "Reporter not provided"),
-    status: text(record.status ?? record.reportCaseStatus ?? record.conductReportStatus, "REPORT_CASE_PENDING"),
+    status,
     reportedAt: dateLabel(record.reportedAt ?? record.createdAt),
-    href: reportRoutes.detail(id),
+    href: kind === "Conduct Report" ? conductReportRoutes.detail(id) : reportRoutes.detail(id),
+    kind,
   };
 }
 
@@ -339,10 +359,140 @@ function generatedReviews(index: number): AdminReview[] {
   });
 }
 
-function historyFromMock(record: Record<string, unknown>, createdAt: string): MemberPenaltyHistoryEntry[] {
+type MemberMockModerationFixture = {
+  history: readonly MemberPenaltyHistoryEntry[];
+  notes: readonly MemberAdminNote[];
+};
+
+const memberMockModerationFixtures: Readonly<Record<string, MemberMockModerationFixture>> = {
+  "68000000": {
+    history: [
+      {
+        event: "Conduct Report dismissed",
+        at: "27 Aug 2026 · 11:47 ICT",
+        by: "Admin",
+        reason: "The Quest record did not confirm a conduct violation.",
+        outcome: "No violation",
+        caseId: "CND-8303",
+        caseType: "Conduct Report",
+        caseHref: conductReportRoutes.detail("CND-8303"),
+      },
+      {
+        event: "Red Flag expired",
+        at: "26 Aug 2026 · 09:00 ICT",
+        by: "System",
+        reason: "The 7-day Red Flag duration ended.",
+        previousStatus: "Flag",
+        newStatus: "Normal",
+        outcome: "Red Flag expired",
+        durationDays: 7,
+        expiresAt: "26 Aug 2026 · 09:00 ICT",
+      },
+      {
+        event: "Red Flag applied",
+        at: "19 Aug 2026 · 09:00 ICT",
+        by: "Admin",
+        reason: "First confirmed Misconduct violation in the fixture scenario.",
+        newStatus: "Flag",
+        outcome: "7-day Red Flag",
+        durationDays: 7,
+        expiresAt: "26 Aug 2026 · 09:00 ICT",
+      },
+      {
+        event: "Account created",
+        at: "12 Aug 2026 · 09:00 ICT",
+        by: "System",
+        reason: "Member registration completed.",
+      },
+    ],
+    notes: [
+      {
+        at: "27 Aug 2026 · 12:05 ICT",
+        by: "Admin",
+        note: "Reviewed the Quest record after the Conduct Report. No policy action was required.",
+      },
+    ],
+  },
+  "68000020": {
+    history: [
+      {
+        event: "Report Case received",
+        at: "27 Aug 2026 · 08:40 ICT",
+        by: "System",
+        reason: "Harassment or abuse report is waiting for Admin review.",
+        outcome: "Pending review",
+        caseId: "RPT-8201",
+        caseType: "Report Case",
+        caseHref: reportRoutes.detail("RPT-8201"),
+      },
+      {
+        event: "Account created",
+        at: "15 Aug 2026 · 10:15 ICT",
+        by: "System",
+        reason: "Member registration completed.",
+      },
+    ],
+    notes: [
+      {
+        at: "27 Aug 2026 · 09:00 ICT",
+        by: "Admin",
+        note: "Keep the Report Case open until the Evidence Reference is reviewed.",
+      },
+    ],
+  },
+  "68000040": {
+    history: [
+      {
+        event: "Permanent Member Ban applied",
+        at: "27 Aug 2026 · 16:47 ICT",
+        by: "Admin",
+        reason: "The Conduct Report was upheld from the Quest record.",
+        newStatus: "Perm Ban",
+        outcome: "Permanent Member Ban",
+        caseId: "CND-8302",
+        caseType: "Conduct Report",
+        caseHref: conductReportRoutes.detail("CND-8302"),
+      },
+      {
+        event: "Conduct Report upheld",
+        at: "27 Aug 2026 · 16:30 ICT",
+        by: "Admin",
+        reason: "The Quest record confirmed the reported conduct violation.",
+        outcome: "Violation confirmed",
+        caseId: "CND-8302",
+        caseType: "Conduct Report",
+        caseHref: conductReportRoutes.detail("CND-8302"),
+      },
+      {
+        event: "Temporary Member Ban applied",
+        at: "20 Aug 2026 · 16:47 ICT",
+        by: "Admin",
+        reason: "Second confirmed Misconduct violation in the fixture scenario.",
+        newStatus: "Temp Ban",
+        outcome: "7-day temporary Member Ban",
+        durationDays: 7,
+        expiresAt: "27 Aug 2026 · 16:47 ICT",
+      },
+      {
+        event: "Account created",
+        at: "18 Aug 2026 · 14:00 ICT",
+        by: "System",
+        reason: "Member registration completed.",
+      },
+    ],
+    notes: [
+      {
+        at: "27 Aug 2026 · 16:50 ICT",
+        by: "Admin",
+        note: "Permanent Member Ban is linked to the upheld Conduct Report. Wallet status is shown separately.",
+      },
+    ],
+  },
+};
+
+function historyFromMock(record: Record<string, unknown>, createdAt: string, memberId: string): MemberPenaltyHistoryEntry[] {
   const value = record.moderationHistory;
-  if (!Array.isArray(value)) return [{ event: "Account created", at: createdAt, by: "System", reason: "Account created." }];
-  const history = value.flatMap((entry): MemberPenaltyHistoryEntry[] => {
+  const history = Array.isArray(value) ? value.flatMap((entry): MemberPenaltyHistoryEntry[] => {
     const item = asRecord(entry);
     if (!item) return [];
     return [{
@@ -353,18 +503,27 @@ function historyFromMock(record: Record<string, unknown>, createdAt: string): Me
       ...(nullableText(item.previousStatus) ? { previousStatus: nullableText(item.previousStatus) as string } : {}),
       ...(nullableText(item.newStatus) ? { newStatus: nullableText(item.newStatus) as string } : {}),
       ...(nullableText(item.outcome) ? { outcome: nullableText(item.outcome) as string } : {}),
+      ...(typeof item.durationDays === "number" ? { durationDays: item.durationDays } : {}),
+      ...(nullableText(item.expiresAt) ? { expiresAt: nullableText(item.expiresAt) as string } : {}),
+      ...(nullableText(item.caseId) ? { caseId: nullableText(item.caseId) as string } : {}),
+      ...(item.caseType === "Report Case" || item.caseType === "Conduct Report" ? { caseType: item.caseType } : {}),
+      ...(nullableText(item.caseHref) ? { caseHref: nullableText(item.caseHref) as string } : {}),
     }];
-  });
-  return history.length ? history : [{ event: "Account created", at: createdAt, by: "System", reason: "Account created." }];
+  }) : [];
+  if (history.length) return history;
+  const fixture = memberMockModerationFixtures[memberId];
+  return fixture ? [...fixture.history] : [{ event: "Account created", at: createdAt, by: "System", reason: "Account created." }];
 }
 
-function notesFromMock(record: Record<string, unknown>): MemberAdminNote[] {
-  if (!Array.isArray(record.adminNotes)) return [];
-  return record.adminNotes.flatMap((entry): MemberAdminNote[] => {
+function notesFromMock(record: Record<string, unknown>, memberId: string): MemberAdminNote[] {
+  const notes = Array.isArray(record.adminNotes) ? record.adminNotes.flatMap((entry): MemberAdminNote[] => {
     const item = asRecord(entry);
     const note = item ? nullableText(item.note) : null;
     return note ? [{ at: text(item?.at, "Date not recorded"), by: text(item?.by, "Admin"), note }] : [];
-  });
+  }) : [];
+  if (notes.length) return notes;
+  const fixture = memberMockModerationFixtures[memberId];
+  return fixture ? [...fixture.notes] : [];
 }
 
 function walletTransactionsFromMock(walletId: string): MemberWalletTransaction[] {
@@ -430,10 +589,12 @@ function baseModelFromListItem(member: AdminMemberListItem, source: "api" | "moc
     },
     payouts: [],
     reports: [],
+    reportsSubmitted: [],
     penaltyHistory: source === "api" ? [] : [{ event: "Account created", at: dateLabel(member.createdAt), by: "System", reason: "Account created." }],
     adminNotes: [],
     walletStatement: [],
     reportsError: null,
+    reportsSubmittedError: source === "api" ? "Member reports submitted are not provided by the Admin API." : null,
     walletStatementError: null,
     confirmedViolationCount: source === "api" ? null : 0,
     newUserExemptionRemaining: 0,
@@ -484,6 +645,7 @@ export function memberModelFromApi(
     walletBalances: balancesFromWallet(wallet),
     walletProjectionMatchesLedger: wallet?.projectionMatchesLedger ?? null,
     reports: reportEntries,
+    reportsSubmitted: [],
     walletStatement: ledger.map(transactionFromApi),
     reviews,
     quests: [],
@@ -493,6 +655,7 @@ export function memberModelFromApi(
     postBanExemptionRemaining: 0,
     apiError: errors.finance ?? (finance ? null : "Member finance is not available from the Admin API."),
     reportsError: errors.reports ?? null,
+    reportsSubmittedError: "Member reports submitted are not provided by the Admin API.",
     walletStatementError: errors.ledger ?? null,
   };
 }
@@ -500,6 +663,7 @@ export function memberModelFromApi(
 export function memberModelFromMockRecord(
   value: unknown,
   data: PersistedAdminData,
+  options: { summaryOnly?: boolean } = {},
 ): MemberModel | null {
   const record = asRecord(value);
   const id = nullableText(record?.id);
@@ -511,7 +675,7 @@ export function memberModelFromMockRecord(
   const parity = {
     "68000000": { memberStatus: "Normal" as const, walletStatus: "ACTIVE" as const },
     "68000020": { memberStatus: "Flag" as const, walletStatus: "ACTIVE" as const },
-    "68000040": { memberStatus: "Temp Ban" as const, walletStatus: "FROZEN" as const },
+    "68000040": { memberStatus: "Perm Ban" as const, walletStatus: "FROZEN" as const },
   }[id];
   const hasStoredModerationState = typeof record.memberStatus === "string"
     || record.penalty !== undefined
@@ -525,6 +689,52 @@ export function memberModelFromMockRecord(
   const studentId = nullableText(record.studentId) ?? id;
   const createdAt = text(record.accountCreatedAt ?? record.createdAt, "Not recorded");
   const walletId = nullableText(record.walletId) ?? `WAL-${id}`;
+  if (options.summaryOnly) {
+    const summary = baseModelFromListItem({
+      id,
+      email: text(record.person, `${id}@ku.th`),
+      firstName,
+      lastName,
+      studentId,
+      telephone: nullableText(record.telephone),
+      academicYear: nullableNumber(record.academicYear),
+      faculty: nullableText(record.faculty),
+      department: nullableText(record.department),
+      occupation: nullableText(record.occupation),
+      wallet: walletStatus
+        ? {
+          id: walletId,
+          walletStatus,
+          spendingBalanceSatang: numberValue(record.walletSpendingBalanceSatang),
+          earningsBalanceSatang: numberValue(record.walletEarningsBalanceSatang),
+          totalBalanceSatang: numberValue(record.walletSpendingBalanceSatang) + numberValue(record.walletEarningsBalanceSatang),
+        }
+        : null,
+      createdAt,
+    }, "mock");
+    return {
+      ...summary,
+      title,
+      bio: text(record.about, "KuQuest participant contributing to university marketplace projects."),
+      tags: Array.isArray(record.tags) ? record.tags.filter((tag): tag is string => typeof tag === "string") : ["University", "Marketplace"],
+      lastActiveAt: text(record.lastActiveAt, "Not recorded"),
+      memberStatus,
+      memberStatusSource: "mock",
+      walletId,
+      walletStatus,
+      walletBalances: {
+        spendingBalanceSatang: numberValue(record.walletSpendingBalanceSatang, 120000 + index * 10000),
+        earningsBalanceSatang: numberValue(record.walletEarningsBalanceSatang, 80000 + index * 5000),
+        fundingReservedSatang: numberValue(record.walletFundingReservedSatang, 25000 + index * 1000),
+        reservedForPayoutsSatang: numberValue(record.walletReservedForPayoutsSatang, 10000 + index * 500),
+      },
+      walletProjectionMatchesLedger: true,
+      confirmedViolationCount: Math.max(0, Math.round(numberValue(record.confirmedViolationCount,
+        memberStatus === "Flag" ? 1 : memberStatus === "Temp Ban" ? 2 : memberStatus === "Perm Ban" ? 3 : 0,
+      ))),
+      source: "mock",
+    };
+  }
   const rawReviews = Array.isArray(record.reviews)
     ? record.reviews.flatMap((review) => {
       const model = reviewFromMock(review);
@@ -548,13 +758,17 @@ export function memberModelFromMockRecord(
     const model = reportFromMock(report);
     return model && (asRecord(report)?.reportedMemberId ?? asRecord(report)?.reportedUserId) === id ? [model] : [];
   });
+  const reportsSubmitted = data.collections.reports.flatMap((report) => {
+    const model = reportFromMock(report);
+    return model && asRecord(report)?.reporterId === id ? [model] : [];
+  });
   const balances: MemberWalletBalances = {
     spendingBalanceSatang: numberValue(record.walletSpendingBalanceSatang, 120000 + index * 10000),
     earningsBalanceSatang: numberValue(record.walletEarningsBalanceSatang, 80000 + index * 5000),
     fundingReservedSatang: numberValue(record.walletFundingReservedSatang, 25000 + index * 1000),
     reservedForPayoutsSatang: numberValue(record.walletReservedForPayoutsSatang, 10000 + index * 500),
   };
-  const rawHistory = historyFromMock(record, createdAt);
+  const rawHistory = historyFromMock(record, createdAt, id);
   const confirmedViolationCount = Math.max(
     0,
     Math.round(numberValue(record.confirmedViolationCount,
@@ -632,10 +846,12 @@ export function memberModelFromMockRecord(
     quests,
     payouts,
     reports,
+    reportsSubmitted,
     penaltyHistory: rawHistory,
-    adminNotes: notesFromMock(record),
+    adminNotes: notesFromMock(record, id),
     walletStatement,
     reportsError: null,
+    reportsSubmittedError: null,
     walletStatementError: null,
     confirmedViolationCount,
     newUserExemptionRemaining,

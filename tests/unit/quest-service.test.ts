@@ -25,6 +25,21 @@ describe("Quest route service", () => {
     expect(result.rows.some((row) => row.title === "Inspect campus signs")).toBe(true);
   });
 
+  it("includes a failed Quest linked from a Dispute Case in the mock Quest board", async () => {
+    const result = await loadQuestBoardPageData("", "mock");
+
+    expect(result.rows.find((row) => row.displayId === "QST-12001")).toMatchObject({
+      displayId: "QST-12001",
+      state: "QUEST_FAILED",
+    });
+  });
+
+  it("loads the linked Dispute Case into a mock failed Quest detail", async () => {
+    const result = await loadQuestDetailPageData("QST-12001", "", "mock");
+
+    expect(result?.linkedDisputeId).toBe("DSP-5201");
+  });
+
   it("loads Quest detail data through the Admin API with the incoming Admin cookie", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     const requests: Request[] = [];

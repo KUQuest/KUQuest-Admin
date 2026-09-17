@@ -1,5 +1,6 @@
 import type { PersistedAdminData } from "../data/admin-records";
 import { ADMIN_DEMO_DATA_KEY, type BrowserStorage } from "../data/legacy-admin-data-adapter";
+import { pageMockItems } from "../data/mock-pagination";
 import { loadDashboardData } from "../dashboard/dashboard-bootstrap";
 import {
   conductReportDecisionDetailsForCommand,
@@ -16,8 +17,12 @@ import {
 export type ConductReportMockPage = {
   source: "mock";
   items: ConductReportModel[];
-  nextCursor: null;
+  nextCursor: string | null;
 };
+
+// The first page preserves the original three-row demo while exposing more
+// pages for pagination and terminal-state checks.
+export const CONDUCT_REPORT_MOCK_PAGE_SIZE = 3;
 
 export function newConductReportIdempotencyKey(reportId: string): string {
   const uuid = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -30,15 +35,28 @@ function conductReportRecords(data: PersistedAdminData): ConductReportRecord[] {
   return conductReportsOnly(data.collections.reports);
 }
 
-export function loadConductReportsFromMock(storage: BrowserStorage): ConductReportMockPage {
+export function loadConductReportsFromMock(storage: BrowserStorage, cursor?: string): ConductReportMockPage {
+  const records = conductReportRecords(loadDashboardData(storage));
+  const models = records.flatMap((record) => {
+    const model = conductReportModelFromRecord(record);
+    return model ? [model] : [];
+  });
+  const page = pageMockItems(models, cursor, CONDUCT_REPORT_MOCK_PAGE_SIZE);
   return {
     source: "mock",
-    items: conductReportRecords(loadDashboardData(storage)).flatMap((record) => {
-      const model = conductReportModelFromRecord(record);
-      return model ? [model] : [];
-    }),
-    nextCursor: null,
+    items: page.items,
+    nextCursor: page.nextCursor,
   };
+}
+
+/** Load the complete mock Conduct Report collection for local pagination. */
+export function loadAllConductReportsFromMock(storage: BrowserStorage): ConductReportMockPage {
+  const records = conductReportRecords(loadDashboardData(storage));
+  const items = records.flatMap((record) => {
+    const model = conductReportModelFromRecord(record);
+    return model ? [model] : [];
+  });
+  return { source: "mock", items, nextCursor: null };
 }
 
 export function findConductReportFromMock(

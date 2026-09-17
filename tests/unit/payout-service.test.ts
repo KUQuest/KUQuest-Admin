@@ -7,8 +7,28 @@ import {
   loadPayoutBoardPageData,
   loadPayoutDetailPageData,
 } from "../../src/features/admin/payout/payout-service";
+import {
+  applyMockPayoutDecision,
+  applyMockPayoutOverride,
+  payoutMockOverrideFromDetail,
+  readMockPayoutOverride,
+  saveMockPayoutOverride,
+} from "../../src/features/admin/payout/payout-mock-state";
+import { payoutDetailViewFromApi } from "../../src/features/admin/payout/payout-model";
 
 const originalFetch = globalThis.fetch;
+
+function storage(): Storage {
+  const values = new Map<string, string>();
+  return {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => { values.set(key, value); },
+    clear: () => values.clear(),
+    removeItem: (key) => { values.delete(key); },
+    key: (index) => [...values.keys()][index] ?? null,
+    get length() { return values.size; },
+  };
+}
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -93,5 +113,22 @@ describe("Payout service boundary", () => {
     expect(requestCache).toBe("no-store");
 
     await expect(loadPayoutDetailPageData("missing", "kuquest-admin=session", "api")).resolves.toBeNull();
+  });
+
+  it("persists and restores a Mock Payout decision across reloads", () => {
+    const detail = payoutDetailViewFromApi(mockPendingPayout, [mockPendingPayout]);
+    const next = applyMockPayoutDecision(detail, "approve", null, "2026-09-17T03:25:00.000Z");
+    const browserStorage = storage();
+
+    saveMockPayoutOverride(browserStorage, { id: next.id, ...payoutMockOverrideFromDetail(next) });
+
+    const restored = applyMockPayoutOverride(
+      detail,
+      readMockPayoutOverride(browserStorage, detail.id),
+    );
+    expect(restored.status).toBe("SUBMITTED_TO_PROVIDER");
+    expect(restored.version).toBe(detail.version + 1);
+    expect(restored.history.at(-1)?.toStatus).toBe("SUBMITTED_TO_PROVIDER");
+    expect(restored.decisionContext.heading).toBe("Transfer submitted");
   });
 });

@@ -218,6 +218,19 @@ export type QuestBoardRow = {
   version: number;
 };
 
+/**
+ * Keep the canonical Quest identifier for API calls, but use a short stable
+ * label when the Admin API does not provide a human-readable display ID.
+ */
+export function questDisplayIdFor(id: string, displayId?: string | null): string {
+  const preferred = displayId?.trim();
+  if (preferred) return preferred;
+
+  const canonical = id.trim();
+  if (canonical.length <= 24) return canonical;
+  return `${canonical.slice(0, 8)}…${canonical.slice(-4)}`;
+}
+
 function questMemberViewFromApi(member: AdminQuestMember): QuestMemberView {
   return {
     id: member.id,
@@ -230,7 +243,7 @@ function questMemberViewFromApi(member: AdminQuestMember): QuestMemberView {
 export function questDetailViewFromApi(detail: AdminQuestDetail): QuestDetailView {
   const view: QuestDetailView = {
     id: detail.id,
-    displayId: detail.displayId ?? detail.id,
+    displayId: questDisplayIdFor(detail.id, detail.displayId),
     apiVersion: detail.apiVersion,
     version: detail.version,
     title: detail.title,
@@ -428,7 +441,7 @@ export function questRowFromApi(quest: AdminQuest): QuestBoardRow {
   const state = questStateFor(quest.questStatus);
   return {
     id: quest.id,
-    displayId: quest.displayId ?? quest.id,
+    displayId: questDisplayIdFor(quest.id, quest.displayId),
     title: quest.title,
     hirerName: memberName(quest.hirer),
     hirerEmail: quest.hirer.email,

@@ -1,8 +1,8 @@
-import { changeReviewVisibility } from "../user-reviews/review-model";
 import {
   ADMIN_DEMO_DATA_KEY,
   type BrowserStorage,
 } from "../data/legacy-admin-data-adapter";
+import { pageMockItems } from "../data/mock-pagination";
 import { loadDashboardData } from "../dashboard/dashboard-bootstrap";
 import type { PersistedAdminData } from "../data/admin-records";
 import {
@@ -15,8 +15,11 @@ import {
 export type MemberMockPage = {
   source: "mock";
   items: MemberModel[];
-  nextCursor: null;
+  nextCursor: string | null;
 };
+
+// Keep the first mock page small so the Load more flow is easy to exercise.
+export const MEMBER_MOCK_PAGE_SIZE = 3;
 
 function persist(storage: BrowserStorage, data: PersistedAdminData): void {
   try {
@@ -31,16 +34,32 @@ function memberRecord(data: PersistedAdminData, memberId: string): Record<string
   return record ? record as Record<string, unknown> : null;
 }
 
-export function loadMembersFromMock(storage: BrowserStorage): MemberMockPage {
+export function loadMembersFromMock(storage: BrowserStorage, cursor?: string): MemberMockPage {
   const data = loadDashboardData(storage);
+  // Page the raw records before building detail-heavy Member models. Building
+  // every Member model scans related Quest, Report Case, Conduct Report, and
+  // Payout records. That cost becomes visible when the demo fixture contains
+  // hundreds of records, while the Admin only needs the current page.
+  const page = pageMockItems(data.collections.users, cursor, MEMBER_MOCK_PAGE_SIZE);
+  const models = page.items.flatMap((record) => {
+    const model = memberModelFromMockRecord(record, data, { summaryOnly: true });
+    return model ? [model] : [];
+  });
   return {
     source: "mock",
-    items: data.collections.users.flatMap((record) => {
-      const model = memberModelFromMockRecord(record, data);
-      return model ? [model] : [];
-    }),
-    nextCursor: null,
+    items: models,
+    nextCursor: page.nextCursor,
   };
+}
+
+/** Load the complete mock Member collection in one storage read for local pagination. */
+export function loadAllMembersFromMock(storage: BrowserStorage): MemberMockPage {
+  const data = loadDashboardData(storage);
+  const items = data.collections.users.flatMap((record) => {
+    const model = memberModelFromMockRecord(record, data, { summaryOnly: true });
+    return model ? [model] : [];
+  });
+  return { source: "mock", items, nextCursor: null };
 }
 
 export function findMemberFromMock(storage: BrowserStorage, memberId: string): MemberModel | null {
@@ -63,21 +82,6 @@ export function saveMemberNote(
     { at: new Date().toISOString(), by: actor, note },
     ...notes,
   ];
-  persist(storage, data);
-  return memberModelFromMockRecord(record, data);
-}
-
-export function toggleMemberReview(
-  storage: BrowserStorage,
-  memberId: string,
-  reviewIndex: number,
-): MemberModel | null {
-  const data = loadDashboardData(storage);
-  const record = memberRecord(data, memberId);
-  if (!record) return null;
-  const current = memberModelFromMockRecord(record, data);
-  if (!current) return null;
-  record.reviews = changeReviewVisibility(current.reviews, reviewIndex);
   persist(storage, data);
   return memberModelFromMockRecord(record, data);
 }

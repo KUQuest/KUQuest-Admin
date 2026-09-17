@@ -8,7 +8,14 @@ import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { disputeRoutes, questRoutes } from "../admin-routes";
-import { loadDisputeCasesFromMock } from "./dispute-adapter";
+import { loadAllDisputeCasesFromMock as loadAllDisputeCasesFromMockData, loadDisputeCasesFromMock } from "./dispute-adapter";
+import {
+  ADMIN_BOARD_PAGE_SIZES,
+  pageCount,
+  pageRange,
+  pageRows,
+  type AdminBoardPageSize,
+} from "../data/board-pagination";
 import {
   DISPUTE_CASE_UPDATED_EVENT,
   type DisputeCaseModel,
@@ -18,8 +25,8 @@ import { loadDisputeCasePageData, type DisputeCasePageData } from "./dispute-ser
 type DisputeCaseTab = "all" | "open" | "dismissed" | "resolved";
 
 const tabs: Array<{ id: DisputeCaseTab; label: string }> = [
-  { id: "all", label: "All" },
   { id: "open", label: "Open" },
+  { id: "all", label: "All" },
   { id: "dismissed", label: "Dismissed" },
   { id: "resolved", label: "Resolved" },
 ];
@@ -54,6 +61,10 @@ function modelMatchesQuery(model: DisputeCaseModel, query: string): boolean {
   ].some((field) => field?.toLowerCase().includes(value));
 }
 
+function loadAllDisputeCasesFromMock(storage: Storage): DisputeCasePageData {
+  return loadAllDisputeCasesFromMockData(storage);
+}
+
 export function DisputeCaseBoard({ initialData }: { initialData?: DisputeCasePageData }) {
   const { translateText } = useAdminShell();
   const router = useRouter();
@@ -63,12 +74,14 @@ export function DisputeCaseBoard({ initialData }: { initialData?: DisputeCasePag
   const [loadingMore, setLoadingMore] = useState(false);
   const [activeTab, setActiveTab] = useState<DisputeCaseTab>("all");
   const [query, setQuery] = useState("");
+  const [pageSize, setPageSize] = useState<AdminBoardPageSize>(10);
+  const [pageNumber, setPageNumber] = useState(1);
 
   useEffect(() => {
     if (initialData || isAdminApiEnabled()) return;
     let cancelled = false;
     try {
-      const nextPage = loadDisputeCasesFromMock(localStorage);
+      const nextPage = loadAllDisputeCasesFromMock(localStorage);
       if (!cancelled) setPage(nextPage);
     } catch (error: unknown) {
       if (!cancelled) setLoadError(error instanceof Error ? error.message : "Dispute Cases could not load.");
@@ -99,14 +112,41 @@ export function DisputeCaseBoard({ initialData }: { initialData?: DisputeCasePag
   };
 
   const loadMore = async () => {
-    if (!page?.nextCursor || page.source !== "api" || loadingMore) return;
+    if (!page?.nextCursor || loadingMore) return;
     setLoadingMore(true);
     setPaginationError(null);
     try {
-      const nextPage = await loadDisputeCasePageData(undefined, page.nextCursor);
+      const nextPage = page.source === "mock"
+        ? loadDisputeCasesFromMock(localStorage, page.nextCursor)
+        : await loadDisputeCasePageData(undefined, page.nextCursor);
       setPage((current) => current
         ? { ...current, items: [...current.items, ...nextPage.items], nextCursor: nextPage.nextCursor }
         : current);
+    } catch (error: unknown) {
+      setPaginationError(error instanceof Error ? error.message : "More Dispute Cases could not load.");
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  const loadAllPages = async () => {
+    if (!page?.nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    setPaginationError(null);
+    try {
+      if (page.source === "mock") {
+        setPage(loadAllDisputeCasesFromMockData(localStorage));
+        return;
+      }
+      const items = [...page.items];
+      let cursor: string | undefined = page.nextCursor ?? undefined;
+      while (cursor) {
+        const nextPage: Pick<DisputeCasePageData, "items" | "nextCursor"> = await loadDisputeCasePageData(undefined, cursor);
+        items.push(...nextPage.items);
+        if (nextPage.nextCursor === cursor) break;
+        cursor = nextPage.nextCursor ?? undefined;
+      }
+      setPage((current) => current ? { ...current, items, nextCursor: cursor ?? null } : current);
     } catch (error: unknown) {
       setPaginationError(error instanceof Error ? error.message : "More Dispute Cases could not load.");
     } finally {
@@ -120,22 +160,27 @@ export function DisputeCaseBoard({ initialData }: { initialData?: DisputeCasePag
   }
 
   const models = page.items.filter((model) => tabMatches(model, activeTab) && modelMatchesQuery(model, query));
+  const totalPages = pageCount(models.length, pageSize);
+  const currentPage = Math.min(pageNumber, Math.max(totalPages, 1));
+  const visibleModels = pageRows(models, currentPage, pageSize);
+  const { start: pageStart, end: pageEnd } = pageRange(models.length, currentPage, pageSize);
+  const openCount = page.items.filter((model) => model.status === "DISPUTE_CASE_PENDING").length;
 
   return (
     <main id="dispute-main" className="admin-route-page dispute-case-board" tabIndex={-1}>
       <div className="page-head"><div><p className="admin-route-kicker">{translateText("KUQuest Admin")}</p><h1>{translateText("Dispute Cases")}</h1><p>{translateText("Review failed Quest settlement decisions.")}</p></div></div>
       <section className="panel" aria-labelledby="dispute-case-board-heading">
-        <div className="panel-head"><div><h2 id="dispute-case-board-heading">{translateText("Dispute Cases")}</h2><p>{translateText("A Dispute Case can redirect settlement from the Hirer to the Worker or dismiss the case.")}</p></div><span className="count">{models.length} {translateText("shown")}</span></div>
+        <div className="panel-head"><div><h2 id="dispute-case-board-heading">{translateText("Dispute Cases")}</h2><p>{translateText("A Dispute Case can redirect settlement from the Hirer to the Worker or dismiss the case.")}</p></div><span className="count">{visibleModels.length} {translateText("shown")}</span></div>
         <div className="tabs" role="tablist" aria-label={translateText("Dispute Case status filters")}>
-          {tabs.map((tab) => <button key={tab.id} className={`tab ${activeTab === tab.id ? "active" : ""}`} type="button" role="tab" aria-selected={activeTab === tab.id} onClick={() => setActiveTab(tab.id)}>{translateText(tab.label)}</button>)}
+          {tabs.map((tab) => <button key={tab.id} className={`tab ${activeTab === tab.id ? "active" : ""}`} type="button" role="tab" aria-label={tab.id === "open" ? translateText("Open") : translateText(tab.label)} aria-selected={activeTab === tab.id} onClick={() => { setActiveTab(tab.id); setPageNumber(1); }}>{translateText(tab.label)}{tab.id === "open" ? <span className="tab-count" aria-hidden="true"> ({openCount})</span> : null}</button>)}
         </div>
-        <div className="toolbar"><label className="inline-search" htmlFor="dispute-case-search">{translateText("Search Dispute Cases")}<input id="dispute-case-search" type="search" aria-label={translateText("Search Dispute Cases")} placeholder={translateText("Search by case, Quest, Member, or category")} value={query} onChange={(event) => setQuery(event.target.value)} /></label></div>
+        <div className="toolbar"><label className="inline-search" htmlFor="dispute-case-search">{translateText("Search Dispute Cases")}<input id="dispute-case-search" type="search" aria-label={translateText("Search Dispute Cases")} placeholder={translateText("Search by case, Quest, Member, or category")} value={query} onChange={(event) => { setQuery(event.target.value); setPageNumber(1); }} /></label><div className="page-size-controls" aria-label={translateText("Rows per page")}>{ADMIN_BOARD_PAGE_SIZES.map((size) => <button key={size} className={`page-size-button${pageSize === size ? " active" : ""}`} type="button" disabled={loadingMore} onClick={() => { setPageSize(size); setPageNumber(1); if (size === "all") void loadAllPages(); }}>{size === "all" ? translateText("Show all") : `${translateText("Show")} ${size}`}</button>)}</div><span className="count" aria-live="polite">{loadingMore ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}</span></div>
         <div className="table-wrap" aria-label={translateText("Dispute Cases table")}>
           <table className="data dispute-table">
             <caption>{translateText("Dispute Cases")}</caption>
             <thead><tr><th>{translateText("Dispute Case")}</th><th>{translateText("Quest")}</th><th>{translateText("Filer")}</th><th>{translateText("Respondent")}</th><th>{translateText("Category")}</th><th>{translateText("Amount at risk")}</th><th>{translateText("Status")}</th><th>{translateText("Opened")}</th></tr></thead>
             <tbody>
-              {models.map((model) => (
+              {visibleModels.map((model) => (
                 <tr key={model.id} data-dispute-id={model.id} data-dispute-display-id={model.displayId} data-dispute-status={model.status} tabIndex={0} aria-label={`${translateText("Open Dispute Case")} ${model.displayId}`} onClick={() => openDrawer(model.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openDrawer(model.id); } }}>
                   <td><button className="table-link" type="button" onClick={(event) => { event.stopPropagation(); openDrawer(model.id); }}>{model.displayId}</button></td>
                   <td><Link href={model.questHref ?? questRoutes.list()} onClick={(event) => event.stopPropagation()}>{model.questTitle}</Link><small>{model.questId || "—"}</small></td>
@@ -152,6 +197,7 @@ export function DisputeCaseBoard({ initialData }: { initialData?: DisputeCasePag
           {models.length === 0 && <p className="empty-state">{translateText("No Dispute Cases match this view.")}</p>}
         </div>
         {paginationError && <p className="field-error" role="alert">{translateText(paginationError)}</p>}
+        {models.length ? <div className="table-pagination" aria-label={translateText("Dispute Cases pagination")}><button className="page-nav" type="button" disabled={currentPage <= 1} onClick={() => setPageNumber((value) => value - 1)}>{translateText("Previous")}</button><span className="page-indicator">{translateText("Page")} {currentPage} {translateText("of")} {Math.max(totalPages, 1)}</span><button className="page-nav" type="button" disabled={currentPage >= totalPages} onClick={() => setPageNumber((value) => value + 1)}>{translateText("Next")}</button></div> : null}
         {page.nextCursor && <button className="btn" type="button" onClick={loadMore} disabled={loadingMore}>{loadingMore ? translateText("Loading…") : translateText("Load more Dispute Cases")}</button>}
       </section>
     </main>

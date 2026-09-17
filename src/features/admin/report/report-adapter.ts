@@ -1,5 +1,6 @@
 import type { PersistedAdminData } from "../data/admin-records";
 import { ADMIN_DEMO_DATA_KEY, type BrowserStorage } from "../data/legacy-admin-data-adapter";
+import { pageMockItems } from "../data/mock-pagination";
 import { loadDashboardData } from "../dashboard/dashboard-bootstrap";
 import {
   reportCaseDecisionDetailsForCommand,
@@ -14,8 +15,12 @@ import {
 export type ReportCaseMockPage = {
   source: "mock";
   items: ReportCaseModel[];
-  nextCursor: null;
+  nextCursor: string | null;
 };
+
+// The first page preserves the original two-row demo while exposing more
+// pages for pagination and empty-state checks.
+export const REPORT_CASE_MOCK_PAGE_SIZE = 2;
 
 export function newReportCaseIdempotencyKey(reportId: string): string {
   const uuid = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -28,15 +33,28 @@ function reportRecords(data: PersistedAdminData): ReportCaseRecord[] {
   return reportCasesOnly(data.collections.reports);
 }
 
-export function loadReportCasesFromMock(storage: BrowserStorage): ReportCaseMockPage {
+export function loadReportCasesFromMock(storage: BrowserStorage, cursor?: string): ReportCaseMockPage {
+  const records = reportRecords(loadDashboardData(storage));
+  const models = records.flatMap((record) => {
+    const model = reportCaseModelFromRecord(record);
+    return model ? [model] : [];
+  });
+  const page = pageMockItems(models, cursor, REPORT_CASE_MOCK_PAGE_SIZE);
   return {
     source: "mock",
-    items: reportRecords(loadDashboardData(storage)).flatMap((record) => {
-      const model = reportCaseModelFromRecord(record);
-      return model ? [model] : [];
-    }),
-    nextCursor: null,
+    items: page.items,
+    nextCursor: page.nextCursor,
   };
+}
+
+/** Load the complete mock Report Case collection for local pagination. */
+export function loadAllReportCasesFromMock(storage: BrowserStorage): ReportCaseMockPage {
+  const records = reportRecords(loadDashboardData(storage));
+  const items = records.flatMap((record) => {
+    const model = reportCaseModelFromRecord(record);
+    return model ? [model] : [];
+  });
+  return { source: "mock", items, nextCursor: null };
 }
 
 export function findReportCaseFromMock(

@@ -6,11 +6,13 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 
 import { ApiError } from "../../../lib/api/client";
+import { AdminActionReceipt, AdminActionSummary } from "../../../components/admin/admin-action-feedback";
 import { disputeRoutes, questRoutes } from "../admin-routes";
 import {
   adminApi,
   type AdminQuestReasonCode,
 } from "../api/admin-api";
+import { isAdminApiEnabled } from "../api/admin-provider";
 import { canHideQuest, isQuestTerminal, type QuestState } from "../domain/rulebook";
 import {
   formatQuestDate,
@@ -20,6 +22,7 @@ import {
   questMatchesTab,
   questMemberName,
   questPageCount,
+  questDisplayIdFor,
   questStatusClass,
   searchQuestRows,
   sortQuestRows,
@@ -212,8 +215,7 @@ function QuestDetailContent({
           <Fact label="Quest Funding Total">{formatQuestMoney(fundingTotal)}</Fact>
           <Fact label="Participant mode">{detail.participation === "GROUP" ? "Team" : "Solo"}</Fact>
           <Fact label="Candidate mode">{detail.mode === "FIRST_COME_FIRST_SERVED" ? "First come, first served" : "Candidate"}</Fact>
-          <Fact label="Quest ID">{detail.id}</Fact>
-          <Fact label="API version">{detail.apiVersion}</Fact>
+          <Fact label="Quest ID">{questDisplayIdFor(detail.id, detail.displayId)}</Fact>
         </div>
       </Section>
 
@@ -494,34 +496,39 @@ function QuestDetailContent({
 }
 
 function QuestCommandDialog({
+  detail,
   command,
   onCancel,
   onSubmit,
   error,
   pending,
 }: {
+  detail: QuestDetailView;
   command: QuestCommand;
   onCancel: () => void;
   onSubmit: (submission: QuestCommandSubmission) => void;
   error: string | null;
   pending: boolean;
 }) {
-  const needsReason = true;
+  // The API requires a Restore reason. Mock mode keeps the same field visible
+  // so the UI remains close to the live flow, but the fixture path allows an
+  // Admin to submit Restore without a reason while the API contract is pending.
+  const reasonRequired = command !== "restore" || isAdminApiEnabled();
   const [reason, setReason] = useState("");
   const [reasonCode, setReasonCode] = useState<AdminQuestReasonCode | "">("");
   const [validationError, setValidationError] = useState<string | null>(null);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (needsReason && reason.trim().length < 8) {
+    if (reasonRequired && reason.trim().length < 8) {
       setValidationError("Enter at least 8 characters for the reason.");
       return;
     }
-    if (!reasonCode) {
+    if (reasonRequired && !reasonCode) {
       setValidationError("Select a reason code.");
       return;
     }
-    onSubmit({ command, reason: reason.trim(), reasonCode });
+    onSubmit({ command, reason: reason.trim(), reasonCode: reasonCode || "POLICY_REVIEW" });
   }
 
   return (
@@ -531,8 +538,21 @@ function QuestCommandDialog({
         <form onSubmit={submit}>
           <h2 id="quest-command-title">{command === "hide" ? "Hide Quest" : command === "restore" ? "Restore Quest" : "Terminate Quest"}</h2>
           <p>{command === "terminate" ? "This changes the Quest to QUEST_CANCELLED and preserves the Admin Action." : "The API Server remains the authority for this Quest action."}</p>
-          {needsReason ? <label htmlFor="quest-command-reason">Reason<textarea id="quest-command-reason" value={reason} onChange={(event) => setReason(event.target.value)} rows={4} /></label> : null}
-          <label htmlFor="quest-command-reason-code">Reason code{needsReason ? " *" : ""}<select id="quest-command-reason-code" value={reasonCode} onChange={(event) => setReasonCode(event.target.value as AdminQuestReasonCode | "")}><option value="">{needsReason ? "Select a reason code" : "No reason code"}</option>{reasonCodes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
+          <AdminActionSummary
+            title="Before you confirm"
+            affected={`Quest ${detail.displayId || detail.id}`}
+            currentState={command === "restore" ? "HIDDEN" : command === "hide" ? "DISCOVERABLE" : detail.state}
+            nextState={command === "restore" ? "DISCOVERABLE" : command === "hide" ? "HIDDEN" : "QUEST_CANCELLED"}
+            effect={command === "hide"
+              ? "Remove the Quest from public discovery only. Quest State and Quest Escrow do not change."
+              : command === "restore"
+                ? "Return the Quest to public discovery. Quest State and Quest Escrow do not change."
+                : "Change the Quest to QUEST_CANCELLED. Review the Quest and Funding Reservation record before confirming."}
+            reversibility={command === "terminate" ? "This is a terminal Quest State. It has no restore path." : "An Admin can reverse this discovery visibility change with the opposite command."}
+            warning={command === "restore" && !reasonRequired ? "Restore reason is optional in mock mode. The visibility change is still recorded as an Admin Action." : "The API Server remains the authority for the final Quest result."}
+          />
+          <label htmlFor="quest-command-reason">Reason{reasonRequired ? <span aria-hidden="true"> *</span> : null}<textarea id="quest-command-reason" aria-required={reasonRequired} value={reason} onChange={(event) => setReason(event.target.value)} rows={4} /></label>
+          <label htmlFor="quest-command-reason-code">Reason code{reasonRequired ? <span aria-hidden="true"> *</span> : null}<select id="quest-command-reason-code" aria-required={reasonRequired} value={reasonCode} onChange={(event) => setReasonCode(event.target.value as AdminQuestReasonCode | "")}><option value="">{reasonRequired ? "Select a reason code" : "No reason code"}</option>{reasonCodes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
           {validationError || error ? <p className="field-error" role="alert">{validationError || error}</p> : null}
           <div className="dialog-actions"><button className="btn" type="button" onClick={onCancel} disabled={pending}>Cancel</button><button className={`btn ${command === "terminate" ? "danger" : "primary"}`} type="submit" disabled={pending}>{pending ? "Saving…" : "Confirm"}</button></div>
         </form>
@@ -555,6 +575,12 @@ export function QuestDetailPage({ questId, presentation = "page", initialData }:
   const [commandPending, setCommandPending] = useState(false);
   const [disputeError, setDisputeError] = useState<string | null>(null);
   const [disputePending, setDisputePending] = useState(false);
+  const [actionReceipt, setActionReceipt] = useState<{
+    action: string;
+    status: string;
+    reason: string;
+    occurredAt: string;
+  } | null>(null);
 
   useEffect(() => {
     setDetail(initialData.detail);
@@ -694,6 +720,14 @@ export function QuestDetailPage({ questId, presentation = "page", initialData }:
         await adminApi.terminateQuest(detail.id, { ...options, reason: submission.reason, reasonCode: submission.reasonCode });
       }
       setCommand(null);
+      if (!isAdminApiEnabled()) {
+        setActionReceipt({
+          action: submission.command === "hide" ? "Hide Quest" : submission.command === "restore" ? "Restore Quest" : "Terminate Quest",
+          status: submission.command === "hide" ? "HIDDEN" : submission.command === "restore" ? "DISCOVERABLE" : "QUEST_CANCELLED",
+          reason: submission.reason || "No reason required for Quest Restore in mock mode.",
+          occurredAt: new Date().toISOString(),
+        });
+      }
       router.refresh();
     } catch (commandErrorValue: unknown) {
       setCommandError(errorMessage(commandErrorValue, "Quest command failed."));
@@ -702,7 +736,8 @@ export function QuestDetailPage({ questId, presentation = "page", initialData }:
     }
   }
 
-  const content = <QuestDetailContent detail={detail} finance={finance} linkedDisputeId={linkedDisputeId} disputeLookupError={disputeLookupError} onCommand={openCommand} onOpenDispute={openDispute} disputePending={disputePending} disputeError={disputeError} showFullDetailLink={presentation === "drawer"} />;
+  const receipt = actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Quest" resourceId={detail.displayId || detail.id} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>Reason: {actionReceipt.reason}</p>} /> : null;
+  const content = <><QuestDetailContent detail={detail} finance={finance} linkedDisputeId={linkedDisputeId} disputeLookupError={disputeLookupError} onCommand={openCommand} onOpenDispute={openDispute} disputePending={disputePending} disputeError={disputeError} showFullDetailLink={presentation === "drawer"} />{receipt}</>;
 
   if (presentation === "drawer") {
     return (
@@ -716,10 +751,10 @@ export function QuestDetailPage({ questId, presentation = "page", initialData }:
           tabIndex={-1}
           open
         >
-          <div className="drawer-top"><div><strong id="quest-drawer-title">{detail.title}</strong><small>Quest {questId} · Quest detail drawer</small></div><button className="icon" type="button" aria-label="Close Quest detail" onClick={closeDrawer}><span className="close-lines" /></button></div>
+          <div className="drawer-top"><div><strong id="quest-drawer-title">{detail.title}</strong><small>Quest {questDisplayIdFor(detail.id, detail.displayId)} · Quest detail drawer</small></div><button className="icon" type="button" aria-label="Close Quest detail" onClick={closeDrawer}><span className="close-lines" /></button></div>
           <div className="drawer-body">{content}</div>
         </dialog>
-        {command ? <QuestCommandDialog command={command} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandPending} /> : null}
+        {command ? <QuestCommandDialog detail={detail} command={command} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandPending} /> : null}
       </>
     );
   }
@@ -728,7 +763,7 @@ export function QuestDetailPage({ questId, presentation = "page", initialData }:
     <main className="admin-route-page quest-detail-page" tabIndex={-1}>
       <div className="page-head"><div><p className="admin-route-kicker">Quest</p><h1>{detail.title}</h1><p>Created by {questMemberName(detail.hirer)}</p></div><Link className="btn" href={questRoutes.list()}>Back to Quests</Link></div>
       <div className="quest-detail-grid">{content}</div>
-      {command ? <QuestCommandDialog command={command} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandPending} /> : null}
+      {command ? <QuestCommandDialog detail={detail} command={command} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandPending} /> : null}
     </main>
   );
 }

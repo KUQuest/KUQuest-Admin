@@ -45,6 +45,10 @@ describe("Conduct Report model", () => {
       relatedQuestTitle: "Verify dorm fire exits",
       details: "The Worker was asked to perform work outside the Quest Condition.",
       submittedAt: "2026-09-12T12:00:00.000Z",
+      reportedMemberStatus: "ACTIVE",
+      previousReportCount: 2,
+      confirmedViolationCount: 1,
+      previousModerationActions: ["Red Flag"],
       version: 3,
     });
 
@@ -65,6 +69,13 @@ describe("Conduct Report model", () => {
     });
     expect(model?.reportedMemberHref).toBe("/member/member-reported");
     expect(model?.reporterHref).toBe("/member/member-reporter");
+    expect(model?.questHref).toBe("/quest/QST-12001");
+    expect(model?.moderationHistory).toMatchObject({
+      currentMemberStatus: "ACTIVE",
+      previousReportCount: 2,
+      confirmedViolationCount: 1,
+      previousActions: ["Red Flag"],
+    });
     expect(model?.title).toBe("Out of scope work");
     expect(conductReportModelFromRecord({
       id: "RPT-1",

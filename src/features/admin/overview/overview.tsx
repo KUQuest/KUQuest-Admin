@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { isAdminMockEnabled } from "../../../lib/auth/admin-auth-mode";
@@ -9,26 +9,18 @@ import type { AdminFinanceOverview } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { activityRoutes } from "../admin-routes";
 import { memberStatusLabel, walletStatusLabel } from "../domain/rulebook";
-import type { PersistedAdminData } from "../data/admin-records";
 import { dashboardActivityKey } from "../dashboard/dashboard-model";
 import {
-  loadOverviewMockData,
   loadOverviewModelFromMock,
 } from "./overview-adapter";
+import { mockFinanceOverview } from "./overview-finance-mock-data";
 import {
-  overviewSearchResultsFromApi,
-  overviewSearchResultsFromMockData,
+  overviewQueueCaseIndexFor,
   questStateTones,
-  type OverviewApiSearchData,
   type OverviewModel,
   type OverviewQueue,
-  type OverviewSearchResult,
 } from "./overview-model";
 import type { OverviewPageData } from "./overview-service";
-
-type SearchData =
-  | { source: "mock"; data: PersistedAdminData }
-  | { source: "api"; data: OverviewApiSearchData };
 
 function relativeTime(timestamp: number, translateText: (value: string) => string): string {
   if (!timestamp) return translateText("Time not provided");
@@ -58,34 +50,10 @@ function moneyFromSatang(value: number): string {
   }).format(value / 100)}`;
 }
 
-function financeDateLabel(value: string, translateText: (value: string) => string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return translateText("Time not provided");
-  return `${date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "Asia/Bangkok",
-  })} · ${date.toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Asia/Bangkok",
-  })} ICT`;
-}
-
 function translateOverviewValue(value: string, translateText: (value: string) => string): string {
   const relativeTimeMatch = /^(\d+) (minute|minutes|hour|hours|day|days) ago$/.exec(value);
   if (relativeTimeMatch) return `${relativeTimeMatch[1]} ${translateText(`${relativeTimeMatch[2]} ago`)}`;
   return translateText(value);
-}
-
-function SearchIcon() {
-  return (
-    <svg className="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="11" cy="11" r="7" />
-      <path d="m20 20-4-4" />
-    </svg>
-  );
 }
 
 function FinanceMetric({ label, value }: { label: string; value: number }) {
@@ -107,30 +75,22 @@ function FinanceOverviewSection({
   error: string | null;
   translateText: (value: string) => string;
 }) {
-  if (!isAdminApiEnabled()) return null;
+  const sourceLabel = isAdminApiEnabled() ? "Admin API" : "Local demo data";
   if (loading) {
-    return <section className="overview-command-center-finance" aria-labelledby="overview-finance-heading"><div className="overview-command-center-section-head"><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p>{translateText("Platform and Member Wallet totals.")}</p></div><span>{translateText("Admin API")}</span></div><p className="overview-command-center-note">{translateText("Reading the Finance Overview from the Admin API…")}</p></section>;
+    return <section className="overview-command-center-finance overview-command-center-finance-member-focused" aria-labelledby="overview-finance-heading"><div className="overview-command-center-section-head"><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p>{translateText("Member Wallet totals and lifetime volume.")}</p></div><span>{translateText(sourceLabel)}</span></div><p className="overview-command-center-note">{translateText("Reading the Finance Overview from the Admin API…")}</p></section>;
   }
   if (error || !overview) {
-    return <section className="overview-command-center-finance" aria-labelledby="overview-finance-heading"><div className="overview-command-center-section-head"><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p>{translateText("Platform and Member Wallet totals.")}</p></div><span>{translateText("Unavailable")}</span></div><p className="overview-command-center-note">{error ? translateText(error) : translateText("Finance Overview is not available.")}</p></section>;
+    return <section className="overview-command-center-finance overview-command-center-finance-member-focused" aria-labelledby="overview-finance-heading"><div className="overview-command-center-section-head"><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p>{translateText("Member Wallet totals and lifetime volume.")}</p></div><span>{translateText("Unavailable")}</span></div><p className="overview-command-center-note">{error ? translateText(error) : translateText("Finance Overview is not available.")}</p></section>;
   }
 
-  const integrityLabel = overview.integrity.subledgerBalanced ? "Balanced" : "Needs review";
-  const integrityClass = overview.integrity.subledgerBalanced ? "is-balanced" : "needs-review";
-  return <section className="overview-command-center-finance" aria-labelledby="overview-finance-heading">
-    <div className="overview-command-center-section-head"><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p>{translateText("Platform and Member Wallet totals.")}</p></div><span>{translateText("Admin API")}</span></div>
+  return <section className="overview-command-center-finance overview-command-center-finance-member-focused" aria-labelledby="overview-finance-heading">
+    <div className="overview-command-center-section-head"><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p>{translateText("Member Wallet totals and lifetime volume.")}</p></div><span>{translateText(sourceLabel)}</span></div>
     <div className="overview-command-center-finance-groups">
-      <FinanceGroup title={translateText("Platform Balances")}>
-        <div className="overview-command-center-finance-metrics"><FinanceMetric label={translateText("Revenue")} value={overview.platformBalances.revenueSatang} /><FinanceMetric label={translateText("Suspense")} value={overview.platformBalances.suspenseSatang} /></div>
-      </FinanceGroup>
       <FinanceGroup title={translateText("Member Wallet Summary")}>
         <div className="overview-command-center-finance-metrics"><FinanceMetric label={translateText("Spending balance")} value={overview.memberBalancesSummary.totalSpendingSatang} /><FinanceMetric label={translateText("Earnings balance")} value={overview.memberBalancesSummary.totalEarningsSatang} /><FinanceMetric label={translateText("Funding reserved")} value={overview.memberBalancesSummary.totalFundingReservedSatang} /><FinanceMetric label={translateText("Payout reserved")} value={overview.memberBalancesSummary.totalPayoutReservedSatang} /><FinanceMetric label={translateText("Total circulating")} value={overview.memberBalancesSummary.totalCirculatingSatang} /></div>
       </FinanceGroup>
       <FinanceGroup title={translateText("Lifetime Volume")}>
         <div className="overview-command-center-finance-metrics"><FinanceMetric label={translateText("Top-ups deposited")} value={overview.volumeLifetime.totalTopUpDepositedSatang} /><FinanceMetric label={translateText("Payouts completed")} value={overview.volumeLifetime.totalPayoutCompletedSatang} /><FinanceMetric label={translateText("Platform fees earned")} value={overview.volumeLifetime.totalPlatformFeesEarnedSatang} /></div>
-      </FinanceGroup>
-      <FinanceGroup title={translateText("Ledger Integrity")}>
-        <div className="overview-command-center-finance-integrity"><div><span>{translateText("Subledger status")}</span><strong className={integrityClass}>{translateText(integrityLabel)}</strong></div><div><span>{translateText("Posting discrepancy")}</span><strong>{moneyFromSatang(overview.integrity.totalPostingsDiscrepancySatang)}</strong></div><div><span>{translateText("Last audited")}</span><strong>{financeDateLabel(overview.integrity.lastAuditedAt, translateText)}</strong></div></div>
       </FinanceGroup>
     </div>
   </section>;
@@ -140,108 +100,19 @@ function OverviewLoading({ message }: { message: string }) {
   return <main id="dashboard-main" className="overview-command-center" tabIndex={-1} aria-busy="true"><section className="panel"><p>{message}</p></section></main>;
 }
 
-function searchResultMarker(kind: OverviewSearchResult["kind"]): string {
-  return kind === "member" ? "M" : kind === "payout" ? "P" : "Q";
-}
-
-function OverviewSearch({
-  open,
-  onClose,
-  translateText,
-  initialData,
-  initialError,
-}: {
-  open: boolean;
-  onClose: () => void;
-  translateText: (value: string) => string;
-  initialData?: OverviewApiSearchData | null;
-  initialError?: string | null;
-}) {
-  const [query, setQuery] = useState("");
-  const [data, setData] = useState<SearchData | null>(
-    initialData ? { source: "api", data: initialData } : null,
-  );
-  const [error, setError] = useState<string | null>(initialError ?? null);
-
-  useEffect(() => {
-    if (!open) return;
-    setQuery("");
-    setData(initialData
-      ? { source: "api", data: initialData }
-      : isAdminMockEnabled()
-        ? { source: "mock", data: loadOverviewMockData(localStorage) }
-        : null);
-    setError(initialError ?? (
-      !isAdminMockEnabled() && initialData === undefined
-        ? translateText("The Admin API search is not available.")
-        : null
-    ));
-
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", closeOnEscape);
-
-    return () => {
-      document.removeEventListener("keydown", closeOnEscape);
-    };
-  }, [initialData, initialError, onClose, open, translateText]);
-
-  if (!open) return null;
-  const results = data?.source === "mock"
-    ? overviewSearchResultsFromMockData(data.data, query)
-    : data?.source === "api"
-      ? overviewSearchResultsFromApi(data.data, query)
-      : [];
-
-  return (
-    <dialog open id="overview-command" className="command" aria-modal="true" aria-label={translateText("Search marketplace records")}>
-      <button className="command-backdrop" type="button" aria-label={translateText("Close search")} onClick={onClose} />
-      <div className="command-box">
-        <div className="command-input">
-          <SearchIcon />
-          <input
-            type="search"
-            aria-label={translateText("Search marketplace records")}
-            placeholder={translateText("Search by name, Quest, Student ID, or Payout…")}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            autoFocus
-          />
-          <kbd>Esc</kbd>
-        </div>
-        <div id="overview-command-results">
-          {error && <p className="empty">{translateText(error)}</p>}
-          {results.map((result) => (
-            <Link key={`${result.kind}-${result.id}`} className="result" href={result.href} onClick={onClose}>
-              <span aria-hidden="true">{searchResultMarker(result.kind)}</span>
-              <span><strong>{result.title}</strong><small>{result.id} · {translateText(result.detail)}</small></span>
-              <small>{translateText(result.kind === "member" ? "Member" : result.kind === "payout" ? "Payout" : "Quest")}</small>
-            </Link>
-          ))}
-          {!error && query && !results.length && <p className="empty">{translateText("No matching records")}</p>}
-        </div>
-      </div>
-    </dialog>
-  );
-}
-
 export function AdminOverview({
-  showSearch = true,
   initialData,
 }: {
-  showSearch?: boolean;
   initialData?: OverviewPageData;
 } = {}) {
   const { translateText } = useAdminShell();
   const [model, setModel] = useState<OverviewModel | null>(initialData?.model ?? null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [financeOverview] = useState<AdminFinanceOverview | null>(initialData?.financeOverview ?? null);
+  const [financeOverview] = useState<AdminFinanceOverview | null>(
+    initialData?.financeOverview ?? (isAdminMockEnabled() ? mockFinanceOverview : null),
+  );
   const financeOverviewLoading = false;
   const [financeOverviewError] = useState<string | null>(initialData?.financeOverviewError ?? null);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const closeSearch = useCallback(() => setSearchOpen(false), []);
-
   useEffect(() => {
     if (initialData || isAdminApiEnabled()) return;
     let cancelled = false;
@@ -258,18 +129,6 @@ export function AdminOverview({
     };
   }, [initialData]);
 
-  useEffect(() => {
-    if (!showSearch) return;
-    const openSearchWithShortcut = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        setSearchOpen(true);
-      }
-    };
-    document.addEventListener("keydown", openSearchWithShortcut);
-    return () => document.removeEventListener("keydown", openSearchWithShortcut);
-  }, [showSearch]);
-
   if (!model) return <OverviewLoading message={translateText(loadError ?? "Loading marketplace overview…")} />;
   if (loadError) return <OverviewLoading message={loadError} />;
 
@@ -282,11 +141,6 @@ export function AdminOverview({
             <h1>{translateText("Overview")}</h1>
             <p>{translateText("One view of marketplace work, risk, and money.")}</p>
           </div>
-          {showSearch && <button className="search overview-search-trigger" type="button" aria-label={translateText("Search marketplace records")} onClick={() => setSearchOpen(true)}>
-              <SearchIcon />
-              <span>{translateText("Search by name, Quest, Student ID, or Payout…")}</span>
-              <kbd>⌘ K</kbd>
-            </button>}
         </header>
 
         <section className="overview-command-center-command" aria-label={translateText("Work left")}>
@@ -320,14 +174,19 @@ export function AdminOverview({
             </div>
             <div className="overview-command-center-table-head"><span>{translateText("Queue")}</span><span>{translateText("Detail")}</span><span>{translateText("State")}</span><span>{translateText("Waiting")}</span></div>
             <ul className="overview-command-center-queue">
-              {model.queues.map((row) => (
-                <li key={row.id}>
-                  <span className="overview-command-center-queue-title"><strong><Link href={row.listHref}>{translateText(row.title)}</Link></strong><small>{countLabel(row.count)} {translateText("open")}</small></span>
-                  <span className="overview-command-center-queue-oldest">{row.oldestHref ? <Link href={row.oldestHref}>{translateOverviewValue(row.oldest, translateText)}</Link> : translateOverviewValue(row.oldest, translateText)}</span>
-                  <span className={`overview-command-center-queue-status ${row.tone}`}>{translateText(row.status)}</span>
-                  <span className="overview-command-center-queue-waiting">{translateOverviewValue(row.waiting, translateText)}</span>
-                </li>
-              ))}
+              {model.queues.map((row) => {
+                const mockCaseIndex = overviewQueueCaseIndexFor(row.id, row.oldestId);
+                const processHref = mockCaseIndex === null ? null : row.oldestHref;
+                return <li key={row.id}>
+                  <span className="overview-command-center-queue-title"><strong><Link href={row.listHref}>{translateText(row.title)}</Link></strong><small>{countLabel(row.count)} {translateText("open")}</small>{isAdminMockEnabled() && row.count !== null && row.count > 0 && processHref ? <Link className="link overview-queue-process" href={processHref}>{translateText("Process next")}</Link> : null}</span>
+                  <span className="overview-command-center-queue-oldest">
+                    {row.oldestHref ? <Link href={row.oldestHref}>{translateOverviewValue(row.oldest, translateText)}</Link> : translateOverviewValue(row.oldest, translateText)}
+                    {row.oldestId ? <small>{row.oldestId}</small> : null}
+                  </span>
+                  <span className={`overview-command-center-queue-status ${row.tone}`}><strong>{translateText(row.status)}</strong></span>
+                  <span className="overview-command-center-queue-waiting"><strong>{translateOverviewValue(row.waiting, translateText)}</strong><small>{translateText("Owner")}: {translateText(row.assignedAdmin)}</small></span>
+                </li>;
+              })}
             </ul>
           </section>
 
@@ -337,7 +196,7 @@ export function AdminOverview({
               <span>{translateText("Latest")} {model.activity.length}</span>
             </div>
             {model.activity.length ? (
-              <ol className="overview-command-center-timeline">
+              <ol className="overview-command-center-timeline overview-command-center-timeline-scrollable">
                 {model.activity.map((entry, index) => (
                   <li key={dashboardActivityKey(entry, index)}>
                     <span className="overview-command-center-timeline-marker" aria-hidden="true">{index + 1}</span>
@@ -388,18 +247,10 @@ export function AdminOverview({
                 </li>
               ))}
             </ul>
-            <div className="overview-command-center-status-fact"><span>{translateText("Payouts in flight")}</span><strong>{model.inFlightPayouts === null ? "—" : countLabel(model.inFlightPayouts)}</strong></div>
             {model.walletStatusSource === "Unavailable" ? <p className="overview-command-center-note">{translateText("Wallet status counts are not provided by the Admin API.")}</p> : model.walletStatusSource === "Local fallback" ? <p className="overview-command-center-note">{translateText("Wallet status counts use local fallback data because the Admin API does not provide them.")}</p> : null}
           </section>
         </div>
       </main>
-      <OverviewSearch
-        open={showSearch && searchOpen}
-        onClose={closeSearch}
-        translateText={translateText}
-        initialData={initialData?.searchData}
-        initialError={initialData?.searchError}
-      />
     </>
   );
 }

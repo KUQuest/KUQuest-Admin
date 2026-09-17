@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
   startTransition,
+  type FormEvent,
   type ReactNode,
 } from "react";
 
@@ -41,8 +42,155 @@ import {
 } from "./wallet-model";
 import type { WalletDataSource, WalletBoardPageData } from "./wallet-service";
 
-function Badge({ status }: { status: WalletStatus }) {
-  return <span className={`badge ${walletStatusClass(status)}`}>{walletStatusLabel(status)}</span>;
+type WalletStatusTarget = Exclude<WalletStatus, "CLOSED">;
+type WalletStatusFixture = "success" | "error" | "stale-version";
+
+type WalletStatusReceipt = {
+  id: string;
+  fromStatus: WalletStatus;
+  toStatus: WalletStatus;
+  reason: string;
+  createdAt: string;
+};
+
+const WALLET_STATUS_FIXTURE_OPTIONS: Array<{ value: WalletStatusFixture; label: string }> = [
+  { value: "success", label: "Success" },
+  { value: "error", label: "Command error" },
+  { value: "stale-version", label: "Stale Wallet version" },
+];
+
+function walletStatusTargets(status: WalletStatus): WalletStatusTarget[] {
+  if (status === "CLOSED") return [];
+  if (status === "ACTIVE") return ["FROZEN", "SUSPENDED"];
+  if (status === "FROZEN") return ["SUSPENDED", "ACTIVE"];
+  return ["FROZEN", "ACTIVE"];
+}
+
+function walletStatusActionLabel(status: WalletStatusTarget): string {
+  if (status === "ACTIVE") return "Restore Wallet to ACTIVE";
+  if (status === "FROZEN") return "Freeze Wallet";
+  return "Suspend Wallet";
+}
+
+function walletStatusActionClass(status: WalletStatusTarget): string {
+  if (status === "ACTIVE") return "primary";
+  if (status === "SUSPENDED") return "danger";
+  return "";
+}
+
+function walletStatusTransitionCopy(status: WalletStatusTarget): string[] {
+  if (status === "ACTIVE") {
+    return [
+      "Student-initiated Wallet operations are permitted again.",
+      "This does not change the Member Ban status.",
+    ];
+  }
+  return [
+    "New commitments are blocked, including Top-up, Payout, Earnings Conversion, and new Quest participation.",
+    "Existing Escrow, Assignments, and in-progress Payouts continue under their own rules.",
+    "This changes Wallet Status only. It does not create or remove a Member Ban.",
+  ];
+}
+
+function walletStatusFixtureError(fixture: WalletStatusFixture): string | null {
+  if (fixture === "error") return "Mock Wallet status command failed. No status was changed.";
+  if (fixture === "stale-version") return "Wallet status is stale. Refresh this Wallet before trying again. No status was changed.";
+  return null;
+}
+
+function WalletStatusCommandDialog({
+  row,
+  targetStatus,
+  onCancel,
+  onSubmit,
+  error,
+  pending,
+}: {
+  row: WalletBoardRow;
+  targetStatus: WalletStatusTarget;
+  onCancel: () => void;
+  onSubmit: (reason: string, fixture: WalletStatusFixture) => void;
+  error: string | null;
+  pending: boolean;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [reason, setReason] = useState("");
+  const [fixture, setFixture] = useState<WalletStatusFixture>("success");
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const transitionCopy = walletStatusTransitionCopy(targetStatus);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (!dialog.open) dialog.showModal();
+    const handleCancel = (event: Event) => {
+      event.preventDefault();
+      onCancel();
+    };
+    dialog.addEventListener("cancel", handleCancel);
+    return () => {
+      dialog.removeEventListener("cancel", handleCancel);
+      if (dialog.open) dialog.close();
+    };
+  }, [onCancel]);
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const trimmedReason = reason.trim();
+    if (!trimmedReason) {
+      setValidationError("Enter a reason for this Wallet status change.");
+      return;
+    }
+    setValidationError(null);
+    onSubmit(trimmedReason, fixture);
+  }
+
+  return <dialog ref={dialogRef} className="wallet-status-command-dialog" aria-labelledby="wallet-status-command-title" aria-modal="true">
+    <form className="wallet-status-command-form" onSubmit={submit}>
+      <div className="wallet-command-head">
+        <div>
+          <strong id="wallet-status-command-title">{walletStatusActionLabel(targetStatus)}</strong>
+          <small>{row.memberName} · {row.id}</small>
+        </div>
+        <button className="icon" type="button" aria-label="Close Wallet status command" onClick={onCancel} disabled={pending}><span className="close-lines" /></button>
+      </div>
+      <div className="wallet-command-body">
+        <p className="wallet-command-intro">Review the status change before saving. Every Wallet status change requires a reason.</p>
+        <section className="wallet-status-preview" aria-label="Wallet status change preview">
+          <div><span>Wallet</span><strong>{row.id}</strong></div>
+          <div><span>Member</span><strong>{row.memberName}</strong></div>
+          <div className="wallet-status-preview-transition"><span>Wallet Status</span><strong><Badge status={row.status} /><span aria-hidden="true"> → </span><Badge status={targetStatus} /></strong></div>
+        </section>
+        <section className={`wallet-status-consequences wallet-status-consequences-${targetStatus.toLocaleLowerCase()}`} aria-label="Wallet status consequences">
+          <strong>{targetStatus === "ACTIVE" ? "Restore effect" : targetStatus === "FROZEN" ? "Temporary hold effect" : "Review hold effect"}</strong>
+          <ul>{transitionCopy.map((copy) => <li key={copy}>{copy}</li>)}</ul>
+        </section>
+        <label htmlFor="wallet-status-reason">Reason <span aria-hidden="true">*</span>
+          <textarea id="wallet-status-reason" rows={4} minLength={1} maxLength={500} required value={reason} aria-invalid={validationError ? "true" : undefined} aria-describedby={validationError ? "wallet-status-reason-error" : undefined} onChange={(event) => { setReason(event.target.value); setValidationError(null); }} autoFocus />
+        </label>
+        <p className="wallet-command-help">This reason is part of the Wallet status history. It does not change the Member Ban ladder.</p>
+        <label className="wallet-fixture-field" htmlFor="wallet-status-fixture">Mock response fixture <span>Development only</span>
+          <select id="wallet-status-fixture" value={fixture} onChange={(event) => setFixture(event.target.value as WalletStatusFixture)}>
+            {WALLET_STATUS_FIXTURE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </label>
+        {validationError || error ? <p id="wallet-status-reason-error" className="field-error" role="alert">{validationError ?? error}</p> : null}
+      </div>
+      <div className="dialog-actions">
+        <button className="btn" type="button" onClick={onCancel} disabled={pending}>Cancel</button>
+        <button className={`btn ${walletStatusActionClass(targetStatus)}`} type="submit" disabled={pending}>{pending ? "Saving…" : walletStatusActionLabel(targetStatus)}</button>
+      </div>
+    </form>
+  </dialog>;
+}
+
+function Badge({ status, track = true }: { status: WalletStatus; track?: boolean }) {
+  const label = walletStatusLabel(status);
+  return <span
+    className={`badge ${walletStatusClass(status)}`}
+    data-wallet-status={track ? status : undefined}
+    title={status === "CLOSED" ? "Closed — terminal Wallet status" : undefined}
+  >{label}</span>;
 }
 
 function SummaryMetric({ label, value }: { label: string; value: number }) {
@@ -60,9 +208,7 @@ function WalletSummary({
   dataSource: WalletDataSource;
   onRetry: () => void;
 }) {
-  const content = dataSource === "mock"
-    ? <div className="wallet-finance-summary-heading"><div><strong id="wallet-summary-heading">Total Wallet Funds</strong><small>All Wallets · all statuses</small></div><strong>{formatWalletMoney(summary?.totalCirculatingSatang ?? 0)}</strong></div>
-    : error
+  const content = error
     ? <div className="empty" role="alert"><h3>Wallet summary unavailable</h3><p>{error}</p><button className="btn" type="button" onClick={onRetry}>Try again</button></div>
     : summary
     ? <div className="wallet-finance-summary-grid">
@@ -74,7 +220,7 @@ function WalletSummary({
     </div>
     : null;
 
-  return <section className="wallet-funds-summary wallet-finance-summary" aria-labelledby="wallet-summary-heading">{dataSource === "api" && !error ? <div className="wallet-finance-summary-heading"><div><strong id="wallet-summary-heading">Member Wallet Summary</strong><small>Aggregate values from the Admin API</small></div></div> : null}{content}</section>;
+  return <section className="wallet-funds-summary wallet-finance-summary" aria-labelledby="wallet-summary-heading"><div className="wallet-finance-summary-heading"><div><strong id="wallet-summary-heading">Member Wallet Summary</strong><small>{dataSource === "api" ? "Aggregate values from the Admin API" : "All Wallets · all statuses"}</small></div></div>{content}</section>;
 }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -88,13 +234,17 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
 function WalletDrawer({
   row,
   dataSource,
+  initialMockHistory,
   opener,
   onClose,
+  onStatusChanged,
 }: {
   row: WalletBoardRow;
   dataSource: WalletDataSource;
+  initialMockHistory: WalletHistoryView[];
   opener: HTMLElement | null;
   onClose: () => void;
+  onStatusChanged: (walletId: string, nextStatus: WalletStatus, historyEntry: WalletHistoryView) => void;
 }) {
   const [detail, setDetail] = useState<WalletDetailView | null>(null);
   const [history, setHistory] = useState<WalletHistoryView[]>([]);
@@ -105,6 +255,13 @@ function WalletDrawer({
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [actionPending, setActionPending] = useState<"verify" | "rebuild" | null>(null);
+  const [statusCommand, setStatusCommand] = useState<WalletStatusTarget | null>(null);
+  const [statusCommandError, setStatusCommandError] = useState<string | null>(null);
+  const [statusCommandPending, setStatusCommandPending] = useState(false);
+  const [statusReceipt, setStatusReceipt] = useState<WalletStatusReceipt | null>(null);
+  const initialMockHistoryRef = useRef(initialMockHistory);
+  const rowStatusRef = useRef(row.status);
+  rowStatusRef.current = row.status;
 
   const loadDetail = useCallback(async () => {
     setLoading(true);
@@ -114,8 +271,8 @@ function WalletDrawer({
     setVerification(null);
     try {
       const result = await loadWalletDrawerDataAction(row.id);
-      setDetail(result.detail);
-      setHistory(result.history);
+      setDetail({ ...result.detail, status: rowStatusRef.current, statusLabel: walletStatusLabel(rowStatusRef.current) });
+      setHistory([...initialMockHistoryRef.current, ...result.history]);
       setLedger(result.ledger);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Wallet detail is not available.");
@@ -164,6 +321,56 @@ function WalletDrawer({
     }
   }
 
+  const cancelStatusCommand = useCallback(() => {
+    if (statusCommandPending) return;
+    setStatusCommand(null);
+    setStatusCommandError(null);
+  }, [statusCommandPending]);
+
+  function openStatusCommand(nextStatus: WalletStatusTarget) {
+    setStatusCommandError(null);
+    setStatusReceipt(null);
+    setStatusCommand(nextStatus);
+  }
+
+  async function submitStatusCommand(reason: string, fixture: WalletStatusFixture) {
+    if (!detail || dataSource !== "mock" || !statusCommand) return;
+    setStatusCommandPending(true);
+    setStatusCommandError(null);
+    setNotice(null);
+    try {
+      const fixtureError = walletStatusFixtureError(fixture);
+      if (fixtureError) throw new Error(fixtureError);
+
+      const createdAt = new Date().toISOString();
+      const historyEntry: WalletHistoryView = {
+        id: `mock-wallet-status-${row.id}-${Date.now()}`,
+        fromStatus: detail.status,
+        toStatus: statusCommand,
+        reason,
+        actorAdminId: "admin-mock",
+        createdAt,
+      };
+      const receipt: WalletStatusReceipt = {
+        id: `mock-action-${row.id}-${Date.now()}`,
+        fromStatus: detail.status,
+        toStatus: statusCommand,
+        reason,
+        createdAt,
+      };
+      setDetail((current) => current ? { ...current, status: statusCommand, statusLabel: walletStatusLabel(statusCommand) } : current);
+      setHistory((current) => [historyEntry, ...current]);
+      setStatusReceipt(receipt);
+      setNotice(`Wallet status changed to ${walletStatusLabel(statusCommand)}.`);
+      onStatusChanged(row.id, statusCommand, historyEntry);
+      setStatusCommand(null);
+    } catch (commandError) {
+      setStatusCommandError(commandError instanceof Error ? commandError.message : "Wallet status command failed.");
+    } finally {
+      setStatusCommandPending(false);
+    }
+  }
+
   return <AdminDrawer
     ariaLabel="Close Wallet detail"
     title={row.id}
@@ -177,19 +384,29 @@ function WalletDrawer({
         <button className="btn" type="button" disabled={actionPending !== null} onClick={() => { void verifyLedger(); }}>{actionPending === "verify" ? "Verifying…" : "Verify Ledger"}</button>
         <button className="btn primary" type="button" disabled={actionPending !== null} onClick={() => { if (window.confirm("Rebuild this Wallet projection from the Ledger source of truth?")) void rebuildProjection(); }}>{actionPending === "rebuild" ? "Rebuilding…" : "Rebuild projection"}</button>
       </> : null}
-      {detail ? <Link className="btn" href={memberTabHref(detail.memberId, "wallet-statement")}>See Wallet Statement</Link> : null}
+      {detail ? <a className="btn" href={memberTabHref(detail.memberId, "wallet-statement")}>See Wallet Statement</a> : null}
       <button className="btn" type="button" onClick={onClose}>Close record</button>
     </> : null}
   >
         {loading ? <p aria-live="polite">Loading Wallet detail…</p> : error ? <div className="empty" role="alert"><h3>Wallet detail unavailable</h3><p>{error}</p><button className="btn" type="button" onClick={() => { startTransition(() => { void loadDetail(); }); }}>Try again</button></div> : detail ? <>
-          <section className="wallet-record"><div className="drawer-title"><span className="att-icon neutral">W</span><div><h2>{detail.memberName}</h2><p>{detail.email} · {detail.memberId}</p></div></div><div className="facts"><Fact label="Status"><Badge status={detail.status} /></Fact><Fact label="Current Wallet Balance">{formatWalletMoney(detail.currentBalanceSatang)}</Fact><Fact label="Wallet record">{detail.id}</Fact><Fact label="Latest Wallet Transaction">{formatWalletDate(detail.latestTransactionAt)}</Fact></div></section>
+          <section className="wallet-record"><div className="drawer-title"><span className="att-icon neutral">W</span><div><h2>{detail.memberName}</h2><p>{detail.email} · {detail.memberId}</p></div></div><div className="facts"><Fact label="Wallet Status"><Badge status={detail.status} /></Fact><Fact label="Current Wallet Balance">{formatWalletMoney(detail.currentBalanceSatang)}</Fact><Fact label="Wallet record">{detail.id}</Fact><Fact label="Latest Wallet Transaction Date">{formatWalletDate(detail.latestTransactionAt)}</Fact></div></section>
+          <Section title="Wallet status action">
+            {dataSource === "mock" ? <>
+              <p>Change Wallet Status without changing the Member Ban status. A non-active Wallet blocks new commitments while existing obligations continue.</p>
+              {walletStatusTargets(detail.status).length ? <div className="wallet-status-actions" aria-label="Wallet status actions">
+                {walletStatusTargets(detail.status).map((targetStatus) => <button className={`btn ${walletStatusActionClass(targetStatus)}`} type="button" key={targetStatus} data-wallet-status-action={targetStatus} onClick={() => openStatusCommand(targetStatus)} disabled={statusCommandPending}>{walletStatusActionLabel(targetStatus)}</button>)}
+              </div> : <p className="audit-note">Closed is terminal. No Wallet status change is available.</p>}
+            </> : <p>Status commands will be connected to the Admin API in the API integration step.</p>}
+          </Section>
           <Section title="Wallet balances"><div className="user-context-list"><div><span>Spending Balance</span><strong>{formatWalletMoney(detail.balances.spendingBalanceSatang)}</strong></div><div><span>Earnings Balance</span><strong>{formatWalletMoney(detail.balances.earningsBalanceSatang)}</strong></div><div><span>Funding Reserved</span><strong>{formatWalletMoney(detail.balances.fundingReservedSatang)}</strong></div><div><span>Reserved For Payouts</span><strong>{formatWalletMoney(detail.balances.reservedForPayoutsSatang)}</strong></div></div></Section>
           <Section title="Ledger check"><p>{detail.projectionMatchesLedger ? "Wallet projection matches the Ledger." : "Wallet projection does not match the Ledger."}</p></Section>
           {verification ? <Section title="Ledger verification"><p>{verification.matches ? "Projected balances match the Ledger." : "Projected balances do not match the Ledger."}</p><div className="facts"><Fact label="Projected Wallet Balance">{formatWalletMoney(verification.projectedTotal)}</Fact><Fact label="Ledger Wallet Balance">{formatWalletMoney(verification.ledgerTotal)}</Fact><Fact label="Activity count">{verification.activityCountMatches ? "Matches" : "Does not match"}</Fact></div></Section> : null}
           <Section title="Wallet Statement"><p>Latest 5 committed and sealed Ledger Transactions, newest first.</p><WalletStatementTable transactions={ledger} /></Section>
-          {history.length ? <Section title="Wallet status history"><ol className="timeline">{history.map((entry) => <li key={entry.id}><strong>{walletStatusLabel(entry.toStatus)}</strong><time dateTime={entry.createdAt}>{formatWalletDate(entry.createdAt)}</time><span>{entry.reason}</span></li>)}</ol></Section> : null}
+          {history.length ? <Section title="Wallet status history"><ol className="timeline">{history.map((entry) => <li key={entry.id}><strong>{entry.fromStatus ? `${walletStatusLabel(entry.fromStatus)} → ` : ""}{walletStatusLabel(entry.toStatus)}</strong><time dateTime={entry.createdAt}>{formatWalletDate(entry.createdAt)}</time><span>{entry.reason}</span>{entry.actorAdminId ? <small>Admin {entry.actorAdminId}</small> : null}</li>)}</ol></Section> : <Section title="Wallet status history"><p>No Wallet status changes are recorded.</p></Section>}
+          {statusReceipt ? <section className="wallet-action-receipt" aria-label="Wallet status action receipt"><h3>Action receipt</h3><div className="wallet-status-preview"><div><span>Action ID</span><strong>{statusReceipt.id}</strong></div><div><span>Wallet Status</span><strong>{walletStatusLabel(statusReceipt.fromStatus)} → {walletStatusLabel(statusReceipt.toStatus)}</strong></div><div><span>Reason</span><strong>{statusReceipt.reason}</strong></div><div><span>Recorded</span><strong>{formatWalletDate(statusReceipt.createdAt)}</strong></div></div><p className="audit-note">This mock receipt represents the Activity Log event that the API integration will return.</p></section> : null}
           {actionError || notice ? <p className={actionError ? "field-error" : "audit-note"} role={actionError ? "alert" : "status"}>{actionError ?? notice}</p> : null}
         </> : null}
+    {statusCommand && detail ? <WalletStatusCommandDialog row={{ ...row, status: detail.status, statusLabel: walletStatusLabel(detail.status) }} targetStatus={statusCommand} onCancel={cancelStatusCommand} onSubmit={(reason, fixture) => { void submitStatusCommand(reason, fixture); }} error={statusCommandError} pending={statusCommandPending} /> : null}
   </AdminDrawer>;
 }
 
@@ -213,20 +430,26 @@ function SortableHeader({
 export function AdminWalletPage({ initialData }: { initialData: WalletBoardPageData }) {
   const router = useRouter();
   const drawerOpenerRef = useRef<HTMLElement | null>(null);
-  const [rows, setRows] = useState<WalletBoardRow[]>(initialData.rows);
+  const mockAllRows = initialData.dataSource === "mock" ? initialData.allRows : undefined;
+  const defaultPageSize: WalletBoardPageSize = 10;
+  const initialRows = mockAllRows ?? initialData.rows;
+  const [rows, setRows] = useState<WalletBoardRow[]>(initialRows);
   const [isLoadingMore, setIsLoadingMore] = useState(Boolean(initialData.remainingRows));
   const [backgroundLoadError, setBackgroundLoadError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<WalletBoardTab>("all");
-  const [pageSize, setPageSize] = useState<WalletBoardPageSize>(10);
+  const [pageSize, setPageSize] = useState<WalletBoardPageSize>(defaultPageSize);
   const [page, setPage] = useState(1);
   const [sortKey, setSortKey] = useState<WalletSortSelection>(null);
   const [sortDirection, setSortDirection] = useState<WalletSortDirection>("ascending");
   const direction = sortDirection;
   const [selectedWallet, setSelectedWallet] = useState<WalletBoardRow | null>(null);
+  const [mockStatusHistory, setMockStatusHistory] = useState<Record<string, WalletHistoryView[]>>({});
 
   useEffect(() => {
-    setRows(initialData.rows);
+    setRows(initialData.dataSource === "mock" && initialData.allRows ? initialData.allRows : initialData.rows);
+    setPageSize(defaultPageSize);
+    setMockStatusHistory({});
     const remainingRows = initialData.remainingRows;
     setIsLoadingMore(Boolean(remainingRows));
     setBackgroundLoadError(null);
@@ -283,9 +506,10 @@ export function AdminWalletPage({ initialData }: { initialData: WalletBoardPageD
   }
 
   function resetView() {
+    setRows(mockAllRows ?? initialData.rows);
     setQuery("");
     setTab("all");
-    setPageSize(10);
+    setPageSize(defaultPageSize);
     setPage(1);
     setSortKey(null);
     setSortDirection("ascending");
@@ -298,6 +522,19 @@ export function AdminWalletPage({ initialData }: { initialData: WalletBoardPageD
 
   const closeWalletDrawer = useCallback(() => {
     setSelectedWallet(null);
+  }, []);
+
+  const handleStatusChanged = useCallback((walletId: string, nextStatus: WalletStatus, historyEntry: WalletHistoryView) => {
+    setRows((currentRows) => currentRows.map((row) => row.id === walletId
+      ? { ...row, status: nextStatus, statusLabel: walletStatusLabel(nextStatus) }
+      : row));
+    setSelectedWallet((current) => current?.id === walletId
+      ? { ...current, status: nextStatus, statusLabel: walletStatusLabel(nextStatus) }
+      : current);
+    setMockStatusHistory((current) => ({
+      ...current,
+      [walletId]: [historyEntry, ...(current[walletId] ?? [])],
+    }));
   }, []);
 
   if (initialData.boardError) return <main className="admin-route-page wallet-route-page" tabIndex={-1}>
@@ -330,9 +567,9 @@ export function AdminWalletPage({ initialData }: { initialData: WalletBoardPageD
       </div>
       {backgroundLoadError ? <p className="field-error" role="alert">{backgroundLoadError} <button className="link" type="button" onClick={() => router.refresh()}>Try again</button></p> : null}
       {initialData.boardError ? <p className="field-error" role="alert">{initialData.boardError} <button className="link" type="button" onClick={() => router.refresh()}>Try again</button></p> : null}
-      {!sortedRows.length ? <div className="empty"><h2>No matching records</h2><p>{query.trim() ? "Clear your search to see more results." : "There are no records in this view."}</p><button className="btn" type="button" onClick={resetView}>Reset view</button></div> : <section className="table-wrap wallet-board-table-wrap" aria-label="Wallets table"><table className="data wallet-board-table"><caption>Wallets</caption><thead><tr><SortableHeader label="Wallet / Member ID" sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Member" sortKey="member" activeKey={sortKey} direction={direction} onSort={sortBy} /><th scope="col">Email</th><SortableHeader label="Current Wallet Balance" sortKey="balance" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Latest Wallet Transaction Date" sortKey="latestTransactionAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Wallet status" sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Created" sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr data-wallet-row={row.id} key={row.id} tabIndex={0} aria-label={`Open Wallet ${row.id}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; openWalletDrawer(row, event.currentTarget); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openWalletDrawer(row, event.currentTarget); } }}><td><button className="row-record-button" type="button" data-wallet-drawer-trigger={row.id} aria-label={`Open Wallet ${row.id}`} onClick={(event) => openWalletDrawer(row, event.currentTarget)}>{row.id}</button><small>{row.memberId}</small></td><td><Link className="user-record-link" data-member-link={row.memberId} href={memberTabHref(row.memberId, "overview")} aria-label={`Open Member ${row.memberName}`}><strong>{row.memberName}</strong></Link></td><td><strong>{row.email}</strong><small>{row.studentId || "Student ID not provided"}</small></td><td className="money">{formatWalletMoney(row.currentBalanceSatang)}</td><td>{formatWalletDate(row.latestTransactionAt)}</td><td><Badge status={row.status} /></td><td>{formatWalletDate(row.createdAt)}</td></tr>)}</tbody></table></section>}
+      {!sortedRows.length ? <div className="empty"><h2>No matching records</h2><p>{query.trim() ? "Clear your search to see more results." : "There are no records in this view."}</p><button className="btn" type="button" onClick={resetView}>Reset view</button></div> : <section className="table-wrap wallet-board-table-wrap" aria-label="Wallets table"><table className="data wallet-board-table"><caption>Wallets</caption><thead><tr><SortableHeader label="Wallet / Member ID" sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Member" sortKey="member" activeKey={sortKey} direction={direction} onSort={sortBy} /><th scope="col">Email</th><SortableHeader label="Current Wallet Balance" sortKey="balance" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Latest Wallet Transaction Date" sortKey="latestTransactionAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Wallet status" sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Created" sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr data-wallet-row={row.id} key={row.id} tabIndex={0} aria-label={`Open Wallet ${row.id}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; openWalletDrawer(row, event.currentTarget); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openWalletDrawer(row, event.currentTarget); } }}><td><button className="row-record-button" type="button" data-wallet-drawer-trigger={row.id} aria-label={`Open Wallet ${row.id}`} onClick={(event) => openWalletDrawer(row, event.currentTarget)}>{row.id}</button><small>{row.memberId}</small><div className="wallet-mobile-key-facts" aria-label="Wallet summary"><div><span>Current Wallet Balance</span><strong>{formatWalletMoney(row.currentBalanceSatang)}</strong></div><div><span>Wallet Status</span><strong><Badge status={row.status} track={false} /></strong></div><div><span>Latest Wallet Transaction Date</span><strong>{formatWalletDate(row.latestTransactionAt)}</strong></div></div></td><td><Link className="user-record-link" data-member-link={row.memberId} href={memberTabHref(row.memberId, "overview")} aria-label={`Open Member ${row.memberName}`}><strong>{row.memberName}</strong></Link></td><td><strong>{row.email}</strong><small>{row.studentId || "Student ID not provided"}</small></td><td className="money">{formatWalletMoney(row.currentBalanceSatang)}</td><td>{formatWalletDate(row.latestTransactionAt)}</td><td><Badge status={row.status} /></td><td>{formatWalletDate(row.createdAt)}</td></tr>)}</tbody></table></section>}
       {sortedRows.length ? <div className="table-pagination"><button className="page-nav" type="button" disabled={currentPage <= 1} onClick={() => setPage((value) => value - 1)}>Previous</button><span className="page-indicator">Page {currentPage} of {Math.max(totalPages, 1)}</span><button className="page-nav" type="button" disabled={currentPage >= totalPages} onClick={() => setPage((value) => value + 1)}>Next</button></div> : null}
     </section>
-    {selectedWallet ? <WalletDrawer row={selectedWallet} dataSource={initialData.dataSource} opener={drawerOpenerRef.current} onClose={closeWalletDrawer} /> : null}
+    {selectedWallet ? <WalletDrawer row={selectedWallet} dataSource={initialData.dataSource} initialMockHistory={mockStatusHistory[selectedWallet.id] ?? []} opener={drawerOpenerRef.current} onClose={closeWalletDrawer} onStatusChanged={handleStatusChanged} /> : null}
   </main>;
 }
