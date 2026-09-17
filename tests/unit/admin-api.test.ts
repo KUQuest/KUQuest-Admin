@@ -174,6 +174,52 @@ describe("Admin API boundary", () => {
     expect(request?.url).toBe("https://api.example.test/api/v1/admin/finance/overview");
   });
 
+  it("uses the Money Policy read routes from the OpenAPI contract", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    const requests: Request[] = [];
+    const responses: unknown[] = [
+      { success: true, data: { policy: null } },
+      { success: true, data: { policies: [] } },
+    ];
+
+    mockFetch(async (input, init) => {
+      requests.push(new Request(input, init));
+      return jsonResponse(responses.shift());
+    });
+
+    const options = { headers: { Cookie: "kuquest-admin=server-session" } };
+    const current = await adminApi.getCurrentMoneyPolicy(options);
+    const revisions = await adminApi.listMoneyPolicyRevisions(options);
+
+    expect(current.policy).toBeNull();
+    expect(revisions.policies).toEqual([]);
+    expect(requests.map((request) => request.url)).toEqual([
+      "https://api.example.test/api/v1/admin/finance/policies/current",
+      "https://api.example.test/api/v1/admin/finance/policies",
+    ]);
+    expect(requests.every((request) => request.headers.get("cookie") === "kuquest-admin=server-session")).toBe(true);
+  });
+
+  it("uses the Quest and Dispute list query names from the OpenAPI contract", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    const requests: Request[] = [];
+
+    mockFetch(async (input, init) => {
+      requests.push(new Request(input, init));
+      return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
+    });
+
+    await adminApi.listQuests({ q: "campus", sort: "oldest" });
+    await adminApi.listDisputes({ status: "DISPUTE_CASE_PENDING", sort: "oldest" });
+
+    const questUrl = new URL(requests[0].url);
+    const disputeUrl = new URL(requests[1].url);
+    expect(questUrl.searchParams.get("q")).toBe("campus");
+    expect(questUrl.searchParams.get("sort")).toBe("oldest");
+    expect(disputeUrl.searchParams.get("status")).toBe("DISPUTE_CASE_PENDING");
+    expect(disputeUrl.searchParams.get("sort")).toBe("oldest");
+  });
+
   it("uses the Member and Quest finance detail routes", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     const urls: string[] = [];
