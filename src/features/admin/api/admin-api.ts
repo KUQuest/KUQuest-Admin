@@ -111,6 +111,31 @@ export type AdminFinanceOverview = {
   };
 };
 
+export type AdminMoneyPolicy = {
+  id: string;
+  revision: number;
+  minimumTopUpSatang: number;
+  maximumTopUpSatang: number;
+  minimumFundingReservationSatang: number;
+  maximumFundingReservationSatang: number;
+  minimumEarningsConversionSatang: number;
+  maximumEarningsConversionSatang: number;
+  minimumPayoutSatang: number;
+  maximumPayoutSatang: number;
+  platformFeeBps: number;
+  feeRoundingMode: string;
+  topUpProviderFeeSatang: number;
+  topUpProviderFeeBps?: number;
+  topUpProviderTaxBps: number;
+  payoutProviderTaxBps: number;
+  quoteLifetimeSeconds: number;
+  reason: string;
+  effectiveFrom: string;
+  effectiveUntil: string | null;
+  authoredByAdminId: string | null;
+  createdAt: string;
+};
+
 export type AdminActivityLog = {
   id: string;
   admin: {
@@ -809,6 +834,7 @@ export type AdminPayoutListQuery = {
 };
 
 export type AdminQuestListQuery = {
+  q?: string;
   status?: AdminApiQuestStatus;
   mode?: AdminQuestMode;
   participation?: AdminQuestParticipation;
@@ -820,10 +846,9 @@ export type AdminQuestListQuery = {
 
 export type AdminDisputeListQuery = {
   status?: DisputeCaseStatus;
-  questId?: string;
-  query?: string;
   limit?: number;
   cursor?: string;
+  sort?: "newest" | "oldest";
 };
 
 export type AdminReportListQuery = {
@@ -1114,6 +1139,24 @@ export const adminApi = {
   getFinanceOverview(options: AdminApiRequestOptions = {}): Promise<AdminFinanceOverview> {
     return apiRequest<AdminFinanceOverview>(
       "/api/v1/admin/finance/overview",
+      { cache: "no-store", ...options },
+    );
+  },
+
+  getCurrentMoneyPolicy(
+    options: AdminApiRequestOptions = {},
+  ): Promise<{ policy: AdminMoneyPolicy | null }> {
+    return apiRequest<{ policy: AdminMoneyPolicy | null }>(
+      "/api/v1/admin/finance/policies/current",
+      { cache: "no-store", ...options },
+    );
+  },
+
+  listMoneyPolicyRevisions(
+    options: AdminApiRequestOptions = {},
+  ): Promise<{ policies: AdminMoneyPolicy[] }> {
+    return apiRequest<{ policies: AdminMoneyPolicy[] }>(
+      "/api/v1/admin/finance/policies",
       { cache: "no-store", ...options },
     );
   },
@@ -1469,6 +1512,8 @@ export type AdminReadPort = Pick<
   typeof adminApi,
   | "getOverview"
   | "getFinanceOverview"
+  | "getCurrentMoneyPolicy"
+  | "listMoneyPolicyRevisions"
   | "listActivityLogs"
   | "listQuests"
   | "getQuest"
