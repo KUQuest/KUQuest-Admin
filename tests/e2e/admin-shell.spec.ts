@@ -350,8 +350,25 @@ test.describe("shared Admin shell", () => {
     await expect(queueMap).toContainText("PAY-9637");
     await expect(queueMap).toContainText("DSP-5201");
     await expect(queueMap).toContainText("RPT-8201");
-    await expect(queueMap).toContainText("CND-8302");
+    await expect(queueMap).toContainText("CND-8301");
+    await expect(queueMap).not.toContainText("CND-8302");
     await expect(queueMap).not.toContainText("SLA");
+
+    const conductQueue = queueMap.locator("li").filter({ hasText: "Conduct Reports" });
+    await conductQueue.getByRole("link", { name: "Process next", exact: true }).click();
+    const conductDrawer = page.getByRole("dialog", { name: "Conduct Report details" });
+    await conductDrawer.getByLabel("Confirm violation").check();
+    await conductDrawer.getByRole("button", { name: "Close report", exact: true }).click();
+    const conductDecision = page.getByRole("dialog", { name: "Confirm violation" });
+    await conductDecision.getByLabel("Reason for this decision").fill(
+      "The Quest record confirms the reported conduct violation.",
+    );
+    await conductDecision.getByRole("button", { name: "Confirm decision" }).click();
+    await expect(conductQueue).toContainText("0 open");
+    await expect(conductQueue).not.toContainText("CND-8301");
+    await expect(conductQueue.getByRole("link", { name: "Process next", exact: true })).toHaveCount(0);
+    await conductDrawer.getByRole("button", { name: "Close drawer" }).click();
+
     await expect(dashboard.locator(".overview-command-center-activity")).toContainText("Dispute Case Resolved");
     await expect(dashboard.locator(".overview-command-center-activity")).toContainText("DSP-5201");
 

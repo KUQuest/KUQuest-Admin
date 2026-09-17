@@ -203,6 +203,60 @@ describe("Overview model", () => {
     ]);
   });
 
+  it("skips processed Mock cases and selects the next oldest pending case", () => {
+    const data: PersistedAdminData = {
+      version: "test",
+      collections: {
+        users: [],
+        quests: [],
+        payouts: [{ id: "PAY-9637", status: "SUBMITTED_TO_PROVIDER" }, { id: "PAY-9631", status: "PENDING_ADMIN_APPROVAL" }],
+        disputes: [],
+        reports: [
+          { id: "RPT-8201", status: "REPORT_CASE_HIDDEN", reportCaseStatus: "REPORT_CASE_HIDDEN" },
+          { id: "RPT-8202", status: "REPORT_CASE_PENDING", reportCaseStatus: "REPORT_CASE_PENDING" },
+          { id: "CND-8302", status: "CONDUCT_REPORT_UPHELD", conductReportStatus: "CONDUCT_REPORT_UPHELD" },
+          { id: "CND-8301", status: "CONDUCT_REPORT_PENDING", conductReportStatus: "CONDUCT_REPORT_PENDING" },
+        ],
+      },
+    };
+
+    const model = overviewModelFromMockData(data, [], Date.parse("2026-09-17T04:00:00.000Z"));
+
+    expect(model.queues.map((row) => row.oldestId)).toEqual([
+      "PAY-9631",
+      null,
+      "RPT-8202",
+      "CND-8301",
+    ]);
+  });
+
+  it("uses expanded pending Report Cases and Conduct Reports after the seed cases are processed", () => {
+    const data: PersistedAdminData = {
+      version: "test",
+      collections: {
+        users: [],
+        quests: [],
+        payouts: [],
+        disputes: [],
+        reports: [
+          { id: "RPT-8201", status: "REPORT_CASE_HIDDEN", reportCaseStatus: "REPORT_CASE_HIDDEN", reportedAt: "2026-09-10T09:00:00.000Z" },
+          { id: "RPT-8250", category: "Spam", status: "REPORT_CASE_PENDING", reportCaseStatus: "REPORT_CASE_PENDING", reportedAt: "2026-09-11T09:00:00.000Z" },
+          { id: "CND-8301", status: "CONDUCT_REPORT_UPHELD", conductReportStatus: "CONDUCT_REPORT_UPHELD", reportedAt: "2026-09-10T09:00:00.000Z" },
+          { id: "CND-8350", reasonCode: "CONDUCT_NO_SHOW", status: "CONDUCT_REPORT_PENDING", conductReportStatus: "CONDUCT_REPORT_PENDING", reportedAt: "2026-09-12T09:00:00.000Z" },
+        ],
+      },
+    };
+
+    const model = overviewModelFromMockData(data, [], Date.parse("2026-09-17T04:00:00.000Z"));
+
+    expect(model.queues.map((row) => row.oldestId)).toEqual([
+      null,
+      null,
+      "RPT-8250",
+      "CND-8350",
+    ]);
+  });
+
   it("does not invent local values when the API only returns summary fields", () => {
     const model = overviewModelFromApi(
       apiOverview(),
@@ -305,5 +359,76 @@ describe("Overview search results", () => {
     }, "6612345678");
 
     expect(results[0]).toMatchObject({ kind: "member", id: "68000000", href: "/member/68000000" });
+  });
+
+  it("shows status and sorts categories before newest records", () => {
+    const results = overviewSearchResultsFromMockData({
+      version: "test",
+      collections: {
+        users: [
+          { id: "68000001", title: "Ari Old", memberStatus: "Flag", walletStatus: "FROZEN", createdAt: "2026-09-10T09:00:00.000Z" },
+          { id: "68000002", title: "Ari New", memberStatus: "Normal", walletStatus: "ACTIVE", createdAt: "2026-09-16T09:00:00.000Z" },
+        ],
+        quests: [
+          { id: "QST-OLD", title: "Ari Quest Old", status: "QUEST_OPEN", createdAt: "2026-09-11T09:00:00.000Z" },
+          { id: "QST-NEW", title: "Ari Quest New", status: "QUEST_FAILED", createdAt: "2026-09-15T09:00:00.000Z" },
+        ],
+        payouts: [
+          { id: "PAY-OLD", title: "Ari Old", status: "FAILED", createdAt: "2026-09-12T09:00:00.000Z" },
+          { id: "PAY-NEW", title: "Ari New", status: "SUCCEEDED", createdAt: "2026-09-14T09:00:00.000Z" },
+        ],
+        disputes: [],
+        reports: [],
+      },
+    }, "Ari");
+
+    expect(results.map((result) => `${result.kind}:${result.id}`)).toEqual([
+      "member:68000002",
+      "member:68000001",
+      "quest:QST-NEW",
+      "quest:QST-OLD",
+      "payout:PAY-NEW",
+      "payout:PAY-OLD",
+      "wallet:WLT-68000002",
+      "wallet:WLT-68000001",
+    ]);
+    expect(results.map((result) => result.status)).toEqual([
+      "Normal",
+      "Flag",
+      "Failed",
+      "Open",
+      "Paid",
+      "Failed",
+      "Active",
+      "Frozen",
+    ]);
+  });
+
+  it("does not expose hidden Quests in Mock or API Overview search", () => {
+    const mockResults = overviewSearchResultsFromMockData({
+      version: "test",
+      collections: {
+        users: [],
+        quests: [
+          { id: "QST-VISIBLE", title: "Visible Quest" },
+          { id: "QST-HIDDEN", title: "Hidden Quest", hiddenAt: "2026-09-16T09:00:00.000Z" },
+          { id: "QST-HIDDEN-STATUS", title: "Hidden Status Quest", status: "Hidden" },
+        ],
+        payouts: [],
+        disputes: [],
+        reports: [],
+      },
+    }, "QST");
+    const apiResults = overviewSearchResultsFromApi({
+      quests: [
+        { id: "QST-VISIBLE", title: "Visible Quest" },
+        { id: "QST-HIDDEN", title: "Hidden Quest", hiddenAt: "2026-09-16T09:00:00.000Z" },
+      ],
+      members: [],
+      payouts: [],
+    }, "QST");
+
+    expect(mockResults.map((result) => result.id)).toEqual(["QST-VISIBLE"]);
+    expect(apiResults.map((result) => result.id)).toEqual(["QST-VISIBLE"]);
   });
 });

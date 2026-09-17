@@ -2,6 +2,13 @@ import { describe, expect, it } from "bun:test";
 
 import type { BrowserStorage } from "../../src/features/admin/data/legacy-admin-data-adapter";
 import { loadOverviewModelFromMock } from "../../src/features/admin/overview/overview-adapter";
+import { mockPendingPayout } from "../../src/features/admin/payout/payout-mock-data";
+import {
+  applyMockPayoutDecision,
+  payoutMockOverrideFromDetail,
+  saveMockPayoutOverride,
+} from "../../src/features/admin/payout/payout-mock-state";
+import { payoutDetailViewFromApi } from "../../src/features/admin/payout/payout-model";
 
 function memoryStorage(initial: Record<string, string> = {}): BrowserStorage {
   const values = new Map(Object.entries(initial));
@@ -46,5 +53,18 @@ describe("Overview mock adapter", () => {
       detail: "RPT-8201",
     });
     expect(model.activity.some((entry) => entry.id === "ACT-9006")).toBe(true);
+  });
+
+  it("removes a processed Mock Payout from the Overview queue", () => {
+    const storage = memoryStorage();
+    const detail = payoutDetailViewFromApi(mockPendingPayout, [mockPendingPayout]);
+    const processed = applyMockPayoutDecision(detail, "approve", null, "2026-09-17T03:25:00.000Z");
+    saveMockPayoutOverride(storage, { id: processed.id, ...payoutMockOverrideFromDetail(processed) });
+
+    const model = loadOverviewModelFromMock(storage);
+    const payoutQueue = model.queues.find((queue) => queue.id === "payouts");
+
+    expect(payoutQueue?.count).toBe(52);
+    expect(payoutQueue?.oldestId).not.toBe("PAY-9637");
   });
 });

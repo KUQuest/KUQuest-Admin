@@ -12,6 +12,7 @@ import {
   overviewSearchResultLabel,
   overviewSearchResultsFromApi,
   overviewSearchResultsFromMockData,
+  sortOverviewSearchResults,
   type OverviewApiSearchData,
   type OverviewSearchResult,
 } from "../overview/overview-model";
@@ -52,16 +53,34 @@ function isSearchFilter(value: string | null): value is SearchFilter {
   return value === "all" || searchFilterOptions.some((option) => option.value === value);
 }
 
-function searchResultMarker(kind: OverviewSearchResult["kind"]): string {
+function SearchResultIcon({ kind }: { kind: OverviewSearchResult["kind"] }) {
+  const iconProps = {
+    className: "admin-global-search-icon",
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.8,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+
   switch (kind) {
-    case "member": return "M";
-    case "quest": return "Q";
-    case "payout": return "P";
-    case "dispute": return "D";
-    case "report": return "R";
-    case "conduct-report": return "C";
-    case "wallet": return "W";
-    case "activity": return "A";
+    case "member":
+      return <svg {...iconProps}><circle cx="9" cy="8" r="3.5" /><path d="M3 20a6 6 0 0 1 12 0M16 11a3 3 0 1 1 3-3M17 15a5 5 0 0 1 4 5" /></svg>;
+    case "quest":
+      return <svg {...iconProps}><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M9 3V2h6v1M8 9h8M8 13h8M8 17h5" /></svg>;
+    case "payout":
+    case "wallet":
+      return <svg {...iconProps}><path d="M3 6h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Zm0 0 12-3v3" /><path d="M16 12h5v4h-5a2 2 0 0 1 0-4Z" /></svg>;
+    case "dispute":
+      return <svg {...iconProps}><path d="M12 3v18M5 7h14M5 7l-3 6h6L5 7Zm14 0-3 6h6l-3-6ZM8 21h8" /></svg>;
+    case "report":
+      return <svg {...iconProps}><path d="M5 21V4m0 0h12l-2 4 2 4H5" /></svg>;
+    case "conduct-report":
+      return <svg {...iconProps}><path d="M12 3 20 6v5c0 5-3.4 8.2-8 10-4.6-1.8-8-5-8-10V6l8-3Z" /><path d="m8.5 12 2.2 2.2 4.8-5" /></svg>;
+    case "activity":
+      return <svg {...iconProps}><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M8 9h8M8 13h5M8 17h8" /></svg>;
   }
 }
 
@@ -102,7 +121,7 @@ function syncSearchParams(query: string, kind: SearchFilter): void {
 
 function groupResults(results: OverviewSearchResult[]): Array<{ kind: OverviewSearchResult["kind"]; items: OverviewSearchResult[] }> {
   const groups = new Map<OverviewSearchResult["kind"], OverviewSearchResult[]>();
-  results.forEach((result) => {
+  sortOverviewSearchResults(results).forEach((result) => {
     const current = groups.get(result.kind) ?? [];
     current.push(result);
     groups.set(result.kind, current);
@@ -232,9 +251,12 @@ export function AdminGlobalSearch({ open, onClose, initialData, initialError }: 
               <h3 id={`admin-global-search-group-${group.kind}`}>{translateText(overviewSearchResultLabel(group.kind))}<span>{group.items.length}</span></h3>
               {group.items.map((result) => (
                 <Link key={`${result.kind}-${result.id}`} className="result" href={result.href} onClick={onClose}>
-                  <span className="admin-global-search-marker" aria-hidden="true">{searchResultMarker(result.kind)}</span>
-                  <span><strong>{result.title}</strong><small>{result.id} · {translateText(result.detail)}</small></span>
-                  <small>{translateText(overviewSearchResultLabel(result.kind))}</small>
+                  <span className="admin-global-search-marker"><SearchResultIcon kind={result.kind} /></span>
+                  <span className="admin-global-search-result-copy"><strong>{result.title}</strong><small>{result.id} · {translateText(result.detail)}</small></span>
+                  <span className="admin-global-search-result-meta">
+                    <small>{translateText("Status")}</small>
+                    <strong className="admin-global-search-status">{translateText(result.status)}</strong>
+                  </span>
                 </Link>
               ))}
             </section>

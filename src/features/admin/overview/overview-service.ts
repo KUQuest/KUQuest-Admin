@@ -42,23 +42,29 @@ export async function loadOverviewSearchData(cookieHeader?: string): Promise<Ove
     adminApi.listPayouts({ limit: 100, sort: "newest" }, options),
   ]);
   return {
-    quests: quests.items.map(({ id, displayId, title }) => ({
+    quests: quests.items.map(({ id, displayId, title, questStatus, hiddenAt, createdAt, updatedAt }) => ({
       id,
       displayId: displayId ?? id,
       title,
+      status: questStatus,
+      newestAt: updatedAt || createdAt,
+      hiddenAt,
     })),
-    members: members.items.map(({ id, firstName, lastName, studentId }) => ({
+    members: members.items.map(({ id, firstName, lastName, studentId, createdAt }) => ({
       id,
       firstName,
       lastName,
       studentId,
+      newestAt: createdAt,
     })),
-    payouts: payouts.items.map(({ id, student }) => ({
+    payouts: payouts.items.map(({ id, student, payoutStatus, createdAt, updatedAt }) => ({
       id,
       student: {
         firstName: student.firstName,
         lastName: student.lastName,
       },
+      status: payoutStatus,
+      newestAt: updatedAt || createdAt,
     })),
   };
 }

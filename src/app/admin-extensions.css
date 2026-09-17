@@ -4013,9 +4013,49 @@ dialog.drawer.dispute-case-drawer .timeline strong {
   outline-offset: -2px;
 }
 .admin-global-search-marker {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
   color: var(--accent);
+}
+.admin-global-search-icon {
+  width: 17px;
+  height: 17px;
+  display: block;
+}
+.admin-global-search-result-copy {
+  min-width: 0;
+}
+.admin-global-search-result-copy strong,
+.admin-global-search-result-copy small {
+  overflow-wrap: anywhere;
+}
+.admin-global-search-result-meta {
+  min-width: 96px;
+  display: grid;
+  justify-items: end;
+  gap: 3px;
+  text-align: right;
+}
+.admin-global-search-result-meta > small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.admin-global-search-status {
+  max-width: 150px;
+  padding: 3px 7px;
+  border: 1px solid var(--strong);
+  border-radius: 999px;
+  background: var(--soft);
+  color: var(--text);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 @media (max-width: 600px) {
   .activity-log-state-change {
@@ -4034,8 +4074,11 @@ dialog.drawer.dispute-case-drawer .timeline strong {
   .admin-global-search-group .result {
     grid-template-columns: 35px minmax(0, 1fr);
   }
-  .admin-global-search-group .result > small:last-child {
-    display: none;
+  .admin-global-search-result-meta {
+    grid-column: 2;
+    justify-items: start;
+    min-width: 0;
+    text-align: left;
   }
 }
 

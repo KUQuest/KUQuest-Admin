@@ -17,12 +17,20 @@ import {
   MEMBER_STATUSES,
   QUEST_STATES,
   WALLET_STATUSES,
+  disputeCaseStatusFor,
+  disputeCaseStatusLabel,
   memberStatusFor,
+  memberStatusLabel,
   payoutStatusFor,
+  payoutStatusLabel,
   questStateFor,
   questStateLabel,
+  reportCaseStatusFor,
+  reportCaseStatusLabel,
   walletStatusFor,
+  walletStatusLabel,
   isConductReportStatus,
+  hasHiddenQuestOverlay,
   type MemberStatus,
   type QuestState,
   type WalletStatus,
@@ -141,17 +149,21 @@ export type OverviewSearchResult = {
   id: string;
   title: string;
   detail: string;
+  status: string;
+  newestAt: number;
   href: string;
   searchText?: string;
 };
 
+type OverviewSearchDate = string | number | null;
+
 export type OverviewApiSearchData = {
-  quests: Array<{ id: string; displayId?: string; title: string }>;
-  members: Array<{ id: string; firstName: string; lastName: string; studentId: string | null }>;
-  payouts: Array<{ id: string; student: { firstName: string; lastName: string } }>;
-  disputes?: Array<{ id: string; title: string; questId?: string }>;
-  reports?: Array<{ id: string; title: string; reportedMemberId?: string; conduct?: boolean }>;
-  wallets?: Array<{ id: string; memberId: string; memberName: string; status?: string }>;
+  quests: Array<{ id: string; displayId?: string; title: string; hiddenAt?: string | null; status?: string; newestAt?: OverviewSearchDate }>;
+  members: Array<{ id: string; firstName: string; lastName: string; studentId: string | null; status?: string; newestAt?: OverviewSearchDate }>;
+  payouts: Array<{ id: string; student: { firstName: string; lastName: string }; status?: string; newestAt?: OverviewSearchDate }>;
+  disputes?: Array<{ id: string; title: string; questId?: string; status?: string; newestAt?: OverviewSearchDate }>;
+  reports?: Array<{ id: string; title: string; reportedMemberId?: string; conduct?: boolean; status?: string; newestAt?: OverviewSearchDate }>;
+  wallets?: Array<{ id: string; memberId: string; memberName: string; status?: string; newestAt?: OverviewSearchDate }>;
 };
 
 const questStateTones: Record<QuestState, string> = {
@@ -200,8 +212,8 @@ function walletStatusCountsFromApi(
 }
 
 function waitingLabel(createdAt: string, now: number): string {
-  const timestamp = Date.parse(createdAt);
-  if (Number.isNaN(timestamp)) return "Time not provided";
+  const timestamp = timestampValue(createdAt);
+  if (!timestamp) return "Time not provided";
   const minutes = Math.max(0, Math.floor((now - timestamp) / 60_000));
   if (minutes < 1) return "Just now";
   if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
@@ -449,8 +461,158 @@ function sortedMockQueueCases(queueId: OverviewQueueId): OverviewQueueCase[] {
   });
 }
 
-function oldestMockQueueCase(queueId: OverviewQueueId): OverviewQueueCase | null {
-  return sortedMockQueueCases(queueId)[0] ?? null;
+function mockQueueRecordsFor(
+  data: PersistedAdminData,
+  queueId: OverviewQueueId,
+): readonly unknown[] {
+  switch (queueId) {
+    case "payouts":
+      return data.collections.payouts;
+    case "disputes":
+      return data.collections.disputes;
+    case "reports":
+    case "conductReports":
+      return data.collections.reports;
+  }
+}
+
+function mockQueueRecordIsPending(queueId: OverviewQueueId, value: unknown): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+
+  switch (queueId) {
+    case "payouts":
+      return payoutStatusFor(record.payoutStatus ?? record.status) === "PENDING_ADMIN_APPROVAL";
+    case "disputes":
+      return disputeCaseStatusFor(record.disputeCaseStatus ?? record.status) === "DISPUTE_CASE_PENDING";
+    case "reports": {
+      const isConductReport = Boolean(record.conductReportStatus) || isConductReportStatus(record.status);
+      return !isConductReport
+        && reportCaseStatusFor(record.reportCaseStatus ?? record.status, record.decision) === "REPORT_CASE_PENDING";
+    }
+    case "conductReports":
+      return reportCaseStatusFor(record.conductReportStatus ?? record.status, record.decision) === "CONDUCT_REPORT_PENDING";
+  }
+}
+
+function firstRecordText(record: unknown, keys: readonly string[]): string {
+  for (const key of keys) {
+    const value = recordText(record, key);
+    if (value) return value;
+  }
+  return "";
+}
+
+function mockQueueRecordCreatedAt(queueId: OverviewQueueId, record: unknown): string {
+  const keys = queueId === "payouts"
+    ? ["createdAt", "updatedAt"]
+    : queueId === "disputes"
+      ? ["disputeDate", "createdAt", "failedAt", "updatedAt"]
+      : ["reportedAt", "createdAt", "updatedAt", "closedAt"];
+  return firstRecordText(record, keys);
+}
+
+function mockQueueRecordTitle(queueId: OverviewQueueId, record: unknown): string {
+  const title = firstRecordText(record, ["title", "category", "reasonCode"]);
+  switch (queueId) {
+    case "payouts":
+      return `Payout approval · ${title || firstRecordText(record, ["id"])}`;
+    case "disputes":
+      return `Dispute Case · ${title || firstRecordText(record, ["id"])}`;
+    case "reports":
+      return `Report Case · ${title || "Report review"}`;
+    case "conductReports":
+      return `Conduct Report · ${title || "Conduct review"}`;
+  }
+}
+
+function mockQueueRecordStatus(queueId: OverviewQueueId, record: unknown): string {
+  switch (queueId) {
+    case "payouts":
+      return firstRecordText(record, ["payoutStatus", "status"]);
+    case "disputes":
+      return firstRecordText(record, ["disputeCaseStatus", "status"]);
+    case "reports":
+      return firstRecordText(record, ["reportCaseStatus", "status"]);
+    case "conductReports":
+      return firstRecordText(record, ["conductReportStatus", "status"]);
+  }
+}
+
+function mockQueueCaseFromRecord(
+  queueId: OverviewQueueId,
+  record: unknown,
+  loadedAt: number,
+): OverviewQueueCase | null {
+  if (!record || typeof record !== "object" || Array.isArray(record)) return null;
+  if (!mockQueueRecordIsPending(queueId, record)) return null;
+
+  const rawId = recordText(record, "id");
+  const displayId = recordText(record, "displayId") || rawId;
+  if (!rawId || !displayId) return null;
+
+  const rawCreatedAt = mockQueueRecordCreatedAt(queueId, record);
+  const createdAtTimestamp = timestampValue(rawCreatedAt);
+  const createdAt = createdAtTimestamp ? new Date(createdAtTimestamp).toISOString() : rawCreatedAt;
+  const detail = firstRecordText(record, ["details", "detail", "reason", "questRecord"])
+    || "Record is waiting for Admin review.";
+
+  return {
+    id: displayId,
+    queueId,
+    title: mockQueueRecordTitle(queueId, record),
+    detail,
+    status: mockQueueRecordStatus(queueId, record),
+    createdAt,
+    priority: "Not provided",
+    age: waitingLabel(createdAt, loadedAt),
+    slaState: "Not provided",
+    assignedAdmin: firstRecordText(record, ["assignedAdmin", "owner"]) || "Not assigned",
+    href: queueOldestHref(queueId, rawId) ?? queueListHref(queueId),
+  };
+}
+
+function dynamicMockQueueCases(
+  data: PersistedAdminData,
+  queueId: OverviewQueueId,
+  loadedAt: number,
+): OverviewQueueCase[] {
+  return mockQueueRecordsFor(data, queueId)
+    .flatMap((record) => {
+      const queueCase = mockQueueCaseFromRecord(queueId, record, loadedAt);
+      // A Queue map can only identify the oldest record when the fixture has a
+      // usable timestamp. Keep the canonical demo fallback for incomplete
+      // records instead of presenting an arbitrary ID as the oldest case.
+      return queueCase && timestampValue(queueCase.createdAt) > 0 ? [queueCase] : [];
+    })
+    .toSorted((left, right) => {
+      const leftCreatedAt = timestampValue(left.createdAt);
+      const rightCreatedAt = timestampValue(right.createdAt);
+      return leftCreatedAt - rightCreatedAt || left.id.localeCompare(right.id);
+    });
+}
+
+function oldestPendingMockQueueCase(
+  data: PersistedAdminData,
+  queueId: OverviewQueueId,
+  queueCount: number,
+  loadedAt: number,
+): OverviewQueueCase | null {
+  if (queueCount <= 0) return null;
+
+  const dynamicCases = dynamicMockQueueCases(data, queueId, loadedAt);
+  if (dynamicCases.length) return dynamicCases[0];
+
+  const records = mockQueueRecordsFor(data, queueId);
+  return sortedMockQueueCases(queueId).find((queueCase) => {
+    const record = records.find((value) => {
+      if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+      return (value as Record<string, unknown>).id === queueCase.id;
+    });
+    // Keep a static demo case available when a test or older Mock session has
+    // a queue count but does not include that fixture record yet.
+    return record === undefined ? true : mockQueueRecordIsPending(queueId, record);
+  }) ?? null;
 }
 
 export function overviewQueueCasesFor(queueId: OverviewQueueId): OverviewQueueCase[] {
@@ -599,10 +761,10 @@ export function overviewModelFromMockData(
     questCounts.set(status, (questCounts.get(status) ?? 0) + 1);
   });
   const questTotal = data.collections.quests.length;
-  const oldestPayout = oldestMockQueueCase("payouts");
-  const oldestDispute = oldestMockQueueCase("disputes");
-  const oldestReport = oldestMockQueueCase("reports");
-  const oldestConductReport = oldestMockQueueCase("conductReports");
+  const oldestPayout = oldestPendingMockQueueCase(data, "payouts", payouts ?? 0, loadedAt);
+  const oldestDispute = oldestPendingMockQueueCase(data, "disputes", disputes ?? 0, loadedAt);
+  const oldestReport = oldestPendingMockQueueCase(data, "reports", reportCases ?? 0, loadedAt);
+  const oldestConductReport = oldestPendingMockQueueCase(data, "conductReports", conductReports ?? 0, loadedAt);
   const queues = [
     queue({ id: "payouts", title: "Payout Approvals", count: payouts, source: "Local fallback", status: "Needs review", oldest: oldestPayout?.title ?? "Oldest record not provided", oldestId: oldestPayout?.id, waiting: oldestPayout?.age ?? "—", tone: "overview-queue-status-review", priority: oldestPayout?.priority ?? "Not provided", slaState: oldestPayout?.slaState ?? "Not provided", assignedAdmin: oldestPayout?.assignedAdmin ?? "Not assigned" }),
     queue({ id: "disputes", title: "Dispute Cases", count: disputes, source: "Local fallback", status: disputes ? "Open" : "Clear", oldest: oldestDispute?.title ?? "Oldest record not provided", oldestId: oldestDispute?.id, waiting: oldestDispute?.age ?? "—", tone: disputes ? "overview-queue-status-overdue" : "", priority: disputes ? oldestDispute?.priority ?? "Not provided" : "Not provided", slaState: disputes ? oldestDispute?.slaState ?? "Not provided" : "Not provided", assignedAdmin: disputes ? oldestDispute?.assignedAdmin ?? "Not assigned" : "Not assigned" }),
@@ -655,8 +817,64 @@ function recordText(record: unknown, key: string): string {
   return typeof value === "string" || typeof value === "number" ? String(value) : "";
 }
 
+function timestampValue(value: unknown): number {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  if (typeof value !== "string" || !value.trim()) return 0;
+  const parsed = Date.parse(value.replace(" · ", " ").replace(/\s+ICT$/, ""));
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function recordNewestAt(record: unknown, keys: readonly string[]): number {
+  return keys.reduce((newest, key) => Math.max(newest, timestampValue(recordText(record, key))), 0);
+}
+
+function recordStatusLabel(
+  record: unknown,
+  keys: readonly string[],
+  label: (value: unknown) => string,
+): string {
+  const raw = keys.map((key) => recordText(record, key)).find(Boolean);
+  return raw ? label(raw) : "Not provided";
+}
+
+function apiStatusLabel(value: string | undefined, label: (value: unknown) => string): string {
+  return value ? label(value) : "Not provided";
+}
+
+const mockMemberStatusById: Record<string, MemberStatus> = {
+  "68000000": "Normal",
+  "68000020": "Flag",
+  "68000040": "Perm Ban",
+};
+
+function mockMemberSearchStatus(member: unknown): string {
+  const storedStatus = recordText(member, "memberStatus");
+  return storedStatus ? memberStatusLabel(storedStatus) : mockMemberStatusById[recordText(member, "id")] ?? "Not provided";
+}
+
+const searchResultCategoryOrder: Record<OverviewSearchResult["kind"], number> = {
+  member: 0,
+  quest: 1,
+  payout: 2,
+  dispute: 3,
+  report: 4,
+  "conduct-report": 5,
+  wallet: 6,
+  activity: 7,
+};
+
+export function compareOverviewSearchResults(left: OverviewSearchResult, right: OverviewSearchResult): number {
+  const categoryDifference = searchResultCategoryOrder[left.kind] - searchResultCategoryOrder[right.kind];
+  if (categoryDifference) return categoryDifference;
+  return right.newestAt - left.newestAt || right.id.localeCompare(left.id);
+}
+
+export function sortOverviewSearchResults(results: OverviewSearchResult[]): OverviewSearchResult[] {
+  return results.toSorted(compareOverviewSearchResults);
+}
+
 function searchResultMatches(result: OverviewSearchResult, query: string): boolean {
-  return `${result.id} ${result.title} ${result.detail} ${result.searchText ?? ""}`
+  return `${result.id} ${result.title} ${result.detail} ${result.status} ${result.searchText ?? ""}`
     .toLowerCase()
     .includes(query.trim().toLowerCase());
 }
@@ -664,7 +882,7 @@ function searchResultMatches(result: OverviewSearchResult, query: string): boole
 function matchingSearchResults(results: OverviewSearchResult[], query: string): OverviewSearchResult[] {
   const normalizedQuery = query.trim();
   if (!normalizedQuery) return [];
-  return results.filter((result) => searchResultMatches(result, normalizedQuery)).slice(0, 12);
+  return sortOverviewSearchResults(results.filter((result) => searchResultMatches(result, normalizedQuery))).slice(0, 12);
 }
 
 export function overviewSearchResultsFromMockData(
@@ -676,25 +894,53 @@ export function overviewSearchResultsFromMockData(
     id: member.id,
     title: member.title,
     detail: "Member",
+    status: mockMemberSearchStatus(member),
+    newestAt: recordNewestAt(member, ["updatedAt", "lastActiveAt", "createdAt", "accountCreatedAt"]),
     href: memberRoutes.detail(member.id),
     searchText: recordText(member, "studentId"),
   }));
   const quests = data.collections.quests.flatMap((record): OverviewSearchResult[] => {
+    if (record && typeof record === "object" && hasHiddenQuestOverlay(record as { hiddenAt?: unknown; status?: unknown; questState?: unknown })) return [];
     const id = recordText(record, "id");
     const title = recordText(record, "title");
-    return id && title ? [{ kind: "quest", id, title, detail: "Quest", href: questRoutes.detail(id) }] : [];
+    return id && title ? [{
+      kind: "quest",
+      id,
+      title,
+      detail: "Quest",
+      status: recordStatusLabel(record, ["questState", "status"], questStateLabel),
+      newestAt: recordNewestAt(record, ["updatedAt", "createdAt", "startTime"]),
+      href: questRoutes.detail(id),
+    }] : [];
   });
   const payouts = data.collections.payouts.flatMap((record): OverviewSearchResult[] => {
     const id = recordText(record, "id");
     const title = recordText(record, "title");
-    return id && title ? [{ kind: "payout", id, title, detail: "Payout", href: payoutRoutes.detail(id) }] : [];
+    return id && title ? [{
+      kind: "payout",
+      id,
+      title,
+      detail: "Payout",
+      status: recordStatusLabel(record, ["payoutStatus", "status"], payoutStatusLabel),
+      newestAt: recordNewestAt(record, ["updatedAt", "createdAt"]),
+      href: payoutRoutes.detail(id),
+    }] : [];
   });
   const disputes = data.collections.disputes.flatMap((record): OverviewSearchResult[] => {
     const id = recordText(record, "displayId") || recordText(record, "id");
     const title = recordText(record, "title") || "Dispute Case";
     const questId = recordText(record, "questId");
     return id
-      ? [{ kind: "dispute", id, title, detail: "Dispute Case", href: disputeRoutes.detail(recordText(record, "id") || id), searchText: `${questId} ${recordText(record, "status")} ${recordText(record, "filerName")}` }]
+      ? [{
+        kind: "dispute",
+        id,
+        title,
+        detail: "Dispute Case",
+        status: recordStatusLabel(record, ["disputeCaseStatus", "status"], disputeCaseStatusLabel),
+        newestAt: recordNewestAt(record, ["updatedAt", "disputeDate", "createdAt", "failedAt"]),
+        href: disputeRoutes.detail(recordText(record, "id") || id),
+        searchText: `${questId} ${recordText(record, "status")} ${recordText(record, "filerName")}`,
+      }]
       : [];
   });
   const reports = data.collections.reports.flatMap((record): OverviewSearchResult[] => {
@@ -703,7 +949,16 @@ export function overviewSearchResultsFromMockData(
     const title = recordText(record, conduct ? "reasonCode" : "category") || (conduct ? "Conduct Report" : "Report Case");
     const href = conduct ? conductReportRoutes.detail(id) : reportRoutes.detail(id);
     return id
-      ? [{ kind: conduct ? "conduct-report" : "report", id, title, detail: conduct ? "Conduct Report" : "Report Case", href, searchText: `${recordText(record, "reportedMemberId")} ${recordText(record, "reportedUserName")} ${recordText(record, "questId")} ${recordText(record, "details")}` }]
+      ? [{
+        kind: conduct ? "conduct-report" : "report",
+        id,
+        title,
+        detail: conduct ? "Conduct Report" : "Report Case",
+        status: recordStatusLabel(record, [conduct ? "conductReportStatus" : "reportCaseStatus", "status"], reportCaseStatusLabel),
+        newestAt: recordNewestAt(record, ["updatedAt", "reportedAt", "createdAt", "closedAt"]),
+        href,
+        searchText: `${recordText(record, "reportedMemberId")} ${recordText(record, "reportedUserName")} ${recordText(record, "questId")} ${recordText(record, "details")}`,
+      }]
       : [];
   });
   const wallets = data.collections.users.map((member): OverviewSearchResult => ({
@@ -711,6 +966,8 @@ export function overviewSearchResultsFromMockData(
     id: `WLT-${member.id}`,
     title: `${member.title} Wallet`,
     detail: "Wallet",
+    status: recordStatusLabel(member, ["walletStatus"], walletStatusLabel),
+    newestAt: recordNewestAt(member, ["walletUpdatedAt", "updatedAt", "lastActiveAt", "createdAt"]),
     href: walletRoutes.list(),
     searchText: `${member.id} ${recordText(member, "walletStatus")} ${recordText(member, "studentId")}`,
   }));
@@ -719,6 +976,8 @@ export function overviewSearchResultsFromMockData(
     id: "ACTIVITY-LOG",
     title: "Activity Log",
     detail: "Activity Log",
+    status: "Recorded",
+    newestAt: 0,
     href: activityRoutes.list(),
     searchText: "audit administrative action history",
   };
@@ -738,21 +997,29 @@ export function overviewSearchResultsFromApi(
     id: member.id,
     title: memberName(member),
     detail: "Member",
+    status: apiStatusLabel(member.status, memberStatusLabel),
+    newestAt: timestampValue(member.newestAt),
     href: memberRoutes.detail(member.id),
     searchText: member.studentId ?? "",
   }));
-  const quests = records.quests.map((quest): OverviewSearchResult => ({
-    kind: "quest",
-    id: quest.displayId ?? quest.id,
-    title: quest.title,
-    detail: "Quest",
-    href: questRoutes.detail(quest.id),
-  }));
+  const quests = records.quests
+    .filter((quest) => !quest.hiddenAt)
+    .map((quest): OverviewSearchResult => ({
+      kind: "quest",
+      id: quest.displayId ?? quest.id,
+      title: quest.title,
+      detail: "Quest",
+      status: apiStatusLabel(quest.status, questStateLabel),
+      newestAt: timestampValue(quest.newestAt),
+      href: questRoutes.detail(quest.id),
+    }));
   const payouts = records.payouts.map((payout): OverviewSearchResult => ({
     kind: "payout",
     id: payout.id,
     title: memberName(payout.student),
     detail: "Payout",
+    status: apiStatusLabel(payout.status, payoutStatusLabel),
+    newestAt: timestampValue(payout.newestAt),
     href: payoutRoutes.detail(payout.id),
   }));
   const disputes = (records.disputes ?? []).map((dispute): OverviewSearchResult => ({
@@ -760,6 +1027,8 @@ export function overviewSearchResultsFromApi(
     id: dispute.id,
     title: dispute.title,
     detail: "Dispute Case",
+    status: apiStatusLabel(dispute.status, disputeCaseStatusLabel),
+    newestAt: timestampValue(dispute.newestAt),
     href: disputeRoutes.detail(dispute.id),
     searchText: dispute.questId ?? "",
   }));
@@ -768,6 +1037,8 @@ export function overviewSearchResultsFromApi(
     id: report.id,
     title: report.title,
     detail: report.conduct ? "Conduct Report" : "Report Case",
+    status: apiStatusLabel(report.status, reportCaseStatusLabel),
+    newestAt: timestampValue(report.newestAt),
     href: report.conduct ? conductReportRoutes.detail(report.id) : reportRoutes.detail(report.id),
     searchText: report.reportedMemberId ?? "",
   }));
@@ -776,6 +1047,8 @@ export function overviewSearchResultsFromApi(
     id: wallet.id,
     title: `${wallet.memberName} Wallet`,
     detail: "Wallet",
+    status: apiStatusLabel(wallet.status, walletStatusLabel),
+    newestAt: timestampValue(wallet.newestAt),
     href: walletRoutes.list(),
     searchText: `${wallet.memberId} ${wallet.status ?? ""}`,
   }));
