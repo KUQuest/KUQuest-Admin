@@ -3,10 +3,12 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 
 import { ApiError } from "../../../lib/api/client";
 import { AdminActionReceipt, AdminActionSummary } from "../../../components/admin/admin-action-feedback";
+import { AdminDrawer } from "../../../components/admin/admin-drawer";
+import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { PageSizeControls, Pagination, Table } from "../../../components/ui";
 import { disputeRoutes, questRoutes } from "../admin-routes";
@@ -655,7 +657,8 @@ function QuestCommandDialog({
   }
 
   return (
-    <div className="quest-command-layer" role="presentation">
+    <AdminModalPortal open onClose={onCancel}>
+      <div className="quest-command-layer" role="presentation">
       <button className="quest-command-backdrop" type="button" aria-label={translateText("Close command dialog")} onClick={onCancel} />
       <dialog open className="quest-command-dialog" aria-labelledby="quest-command-title">
         <form onSubmit={submit}>
@@ -680,16 +683,14 @@ function QuestCommandDialog({
           <div className="dialog-actions"><button className="btn" type="button" onClick={onCancel} disabled={pending}>{translateText("Cancel")}</button><button className={`btn ${command === "terminate" ? "danger" : "primary"}`} type="submit" disabled={pending}>{pending ? translateText("Saving…") : translateText("Confirm")}</button></div>
         </form>
       </dialog>
-    </div>
+      </div>
+    </AdminModalPortal>
   );
 }
 
 export function QuestDetailPage({ questId, presentation = "page", initialData, dataSource }: QuestDetailPageProps) {
   const router = useRouter();
   const { translateText } = useAdminShell();
-  const drawerRef = useRef<HTMLDialogElement>(null);
-  const drawerOpenerRef = useRef<HTMLElement | null>(null);
-  const restoreDrawerFocusRef = useRef(false);
   const [detail, setDetail] = useState<QuestDetailView>(initialData.detail);
   const [finance, setFinance] = useState<QuestFinanceView | null>(initialData.finance);
   const [linkedDisputeId, setLinkedDisputeId] = useState<string | null>(initialData.linkedDisputeId);
@@ -717,97 +718,12 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
     setDisputeError(null);
   }, [initialData, dataSource]);
 
-  useEffect(() => {
-    if (presentation !== "drawer") return;
-    const drawer = drawerRef.current;
-    if (!drawer) return;
-
-    const activeElement = document.activeElement;
-    const triggerElements = Array.from(
-      document.querySelectorAll<HTMLElement>("[data-quest-drawer-trigger]"),
-    ).filter((element) => element.dataset.questDrawerTrigger === questId);
-    drawerOpenerRef.current =
-      activeElement instanceof HTMLElement && activeElement.dataset.questDrawerTrigger === questId
-        ? activeElement
-        : triggerElements.find((element) => element.tagName === "A") ?? triggerElements[0] ?? null;
-    restoreDrawerFocusRef.current = false;
-
-    const shell = drawer.closest<HTMLElement>(".admin-shell");
-    const outsideElements = shell
-      ? Array.from(shell.children).filter(
-          (element): element is HTMLElement =>
-            element instanceof HTMLElement &&
-            element !== drawer &&
-            !element.classList.contains("scrim"),
-        )
-      : [];
-    const previousInert = outsideElements.map((element) => element.inert);
-    outsideElements.forEach((element) => {
-      element.inert = true;
-    });
-
-    const focusableSelector =
-      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-    const focusableElements = () =>
-      Array.from(drawer.querySelectorAll<HTMLElement>(focusableSelector)).filter(
-        (element) => element.getClientRects().length > 0,
-      );
-
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        if (document.querySelector(".quest-command-dialog")) return;
-        event.preventDefault();
-        restoreDrawerFocusRef.current = true;
-        router.back();
-        return;
-      }
-      if (event.key !== "Tab" || document.querySelector(".quest-command-dialog")) return;
-
-      const focusable = focusableElements();
-      if (!focusable.length) {
-        event.preventDefault();
-        drawer.focus({ preventScroll: true });
-        return;
-      }
-
-      const currentElement = document.activeElement;
-      const first = focusable[0];
-      const last = focusable.at(-1);
-      if (event.shiftKey && (currentElement === drawer || currentElement === first || !drawer.contains(currentElement))) {
-        event.preventDefault();
-        last?.focus({ preventScroll: true });
-      } else if (!event.shiftKey && (currentElement === last || !drawer.contains(currentElement))) {
-        event.preventDefault();
-        first.focus({ preventScroll: true });
-      }
-    };
-    const markBrowserClose = () => {
-      restoreDrawerFocusRef.current = true;
-    };
-
-    document.addEventListener("keydown", closeOnEscape);
-    window.addEventListener("popstate", markBrowserClose);
-    drawer.focus({ preventScroll: true });
-
-    return () => {
-      document.removeEventListener("keydown", closeOnEscape);
-      window.removeEventListener("popstate", markBrowserClose);
-      outsideElements.forEach((element, index) => {
-        element.inert = previousInert[index] ?? false;
-      });
-      if (restoreDrawerFocusRef.current && drawerOpenerRef.current?.isConnected) {
-        requestAnimationFrame(() => drawerOpenerRef.current?.focus({ preventScroll: true }));
-      }
-    };
-  }, [presentation, questId, router]);
-
   function openCommand(nextCommand: QuestCommand) {
     setCommandError(null);
     setCommand(nextCommand);
   }
 
   function closeDrawer() {
-    restoreDrawerFocusRef.current = true;
     router.back();
   }
 
@@ -876,18 +792,9 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
   if (presentation === "drawer") {
     return (
       <>
-        <button className="scrim" type="button" tabIndex={-1} aria-label={translateText("Close Quest detail")} onClick={closeDrawer} />
-        <dialog
-          ref={drawerRef}
-          className="drawer open quest-drawer"
-          aria-modal="true"
-          aria-labelledby="quest-drawer-title"
-          tabIndex={-1}
-          open
-        >
-          <div className="drawer-top"><div><strong id="quest-drawer-title">{detail.title}</strong><small>{translateText("Quest")} {questDisplayIdFor(detail.id, detail.displayId)} · {translateText("Quest detail drawer")}</small></div><button className="icon" type="button" aria-label={translateText("Close Quest detail")} onClick={closeDrawer}><span className="close-lines" /></button></div>
-          <div className="drawer-body">{content}</div>
-        </dialog>
+        <AdminDrawer ariaLabel={translateText("Close Quest detail")} title={detail.title} titleId="quest-drawer-title" subtitle={`${translateText("Quest")} ${questDisplayIdFor(detail.id, detail.displayId)} · ${translateText("Quest detail drawer")}`} className="quest-drawer" openerAttribute="data-quest-drawer-trigger" openerValue={questId} escapeDisabled={Boolean(command)} onClose={closeDrawer}>
+          {content}
+        </AdminDrawer>
         {command ? <QuestCommandDialog detail={detail} command={command} dataSource={dataSource} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandPending} /> : null}
       </>
     );

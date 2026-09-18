@@ -13,6 +13,7 @@ import {
 } from "react";
 
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
+import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { PageSizeControls, Pagination, Table } from "../../../components/ui";
 import { adminApi } from "../api/admin-api";
@@ -148,7 +149,7 @@ function WalletStatusCommandDialog({
     onSubmit(trimmedReason, fixture);
   }
 
-  return <dialog ref={dialogRef} className="wallet-status-command-dialog" aria-labelledby="wallet-status-command-title" aria-modal="true">
+  return <AdminModalPortal open onClose={onCancel}><dialog ref={dialogRef} className="wallet-status-command-dialog" aria-labelledby="wallet-status-command-title" aria-modal="true">
     <form className="wallet-status-command-form" onSubmit={submit}>
       <div className="wallet-command-head">
         <div>
@@ -184,7 +185,7 @@ function WalletStatusCommandDialog({
         <button className={`btn ${walletStatusActionClass(targetStatus)}`} type="submit" disabled={pending}>{pending ? translateText("Saving…") : translateText(walletStatusActionLabel(targetStatus))}</button>
       </div>
     </form>
-  </dialog>;
+  </dialog></AdminModalPortal>;
 }
 
 function Badge({ status, track = true }: { status: WalletStatus; track?: boolean }) {

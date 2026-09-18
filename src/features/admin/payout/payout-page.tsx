@@ -14,6 +14,7 @@ import {
 import { ApiError } from "../../../lib/api/client";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminActionReceipt, AdminActionSummary } from "../../../components/admin/admin-action-feedback";
+import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { PageSizeControls, Pagination, Table } from "../../../components/ui";
 import { payoutRoutes } from "../admin-routes";
@@ -412,7 +413,8 @@ function PayoutCommandDialog({
   }
 
   return (
-    <div className="command payout-command-layer" role="presentation">
+    <AdminModalPortal open onClose={onCancel}>
+      <div className="command payout-command-layer" role="presentation">
       <button className="command-backdrop" type="button" aria-label={translateText("Close Payout command dialog")} onClick={onCancel} />
       <dialog ref={dialogRef} className="command-box" aria-labelledby="payout-command-title" aria-modal="true">
         <form className="dialog-body" onSubmit={submit}>
@@ -448,7 +450,8 @@ function PayoutCommandDialog({
           </div>
         </form>
       </dialog>
-    </div>
+      </div>
+    </AdminModalPortal>
   );
 }
 

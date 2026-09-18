@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
+import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { PageSizeControls, Pagination, Table } from "../../../components/ui";
 import { isAdminMockEnabled } from "../../../lib/auth/admin-auth-mode";
 import { isAdminApiEnabled } from "../api/admin-provider";
@@ -65,71 +66,17 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
   const { translateText } = useAdminShell();
   const targetHref = activityTargetHref(entry.resourceType, entry.resourceId);
   const target = activityLogTargetLabel(entry);
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
-
-  useEffect(() => {
-    previouslyFocusedRef.current = document.activeElement instanceof HTMLElement
-      ? document.activeElement
-      : null;
-    const dialog = dialogRef.current;
-    (closeButtonRef.current ?? dialog)?.focus();
-
-    const closeOnEscapeAndTrapFocus = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onClose();
-        return;
-      }
-      if (event.key !== "Tab" || !dialog) return;
-      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      )).filter((element) => element.offsetParent !== null);
-      if (!focusable.length) {
-        event.preventDefault();
-        dialog.focus();
-        return;
-      }
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-
-    document.addEventListener("keydown", closeOnEscapeAndTrapFocus);
-    return () => {
-      document.removeEventListener("keydown", closeOnEscapeAndTrapFocus);
-      previouslyFocusedRef.current?.focus();
-      previouslyFocusedRef.current = null;
-    };
-  }, [onClose]);
 
   return (
-    <div className="activity-log-dialog-backdrop" role="presentation" onMouseDown={(event) => {
-      if (event.target === event.currentTarget) onClose();
-    }}>
-      <dialog
-        ref={dialogRef}
-        className="activity-log-dialog"
-        open
-        aria-modal="true"
-        aria-labelledby="activity-log-detail-title"
-        tabIndex={-1}
-      >
-        <div className="drawer-top">
-          <div>
-            <strong>{translateText("Activity log entry")}</strong>
-            <small>{translateText(activityLogActionLabel(entry.action))}</small>
-          </div>
-          <button ref={closeButtonRef} className="icon" type="button" aria-label={translateText("Close")} onClick={onClose}>×</button>
-        </div>
-        <div className="drawer-body activity-log-detail">
+    <AdminDrawer
+      ariaLabel={translateText("Close Activity Log detail")}
+      title={translateText("Activity log entry")}
+      titleId="activity-log-detail-title"
+      subtitle={translateText(activityLogActionLabel(entry.action))}
+      className="activity-log-dialog"
+      onClose={onClose}
+    >
+        <div className="activity-log-detail">
           <div className="drawer-title">
             <span className="att-icon neutral" aria-hidden="true">↺</span>
             <div>
@@ -182,8 +129,7 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
             <button className="btn" type="button" onClick={onClose}>{translateText("Close")}</button>
           </div>
         </div>
-      </dialog>
-    </div>
+    </AdminDrawer>
   );
 }
 
