@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
-import { Card } from "../../../components/ui/card";
+import { Card, CardHeader } from "../../../components/ui/card";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { ADMIN_LEDGER_EVENT_TYPES, adminApi } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
@@ -486,23 +486,23 @@ function DrawerContent({ model, translateText, onRecordViolation, onRemovePenalt
     <div className="drawer-body user-drawer-detail">
       <div className="drawer-title"><span className="att-icon info" aria-hidden="true">◉</span><div><h2>{model.title}</h2><p>{model.email} · {model.studentId || "—"}</p></div></div>
       <Card as="section" className="section">
-        <h3>{translateText("Account")}</h3>
+        <CardHeader flush><h3>{translateText("Account")}</h3></CardHeader>
         <div className="user-context-list"><div><span>{translateText("Student ID")}</span><strong>{model.studentId || "—"}</strong></div><div><span>{translateText("Member ID")}</span><strong>{model.id}</strong></div><div><span>{translateText("Created")}</span><strong>{model.createdAt}</strong></div></div>
       </Card>
       <Card as="section" className="section">
-        <h3>{translateText("Wallet")}</h3>
+        <CardHeader flush><h3>{translateText("Wallet")}</h3></CardHeader>
         <div className="user-context-list"><div><span>{translateText("Wallet record")}</span><strong>{model.walletId || "—"}</strong></div><div><span>{translateText("Wallet Status")}</span><strong>{walletBadge(model, translateText)}</strong></div><div><span>{translateText("Current Wallet Balance")}</span><strong>{model.walletBalances ? formatMoneySatang(currentWalletBalance(model.walletBalances)) : "—"}</strong></div><div><span>{translateText("Latest Wallet Transaction Date")}</span><strong>{latestTransactionAt ? formatWalletDate(latestTransactionAt) : "—"}</strong></div></div>
       </Card>
       <Card as="section" className="section">
-        <h3>{translateText("Moderation")}</h3>
+        <CardHeader flush><h3>{translateText("Moderation")}</h3></CardHeader>
         <div className="user-context-list"><div><span>{translateText("Member Status")}</span><strong>{statusBadge(model, translateText)}</strong></div><div><span>{translateText("Confirmed violations")}</span><strong>{model.confirmedViolationCount === null ? translateText("Not provided by the Admin API") : model.confirmedViolationCount}</strong></div></div>
       </Card>
       <Card as="section" className="section member-drawer-moderation-history" data-member-drawer-moderation-history>
-        <div className="user-panel-heading"><h3>{translateText("Moderation History")}</h3><span className="section-count">{model.penaltyHistory.length}</span></div>
+        <CardHeader flush className="user-panel-heading"><h3>{translateText("Moderation History")}</h3><span className="section-count">{model.penaltyHistory.length}</span></CardHeader>
         <MemberModerationTimeline model={model} translateText={translateText} />
       </Card>
       <Card as="section" className="section">
-        <h3>{translateText("Activity summary")}</h3>
+        <CardHeader flush><h3>{translateText("Activity summary")}</h3></CardHeader>
         <div className="user-activity-list"><div><span>{translateText("Completed quests")}</span><strong>{completedQuestCount(model)}</strong></div><div><span>{translateText("Reports received")}</span><strong>{model.reports.length}</strong></div></div>
       </Card>
       <div className="drawer-actions"><button className="btn" type="button" onClick={onReport} hidden>{translateText("Report Member")}</button>{canRecord && <button className="btn primary" type="button" onClick={onRecordViolation}>{translateText("Record violation")}</button>}{canRemovePenalty && <button className="btn danger" type="button" onClick={onRemovePenalty}>{translateText("Remove penalty")}</button>}<a className="btn" href={memberRoutes.detail(model.id)}>{translateText("See full Member profile")}</a></div>
