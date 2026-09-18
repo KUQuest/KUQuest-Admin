@@ -11,7 +11,7 @@ import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { RecordStatusBar } from "../../../components/admin/record-status-bar";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import { Badge as UiBadge, Button as UiButton, Card, PageSizeControls, Pagination, Table } from "../../../components/ui";
+import { Badge as UiBadge, Button as UiButton, Card, CardContent, CardHeader, CardTitle, PageSizeControls, Pagination, Table } from "../../../components/ui";
 import { disputeRoutes, questRoutes } from "../admin-routes";
 import {
   adminApi,
@@ -163,11 +163,11 @@ function Section({ title, count, children, variant = "panel" }: { title: string;
   const isRecord = variant === "record";
   return (
     <Card as="section" className={isRecord ? "record-panel" : "panel"}>
-      <div className={isRecord ? "record-panel-head" : "panel-head"}>
-        <h2>{translateText(title)}</h2>
+      <CardHeader flush className={isRecord ? "record-panel-head" : "panel-head"}>
+        <CardTitle>{translateText(title)}</CardTitle>
         {count !== undefined ? <span className="section-count">{count}</span> : null}
-      </div>
-      <div className={`quest-detail-body${isRecord ? " quest-record-body" : ""}`}>{children}</div>
+      </CardHeader>
+      <CardContent flush className={`quest-detail-body${isRecord ? " quest-record-body" : ""}`}>{children}</CardContent>
     </Card>
   );
 }

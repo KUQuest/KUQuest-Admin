@@ -12,8 +12,12 @@ export function Card({ as = "div", className, ...props }: CardProps) {
   return <Component data-slot="card" className={cn("rounded-admin-md border border-admin-border bg-admin-surface shadow-admin-card", className)} {...props} />;
 }
 
-export function CardHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div data-slot="card-header" className={cn("border-b border-admin-border px-5 py-4", className)} {...props} />;
+type CardHeaderProps = HTMLAttributes<HTMLDivElement> & {
+  flush?: boolean;
+};
+
+export function CardHeader({ className, flush = false, ...props }: CardHeaderProps) {
+  return <div data-slot="card-header" className={cn(flush ? "" : "border-b border-admin-border px-5 py-4", className)} {...props} />;
 }
 
 export function CardTitle({ className, children, ...props }: HTMLAttributes<HTMLHeadingElement>) {
@@ -24,8 +28,12 @@ export function CardDescription({ className, ...props }: HTMLAttributes<HTMLPara
   return <p data-slot="card-description" className={cn("mt-1 text-sm text-admin-muted", className)} {...props} />;
 }
 
-export function CardContent({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div data-slot="card-content" className={cn("px-5 py-4", className)} {...props} />;
+type CardContentProps = HTMLAttributes<HTMLDivElement> & {
+  flush?: boolean;
+};
+
+export function CardContent({ className, flush = false, ...props }: CardContentProps) {
+  return <div data-slot="card-content" className={cn(flush ? "" : "px-5 py-4", className)} {...props} />;
 }
 
 export function CardFooter({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
