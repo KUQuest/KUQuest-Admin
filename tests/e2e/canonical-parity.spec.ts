@@ -40,7 +40,7 @@ test.describe("legacy parity on canonical routes", () => {
     await signIn(page);
     await page.goto("/wallet");
 
-    await expect(page.locator(".wallet-funds-summary")).toContainText("All Member Wallet Summary");
+    await expect(page.locator(".wallet-funds-summary")).toContainText("Member Wallet Summary");
     for (const label of ["Spending balance", "Earnings balance", "Funding reserved", "Payout reserved", "Total circulating"]) {
       await expect(page.locator(".wallet-funds-summary")).toContainText(label);
     }

@@ -40,9 +40,9 @@ test.describe("shared Admin shell", () => {
       "/activity",
     ]);
     expect(hrefs.some((href) => href?.includes("?view="))).toBe(false);
-    await expect(shell.locator('a[href="/dispute"] .admin-nav-count')).toHaveText("2");
-    await expect(shell.locator('a[href="/report"] .admin-nav-count')).toHaveText("2");
-    await expect(shell.locator('a[href="/conduct-report"] .admin-nav-count')).toHaveText("1");
+    await expect(shell.locator('a[href="/dispute"] .admin-nav-count')).toHaveText("12");
+    await expect(shell.locator('a[href="/report"] .admin-nav-count')).toHaveText("12");
+    await expect(shell.locator('a[href="/conduct-report"] .admin-nav-count')).toHaveText("11");
     await expect(shell.locator('a[href="/payout"] .admin-nav-count')).toHaveText("53");
 
     for (const route of canonicalRoutes) {
@@ -172,8 +172,10 @@ test.describe("shared Admin shell", () => {
     await main.getByRole("tab", { name: "Confirmed", exact: true }).click();
     await expect(main.locator('tbody tr[data-conduct-report-status="CONDUCT_REPORT_UPHELD"]')).toHaveCount(10);
     await main.getByRole("tab", { name: "Open", exact: true }).click();
-    const pendingRow = main.locator('tbody tr[data-conduct-report-status="CONDUCT_REPORT_PENDING"]');
-    await expect(pendingRow).toHaveCount(1);
+    const pendingRows = main.locator('tbody tr[data-conduct-report-status="CONDUCT_REPORT_PENDING"]');
+    await expect(pendingRows).toHaveCount(10);
+    const pendingRow = main.locator('tbody tr[data-conduct-report-id="CND-8301"]');
+    await expect(pendingRow).toBeVisible();
     await pendingRow.click();
 
     await expect(page).toHaveURL(/\/conduct-report\/CND-8301$/);
@@ -193,7 +195,7 @@ test.describe("shared Admin shell", () => {
 
     await expect(decisionDialog).toBeHidden();
     await expect(drawer).toContainText("Violation confirmed");
-    await expect(main.locator('tbody tr[data-conduct-report-status="CONDUCT_REPORT_PENDING"]')).toHaveCount(0);
+    await expect(main.locator('tbody tr[data-conduct-report-status="CONDUCT_REPORT_PENDING"]')).toHaveCount(10);
     await drawer.getByRole("button", { name: "Close drawer" }).click();
     await main.getByRole("tab", { name: "Confirmed", exact: true }).click();
     await expect(main.locator('tbody tr[data-conduct-report-status="CONDUCT_REPORT_UPHELD"]')).toHaveCount(10);
@@ -352,9 +354,9 @@ test.describe("shared Admin shell", () => {
     await expect(dashboard.locator('a[href="/activity"]')).toBeVisible();
     const queueMap = dashboard.locator('[aria-labelledby="overview-command-queue-heading"]');
     await expect(queueMap.locator('.overview-command-center-queue-oldest')).toHaveCount(4);
-    await expect(queueMap).toContainText("PAY-9637");
-    await expect(queueMap).toContainText("DSP-5201");
-    await expect(queueMap).toContainText("RPT-8201");
+    await expect(queueMap).toContainText("PAY-9892");
+    await expect(queueMap).toContainText("DSP-5202");
+    await expect(queueMap).toContainText("RPT-8202");
     await expect(queueMap).toContainText("CND-8301");
     await expect(queueMap).not.toContainText("CND-8302");
     await expect(queueMap).not.toContainText("SLA");
