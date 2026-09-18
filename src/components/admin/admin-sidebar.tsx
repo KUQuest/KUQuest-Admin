@@ -16,6 +16,7 @@ import type { AdminNavigationCounts } from "../../features/admin/admin-navigatio
 import type { AdminLanguage } from "../../features/admin/language/admin-language";
 import { AdminLanguageControl } from "./admin-language-control";
 import { AdminThemeControl } from "./admin-theme-control";
+import { Sidebar } from "../ui/sidebar";
 
 type AdminSidebarProps = {
   open: boolean;
@@ -115,7 +116,7 @@ export function AdminSidebar({
   const navigationHidden = isMobile && !open;
 
   return (
-    <aside
+    <Sidebar
       className={`sidebar${open ? " open" : ""}`}
       id="site-navigation"
       aria-hidden={navigationHidden ? true : undefined}
@@ -166,6 +167,6 @@ export function AdminSidebar({
           {translateText("Log out")}
         </button>
       </div>
-    </aside>
+    </Sidebar>
   );
 }
