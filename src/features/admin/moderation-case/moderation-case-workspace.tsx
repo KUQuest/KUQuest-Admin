@@ -7,7 +7,7 @@ import type {
 } from "./moderation-case-context";
 import { hasModerationHistory } from "./moderation-case-context";
 import { questStateLabel } from "../domain/rulebook";
-import { Card } from "../../../components/ui/card";
+import { Card, CardHeader } from "../../../components/ui/card";
 
 export type ModerationCaseKind = "Report Case" | "Conduct Report" | "Dispute Case";
 
@@ -78,10 +78,10 @@ export function ModerationHistoryPanel({
 
   return (
     <Card as="section" className={panelClass}>
-      <div className="record-panel-head">
+      <CardHeader flush className="record-panel-head">
         {compact ? <h3>{translateText("Member moderation context")}</h3> : <h2>{translateText("Member moderation context")}</h2>}
         <span className="section-count">{hasModerationHistory(summary) ? translateText("Available") : translateText("Partial")}</span>
-      </div>
+      </CardHeader>
       {member && (
         <div className="overview-group moderation-case-history-member">
           <span>{translateText(memberLabel)}</span>
@@ -135,13 +135,13 @@ function CaseContextPanel({
 
   return (
     <Card as="section" className={panelClass} data-moderation-case-workspace="context">
-      <div className="record-panel-head">
+      <CardHeader flush className="record-panel-head">
         <div>
           {compact ? <h3>{translateText("Decision context")}</h3> : <h2>{translateText("Decision context")}</h2>}
           <p>{translateText("Review the case boundary and related records before deciding.")}</p>
         </div>
         <span className={`badge ${badgeClass}`}>{translateText(statusLabel)}</span>
-      </div>
+      </CardHeader>
       {showCaseMetadata && <dl className="overview-meta moderation-case-context-grid">
         <div><dt>{translateText("Case")}</dt><dd>{caseId}</dd></div>
         <div><dt>{translateText("Case type")}</dt><dd>{translateText(kind)}</dd></div>
