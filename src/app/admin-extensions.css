@@ -4690,6 +4690,26 @@ dialog.drawer.dispute-case-drawer .field-error {
   line-height: 1.35;
 }
 
+/* Filter controls use the same readable scale on every board. The legacy
+   boards and the Tailwind boards must not produce different text sizes for
+   the same task. */
+.admin-shell {
+  --admin-font-control: 1.142857rem;
+}
+
+.admin-shell .admin-filter-tabs [data-slot="button"],
+.admin-shell .tabs .tab,
+.admin-shell .admin-filter-input,
+.admin-shell .inline-search input {
+  font-size: var(--admin-font-control);
+  line-height: 1.45;
+}
+
+.admin-shell .admin-filter-label {
+  font-size: var(--admin-font-meta);
+  line-height: 1.4;
+}
+
 .admin-shell table.data th {
   font-size: var(--admin-font-table);
 }
@@ -5438,4 +5458,36 @@ dialog.drawer.dispute-case-drawer .field-error {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: 3px;
+}
+
+/* Figtree is loaded through weight 700. Cap the old 800/900 text rules at
+   the loaded Semibold/Bold weight so the browser does not synthesize a
+   different face on Overview and activity surfaces. */
+.admin-shell .overview-dashboard-work-icon,
+.admin-shell .overview-command-center-hero-stats a,
+.admin-shell .overview-command-center-kicker,
+.admin-shell .overview-command-center-hero-copy small,
+.admin-shell .overview-command-center-hero-copy > span:not(.overview-command-center-hero-note),
+.admin-shell .overview-command-center-hero-stats > div > span,
+.admin-shell .overview-command-center-command-head > span,
+.admin-shell .overview-command-center-section-head > span,
+.admin-shell .overview-command-center-stream-top,
+.admin-shell .overview-command-center-table-head,
+.admin-shell .overview-command-center-queue-status,
+.admin-shell .overview-command-center-timeline-marker,
+.admin-shell .overview-command-center-timeline-avatar,
+.admin-shell .overview-command-center-facts dd,
+.admin-shell .overview-queue-work-priority,
+.admin-shell .activity-log-state-arrow,
+.admin-shell .admin-action-receipt-icon {
+  font-weight: 700;
+}
+
+.admin-shell .overview-command-center-queue-status strong {
+  font-weight: 700;
+}
+
+.admin-shell .overview-command-center-queue-waiting strong,
+.admin-shell .row-record-button strong {
+  font-weight: 700;
 }

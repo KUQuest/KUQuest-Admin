@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
+import { Card } from "../../../components/ui/card";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { ADMIN_LEDGER_EVENT_TYPES, adminApi } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
@@ -108,7 +109,7 @@ function latestWalletTransactionAt(model: MemberModel): string | null {
 
 function MemberSummary({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
   return (
-    <section className="user-summary-panel">
+    <Card as="section" className="user-summary-panel">
       <div className="user-summary-grid">
         <div className="user-summary-identity">
           <span className="user-profile-avatar">{initials(model)}</span>
@@ -126,7 +127,7 @@ function MemberSummary({ model, translateText }: { model: MemberModel; translate
           <div><strong>{completedQuestCount(model)}</strong><span>{translateText("Completed quests")}</span></div>
         </div>
       </div>
-    </section>
+    </Card>
   );
 }
 
@@ -143,7 +144,7 @@ function MemberAccountInfo({ model, translateText }: { model: MemberModel; trans
     ["University", model.source === "api" ? translateText("Not provided by the Admin API") : "Kasetsart University"],
     ["Faculty", model.faculty || translateText("Not recorded")],
   ];
-  return <section className="user-detail-panel"><h2>{translateText("Account Information")}</h2><dl className="user-facts">{facts.map(([label, value]) => <div key={label}><dt>{translateText(label)}</dt><dd>{value}</dd></div>)}</dl></section>;
+  return <Card as="section" className="user-detail-panel"><h2>{translateText("Account Information")}</h2><dl className="user-facts">{facts.map(([label, value]) => <div key={label}><dt>{translateText(label)}</dt><dd>{value}</dd></div>)}</dl></Card>;
 }
 
 function MemberModerationSummary({ model, translateText, onRecordViolation }: { model: MemberModel; translateText: (value: string) => string; onRecordViolation: () => void }) {
@@ -155,34 +156,34 @@ function MemberModerationSummary({ model, translateText, onRecordViolation }: { 
     && model.confirmedViolationCount !== null
     && !["FROZEN", "SUSPENDED", "CLOSED"].includes(model.walletStatus || "");
   return (
-    <section className="user-detail-panel">
+    <Card as="section" className="user-detail-panel">
       <h2>{translateText("Moderation Summary")}</h2>
       <div className="user-counter-list"><div><strong>{model.reports.length}</strong><span>{translateText("Reports received")}</span></div><div><strong>{model.confirmedViolationCount === null ? translateText("Not provided by the Admin API") : model.confirmedViolationCount}</strong><span>{translateText("Confirmed violations")}</span></div><div><strong>{activeWarnings}</strong><span>{translateText("Active Red Flags")}</span></div><div><strong>{suspensions}</strong><span>{translateText("Suspensions")}</span></div></div>
       <p className="audit-note">{translateText("Next outcome:")} <strong>{nextOutcome ? `${translateText(nextOutcome.label)}${nextOutcome.durationDays ? ` · ${nextOutcome.durationDays} ${translateText("days")}` : ""}` : translateText("Not provided by the Admin API")}</strong>{expiresAt ? ` · ${translateText("Expires")} ${expiresAt}` : ""}.</p>
       {model.statusReason && <p className="audit-note">{translateText("Reason")}: {model.statusReason}</p>}
       {canRecord && <button className="btn primary" type="button" onClick={onRecordViolation}>{translateText("Record violation")}</button>}
-    </section>
+    </Card>
   );
 }
 
 function MemberRecentReports({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
-  return <section className="user-detail-panel"><div className="user-panel-heading"><h2>{translateText("Recent Reports")}</h2><span className="section-count">{model.reports.length}</span></div>{model.reportsError ? <p className="audit-note">{translateText(model.reportsError)}</p> : model.reports.length ? <div className="user-recent-reports">{model.reports.slice(0, 3).map((report) => <Link key={report.id} href={report.href}><span><strong>{report.id}</strong><small>{translateText(report.category)}</small></span><span className="badge">{translateText(reportCaseStatusLabel(report.status))}</span></Link>)}</div> : <p className="audit-note">{translateText("No reports have been filed against this account.")}</p>}</section>;
+  return <Card as="section" className="user-detail-panel"><div className="user-panel-heading"><h2>{translateText("Recent Reports")}</h2><span className="section-count">{model.reports.length}</span></div>{model.reportsError ? <p className="audit-note">{translateText(model.reportsError)}</p> : model.reports.length ? <div className="user-recent-reports">{model.reports.slice(0, 3).map((report) => <Link key={report.id} href={report.href}><span><strong>{report.id}</strong><small>{translateText(report.category)}</small></span><span className="badge">{translateText(reportCaseStatusLabel(report.status))}</span></Link>)}</div> : <p className="audit-note">{translateText("No reports have been filed against this account.")}</p>}</Card>;
 }
 
 function AdminNotes({ model, translateText, onAddNote, limit }: { model: MemberModel; translateText: (value: string) => string; onAddNote: () => void; limit?: number }) {
   const unavailable = model.source === "api";
   const visibleNotes = typeof limit === "number" ? model.adminNotes.slice(0, limit) : model.adminNotes;
-  return <section className="user-detail-panel"><div className="user-panel-heading"><div><h2>{translateText("Admin Notes")}</h2><span className="admin-only-label">{unavailable ? translateText("Admin only") : translateText("Fixture data · Admin only")}</span></div>{!unavailable && <button className="link" type="button" onClick={onAddNote}>{translateText("Add note")}</button>}</div>{unavailable ? <p className="audit-note">{translateText("Admin notes are not provided by the Admin API.")} {translateText("The API integration is not available in this build.")}</p> : visibleNotes.length ? <div className="user-admin-notes">{visibleNotes.map((note) => <article key={`${note.at}-${note.note}`}><strong>{note.at}</strong><small>{note.by}</small><p>{note.note}</p></article>)}</div> : <p className="audit-note">{translateText("No internal notes recorded.")}</p>}</section>;
+  return <Card as="section" className="user-detail-panel"><div className="user-panel-heading"><div><h2>{translateText("Admin Notes")}</h2><span className="admin-only-label">{unavailable ? translateText("Admin only") : translateText("Fixture data · Admin only")}</span></div>{!unavailable && <button className="link" type="button" onClick={onAddNote}>{translateText("Add note")}</button>}</div>{unavailable ? <p className="audit-note">{translateText("Admin notes are not provided by the Admin API.")} {translateText("The API integration is not available in this build.")}</p> : visibleNotes.length ? <div className="user-admin-notes">{visibleNotes.map((note) => <article key={`${note.at}-${note.note}`}><strong>{note.at}</strong><small>{note.by}</small><p>{note.note}</p></article>)}</div> : <p className="audit-note">{translateText("No internal notes recorded.")}</p>}</Card>;
 }
 
 function MemberAbout({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
   return (
     <>
-      <section className="user-detail-panel"><h2>{translateText("About Me")}</h2><p className="user-about-copy">{model.bio || translateText("No profile description is available.")}</p></section>
-      <section className="user-detail-panel">
+      <Card as="section" className="user-detail-panel"><h2>{translateText("About Me")}</h2><p className="user-about-copy">{model.bio || translateText("No profile description is available.")}</p></Card>
+      <Card as="section" className="user-detail-panel">
         <h2>{translateText("Experience")}</h2>
         {model.source === "api" ? <p className="audit-note">{translateText("Experience detail is not provided by the Admin API.")}</p> : <div className="user-simple-list"><article><strong>{translateText("University marketplace participant")}</strong><span>KuQuest · {model.createdAt}</span><p>{translateText("Contributes reliable research, documentation, and project support through KuQuest.")}</p></article></div>}
-      </section>
+      </Card>
     </>
   );
 }
@@ -192,11 +193,11 @@ function MemberPayoutPreview({ model, translateText }: { model: MemberModel; tra
   const total = model.payouts.length
     ? model.payouts.reduce((sum, payout) => sum + (payout.amountSatang || 0), 0)
     : model.stats.totalPaidOutSatang;
-  return <section className="user-detail-panel"><div className="user-panel-heading"><div><h2>{translateText("Payouts")}</h2><p>{translateText("Payout records associated with this Member.")}</p></div><span className="section-count">{payoutCount}</span></div><div className="user-payout-stat-list"><div><strong>{payoutCount}</strong><span>{translateText("Payouts")}</span></div><div><strong>{formatMoneySatang(total)}</strong><span>{translateText("Total paid out")}</span></div></div>{model.payouts.length ? <div className="user-payout-list">{model.payouts.map((payout) => <div className="user-payout-row" key={payout.id}><span className="user-payout-primary"><strong>{payout.id}</strong><small>{payout.createdAt}</small></span><span className="user-payout-secondary"><strong>{payout.amountSatang === null ? "—" : formatMoneySatang(payout.amountSatang)}</strong><small>{translateText(payoutStatusLabel(payout.status))}</small></span></div>)}</div> : <p className="audit-note">{payoutCount ? translateText("Payout detail is not provided by the Admin API.") : translateText("No Payout records are available.")}</p>}</section>;
+  return <Card as="section" className="user-detail-panel"><div className="user-panel-heading"><div><h2>{translateText("Payouts")}</h2><p>{translateText("Payout records associated with this Member.")}</p></div><span className="section-count">{payoutCount}</span></div><div className="user-payout-stat-list"><div><strong>{payoutCount}</strong><span>{translateText("Payouts")}</span></div><div><strong>{formatMoneySatang(total)}</strong><span>{translateText("Total paid out")}</span></div></div>{model.payouts.length ? <div className="user-payout-list">{model.payouts.map((payout) => <div className="user-payout-row" key={payout.id}><span className="user-payout-primary"><strong>{payout.id}</strong><small>{payout.createdAt}</small></span><span className="user-payout-secondary"><strong>{payout.amountSatang === null ? "—" : formatMoneySatang(payout.amountSatang)}</strong><small>{translateText(payoutStatusLabel(payout.status))}</small></span></div>)}</div> : <p className="audit-note">{payoutCount ? translateText("Payout detail is not provided by the Admin API.") : translateText("No Payout records are available.")}</p>}</Card>;
 }
 
 function MemberReviewPreview({ model, translateText, onOpenReviews }: { model: MemberModel; translateText: (value: string) => string; onOpenReviews: () => void }) {
-  return <section className="user-detail-panel"><div className="user-panel-heading"><div><h2>{translateText("Reviews")}</h2><div className="user-review-summary"><strong>{averageRating(model)} ★</strong><span className="user-review-count">({reviewCount(model)})</span></div></div><button className="link" type="button" onClick={onOpenReviews}>{translateText("View all")}</button></div><div className="user-review-preview">{model.reviews.slice(0, 5).map((review) => <div key={`${review.reviewer}-${review.date}`}><span><strong>{review.reviewer}</strong><small>{"★".repeat(review.rating)} · {review.date}</small></span><span className="badge">{translateText(reviewStatusLabel(review.status))}</span></div>)}</div></section>;
+  return <Card as="section" className="user-detail-panel"><div className="user-panel-heading"><div><h2>{translateText("Reviews")}</h2><div className="user-review-summary"><strong>{averageRating(model)} ★</strong><span className="user-review-count">({reviewCount(model)})</span></div></div><button className="link" type="button" onClick={onOpenReviews}>{translateText("View all")}</button></div><div className="user-review-preview">{model.reviews.slice(0, 5).map((review) => <div key={`${review.reviewer}-${review.date}`}><span><strong>{review.reviewer}</strong><small>{"★".repeat(review.rating)} · {review.date}</small></span><span className="badge">{translateText(reviewStatusLabel(review.status))}</span></div>)}</div></Card>;
 }
 
 function OverviewTab({ model, translateText, onRecordViolation, onAddNote, onOpenReviews }: { model: MemberModel; translateText: (value: string) => string; onRecordViolation: () => void; onAddNote: () => void; onOpenReviews: () => void }) {
@@ -205,7 +206,7 @@ function OverviewTab({ model, translateText, onRecordViolation, onAddNote, onOpe
       <div className="user-detail-main-column">
         <MemberAbout model={model} translateText={translateText} />
         <MemberPayoutPreview model={model} translateText={translateText} />
-        <section className="user-detail-panel"><h2>{translateText("Certificates")}</h2>{model.source === "api" ? <p className="audit-note">{translateText("Certificate detail is not provided by the Admin API.")}</p> : <div className="user-certificate-list"><div><strong>{translateText("University marketplace orientation")}</strong><span>KuQuest · {model.createdAt}</span></div></div>}</section>
+        <Card as="section" className="user-detail-panel"><h2>{translateText("Certificates")}</h2>{model.source === "api" ? <p className="audit-note">{translateText("Certificate detail is not provided by the Admin API.")}</p> : <div className="user-certificate-list"><div><strong>{translateText("University marketplace orientation")}</strong><span>KuQuest · {model.createdAt}</span></div></div>}</Card>
         <MemberReviewPreview model={model} translateText={translateText} onOpenReviews={onOpenReviews} />
       </div>
       <aside className="user-detail-side-column"><MemberAccountInfo model={model} translateText={translateText} /><MemberModerationSummary model={model} translateText={translateText} onRecordViolation={onRecordViolation} /><MemberRecentReports model={model} translateText={translateText} /><AdminNotes model={model} translateText={translateText} onAddNote={onAddNote} /></aside>
@@ -215,11 +216,11 @@ function OverviewTab({ model, translateText, onRecordViolation, onAddNote, onOpe
 
 function ActivityTab({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
   const completed = completedQuestCount(model);
-  return <section className="user-detail-panel user-tab-panel"><div className="user-panel-heading"><div><h2>{translateText("Quest history")}</h2><p>{translateText("All connected Quests")} · {completed} {translateText("completed")}</p></div><span className="section-count">{model.quests.length}</span></div>{model.quests.length ? <div className="user-quest-history-list">{model.quests.map((quest) => <Link className="user-quest-history-row" key={quest.id} href={quest.href}><div className="user-quest-history-primary"><div className="user-quest-history-title"><strong>{quest.title}</strong><span>{quest.id}</span></div><div className="user-quest-history-fields"><div className="user-quest-history-field"><span>{translateText("Role")}</span><strong>{translateText(quest.role)}</strong></div><div className="user-quest-history-field"><span>{translateText("Status")}</span><strong>{translateText(questStateLabel(quest.status))}</strong></div><div className="user-quest-history-field"><span>{translateText("Created")}</span><strong>{quest.createdAt}</strong></div></div></div></Link>)}</div> : <p className="audit-note">{translateText("Quest history is not provided by the Admin API.")}</p>}</section>;
+  return <Card as="section" className="user-detail-panel user-tab-panel"><div className="user-panel-heading"><div><h2>{translateText("Quest history")}</h2><p>{translateText("All connected Quests")} · {completed} {translateText("completed")}</p></div><span className="section-count">{model.quests.length}</span></div>{model.quests.length ? <div className="user-quest-history-list">{model.quests.map((quest) => <Link className="user-quest-history-row" key={quest.id} href={quest.href}><div className="user-quest-history-primary"><div className="user-quest-history-title"><strong>{quest.title}</strong><span>{quest.id}</span></div><div className="user-quest-history-fields"><div className="user-quest-history-field"><span>{translateText("Role")}</span><strong>{translateText(quest.role)}</strong></div><div className="user-quest-history-field"><span>{translateText("Status")}</span><strong>{translateText(questStateLabel(quest.status))}</strong></div><div className="user-quest-history-field"><span>{translateText("Created")}</span><strong>{quest.createdAt}</strong></div></div></div></Link>)}</div> : <p className="audit-note">{translateText("Quest history is not provided by the Admin API.")}</p>}</Card>;
 }
 
 function PayoutsTab({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
-  return <section className="user-detail-panel user-tab-panel"><h2>{translateText("Payouts")}</h2><MemberPayoutPreview model={model} translateText={translateText} /></section>;
+  return <Card as="section" className="user-detail-panel user-tab-panel"><h2>{translateText("Payouts")}</h2><MemberPayoutPreview model={model} translateText={translateText} /></Card>;
 }
 
 function WalletStatementTab({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
@@ -242,9 +243,58 @@ function WalletStatementTab({ model, translateText }: { model: MemberModel; tran
     setVisibleCount(25);
   };
   if (model.walletStatementError) {
-    return <section className="user-detail-panel user-tab-panel" data-user-wallet-statement><h2>{translateText("Wallet Statement")}</h2><p className="audit-note">{translateText(model.walletStatementError)}</p></section>;
+    return (
+      <Card as="section" className="user-detail-panel user-tab-panel" data-user-wallet-statement>
+        <h2>{translateText("Wallet Statement")}</h2>
+        <p className="audit-note">{translateText(model.walletStatementError)}</p>
+      </Card>
+    );
   }
-  return <section className="user-detail-panel user-tab-panel" data-user-wallet-statement><div className="user-panel-heading"><div><h2>{translateText("Wallet Statement")}</h2><p>{translateText("Committed and sealed Ledger Transactions affecting this Wallet.")}</p></div></div>{model.walletBalances ? <div className="wallet-statement-balance-grid"><div className="wallet-statement-balance"><span>{translateText("Spending Balance")}</span><strong>{formatMoneySatang(model.walletBalances.spendingBalanceSatang)}</strong></div><div className="wallet-statement-balance"><span>{translateText("Earnings Balance")}</span><strong>{formatMoneySatang(model.walletBalances.earningsBalanceSatang)}</strong></div><div className="wallet-statement-balance"><span>{translateText("Funding Reserved")}</span><strong>{formatMoneySatang(model.walletBalances.fundingReservedSatang)}</strong></div><div className="wallet-statement-balance"><span>{translateText("Reserved For Payouts")}</span><strong>{formatMoneySatang(model.walletBalances.reservedForPayoutsSatang)}</strong></div></div> : <p className="audit-note">{translateText("No Wallet is linked to this Member.")}</p>}<form className="wallet-statement-filters" onSubmit={submit}><label>{translateText("Event type")}<select name="eventType" aria-label={translateText("Event type")} defaultValue=""><option value="">{translateText("All event types")}</option>{ADMIN_LEDGER_EVENT_TYPES.map((eventType) => <option key={eventType} value={eventType}>{translateText(eventType)}</option>)}</select></label><label>{translateText("From ICT date")}<input name="from" type="date" aria-label={translateText("From ICT date")} /></label><label>{translateText("To ICT date")}<input name="to" type="date" aria-label={translateText("To ICT date")} /></label><button className="btn primary" type="submit">{translateText("Apply filters")}</button><button className="btn" type="button" onClick={() => { setFilters({ eventType: "", from: "", to: "" }); setVisibleCount(25); }}>{translateText("Clear")}</button></form>{rows.length ? <div className="wallet-statement-table-block"><p className="wallet-statement-scroll-hint">{translateText("On narrow screens, scroll horizontally to view all Wallet Statement columns.")}</p><div className="table-wrap wallet-statement-table-wrap" role="region" aria-label={translateText("Wallet Statement table")}><table className="data wallet-statement-table"><caption>{translateText("Wallet Statement")}</caption><thead><tr><th>{translateText("Date")}</th><th>{translateText("Event type")}</th><th>{translateText("Signed amount")}</th><th>{translateText("Compartment movement")}</th><th>{translateText("Resulting Wallet balance")}</th></tr></thead><tbody>{rows.map((row) => <tr key={row.transaction.id}><td><time dateTime={row.transaction.createdAt}>{formatWalletDate(row.transaction.createdAt)}</time><small>{row.transaction.description}</small></td><td><strong>{translateText(row.transaction.eventType)}</strong><small>{row.transaction.businessReference}</small></td><td className="money">{formatMoneySatang(row.signedAmountSatang, true)}</td><td className="wallet-statement-movement">{row.movement.map((movement) => <span key={movement.accountType}>{translateText(movement.accountType)}: {formatMoneySatang(movement.amountSatang, true)}</span>)}</td><td className="money">{formatMoneySatang(row.resultingWalletBalanceSatang)}</td></tr>)}</tbody></table></div></div> : <p className="audit-note">{translateText("No sealed Ledger Transactions match these filters.")}</p>}{model.source === "api" && model.apiError && <p className="audit-note">{translateText(model.apiError)}</p>}{filteredRows.length > rows.length && <button className="btn" type="button" onClick={() => setVisibleCount((count) => count + 25)}>{translateText("Load more")}</button>}</section>;
+  return (
+    <Card as="section" className="user-detail-panel user-tab-panel" data-user-wallet-statement>
+      <div className="user-panel-heading">
+        <div>
+          <h2>{translateText("Wallet Statement")}</h2>
+          <p>{translateText("Committed and sealed Ledger Transactions affecting this Wallet.")}</p>
+        </div>
+      </div>
+      {model.walletBalances ? (
+        <div className="wallet-statement-balance-grid">
+          <div className="wallet-statement-balance"><span>{translateText("Spending Balance")}</span><strong>{formatMoneySatang(model.walletBalances.spendingBalanceSatang)}</strong></div>
+          <div className="wallet-statement-balance"><span>{translateText("Earnings Balance")}</span><strong>{formatMoneySatang(model.walletBalances.earningsBalanceSatang)}</strong></div>
+          <div className="wallet-statement-balance"><span>{translateText("Funding Reserved")}</span><strong>{formatMoneySatang(model.walletBalances.fundingReservedSatang)}</strong></div>
+          <div className="wallet-statement-balance"><span>{translateText("Reserved For Payouts")}</span><strong>{formatMoneySatang(model.walletBalances.reservedForPayoutsSatang)}</strong></div>
+        </div>
+      ) : <p className="audit-note">{translateText("No Wallet is linked to this Member.")}</p>}
+      <form className="wallet-statement-filters" onSubmit={submit}>
+        <label>{translateText("Event type")}<select name="eventType" aria-label={translateText("Event type")} defaultValue=""><option value="">{translateText("All event types")}</option>{ADMIN_LEDGER_EVENT_TYPES.map((eventType) => <option key={eventType} value={eventType}>{translateText(eventType)}</option>)}</select></label>
+        <label>{translateText("From ICT date")}<input name="from" type="date" aria-label={translateText("From ICT date")} /></label>
+        <label>{translateText("To ICT date")}<input name="to" type="date" aria-label={translateText("To ICT date")} /></label>
+        <button className="btn primary" type="submit">{translateText("Apply filters")}</button>
+        <button className="btn" type="button" onClick={() => { setFilters({ eventType: "", from: "", to: "" }); setVisibleCount(25); }}>{translateText("Clear")}</button>
+      </form>
+      {rows.length ? (
+        <div className="wallet-statement-table-block">
+          <p className="wallet-statement-scroll-hint">{translateText("On narrow screens, scroll horizontally to view all Wallet Statement columns.")}</p>
+          <div className="table-wrap wallet-statement-table-wrap" role="region" aria-label={translateText("Wallet Statement table")}>
+            <table className="data wallet-statement-table">
+              <caption>{translateText("Wallet Statement")}</caption>
+              <thead><tr><th>{translateText("Date")}</th><th>{translateText("Event type")}</th><th>{translateText("Signed amount")}</th><th>{translateText("Compartment movement")}</th><th>{translateText("Resulting Wallet balance")}</th></tr></thead>
+              <tbody>{rows.map((row) => <tr key={row.transaction.id}>
+                <td><time dateTime={row.transaction.createdAt}>{formatWalletDate(row.transaction.createdAt)}</time><small>{row.transaction.description}</small></td>
+                <td><strong>{translateText(row.transaction.eventType)}</strong><small>{row.transaction.businessReference}</small></td>
+                <td className="money">{formatMoneySatang(row.signedAmountSatang, true)}</td>
+                <td className="wallet-statement-movement">{row.movement.map((movement) => <span key={movement.accountType}>{translateText(movement.accountType)}: {formatMoneySatang(movement.amountSatang, true)}</span>)}</td>
+                <td className="money">{formatMoneySatang(row.resultingWalletBalanceSatang)}</td>
+              </tr>)}</tbody>
+            </table>
+          </div>
+        </div>
+      ) : <p className="audit-note">{translateText("No sealed Ledger Transactions match these filters.")}</p>}
+      {model.source === "api" && model.apiError && <p className="audit-note">{translateText(model.apiError)}</p>}
+      {filteredRows.length > rows.length && <button className="btn" type="button" onClick={() => setVisibleCount((count) => count + 25)}>{translateText("Load more")}</button>}
+    </Card>
+  );
 }
 
 function ReviewsTab({
@@ -262,11 +312,11 @@ function ReviewsTab({
     [filter, model.reviews, query, rating],
   );
   if (model.source === "api" && model.stats.reviewsReceivedCount > 0 && !model.reviews.length) {
-    return <section className="user-detail-panel user-tab-panel"><h2>{translateText("Reviews")}</h2><p className="audit-note">{translateText("Review detail is not provided by the Admin API.")}</p></section>;
+    return <Card as="section" className="user-detail-panel user-tab-panel"><h2>{translateText("Reviews")}</h2><p className="audit-note">{translateText("Review detail is not provided by the Admin API.")}</p></Card>;
   }
 
   return (
-    <section className="user-detail-panel user-tab-panel">
+    <Card as="section" className="user-detail-panel user-tab-panel">
       <div className="user-panel-heading">
         <div>
           <h2>{translateText("Reviews")}</h2>
@@ -307,7 +357,7 @@ function ReviewsTab({
           </table>
         </div>
       ) : <p className="audit-note">{translateText("No reviews match these filters.")}</p>}
-    </section>
+    </Card>
   );
 }
 
@@ -316,7 +366,39 @@ function ReportsTable({ reports, translateText }: { reports: MemberModel["report
 }
 
 function ReportsTab({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
-  return <section className="user-detail-panel user-tab-panel"><div className="user-reports-tab-content"><div className="user-panel-heading"><div><h2>{translateText("Reports and Conduct Reports")}</h2><p>{translateText("Cases received against this Member and cases submitted by this Member.")}</p></div><span className="section-count">{model.reports.length + model.reportsSubmitted.length}</span></div><section className="user-detail-panel"><div className="user-panel-heading"><div><h3>{translateText("Reports received")}</h3><p>{translateText("Report Cases and Conduct Reports filed against this Member.")}</p></div><span className="section-count">{model.reports.length}</span></div>{model.reportsError ? <p className="audit-note">{translateText(model.reportsError)}</p> : <ReportsTable reports={model.reports} translateText={translateText} />}</section><section className="user-detail-panel"><div className="user-panel-heading"><div><h3>{translateText("Reports submitted")}</h3><p>{translateText("Cases submitted by this Member about another Member or Quest.")}</p></div><span className="section-count">{model.reportsSubmitted.length}</span></div>{model.reportsSubmittedError ? <p className="audit-note">{translateText(model.reportsSubmittedError)} {translateText("This data is shown only in the mock UI.")}</p> : <ReportsTable reports={model.reportsSubmitted} translateText={translateText} />}</section></div></section>;
+  return (
+    <Card as="section" className="user-detail-panel user-tab-panel">
+      <div className="user-reports-tab-content">
+        <div className="user-panel-heading">
+          <div>
+            <h2>{translateText("Reports and Conduct Reports")}</h2>
+            <p>{translateText("Cases received against this Member and cases submitted by this Member.")}</p>
+          </div>
+          <span className="section-count">{model.reports.length + model.reportsSubmitted.length}</span>
+        </div>
+        <Card as="section" className="user-detail-panel">
+          <div className="user-panel-heading">
+            <div>
+              <h3>{translateText("Reports received")}</h3>
+              <p>{translateText("Report Cases and Conduct Reports filed against this Member.")}</p>
+            </div>
+            <span className="section-count">{model.reports.length}</span>
+          </div>
+          {model.reportsError ? <p className="audit-note">{translateText(model.reportsError)}</p> : <ReportsTable reports={model.reports} translateText={translateText} />}
+        </Card>
+        <Card as="section" className="user-detail-panel">
+          <div className="user-panel-heading">
+            <div>
+              <h3>{translateText("Reports submitted")}</h3>
+              <p>{translateText("Cases submitted by this Member about another Member or Quest.")}</p>
+            </div>
+            <span className="section-count">{model.reportsSubmitted.length}</span>
+          </div>
+          {model.reportsSubmittedError ? <p className="audit-note">{translateText(model.reportsSubmittedError)} {translateText("This data is shown only in the mock UI.")}</p> : <ReportsTable reports={model.reportsSubmitted} translateText={translateText} />}
+        </Card>
+      </div>
+    </Card>
+  );
 }
 
 function MemberModerationTimeline({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
@@ -325,7 +407,21 @@ function MemberModerationTimeline({ model, translateText }: { model: MemberModel
 }
 
 function PenaltyHistoryTab({ model, translateText, onAddNote }: { model: MemberModel; translateText: (value: string) => string; onAddNote: () => void }) {
-  return <section className="user-detail-panel user-tab-panel"><div className="user-reports-tab-content"><div className="user-panel-heading"><div><h2>{translateText("Moderation History")}</h2><p>{translateText("Factual Red Flag, Member Ban, Report Case, and Conduct Report events for this Member.")}</p></div><span className="section-count">{model.penaltyHistory.length}</span></div><MemberModerationTimeline model={model} translateText={translateText} /><AdminNotes model={model} translateText={translateText} onAddNote={onAddNote} /></div></section>;
+  return (
+    <Card as="section" className="user-detail-panel user-tab-panel">
+      <div className="user-reports-tab-content">
+        <div className="user-panel-heading">
+          <div>
+            <h2>{translateText("Moderation History")}</h2>
+            <p>{translateText("Factual Red Flag, Member Ban, Report Case, and Conduct Report events for this Member.")}</p>
+          </div>
+          <span className="section-count">{model.penaltyHistory.length}</span>
+        </div>
+        <MemberModerationTimeline model={model} translateText={translateText} />
+        <AdminNotes model={model} translateText={translateText} onAddNote={onAddNote} />
+      </div>
+    </Card>
+  );
 }
 
 function PenaltyDialog({ model, open, busy, error, translateText, onCancel, onConfirm }: MemberActionDialogProps) {
@@ -389,14 +485,26 @@ function DrawerContent({ model, translateText, onRecordViolation, onRemovePenalt
   return (
     <div className="drawer-body user-drawer-detail">
       <div className="drawer-title"><span className="att-icon info" aria-hidden="true">◉</span><div><h2>{model.title}</h2><p>{model.email} · {model.studentId || "—"}</p></div></div>
-      <section className="section"><h3>{translateText("Account")}</h3><div className="user-context-list"><div><span>{translateText("Student ID")}</span><strong>{model.studentId || "—"}</strong></div><div><span>{translateText("Member ID")}</span><strong>{model.id}</strong></div><div><span>{translateText("Created")}</span><strong>{model.createdAt}</strong></div></div></section>
-      <section className="section"><h3>{translateText("Wallet")}</h3><div className="user-context-list"><div><span>{translateText("Wallet record")}</span><strong>{model.walletId || "—"}</strong></div><div><span>{translateText("Wallet Status")}</span><strong>{walletBadge(model, translateText)}</strong></div><div><span>{translateText("Current Wallet Balance")}</span><strong>{model.walletBalances ? formatMoneySatang(currentWalletBalance(model.walletBalances)) : "—"}</strong></div><div><span>{translateText("Latest Wallet Transaction Date")}</span><strong>{latestTransactionAt ? formatWalletDate(latestTransactionAt) : "—"}</strong></div></div></section>
-      <section className="section"><h3>{translateText("Moderation")}</h3><div className="user-context-list"><div><span>{translateText("Member Status")}</span><strong>{statusBadge(model, translateText)}</strong></div><div><span>{translateText("Confirmed violations")}</span><strong>{model.confirmedViolationCount === null ? translateText("Not provided by the Admin API") : model.confirmedViolationCount}</strong></div></div></section>
-      <section className="section member-drawer-moderation-history" data-member-drawer-moderation-history>
+      <Card as="section" className="section">
+        <h3>{translateText("Account")}</h3>
+        <div className="user-context-list"><div><span>{translateText("Student ID")}</span><strong>{model.studentId || "—"}</strong></div><div><span>{translateText("Member ID")}</span><strong>{model.id}</strong></div><div><span>{translateText("Created")}</span><strong>{model.createdAt}</strong></div></div>
+      </Card>
+      <Card as="section" className="section">
+        <h3>{translateText("Wallet")}</h3>
+        <div className="user-context-list"><div><span>{translateText("Wallet record")}</span><strong>{model.walletId || "—"}</strong></div><div><span>{translateText("Wallet Status")}</span><strong>{walletBadge(model, translateText)}</strong></div><div><span>{translateText("Current Wallet Balance")}</span><strong>{model.walletBalances ? formatMoneySatang(currentWalletBalance(model.walletBalances)) : "—"}</strong></div><div><span>{translateText("Latest Wallet Transaction Date")}</span><strong>{latestTransactionAt ? formatWalletDate(latestTransactionAt) : "—"}</strong></div></div>
+      </Card>
+      <Card as="section" className="section">
+        <h3>{translateText("Moderation")}</h3>
+        <div className="user-context-list"><div><span>{translateText("Member Status")}</span><strong>{statusBadge(model, translateText)}</strong></div><div><span>{translateText("Confirmed violations")}</span><strong>{model.confirmedViolationCount === null ? translateText("Not provided by the Admin API") : model.confirmedViolationCount}</strong></div></div>
+      </Card>
+      <Card as="section" className="section member-drawer-moderation-history" data-member-drawer-moderation-history>
         <div className="user-panel-heading"><h3>{translateText("Moderation History")}</h3><span className="section-count">{model.penaltyHistory.length}</span></div>
         <MemberModerationTimeline model={model} translateText={translateText} />
-      </section>
-      <section className="section"><h3>{translateText("Activity summary")}</h3><div className="user-activity-list"><div><span>{translateText("Completed quests")}</span><strong>{completedQuestCount(model)}</strong></div><div><span>{translateText("Reports received")}</span><strong>{model.reports.length}</strong></div></div></section>
+      </Card>
+      <Card as="section" className="section">
+        <h3>{translateText("Activity summary")}</h3>
+        <div className="user-activity-list"><div><span>{translateText("Completed quests")}</span><strong>{completedQuestCount(model)}</strong></div><div><span>{translateText("Reports received")}</span><strong>{model.reports.length}</strong></div></div>
+      </Card>
       <div className="drawer-actions"><button className="btn" type="button" onClick={onReport} hidden>{translateText("Report Member")}</button>{canRecord && <button className="btn primary" type="button" onClick={onRecordViolation}>{translateText("Record violation")}</button>}{canRemovePenalty && <button className="btn danger" type="button" onClick={onRemovePenalty}>{translateText("Remove penalty")}</button>}<a className="btn" href={memberRoutes.detail(model.id)}>{translateText("See full Member profile")}</a></div>
     </div>
   );

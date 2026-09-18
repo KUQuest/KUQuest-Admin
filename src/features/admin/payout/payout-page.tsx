@@ -16,7 +16,7 @@ import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminActionReceipt, AdminActionSummary } from "../../../components/admin/admin-action-feedback";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import { Badge as UiBadge, Button as UiButton, Card, PageSizeControls, Pagination, Table } from "../../../components/ui";
+import { Badge as UiBadge, Button as UiButton, Card, PageSizeControls, Pagination, Table, type ButtonSize } from "../../../components/ui";
 import { payoutRoutes } from "../admin-routes";
 import {
   adminApi,
@@ -117,12 +117,14 @@ function PayoutDecisionActions({
   onReconcile,
   reconcilePending,
   showReconcileAction,
+  size = "md",
 }: {
   detail: PayoutDetailView;
   onCommand: (command: PayoutCommand) => void;
   onReconcile: () => void;
   reconcilePending: boolean;
   showReconcileAction: boolean;
+  size?: ButtonSize;
 }) {
   const { translateText } = useAdminShell();
   const canDecide = detail.status === "PENDING_ADMIN_APPROVAL";
@@ -131,12 +133,12 @@ function PayoutDecisionActions({
 
   if (canDecide) {
     return <>
-      <UiButton variant="primary" className="btn primary" type="button" onClick={() => onCommand("approve")}>{translateText("Approve Payout")}</UiButton>
-      <UiButton variant="danger" className="btn danger" type="button" onClick={() => onCommand("reject")}>{translateText("Reject Payout")}</UiButton>
+      <UiButton size={size} variant="primary" className="btn primary" type="button" onClick={() => onCommand("approve")}>{translateText("Approve Payout")}</UiButton>
+      <UiButton size={size} variant="danger" className="btn danger" type="button" onClick={() => onCommand("reject")}>{translateText("Reject Payout")}</UiButton>
     </>;
   }
   if (canReconcile) {
-    return <UiButton variant="primary" className="btn primary" type="button" onClick={onReconcile} disabled={reconcilePending}>
+    return <UiButton size={size} variant="primary" className="btn primary" type="button" onClick={onReconcile} disabled={reconcilePending}>
       {reconcilePending ? translateText("Reconciling…") : translateText("Reconcile with provider")}
     </UiButton>;
   }
@@ -300,6 +302,7 @@ function PayoutDetailContent({
           onReconcile={onReconcile}
           reconcilePending={reconcilePending}
           showReconcileAction={showReconcileAction}
+          size="lg"
         />
       </div> : null}
       {renderDecisionActions && reconcileError ? <p className="field-error" role="alert">{translateText(reconcileError)}</p> : null}

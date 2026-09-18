@@ -33,7 +33,7 @@ export function AdminWalletStatementPage({ data }: { data: WalletStatementPageDa
       {wallet.memberAvailable ? <Link className="btn" href={memberRoutes.detail(wallet.memberId)}>{translateText("Back to Member")}</Link> : null}
     </div>
     <Card as="section" className="panel" aria-label={translateText("Wallet Statement")}>
-      <section className="wallet-record">
+      <Card as="section" className="wallet-record">
         <div className="drawer-title"><span className="att-icon neutral">W</span><div><h2>{wallet.memberName}</h2><p>{wallet.email} · {wallet.memberId}</p></div></div>
         <div className="facts">
           <div className="fact"><span>{translateText("Wallet Status")}</span><strong><WalletStatusBadge status={wallet.status} /></strong></div>
@@ -41,7 +41,7 @@ export function AdminWalletStatementPage({ data }: { data: WalletStatementPageDa
           <div className="fact"><span>{translateText("Wallet record")}</span><strong>{wallet.id}</strong></div>
           <div className="fact"><span>{translateText("Latest Wallet Transaction Date")}</span><strong>{formatWalletDate(wallet.latestTransactionAt)}</strong></div>
         </div>
-      </section>
+      </Card>
       <Card as="section" className="section">
         <h2>{translateText("Wallet Statement")}</h2>
         <p>{translateText("Committed and sealed Ledger Transactions affecting this Wallet.")}</p>

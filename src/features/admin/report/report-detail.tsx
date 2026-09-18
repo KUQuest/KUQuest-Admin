@@ -11,6 +11,7 @@ import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { Button } from "../../../components/ui/button";
+import { Card } from "../../../components/ui/card";
 import { adminApi, type AdminEvidence, type ReportDecision } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { reportRoutes } from "../admin-routes";
@@ -239,19 +240,19 @@ function ReportOverview({
   if (compact) {
     return (
       <>
-        <section className="section">
+        <Card as="section" className="section">
           <h3>{translateText("Report overview")}</h3>
           <div className="facts"><div className="fact"><span>{translateText("Status")}</span><strong><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></strong></div><div className="fact"><span>{translateText("Report type")}</span><strong>{translateText(model.reportType)}</strong></div><div className="fact"><span>{translateText("Reported")}</span><strong>{formatAdminTimestamp(model.submittedAt)}</strong></div></div>
           <dl className="overview-meta moderation-case-context-grid"><div><dt>{translateText("Case")}</dt><dd>{model.id}</dd></div><div><dt>{translateText("Case type")}</dt><dd>{translateText("Report Case")}</dd></div><div><dt>{translateText("Source")}</dt><dd>{translateText("Message")}</dd></div><div><dt>{translateText("Submitted")}</dt><dd>{formatAdminTimestamp(model.submittedAt)}</dd></div><div><dt>{translateText("Evidence References")}</dt><dd>{model.evidence.length || translateText("None")}</dd></div></dl>
           <div className="overview-group"><span>{translateText("Submitted detail")}</span><p>{model.detail}</p></div>
           <div className="facts report-overview-parties"><div className="fact"><span>{translateText("Reported Member")}</span><strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} interactive={false} /></strong><small>{model.reportedMemberId ?? "—"}</small></div><div className="fact"><span>{translateText("Reporting Member")}</span><strong><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} interactive={false} /></strong><small>{model.reporterId ?? "—"}</small></div></div>
-        </section>
+        </Card>
       </>
     );
   }
 
   return (
-    <section className="record-panel report-overview">
+    <Card as="section" className="record-panel report-overview">
       <div className="record-panel-head"><h2>{translateText("Report detail")}</h2></div>
       <p className="record-description">{model.detail}</p>
       <dl className="overview-meta">
@@ -259,21 +260,21 @@ function ReportOverview({
         <div><dt>{translateText("Submitted by")}</dt><dd><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} /></dd></div>
         <div><dt>{translateText("Reported Member")}</dt><dd><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} /></dd></div>
       </dl>
-    </section>
+    </Card>
   );
 }
 
 function RelatedQuestPanel({ model, translateText }: { model: ReportCaseModel; translateText: (value: string) => string }) {
   if (!model.relatedQuestId && !model.relatedQuestTitle) return null;
   return (
-    <section className="section related-quest-panel">
+    <Card as="section" className="section related-quest-panel">
       <div className="record-panel-head"><h3>{translateText("Related Quest")}</h3></div>
       <div className="side-facts">
         <div><span>{translateText("Quest")}</span><strong>{model.relatedQuestTitle ?? translateText("Not provided.")}</strong></div>
         <div><span>{translateText("Quest ID")}</span><strong>{model.relatedQuestId ?? "—"}</strong></div>
       </div>
       {model.relatedQuestHref && <Link className="btn full-width" href={model.relatedQuestHref}>{translateText("Open Quest detail")}</Link>}
-    </section>
+    </Card>
   );
 }
 
@@ -288,21 +289,21 @@ function PeopleInvolved({
 }) {
   if (compact) {
     return (
-      <section className="section">
+      <Card as="section" className="section">
         <h3>{translateText("People involved")}</h3>
         <div className="facts"><div className="fact"><span>{translateText("Reported Member")}</span><strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} interactive={!compact} /></strong><small>{model.reportedMemberId}</small></div><div className="fact"><span>{translateText("Reported by")}</span><strong><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} interactive={!compact} /></strong><small>{model.reporterId ?? "—"}</small></div></div>
-      </section>
+      </Card>
     );
   }
 
   return (
-    <section className="record-panel">
+    <Card as="section" className="record-panel">
       <h2>{translateText("People involved")}</h2>
       <div className="party-grid report-parties">
         <div><span>{translateText("Reporting Member")}</span><strong><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} /></strong>{model.reporterId && <small>{model.reporterId}</small>}</div>
         <div><span>{translateText("Reported Member")}</span><strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} /></strong>{model.reportedMemberId && <small>{model.reportedMemberId}</small>}</div>
       </div>
-    </section>
+    </Card>
   );
 }
 
@@ -317,20 +318,21 @@ function EvidenceSection({
   onOpen: (reference: string) => void;
   compact?: boolean;
 }) {
+  const content = <>
+    <div className="record-panel-head">{compact ? <h3>{translateText("Evidence")}</h3> : <h2>{translateText("Evidence")}</h2>}<span className="section-count">{model.evidence.length}</span></div>
+    {model.evidence.length === 0 && <p className="audit-note">{translateText("No Evidence Reference was provided.")}</p>}
+    {model.evidence.length > 0 && (
+      <div className="evidence-stack">
+        {model.evidence.map((evidence) => (
+          evidence.reference
+            ? <button key={evidence.reference} className="evidence-item" type="button" onClick={() => { const reference = evidence.reference; if (reference) onOpen(reference); }}><span className="evidence-state">✓</span><span><strong>{evidence.label}</strong><small>{translateText("Bounded Evidence Reference")}</small></span><span>{translateText("Open")}</span></button>
+            : <div key={evidence.label} className="evidence-item evidence-unavailable"><span className="evidence-state pending">!</span><span><strong>{evidence.label}</strong><small>{translateText("Evidence Reference not available")}</small></span><span>{translateText("Unavailable")}</span></div>
+        ))}
+      </div>
+    )}
+  </>;
   return (
-    <section className={compact ? "section" : "record-panel"}>
-      <div className="record-panel-head">{compact ? <h3>{translateText("Evidence")}</h3> : <h2>{translateText("Evidence")}</h2>}<span className="section-count">{model.evidence.length}</span></div>
-      {model.evidence.length === 0 && <p className="audit-note">{translateText("No Evidence Reference was provided.")}</p>}
-      {model.evidence.length > 0 && (
-        <div className="evidence-stack">
-          {model.evidence.map((evidence) => (
-            evidence.reference
-              ? <button key={evidence.reference} className="evidence-item" type="button" onClick={() => { const reference = evidence.reference; if (reference) onOpen(reference); }}><span className="evidence-state">✓</span><span><strong>{evidence.label}</strong><small>{translateText("Bounded Evidence Reference")}</small></span><span>{translateText("Open")}</span></button>
-              : <div key={evidence.label} className="evidence-item evidence-unavailable"><span className="evidence-state pending">!</span><span><strong>{evidence.label}</strong><small>{translateText("Evidence Reference not available")}</small></span><span>{translateText("Unavailable")}</span></div>
-          ))}
-        </div>
-      )}
-    </section>
+    compact ? <Card as="section" className="section">{content}</Card> : <Card as="section" className="record-panel">{content}</Card>
   );
 }
 
@@ -348,11 +350,11 @@ function MemberSummaryPanel({
   translateText: (value: string) => string;
 }) {
   return (
-    <section className="record-panel">
+    <Card as="section" className="record-panel">
       <h2>{translateText(heading)}</h2>
       <div className="side-facts"><div><span>{translateText("Name")}</span><strong><MemberLink id={id} name={name} href={href} /></strong></div><div><span>{translateText("Member ID")}</span><strong>{id || "—"}</strong></div></div>
       {href && <Link className="btn full-width" href={href}>{translateText("See Member profile")}</Link>}
-    </section>
+    </Card>
   );
 }
 
@@ -392,12 +394,12 @@ function ReportTimeline({ model, translateText }: { model: ReportCaseModel; tran
       ];
 
   return (
-    <section className="record-panel">
+    <Card as="section" className="record-panel">
       <h2>{translateText("Report timeline")}</h2>
       <ol className="timeline">
         {events.map((event) => <li key={`${event.title}-${event.time}`}><strong>{translateText(event.title)}</strong><time>{event.time}</time><span>{translateText(event.detail)}</span></li>)}
       </ol>
-    </section>
+    </Card>
   );
 }
 
@@ -500,10 +502,10 @@ function ReportCaseSections({
         <aside className="record-side">
           <MemberSummaryPanel heading="Reported Member" id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} translateText={translateText} />
           <MemberSummaryPanel heading="Submitted by" id={model.reporterId} name={model.reporterName} href={model.reporterHref} translateText={translateText} />
-          <section className="record-panel report-decision-panel">
+          <Card as="section" className="record-panel report-decision-panel">
             <h2>{model.isActionable ? translateText("Report decision") : translateText("Recorded outcome")}</h2>
             {decisionPanel}
-          </section>
+          </Card>
         </aside>
       </div>
       {actionReceipt}
@@ -563,7 +565,7 @@ function DrawerSections({
           compact
           member={{ id: model.reportedMemberId, name: model.reportedMemberName, href: model.reportedMemberHref }}
         />
-        <section className="section report-decision-panel"><h3>{model.isActionable ? translateText("Report decision") : translateText("Resolution")}</h3><DecisionControls model={model} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelect={onSelectChoice} onStart={onStartDecision} /></section>
+        <Card as="section" className="section report-decision-panel"><h3>{model.isActionable ? translateText("Report decision") : translateText("Resolution")}</h3><DecisionControls model={model} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelect={onSelectChoice} onStart={onStartDecision} /></Card>
       </ModerationCaseWorkspace>
       {actionReceipt}
       <div className="drawer-actions">{model.reportedMemberHref && <Button asChild size="lg" variant="outline"><Link href={model.reportedMemberHref}>{translateText("Member profile")}</Link></Button>}<Button asChild size="lg" variant="primary"><a href={reportRoutes.detail(model.id)}>{translateText("Open full Report Case")}</a></Button></div>
@@ -724,7 +726,7 @@ export function ReportCaseDetail({
   return (
     <main className="admin-route-page report-case-detail" tabIndex={-1}>
       <div className="record-breadcrumb"><Link href={reportRoutes.list()}>{translateText("Report Cases")}</Link><span>›</span><span>{model.id}</span></div>
-      <div className="full-record-head"><div><div className="record-id">{model.id}</div><h1>{translateText(model.title)}</h1><p>{translateText(model.reportType)} · {translateText("submitted")} {formatAdminTimestamp(model.submittedAt)}</p></div><div className="full-record-actions"><Button asChild size="lg" variant="outline"><Link href={reportRoutes.list()}>{translateText("Back to Report Cases")}</Link></Button>{model.isActionable && model.status === "REPORT_CASE_PENDING" && <Button size="lg" variant="danger" type="button" data-report-close="Close report" onClick={startDecision}>{translateText("Close report")}</Button>}{model.isActionable && model.status === "REPORT_CASE_HIDDEN" && <Button size="lg" variant="primary" type="button" data-report-decision="restore" onClick={() => { setSelectedChoice("restore"); setCommandError(null); setDialogOpen(true); }}>{translateText("Restore Message")}</Button>}</div></div>
+      <div className="full-record-head"><div><div className="record-id">{model.id}</div><h1>{translateText(model.title)}</h1><p>{translateText(model.reportType)} · {translateText("submitted")} {formatAdminTimestamp(model.submittedAt)}</p></div><div className="full-record-actions"><Button asChild size="lg" variant="outline"><Link href={reportRoutes.list()}>{translateText("Back to Report Cases")}</Link></Button></div></div>
       {content}
       {overlays}
     </main>

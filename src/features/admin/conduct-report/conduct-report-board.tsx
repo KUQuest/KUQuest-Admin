@@ -221,7 +221,7 @@ export function ConductReportBoard({
             </div>
             <span className="count">{visibleModels.length} {translateText("shown")}</span>
           </CardHeader>
-          <div className="flex gap-1 overflow-x-auto border-b border-admin-border px-3" role="tablist" aria-label={translateText("Conduct Report status filters")}>
+          <div className="admin-filter-tabs flex gap-1 overflow-x-auto border-b border-admin-border px-3" role="tablist" aria-label={translateText("Conduct Report status filters")}>
             {tabs.map((tab) => (
               <Button
                 key={tab.id}
@@ -240,10 +240,10 @@ export function ConductReportBoard({
             ))}
           </div>
           <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2">
-            <label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text" htmlFor="conduct-report-search">
+            <label className="admin-filter-label flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text" htmlFor="conduct-report-search">
               {translateText("Search Conduct Reports")}
               <Input
-                className="h-9 min-h-9 px-3 py-1.5 text-sm"
+                className="admin-filter-input h-9 min-h-9 px-3 py-1.5 text-sm"
                 id="conduct-report-search"
                 type="search"
                 aria-label={translateText("Search Conduct Reports")}

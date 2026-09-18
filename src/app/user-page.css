@@ -833,3 +833,26 @@
   font-size: var(--member-font-meta);
   line-height: 1.45;
 }
+
+/* Quest history still had the old 10–13px rules after the Member scale was
+   introduced. Keep its labels, values, and actions on the same scale as the
+   other Member detail sections. */
+.admin-shell .user-detail-page .user-quest-history-title > span,
+.admin-shell .user-detail-page .user-quest-history-field > span,
+.admin-shell .user-detail-page .user-quest-history-field small,
+.admin-shell .user-detail-page .user-quest-history-action,
+.admin-shell .user-drawer-detail .user-quest-history-title > span,
+.admin-shell .user-drawer-detail .user-quest-history-field > span,
+.admin-shell .user-drawer-detail .user-quest-history-field small,
+.admin-shell .user-drawer-detail .user-quest-history-action {
+  font-size: var(--member-font-meta);
+  line-height: 1.4;
+}
+
+.admin-shell .user-detail-page .user-quest-history-title strong,
+.admin-shell .user-detail-page .user-quest-history-field strong,
+.admin-shell .user-drawer-detail .user-quest-history-title strong,
+.admin-shell .user-drawer-detail .user-quest-history-field strong {
+  font-size: var(--member-font-value);
+  line-height: 1.4;
+}
