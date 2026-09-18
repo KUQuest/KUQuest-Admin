@@ -17,7 +17,7 @@ import { AdminActionReceipt, AdminActionSummary } from "../../../components/admi
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { RecordStatusBar } from "../../../components/admin/record-status-bar";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import { Badge as UiBadge, Button as UiButton, Card, PageSizeControls, Pagination, Table, type ButtonSize } from "../../../components/ui";
+import { Badge as UiBadge, Button as UiButton, Card, CardHeader, PageSizeControls, Pagination, Table, type ButtonSize } from "../../../components/ui";
 import { payoutRoutes } from "../admin-routes";
 import {
   adminApi,
@@ -102,7 +102,7 @@ function Badge({ status }: { status: PayoutStatus }) {
 function Section({ title, children, className }: { title: string; children: ReactNode; className?: string }) {
   return (
     <Card as="section" className={`section${className ? ` ${className}` : ""}`}>
-      <h3>{title}</h3>
+      <CardHeader flush><h3>{title}</h3></CardHeader>
       {children}
     </Card>
   );
