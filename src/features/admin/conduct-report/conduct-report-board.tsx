@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import { PageSizeControls, Pagination, Table } from "../../../components/ui";
+import { PageSizeControls, Pagination, Table, TableCell, TableHead, TableRow } from "../../../components/ui";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { conductReportRoutes } from "../admin-routes";
 import { formatAdminTimestamp } from "../date-format";
@@ -255,7 +255,7 @@ export function ConductReportBoard({
             <Table className="data report-table">
               <caption>{translateText("Conduct Reports")}</caption>
               <thead>
-                <tr>
+                <TableRow>
                   <SortableHeader label={translateText("Conduct Report")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} />
                   <SortableHeader label={translateText("Quest")} sortKey="quest" activeKey={sortKey} direction={sortDirection} onSort={sortBy} />
                   <SortableHeader label={translateText("Reported Member")} sortKey="reportedMember" activeKey={sortKey} direction={sortDirection} onSort={sortBy} />
@@ -263,11 +263,11 @@ export function ConductReportBoard({
                   <SortableHeader label={translateText("Reason")} sortKey="reason" activeKey={sortKey} direction={sortDirection} onSort={sortBy} />
                   <SortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} />
                   <SortableHeader label={translateText("Reported")} sortKey="reported" activeKey={sortKey} direction={sortDirection} onSort={sortBy} />
-                </tr>
+                </TableRow>
               </thead>
               <tbody>
                 {visibleModels.map((model) => (
-                  <tr
+                  <TableRow
                     key={model.id}
                     data-conduct-report-id={model.id}
                     data-conduct-report-status={model.status}
@@ -281,7 +281,7 @@ export function ConductReportBoard({
                       }
                     }}
                   >
-                    <td>
+                    <TableCell>
                       <button
                         className="row-record-button"
                         type="button"
@@ -295,24 +295,24 @@ export function ConductReportBoard({
                         {model.id}
                       </button>
                       <small>{translateText(model.title)}</small>
-                    </td>
-                    <td><strong>{model.questTitle}</strong><small>{model.questId ?? "—"}</small></td>
-                    <td>
+                    </TableCell>
+                    <TableCell><strong>{model.questTitle}</strong><small>{model.questId ?? "—"}</small></TableCell>
+                    <TableCell>
                       {model.reportedMemberHref
                         ? <Link href={model.reportedMemberHref} onClick={(event) => event.stopPropagation()}>{model.reportedMemberName}</Link>
                         : model.reportedMemberName}
                       <small>{model.reportedMemberId || "—"}</small>
-                    </td>
-                    <td>
+                    </TableCell>
+                    <TableCell>
                       {model.reporterHref
                         ? <Link href={model.reporterHref} onClick={(event) => event.stopPropagation()}>{model.reporterName}</Link>
                         : model.reporterName}
                       <small>{model.reporterId ?? "—"}</small>
-                    </td>
-                    <td>{translateText(model.reason)}</td>
-                    <td><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></td>
-                    <td>{formatAdminTimestamp(model.submittedAt)}</td>
-                  </tr>
+                    </TableCell>
+                    <TableCell>{translateText(model.reason)}</TableCell>
+                    <TableCell><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></TableCell>
+                    <TableCell>{formatAdminTimestamp(model.submittedAt)}</TableCell>
+                  </TableRow>
                 ))}
               </tbody>
             </Table>
@@ -353,5 +353,5 @@ function SortableHeader({
   onSort: (key: ConductReportSortKey) => void;
 }) {
   const active = activeKey === sortKey;
-  return <th scope="col" aria-sort={active ? direction : "none"}><button className={`table-sort${active ? " is-active" : ""}`} type="button" onClick={() => onSort(sortKey)}>{label}<span className="sort-indicator" aria-hidden="true">{active ? (direction === "ascending" ? "↑" : "↓") : "↕"}</span></button></th>;
+  return <TableHead aria-sort={active ? direction : "none"}><button className={`table-sort${active ? " is-active" : ""}`} type="button" onClick={() => onSort(sortKey)}>{label}<span className="sort-indicator" aria-hidden="true">{active ? (direction === "ascending" ? "↑" : "↓") : "↕"}</span></button></TableHead>;
 }

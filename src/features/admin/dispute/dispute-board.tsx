@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
-import { PageSizeControls, Pagination, Table } from "../../../components/ui";
+import { PageSizeControls, Pagination, Table, TableCell, TableHead, TableRow } from "../../../components/ui";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { disputeRoutes, questRoutes } from "../admin-routes";
 import { loadAllDisputeCasesFromMock as loadAllDisputeCasesFromMockData, loadDisputeCasesFromMock } from "./dispute-adapter";
@@ -205,21 +205,21 @@ export function DisputeCaseBoard({ initialData }: { initialData?: DisputeCasePag
         <div className="table-wrap" aria-label={translateText("Dispute Cases table")}>
           <Table className="data dispute-table">
             <caption>{translateText("Dispute Cases")}</caption>
-            <thead><tr><SortableHeader label={translateText("Dispute Case")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Quest")} sortKey="quest" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Hirer")} sortKey="hirer" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Worker")} sortKey="worker" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Category")} sortKey="category" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Amount at risk")} sortKey="amount" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Opened")} sortKey="opened" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead>
+            <thead><TableRow><SortableHeader label={translateText("Dispute Case")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Quest")} sortKey="quest" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Hirer")} sortKey="hirer" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Worker")} sortKey="worker" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Category")} sortKey="category" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Amount at risk")} sortKey="amount" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Opened")} sortKey="opened" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></TableRow></thead>
             <tbody>
               {visibleModels.map((model) => {
                 const hirer = partyMemberForRole(model, "Hirer");
                 const worker = partyMemberForRole(model, "Worker");
-                return <tr key={model.id} data-dispute-id={model.id} data-dispute-display-id={model.displayId} data-dispute-status={model.status} tabIndex={0} aria-label={`${translateText("Open Dispute Case")} ${model.displayId}`} onClick={() => openDrawer(model.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openDrawer(model.id); } }}>
-                  <td><button className="table-link" type="button" onClick={(event) => { event.stopPropagation(); openDrawer(model.id); }}>{model.displayId}</button></td>
-                  <td><Link href={model.questHref ?? questRoutes.list()} onClick={(event) => event.stopPropagation()}>{model.questTitle}</Link><small>{model.questId || "—"}</small></td>
-                  <td><MemberCell {...hirer} /></td>
-                  <td><MemberCell {...worker} /></td>
-                  <td>{translateText(model.category)}</td>
-                  <td>{model.amountAtRiskLabel}</td>
-                  <td><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></td>
-                  <td>{model.submittedAt}</td>
-                </tr>
+                return <TableRow key={model.id} data-dispute-id={model.id} data-dispute-display-id={model.displayId} data-dispute-status={model.status} tabIndex={0} aria-label={`${translateText("Open Dispute Case")} ${model.displayId}`} onClick={() => openDrawer(model.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openDrawer(model.id); } }}>
+                  <TableCell><button className="table-link" type="button" onClick={(event) => { event.stopPropagation(); openDrawer(model.id); }}>{model.displayId}</button></TableCell>
+                  <TableCell><Link href={model.questHref ?? questRoutes.list()} onClick={(event) => event.stopPropagation()}>{model.questTitle}</Link><small>{model.questId || "—"}</small></TableCell>
+                  <TableCell><MemberCell {...hirer} /></TableCell>
+                  <TableCell><MemberCell {...worker} /></TableCell>
+                  <TableCell>{translateText(model.category)}</TableCell>
+                  <TableCell>{model.amountAtRiskLabel}</TableCell>
+                  <TableCell><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></TableCell>
+                  <TableCell>{model.submittedAt}</TableCell>
+                </TableRow>
               })}
             </tbody>
           </Table>
@@ -270,5 +270,5 @@ function SortableHeader({
   onSort: (key: DisputeCaseSortKey) => void;
 }) {
   const active = activeKey === sortKey;
-  return <th scope="col" aria-sort={active ? direction : "none"}><button className={`table-sort${active ? " is-active" : ""}`} type="button" onClick={() => onSort(sortKey)}>{label}<span className="sort-indicator" aria-hidden="true">{active ? (direction === "ascending" ? "↑" : "↓") : "↕"}</span></button></th>;
+  return <TableHead aria-sort={active ? direction : "none"}><button className={`table-sort${active ? " is-active" : ""}`} type="button" onClick={() => onSort(sortKey)}>{label}<span className="sort-indicator" aria-hidden="true">{active ? (direction === "ascending" ? "↑" : "↓") : "↕"}</span></button></TableHead>;
 }
