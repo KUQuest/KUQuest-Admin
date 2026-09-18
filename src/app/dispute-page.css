@@ -1,44 +1,3 @@
-.dispute-page-alert {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 18px;
-  padding: 15px;
-  border-radius: 12px;
-}
-.dispute-page-alert.active {
-  background: var(--danger);
-  color: var(--surface);
-}
-.dispute-page-alert.closed {
-  background: var(--success-soft);
-  color: var(--success);
-}
-.dispute-page-alert > span {
-  flex: 0 0 auto;
-}
-.dispute-page-alert svg {
-  width: 24px;
-  height: 24px;
-}
-.dispute-page-alert > div {
-  min-width: 0;
-  flex: 1;
-}
-.dispute-page-alert strong,
-.dispute-page-alert p {
-  display: block;
-}
-.dispute-page-alert p {
-  max-width: 72ch;
-  margin: 3px 0 0;
-  color: inherit;
-  font-size: 12px;
-}
-.dispute-page-alert.active .badge {
-  color: var(--danger);
-  background: var(--surface);
-}
 .dispute-description {
   color: var(--text);
   font-size: 14px;
@@ -127,9 +86,6 @@
   font-size: 12px;
 }
 @media (max-width: 700px) {
-  .dispute-page-alert {
-    flex-wrap: wrap;
-  }
   .overview-meta {
     grid-template-columns: 1fr;
     gap: 10px;

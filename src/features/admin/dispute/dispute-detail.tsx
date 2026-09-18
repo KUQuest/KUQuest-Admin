@@ -9,6 +9,7 @@ import { formatAdminTimestamp } from "../date-format";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminRecordHeader } from "../../../components/admin/admin-record-header";
 import { AdminRecordGrid } from "../../../components/admin/admin-record-grid";
+import { AdminStatusAlert } from "../../../components/admin/admin-status-alert";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
@@ -127,16 +128,16 @@ function MemberLink({
 
 function DisputeAlert({ model, translateText }: { model: DisputeCaseModel; translateText: (value: string) => string }) {
   return (
-    <div className={`dispute-page-alert ${model.isActionable ? "active" : "closed"}`}>
-      <span aria-hidden="true">⚑</span>
-      <div>
-        <strong>{model.isActionable ? translateText("Active Dispute Case — review is required") : translateText("Closed Dispute Case — record retained")}</strong>
-        <p>{model.isActionable
-          ? translateText("The Quest is Failed. Decide whether to dismiss the case or redirect the settlement to the Worker.")
-          : translateText("This Dispute Case is closed and retained as a read-only audit record. The Quest State remains failed.")}</p>
-      </div>
-      <span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span>
-    </div>
+    <AdminStatusAlert
+      tone={model.isActionable ? "danger" : "success"}
+      title={model.isActionable ? translateText("Active Dispute Case — review is required") : translateText("Closed Dispute Case — record retained")}
+      description={model.isActionable
+        ? translateText("The Quest is Failed. Decide whether to dismiss the case or redirect the settlement to the Worker.")
+        : translateText("This Dispute Case is closed and retained as a read-only audit record. The Quest State remains failed.")}
+      badge={translateText(model.statusLabel)}
+      badgeClassName={model.badgeClass}
+      className="dispute-page-alert"
+    />
   );
 }
 

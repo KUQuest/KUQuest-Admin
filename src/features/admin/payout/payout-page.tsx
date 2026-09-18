@@ -15,6 +15,7 @@ import { ApiError } from "../../../lib/api/client";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminActionReceipt, AdminActionSummary } from "../../../components/admin/admin-action-feedback";
 import { AdminRecordHeader } from "../../../components/admin/admin-record-header";
+import { AdminStatusAlert } from "../../../components/admin/admin-status-alert";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { RecordStatusBar } from "../../../components/admin/record-status-bar";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
@@ -158,16 +159,15 @@ function PayoutStatusAlert({ detail }: { detail: PayoutDetailView }) {
     : translateText(detail.decisionContext.copy);
 
   return (
-    <output className={`dispute-page-alert payout-page-alert ${tone}`}>
-      <span aria-hidden="true">⚑</span>
-      <div>
-        <strong>{title}</strong>
-        <p>{copy}</p>
-      </div>
-      <span className={`badge ${payoutStatusClass(detail.status)}`}>
-        {translateText(payoutStatusLabel(detail.status))}
-      </span>
-    </output>
+    <AdminStatusAlert
+      as="output"
+      tone={tone === "open" ? "warning" : tone === "failed" ? "danger" : "success"}
+      title={title}
+      description={copy}
+      badge={translateText(payoutStatusLabel(detail.status))}
+      badgeClassName={payoutStatusClass(detail.status)}
+      className="dispute-page-alert payout-page-alert"
+    />
   );
 }
 

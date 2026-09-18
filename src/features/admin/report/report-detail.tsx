@@ -9,6 +9,7 @@ import { formatAdminTimestamp } from "../date-format";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminRecordHeader } from "../../../components/admin/admin-record-header";
 import { AdminRecordGrid } from "../../../components/admin/admin-record-grid";
+import { AdminStatusAlert } from "../../../components/admin/admin-status-alert";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
@@ -220,14 +221,14 @@ function ReportAlert({ model, translateText }: { model: ReportCaseModel; transla
     ? translateText("The Message is hidden. Re-evaluate this Report Case or restore the Message.")
     : translateText("Review the submitted details and Evidence References before deciding this Report Case.");
   return (
-    <div className={`dispute-page-alert report-page-alert ${model.isActionable ? "open" : "closed"}`}>
-      <span aria-hidden="true">⚑</span>
-      <div>
-        <strong>{model.isActionable ? translateText("Active Report Case — review is required") : translateText("Closed Report Case — record retained")}</strong>
-        <p>{model.isActionable ? activeMessage : translateText("This Report Case is closed and retained as a read-only audit record.")}</p>
-      </div>
-      <span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span>
-    </div>
+    <AdminStatusAlert
+      tone={model.isActionable ? "warning" : "success"}
+      title={model.isActionable ? translateText("Active Report Case — review is required") : translateText("Closed Report Case — record retained")}
+      description={model.isActionable ? activeMessage : translateText("This Report Case is closed and retained as a read-only audit record.")}
+      badge={translateText(model.statusLabel)}
+      badgeClassName={model.badgeClass}
+      className="dispute-page-alert report-page-alert"
+    />
   );
 }
 

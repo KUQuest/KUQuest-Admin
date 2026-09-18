@@ -9,6 +9,7 @@ import { formatAdminTimestamp } from "../date-format";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminRecordHeader } from "../../../components/admin/admin-record-header";
 import { AdminRecordGrid } from "../../../components/admin/admin-record-grid";
+import { AdminStatusAlert } from "../../../components/admin/admin-status-alert";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { adminApi, type ReportDecision } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
@@ -186,22 +187,16 @@ function ConductReportAlert({
   translateText: (value: string) => string;
 }) {
   return (
-    <div className={`dispute-page-alert report-page-alert ${model.isActionable ? "open" : "closed"}`}>
-      <span aria-hidden="true">⚑</span>
-      <div>
-        <strong>
-          {model.isActionable
-            ? translateText("Active Conduct Report — review is required")
-            : translateText("Closed Conduct Report — record retained")}
-        </strong>
-        <p>
-          {model.isActionable
-            ? translateText("Review the Quest record and submitted details before deciding this Conduct Report.")
-            : translateText("This Conduct Report is closed and retained as a read-only audit record.")}
-        </p>
-      </div>
-      <span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span>
-    </div>
+    <AdminStatusAlert
+      tone={model.isActionable ? "warning" : "success"}
+      title={model.isActionable ? translateText("Active Conduct Report — review is required") : translateText("Closed Conduct Report — record retained")}
+      description={model.isActionable
+        ? translateText("Review the Quest record and submitted details before deciding this Conduct Report.")
+        : translateText("This Conduct Report is closed and retained as a read-only audit record.")}
+      badge={translateText(model.statusLabel)}
+      badgeClassName={model.badgeClass}
+      className="dispute-page-alert report-page-alert"
+    />
   );
 }
 

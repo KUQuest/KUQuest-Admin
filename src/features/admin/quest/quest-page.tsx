@@ -9,6 +9,7 @@ import { ApiError } from "../../../lib/api/client";
 import { AdminActionReceipt, AdminActionSummary } from "../../../components/admin/admin-action-feedback";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminRecordHeader } from "../../../components/admin/admin-record-header";
+import { AdminStatusAlert } from "../../../components/admin/admin-status-alert";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { RecordStatusBar } from "../../../components/admin/record-status-bar";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
@@ -201,14 +202,14 @@ function QuestRecordAlert({ detail }: { detail: QuestDetailView }) {
       : translateText("Review the Quest Condition, participants, Proof Submissions, and funding before taking action.");
 
   return (
-    <div className={`dispute-page-alert quest-page-alert ${failed || hidden ? "active" : "closed"}`}>
-      <span aria-hidden="true">⚑</span>
-      <div>
-        <strong>{translateText("Quest State:")} {translateText(stateLabel)}</strong>
-        <p>{message}</p>
-      </div>
-      <span className={`badge ${questStatusClass(detail.state)}`}>{translateText(stateLabel)}</span>
-    </div>
+    <AdminStatusAlert
+      tone={failed || hidden ? "danger" : "success"}
+      title={`${translateText("Quest State:")} ${translateText(stateLabel)}`}
+      description={message}
+      badge={translateText(stateLabel)}
+      badgeClassName={questStatusClass(detail.state)}
+      className="dispute-page-alert quest-page-alert"
+    />
   );
 }
 

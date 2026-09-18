@@ -2160,30 +2160,6 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
 }
 
 /* Payout full detail uses the same record treatment as the other Admin detail pages. */
-.payout-page-alert.open {
-  background: var(--warn-soft);
-  color: var(--warn);
-}
-.payout-page-alert.open .badge {
-  color: var(--warn);
-  background: var(--surface);
-}
-.payout-page-alert.closed {
-  background: var(--success-soft);
-  color: var(--success);
-}
-.payout-page-alert.closed .badge {
-  color: var(--success);
-  background: var(--surface);
-}
-.payout-page-alert.failed {
-  background: var(--danger-soft);
-  color: var(--danger);
-}
-.payout-page-alert.failed .badge {
-  color: var(--danger);
-  background: var(--surface);
-}
 .payout-detail-page .payout-detail-grid {
   display: grid;
   gap: 18px;
