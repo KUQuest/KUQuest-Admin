@@ -16,7 +16,7 @@ import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminActionReceipt, AdminActionSummary } from "../../../components/admin/admin-action-feedback";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import { PageSizeControls, Pagination, Table } from "../../../components/ui";
+import { Badge as UiBadge, Button as UiButton, Card, PageSizeControls, Pagination, Table } from "../../../components/ui";
 import { payoutRoutes } from "../admin-routes";
 import {
   adminApi,
@@ -95,15 +95,15 @@ function payoutReasonLabel(value: string): string {
 
 function Badge({ status }: { status: PayoutStatus }) {
   const { translateText } = useAdminShell();
-  return <span className={`badge ${payoutStatusClass(status)}`}>{translateText(payoutStatusLabel(status))}</span>;
+  return <UiBadge tone="neutral" className={`badge ${payoutStatusClass(status)}`}>{translateText(payoutStatusLabel(status))}</UiBadge>;
 }
 
 function Section({ title, children, className }: { title: string; children: ReactNode; className?: string }) {
   return (
-    <section className={`section${className ? ` ${className}` : ""}`}>
+    <Card as="section" className={`section${className ? ` ${className}` : ""}`}>
       <h3>{title}</h3>
       {children}
-    </section>
+    </Card>
   );
 }
 
@@ -131,14 +131,14 @@ function PayoutDecisionActions({
 
   if (canDecide) {
     return <>
-      <button className="btn primary" type="button" onClick={() => onCommand("approve")}>{translateText("Approve Payout")}</button>
-      <button className="btn danger" type="button" onClick={() => onCommand("reject")}>{translateText("Reject Payout")}</button>
+      <UiButton variant="primary" className="btn primary" type="button" onClick={() => onCommand("approve")}>{translateText("Approve Payout")}</UiButton>
+      <UiButton variant="danger" className="btn danger" type="button" onClick={() => onCommand("reject")}>{translateText("Reject Payout")}</UiButton>
     </>;
   }
   if (canReconcile) {
-    return <button className="btn primary" type="button" onClick={onReconcile} disabled={reconcilePending}>
+    return <UiButton variant="primary" className="btn primary" type="button" onClick={onReconcile} disabled={reconcilePending}>
       {reconcilePending ? translateText("Reconciling…") : translateText("Reconcile with provider")}
-    </button>;
+    </UiButton>;
   }
   return null;
 }

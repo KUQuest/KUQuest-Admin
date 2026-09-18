@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
-import { PageSizeControls, Pagination, Table } from "../../../components/ui";
+import { Card, PageSizeControls, Pagination, Table } from "../../../components/ui";
 import { isAdminMockEnabled } from "../../../lib/auth/admin-auth-mode";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import {
@@ -84,7 +84,7 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
               <p><span className="activity-log-target">{translateText(displayValue(target))}</span></p>
             </div>
           </div>
-          <section className="section activity-log-record-section" aria-labelledby="activity-log-record-heading">
+          <Card as="section" className="section activity-log-record-section" aria-labelledby="activity-log-record-heading">
             <h3 id="activity-log-record-heading">{translateText("Activity record")}</h3>
             <div className="facts">
               <div className="fact"><span>{translateText("Timestamp")}</span><strong>{formatActivityLogTimestamp(entry.createdAt)}</strong></div>
@@ -95,8 +95,8 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
               <div className="fact"><span>{translateText("Reason catalog version")}</span><strong>{displayValue(entry.reasonCatalogVersion)}</strong></div>
               <div className="fact"><span>{translateText("Activity ID")}</span><strong>{displayValue(entry.id)}</strong></div>
             </div>
-          </section>
-          <section className="section activity-log-admin-section" aria-labelledby="activity-log-admin-heading">
+          </Card>
+          <Card as="section" className="section activity-log-admin-section" aria-labelledby="activity-log-admin-heading">
             <h3 id="activity-log-admin-heading">{translateText("Admin")}</h3>
             <div className="facts">
               <div className="fact"><span>{translateText("Actor")}</span><strong>{displayValue(entry.adminName)}</strong></div>
@@ -104,16 +104,16 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
               <div className="fact"><span>{translateText("Admin first name")}</span><strong>{displayValue(entry.admin.firstName)}</strong></div>
               <div className="fact"><span>{translateText("Admin last name")}</span><strong>{displayValue(entry.admin.lastName)}</strong></div>
             </div>
-          </section>
-          <section className="section activity-log-result-section" aria-labelledby="activity-log-result-heading">
+          </Card>
+          <Card as="section" className="section activity-log-result-section" aria-labelledby="activity-log-result-heading">
             <h3 id="activity-log-result-heading">{translateText("Result")}</h3>
             <div className="facts">
               <div className="fact"><span>{translateText("Result version")}</span><strong>{displayValue(entry.resultVersion)}</strong></div>
               <div className="fact"><span>{translateText("Result timestamp")}</span><strong>{formatAdminTimestamp(entry.resultTimestamp)}</strong></div>
               <div className="fact"><span>{translateText("Relative time")}</span><strong>{formatActivityLogRelativeTime(entry.createdAt)}</strong></div>
             </div>
-          </section>
-          <section className="section activity-log-state-section" aria-labelledby="activity-log-state-heading">
+          </Card>
+          <Card as="section" className="section activity-log-state-section" aria-labelledby="activity-log-state-heading">
             <h3 id="activity-log-state-heading">{translateText("State change")}</h3>
             {entry.previousState || entry.newState ? (
               <div className="activity-log-state-change">
@@ -123,7 +123,7 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
               </div>
             ) : <p className="activity-log-missing-context">{translateText("Before and after state are not included in this record.")}</p>}
             {entry.note ? <p className="activity-log-note"><strong>{translateText("Admin note")}</strong>{entry.note}</p> : null}
-          </section>
+          </Card>
           <div className="drawer-actions">
             {targetHref ? <button className="btn primary activity-log-linked-detail-button" type="button" onClick={() => onOpenTarget(entry)}>{translateText("View linked detail")}</button> : null}
             <button className="btn" type="button" onClick={onClose}>{translateText("Close")}</button>

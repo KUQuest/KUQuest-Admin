@@ -1,8 +1,15 @@
 import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "./utils";
 
-export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("rounded-admin-md border border-admin-border bg-admin-surface shadow-admin-card", className)} {...props} />;
+type CardElement = "div" | "section";
+
+export type CardProps = HTMLAttributes<HTMLDivElement> & {
+  as?: CardElement;
+};
+
+export function Card({ as = "div", className, ...props }: CardProps) {
+  const Component = as;
+  return <Component className={cn("rounded-admin-md border border-admin-border bg-admin-surface shadow-admin-card", className)} {...props} />;
 }
 
 export function CardHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>) {

@@ -10,7 +10,7 @@ import { AdminActionReceipt, AdminActionSummary } from "../../../components/admi
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import { PageSizeControls, Pagination, Table } from "../../../components/ui";
+import { Badge as UiBadge, Button as UiButton, Card, PageSizeControls, Pagination, Table } from "../../../components/ui";
 import { disputeRoutes, questRoutes } from "../admin-routes";
 import {
   adminApi,
@@ -154,20 +154,20 @@ function editChangesFor(detail: QuestDetailView, request: AdminQuestEditRequest)
 
 function Badge({ state }: { state: QuestState }) {
   const { translateText } = useAdminShell();
-  return <span className={`badge ${questStatusClass(state)}`}>{translateText(readableValue(state.replace("QUEST_", "")))}</span>;
+  return <UiBadge tone="neutral" className={`badge ${questStatusClass(state)}`}>{translateText(readableValue(state.replace("QUEST_", "")))}</UiBadge>;
 }
 
 function Section({ title, count, children, variant = "panel" }: { title: string; count?: number; children: ReactNode; variant?: "panel" | "record" }) {
   const { translateText } = useAdminShell();
   const isRecord = variant === "record";
   return (
-    <section className={isRecord ? "record-panel" : "panel"}>
+    <Card as="section" className={isRecord ? "record-panel" : "panel"}>
       <div className={isRecord ? "record-panel-head" : "panel-head"}>
         <h2>{translateText(title)}</h2>
         {count !== undefined ? <span className="section-count">{count}</span> : null}
       </div>
       <div className={`quest-detail-body${isRecord ? " quest-record-body" : ""}`}>{children}</div>
-    </section>
+    </Card>
   );
 }
 
@@ -608,9 +608,9 @@ function QuestDetailContent({
 
       <div className="quest-command-actions">
         {showFullDetailLink ? <a className="btn quest-full-detail-link" href={questRoutes.detail(detail.id)}>{translateText("Full Quest detail")}</a> : null}
-        {!hidden && canHideQuest(state) ? <button className="btn" type="button" onClick={() => onCommand("hide")}>{translateText("Hide Quest")}</button> : null}
-        {hidden ? <button className="btn" type="button" onClick={() => onCommand("restore")}>{translateText("Restore Quest")}</button> : null}
-        {!isQuestTerminal(state) ? <button className="btn danger" type="button" onClick={() => onCommand("terminate")}>{translateText("Terminate Quest")}</button> : null}
+        {!hidden && canHideQuest(state) ? <UiButton variant="outline" className="btn" type="button" onClick={() => onCommand("hide")}>{translateText("Hide Quest")}</UiButton> : null}
+        {hidden ? <UiButton variant="outline" className="btn" type="button" onClick={() => onCommand("restore")}>{translateText("Restore Quest")}</UiButton> : null}
+        {!isQuestTerminal(state) ? <UiButton variant="danger" className="btn danger" type="button" onClick={() => onCommand("terminate")}>{translateText("Terminate Quest")}</UiButton> : null}
       </div>
       </aside>
     </div>

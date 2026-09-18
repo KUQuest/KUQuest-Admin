@@ -15,7 +15,7 @@ import {
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import { PageSizeControls, Pagination, Table } from "../../../components/ui";
+import { Badge as UiBadge, Button as UiButton, Card, PageSizeControls, Pagination, Table } from "../../../components/ui";
 import { adminApi } from "../api/admin-api";
 import { walletStatusLabel, type WalletStatus } from "../domain/rulebook";
 import { memberTabHref } from "../member/member-model";
@@ -191,11 +191,12 @@ function WalletStatusCommandDialog({
 function Badge({ status, track = true }: { status: WalletStatus; track?: boolean }) {
   const { translateText } = useAdminShell();
   const label = walletStatusLabel(status);
-  return <span
+  return <UiBadge
+    tone="neutral"
     className={`badge ${walletStatusClass(status)}`}
     data-wallet-status={track ? status : undefined}
     title={status === "CLOSED" ? translateText("Closed — terminal Wallet status") : undefined}
-  >{translateText(label)}</span>;
+  >{translateText(label)}</UiBadge>;
 }
 
 function SummaryMetric({ label, value }: { label: string; value: number }) {
@@ -230,7 +231,7 @@ function WalletSummary({
 }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
-  return <section className="section"><h3>{title}</h3>{children}</section>;
+  return <Card as="section" className="section"><h3>{title}</h3>{children}</Card>;
 }
 
 function Fact({ label, children }: { label: string; children: ReactNode }) {
@@ -383,7 +384,7 @@ function WalletDrawer({
       {dataSource === "mock" ? <>
         <p>{translateText("Change Wallet Status without changing the Member Ban status. A non-active Wallet blocks new commitments while existing obligations continue.")}</p>
         {walletStatusTargets(detail?.status ?? row.status).length ? <div className="wallet-status-actions" aria-label={translateText("Wallet status actions")}>
-          {walletStatusTargets(detail?.status ?? row.status).map((targetStatus) => <button className={`btn ${walletStatusActionClass(targetStatus)}`} type="button" key={targetStatus} data-wallet-status-action={targetStatus} onClick={() => openStatusCommand(targetStatus)} disabled={statusCommandPending}>{translateText(walletStatusActionLabel(targetStatus))}</button>)}
+          {walletStatusTargets(detail?.status ?? row.status).map((targetStatus) => <UiButton variant={walletStatusActionClass(targetStatus) === "danger" ? "danger" : "outline"} className={`btn ${walletStatusActionClass(targetStatus)}`} type="button" key={targetStatus} data-wallet-status-action={targetStatus} onClick={() => openStatusCommand(targetStatus)} disabled={statusCommandPending}>{translateText(walletStatusActionLabel(targetStatus))}</UiButton>)}
         </div> : <p className="audit-note">{translateText("Closed is terminal. No Wallet status change is available.")}</p>}
       </> : <p>{translateText("Status commands will be connected to the Admin API in the API integration step.")}</p>}
     </>
@@ -399,8 +400,8 @@ function WalletDrawer({
     onClose={onClose}
     actions={!loading && !error && detail ? <>
       {dataSource === "api" ? <>
-        <button className="btn" type="button" disabled={actionPending !== null} onClick={() => { void verifyLedger(); }}>{actionPending === "verify" ? translateText("Verifying…") : translateText("Verify Ledger")}</button>
-        <button className="btn primary" type="button" disabled={actionPending !== null} onClick={() => { if (window.confirm(translateText("Rebuild this Wallet projection from the Ledger source of truth?"))) void rebuildProjection(); }}>{actionPending === "rebuild" ? translateText("Rebuilding…") : translateText("Rebuild projection")}</button>
+        <UiButton variant="outline" className="btn" type="button" disabled={actionPending !== null} onClick={() => { void verifyLedger(); }}>{actionPending === "verify" ? translateText("Verifying…") : translateText("Verify Ledger")}</UiButton>
+        <UiButton variant="primary" className="btn primary" type="button" disabled={actionPending !== null} onClick={() => { if (window.confirm(translateText("Rebuild this Wallet projection from the Ledger source of truth?"))) void rebuildProjection(); }}>{actionPending === "rebuild" ? translateText("Rebuilding…") : translateText("Rebuild projection")}</UiButton>
       </> : null}
       {detail ? <a className="btn" href={memberTabHref(detail.memberId, "wallet-statement")}>{translateText("See Wallet Statement")}</a> : null}
       <button className="btn" type="button" onClick={onClose}>{translateText("Close record")}</button>
