@@ -115,19 +115,24 @@ export function AdminSidebar({
   }, [onNavigate]);
 
   const navigationHidden = isMobile && !open;
+  const sidebarClassName = [
+    "sidebar admin-sidebar row-span-full sticky top-0 h-screen w-auto min-h-full flex flex-col z-20 px-[10px] py-3 border-r border-admin-border bg-admin-sidebar text-admin-text transition-transform duration-200 ease-out",
+    "max-[900px]:fixed max-[900px]:left-0 max-[900px]:w-[260px] max-[900px]:shadow-admin",
+    open ? "max-[900px]:translate-x-0" : "max-[900px]:-translate-x-[102%]",
+  ].join(" ");
 
   return (
     <Sidebar
-      className={`sidebar${open ? " open" : ""}`}
+      className={`${sidebarClassName}${open ? " open" : ""}`}
       id="site-navigation"
       aria-hidden={navigationHidden ? true : undefined}
       inert={navigationHidden ? true : undefined}
     >
-      <div className="brand">
-        <Image src="/kuquest-logo.png?v=2" alt="" width={101} height={51} priority unoptimized />
+      <div className="brand h-[50px] flex items-center gap-2 px-2 pb-2 text-[22px] leading-none font-bold">
+        <Image className="block size-10 w-20 shrink-0 object-contain" src="/kuquest-logo.png?v=2" alt="" width={101} height={51} priority unoptimized />
         <span>KuQuest</span>
       </div>
-      <nav aria-label={translateText("Primary navigation")}>
+      <nav className="grid gap-0.5" aria-label={translateText("Primary navigation")}>
         {primaryAdminNavigation.map((item) => (
           <AdminNavigationLink
             active={item.key === activeKey}
@@ -138,9 +143,9 @@ export function AdminSidebar({
           />
         ))}
       </nav>
-      <div className="nav-group">
+      <div className="nav-group mt-[22px]">
         <small>{translateText("SYSTEM")}</small>
-        <nav aria-label={translateText("System navigation")}>
+        <nav className="grid gap-0.5" aria-label={translateText("System navigation")}>
           {systemAdminNavigation.map((item) => (
             <AdminNavigationLink
               active={item.key === activeKey}
@@ -158,8 +163,8 @@ export function AdminSidebar({
         onLanguageChange={onLanguageChange}
         translateText={translateText}
       />
-      <div className="profile">
-        <span aria-hidden="true">{initials}</span>
+      <div className="profile mt-0 flex items-center gap-[9px] px-[7px] py-2.5 border-t border-admin-border">
+        <span className="size-[30px] grid place-items-center rounded-full bg-admin-avatar text-admin-accent-strong text-[10px] font-bold" aria-hidden="true">{initials}</span>
         <div>
           <strong>{adminName}</strong>
           <small>{translateText("Admin")}</small>
