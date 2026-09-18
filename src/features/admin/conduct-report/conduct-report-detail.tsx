@@ -10,6 +10,7 @@ import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { adminApi, type ReportDecision } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
+import { Button } from "../../../components/ui/button";
 import { conductReportRoutes } from "../admin-routes";
 import { questStateLabel } from "../domain/rulebook";
 import { questStatusClass } from "../quest/quest-model";
@@ -583,16 +584,18 @@ function ConductReportDrawerBody({
       {actionReceipt}
       <div className={compact ? "drawer-actions" : "full-record-actions"}>
         {model.reportedMemberHref && (
-          <Link className="btn" href={model.reportedMemberHref}>
-            {translateText("Member profile")}
-          </Link>
+          <Button asChild variant="outline">
+            <Link href={model.reportedMemberHref}>
+              {translateText("Member profile")}
+            </Link>
+          </Button>
         )}
         {model.questHref && (
-          <Link className="btn" href={model.questHref}>
-            {translateText("Quest detail")}
-          </Link>
+          <Button asChild variant="outline">
+            <Link href={model.questHref}>{translateText("Quest detail")}</Link>
+          </Button>
         )}
-        {showFullLink && <a className="btn primary" href={conductReportRoutes.detail(model.id)}>{translateText("Open full Conduct Report")}</a>}
+        {showFullLink && <Button asChild variant="primary"><Link href={conductReportRoutes.detail(model.id)}>{translateText("Open full Conduct Report")}</Link></Button>}
       </div>
     </div>
   );

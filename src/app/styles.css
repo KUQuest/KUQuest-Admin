@@ -1488,6 +1488,7 @@ dialog.drawer.wallet-drawer {
   border-top: 1px solid var(--border);
   background: color-mix(in srgb, var(--surface) 96%, transparent);
 }
+.drawer-actions > [data-slot="button"],
 .drawer-actions .btn {
   flex: 1;
 }

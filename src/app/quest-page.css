@@ -1,4 +1,5 @@
 .full-record-actions .btn,
+.full-record-actions > [data-slot="button"],
 .dispute-summary .btn {
   text-decoration: none;
 }
@@ -338,7 +339,8 @@
     flex-wrap: wrap;
     overflow: visible;
   }
-  .full-record-actions .btn {
+  .full-record-actions .btn,
+  .full-record-actions > [data-slot="button"] {
     flex: 1 1 auto;
   }
   .record-status-bar {

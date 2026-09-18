@@ -10,6 +10,7 @@ import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
+import { Button } from "../../../components/ui/button";
 import { adminApi, type AdminDisputeReasonCode, type DisputeResolution } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { disputeRoutes, questRoutes } from "../admin-routes";
@@ -349,7 +350,7 @@ function DrawerSections({ model, translateText, onOpenEvidence, selectedChoice, 
       memberLabel={model.respondentRole}
     />
     <section className="section dispute-decision-panel"><h3>{model.isActionable ? translateText("Dispute decision") : translateText("Resolution")}</h3><DecisionControls model={model} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelect={onSelectChoice} onStart={onStartDecision} /></section>
-  </ModerationCaseWorkspace>{actionReceipt}<div className="drawer-actions">{model.questHref && <Link className="btn" href={model.questHref}>{translateText("Quest detail")}</Link>}<a className="btn primary" href={disputeRoutes.detail(model.id)}>{translateText("Open full Dispute Case")}</a></div></div>;
+  </ModerationCaseWorkspace>{actionReceipt}<div className="drawer-actions">{model.questHref && <Button asChild variant="outline"><Link href={model.questHref}>{translateText("Quest detail")}</Link></Button>}<Button asChild variant="primary"><Link href={disputeRoutes.detail(model.id)}>{translateText("Open full Dispute Case")}</Link></Button></div></div>;
 }
 
 export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = false, onUpdated }: DisputeCaseDetailProps) {

@@ -10,6 +10,7 @@ import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
+import { Button } from "../../../components/ui/button";
 import { adminApi, type AdminEvidence, type ReportDecision } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { reportRoutes } from "../admin-routes";
@@ -565,7 +566,7 @@ function DrawerSections({
         <section className="section report-decision-panel"><h3>{model.isActionable ? translateText("Report decision") : translateText("Resolution")}</h3><DecisionControls model={model} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelect={onSelectChoice} onStart={onStartDecision} /></section>
       </ModerationCaseWorkspace>
       {actionReceipt}
-      <div className="drawer-actions">{model.reportedMemberHref && <Link className="btn" href={model.reportedMemberHref}>{translateText("Member profile")}</Link>}<a className="btn primary" href={reportRoutes.detail(model.id)}>{translateText("Open full Report Case")}</a></div>
+      <div className="drawer-actions">{model.reportedMemberHref && <Button asChild variant="outline"><Link href={model.reportedMemberHref}>{translateText("Member profile")}</Link></Button>}<Button asChild variant="primary"><Link href={reportRoutes.detail(model.id)}>{translateText("Open full Report Case")}</Link></Button></div>
     </div>
   );
 }
