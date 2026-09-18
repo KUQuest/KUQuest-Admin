@@ -595,7 +595,7 @@ function ConductReportDrawerBody({
             <Link href={model.questHref}>{translateText("Quest detail")}</Link>
           </Button>
         )}
-        {showFullLink && <Button asChild size="lg" variant="primary"><Link href={conductReportRoutes.detail(model.id)}>{translateText("Open full Conduct Report")}</Link></Button>}
+        {showFullLink && <Button asChild size="lg" variant="primary"><a href={conductReportRoutes.detail(model.id)}>{translateText("Open full Conduct Report")}</a></Button>}
       </div>
     </div>
   );
