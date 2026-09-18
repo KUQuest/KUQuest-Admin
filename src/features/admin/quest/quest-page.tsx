@@ -164,12 +164,12 @@ function Section({ title, count, children, variant = "panel" }: { title: string;
   const { translateText } = useAdminShell();
   const isRecord = variant === "record";
   return (
-    <Card as="section" className={isRecord ? "record-panel" : "panel"}>
+    <Card as="section" className={isRecord ? "record-panel p-[18px]" : "panel"}>
       <CardHeader flush className={isRecord ? "record-panel-head" : "panel-head"}>
         <CardTitle>{translateText(title)}</CardTitle>
         {count !== undefined ? <span className="section-count">{count}</span> : null}
       </CardHeader>
-      <CardContent flush className={`quest-detail-body${isRecord ? " quest-record-body" : ""}`}>{children}</CardContent>
+      <CardContent flush className={isRecord ? "quest-record-body" : "p-[18px]"}>{children}</CardContent>
     </Card>
   );
 }
@@ -362,8 +362,8 @@ function QuestDetailContent({
   ) : <p className="audit-note">{translateText("No linked Dispute Case was returned.")}</p>;
 
   return (
-    <div className={recordLayout ? "full-record-grid quest-full-record-grid" : "quest-detail-stack"}>
-      <div className={recordLayout ? "record-primary" : "quest-detail-primary"}>
+    <div className={recordLayout ? "grid items-start gap-[18px] [grid-template-columns:minmax(0,1.65fr)_minmax(290px,0.72fr)] max-[1000px]:grid-cols-1" : "grid gap-[18px]"}>
+      <div className={recordLayout ? "grid min-w-0 gap-[18px]" : "contents"}>
       <Section title="Quest summary" variant={sectionVariant}>
         <div className="facts quest-detail-facts">
           <Fact label="Status"><Badge state={state} />{hidden ? <span className="badge neutral quest-hidden-overlay">{translateText("Hidden")}</span> : null}</Fact>
@@ -570,7 +570,7 @@ function QuestDetailContent({
       {!recordLayout ? <Section title="Dispute and risk" variant={sectionVariant}><div className="quest-summary-context-section">{disputeRiskContent}</div></Section> : null}
       </div>
 
-      <aside className={recordLayout ? "record-side" : "quest-detail-side"}>
+      <aside className={recordLayout ? "grid min-w-0 gap-[18px]" : "contents"}>
       {recordLayout ? (
         <>
           <Section title="Hirer" variant={sectionVariant}>
@@ -804,7 +804,7 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
   }
 
   return (
-    <main className="admin-route-page quest-detail-page" tabIndex={-1}>
+    <main className="admin-route-page quest-detail-page max-w-[1080px]" tabIndex={-1}>
       <AdminRecordHeader
         breadcrumbHref={questRoutes.list()}
         breadcrumbLabel={translateText("Quests")}
@@ -815,7 +815,7 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
       />
       <QuestRecordAlert detail={detail} />
       <RecordStatusBar className="quest-record-status-bar" items={[{ id: "status", label: translateText("Status"), value: <Badge state={detail.state} /> }, { id: "participant-mode", label: translateText("Participant mode"), value: translateText(detail.participation === "GROUP" ? "Team" : "Solo") }, { id: "created", label: translateText("Created"), value: formatQuestDate(detail.createdAt) }, { id: "funding-total", label: translateText("Quest Funding Total"), value: formatQuestMoney(finance?.quest.questFundingTotalSatang ?? detail.questFundingTotalSatang) }, { id: "candidates", label: translateText("Candidates"), value: questCandidateCount(detail) }]} />
-      <div className="quest-detail-grid">{content}</div>
+      <div className="min-w-0">{content}</div>
       {command ? <QuestCommandDialog detail={detail} command={command} dataSource={dataSource} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandPending} /> : null}
     </main>
   );

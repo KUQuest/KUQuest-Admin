@@ -3576,15 +3576,6 @@ dialog.drawer.wallet-drawer .wallet-statement-table-wrap {
 .quest-hidden-overlay {
   margin: 3px 0 0 4px;
 }
-.quest-detail-page {
-  max-width: 1080px;
-}
-.quest-detail-grid {
-  min-width: 0;
-}
-.quest-detail-body {
-  padding: 18px;
-}
 .quest-detail-facts {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
