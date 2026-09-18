@@ -12,7 +12,7 @@ import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { RecordStatusBar } from "../../../components/admin/record-status-bar";
 import { Button } from "../../../components/ui/button";
-import { Card } from "../../../components/ui/card";
+import { Card, CardHeader } from "../../../components/ui/card";
 import { adminApi, type AdminEvidence, type ReportDecision } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { reportRoutes } from "../admin-routes";
@@ -242,7 +242,7 @@ function ReportOverview({
     return (
       <>
         <Card as="section" className="section">
-          <h3>{translateText("Report overview")}</h3>
+          <CardHeader flush><h3>{translateText("Report overview")}</h3></CardHeader>
           <div className="facts"><div className="fact"><span>{translateText("Status")}</span><strong><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></strong></div><div className="fact"><span>{translateText("Report type")}</span><strong>{translateText(model.reportType)}</strong></div><div className="fact"><span>{translateText("Reported")}</span><strong>{formatAdminTimestamp(model.submittedAt)}</strong></div></div>
           <dl className="overview-meta moderation-case-context-grid"><div><dt>{translateText("Case")}</dt><dd>{model.id}</dd></div><div><dt>{translateText("Case type")}</dt><dd>{translateText("Report Case")}</dd></div><div><dt>{translateText("Source")}</dt><dd>{translateText("Message")}</dd></div><div><dt>{translateText("Submitted")}</dt><dd>{formatAdminTimestamp(model.submittedAt)}</dd></div><div><dt>{translateText("Evidence References")}</dt><dd>{model.evidence.length || translateText("None")}</dd></div></dl>
           <div className="overview-group"><span>{translateText("Submitted detail")}</span><p>{model.detail}</p></div>
@@ -254,7 +254,7 @@ function ReportOverview({
 
   return (
     <Card as="section" className="record-panel report-overview">
-      <div className="record-panel-head"><h2>{translateText("Report detail")}</h2></div>
+      <CardHeader flush className="record-panel-head"><h2>{translateText("Report detail")}</h2></CardHeader>
       <p className="record-description">{model.detail}</p>
       <dl className="overview-meta">
         <div><dt>{translateText("Report type")}</dt><dd>{translateText(model.reportType)}</dd></div>
@@ -269,7 +269,7 @@ function RelatedQuestPanel({ model, translateText }: { model: ReportCaseModel; t
   if (!model.relatedQuestId && !model.relatedQuestTitle) return null;
   return (
     <Card as="section" className="section related-quest-panel">
-      <div className="record-panel-head"><h3>{translateText("Related Quest")}</h3></div>
+      <CardHeader flush className="record-panel-head"><h3>{translateText("Related Quest")}</h3></CardHeader>
       <div className="side-facts">
         <div><span>{translateText("Quest")}</span><strong>{model.relatedQuestTitle ?? translateText("Not provided.")}</strong></div>
         <div><span>{translateText("Quest ID")}</span><strong>{model.relatedQuestId ?? "—"}</strong></div>
@@ -291,7 +291,7 @@ function PeopleInvolved({
   if (compact) {
     return (
       <Card as="section" className="section">
-        <h3>{translateText("People involved")}</h3>
+        <CardHeader flush><h3>{translateText("People involved")}</h3></CardHeader>
         <div className="facts"><div className="fact"><span>{translateText("Reported Member")}</span><strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} interactive={!compact} /></strong><small>{model.reportedMemberId}</small></div><div className="fact"><span>{translateText("Reported by")}</span><strong><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} interactive={!compact} /></strong><small>{model.reporterId ?? "—"}</small></div></div>
       </Card>
     );
@@ -299,7 +299,7 @@ function PeopleInvolved({
 
   return (
     <Card as="section" className="record-panel">
-      <h2>{translateText("People involved")}</h2>
+      <CardHeader flush><h2>{translateText("People involved")}</h2></CardHeader>
       <div className="party-grid report-parties">
         <div><span>{translateText("Reporting Member")}</span><strong><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} /></strong>{model.reporterId && <small>{model.reporterId}</small>}</div>
         <div><span>{translateText("Reported Member")}</span><strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} /></strong>{model.reportedMemberId && <small>{model.reportedMemberId}</small>}</div>
@@ -320,7 +320,7 @@ function EvidenceSection({
   compact?: boolean;
 }) {
   const content = <>
-    <div className="record-panel-head">{compact ? <h3>{translateText("Evidence")}</h3> : <h2>{translateText("Evidence")}</h2>}<span className="section-count">{model.evidence.length}</span></div>
+    <CardHeader flush className="record-panel-head">{compact ? <h3>{translateText("Evidence")}</h3> : <h2>{translateText("Evidence")}</h2>}<span className="section-count">{model.evidence.length}</span></CardHeader>
     {model.evidence.length === 0 && <p className="audit-note">{translateText("No Evidence Reference was provided.")}</p>}
     {model.evidence.length > 0 && (
       <div className="evidence-stack">
@@ -352,7 +352,7 @@ function MemberSummaryPanel({
 }) {
   return (
     <Card as="section" className="record-panel">
-      <h2>{translateText(heading)}</h2>
+      <CardHeader flush><h2>{translateText(heading)}</h2></CardHeader>
       <div className="side-facts"><div><span>{translateText("Name")}</span><strong><MemberLink id={id} name={name} href={href} /></strong></div><div><span>{translateText("Member ID")}</span><strong>{id || "—"}</strong></div></div>
       {href && <Link className="btn full-width" href={href}>{translateText("See Member profile")}</Link>}
     </Card>
@@ -396,7 +396,7 @@ function ReportTimeline({ model, translateText }: { model: ReportCaseModel; tran
 
   return (
     <Card as="section" className="record-panel">
-      <h2>{translateText("Report timeline")}</h2>
+      <CardHeader flush><h2>{translateText("Report timeline")}</h2></CardHeader>
       <ol className="timeline">
         {events.map((event) => <li key={`${event.title}-${event.time}`}><strong>{translateText(event.title)}</strong><time>{event.time}</time><span>{translateText(event.detail)}</span></li>)}
       </ol>
@@ -504,7 +504,7 @@ function ReportCaseSections({
           <MemberSummaryPanel heading="Reported Member" id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} translateText={translateText} />
           <MemberSummaryPanel heading="Submitted by" id={model.reporterId} name={model.reporterName} href={model.reporterHref} translateText={translateText} />
           <Card as="section" className="record-panel report-decision-panel">
-            <h2>{model.isActionable ? translateText("Report decision") : translateText("Recorded outcome")}</h2>
+            <CardHeader flush><h2>{model.isActionable ? translateText("Report decision") : translateText("Recorded outcome")}</h2></CardHeader>
             {decisionPanel}
           </Card>
         </aside>
@@ -566,7 +566,7 @@ function DrawerSections({
           compact
           member={{ id: model.reportedMemberId, name: model.reportedMemberName, href: model.reportedMemberHref }}
         />
-        <Card as="section" className="section report-decision-panel"><h3>{model.isActionable ? translateText("Report decision") : translateText("Resolution")}</h3><DecisionControls model={model} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelect={onSelectChoice} onStart={onStartDecision} /></Card>
+        <Card as="section" className="section report-decision-panel"><CardHeader flush><h3>{model.isActionable ? translateText("Report decision") : translateText("Resolution")}</h3></CardHeader><DecisionControls model={model} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelect={onSelectChoice} onStart={onStartDecision} /></Card>
       </ModerationCaseWorkspace>
       {actionReceipt}
       <div className="drawer-actions">{model.reportedMemberHref && <Button asChild size="lg" variant="outline"><Link href={model.reportedMemberHref}>{translateText("Member profile")}</Link></Button>}<Button asChild size="lg" variant="primary"><a href={reportRoutes.detail(model.id)}>{translateText("Open full Report Case")}</a></Button></div>
