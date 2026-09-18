@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import { Button, Input, PageSizeControls, Pagination, Table, TableCell, TableHead, TableRow } from "../../../components/ui";
+import { Button, Card, CardDescription, CardHeader, CardTitle, Input, PageSizeControls, Pagination, Table, TableCell, TableHead, TableRow } from "../../../components/ui";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { conductReportRoutes } from "../admin-routes";
 import { formatAdminTimestamp } from "../date-format";
@@ -213,23 +213,24 @@ export function ConductReportBoard({
             <p>{translateText("Review Member behavior on Quests.")}</p>
           </div>
         </div>
-        <section className="panel" aria-labelledby="conduct-report-board-heading">
-          <div className="panel-head">
+        <Card as="section" className="overflow-hidden" aria-labelledby="conduct-report-board-heading">
+          <CardHeader className="flex min-h-[60px] items-center justify-between gap-4">
             <div>
-              <h2 id="conduct-report-board-heading">{translateText("Conduct Reports")}</h2>
-              <p>{translateText("Conduct Report behavior is separate from Report Case behavior.")}</p>
+              <CardTitle id="conduct-report-board-heading">{translateText("Conduct Reports")}</CardTitle>
+              <CardDescription>{translateText("Conduct Report behavior is separate from Report Case behavior.")}</CardDescription>
             </div>
             <span className="count">{visibleModels.length} {translateText("shown")}</span>
-          </div>
-          <div className="tabs" role="tablist" aria-label={translateText("Conduct Report status filters")}>
+          </CardHeader>
+          <div className="flex gap-1 overflow-x-auto border-b border-admin-border px-3" role="tablist" aria-label={translateText("Conduct Report status filters")}>
             {tabs.map((tab) => (
               <Button
                 key={tab.id}
                 variant="ghost"
                 size="sm"
-                className={`tab ${activeTab === tab.id ? "active" : ""}`}
+                className={`min-h-10 rounded-none border-0 border-b-2 border-transparent px-3 py-2 text-sm font-medium text-admin-muted hover:bg-transparent hover:text-admin-text focus-visible:outline-2 focus-visible:outline-admin-accent ${activeTab === tab.id ? "border-admin-accent text-admin-text font-semibold" : ""}`}
                 type="button"
                 role="tab"
+                tabIndex={0}
                 aria-label={tab.id === "open" ? translateText("Open") : translateText(tab.label)}
                 aria-selected={activeTab === tab.id}
                 onClick={() => { setActiveTab(tab.id); setPageNumber(1); }}
@@ -238,10 +239,11 @@ export function ConductReportBoard({
               </Button>
             ))}
           </div>
-          <div className="toolbar">
-            <label className="inline-search" htmlFor="conduct-report-search">
+          <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2">
+            <label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text" htmlFor="conduct-report-search">
               {translateText("Search Conduct Reports")}
-                <Input
+              <Input
+                className="h-9 min-h-9 px-3 py-1.5 text-sm"
                 id="conduct-report-search"
                 type="search"
                 aria-label={translateText("Search Conduct Reports")}
@@ -251,9 +253,9 @@ export function ConductReportBoard({
               />
             </label>
             <PageSizeControls value={pageSize} disabled={loadingMore} translateText={translateText} onChange={(size) => { setPageSize(size); setPageNumber(1); if (size === "all") void loadAllPages(); }} />
-            <span className="sort-help">{translateText("Click a column to sort")}</span><span className="count" aria-live="polite">{loadingMore ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}</span>
+            <span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span><span className="count" aria-live="polite">{loadingMore ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}</span>
           </div>
-          <div className="table-wrap" aria-label={translateText("Conduct Reports table")}>
+          <div className="overflow-x-auto" aria-label={translateText("Conduct Reports table")}>
             <Table className="data report-table">
               <caption>{translateText("Conduct Reports")}</caption>
               <thead>
@@ -326,16 +328,16 @@ export function ConductReportBoard({
             )}
           </div>
           {page.nextCursor && (
-            <div className="conduct-report-next-page">
+            <div className="border-t border-admin-border px-3 py-3 text-sm text-admin-muted">
               {models.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Conduct Reports pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className="table-pagination" /> : null}
-              <Button variant="outline" size="sm" className="btn" type="button" data-conduct-report-load-more onClick={loadMore} disabled={loadingMore}>
+              <Button variant="outline" size="sm" type="button" data-conduct-report-load-more onClick={loadMore} disabled={loadingMore}>
                 {translateText(loadingMore ? "Loading more Conduct Reports…" : "Load more Conduct Reports")}
               </Button>
               {paginationError && <p className="field-error" role="alert">{translateText(paginationError)}</p>}
             </div>
           )}
           {!page.nextCursor && models.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Conduct Reports pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className="table-pagination" /> : null}
-        </section>
+        </Card>
       </main>
     </>
   );

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
-import { Button, Input, PageSizeControls, Pagination, Table, TableCell, TableHead, TableRow } from "../../../components/ui";
+import { Button, Card, CardDescription, CardHeader, CardTitle, Input, PageSizeControls, Pagination, Table, TableCell, TableHead, TableRow } from "../../../components/ui";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { reportRoutes } from "../admin-routes";
 import { formatAdminTimestamp } from "../date-format";
@@ -195,13 +195,15 @@ export function ReportCaseBoard({ initialData }: { initialData?: ReportCasePageD
   return (
       <main id="report-main" className="admin-route-page report-case-board" tabIndex={-1}>
         <div className="page-head"><div><p className="admin-route-kicker">{translateText("KUQuest Admin")}</p><h1>{translateText("Report Cases")}</h1><p>{translateText("Review Report Cases about Message or Attachment content.")}</p></div></div>
-        <section className="panel" aria-labelledby="report-case-board-heading">
-          <div className="panel-head"><div><h2 id="report-case-board-heading">{translateText("Report Cases")}</h2><p>{translateText("Report Case behavior is separate from Conduct Report behavior.")}</p></div><span className="count">{visibleModels.length} {translateText("shown")}</span></div>
-          <div className="tabs" role="tablist" aria-label={translateText("Report Case status filters")}>
-            {tabs.map((tab) => <Button key={tab.id} variant="ghost" size="sm" className={`tab ${activeTab === tab.id ? "active" : ""}`} type="button" role="tab" aria-label={tab.id === "open" ? translateText("Open") : translateText(tab.label)} aria-selected={activeTab === tab.id} onClick={() => { setActiveTab(tab.id); setPageNumber(1); }}>{translateText(tab.label)}{tab.id === "open" ? <span className="tab-count" aria-hidden="true"> ({openCount})</span> : null}</Button>)}
+        <Card as="section" className="overflow-hidden" aria-labelledby="report-case-board-heading">
+          <CardHeader className="flex min-h-[60px] items-center justify-between gap-4">
+            <div><CardTitle id="report-case-board-heading">{translateText("Report Cases")}</CardTitle><CardDescription>{translateText("Report Case behavior is separate from Conduct Report behavior.")}</CardDescription></div><span className="count">{visibleModels.length} {translateText("shown")}</span>
+          </CardHeader>
+          <div className="flex gap-1 overflow-x-auto border-b border-admin-border px-3" role="tablist" aria-label={translateText("Report Case status filters")}>
+            {tabs.map((tab) => <Button key={tab.id} variant="ghost" size="sm" className={`min-h-10 rounded-none border-0 border-b-2 border-transparent px-3 py-2 text-sm font-medium text-admin-muted hover:bg-transparent hover:text-admin-text focus-visible:outline-2 focus-visible:outline-admin-accent ${activeTab === tab.id ? "border-admin-accent text-admin-text font-semibold" : ""}`} type="button" role="tab" tabIndex={0} aria-label={tab.id === "open" ? translateText("Open") : translateText(tab.label)} aria-selected={activeTab === tab.id} onClick={() => { setActiveTab(tab.id); setPageNumber(1); }}>{translateText(tab.label)}{tab.id === "open" ? <span className="tab-count" aria-hidden="true"> ({openCount})</span> : null}</Button>)}
           </div>
-          <div className="toolbar"><label className="inline-search" htmlFor="report-case-search">{translateText("Search Report Cases")}<Input id="report-case-search" type="search" aria-label={translateText("Search Report Cases")} placeholder={translateText("Search by Report Case, Member, or Report type")} value={query} onChange={(event) => { setQuery(event.target.value); setPageNumber(1); }} /></label><span className="sort-help">{translateText("Click a column to sort")}</span><PageSizeControls value={pageSize} disabled={loadingMore} translateText={translateText} onChange={(size) => { setPageSize(size); setPageNumber(1); if (size === "all") void loadAllPages(); }} /><span className="count" aria-live="polite">{loadingMore ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}</span></div>
-          <div className="table-wrap" aria-label={translateText("Report Cases table")}>
+          <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2"><label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text" htmlFor="report-case-search">{translateText("Search Report Cases")}<Input className="h-9 min-h-9 px-3 py-1.5 text-sm" id="report-case-search" type="search" aria-label={translateText("Search Report Cases")} placeholder={translateText("Search by Report Case, Member, or Report type")} value={query} onChange={(event) => { setQuery(event.target.value); setPageNumber(1); }} /></label><span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span><PageSizeControls value={pageSize} disabled={loadingMore} translateText={translateText} onChange={(size) => { setPageSize(size); setPageNumber(1); if (size === "all") void loadAllPages(); }} /><span className="count" aria-live="polite">{loadingMore ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}</span></div>
+          <div className="overflow-x-auto" aria-label={translateText("Report Cases table")}>
             <Table className="data report-table">
               <caption>{translateText("Report Cases")}</caption>
             <thead><TableRow><SortableHeader label={translateText("Report Case")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Source")} sortKey="source" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Reported Member")} sortKey="reportedMember" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Reported by")} sortKey="reporter" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Report type")} sortKey="type" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Reported")} sortKey="reported" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></TableRow></thead>
@@ -222,16 +224,16 @@ export function ReportCaseBoard({ initialData }: { initialData?: ReportCasePageD
             {!models.length && <div className="empty"><h3>{translateText("No matching Report Cases")}</h3><p>{translateText("Change the status filter or search text.")}</p></div>}
           </div>
           {page.nextCursor && (
-            <div className="report-case-next-page">
+            <div className="border-t border-admin-border px-3 py-3 text-sm text-admin-muted">
               {models.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Report Cases pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className="table-pagination" /> : null}
-              <Button variant="outline" size="sm" className="btn" type="button" data-report-load-more onClick={loadMore} disabled={loadingMore}>
+              <Button variant="outline" size="sm" type="button" data-report-load-more onClick={loadMore} disabled={loadingMore}>
                 {translateText(loadingMore ? "Loading more Report Cases…" : "Load more Report Cases")}
               </Button>
               {paginationError && <p className="field-error" role="alert">{translateText(paginationError)}</p>}
             </div>
           )}
           {!page.nextCursor && models.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Report Cases pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className="table-pagination" /> : null}
-        </section>
+        </Card>
       </main>
   );
 }

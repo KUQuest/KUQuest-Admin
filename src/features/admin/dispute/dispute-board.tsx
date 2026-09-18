@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
-import { Button, Input, PageSizeControls, Pagination, Table, TableCell, TableHead, TableRow } from "../../../components/ui";
+import { Button, Card, CardDescription, CardHeader, CardTitle, Input, PageSizeControls, Pagination, Table, TableCell, TableHead, TableRow } from "../../../components/ui";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { disputeRoutes, questRoutes } from "../admin-routes";
 import { loadAllDisputeCasesFromMock as loadAllDisputeCasesFromMockData, loadDisputeCasesFromMock } from "./dispute-adapter";
@@ -196,13 +196,15 @@ export function DisputeCaseBoard({ initialData }: { initialData?: DisputeCasePag
   return (
     <main id="dispute-main" className="admin-route-page dispute-case-board" tabIndex={-1}>
       <div className="page-head"><div><p className="admin-route-kicker">{translateText("KUQuest Admin")}</p><h1>{translateText("Dispute Cases")}</h1><p>{translateText("Review failed Quest settlement decisions.")}</p></div></div>
-      <section className="panel" aria-labelledby="dispute-case-board-heading">
-        <div className="panel-head"><div><h2 id="dispute-case-board-heading">{translateText("Dispute Cases")}</h2><p>{translateText("A Dispute Case can redirect settlement from the Hirer to the Worker or dismiss the case.")}</p></div><span className="count">{visibleModels.length} {translateText("shown")}</span></div>
-        <div className="tabs" role="tablist" aria-label={translateText("Dispute Case status filters")}>
-          {tabs.map((tab) => <Button key={tab.id} variant="ghost" size="sm" className={`tab ${activeTab === tab.id ? "active" : ""}`} type="button" role="tab" aria-label={tab.id === "open" ? translateText("Open") : translateText(tab.label)} aria-selected={activeTab === tab.id} onClick={() => { setActiveTab(tab.id); setPageNumber(1); }}>{translateText(tab.label)}{tab.id === "open" ? <span className="tab-count" aria-hidden="true"> ({openCount})</span> : null}</Button>)}
+      <Card as="section" className="overflow-hidden" aria-labelledby="dispute-case-board-heading">
+        <CardHeader className="flex min-h-[60px] items-center justify-between gap-4">
+          <div><CardTitle id="dispute-case-board-heading">{translateText("Dispute Cases")}</CardTitle><CardDescription>{translateText("A Dispute Case can redirect settlement from the Hirer to the Worker or dismiss the case.")}</CardDescription></div><span className="count">{visibleModels.length} {translateText("shown")}</span>
+        </CardHeader>
+        <div className="flex gap-1 overflow-x-auto border-b border-admin-border px-3" role="tablist" aria-label={translateText("Dispute Case status filters")}>
+          {tabs.map((tab) => <Button key={tab.id} variant="ghost" size="sm" className={`min-h-10 rounded-none border-0 border-b-2 border-transparent px-3 py-2 text-sm font-medium text-admin-muted hover:bg-transparent hover:text-admin-text focus-visible:outline-2 focus-visible:outline-admin-accent ${activeTab === tab.id ? "border-admin-accent text-admin-text font-semibold" : ""}`} type="button" role="tab" tabIndex={0} aria-label={tab.id === "open" ? translateText("Open") : translateText(tab.label)} aria-selected={activeTab === tab.id} onClick={() => { setActiveTab(tab.id); setPageNumber(1); }}>{translateText(tab.label)}{tab.id === "open" ? <span className="tab-count" aria-hidden="true"> ({openCount})</span> : null}</Button>)}
         </div>
-        <div className="toolbar"><label className="inline-search" htmlFor="dispute-case-search">{translateText("Search Dispute Cases")}<Input id="dispute-case-search" type="search" aria-label={translateText("Search Dispute Cases")} placeholder={translateText("Search by case, Quest, Member, or category")} value={query} onChange={(event) => { setQuery(event.target.value); setPageNumber(1); }} /></label><span className="sort-help">{translateText("Click a column to sort")}</span><PageSizeControls value={pageSize} disabled={loadingMore} translateText={translateText} onChange={(size) => { setPageSize(size); setPageNumber(1); if (size === "all") void loadAllPages(); }} /><span className="count" aria-live="polite">{loadingMore ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}</span></div>
-        <div className="table-wrap" aria-label={translateText("Dispute Cases table")}>
+        <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2"><label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text" htmlFor="dispute-case-search">{translateText("Search Dispute Cases")}<Input className="h-9 min-h-9 px-3 py-1.5 text-sm" id="dispute-case-search" type="search" aria-label={translateText("Search Dispute Cases")} placeholder={translateText("Search by case, Quest, Member, or category")} value={query} onChange={(event) => { setQuery(event.target.value); setPageNumber(1); }} /></label><span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span><PageSizeControls value={pageSize} disabled={loadingMore} translateText={translateText} onChange={(size) => { setPageSize(size); setPageNumber(1); if (size === "all") void loadAllPages(); }} /><span className="count" aria-live="polite">{loadingMore ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}</span></div>
+        <div className="overflow-x-auto" aria-label={translateText("Dispute Cases table")}>
           <Table className="data dispute-table">
             <caption>{translateText("Dispute Cases")}</caption>
             <thead><TableRow><SortableHeader label={translateText("Dispute Case")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Quest")} sortKey="quest" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Hirer")} sortKey="hirer" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Worker")} sortKey="worker" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Category")} sortKey="category" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Amount at risk")} sortKey="amount" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Opened")} sortKey="opened" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></TableRow></thead>
@@ -227,8 +229,8 @@ export function DisputeCaseBoard({ initialData }: { initialData?: DisputeCasePag
         </div>
         {paginationError && <p className="field-error" role="alert">{translateText(paginationError)}</p>}
         {models.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Dispute Cases pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className="table-pagination" /> : null}
-        {page.nextCursor && <Button variant="outline" size="sm" className="btn" type="button" onClick={loadMore} disabled={loadingMore}>{loadingMore ? translateText("Loading…") : translateText("Load more Dispute Cases")}</Button>}
-      </section>
+        {page.nextCursor && <Button variant="outline" size="sm" className="m-3" type="button" onClick={loadMore} disabled={loadingMore}>{loadingMore ? translateText("Loading…") : translateText("Load more Dispute Cases")}</Button>}
+      </Card>
     </main>
   );
 }
