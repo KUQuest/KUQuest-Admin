@@ -2159,90 +2159,12 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
   font-size: 11px;
 }
 
-/* Payout full detail uses the same record treatment as the other Admin detail pages. */
-.payout-detail-page .payout-detail-grid {
-  display: grid;
-  gap: 18px;
-}
-.payout-detail-page .payout-detail-stack {
-  display: grid;
-  grid-template-columns: minmax(0, 1.65fr) minmax(290px, 0.72fr);
-  align-items: start;
-  gap: 18px;
-}
-.payout-detail-page .payout-detail-stack > .section,
-.payout-detail-page .payout-detail-stack > .payout-detail-column > .section {
-  min-width: 0;
-  padding: 18px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
-  box-shadow: var(--shadow-card);
-}
-.payout-detail-page .payout-detail-stack > .section h3,
-.payout-detail-page .payout-detail-stack > .payout-detail-column > .section h3 {
-  margin-bottom: 14px;
-  font-size: 15px;
-}
-.payout-detail-page .payout-detail-stack > .section > p:not(.audit-note),
-.payout-detail-page .payout-detail-stack > .payout-detail-column > .section > p:not(.audit-note) {
-  max-width: 74ch;
-  color: var(--text);
-}
-.payout-detail-page .payout-detail-stack > .payout-summary-section {
-  grid-column: 1 / -1;
-}
-.payout-detail-page .payout-detail-stack > .payout-detail-column {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-.payout-detail-page .payout-detail-stack > .payout-detail-primary-column {
-  grid-column: 1;
-}
-.payout-detail-page .payout-detail-stack > .payout-detail-secondary-column {
-  grid-column: 2;
-}
-.payout-detail-page .payout-detail-stack > .admin-action-receipt {
-  grid-column: 1 / -1;
-}
-.payout-detail-page .payout-detail-stack > .section .audit-note,
-.payout-detail-page .payout-detail-stack > .payout-detail-column > .section .audit-note {
-  margin-top: 14px;
-  padding: 11px 12px;
-  border-radius: 9px;
-  background: var(--soft);
-}
 .payout-detail-page .payout-record-status-bar strong {
   overflow-wrap: anywhere;
 }
 .payout-detail-page .payout-outcome {
   border-color: var(--danger);
   background: var(--danger-soft);
-}
-.payout-detail-page .payout-detail-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
-}
-.payout-detail-page .payout-detail-actions .btn {
-  min-width: 150px;
-}
-
-@media (max-width: 1000px) {
-  .payout-detail-page .payout-detail-stack {
-    grid-template-columns: 1fr;
-  }
-  .payout-detail-page .payout-detail-stack > .payout-detail-column,
-  .payout-detail-page .payout-detail-stack > .section,
-  .payout-detail-page .payout-detail-stack > .payout-summary-section {
-    grid-column: 1;
-  }
 }
 
 .payout-previous-list {

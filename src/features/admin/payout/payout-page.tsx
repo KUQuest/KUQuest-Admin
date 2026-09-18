@@ -207,8 +207,9 @@ function PayoutDetailContent({
     && ["SUBMITTED_TO_PROVIDER", "PROVIDER_PENDING", "FAILED"].includes(detail.status);
   const outcomeReason = payoutOutcomeReason(detail);
   const showDecisionContext = !fullDetail || detail.decisionContext.heading !== "Why your approval is needed";
+  const fullSectionClass = fullDetail ? "!p-[18px] border border-admin-border rounded-admin-md bg-admin-surface shadow-admin-card [&_h3]:mb-[14px]" : "";
 
-  const payoutSummarySection = <Section title={translateText("Payout summary")} className="payout-summary-section">
+  const payoutSummarySection = <Section title={translateText("Payout summary")} className={`payout-summary-section ${fullDetail ? "col-span-full" : ""} ${fullSectionClass}`}>
     <div className="facts payout-detail-facts">
       <Fact label={translateText("Status")}><Badge status={detail.status} /></Fact>
       <Fact label={translateText("Payout record")}>{detail.id}</Fact>
@@ -221,7 +222,7 @@ function PayoutDetailContent({
     </div>
   </Section>;
 
-  const payoutAmountsSection = <Section title={translateText("Payout amounts")} className="payout-amounts-section">
+  const payoutAmountsSection = <Section title={translateText("Payout amounts")} className={`payout-amounts-section ${fullSectionClass}`}>
     <div className="payout-summary-grid">
       <div><span>{translateText("Principal")}</span><strong>{formatPayoutMoney(detail.amounts.principalSatang)}</strong></div>
       <div><span>{translateText("Recipient receipt")}</span><strong>{formatPayoutMoney(detail.amounts.receiptSatang)}</strong></div>
@@ -232,7 +233,7 @@ function PayoutDetailContent({
     <p className="audit-note">{translateText("Actual fee, tax, and debit values are read from the Payout record.")}</p>
   </Section>;
 
-  const payoutDestinationSection = <Section title={translateText("Payout Destination")} className="payout-destination-section">
+  const payoutDestinationSection = <Section title={translateText("Payout Destination")} className={`payout-destination-section ${fullSectionClass}`}>
     <div className="facts">
       <Fact label={translateText("Bank")}>{detail.destination.bankName}</Fact>
       <Fact label={translateText("Bank code")}>{detail.destination.bankCode}</Fact>
@@ -257,12 +258,12 @@ function PayoutDetailContent({
     </div>
   </Section> : null;
 
-  const payoutDecisionContextSection = showDecisionContext ? <Section title={translateText(detail.decisionContext.heading)} className="payout-decision-context-section">
+  const payoutDecisionContextSection = showDecisionContext ? <Section title={translateText(detail.decisionContext.heading)} className={`payout-decision-context-section ${fullSectionClass}`}>
     <p>{translateText(detail.decisionContext.copy)}</p>
     <p className="audit-note">{translateText(detail.decisionContext.next)}</p>
   </Section> : null;
 
-  const payoutHistorySection = <Section title={translateText("Payout history")} className="payout-history-section">
+  const payoutHistorySection = <Section title={translateText("Payout history")} className={`payout-history-section ${fullSectionClass}`}>
     {detail.previousPayouts.length ? <div className="payout-previous-list">
       {detail.previousPayouts.map((payout) => (
         <div className="payout-previous-row" key={payout.id}>
@@ -274,30 +275,32 @@ function PayoutDetailContent({
   </Section>;
 
   const payoutOutcomeSection = outcomeReason && (detail.status === "CANCELLED" || detail.status === "FAILED") ? (
-    <Card as="section" className="section payout-outcome payout-outcome-section">
+    <Card as="section" className={`section payout-outcome payout-outcome-section ${fullSectionClass}`}>
       <CardHeader flush><h3>{translateText(detail.status === "FAILED" ? "Transfer failure reason" : "Rejection reason")}</h3></CardHeader>
       <p>{translateText(payoutReasonLabel(outcomeReason))}</p>
     </Card>
   ) : null;
 
   const actionReceiptView = actionReceipt ? (
-    <AdminActionReceipt
-      action={actionReceipt.action}
-      resource="Payout"
-      resourceId={detail.id}
-      status={actionReceipt.status}
-      occurredAt={actionReceipt.occurredAt}
-      mock
-      details={actionReceipt.reason ? <p>{translateText("Reason")}: {actionReceipt.reason}</p> : undefined}
-    />
+    <div className="col-span-full">
+      <AdminActionReceipt
+        action={actionReceipt.action}
+        resource="Payout"
+        resourceId={detail.id}
+        status={actionReceipt.status}
+        occurredAt={actionReceipt.occurredAt}
+        mock
+        details={actionReceipt.reason ? <p>{translateText("Reason")}: {actionReceipt.reason}</p> : undefined}
+      />
+    </div>
   ) : null;
 
   const payoutDecisionSection = canDecide || canReconcile ? (
-    <Section title={translateText(renderDecisionActions ? "Admin decision" : "Decision context")} className="payout-decision-section">
+    <Section title={translateText(renderDecisionActions ? "Admin decision" : "Decision context")} className={`payout-decision-section ${fullSectionClass}`}>
       <p>{canDecide
         ? translateText("Review the masked destination and API-provided amounts before deciding this Payout.")
         : translateText("The Payout needs a Provider status check before the next Admin action.")}</p>
-      {renderDecisionActions ? <div className="payout-detail-actions">
+      {renderDecisionActions ? <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-admin-border pt-4">
         <PayoutDecisionActions
           detail={detail}
           onCommand={onCommand}
@@ -313,15 +316,15 @@ function PayoutDetailContent({
   ) : null;
 
   return (
-    <div className={`payout-detail-stack${fullDetail ? " payout-detail-full-stack" : ""}`}>
+    <div className={`payout-detail-stack grid !grid-cols-1 gap-[18px]${fullDetail ? " !grid-cols-[minmax(0,1.65fr)_minmax(290px,0.72fr)] max-[1000px]:!grid-cols-1" : ""}`}>
       {payoutSummarySection}
       {fullDetail ? <>
-        <div className="payout-detail-column payout-detail-primary-column">
+        <div className="payout-detail-column payout-detail-primary-column grid min-w-0 !grid-cols-1 gap-[18px] [grid-column:1] max-[1000px]:[grid-column:1]">
           {payoutAmountsSection}
           {payoutHistorySection}
           {payoutOutcomeSection}
         </div>
-        <div className="payout-detail-column payout-detail-secondary-column">
+        <div className="payout-detail-column payout-detail-secondary-column grid min-w-0 !grid-cols-1 gap-[18px] [grid-column:2] max-[1000px]:[grid-column:1]">
           {payoutDestinationSection}
           {payoutDecisionContextSection}
           {payoutDecisionSection}
@@ -629,7 +632,7 @@ export function AdminPayoutDetailPage({
   }
 
   return (
-    <main className="admin-route-page payout-detail-page" tabIndex={-1}>
+    <main className="admin-route-page payout-detail-page max-w-[1080px]" tabIndex={-1}>
       <AdminRecordHeader
         breadcrumbHref={payoutRoutes.list()}
         breadcrumbLabel={translateText("Payouts")}
@@ -640,7 +643,7 @@ export function AdminPayoutDetailPage({
       />
       <PayoutStatusAlert detail={detail} />
       <RecordStatusBar className="payout-record-status-bar" items={[{ id: "status", label: translateText("Status"), value: <Badge status={detail.status} /> }, { id: "student", label: translateText("Student"), value: detail.student.name }, { id: "principal", label: translateText("Principal"), value: formatPayoutMoney(detail.amounts.principalSatang) }, { id: "created", label: translateText("Created"), value: formatPayoutDate(detail.createdAt) }, { id: "destination-type", label: translateText("Destination type"), value: translateText(readableValue(detail.destination.type)) }]} />
-      <div className="payout-detail-grid">{content}</div>
+      <div className="min-w-0">{content}</div>
       {command ? <PayoutCommandDialog detail={detail} command={command} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandPending} /> : null}
     </main>
   );
