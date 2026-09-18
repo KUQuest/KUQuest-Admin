@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
-import { Card, PageSizeControls, Pagination, Table } from "../../../components/ui";
+import { Card, CardHeader, PageSizeControls, Pagination, Table } from "../../../components/ui";
 import { isAdminMockEnabled } from "../../../lib/auth/admin-auth-mode";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import {
@@ -85,7 +85,7 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
             </div>
           </div>
           <Card as="section" className="section activity-log-record-section" aria-labelledby="activity-log-record-heading">
-            <h3 id="activity-log-record-heading">{translateText("Activity record")}</h3>
+            <CardHeader flush><h3 id="activity-log-record-heading">{translateText("Activity record")}</h3></CardHeader>
             <div className="facts">
               <div className="fact"><span>{translateText("Timestamp")}</span><strong>{formatActivityLogTimestamp(entry.createdAt)}</strong></div>
               <div className="fact"><span>{translateText("Action")}</span><strong>{translateText(activityLogActionLabel(entry.action))}</strong></div>
@@ -97,7 +97,7 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
             </div>
           </Card>
           <Card as="section" className="section activity-log-admin-section" aria-labelledby="activity-log-admin-heading">
-            <h3 id="activity-log-admin-heading">{translateText("Admin")}</h3>
+            <CardHeader flush><h3 id="activity-log-admin-heading">{translateText("Admin")}</h3></CardHeader>
             <div className="facts">
               <div className="fact"><span>{translateText("Actor")}</span><strong>{displayValue(entry.adminName)}</strong></div>
               <div className="fact"><span>{translateText("Admin ID")}</span><strong>{displayValue(entry.adminId)}</strong></div>
@@ -106,7 +106,7 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
             </div>
           </Card>
           <Card as="section" className="section activity-log-result-section" aria-labelledby="activity-log-result-heading">
-            <h3 id="activity-log-result-heading">{translateText("Result")}</h3>
+            <CardHeader flush><h3 id="activity-log-result-heading">{translateText("Result")}</h3></CardHeader>
             <div className="facts">
               <div className="fact"><span>{translateText("Result version")}</span><strong>{displayValue(entry.resultVersion)}</strong></div>
               <div className="fact"><span>{translateText("Result timestamp")}</span><strong>{formatAdminTimestamp(entry.resultTimestamp)}</strong></div>
@@ -114,7 +114,7 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
             </div>
           </Card>
           <Card as="section" className="section activity-log-state-section" aria-labelledby="activity-log-state-heading">
-            <h3 id="activity-log-state-heading">{translateText("State change")}</h3>
+            <CardHeader flush><h3 id="activity-log-state-heading">{translateText("State change")}</h3></CardHeader>
             {entry.previousState || entry.newState ? (
               <div className="activity-log-state-change">
                 <div><span>{translateText("Previous state")}</span><strong>{translateText(activityLogStateLabel(entry.previousState))}</strong></div>
@@ -284,7 +284,7 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
         <button className="btn" type="button" onClick={exportCsv} disabled={!visibleEntries.length}>{translateText("Export CSV")}</button>
       </div>
       <Card as="section" className="panel activity-log-panel" aria-labelledby="activity-log-heading">
-        <div className="panel-head"><div><h2 id="activity-log-heading">{translateText("Activity Log")}</h2><p>{translateText("Review the administrative audit trail.")}</p></div><span className="count" aria-live="polite">{filteredEntries.length} {translateText("loaded entries")}</span></div>
+        <CardHeader flush className="panel-head"><div><h2 id="activity-log-heading">{translateText("Activity Log")}</h2><p>{translateText("Review the administrative audit trail.")}</p></div><span className="count" aria-live="polite">{filteredEntries.length} {translateText("loaded entries")}</span></CardHeader>
         <form className="activity-log-filters" onSubmit={applyFilters}>
           <div className="activity-filter-grid">
             <label htmlFor="activity-action-filter">{translateText("Action filter")}<input id="activity-action-filter" type="search" value={draftFilters.action} onChange={(event) => setDraftFilters((current) => ({ ...current, action: event.target.value }))} /></label>
