@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
-import { PageSizeControls, Pagination, Table, TableCell, TableHead, TableRow } from "../../../components/ui";
+import { Button, Input, PageSizeControls, Pagination, Table, TableCell, TableHead, TableRow } from "../../../components/ui";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { disputeRoutes, questRoutes } from "../admin-routes";
 import { loadAllDisputeCasesFromMock as loadAllDisputeCasesFromMockData, loadDisputeCasesFromMock } from "./dispute-adapter";
@@ -199,9 +199,9 @@ export function DisputeCaseBoard({ initialData }: { initialData?: DisputeCasePag
       <section className="panel" aria-labelledby="dispute-case-board-heading">
         <div className="panel-head"><div><h2 id="dispute-case-board-heading">{translateText("Dispute Cases")}</h2><p>{translateText("A Dispute Case can redirect settlement from the Hirer to the Worker or dismiss the case.")}</p></div><span className="count">{visibleModels.length} {translateText("shown")}</span></div>
         <div className="tabs" role="tablist" aria-label={translateText("Dispute Case status filters")}>
-          {tabs.map((tab) => <button key={tab.id} className={`tab ${activeTab === tab.id ? "active" : ""}`} type="button" role="tab" aria-label={tab.id === "open" ? translateText("Open") : translateText(tab.label)} aria-selected={activeTab === tab.id} onClick={() => { setActiveTab(tab.id); setPageNumber(1); }}>{translateText(tab.label)}{tab.id === "open" ? <span className="tab-count" aria-hidden="true"> ({openCount})</span> : null}</button>)}
+          {tabs.map((tab) => <Button key={tab.id} variant="ghost" size="sm" className={`tab ${activeTab === tab.id ? "active" : ""}`} type="button" role="tab" aria-label={tab.id === "open" ? translateText("Open") : translateText(tab.label)} aria-selected={activeTab === tab.id} onClick={() => { setActiveTab(tab.id); setPageNumber(1); }}>{translateText(tab.label)}{tab.id === "open" ? <span className="tab-count" aria-hidden="true"> ({openCount})</span> : null}</Button>)}
         </div>
-        <div className="toolbar"><label className="inline-search" htmlFor="dispute-case-search">{translateText("Search Dispute Cases")}<input id="dispute-case-search" type="search" aria-label={translateText("Search Dispute Cases")} placeholder={translateText("Search by case, Quest, Member, or category")} value={query} onChange={(event) => { setQuery(event.target.value); setPageNumber(1); }} /></label><span className="sort-help">{translateText("Click a column to sort")}</span><PageSizeControls value={pageSize} disabled={loadingMore} translateText={translateText} onChange={(size) => { setPageSize(size); setPageNumber(1); if (size === "all") void loadAllPages(); }} /><span className="count" aria-live="polite">{loadingMore ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}</span></div>
+        <div className="toolbar"><label className="inline-search" htmlFor="dispute-case-search">{translateText("Search Dispute Cases")}<Input id="dispute-case-search" type="search" aria-label={translateText("Search Dispute Cases")} placeholder={translateText("Search by case, Quest, Member, or category")} value={query} onChange={(event) => { setQuery(event.target.value); setPageNumber(1); }} /></label><span className="sort-help">{translateText("Click a column to sort")}</span><PageSizeControls value={pageSize} disabled={loadingMore} translateText={translateText} onChange={(size) => { setPageSize(size); setPageNumber(1); if (size === "all") void loadAllPages(); }} /><span className="count" aria-live="polite">{loadingMore ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}</span></div>
         <div className="table-wrap" aria-label={translateText("Dispute Cases table")}>
           <Table className="data dispute-table">
             <caption>{translateText("Dispute Cases")}</caption>
@@ -227,7 +227,7 @@ export function DisputeCaseBoard({ initialData }: { initialData?: DisputeCasePag
         </div>
         {paginationError && <p className="field-error" role="alert">{translateText(paginationError)}</p>}
         {models.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Dispute Cases pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className="table-pagination" /> : null}
-        {page.nextCursor && <button className="btn" type="button" onClick={loadMore} disabled={loadingMore}>{loadingMore ? translateText("Loading…") : translateText("Load more Dispute Cases")}</button>}
+        {page.nextCursor && <Button variant="outline" size="sm" className="btn" type="button" onClick={loadMore} disabled={loadingMore}>{loadingMore ? translateText("Loading…") : translateText("Load more Dispute Cases")}</Button>}
       </section>
     </main>
   );
