@@ -794,7 +794,7 @@ export function ConductReportDetail({
 
   if (loading && !reportModel) return <AdminLoading message={translateText("Loading Conduct Report…")} />;
   if (!reportModel) {
-    return <main className="admin-feedback"><Card as="section" className="panel"><h1>{translateText("Conduct Report not found")}</h1><p>{translateText(loadError ?? "The requested Conduct Report was not found.")}</p>{presentation === "page" && <Link className="btn primary" href={conductReportRoutes.list()}>{translateText("Return to Conduct Reports")}</Link>}</Card></main>;
+    return <main className="admin-feedback"><Card as="section" className="panel"><CardHeader flush><h1>{translateText("Conduct Report not found")}</h1></CardHeader><p>{translateText(loadError ?? "The requested Conduct Report was not found.")}</p>{presentation === "page" && <Link className="btn primary" href={conductReportRoutes.list()}>{translateText("Return to Conduct Reports")}</Link>}</Card></main>;
   }
 
   return <ConductReportDrawer model={reportModel} presentation={presentation} onClose={onClose ?? (() => undefined)} onUpdated={onUpdated} />;
