@@ -372,8 +372,8 @@ function QuestDetailContent({
           <Fact label="Candidate mode">{translateText(detail.mode === "FIRST_COME_FIRST_SERVED" ? "First come, first served" : "Candidate")}</Fact>
           <Fact label="Quest ID">{questDisplayIdFor(detail.id, detail.displayId)}</Fact>
         </div>
-        <div className="quest-description-block">
-          <h3>{translateText("Quest description")}</h3>
+        <div className="quest-description-block mt-[18px] border-t border-admin-border pt-[18px]">
+          <h3 className="m-0 mb-[10px] text-[14px]">{translateText("Quest description")}</h3>
           <p className="record-description">{detail.description || translateText("No Quest description recorded.")}</p>
           <div className="requirement-box">
             <strong>{translateText("Quest Condition")}</strong>
@@ -385,17 +385,17 @@ function QuestDetailContent({
             ) : null}
           </div>
         </div>
-        {!recordLayout ? <div className="quest-summary-context">
-          <div className="quest-summary-context-section">
-            <h3>{translateText("Hirer")}</h3>
+        {!recordLayout ? <div className="quest-summary-context mt-[18px] grid !grid-cols-2 gap-x-6 gap-y-[18px] border-t border-admin-border pt-[18px] max-[600px]:!grid-cols-1">
+          <div className="quest-summary-context-section min-w-0">
+            <h3 className="m-0 mb-[10px] text-[14px]">{translateText("Hirer")}</h3>
             <div className="hirer-profile-summary">
               <strong>{questMemberName(detail.hirer)}</strong>
               <span>{detail.hirer.email}</span>
             </div>
           </div>
 
-          <div className="quest-summary-context-section">
-            <h3>{translateText("Schedule and location")}</h3>
+          <div className="quest-summary-context-section min-w-0">
+            <h3 className="m-0 mb-[10px] text-[14px]">{translateText("Schedule and location")}</h3>
             <div className="facts">
               <Fact label="Starts">{formatQuestDate(detail.startTime)}</Fact>
               <Fact label="Due">{formatQuestDate(detail.dueAt)}</Fact>
