@@ -1,0 +1,123 @@
+/*
+ * Tailwind foundation for the Admin interface.
+ *
+ * Preflight is intentionally not imported in this migration step. The
+ * existing Admin CSS is the visual baseline. Tailwind utilities can be
+ * introduced incrementally without changing native element defaults.
+ */
+@layer theme, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* Map the existing Admin semantic tokens to namespaced Tailwind tokens. */
+@theme inline {
+  --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
+
+  --color-admin-bg: var(--bg);
+  --color-admin-surface: var(--surface);
+  --color-admin-soft: var(--soft);
+  --color-admin-hover: var(--hover);
+  --color-admin-text: var(--text);
+  --color-admin-muted: var(--muted);
+  --color-admin-faint: var(--faint);
+  --color-admin-border: var(--border);
+  --color-admin-border-strong: var(--strong);
+  --color-admin-border-subtle: var(--border-subtle);
+  --color-admin-accent: var(--accent);
+  --color-admin-accent-strong: var(--accent2);
+  --color-admin-accent-soft: var(--accent-soft);
+  --color-admin-sidebar: var(--surface-sidebar);
+  --color-admin-avatar: var(--surface-avatar);
+
+  --color-admin-danger: var(--danger);
+  --color-admin-danger-soft: var(--danger-soft);
+  --color-admin-warning: var(--warn);
+  --color-admin-warning-soft: var(--warn-soft);
+  --color-admin-success: var(--success);
+  --color-admin-success-soft: var(--success-soft);
+
+  --shadow-admin: var(--shadow);
+  --shadow-admin-low: var(--shadow-low);
+  --shadow-admin-card: var(--shadow-card);
+
+  --radius-admin-sm: 8px;
+  --radius-admin-md: 12px;
+  --radius-admin-lg: 16px;
+
+  --spacing-admin-1: 0.25rem;
+  --spacing-admin-2: 0.5rem;
+  --spacing-admin-3: 0.75rem;
+  --spacing-admin-4: 1rem;
+  --spacing-admin-5: 1.25rem;
+  --spacing-admin-6: 1.5rem;
+  --spacing-admin-8: 2rem;
+
+  /* Existing moderation and workflow status tokens. */
+  --color-admin-status-quest-draft: var(--status-quest-draft);
+  --color-admin-status-quest-open: var(--status-quest-open);
+  --color-admin-status-quest-assigned: var(--status-quest-assigned);
+  --color-admin-status-quest-in-progress: var(--status-quest-in-progress);
+  --color-admin-status-quest-completed: var(--status-quest-completed);
+  --color-admin-status-quest-cancelled: var(--status-quest-cancelled);
+  --color-admin-status-quest-failed: var(--status-quest-failed);
+  --color-admin-status-dispute-pending: var(--status-dispute-pending);
+  --color-admin-status-dispute-dismissed: var(--status-dispute-dismissed);
+  --color-admin-status-dispute-resolved: var(--status-dispute-resolved);
+  --color-admin-status-conduct-pending: var(--status-conduct-pending);
+  --color-admin-status-conduct-dismissed: var(--status-conduct-dismissed);
+  --color-admin-status-conduct-upheld: var(--status-conduct-upheld);
+  --color-admin-status-report-pending: var(--status-report-pending);
+  --color-admin-status-report-dismissed: var(--status-report-dismissed);
+  --color-admin-status-report-hidden: var(--status-report-hidden);
+  --color-admin-status-report-restored: var(--status-report-restored);
+  --color-admin-status-payout-pending-admin-approval: var(--status-payout-pending-admin-approval);
+  --color-admin-status-payout-provider-pending: var(--status-payout-provider-pending);
+  --color-admin-status-payout-submitted-to-provider: var(--status-payout-submitted-to-provider);
+  --color-admin-status-payout-succeeded: var(--status-payout-succeeded);
+  --color-admin-status-payout-failed: var(--status-payout-failed);
+  --color-admin-status-payout-cancelled: var(--status-payout-cancelled);
+  --color-admin-status-wallet-active: var(--status-wallet-active);
+  --color-admin-status-wallet-frozen: var(--status-wallet-frozen);
+  --color-admin-status-wallet-suspended: var(--status-wallet-suspended);
+  --color-admin-status-wallet-closed: var(--status-wallet-closed);
+  --color-admin-status-member-normal: var(--status-member-normal);
+  --color-admin-status-member-flag: var(--status-member-flag);
+  --color-admin-status-member-temp-ban: var(--status-member-temp-ban);
+  --color-admin-status-member-perm-ban: var(--status-member-perm-ban);
+
+  --color-admin-status-quest-draft-soft: var(--status-quest-draft-soft);
+  --color-admin-status-quest-open-soft: var(--status-quest-open-soft);
+  --color-admin-status-quest-assigned-soft: var(--status-quest-assigned-soft);
+  --color-admin-status-quest-in-progress-soft: var(--status-quest-in-progress-soft);
+  --color-admin-status-quest-completed-soft: var(--status-quest-completed-soft);
+  --color-admin-status-quest-cancelled-soft: var(--status-quest-cancelled-soft);
+  --color-admin-status-quest-failed-soft: var(--status-quest-failed-soft);
+  --color-admin-status-dispute-pending-soft: var(--status-dispute-pending-soft);
+  --color-admin-status-dispute-dismissed-soft: var(--status-dispute-dismissed-soft);
+  --color-admin-status-dispute-resolved-soft: var(--status-dispute-resolved-soft);
+  --color-admin-status-conduct-pending-soft: var(--status-conduct-pending-soft);
+  --color-admin-status-conduct-dismissed-soft: var(--status-conduct-dismissed-soft);
+  --color-admin-status-conduct-upheld-soft: var(--status-conduct-upheld-soft);
+  --color-admin-status-report-pending-soft: var(--status-report-pending-soft);
+  --color-admin-status-report-dismissed-soft: var(--status-report-dismissed-soft);
+  --color-admin-status-report-hidden-soft: var(--status-report-hidden-soft);
+  --color-admin-status-report-restored-soft: var(--status-report-restored-soft);
+  --color-admin-status-payout-pending-admin-approval-soft: var(--status-payout-pending-admin-approval-soft);
+  --color-admin-status-payout-provider-pending-soft: var(--status-payout-provider-pending-soft);
+  --color-admin-status-payout-submitted-to-provider-soft: var(--status-payout-submitted-to-provider-soft);
+  --color-admin-status-payout-succeeded-soft: var(--status-payout-succeeded-soft);
+  --color-admin-status-payout-failed-soft: var(--status-payout-failed-soft);
+  --color-admin-status-payout-cancelled-soft: var(--status-payout-cancelled-soft);
+  --color-admin-status-wallet-active-soft: var(--status-wallet-active-soft);
+  --color-admin-status-wallet-frozen-soft: var(--status-wallet-frozen-soft);
+  --color-admin-status-wallet-suspended-soft: var(--status-wallet-suspended-soft);
+  --color-admin-status-wallet-closed-soft: var(--status-wallet-closed-soft);
+  --color-admin-status-member-normal-soft: var(--status-member-normal-soft);
+  --color-admin-status-member-flag-soft: var(--status-member-flag-soft);
+  --color-admin-status-member-temp-ban-soft: var(--status-member-temp-ban-soft);
+  --color-admin-status-member-perm-ban-soft: var(--status-member-perm-ban-soft);
+}
+
+/* Keep the foundation visible to the compiler until the first utility migration. */
+@source inline("bg-admin-bg text-admin-text shadow-admin-card p-admin-4");
