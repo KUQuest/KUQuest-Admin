@@ -3,7 +3,7 @@
 import Link from "next/link";
 
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import { Card } from "../../../components/ui";
+import { Card, CardHeader } from "../../../components/ui";
 import { memberRoutes } from "../admin-routes";
 import { walletStatusLabel, type WalletStatus } from "../domain/rulebook";
 import {
@@ -43,7 +43,7 @@ export function AdminWalletStatementPage({ data }: { data: WalletStatementPageDa
         </div>
       </Card>
       <Card as="section" className="section">
-        <h2>{translateText("Wallet Statement")}</h2>
+        <CardHeader flush><h2>{translateText("Wallet Statement")}</h2></CardHeader>
         <p>{translateText("Committed and sealed Ledger Transactions affecting this Wallet.")}</p>
         <WalletStatementTable transactions={ledger} />
       </Card>
