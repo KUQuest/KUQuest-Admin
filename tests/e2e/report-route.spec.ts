@@ -84,6 +84,16 @@ test.describe("Report Case routes", () => {
     await expect(page.locator(".report-page-alert .badge")).toHaveText("Dismissed");
   });
 
+  test("keeps full-page danger actions readable", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/report/RPT-8411");
+
+    const closeButton = page.locator(".full-record-head").getByRole("button", { name: "Close report" });
+    await expect(closeButton).toBeVisible();
+    await expect(closeButton).toHaveCSS("color", "rgb(255, 255, 255)");
+    await expect(closeButton).toHaveCSS("min-height", "44px");
+  });
+
   test("gives clear feedback when no decision is selected and centers the confirmation form", async ({ page }) => {
     await signIn(page);
     await page.goto("/report");

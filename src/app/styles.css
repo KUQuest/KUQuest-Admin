@@ -154,7 +154,7 @@ input,
 textarea {
   font: inherit;
 }
-button {
+button:not([data-slot="button"]) {
   color: inherit;
 }
 ::selection {
