@@ -19,21 +19,6 @@
   color: var(--muted);
   font-size: 11px;
 }
-.report-table {
-  min-width: 760px;
-}
-.report-case-board .report-table tbody tr[tabindex="0"]:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: -3px;
-}
-.report-case-board .report-table td a {
-  color: var(--accent);
-  text-decoration: none;
-}
-.report-case-board .report-table td a:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
 .report-case-drawer-detail .record-panel {
   padding: 0;
   background: transparent;

@@ -46,40 +46,6 @@
 .dispute-page-allocation {
   grid-template-columns: 1fr;
 }
-.dispute-table {
-  min-width: 980px;
-}
-.dispute-case-board .dispute-table tbody tr[tabindex="0"]:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: -3px;
-}
-.dispute-case-board .dispute-table td a {
-  color: var(--accent);
-  text-decoration: none;
-}
-.dispute-case-board .dispute-table td a:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-.dispute-case-board .dispute-table td small {
-  display: block;
-  margin-top: 3px;
-  color: var(--muted);
-  font-size: 11px;
-}
-.dispute-case-board .table-link {
-  padding: 0;
-  border: 0;
-  color: var(--accent);
-  background: transparent;
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-}
-.dispute-case-board .table-link:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
 .dispute-case-drawer-detail .record-panel {
   padding: 0;
   background: transparent;

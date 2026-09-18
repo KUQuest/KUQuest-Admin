@@ -256,7 +256,7 @@ export function ConductReportBoard({
             <span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span><span className="count" aria-live="polite">{loadingMore ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}</span>
           </div>
           <div className="overflow-x-auto" aria-label={translateText("Conduct Reports table")}>
-            <Table className="data report-table">
+            <Table className="data !min-w-[760px]">
               <caption>{translateText("Conduct Reports")}</caption>
               <thead>
                 <TableRow>
@@ -272,6 +272,7 @@ export function ConductReportBoard({
               <tbody>
                 {visibleModels.map((model) => (
                   <TableRow
+                    className="focus-visible:outline-2 focus-visible:outline-admin-accent focus-visible:outline-offset-[-2px]"
                     key={model.id}
                     data-conduct-report-id={model.id}
                     data-conduct-report-status={model.status}
@@ -287,7 +288,7 @@ export function ConductReportBoard({
                   >
                     <TableCell>
                       <button
-                        className="row-record-button"
+                        className="min-h-8 border-0 bg-transparent p-0 text-left text-sm text-admin-text hover:text-admin-accent hover:underline hover:underline-offset-4"
                         type="button"
                         data-conduct-report-id={model.id}
                         aria-label={`${translateText("Open Conduct Report")} ${model.id}`}
@@ -296,20 +297,20 @@ export function ConductReportBoard({
                           openDrawer(model.id);
                         }}
                       >
-                        {model.id}
+                        <strong>{model.id}</strong>
                       </button>
                       <small>{translateText(model.title)}</small>
                     </TableCell>
                     <TableCell><strong>{model.questTitle}</strong><small>{model.questId ?? "—"}</small></TableCell>
                     <TableCell>
                       {model.reportedMemberHref
-                        ? <Link href={model.reportedMemberHref} onClick={(event) => event.stopPropagation()}>{model.reportedMemberName}</Link>
+                        ? <Link className="text-admin-accent no-underline hover:underline hover:underline-offset-4" href={model.reportedMemberHref} onClick={(event) => event.stopPropagation()}>{model.reportedMemberName}</Link>
                         : model.reportedMemberName}
                       <small>{model.reportedMemberId || "—"}</small>
                     </TableCell>
                     <TableCell>
                       {model.reporterHref
-                        ? <Link href={model.reporterHref} onClick={(event) => event.stopPropagation()}>{model.reporterName}</Link>
+                        ? <Link className="text-admin-accent no-underline hover:underline hover:underline-offset-4" href={model.reporterHref} onClick={(event) => event.stopPropagation()}>{model.reporterName}</Link>
                         : model.reporterName}
                       <small>{model.reporterId ?? "—"}</small>
                     </TableCell>
