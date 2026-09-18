@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import { Card, PageSizeControls, Pagination, Table } from "../../../components/ui";
+import { Card, CardHeader, PageSizeControls, Pagination, Table } from "../../../components/ui";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { memberRoutes } from "../admin-routes";
 import { loadAllMembersFromMock as loadAllMembersFromMockData, loadMembersFromMock } from "./member-adapter";
@@ -171,13 +171,13 @@ export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
         </div>
       </div>
       <Card as="section" className="panel resource" aria-labelledby="member-board-heading">
-        <div className="panel-head">
+        <CardHeader flush className="panel-head">
           <div>
             <h2 id="member-board-heading">{translateText("Members")}</h2>
             <p>{translateText("Review Member profiles, Wallet status, and moderation history.")}</p>
           </div>
           <span className="count">{visibleModels.length} {translateText("shown")}</span>
-        </div>
+        </CardHeader>
         <div className="tabs" role="tablist" aria-label={translateText("Filter Members")}>{visibleTabs.map((tab) => (
           <button
             key={tab.id}
