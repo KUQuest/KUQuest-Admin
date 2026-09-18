@@ -15,7 +15,7 @@ import {
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import { Badge as UiBadge, Button as UiButton, Card, PageSizeControls, Pagination, Table } from "../../../components/ui";
+import { Badge as UiBadge, Button as UiButton, Card, CardHeader, PageSizeControls, Pagination, Table } from "../../../components/ui";
 import { adminApi } from "../api/admin-api";
 import { walletStatusLabel, type WalletStatus } from "../domain/rulebook";
 import { memberTabHref } from "../member/member-model";
@@ -231,7 +231,7 @@ function WalletSummary({
 }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
-  return <Card as="section" className="section"><h3>{title}</h3>{children}</Card>;
+  return <Card as="section" className="section"><CardHeader flush><h3>{title}</h3></CardHeader>{children}</Card>;
 }
 
 function Fact({ label, children }: { label: string; children: ReactNode }) {
@@ -417,7 +417,7 @@ function WalletDrawer({
             {history.length ? <ol className="timeline">{history.map((entry) => <li key={entry.id}><strong>{entry.fromStatus ? `${translateText(walletStatusLabel(entry.fromStatus))} → ` : ""}{translateText(walletStatusLabel(entry.toStatus))}</strong><time dateTime={entry.createdAt}>{formatWalletDate(entry.createdAt)}</time><span>{entry.reason}</span>{entry.actorAdminId ? <small>{translateText("Admin")} {entry.actorAdminId}</small> : null}</li>)}</ol> : <p>{translateText("No Wallet status changes are recorded.")}</p>}
           </Section>
           <Section title={translateText("Wallet status action")}>{statusActionContent}</Section>
-          {statusReceipt ? <Card as="section" className="wallet-action-receipt" aria-label={translateText("Wallet status action receipt")}><h3>{translateText("Action receipt")}</h3><div className="wallet-status-preview"><div><span>{translateText("Action ID")}</span><strong>{statusReceipt.id}</strong></div><div><span>{translateText("Wallet Status")}</span><strong>{translateText(walletStatusLabel(statusReceipt.fromStatus))} → {translateText(walletStatusLabel(statusReceipt.toStatus))}</strong></div><div><span>{translateText("Reason")}</span><strong>{statusReceipt.reason}</strong></div><div><span>{translateText("Recorded")}</span><strong>{formatWalletDate(statusReceipt.createdAt)}</strong></div></div><p className="audit-note">{translateText("This mock receipt represents the Activity Log event that the API integration will return.")}</p></Card> : null}
+          {statusReceipt ? <Card as="section" className="wallet-action-receipt" aria-label={translateText("Wallet status action receipt")}><CardHeader flush><h3>{translateText("Action receipt")}</h3></CardHeader><div className="wallet-status-preview"><div><span>{translateText("Action ID")}</span><strong>{statusReceipt.id}</strong></div><div><span>{translateText("Wallet Status")}</span><strong>{translateText(walletStatusLabel(statusReceipt.fromStatus))} → {translateText(walletStatusLabel(statusReceipt.toStatus))}</strong></div><div><span>{translateText("Reason")}</span><strong>{statusReceipt.reason}</strong></div><div><span>{translateText("Recorded")}</span><strong>{formatWalletDate(statusReceipt.createdAt)}</strong></div></div><p className="audit-note">{translateText("This mock receipt represents the Activity Log event that the API integration will return.")}</p></Card> : null}
           {actionError || notice ? <p className={actionError ? "field-error" : "audit-note"} role={actionError ? "alert" : "status"}>{translateText(actionError ?? notice ?? "")}</p> : null}
         </> : null}
     {statusCommand && detail ? <WalletStatusCommandDialog row={{ ...row, status: detail.status, statusLabel: walletStatusLabel(detail.status) }} targetStatus={statusCommand} onCancel={cancelStatusCommand} onSubmit={(reason, fixture) => { void submitStatusCommand(reason, fixture); }} error={statusCommandError} pending={statusCommandPending} /> : null}
