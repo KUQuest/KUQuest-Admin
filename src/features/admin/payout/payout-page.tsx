@@ -365,7 +365,7 @@ function PayoutCommandDialog({
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
-    dialog.showModal();
+    if (!dialog.open) dialog.showModal();
 
     const focusableSelector = 'button:not([disabled]), select:not([disabled]), textarea:not([disabled])';
     const focusableElements = () => Array.from(dialog.querySelectorAll<HTMLElement>(focusableSelector));
@@ -419,7 +419,7 @@ function PayoutCommandDialog({
     <AdminModalPortal open onClose={onCancel}>
       <div className="command payout-command-layer" role="presentation">
       <button className="command-backdrop" type="button" aria-label={translateText("Close Payout command dialog")} onClick={onCancel} />
-      <dialog ref={dialogRef} className="command-box" aria-labelledby="payout-command-title" aria-modal="true">
+      <dialog ref={dialogRef} open className="command-box" aria-labelledby="payout-command-title" aria-modal="true">
         <form className="dialog-body" onSubmit={submit}>
           <h2 id="payout-command-title">{translateText(command === "approve" ? "Approve Payout" : "Reject Payout")}</h2>
           <p>{translateText(command === "approve" ? "Review the destination and balance before approving this Payout." : "Choose a reason for rejecting this Payout.")}</p>

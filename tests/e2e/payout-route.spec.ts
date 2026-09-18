@@ -177,6 +177,14 @@ test.describe("Payout App Router route family", () => {
 
   });
 
+  test("opens the Payout decision dialog before submitting", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/payout/PAY-9637");
+
+    await page.getByRole("button", { name: "Approve Payout" }).click();
+    await expect(page.getByRole("dialog", { name: "Approve Payout" })).toBeVisible();
+  });
+
   test("keeps a Mock Payout approval in the drawer and board", async ({ page }) => {
     await signIn(page);
     await page.goto("/payout");

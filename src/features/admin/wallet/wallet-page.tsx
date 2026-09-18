@@ -149,7 +149,7 @@ function WalletStatusCommandDialog({
     onSubmit(trimmedReason, fixture);
   }
 
-  return <AdminModalPortal open onClose={onCancel}><dialog ref={dialogRef} className="wallet-status-command-dialog" aria-labelledby="wallet-status-command-title" aria-modal="true">
+  return <AdminModalPortal open onClose={onCancel}><dialog ref={dialogRef} open className="wallet-status-command-dialog" aria-labelledby="wallet-status-command-title" aria-modal="true">
     <form className="wallet-status-command-form" onSubmit={submit}>
       <div className="wallet-command-head">
         <div>
