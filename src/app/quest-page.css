@@ -1,13 +1,5 @@
-.full-record-actions .btn,
-.full-record-actions > [data-slot="button"],
 .dispute-summary .btn {
   text-decoration: none;
-}
-.full-record-actions > [data-slot="button"] {
-  min-height: 44px;
-  font-size: 16px;
-  line-height: 1.4;
-  text-align: center;
 }
 .quest-detail-page {
   max-width: 1280px;
@@ -21,43 +13,6 @@
 }
 .back-link:hover {
   color: var(--accent);
-}
-.record-breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin-bottom: 18px;
-  color: var(--muted);
-  font-size: 12px;
-}
-.record-breadcrumb a {
-  color: var(--accent);
-  text-decoration: none;
-}
-.full-record-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 20px;
-}
-.full-record-head h1 {
-  margin: 2px 0 5px;
-  font-size: 24px;
-  letter-spacing: -0.025em;
-}
-.full-record-head p {
-  margin: 0;
-  color: var(--muted);
-}
-.record-id {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 700;
-}
-.full-record-actions {
-  display: flex;
-  gap: 8px;
 }
 .full-record-grid {
   display: grid;
@@ -309,21 +264,6 @@
   }
 }
 @media (max-width: 700px) {
-  .full-record-head {
-    display: block;
-  }
-  .full-record-actions {
-    margin-top: 16px;
-    flex-wrap: wrap;
-    overflow: visible;
-  }
-  .full-record-actions .btn,
-  .full-record-actions > [data-slot="button"] {
-    flex: 1 1 auto;
-  }
-  .full-record-head h1 {
-    font-size: 21px;
-  }
 }
 @media (max-width: 600px) {
   .quest-summary-context {
