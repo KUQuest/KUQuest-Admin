@@ -722,7 +722,7 @@ export function ConductReportDrawer({
         <div className="record-breadcrumb"><Link href={conductReportRoutes.list()}>{translateText("Conduct Reports")}</Link><span>›</span><span>{reportModel.id}</span></div>
         <div className="full-record-head">
           <div><div className="record-id">{reportModel.id}</div><h1>{translateText(reportModel.title)}</h1><p>{translateText(reportModel.reason)} · {translateText("reported")} {formatAdminTimestamp(reportModel.submittedAt)}</p></div>
-          <div className="full-record-actions"><Link className="btn" href={conductReportRoutes.list()}>{translateText("Back to Conduct Reports")}</Link></div>
+          <div className="full-record-actions"><Button asChild size="lg" variant="outline"><Link href={conductReportRoutes.list()}>{translateText("Back to Conduct Reports")}</Link></Button></div>
         </div>
         <ConductReportAlert model={reportModel} translateText={translateText} />
         <div className="record-status-bar">
