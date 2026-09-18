@@ -7,6 +7,7 @@ import type {
 } from "./moderation-case-context";
 import { hasModerationHistory } from "./moderation-case-context";
 import { questStateLabel } from "../domain/rulebook";
+import { Card } from "../../../components/ui/card";
 
 export type ModerationCaseKind = "Report Case" | "Conduct Report" | "Dispute Case";
 
@@ -76,7 +77,7 @@ export function ModerationHistoryPanel({
     : fallback;
 
   return (
-    <section className={panelClass}>
+    <Card as="section" className={panelClass}>
       <div className="record-panel-head">
         {compact ? <h3>{translateText("Member moderation context")}</h3> : <h2>{translateText("Member moderation context")}</h2>}
         <span className="section-count">{hasModerationHistory(summary) ? translateText("Available") : translateText("Partial")}</span>
@@ -103,7 +104,7 @@ export function ModerationHistoryPanel({
         <span>{translateText("Internal Admin notes")}</span>
         <p>{noteText}</p>
       </div>
-    </section>
+    </Card>
   );
 }
 
@@ -133,7 +134,7 @@ function CaseContextPanel({
   const panelClass = compact ? "section moderation-case-context" : "record-panel moderation-case-context";
 
   return (
-    <section className={panelClass} data-moderation-case-workspace="context">
+    <Card as="section" className={panelClass} data-moderation-case-workspace="context">
       <div className="record-panel-head">
         <div>
           {compact ? <h3>{translateText("Decision context")}</h3> : <h2>{translateText("Decision context")}</h2>}
@@ -180,7 +181,7 @@ function CaseContextPanel({
         <p>{translateText(policyNote)}</p>
       </div>
       {showModerationHistory && moderationHistory && <ModerationHistoryPanel summary={moderationHistory} translateText={translateText} compact={Boolean(compact)} />}
-    </section>
+    </Card>
   );
 }
 
