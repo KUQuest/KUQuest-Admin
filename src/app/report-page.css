@@ -1,12 +1,3 @@
-.report-overview .overview-meta {
-  margin-top: 18px;
-}
-.report-parties small {
-  display: block;
-  margin-top: 3px;
-  color: var(--muted);
-  font-size: 11px;
-}
 .report-case-drawer-detail .record-panel {
   padding: 0;
   background: transparent;

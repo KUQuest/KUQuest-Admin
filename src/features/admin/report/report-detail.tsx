@@ -260,7 +260,7 @@ function ReportOverview({
     <Card as="section" className="record-panel report-overview">
       <CardHeader flush className="record-panel-head"><h2>{translateText("Report detail")}</h2></CardHeader>
       <p className="record-description">{model.detail}</p>
-      <AdminOverviewMeta>
+      <AdminOverviewMeta className="mt-[18px]">
         <div><dt>{translateText("Report type")}</dt><dd>{translateText(model.reportType)}</dd></div>
         <div><dt>{translateText("Submitted by")}</dt><dd><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} /></dd></div>
         <div><dt>{translateText("Reported Member")}</dt><dd><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} /></dd></div>
@@ -304,7 +304,7 @@ function PeopleInvolved({
   return (
     <Card as="section" className="record-panel">
       <CardHeader flush><h2>{translateText("People involved")}</h2></CardHeader>
-      <div className="party-grid report-parties">
+      <div className="party-grid report-parties [&_small]:mt-[3px] [&_small]:block">
         <div><span>{translateText("Reporting Member")}</span><strong><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} /></strong>{model.reporterId && <small>{model.reporterId}</small>}</div>
         <div><span>{translateText("Reported Member")}</span><strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} /></strong>{model.reportedMemberId && <small>{model.reportedMemberId}</small>}</div>
       </div>
