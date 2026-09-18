@@ -178,7 +178,7 @@ export function ConductReportBoard({
     return (
       <main className="admin-feedback">
         <Card as="section" className="panel">
-          <h1>{translateText("Conduct Reports unavailable")}</h1>
+          <CardHeader flush><h1>{translateText("Conduct Reports unavailable")}</h1></CardHeader>
           <p>{translateText(loadError)}</p>
         </Card>
       </main>

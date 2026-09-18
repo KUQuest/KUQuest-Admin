@@ -149,7 +149,7 @@ export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
 
   if (!page) return <AdminLoading message={translateText(loadError ?? "Loading Members…")} />;
   if (loadError) {
-    return <main className="admin-feedback"><Card as="section" className="panel"><h1>{translateText("Members unavailable")}</h1><p>{translateText(loadError)}</p></Card></main>;
+    return <main className="admin-feedback"><Card as="section" className="panel"><CardHeader flush><h1>{translateText("Members unavailable")}</h1></CardHeader><p>{translateText(loadError)}</p></Card></main>;
   }
 
   const models = page.items.filter((model) => matchesTab(model, activeTab) && matchesQuery(model, query));
