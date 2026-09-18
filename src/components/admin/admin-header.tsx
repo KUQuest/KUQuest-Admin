@@ -42,7 +42,7 @@ export function AdminHeader({
   }, [pathname]);
 
   return (
-    <header>
+    <header className="admin-shell-header col-start-2 sticky top-0 z-[15] flex items-center gap-2 px-[22px] py-2 bg-[color-mix(in_srgb,var(--bg)_92%,transparent)] border-b border-admin-border backdrop-blur-[12px] max-[900px]:col-start-1 max-[900px]:px-[14px]">
       <Button
         variant="ghost"
         size="icon"

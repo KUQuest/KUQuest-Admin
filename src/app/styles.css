@@ -496,7 +496,8 @@ fieldset.language-options {
 .login-language .language-control-label {
   margin-left: 0;
 }
-header {
+.shell > header,
+.admin-shell-layout > header {
   grid-column: 2;
   position: sticky;
   top: 0;
@@ -1668,14 +1669,16 @@ dialog::backdrop {
   .sidebar.open {
     transform: none;
   }
-  header,
+  .shell > header,
+  .admin-shell-layout > header,
   main {
     grid-column: 1;
   }
   .mobile {
     display: block;
   }
-  header {
+  .shell > header,
+  .admin-shell-layout > header {
     padding: 8px 14px;
   }
   .search {
