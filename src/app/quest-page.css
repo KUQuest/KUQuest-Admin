@@ -3,6 +3,11 @@
 .dispute-summary .btn {
   text-decoration: none;
 }
+.full-record-actions > [data-slot="button"] {
+  min-height: 44px;
+  font-size: 16px;
+  line-height: 1.4;
+}
 .quest-detail-page {
   max-width: 1280px;
 }

@@ -1492,6 +1492,11 @@ dialog.drawer.wallet-drawer {
 .drawer-actions .btn {
   flex: 1;
 }
+.drawer-actions > [data-slot="button"] {
+  min-height: 44px;
+  font-size: 16px;
+  line-height: 1.4;
+}
 dialog {
   width: min(470px, calc(100vw - 32px));
   padding: 0;
