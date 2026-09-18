@@ -373,7 +373,7 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
   }
 }
 .activity-log-dialog {
-  position: static;
+  position: fixed;
   width: min(560px, 100vw);
   max-width: none;
   height: 100%;
