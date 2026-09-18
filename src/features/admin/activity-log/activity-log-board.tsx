@@ -267,12 +267,12 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
     return (
       <main id="activity-main" className="admin-route-page activity-log-board" tabIndex={-1}>
         <div className="page-head"><div><p className="admin-route-kicker">{translateText("KUQuest Admin")}</p><h1>{translateText("Activity Log")}</h1><p>{translateText("An audit trail of administrative decisions.")}</p></div></div>
-        <section className="panel activity-log-panel" aria-labelledby="activity-unavailable-title">
+        <Card as="section" className="panel activity-log-panel" aria-labelledby="activity-unavailable-title">
           <div className="empty activity-log-empty">
             <h2 id="activity-unavailable-title">{translateText("Activity Log unavailable")}</h2>
             <p>{translateText("The Admin API is required to display this read-only log.")}</p>
           </div>
-        </section>
+        </Card>
       </main>
     );
   }
@@ -283,7 +283,7 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
         <div><p className="admin-route-kicker">{translateText("KUQuest Admin")}</p><h1>{translateText("Activity Log")}</h1><p>{translateText("An audit trail of administrative decisions.")}</p></div>
         <button className="btn" type="button" onClick={exportCsv} disabled={!visibleEntries.length}>{translateText("Export CSV")}</button>
       </div>
-      <section className="panel activity-log-panel" aria-labelledby="activity-log-heading">
+      <Card as="section" className="panel activity-log-panel" aria-labelledby="activity-log-heading">
         <div className="panel-head"><div><h2 id="activity-log-heading">{translateText("Activity Log")}</h2><p>{translateText("Review the administrative audit trail.")}</p></div><span className="count" aria-live="polite">{filteredEntries.length} {translateText("loaded entries")}</span></div>
         <form className="activity-log-filters" onSubmit={applyFilters}>
           <div className="activity-filter-grid">
@@ -310,7 +310,7 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
         {filteredEntries.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Activity Log pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className="table-pagination" /> : null}
         {paginationError ? <div className="activity-log-error" role="alert"><p>{translateText(paginationError)}</p><button className="btn" type="button" onClick={loadMore}>{translateText("Try again")}</button></div> : null}
         {page?.nextCursor ? <div className="activity-log-pagination"><button className="btn" type="button" onClick={loadMore} disabled={loading}>{translateText(loading ? "Loading more" : "Load more")}</button></div> : null}
-      </section>
+      </Card>
       {selectedEntry ? <ActivityLogDetail entry={selectedEntry} onClose={closeDetails} onOpenTarget={openLinkedDetail} /> : null}
     </main>
   );
