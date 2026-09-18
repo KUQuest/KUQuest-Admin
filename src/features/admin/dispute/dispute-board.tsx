@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
-import { Button, Card, CardDescription, CardHeader, CardTitle, Input, PageSizeControls, Pagination, Table, TableCell, TableHead, TableRow } from "../../../components/ui";
+import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, TableCell, TableHead, TableRow } from "../../../components/ui";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { disputeRoutes, questRoutes } from "../admin-routes";
 import { loadAllDisputeCasesFromMock as loadAllDisputeCasesFromMockData, loadDisputeCasesFromMock } from "./dispute-adapter";
@@ -225,7 +225,7 @@ export function DisputeCaseBoard({ initialData }: { initialData?: DisputeCasePag
               })}
             </tbody>
           </Table>
-          {models.length === 0 && <p className="empty-state">{translateText("No Dispute Cases match this view.")}</p>}
+          {models.length === 0 && <EmptyState title={translateText("No Dispute Cases match this view.")} />}
         </div>
         {paginationError && <p className="field-error" role="alert">{translateText(paginationError)}</p>}
         {models.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Dispute Cases pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className="table-pagination" /> : null}

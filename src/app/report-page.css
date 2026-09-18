@@ -34,13 +34,6 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-.report-case-next-page {
-  margin: 0;
-  padding: 12px 14px;
-  border-top: 1px solid var(--border);
-  color: var(--muted);
-  font-size: 12px;
-}
 .report-case-drawer-detail .record-panel {
   padding: 0;
   background: transparent;

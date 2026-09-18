@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
-import { Button, Card, CardDescription, CardHeader, CardTitle, Input, PageSizeControls, Pagination, Table, TableCell, TableHead, TableRow } from "../../../components/ui";
+import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, TableCell, TableHead, TableRow } from "../../../components/ui";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { reportRoutes } from "../admin-routes";
 import { formatAdminTimestamp } from "../date-format";
@@ -221,7 +221,7 @@ export function ReportCaseBoard({ initialData }: { initialData?: ReportCasePageD
                 })}
               </tbody>
             </Table>
-            {!models.length && <div className="empty"><h3>{translateText("No matching Report Cases")}</h3><p>{translateText("Change the status filter or search text.")}</p></div>}
+            {!models.length && <EmptyState title={translateText("No matching Report Cases")} description={translateText("Change the status filter or search text.")} />}
           </div>
           {page.nextCursor && (
             <div className="border-t border-admin-border px-3 py-3 text-sm text-admin-muted">
