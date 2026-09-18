@@ -723,13 +723,13 @@ export function ConductReportDrawer({
           <div className="full-record-actions"><Button asChild size="lg" variant="outline"><Link href={conductReportRoutes.list()}>{translateText("Back to Conduct Reports")}</Link></Button></div>
         </div>
         <ConductReportAlert model={reportModel} translateText={translateText} />
-        <div className="record-status-bar">
+        <Card className="record-status-bar">
           <div><span>{translateText("Status")}</span><strong><span className={`badge ${reportModel.badgeClass}`}>{translateText(reportModel.statusLabel)}</span></strong></div>
           <div><span>{translateText("Reason")}</span><strong>{translateText(reportModel.reason)}</strong></div>
           <div><span>{translateText("Reported")}</span><strong>{formatAdminTimestamp(reportModel.submittedAt)}</strong></div>
           <div><span>{translateText("Reported Member")}</span><strong><MemberLink id={reportModel.reportedMemberId} name={reportModel.reportedMemberName} href={reportModel.reportedMemberHref} /></strong></div>
           <div><span>{translateText("Quest")}</span><strong>{reportModel.questId ?? translateText("Not provided.")}</strong></div>
-        </div>
+        </Card>
         {body}
         {decisionDialog}
       </main>

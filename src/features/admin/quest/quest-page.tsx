@@ -812,13 +812,13 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
         <div className="full-record-actions"><Link className="btn" href={questRoutes.list()}>{translateText("Back to Quests")}</Link></div>
       </div>
       <QuestRecordAlert detail={detail} />
-      <div className="record-status-bar quest-record-status-bar">
+      <Card className="record-status-bar quest-record-status-bar">
         <div><span>{translateText("Status")}</span><strong><Badge state={detail.state} /></strong></div>
         <div><span>{translateText("Participant mode")}</span><strong>{translateText(detail.participation === "GROUP" ? "Team" : "Solo")}</strong></div>
         <div><span>{translateText("Created")}</span><strong>{formatQuestDate(detail.createdAt)}</strong></div>
         <div><span>{translateText("Quest Funding Total")}</span><strong>{formatQuestMoney(finance?.quest.questFundingTotalSatang ?? detail.questFundingTotalSatang)}</strong></div>
         <div><span>{translateText("Candidates")}</span><strong>{questCandidateCount(detail)}</strong></div>
-      </div>
+      </Card>
       <div className="quest-detail-grid">{content}</div>
       {command ? <QuestCommandDialog detail={detail} command={command} dataSource={dataSource} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandPending} /> : null}
     </main>

@@ -638,13 +638,13 @@ export function AdminPayoutDetailPage({
         <div className="full-record-actions"><Link className="btn" href={payoutRoutes.list()}>{translateText("Back to Payouts")}</Link></div>
       </div>
       <PayoutStatusAlert detail={detail} />
-      <div className="record-status-bar payout-record-status-bar">
+      <Card className="record-status-bar payout-record-status-bar">
         <div><span>{translateText("Status")}</span><strong><Badge status={detail.status} /></strong></div>
         <div><span>{translateText("Student")}</span><strong>{detail.student.name}</strong></div>
         <div><span>{translateText("Principal")}</span><strong>{formatPayoutMoney(detail.amounts.principalSatang)}</strong></div>
         <div><span>{translateText("Created")}</span><strong>{formatPayoutDate(detail.createdAt)}</strong></div>
         <div><span>{translateText("Destination type")}</span><strong>{translateText(readableValue(detail.destination.type))}</strong></div>
-      </div>
+      </Card>
       <div className="payout-detail-grid">{content}</div>
       {command ? <PayoutCommandDialog detail={detail} command={command} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandPending} /> : null}
     </main>
