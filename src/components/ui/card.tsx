@@ -36,8 +36,12 @@ export function CardContent({ className, flush = false, ...props }: CardContentP
   return <div data-slot="card-content" className={cn(flush ? "" : "px-5 py-4", className)} {...props} />;
 }
 
-export function CardFooter({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div data-slot="card-footer" className={cn("flex items-center gap-3 border-t border-admin-border px-5 py-4", className)} {...props} />;
+type CardFooterProps = HTMLAttributes<HTMLDivElement> & {
+  flush?: boolean;
+};
+
+export function CardFooter({ className, flush = false, ...props }: CardFooterProps) {
+  return <div data-slot="card-footer" className={cn(flush ? "" : "flex items-center gap-3 border-t border-admin-border px-5 py-4", className)} {...props} />;
 }
 
 export type SectionProps = HTMLAttributes<HTMLElement> & {

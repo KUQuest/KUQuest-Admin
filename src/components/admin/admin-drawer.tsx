@@ -3,6 +3,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 
 import { Button } from "../ui/button";
+import { CardContent, CardFooter, CardHeader } from "../ui/card";
 
 const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -129,9 +130,9 @@ export function AdminDrawer({
   return <>
     <button className="scrim" type="button" tabIndex={-1} aria-label={ariaLabel} onClick={onClose} />
     <dialog ref={drawerRef} className={`drawer open${className ? ` ${className}` : ""}`} aria-modal="true" aria-labelledby={titleId} tabIndex={-1} open>
-      <div className="drawer-top"><div><strong id={titleId}>{title}</strong><small>{subtitle}</small></div><Button variant="ghost" size="icon" className="icon shrink-0" type="button" aria-label={closeButtonAriaLabel ?? ariaLabel} onClick={onClose}><span className="close-lines" /></Button></div>
-      <div className="drawer-body">{children}</div>
-      {actions ? <div className="drawer-actions">{actions}</div> : null}
+      <CardHeader flush className="drawer-top"><div><strong id={titleId}>{title}</strong><small>{subtitle}</small></div><Button variant="ghost" size="icon" className="icon shrink-0" type="button" aria-label={closeButtonAriaLabel ?? ariaLabel} onClick={onClose}><span className="close-lines" /></Button></CardHeader>
+      <CardContent flush className="drawer-body">{children}</CardContent>
+      {actions ? <CardFooter flush className="drawer-actions">{actions}</CardFooter> : null}
     </dialog>
   </>;
 }
