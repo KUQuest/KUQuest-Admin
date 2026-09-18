@@ -175,7 +175,7 @@ export function ReportCaseBoard({ initialData }: { initialData?: ReportCasePageD
 
   if (!page) return <AdminLoading message={translateText(loadError ?? "Loading Report Cases…")} />;
   if (loadError) {
-    return <main className="admin-feedback"><section className="panel"><h1>{translateText("Report Cases unavailable")}</h1><p>{translateText(loadError)}</p></section></main>;
+    return <main className="admin-feedback"><Card as="section" className="panel"><h1>{translateText("Report Cases unavailable")}</h1><p>{translateText(loadError)}</p></Card></main>;
   }
 
   const filteredModels = page.items.filter((model) => tabMatches(model, activeTab) && modelMatchesQuery(model, query));

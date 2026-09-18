@@ -177,10 +177,10 @@ export function ConductReportBoard({
   if (loadError) {
     return (
       <main className="admin-feedback">
-        <section className="panel">
+        <Card as="section" className="panel">
           <h1>{translateText("Conduct Reports unavailable")}</h1>
           <p>{translateText(loadError)}</p>
-        </section>
+        </Card>
       </main>
     );
   }

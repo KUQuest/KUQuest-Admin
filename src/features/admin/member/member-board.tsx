@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import { PageSizeControls, Pagination, Table } from "../../../components/ui";
+import { Card, PageSizeControls, Pagination, Table } from "../../../components/ui";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { memberRoutes } from "../admin-routes";
 import { loadAllMembersFromMock as loadAllMembersFromMockData, loadMembersFromMock } from "./member-adapter";
@@ -149,7 +149,7 @@ export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
 
   if (!page) return <AdminLoading message={translateText(loadError ?? "Loading Members…")} />;
   if (loadError) {
-    return <main className="admin-feedback"><section className="panel"><h1>{translateText("Members unavailable")}</h1><p>{translateText(loadError)}</p></section></main>;
+    return <main className="admin-feedback"><Card as="section" className="panel"><h1>{translateText("Members unavailable")}</h1><p>{translateText(loadError)}</p></Card></main>;
   }
 
   const models = page.items.filter((model) => matchesTab(model, activeTab) && matchesQuery(model, query));
@@ -170,7 +170,7 @@ export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
           <p>{translateText("Review Member profiles and account status.")}</p>
         </div>
       </div>
-      <section className="panel resource" aria-labelledby="member-board-heading">
+      <Card as="section" className="panel resource" aria-labelledby="member-board-heading">
         <div className="panel-head">
           <div>
             <h2 id="member-board-heading">{translateText("Members")}</h2>
@@ -241,7 +241,7 @@ export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
         {paginationError && <p className="field-error" role="alert">{translateText(paginationError)}</p>}
         {models.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Members pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className="table-pagination" /> : null}
         {page.nextCursor && <button className="btn" type="button" onClick={loadMore} disabled={loadingMore}>{loadingMore ? translateText("Loading…") : translateText("Load more Members")}</button>}
-      </section>
+      </Card>
     </main>
   );
 }

@@ -634,7 +634,7 @@ export function ReportCaseDetail({
   if (!model) {
     return (
       <main className={drawer ? "drawer-body" : "admin-feedback"}>
-        <section className="panel"><h1>{translateText("Report Case not found")}</h1><p>{translateText(loadError ?? "The requested Report Case was not found.")}</p>{!drawer && <Link className="btn primary" href={reportRoutes.list()}>{translateText("Return to Report Cases")}</Link>}</section>
+        <Card as="section" className="panel"><h1>{translateText("Report Case not found")}</h1><p>{translateText(loadError ?? "The requested Report Case was not found.")}</p>{!drawer && <Link className="btn primary" href={reportRoutes.list()}>{translateText("Return to Report Cases")}</Link>}</Card>
       </main>
     );
   }

@@ -395,7 +395,7 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
 
   const model = disputeModel;
   if (loading && !model) return <AdminLoading message={translateText("Loading Dispute Case…")} />;
-  if (!model) return <main className={drawer ? "drawer-body" : "admin-feedback"}><section className="panel"><h1>{translateText("Dispute Case not found")}</h1><p>{translateText(loadError ?? "The requested Dispute Case was not found.")}</p>{!drawer && <Link className="btn primary" href={disputeRoutes.list()}>{translateText("Return to Dispute Cases")}</Link>}</section></main>;
+  if (!model) return <main className={drawer ? "drawer-body" : "admin-feedback"}><Card as="section" className="panel"><h1>{translateText("Dispute Case not found")}</h1><p>{translateText(loadError ?? "The requested Dispute Case was not found.")}</p>{!drawer && <Link className="btn primary" href={disputeRoutes.list()}>{translateText("Return to Dispute Cases")}</Link>}</Card></main>;
 
   const openEvidence = async (reference: string) => {
     setEvidenceState({ reference, value: null, error: null, loading: true });
