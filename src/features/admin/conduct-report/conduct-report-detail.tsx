@@ -11,7 +11,7 @@ import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { adminApi, type ReportDecision } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { Button } from "../../../components/ui/button";
-import { Card } from "../../../components/ui/card";
+import { Card, CardHeader } from "../../../components/ui/card";
 import { conductReportRoutes } from "../admin-routes";
 import { questStateLabel } from "../domain/rulebook";
 import { questStatusClass } from "../quest/quest-model";
@@ -215,9 +215,9 @@ function ConductReportOverview({
   return (
     <Card as="section" className={compact ? "section" : "record-panel conduct-report-overview"}>
       {compact ? (
-        <h3>{translateText("Conduct Report overview")}</h3>
+        <CardHeader flush><h3>{translateText("Conduct Report overview")}</h3></CardHeader>
       ) : (
-        <div className="record-panel-head"><h2>{translateText("Conduct Report detail")}</h2><span className="badge">{translateText(model.reason)}</span></div>
+        <CardHeader flush className="record-panel-head"><h2>{translateText("Conduct Report detail")}</h2><span className="badge">{translateText(model.reason)}</span></CardHeader>
       )}
       <div className="facts">
         <div className="fact">
@@ -272,10 +272,10 @@ function ConductEvidenceSection({
 }) {
   return (
     <Card as="section" className={compact ? "section" : "record-panel"}>
-      <div className="record-panel-head">
+      <CardHeader flush className="record-panel-head">
         {compact ? <h3>{translateText("Evidence")}</h3> : <h2>{translateText("Evidence")}</h2>}
         <span className="section-count">{model.questRecord ? 1 : 0}</span>
-      </div>
+      </CardHeader>
       <div className="overview-group">
         <span>{translateText("Quest record")}</span>
         <p>{model.questRecord ?? translateText("No Quest record evidence was provided.")}</p>
@@ -296,10 +296,10 @@ function RelatedQuestPanel({
 }) {
   return (
     <Card as="section" className={compact ? "section related-quest-panel" : "record-panel related-quest-panel"}>
-      <div className="record-panel-head">
+      <CardHeader flush className="record-panel-head">
         {compact ? <h3>{translateText("Related Quest")}</h3> : <h2>{translateText("Related Quest")}</h2>}
         {model.questState && <span className={`badge ${questStatusClass(model.questState)}`}>{translateText(questStateLabel(model.questState))}</span>}
-      </div>
+      </CardHeader>
       <div className="side-facts">
         <div><span>{translateText("Quest")}</span><strong>{model.questTitle}</strong></div>
         <div><span>{translateText("Quest ID")}</span><strong>{model.questId ?? "—"}</strong></div>
@@ -328,7 +328,7 @@ function ConductMemberSummaryPanel({
 }) {
   return (
     <Card as="section" className="record-panel">
-      <h2>{translateText(heading)}</h2>
+      <CardHeader flush><h2>{translateText(heading)}</h2></CardHeader>
       <div className="side-facts"><div><span>{translateText("Name")}</span><strong><MemberLink id={id} name={name} href={href} /></strong></div><div><span>{translateText("Member ID")}</span><strong>{id || "—"}</strong></div></div>
       {href && <Link className="btn full-width" href={href}>{translateText("See Member profile")}</Link>}
     </Card>
@@ -343,7 +343,7 @@ function ConductModerationContext({ model, translateText }: { model: ConductRepo
 
   return (
     <Card as="section" className="record-panel">
-      <div className="record-panel-head"><h2>{translateText("Member moderation context")}</h2><span className="section-count">{hasModerationHistory(summary) ? translateText("Available") : translateText("Partial")}</span></div>
+      <CardHeader flush className="record-panel-head"><h2>{translateText("Member moderation context")}</h2><span className="section-count">{hasModerationHistory(summary) ? translateText("Available") : translateText("Partial")}</span></CardHeader>
       <dl className="overview-meta moderation-case-history-grid">
         <div><dt>{translateText("Current Member status")}</dt><dd>{summary.currentMemberStatus ? translateText(summary.currentMemberStatus) : fallback}</dd></div>
         <div><dt>{translateText("Previous reports received")}</dt><dd>{summary.previousReportCount ?? fallback}</dd></div>
@@ -400,7 +400,7 @@ function ConductReportTimeline({ model, translateText }: { model: ConductReportM
       { title: "Conduct Report decision recorded", time: model.resolutionAt || model.closedAt ? formatAdminTimestamp(model.resolutionAt ?? model.closedAt) : translateText("Time not provided"), detail: model.decisionReason ?? model.decisionLabel ?? translateText("Record retained for audit.") },
     ];
 
-  return <Card as="section" className="record-panel"><h2>{translateText("Conduct Report timeline")}</h2><ol className="timeline">{events.map((event) => <li key={`${event.title}-${event.time}`}><strong>{translateText(event.title)}</strong><time>{event.time}</time><span>{translateText(event.detail)}</span></li>)}</ol></Card>;
+  return <Card as="section" className="record-panel"><CardHeader flush><h2>{translateText("Conduct Report timeline")}</h2></CardHeader><ol className="timeline">{events.map((event) => <li key={`${event.title}-${event.time}`}><strong>{translateText(event.title)}</strong><time>{event.time}</time><span>{translateText(event.detail)}</span></li>)}</ol></Card>;
 }
 
 function DecisionControls({
@@ -516,7 +516,7 @@ function ConductReportDrawerBody({
             <RelatedQuestPanel model={model} translateText={translateText} />
             <ConductModerationContext model={model} translateText={translateText} />
             <Card as="section" className="record-panel report-decision-panel">
-              <h2>{model.isActionable ? translateText("Conduct Report decision") : translateText("Recorded outcome")}</h2>
+              <CardHeader flush><h2>{model.isActionable ? translateText("Conduct Report decision") : translateText("Recorded outcome")}</h2></CardHeader>
               <DecisionControls
                 model={model}
                 translateText={translateText}
@@ -567,7 +567,7 @@ function ConductReportDrawerBody({
           member={{ id: model.reportedMemberId, name: model.reportedMemberName, href: model.reportedMemberHref }}
         />
         <Card as="section" className="section report-decision-panel">
-          <h3>{model.isActionable ? translateText("Conduct Report decision") : translateText("Resolution")}</h3>
+          <CardHeader flush><h3>{model.isActionable ? translateText("Conduct Report decision") : translateText("Resolution")}</h3></CardHeader>
           <DecisionControls
             model={model}
             translateText={translateText}
