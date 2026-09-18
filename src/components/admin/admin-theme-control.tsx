@@ -9,6 +9,7 @@ import {
   THEME_STORAGE_KEY,
   type AdminTheme,
 } from "../../features/admin/theme/theme-model";
+import { Button } from "../ui/button";
 
 type AdminThemeControlProps = {
   translateText?: (value: string) => string;
@@ -84,9 +85,10 @@ export function AdminThemeControl({ translateText = identityText }: AdminThemeCo
 
   return (
     <div className="theme-control" ref={controlRef}>
-      <button
+      <Button
+        variant="ghost"
+        size="lg"
         className="theme-trigger"
-        type="button"
         aria-expanded={open}
         aria-controls="theme-options"
         onClick={toggleMenu}
@@ -97,14 +99,15 @@ export function AdminThemeControl({ translateText = identityText }: AdminThemeCo
           <small>{translateText(themeDefinitions[theme].label)}</small>
         </span>
         <span className="theme-trigger-chevron" aria-hidden="true">⌄</span>
-      </button>
+      </Button>
       <div className="theme-menu" id="theme-options" hidden={!open}>
         <p className="theme-menu-title">{translateText("Choose a theme")}</p>
         <fieldset className="theme-options" aria-label={translateText("Theme options")}>
           {(Object.keys(themeDefinitions) as AdminTheme[]).map((option) => (
-            <button
+            <Button
+              variant="ghost"
+              size="md"
               className="theme-option"
-              type="button"
               key={option}
               value={option}
               aria-pressed={theme === option}
@@ -122,7 +125,7 @@ export function AdminThemeControl({ translateText = identityText }: AdminThemeCo
                 </small>
               </span>
               <span className="theme-option-check" aria-hidden="true">✓</span>
-            </button>
+            </Button>
           ))}
         </fieldset>
       </div>

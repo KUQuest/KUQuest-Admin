@@ -6,6 +6,7 @@ import {
   normalizeAdminLanguage,
   type AdminLanguage,
 } from "../../features/admin/language/admin-language";
+import { Button } from "../ui/button";
 
 type AdminLanguageControlProps = {
   language?: AdminLanguage;
@@ -63,12 +64,12 @@ export function AdminLanguageControl({
       <span className="language-control-label">{translateText("Language")}</span>
       <fieldset className="language-options" aria-label={translateText("Language options")}>
         <legend className="visually-hidden">{translateText("Language options")}</legend>
-        <button className="language-option" type="button" aria-pressed={language === "en"} onClick={showEnglish}>
+        <Button variant="outline" size="sm" className="language-option" type="button" aria-pressed={language === "en"} onClick={showEnglish}>
           English
-        </button>
-        <button className="language-option" type="button" aria-pressed={language === "th"} onClick={showThai}>
+        </Button>
+        <Button variant="outline" size="sm" className="language-option" type="button" aria-pressed={language === "th"} onClick={showThai}>
           ไทย
-        </button>
+        </Button>
       </fieldset>
     </div>
   );

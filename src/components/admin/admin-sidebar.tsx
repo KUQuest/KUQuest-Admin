@@ -17,6 +17,7 @@ import type { AdminLanguage } from "../../features/admin/language/admin-language
 import { AdminLanguageControl } from "./admin-language-control";
 import { AdminThemeControl } from "./admin-theme-control";
 import { Sidebar } from "../ui/sidebar";
+import { Button } from "../ui/button";
 
 type AdminSidebarProps = {
   open: boolean;
@@ -163,9 +164,9 @@ export function AdminSidebar({
           <strong>{adminName}</strong>
           <small>{translateText("Admin")}</small>
         </div>
-        <button className="logout-button" type="button" onClick={onLogout}>
+        <Button variant="outline" size="sm" className="logout-button" type="button" onClick={onLogout}>
           {translateText("Log out")}
-        </button>
+        </Button>
       </div>
     </Sidebar>
   );
