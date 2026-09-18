@@ -12,7 +12,7 @@ import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { RecordStatusBar } from "../../../components/admin/record-status-bar";
 import { Button } from "../../../components/ui/button";
-import { Card } from "../../../components/ui/card";
+import { Card, CardHeader } from "../../../components/ui/card";
 import { adminApi, type AdminDisputeReasonCode, type DisputeResolution } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { disputeRoutes, questRoutes } from "../admin-routes";
@@ -143,7 +143,7 @@ function Overview({ model, translateText, compact = false }: { model: DisputeCas
     return (
       <>
         <Card as="section" className="section">
-          <h3>{translateText("Dispute overview")}</h3>
+          <CardHeader flush><h3>{translateText("Dispute overview")}</h3></CardHeader>
           <div className="facts"><div className="fact"><span>{translateText("Status")}</span><strong><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></strong></div><div className="fact"><span>{translateText("Category")}</span><strong>{translateText(model.category)}</strong></div><div className="fact"><span>{translateText("Amount at risk")}</span><strong>{model.amountAtRiskLabel}</strong></div></div>
           <dl className="overview-meta moderation-case-context-grid"><div><dt>{translateText("Case")}</dt><dd>{model.displayId}</dd></div><div><dt>{translateText("Case type")}</dt><dd>{translateText("Dispute Case")}</dd></div><div><dt>{translateText("Source")}</dt><dd>{translateText("Quest settlement")}</dd></div><div><dt>{translateText("Submitted")}</dt><dd>{model.submittedAt}</dd></div><div><dt>{translateText("Evidence References")}</dt><dd>{model.evidence.length || translateText("None")}</dd></div></dl>
           <div className="overview-group"><span>{translateText("Submitted detail")}</span><p>{model.detail}</p></div>
@@ -155,7 +155,7 @@ function Overview({ model, translateText, compact = false }: { model: DisputeCas
 
   return (
     <Card as="section" className="record-panel dispute-overview">
-      <div className="record-panel-head"><h2>{translateText("Dispute detail")}</h2><span className="badge">{translateText(model.category)}</span></div>
+      <CardHeader flush className="record-panel-head"><h2>{translateText("Dispute detail")}</h2><span className="badge">{translateText(model.category)}</span></CardHeader>
       <p className="record-description dispute-description">{model.detail}</p>
       <dl className="overview-meta">
         <div><dt>{translateText("Quest")}</dt><dd><Link href={model.questHref ?? questRoutes.list()}>{model.questTitle}</Link></dd></div>
@@ -176,12 +176,12 @@ function PartyStatements({ model, translateText, compact = false, interactive = 
       <div className="dispute-statements"><div className="overview-group"><span>{translateText(model.filerRole === "Hirer" ? "Hirer statement" : "Worker statement")}</span><p>{model.filerStatement}</p></div><div className="overview-group"><span>{translateText(model.respondentRole === "Hirer" ? "Hirer statement" : "Worker statement")}</span><p>{model.respondentStatement}</p></div></div>
     </>
   );
-  return compact ? <Card as="section" className="section"><h3>{translateText("Parties and statements")}</h3>{content}</Card> : <Card as="section" className="record-panel"><h2>{translateText("Parties and statements")}</h2>{content}</Card>;
+  return compact ? <Card as="section" className="section"><CardHeader flush><h3>{translateText("Parties and statements")}</h3></CardHeader>{content}</Card> : <Card as="section" className="record-panel"><CardHeader flush><h2>{translateText("Parties and statements")}</h2></CardHeader>{content}</Card>;
 }
 
 function EvidenceSection({ model, translateText, onOpen, compact = false }: { model: DisputeCaseModel; translateText: (value: string) => string; onOpen: (reference: string) => void; compact?: boolean }) {
   const content = <>
-    <div className="record-panel-head">{compact ? <h3>{translateText("Evidence")}</h3> : <h2>{translateText("Evidence")}</h2>}<span className="section-count">{model.evidence.length}</span></div>
+    <CardHeader flush className="record-panel-head">{compact ? <h3>{translateText("Evidence")}</h3> : <h2>{translateText("Evidence")}</h2>}<span className="section-count">{model.evidence.length}</span></CardHeader>
     {model.evidence.length === 0 && <p className="audit-note">{translateText("No Evidence Reference was provided.")}</p>}
     {model.evidence.length > 0 && <div className="evidence-stack">{model.evidence.map((evidence) => evidence.reference
       ? <button key={evidence.reference} className="evidence-item" type="button" onClick={() => onOpen(evidence.reference as string)}><span className="evidence-state">✓</span><span><strong>{evidence.label}</strong><small>{translateText("Bounded Evidence Reference")}</small></span><span>{translateText("Open")}</span></button>
@@ -203,7 +203,7 @@ function Timeline({ model, translateText }: { model: DisputeCaseModel; translate
       { title: "Dispute Case opened", time: model.submittedAt, detail: `${model.filerName} filed the Dispute Case.` },
       { title: "Dispute Case decision recorded", time: model.resolutionAt ?? model.closedAt ?? translateText("Time not provided"), detail: model.decisionReason ?? model.decisionLabel ?? translateText("Record retained for audit.") },
     ];
-  return <Card as="section" className="record-panel"><h2>{translateText("Dispute timeline")}</h2><ol className="timeline">{events.map((event) => <li key={`${event.title}-${event.time}`}><strong>{translateText(event.title)}</strong><time>{event.time}</time><span>{translateText(event.detail)}</span></li>)}</ol></Card>;
+  return <Card as="section" className="record-panel"><CardHeader flush><h2>{translateText("Dispute timeline")}</h2></CardHeader><ol className="timeline">{events.map((event) => <li key={`${event.title}-${event.time}`}><strong>{translateText(event.title)}</strong><time>{event.time}</time><span>{translateText(event.detail)}</span></li>)}</ol></Card>;
 }
 
 function DecisionDetails({ model, translateText }: { model: DisputeCaseModel; translateText: (value: string) => string }) {
@@ -212,13 +212,13 @@ function DecisionDetails({ model, translateText }: { model: DisputeCaseModel; tr
 }
 
 function MemberSummary({ heading, id, name, href, translateText }: { heading: string; id: string | null; name: string; href: string | null; translateText: (value: string) => string }) {
-  return <Card as="section" className="record-panel"><h2>{translateText(heading)}</h2><div className="side-facts"><div><span>{translateText("Name")}</span><strong><MemberLink id={id} name={name} href={href} /></strong></div><div><span>{translateText("Member ID")}</span><strong>{id ?? "—"}</strong></div></div>{href && <Link className="btn full-width" href={href}>{translateText("See Member profile")}</Link>}</Card>;
+  return <Card as="section" className="record-panel"><CardHeader flush><h2>{translateText(heading)}</h2></CardHeader><div className="side-facts"><div><span>{translateText("Name")}</span><strong><MemberLink id={id} name={name} href={href} /></strong></div><div><span>{translateText("Member ID")}</span><strong>{id ?? "—"}</strong></div></div>{href && <Link className="btn full-width" href={href}>{translateText("See Member profile")}</Link>}</Card>;
 }
 
 function RelatedQuestPanel({ model, translateText }: { model: DisputeCaseModel; translateText: (value: string) => string }) {
   return (
     <Card as="section" className="section related-quest-panel">
-      <div className="record-panel-head"><h3>{translateText("Related Quest")}</h3><span className={`badge ${questStatusClass(model.questState)}`}>{translateText(questStateLabel(model.questState))}</span></div>
+      <CardHeader flush className="record-panel-head"><h3>{translateText("Related Quest")}</h3><span className={`badge ${questStatusClass(model.questState)}`}>{translateText(questStateLabel(model.questState))}</span></CardHeader>
       <div className="side-facts">
         <div><span>{translateText("Quest")}</span><strong>{model.questTitle}</strong></div>
         <div><span>{translateText("Quest ID")}</span><strong>{model.questId}</strong></div>
