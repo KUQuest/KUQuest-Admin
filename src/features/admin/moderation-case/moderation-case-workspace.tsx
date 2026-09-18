@@ -8,6 +8,7 @@ import type {
 import { hasModerationHistory } from "./moderation-case-context";
 import { questStateLabel } from "../domain/rulebook";
 import { Card, CardHeader } from "../../../components/ui/card";
+import { AdminOverviewMeta } from "../../../components/admin/admin-overview-meta";
 
 export type ModerationCaseKind = "Report Case" | "Conduct Report" | "Dispute Case";
 
@@ -91,11 +92,11 @@ export function ModerationHistoryPanel({
           </p>
         </div>
       )}
-      <dl className="overview-meta moderation-case-history-grid">
+      <AdminOverviewMeta className="moderation-case-history-grid">
         <div><dt>{translateText("Current Member status")}</dt><dd>{translateText(displayValue(summary.currentMemberStatus, fallback))}</dd></div>
         <div><dt>{translateText("Previous reports received")}</dt><dd>{displayValue(summary.previousReportCount, fallback)}</dd></div>
         <div><dt>{translateText("Confirmed previous violations")}</dt><dd>{displayValue(summary.confirmedViolationCount, fallback)}</dd></div>
-      </dl>
+      </AdminOverviewMeta>
       <div className="overview-group">
         <span>{translateText("Previous moderation actions")}</span>
         <p>{actionText}</p>
@@ -142,13 +143,13 @@ function CaseContextPanel({
         </div>
         <span className={`badge ${badgeClass}`}>{translateText(statusLabel)}</span>
       </CardHeader>
-      {showCaseMetadata && <dl className="overview-meta moderation-case-context-grid">
+      {showCaseMetadata && <AdminOverviewMeta className="moderation-case-context-grid">
         <div><dt>{translateText("Case")}</dt><dd>{caseId}</dd></div>
         <div><dt>{translateText("Case type")}</dt><dd>{translateText(kind)}</dd></div>
         <div><dt>{translateText("Source")}</dt><dd>{translateText(source)}</dd></div>
         <div><dt>{translateText("Submitted")}</dt><dd>{submittedAt}</dd></div>
         <div><dt>{translateText(evidenceLabel)}</dt><dd>{evidenceCount || translateText("None")}</dd></div>
-      </dl>}
+      </AdminOverviewMeta>}
       <div className="overview-group">
         <span>{translateText("Submitted detail")}</span>
         <p>{detail || fallback}</p>
@@ -172,9 +173,9 @@ function CaseContextPanel({
         </div>
       )}
       {financialSummary && financialSummary.length > 0 && (
-        <dl className="overview-meta moderation-case-finance">
+        <AdminOverviewMeta className="moderation-case-finance">
           {financialSummary.map((item) => <div key={item.label}><dt>{translateText(item.label)}</dt><dd>{item.value}</dd></div>)}
-        </dl>
+        </AdminOverviewMeta>
       )}
       <div className="overview-group moderation-case-policy-note">
         <span>{translateText("Policy boundary")}</span>

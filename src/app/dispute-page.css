@@ -45,12 +45,6 @@
   display: grid;
   gap: 18px;
 }
-.overview-meta {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
-  margin: 0;
-}
 .overview-meta > div {
   min-width: 0;
 }
@@ -86,10 +80,6 @@
   font-size: 12px;
 }
 @media (max-width: 700px) {
-  .overview-meta {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
   .dispute-resolution-meta {
     grid-template-columns: 1fr;
   }

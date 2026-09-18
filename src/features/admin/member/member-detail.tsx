@@ -110,7 +110,7 @@ function latestWalletTransactionAt(model: MemberModel): string | null {
 function MemberSummary({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
   return (
     <Card as="section" className="mb-[18px] p-[18px]">
-      <div className="grid grid-cols-[minmax(250px,1.35fr)_minmax(300px,1fr)] items-center gap-5 max-[1100px]:grid-cols-[minmax(250px,1fr)_minmax(270px,1fr)] max-[600px]:grid-cols-1">
+      <div className="grid !grid-cols-[minmax(250px,1.35fr)_minmax(300px,1fr)] items-center gap-5 max-[1100px]:!grid-cols-[minmax(250px,1fr)_minmax(270px,1fr)] max-[600px]:!grid-cols-1">
         <div className="user-summary-identity flex min-w-0 items-start gap-3.5">
           <span className="user-profile-avatar">{initials(model)}</span>
           <div>
@@ -121,10 +121,10 @@ function MemberSummary({ model, translateText }: { model: MemberModel; translate
             <div className="user-detail-tags">{model.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>
           </div>
         </div>
-        <div className="grid grid-cols-3 border-l border-admin-border max-[600px]:border-l-0 max-[600px]:border-t max-[600px]:pt-3">
-          <div className="grid min-w-0 gap-0.5 border-r border-admin-border px-3 last:border-r-0 max-[600px]:px-2"><strong className="text-lg">{averageRating(model)}</strong><span className="text-admin-muted text-[var(--member-font-meta)] leading-[1.4]">{translateText("Rating")}</span></div>
-          <div className="grid min-w-0 gap-0.5 border-r border-admin-border px-3 last:border-r-0 max-[600px]:px-2"><strong className="text-lg">{reviewCount(model)}</strong><span className="text-admin-muted text-[var(--member-font-meta)] leading-[1.4]">{translateText("Reviews")}</span></div>
-          <div className="grid min-w-0 gap-0.5 border-r border-admin-border px-3 last:border-r-0 max-[600px]:px-2"><strong className="text-lg">{completedQuestCount(model)}</strong><span className="text-admin-muted text-[var(--member-font-meta)] leading-[1.4]">{translateText("Completed quests")}</span></div>
+        <div className="grid !grid-cols-3 border-l border-admin-border max-[600px]:border-l-0 max-[600px]:border-t max-[600px]:pt-3">
+          <div className="grid min-w-0 !grid-cols-1 gap-0.5 border-r border-admin-border px-3 last:border-r-0 max-[600px]:px-2"><strong className="text-lg">{averageRating(model)}</strong><span className="text-admin-muted text-[var(--member-font-meta)] leading-[1.4]">{translateText("Rating")}</span></div>
+          <div className="grid min-w-0 !grid-cols-1 gap-0.5 border-r border-admin-border px-3 last:border-r-0 max-[600px]:px-2"><strong className="text-lg">{reviewCount(model)}</strong><span className="text-admin-muted text-[var(--member-font-meta)] leading-[1.4]">{translateText("Reviews")}</span></div>
+          <div className="grid min-w-0 !grid-cols-1 gap-0.5 border-r border-admin-border px-3 last:border-r-0 max-[600px]:px-2"><strong className="text-lg">{completedQuestCount(model)}</strong><span className="text-admin-muted text-[var(--member-font-meta)] leading-[1.4]">{translateText("Completed quests")}</span></div>
         </div>
       </div>
     </Card>
@@ -202,14 +202,14 @@ function MemberReviewPreview({ model, translateText, onOpenReviews }: { model: M
 
 function OverviewTab({ model, translateText, onRecordViolation, onAddNote, onOpenReviews }: { model: MemberModel; translateText: (value: string) => string; onRecordViolation: () => void; onAddNote: () => void; onOpenReviews: () => void }) {
   return (
-    <div className="grid grid-cols-[minmax(0,1.6fr)_minmax(280px,0.72fr)] items-start gap-[18px] max-[900px]:grid-cols-1">
-      <div className="grid min-w-0 gap-[18px] max-[900px]:contents">
+    <div className="grid !grid-cols-[minmax(0,1.6fr)_minmax(280px,0.72fr)] items-start gap-[18px] max-[900px]:!grid-cols-1">
+      <div className="grid min-w-0 !grid-cols-1 gap-[18px] max-[900px]:contents">
         <MemberAbout model={model} translateText={translateText} />
         <MemberPayoutPreview model={model} translateText={translateText} />
         <Card as="section" className="user-detail-panel"><CardHeader flush><h2>{translateText("Certificates")}</h2></CardHeader>{model.source === "api" ? <p className="audit-note">{translateText("Certificate detail is not provided by the Admin API.")}</p> : <div className="user-certificate-list"><div><strong>{translateText("University marketplace orientation")}</strong><span>KuQuest · {model.createdAt}</span></div></div>}</Card>
         <MemberReviewPreview model={model} translateText={translateText} onOpenReviews={onOpenReviews} />
       </div>
-      <aside className="grid min-w-0 gap-[18px] max-[900px]:contents"><MemberAccountInfo model={model} translateText={translateText} /><MemberModerationSummary model={model} translateText={translateText} onRecordViolation={onRecordViolation} /><MemberRecentReports model={model} translateText={translateText} /><AdminNotes model={model} translateText={translateText} onAddNote={onAddNote} /></aside>
+      <aside className="grid min-w-0 !grid-cols-1 gap-[18px] max-[900px]:contents"><MemberAccountInfo model={model} translateText={translateText} /><MemberModerationSummary model={model} translateText={translateText} onRecordViolation={onRecordViolation} /><MemberRecentReports model={model} translateText={translateText} /><AdminNotes model={model} translateText={translateText} onAddNote={onAddNote} /></aside>
     </div>
   );
 }

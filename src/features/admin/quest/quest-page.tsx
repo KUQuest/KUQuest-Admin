@@ -362,8 +362,8 @@ function QuestDetailContent({
   ) : <p className="audit-note">{translateText("No linked Dispute Case was returned.")}</p>;
 
   return (
-    <div className={recordLayout ? "grid items-start gap-[18px] [grid-template-columns:minmax(0,1.65fr)_minmax(290px,0.72fr)] max-[1000px]:grid-cols-1" : "grid gap-[18px]"}>
-      <div className={recordLayout ? "grid min-w-0 gap-[18px]" : "contents"}>
+    <div className={recordLayout ? "grid items-start gap-[18px] !grid-cols-[minmax(0,1.65fr)_minmax(290px,0.72fr)] max-[1000px]:!grid-cols-1" : "grid !grid-cols-1 gap-[18px]"}>
+      <div className={recordLayout ? "grid min-w-0 !grid-cols-1 gap-[18px]" : "contents"}>
       <Section title="Quest summary" variant={sectionVariant}>
         <div className="facts quest-detail-facts">
           <Fact label="Status"><Badge state={state} />{hidden ? <span className="badge neutral quest-hidden-overlay">{translateText("Hidden")}</span> : null}</Fact>
@@ -570,7 +570,7 @@ function QuestDetailContent({
       {!recordLayout ? <Section title="Dispute and risk" variant={sectionVariant}><div className="quest-summary-context-section">{disputeRiskContent}</div></Section> : null}
       </div>
 
-      <aside className={recordLayout ? "grid min-w-0 gap-[18px]" : "contents"}>
+      <aside className={recordLayout ? "grid min-w-0 !grid-cols-1 gap-[18px]" : "contents"}>
       {recordLayout ? (
         <>
           <Section title="Hirer" variant={sectionVariant}>

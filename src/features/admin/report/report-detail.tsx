@@ -16,6 +16,7 @@ import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { RecordStatusBar } from "../../../components/admin/record-status-bar";
 import { Button } from "../../../components/ui/button";
 import { Card, CardHeader } from "../../../components/ui/card";
+import { AdminOverviewMeta } from "../../../components/admin/admin-overview-meta";
 import { adminApi, type AdminEvidence, type ReportDecision } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { reportRoutes } from "../admin-routes";
@@ -247,7 +248,7 @@ function ReportOverview({
         <Card as="section" className="section">
           <CardHeader flush><h3>{translateText("Report overview")}</h3></CardHeader>
           <div className="facts"><div className="fact"><span>{translateText("Status")}</span><strong><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></strong></div><div className="fact"><span>{translateText("Report type")}</span><strong>{translateText(model.reportType)}</strong></div><div className="fact"><span>{translateText("Reported")}</span><strong>{formatAdminTimestamp(model.submittedAt)}</strong></div></div>
-          <dl className="overview-meta moderation-case-context-grid"><div><dt>{translateText("Case")}</dt><dd>{model.id}</dd></div><div><dt>{translateText("Case type")}</dt><dd>{translateText("Report Case")}</dd></div><div><dt>{translateText("Source")}</dt><dd>{translateText("Message")}</dd></div><div><dt>{translateText("Submitted")}</dt><dd>{formatAdminTimestamp(model.submittedAt)}</dd></div><div><dt>{translateText("Evidence References")}</dt><dd>{model.evidence.length || translateText("None")}</dd></div></dl>
+          <AdminOverviewMeta className="moderation-case-context-grid"><div><dt>{translateText("Case")}</dt><dd>{model.id}</dd></div><div><dt>{translateText("Case type")}</dt><dd>{translateText("Report Case")}</dd></div><div><dt>{translateText("Source")}</dt><dd>{translateText("Message")}</dd></div><div><dt>{translateText("Submitted")}</dt><dd>{formatAdminTimestamp(model.submittedAt)}</dd></div><div><dt>{translateText("Evidence References")}</dt><dd>{model.evidence.length || translateText("None")}</dd></div></AdminOverviewMeta>
           <div className="overview-group"><span>{translateText("Submitted detail")}</span><p>{model.detail}</p></div>
           <div className="facts report-overview-parties"><div className="fact"><span>{translateText("Reported Member")}</span><strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} interactive={false} /></strong><small>{model.reportedMemberId ?? "—"}</small></div><div className="fact"><span>{translateText("Reporting Member")}</span><strong><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} interactive={false} /></strong><small>{model.reporterId ?? "—"}</small></div></div>
         </Card>
@@ -259,11 +260,11 @@ function ReportOverview({
     <Card as="section" className="record-panel report-overview">
       <CardHeader flush className="record-panel-head"><h2>{translateText("Report detail")}</h2></CardHeader>
       <p className="record-description">{model.detail}</p>
-      <dl className="overview-meta">
+      <AdminOverviewMeta>
         <div><dt>{translateText("Report type")}</dt><dd>{translateText(model.reportType)}</dd></div>
         <div><dt>{translateText("Submitted by")}</dt><dd><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} /></dd></div>
         <div><dt>{translateText("Reported Member")}</dt><dd><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} /></dd></div>
-      </dl>
+      </AdminOverviewMeta>
     </Card>
   );
 }
@@ -373,9 +374,9 @@ function ResolutionDetails({ model, translateText }: { model: ReportCaseModel; t
     <>
       {model.decisionReason && <div className="overview-group"><span>{translateText("Reason for decision")}</span><p>{model.decisionReason}</p></div>}
       {details.some(([, value]) => value) && (
-        <dl className="overview-meta report-resolution-meta">
+        <AdminOverviewMeta className="report-resolution-meta">
           {details.flatMap(([label, value]) => value ? [<div key={label}><dt>{translateText(label)}</dt><dd>{value}</dd></div>] : [])}
-        </dl>
+        </AdminOverviewMeta>
       )}
     </>
   );

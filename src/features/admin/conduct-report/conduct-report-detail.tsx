@@ -15,6 +15,7 @@ import { adminApi, type ReportDecision } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { Button } from "../../../components/ui/button";
 import { Card, CardHeader } from "../../../components/ui/card";
+import { AdminOverviewMeta } from "../../../components/admin/admin-overview-meta";
 import { conductReportRoutes } from "../admin-routes";
 import { questStateLabel } from "../domain/rulebook";
 import { questStatusClass } from "../quest/quest-model";
@@ -230,14 +231,14 @@ function ConductReportOverview({
           <strong>{formatAdminTimestamp(model.submittedAt)}</strong>
         </div>
       </div>
-      <dl className="overview-meta moderation-case-context-grid">
+      <AdminOverviewMeta className="moderation-case-context-grid">
         <div><dt>{translateText("Case")}</dt><dd>{model.id}</dd></div>
         <div><dt>{translateText("Case type")}</dt><dd>{translateText("Conduct Report")}</dd></div>
         <div><dt>{translateText("Source")}</dt><dd>{translateText("Quest record")}</dd></div>
         <div><dt>{translateText("Submitted")}</dt><dd>{formatAdminTimestamp(model.submittedAt)}</dd></div>
         <div><dt>{translateText("Evidence")}</dt><dd>{model.questRecord ? translateText("Quest record") : translateText("None")}</dd></div>
         <div><dt>{translateText("Reason code")}</dt><dd>{model.reasonCode ? translateText(conductReportReasonLabel(model.reasonCode)) : "—"}</dd></div>
-      </dl>
+      </AdminOverviewMeta>
       <div className="overview-group">
         <span>{translateText("Submitted detail")}</span>
         <p>{model.detail}</p>
@@ -341,11 +342,11 @@ function ConductModerationContext({ model, translateText }: { model: ConductRepo
   return (
     <Card as="section" className="record-panel">
       <CardHeader flush className="record-panel-head"><h2>{translateText("Member moderation context")}</h2><span className="section-count">{hasModerationHistory(summary) ? translateText("Available") : translateText("Partial")}</span></CardHeader>
-      <dl className="overview-meta moderation-case-history-grid">
+      <AdminOverviewMeta className="moderation-case-history-grid">
         <div><dt>{translateText("Current Member status")}</dt><dd>{summary.currentMemberStatus ? translateText(summary.currentMemberStatus) : fallback}</dd></div>
         <div><dt>{translateText("Previous reports received")}</dt><dd>{summary.previousReportCount ?? fallback}</dd></div>
         <div><dt>{translateText("Confirmed previous violations")}</dt><dd>{summary.confirmedViolationCount ?? fallback}</dd></div>
-      </dl>
+      </AdminOverviewMeta>
       <div className="overview-group"><span>{translateText("Previous moderation actions")}</span><p>{actionText}</p></div>
       <div className="overview-group"><span>{translateText("Internal Admin notes")}</span><p>{noteText}</p></div>
       <div className="overview-group"><span>{translateText("Policy boundary")}</span><p>{translateText("Conduct Reports use the Quest record. Work Chat or Candidate Inquiry history may be opened only for this case, with an Admin Action log entry.")}</p></div>
@@ -376,11 +377,11 @@ function ResolutionDetails({
         </div>
       )}
       {details.some(([, value]) => value) && (
-        <dl className="overview-meta report-resolution-meta">
+        <AdminOverviewMeta className="report-resolution-meta">
           {details.flatMap(([label, value]) => value
             ? [<div key={label}><dt>{translateText(label)}</dt><dd>{value}</dd></div>]
             : [])}
-        </dl>
+        </AdminOverviewMeta>
       )}
     </>
   );
