@@ -1496,6 +1496,7 @@ dialog.drawer.wallet-drawer {
   min-height: 44px;
   font-size: 16px;
   line-height: 1.4;
+  text-align: center;
 }
 dialog {
   width: min(470px, calc(100vw - 32px));
