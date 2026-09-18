@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
+import { PageSizeControls, Pagination, Table } from "../../../components/ui";
 import { isAdminMockEnabled } from "../../../lib/auth/admin-auth-mode";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import {
@@ -21,13 +22,7 @@ import {
   formatActivityLogTimestamp,
   type ActivityLogEntry,
 } from "./activity-log-model";
-import {
-  ADMIN_BOARD_PAGE_SIZES,
-  pageCount,
-  pageRange,
-  pageRows,
-  type AdminBoardPageSize,
-} from "../data/board-pagination";
+import { pageCount, pageRange, pageRows, type AdminBoardPageSize } from "../data/board-pagination";
 import {
   loadActivityLogPageData,
   type ActivityLogFilters,
@@ -356,17 +351,17 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
           </div>
           <div className="activity-filter-actions"><button className="btn primary" type="submit" disabled={loading}>{translateText("Apply filters")}</button><button className="btn" type="button" onClick={clearFilters} disabled={loading}>{translateText("Clear filters")}</button></div>
         </form>
-        <div className="toolbar activity-log-toolbar"><label className="inline-search" htmlFor="activity-search">{translateText("Search loaded activity")}<input id="activity-search" type="search" value={search} onChange={(event) => { setSearch(event.target.value); setPageNumber(1); }} placeholder={translateText("Search loaded activity")}/></label><div className="page-size-controls" aria-label={translateText("Rows per page")}>{ADMIN_BOARD_PAGE_SIZES.map((size) => <button className={`page-size-button${pageSize === size ? " active" : ""}`} type="button" key={size} onClick={() => { setPageSize(size); setPageNumber(1); }}>{size === "all" ? translateText("Show all") : `${translateText("Show")} ${size}`}</button>)}</div><span className="count" aria-live="polite">{filteredEntries.length ? pageSize === "all" ? `${translateText("Showing all")} ${filteredEntries.length} ${translateText(filteredEntries.length === 1 ? "result" : "results")}` : `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${filteredEntries.length} ${translateText(filteredEntries.length === 1 ? "result" : "results")}` : translateText("Showing 0 of 0 results")}</span></div>
+        <div className="toolbar activity-log-toolbar"><label className="inline-search" htmlFor="activity-search">{translateText("Search loaded activity")}<input id="activity-search" type="search" value={search} onChange={(event) => { setSearch(event.target.value); setPageNumber(1); }} placeholder={translateText("Search loaded activity")}/></label><PageSizeControls value={pageSize} translateText={translateText} onChange={(size) => { setPageSize(size); setPageNumber(1); }} /><span className="count" aria-live="polite">{filteredEntries.length ? pageSize === "all" ? `${translateText("Showing all")} ${filteredEntries.length} ${translateText(filteredEntries.length === 1 ? "result" : "results")}` : `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${filteredEntries.length} ${translateText(filteredEntries.length === 1 ? "result" : "results")}` : translateText("Showing 0 of 0 results")}</span></div>
         <output id="activity-status" className="activity-log-status" aria-live="polite">{loading ? translateText("Loading activity") : `${filteredEntries.length} ${translateText("loaded entries")}`}</output>
         {mockEnabled ? <p className="api-data-notice activity-log-fixture-notice">{translateText("Fixture data is active. Some records do not include before and after state.")}</p> : null}
         {loadError ? <div className="activity-log-error" role="alert"><strong>{translateText("Activity log is not available")}</strong><p>{translateText(loadError)}</p><button className="btn" type="button" onClick={retry}>{translateText("Try again")}</button></div> : null}
         {!loadError && loading && !entries.length ? <div className="empty activity-log-empty"><h3>{translateText("Loading activity")}</h3><p>{translateText("Loading activity records.")}</p></div> : null}
         {!loadError && !loading && !visibleEntries.length ? <div className="empty activity-log-empty"><h3>{translateText("No activity recorded")}</h3><p>{translateText("Administrative activity will appear here as actions are taken.")}</p></div> : null}
-        {!loadError && visibleEntries.length ? <div className="table-wrap activity-log-table-wrap"><table className="data activity-log-table"><caption>{translateText("Activity Log records")}</caption><thead><tr><th scope="col">{translateText("Timestamp")}</th><th scope="col">{translateText("Actor")}</th><th scope="col">{translateText("Activity")}</th><th scope="col">{translateText("Target")}</th><th scope="col">{translateText("Reason")}</th><th scope="col">{translateText("Details")}</th></tr></thead><tbody>{visibleEntries.map((entry) => {
+        {!loadError && visibleEntries.length ? <div className="table-wrap activity-log-table-wrap"><Table className="data activity-log-table"><caption>{translateText("Activity Log records")}</caption><thead><tr><th scope="col">{translateText("Timestamp")}</th><th scope="col">{translateText("Actor")}</th><th scope="col">{translateText("Activity")}</th><th scope="col">{translateText("Target")}</th><th scope="col">{translateText("Reason")}</th><th scope="col">{translateText("Details")}</th></tr></thead><tbody>{visibleEntries.map((entry) => {
           const target = activityLogTargetLabel(entry);
           return <tr key={entry.id} tabIndex={0} aria-label={`${translateText("View activity details")}: ${translateText(activityLogActionLabel(entry.action))}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; setSelectedEntry(entry); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedEntry(entry); } }}><td>{entry.createdAt ? <time dateTime={entry.createdAt}>{formatActivityLogTimestamp(entry.createdAt)}<small>{formatActivityLogRelativeTime(entry.createdAt)}</small></time> : translateText("Not provided")}</td><td aria-label={`${entry.adminName || translateText("Not provided")} · ${entry.adminId || translateText("Not provided")}`}><span className="activity-log-actor"><span className="avatar" aria-hidden="true">{entry.adminInitials}</span><span><strong>{entry.adminName || translateText("Not provided")}</strong><small>{entry.adminId || translateText("Not provided")}</small></span></span></td><td><strong className="activity-log-action">{translateText(activityLogActionLabel(entry.action))}</strong></td><td><span className="activity-log-target">{translateText(displayValue(target))}</span></td><td>{translateText(activityLogReasonLabel(entry.reasonCode))}</td><td><button className="btn activity-log-detail-button" type="button" onClick={() => setSelectedEntry(entry)} aria-label={translateText("View activity details")}>{translateText("View")}</button></td></tr>;
-        })}</tbody></table></div> : null}
-        {filteredEntries.length ? <div className="table-pagination" aria-label={translateText("Activity Log pagination")}><button className="page-nav" type="button" disabled={currentPage <= 1} onClick={() => setPageNumber((value) => value - 1)}>{translateText("Previous")}</button><span className="page-indicator">{translateText("Page")} {currentPage} {translateText("of")} {Math.max(totalPages, 1)}</span><button className="page-nav" type="button" disabled={currentPage >= totalPages} onClick={() => setPageNumber((value) => value + 1)}>{translateText("Next")}</button></div> : null}
+        })}</tbody></Table></div> : null}
+        {filteredEntries.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Activity Log pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className="table-pagination" /> : null}
         {paginationError ? <div className="activity-log-error" role="alert"><p>{translateText(paginationError)}</p><button className="btn" type="button" onClick={loadMore}>{translateText("Try again")}</button></div> : null}
         {page?.nextCursor ? <div className="activity-log-pagination"><button className="btn" type="button" onClick={loadMore} disabled={loading}>{translateText(loading ? "Loading more" : "Load more")}</button></div> : null}
       </section>

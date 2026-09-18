@@ -1,6 +1,46 @@
 import { Button } from "./button";
 import { cn } from "./utils";
 
+export type BoardPageSize = 10 | 25 | 50 | "all";
+
+const boardPageSizes = [10, 25, 50, "all"] as const satisfies readonly BoardPageSize[];
+const identityText = (text: string) => text;
+
+export type PageSizeControlsProps = {
+  value: number | "all";
+  onChange: (size: BoardPageSize) => void;
+  translateText?: (value: string) => string;
+  disabled?: boolean;
+  className?: string;
+};
+
+export function PageSizeControls({
+  value,
+  onChange,
+  translateText = identityText,
+  disabled = false,
+  className,
+}: PageSizeControlsProps) {
+  return (
+    <div className={cn("page-size-controls", className)} aria-label={translateText("Rows per page")}>
+      {boardPageSizes.map((size) => (
+        <Button
+          key={size}
+          variant="outline"
+          size="xs"
+          className={cn("page-size-button", value === size && "active")}
+          type="button"
+          disabled={disabled}
+          aria-pressed={value === size}
+          onClick={() => onChange(size)}
+        >
+          {size === "all" ? translateText("Show all") : `${translateText("Show")} ${size}`}
+        </Button>
+      ))}
+    </div>
+  );
+}
+
 export type PaginationProps = {
   page: number;
   pageCount: number;
@@ -8,6 +48,10 @@ export type PaginationProps = {
   className?: string;
   previousLabel?: string;
   nextLabel?: string;
+  pageLabel?: string;
+  ofLabel?: string;
+  ariaLabel?: string;
+  buttonClassName?: string;
 };
 
 export function Pagination({
@@ -17,15 +61,19 @@ export function Pagination({
   className,
   previousLabel = "Previous",
   nextLabel = "Next",
+  pageLabel = "Page",
+  ofLabel = "of",
+  ariaLabel = "Pagination",
+  buttonClassName,
 }: PaginationProps) {
   const safePage = Math.min(Math.max(page, 1), Math.max(pageCount, 1));
   return (
-    <nav className={cn("flex items-center justify-between gap-3", className)} aria-label="Pagination">
-      <Button variant="outline" size="sm" disabled={safePage <= 1} onClick={() => onPageChange(safePage - 1)}>
+    <nav className={cn("flex items-center justify-between gap-3", className)} aria-label={ariaLabel}>
+      <Button variant="outline" size="xs" className={cn("page-nav", buttonClassName)} disabled={safePage <= 1} onClick={() => onPageChange(safePage - 1)}>
         {previousLabel}
       </Button>
-      <span className="text-sm text-admin-muted" aria-live="polite">Page {safePage} of {Math.max(pageCount, 1)}</span>
-      <Button variant="outline" size="sm" disabled={safePage >= pageCount} onClick={() => onPageChange(safePage + 1)}>
+      <span className="page-indicator text-sm text-admin-muted" aria-live="polite">{pageLabel} {safePage} {ofLabel} {Math.max(pageCount, 1)}</span>
+      <Button variant="outline" size="xs" className={cn("page-nav", buttonClassName)} disabled={safePage >= pageCount} onClick={() => onPageChange(safePage + 1)}>
         {nextLabel}
       </Button>
     </nav>

@@ -2,7 +2,7 @@ import { forwardRef, type ButtonHTMLAttributes } from "react";
 import { cn } from "./utils";
 
 export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "danger" | "link";
-export type ButtonSize = "sm" | "md" | "lg" | "icon";
+export type ButtonSize = "xs" | "sm" | "md" | "lg" | "icon";
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary: "bg-admin-accent text-white hover:bg-admin-accent-strong",
@@ -14,6 +14,7 @@ const variantClasses: Record<ButtonVariant, string> = {
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
+  xs: "min-h-8 px-2 text-xs",
   sm: "min-h-9 px-3 text-sm",
   md: "min-h-10 px-4 text-sm",
   lg: "min-h-11 px-5 text-base",

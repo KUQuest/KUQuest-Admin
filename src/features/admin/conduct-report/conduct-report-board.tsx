@@ -6,17 +6,12 @@ import { useEffect, useState } from "react";
 
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
+import { PageSizeControls, Pagination, Table } from "../../../components/ui";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { conductReportRoutes } from "../admin-routes";
 import { formatAdminTimestamp } from "../date-format";
 import { loadAllConductReportsFromMock as loadAllConductReportsFromMockData, loadConductReportsFromMock } from "./conduct-report-adapter";
-import {
-  ADMIN_BOARD_PAGE_SIZES,
-  pageCount,
-  pageRange,
-  pageRows,
-  type AdminBoardPageSize,
-} from "../data/board-pagination";
+import { pageCount, pageRange, pageRows, type AdminBoardPageSize } from "../data/board-pagination";
 import {
   CONDUCT_REPORT_UPDATED_EVENT,
   type ConductReportModel,
@@ -223,11 +218,11 @@ export function ConductReportBoard({
                 onChange={(event) => { setQuery(event.target.value); setPageNumber(1); }}
               />
             </label>
-            <div className="page-size-controls" aria-label={translateText("Rows per page")}>{ADMIN_BOARD_PAGE_SIZES.map((size) => <button key={size} className={`page-size-button${pageSize === size ? " active" : ""}`} type="button" disabled={loadingMore} onClick={() => { setPageSize(size); setPageNumber(1); if (size === "all") void loadAllPages(); }}>{size === "all" ? translateText("Show all") : `${translateText("Show")} ${size}`}</button>)}</div>
+            <PageSizeControls value={pageSize} disabled={loadingMore} translateText={translateText} onChange={(size) => { setPageSize(size); setPageNumber(1); if (size === "all") void loadAllPages(); }} />
             <span className="count" aria-live="polite">{loadingMore ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}</span>
           </div>
           <div className="table-wrap" aria-label={translateText("Conduct Reports table")}>
-            <table className="data report-table">
+            <Table className="data report-table">
               <caption>{translateText("Conduct Reports")}</caption>
               <thead>
                 <tr>
@@ -290,7 +285,7 @@ export function ConductReportBoard({
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </Table>
             {!models.length && (
               <div className="empty">
                 <h3>{translateText("No matching Conduct Reports")}</h3>
@@ -300,14 +295,14 @@ export function ConductReportBoard({
           </div>
           {page.nextCursor && (
             <div className="conduct-report-next-page">
-              {models.length ? <div className="table-pagination" aria-label={translateText("Conduct Reports pagination")}><button className="page-nav" type="button" disabled={currentPage <= 1} onClick={() => setPageNumber((value) => value - 1)}>{translateText("Previous")}</button><span className="page-indicator">{translateText("Page")} {currentPage} {translateText("of")} {Math.max(totalPages, 1)}</span><button className="page-nav" type="button" disabled={currentPage >= totalPages} onClick={() => setPageNumber((value) => value + 1)}>{translateText("Next")}</button></div> : null}
+              {models.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Conduct Reports pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className="table-pagination" /> : null}
               <button className="btn" type="button" data-conduct-report-load-more onClick={loadMore} disabled={loadingMore}>
                 {translateText(loadingMore ? "Loading more Conduct Reports…" : "Load more Conduct Reports")}
               </button>
               {paginationError && <p className="field-error" role="alert">{translateText(paginationError)}</p>}
             </div>
           )}
-          {!page.nextCursor && models.length ? <div className="table-pagination" aria-label={translateText("Conduct Reports pagination")}><button className="page-nav" type="button" disabled={currentPage <= 1} onClick={() => setPageNumber((value) => value - 1)}>{translateText("Previous")}</button><span className="page-indicator">{translateText("Page")} {currentPage} {translateText("of")} {Math.max(totalPages, 1)}</span><button className="page-nav" type="button" disabled={currentPage >= totalPages} onClick={() => setPageNumber((value) => value + 1)}>{translateText("Next")}</button></div> : null}
+          {!page.nextCursor && models.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Conduct Reports pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className="table-pagination" /> : null}
         </section>
       </main>
     </>

@@ -2,11 +2,7 @@ import type { HTMLAttributes, TableHTMLAttributes } from "react";
 import { cn } from "./utils";
 
 export function Table({ className, ...props }: TableHTMLAttributes<HTMLTableElement>) {
-  return (
-    <div className="w-full overflow-x-auto">
-      <table className={cn("w-full min-w-[40rem] border-collapse text-left text-sm", className)} {...props} />
-    </div>
-  );
+  return <table className={cn("w-full min-w-[40rem] border-collapse text-left text-sm", className)} {...props} />;
 }
 
 export function TableHeader({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) {

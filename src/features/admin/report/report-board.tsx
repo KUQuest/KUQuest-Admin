@@ -6,17 +6,12 @@ import { useRouter } from "next/navigation";
 
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
+import { PageSizeControls, Pagination, Table } from "../../../components/ui";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { reportRoutes } from "../admin-routes";
 import { formatAdminTimestamp } from "../date-format";
 import { loadAllReportCasesFromMock as loadAllReportCasesFromMockData, loadReportCasesFromMock } from "./report-adapter";
-import {
-  ADMIN_BOARD_PAGE_SIZES,
-  pageCount,
-  pageRange,
-  pageRows,
-  type AdminBoardPageSize,
-} from "../data/board-pagination";
+import { pageCount, pageRange, pageRows, type AdminBoardPageSize } from "../data/board-pagination";
 import {
   REPORT_CASE_UPDATED_EVENT,
   type ReportCaseModel,
@@ -175,9 +170,9 @@ export function ReportCaseBoard({ initialData }: { initialData?: ReportCasePageD
           <div className="tabs" role="tablist" aria-label={translateText("Report Case status filters")}>
             {tabs.map((tab) => <button key={tab.id} className={`tab ${activeTab === tab.id ? "active" : ""}`} type="button" role="tab" aria-label={tab.id === "open" ? translateText("Open") : translateText(tab.label)} aria-selected={activeTab === tab.id} onClick={() => { setActiveTab(tab.id); setPageNumber(1); }}>{translateText(tab.label)}{tab.id === "open" ? <span className="tab-count" aria-hidden="true"> ({openCount})</span> : null}</button>)}
           </div>
-          <div className="toolbar"><label className="inline-search" htmlFor="report-case-search">{translateText("Search Report Cases")}<input id="report-case-search" type="search" aria-label={translateText("Search Report Cases")} placeholder={translateText("Search by Report Case, Member, or Report type")} value={query} onChange={(event) => { setQuery(event.target.value); setPageNumber(1); }} /></label><div className="page-size-controls" aria-label={translateText("Rows per page")}>{ADMIN_BOARD_PAGE_SIZES.map((size) => <button key={size} className={`page-size-button${pageSize === size ? " active" : ""}`} type="button" disabled={loadingMore} onClick={() => { setPageSize(size); setPageNumber(1); if (size === "all") void loadAllPages(); }}>{size === "all" ? translateText("Show all") : `${translateText("Show")} ${size}`}</button>)}</div><span className="count" aria-live="polite">{loadingMore ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}</span></div>
+          <div className="toolbar"><label className="inline-search" htmlFor="report-case-search">{translateText("Search Report Cases")}<input id="report-case-search" type="search" aria-label={translateText("Search Report Cases")} placeholder={translateText("Search by Report Case, Member, or Report type")} value={query} onChange={(event) => { setQuery(event.target.value); setPageNumber(1); }} /></label><PageSizeControls value={pageSize} disabled={loadingMore} translateText={translateText} onChange={(size) => { setPageSize(size); setPageNumber(1); if (size === "all") void loadAllPages(); }} /><span className="count" aria-live="polite">{loadingMore ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}</span></div>
           <div className="table-wrap" aria-label={translateText("Report Cases table")}>
-            <table className="data report-table">
+            <Table className="data report-table">
               <caption>{translateText("Report Cases")}</caption>
               <thead><tr><th>{translateText("Report Case")}</th><th>{translateText("Source")}</th><th>{translateText("Reported Member")}</th><th>{translateText("Reported by")}</th><th>{translateText("Report type")}</th><th>{translateText("Status")}</th><th>{translateText("Reported")}</th></tr></thead>
               <tbody>
@@ -193,19 +188,19 @@ export function ReportCaseBoard({ initialData }: { initialData?: ReportCasePageD
                   </tr>;
                 })}
               </tbody>
-            </table>
+            </Table>
             {!models.length && <div className="empty"><h3>{translateText("No matching Report Cases")}</h3><p>{translateText("Change the status filter or search text.")}</p></div>}
           </div>
           {page.nextCursor && (
             <div className="report-case-next-page">
-              {models.length ? <div className="table-pagination" aria-label={translateText("Report Cases pagination")}><button className="page-nav" type="button" disabled={currentPage <= 1} onClick={() => setPageNumber((value) => value - 1)}>{translateText("Previous")}</button><span className="page-indicator">{translateText("Page")} {currentPage} {translateText("of")} {Math.max(totalPages, 1)}</span><button className="page-nav" type="button" disabled={currentPage >= totalPages} onClick={() => setPageNumber((value) => value + 1)}>{translateText("Next")}</button></div> : null}
+              {models.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Report Cases pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className="table-pagination" /> : null}
               <button className="btn" type="button" data-report-load-more onClick={loadMore} disabled={loadingMore}>
                 {translateText(loadingMore ? "Loading more Report Cases…" : "Load more Report Cases")}
               </button>
               {paginationError && <p className="field-error" role="alert">{translateText(paginationError)}</p>}
             </div>
           )}
-          {!page.nextCursor && models.length ? <div className="table-pagination" aria-label={translateText("Report Cases pagination")}><button className="page-nav" type="button" disabled={currentPage <= 1} onClick={() => setPageNumber((value) => value - 1)}>{translateText("Previous")}</button><span className="page-indicator">{translateText("Page")} {currentPage} {translateText("of")} {Math.max(totalPages, 1)}</span><button className="page-nav" type="button" disabled={currentPage >= totalPages} onClick={() => setPageNumber((value) => value + 1)}>{translateText("Next")}</button></div> : null}
+          {!page.nextCursor && models.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Report Cases pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className="table-pagination" /> : null}
         </section>
       </main>
   );
