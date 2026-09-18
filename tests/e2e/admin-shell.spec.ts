@@ -287,7 +287,7 @@ test.describe("shared Admin shell", () => {
     await expect(page).toHaveURL(/\/dispute$/);
 
     await page.goto("/dispute/DSP-5201");
-    await expect(page.locator(".dispute-case-detail .full-record-grid")).toBeVisible();
+    await expect(page.locator(".dispute-case-detail > .grid:has(> aside)")).toBeVisible();
     await expect(page.getByRole("heading", { level: 1, name: "Verify dorm fire exits" })).toBeVisible();
     await expect(page.getByText("Invalid Date", { exact: true })).toHaveCount(0);
     await page.reload();
@@ -318,7 +318,7 @@ test.describe("shared Admin shell", () => {
     const decision = page.getByRole("dialog", { name: "Confirm Worker wins" });
     await expect(decision).toBeVisible();
     await expect(decision).toHaveAttribute("open", "");
-    await expect.poll(() => page.evaluate(() => document.activeElement?.id)).toBe("dispute-reason-code");
+    await expect.poll(() => page.evaluate(() => document.activeElement?.id)).toBe("dispute-decision-reason");
 
     for (let index = 0; index < 5; index += 1) {
       await expect.poll(() => decision.evaluate((dialog) => dialog.contains(document.activeElement))).toBe(true);

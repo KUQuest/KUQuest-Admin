@@ -34,7 +34,7 @@ test.describe("Member route family", () => {
     const opener = board.getByRole("button", { name: "Open Member 68000000" });
     await opener.click();
     await expect(page).toHaveURL(/\/member\/68000000$/);
-    const drawer = page.getByRole("dialog", { name: "Record details" });
+    const drawer = page.getByRole("dialog", { name: "68000000" });
     await expect(drawer).toBeVisible();
     await expect(drawer).toContainText("Akarin Ariyawat");
     await expect(drawer.locator("[data-member-drawer-moderation-history]")).toContainText("Moderation History");
@@ -46,7 +46,7 @@ test.describe("Member route family", () => {
     await expect(page).toHaveURL(/\/member\/68000000$/);
     await expect(drawer).toBeVisible();
 
-    await drawer.getByRole("button", { name: "Close drawer" }).click();
+    await drawer.getByRole("button", { name: "Close Member drawer" }).click();
     await expect(page).toHaveURL(/\/member$/);
     await expect(drawer).toHaveCount(0);
 

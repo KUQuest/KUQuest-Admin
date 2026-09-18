@@ -67,7 +67,7 @@ test.describe("Admin canonical click flows", () => {
     await expect(reviews.locator("tbody tr")).not.toHaveCount(0);
     await page.getByRole("searchbox", { name: "Search reviews" }).fill("");
     const reviewFilters = page.getByRole("group", { name: "Review filters" });
-    await reviewFilters.getByRole("button", { name: "Reported", exact: true }).click();
+    await reviewFilters.getByRole("button", { name: "Reported review", exact: true }).click();
     await expect(reviews.locator("tbody tr")).not.toHaveCount(0);
 
     await expect(reviews.getByRole("columnheader", { name: "Action", exact: true })).toHaveCount(0);
@@ -113,7 +113,7 @@ test.describe("Admin canonical click flows", () => {
     await page.locator('.admin-shell aside a[href="/member"]').click();
     await expect(page).toHaveURL(/\/member$/);
     await page.getByRole("button", { name: "Open Member 68000000" }).click();
-    await page.getByRole("dialog", { name: "Record details" }).getByRole("link", { name: "See full Member profile" }).click();
+    await page.getByRole("dialog", { name: "68000000" }).getByRole("link", { name: "See full Member profile" }).click();
     await expect(page).toHaveURL(/\/member\/68000000$/);
     await expect(page.getByRole("heading", { level: 1, name: "Akarin Ariyawat" })).toBeVisible();
   });

@@ -22,8 +22,9 @@ test.describe("Conduct Report routes", () => {
     ]);
     await expect(drawer.getByText("Assignment accepted · Proof Submission not provided · dueAt 27 Aug 2026 · 15:00", { exact: true })).toBeVisible();
     await expect(drawer.getByText("QST-12001", { exact: true })).toBeVisible();
-    await expect(drawer.getByText("Reported Member", { exact: true })).toBeVisible();
-    await expect(drawer.getByText("Reported by", { exact: true })).toBeVisible();
+    const parties = drawer.locator(".conduct-report-overview-parties");
+    await expect(parties.getByText("Reported Member", { exact: true })).toBeVisible();
+    await expect(parties.getByText("Reported by", { exact: true })).toBeVisible();
     await expect(drawer.getByRole("heading", { name: "People involved", exact: true })).toHaveCount(0);
 
     await page.getByRole("link", { name: "Open full Conduct Report" }).click();
@@ -32,7 +33,7 @@ test.describe("Conduct Report routes", () => {
     await expect(page.locator("dialog.drawer.open")).toHaveCount(0);
     await expect(page.getByRole("heading", { level: 1, name: "Abandoned work" })).toBeVisible();
 
-    const grid = page.locator(".conduct-report-detail .full-record-grid");
+    const grid = page.locator(".conduct-report-detail-body > .grid");
     await expect(grid).toBeVisible();
     await expect(grid).toHaveCSS("display", "grid");
     const columns = await grid.evaluate((element) => getComputedStyle(element).gridTemplateColumns);
@@ -40,14 +41,15 @@ test.describe("Conduct Report routes", () => {
     await expect(page.locator(".conduct-report-detail [data-moderation-case-workspace='context']")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Evidence", exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Related Quest", exact: true })).toBeVisible();
-    await expect(page.locator(".conduct-report-detail .record-side .related-quest-panel")).toContainText("Quest State");
-    await expect(page.locator(".conduct-report-detail .record-side .related-quest-panel")).toContainText("Failed at");
+    const relatedQuest = page.locator(".conduct-report-detail-body > .grid > aside .related-quest-panel");
+    await expect(relatedQuest).toContainText("Quest State");
+    await expect(relatedQuest).toContainText("Failed at");
     await expect(page.getByRole("heading", { name: "Reported Member", exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Conduct Report timeline", exact: true })).toBeVisible();
     await expect(page.locator(".conduct-report-detail .conduct-report-overview")).toContainText("CND-8301");
     await expect(page.locator(".conduct-report-detail .conduct-report-overview")).toContainText("Akarin Ariyawat");
-    await expect(page.locator(".conduct-report-detail .record-primary")).toContainText("Assignment accepted · Proof Submission not provided · dueAt 27 Aug 2026 · 15:00");
-    await expect(page.locator(".conduct-report-detail .record-side .related-quest-panel")).toContainText("QST-12001");
+    await expect(page.locator(".conduct-report-detail-body > .grid > div:first-child")).toContainText("Assignment accepted · Proof Submission not provided · dueAt 27 Aug 2026 · 15:00");
+    await expect(relatedQuest).toContainText("QST-12001");
     await expect(page.getByText("Assignment accepted · Proof Submission not provided · dueAt 27 Aug 2026 · 15:00", { exact: true })).toBeVisible();
   });
 });

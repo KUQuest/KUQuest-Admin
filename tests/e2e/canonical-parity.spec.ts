@@ -30,7 +30,7 @@ async function expectResponsiveInput(page: Page, input: Locator) {
 async function openMemberDrawer(page: Page) {
   await page.goto("/member");
   await page.getByRole("button", { name: "Open Member 68000000" }).click();
-  const drawer = page.getByRole("dialog", { name: "Record details" });
+  const drawer = page.getByRole("dialog", { name: "68000000" });
   await expect(drawer).toBeVisible();
   return drawer;
 }
@@ -147,7 +147,7 @@ test.describe("legacy parity on canonical routes", () => {
     await expect(page.getByText("Worker wins", { exact: true }).first()).toBeVisible();
     await expect(page.getByText(/Require rework/i)).toHaveCount(0);
 
-    const grid = page.locator(".full-record-grid").first();
+    const grid = page.locator(".dispute-case-detail > .grid:has(> aside)");
     await expect(grid).toHaveCSS("display", "grid");
     const columns = await grid.evaluate((element) => getComputedStyle(element).gridTemplateColumns);
     expect(columns.split(" ")).toHaveLength(2);
@@ -224,22 +224,10 @@ test.describe("legacy parity for inputs on mobile", () => {
     await expectResponsiveInput(page, search);
   });
 
-  test("Member report form accepts input on mobile", async ({ page }) => {
+  test("Member drawer does not expose the removed Member report action", async ({ page }) => {
     await signIn(page);
     const drawer = await openMemberDrawer(page);
-    await drawer.getByRole("button", { name: "Report Member" }).click();
-
-    const dialog = page.getByRole("dialog", { name: "Report Akarin Ariyawat" });
-    await expect(dialog.getByRole("group", { name: "Reported Member" })).toContainText("Akarin Ariyawat");
-    const category = dialog.getByLabel("Report type");
-    const details = dialog.getByLabel("What happened?");
-    await category.selectOption({ label: "Fraud or payment issue" });
-    await details.fill("The submitted activity does not match the evidence provided.");
-    await expect(category).toHaveValue("Fraud or payment issue");
-    await expectResponsiveInput(page, category);
-    await expectResponsiveInput(page, details);
-    await dialog.getByRole("button", { name: "Close report form" }).click();
-    await expect(dialog).toHaveCount(0);
+    await expect(drawer.getByRole("button", { name: "Report Member" })).toHaveCount(0);
   });
 
   test("Member penalty ladder form accepts input on mobile", async ({ page }) => {
