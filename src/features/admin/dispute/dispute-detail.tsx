@@ -350,7 +350,7 @@ function DrawerSections({ model, translateText, onOpenEvidence, selectedChoice, 
       memberLabel={model.respondentRole}
     />
     <section className="section dispute-decision-panel"><h3>{model.isActionable ? translateText("Dispute decision") : translateText("Resolution")}</h3><DecisionControls model={model} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelect={onSelectChoice} onStart={onStartDecision} /></section>
-  </ModerationCaseWorkspace>{actionReceipt}<div className="drawer-actions">{model.questHref && <Button asChild variant="outline"><Link href={model.questHref}>{translateText("Quest detail")}</Link></Button>}<Button asChild variant="primary"><Link href={disputeRoutes.detail(model.id)}>{translateText("Open full Dispute Case")}</Link></Button></div></div>;
+  </ModerationCaseWorkspace>{actionReceipt}<div className="drawer-actions">{model.questHref && <Button asChild size="lg" variant="outline"><Link href={model.questHref}>{translateText("Quest detail")}</Link></Button>}<Button asChild size="lg" variant="primary"><Link href={disputeRoutes.detail(model.id)}>{translateText("Open full Dispute Case")}</Link></Button></div></div>;
 }
 
 export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = false, onUpdated }: DisputeCaseDetailProps) {

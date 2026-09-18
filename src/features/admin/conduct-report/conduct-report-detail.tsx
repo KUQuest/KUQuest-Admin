@@ -584,18 +584,18 @@ function ConductReportDrawerBody({
       {actionReceipt}
       <div className={compact ? "drawer-actions" : "full-record-actions"}>
         {model.reportedMemberHref && (
-          <Button asChild variant="outline">
+          <Button asChild size="lg" variant="outline">
             <Link href={model.reportedMemberHref}>
               {translateText("Member profile")}
             </Link>
           </Button>
         )}
         {model.questHref && (
-          <Button asChild variant="outline">
+          <Button asChild size="lg" variant="outline">
             <Link href={model.questHref}>{translateText("Quest detail")}</Link>
           </Button>
         )}
-        {showFullLink && <Button asChild variant="primary"><Link href={conductReportRoutes.detail(model.id)}>{translateText("Open full Conduct Report")}</Link></Button>}
+        {showFullLink && <Button asChild size="lg" variant="primary"><Link href={conductReportRoutes.detail(model.id)}>{translateText("Open full Conduct Report")}</Link></Button>}
       </div>
     </div>
   );
