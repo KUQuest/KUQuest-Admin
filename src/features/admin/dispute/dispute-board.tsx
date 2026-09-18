@@ -11,6 +11,7 @@ import { isAdminApiEnabled } from "../api/admin-provider";
 import { disputeRoutes, questRoutes } from "../admin-routes";
 import { loadAllDisputeCasesFromMock as loadAllDisputeCasesFromMockData, loadDisputeCasesFromMock } from "./dispute-adapter";
 import { pageCount, pageRange, pageRows, type AdminBoardPageSize } from "../data/board-pagination";
+import { dateSortValue, sortBoardRows, toggleBoardSort, type BoardSortDirection } from "../data/board-sorting";
 import {
   DISPUTE_CASE_UPDATED_EVENT,
   type DisputeCaseModel,
@@ -18,6 +19,7 @@ import {
 import { loadDisputeCasePageData, type DisputeCasePageData } from "./dispute-service";
 
 type DisputeCaseTab = "all" | "open" | "dismissed" | "resolved";
+type DisputeCaseSortKey = "id" | "quest" | "hirer" | "worker" | "category" | "amount" | "status" | "opened";
 
 const tabs: Array<{ id: DisputeCaseTab; label: string }> = [
   { id: "open", label: "Open" },
@@ -56,6 +58,27 @@ function modelMatchesQuery(model: DisputeCaseModel, query: string): boolean {
   ].some((field) => field?.toLowerCase().includes(value));
 }
 
+function disputeSortValue(model: DisputeCaseModel, key: DisputeCaseSortKey): string | number | null {
+  switch (key) {
+    case "id":
+      return model.displayId;
+    case "quest":
+      return model.questTitle;
+    case "hirer":
+      return partyMemberForRole(model, "Hirer").name;
+    case "worker":
+      return partyMemberForRole(model, "Worker").name;
+    case "category":
+      return model.category;
+    case "amount":
+      return model.amountAtRiskSatang;
+    case "status":
+      return model.statusLabel;
+    case "opened":
+      return dateSortValue(model.submittedAt);
+  }
+}
+
 function loadAllDisputeCasesFromMock(storage: Storage): DisputeCasePageData {
   return loadAllDisputeCasesFromMockData(storage);
 }
@@ -71,6 +94,8 @@ export function DisputeCaseBoard({ initialData }: { initialData?: DisputeCasePag
   const [query, setQuery] = useState("");
   const [pageSize, setPageSize] = useState<AdminBoardPageSize>(10);
   const [pageNumber, setPageNumber] = useState(1);
+  const [sortKey, setSortKey] = useState<DisputeCaseSortKey | null>(null);
+  const [sortDirection, setSortDirection] = useState<BoardSortDirection>("ascending");
 
   useEffect(() => {
     if (initialData || isAdminApiEnabled()) return;
@@ -154,12 +179,19 @@ export function DisputeCaseBoard({ initialData }: { initialData?: DisputeCasePag
     return <main className="admin-feedback"><section className="panel"><h1>{translateText("Dispute Cases unavailable")}</h1><p>{translateText(loadError)}</p></section></main>;
   }
 
-  const models = page.items.filter((model) => tabMatches(model, activeTab) && modelMatchesQuery(model, query));
+  const filteredModels = page.items.filter((model) => tabMatches(model, activeTab) && modelMatchesQuery(model, query));
+  const models = sortKey ? sortBoardRows(filteredModels, (model) => disputeSortValue(model, sortKey), sortDirection) : filteredModels;
   const totalPages = pageCount(models.length, pageSize);
   const currentPage = Math.min(pageNumber, Math.max(totalPages, 1));
   const visibleModels = pageRows(models, currentPage, pageSize);
   const { start: pageStart, end: pageEnd } = pageRange(models.length, currentPage, pageSize);
   const openCount = page.items.filter((model) => model.status === "DISPUTE_CASE_PENDING").length;
+
+  function sortBy(nextKey: DisputeCaseSortKey) {
+    setPageNumber(1);
+    setSortDirection((direction) => toggleBoardSort(sortKey, nextKey, direction));
+    setSortKey(nextKey);
+  }
 
   return (
     <main id="dispute-main" className="admin-route-page dispute-case-board" tabIndex={-1}>
@@ -169,11 +201,11 @@ export function DisputeCaseBoard({ initialData }: { initialData?: DisputeCasePag
         <div className="tabs" role="tablist" aria-label={translateText("Dispute Case status filters")}>
           {tabs.map((tab) => <button key={tab.id} className={`tab ${activeTab === tab.id ? "active" : ""}`} type="button" role="tab" aria-label={tab.id === "open" ? translateText("Open") : translateText(tab.label)} aria-selected={activeTab === tab.id} onClick={() => { setActiveTab(tab.id); setPageNumber(1); }}>{translateText(tab.label)}{tab.id === "open" ? <span className="tab-count" aria-hidden="true"> ({openCount})</span> : null}</button>)}
         </div>
-        <div className="toolbar"><label className="inline-search" htmlFor="dispute-case-search">{translateText("Search Dispute Cases")}<input id="dispute-case-search" type="search" aria-label={translateText("Search Dispute Cases")} placeholder={translateText("Search by case, Quest, Member, or category")} value={query} onChange={(event) => { setQuery(event.target.value); setPageNumber(1); }} /></label><PageSizeControls value={pageSize} disabled={loadingMore} translateText={translateText} onChange={(size) => { setPageSize(size); setPageNumber(1); if (size === "all") void loadAllPages(); }} /><span className="count" aria-live="polite">{loadingMore ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}</span></div>
+        <div className="toolbar"><label className="inline-search" htmlFor="dispute-case-search">{translateText("Search Dispute Cases")}<input id="dispute-case-search" type="search" aria-label={translateText("Search Dispute Cases")} placeholder={translateText("Search by case, Quest, Member, or category")} value={query} onChange={(event) => { setQuery(event.target.value); setPageNumber(1); }} /></label><span className="sort-help">{translateText("Click a column to sort")}</span><PageSizeControls value={pageSize} disabled={loadingMore} translateText={translateText} onChange={(size) => { setPageSize(size); setPageNumber(1); if (size === "all") void loadAllPages(); }} /><span className="count" aria-live="polite">{loadingMore ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}</span></div>
         <div className="table-wrap" aria-label={translateText("Dispute Cases table")}>
           <Table className="data dispute-table">
             <caption>{translateText("Dispute Cases")}</caption>
-            <thead><tr><th>{translateText("Dispute Case")}</th><th>{translateText("Quest")}</th><th>{translateText("Hirer")}</th><th>{translateText("Worker")}</th><th>{translateText("Category")}</th><th>{translateText("Amount at risk")}</th><th>{translateText("Status")}</th><th>{translateText("Opened")}</th></tr></thead>
+            <thead><tr><SortableHeader label={translateText("Dispute Case")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Quest")} sortKey="quest" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Hirer")} sortKey="hirer" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Worker")} sortKey="worker" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Category")} sortKey="category" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Amount at risk")} sortKey="amount" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Opened")} sortKey="opened" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead>
             <tbody>
               {visibleModels.map((model) => {
                 const hirer = partyMemberForRole(model, "Hirer");
@@ -222,4 +254,21 @@ function MemberCell({
   href: string | null;
 }) {
   return <div>{href && id ? <Link href={href} onClick={(event) => event.stopPropagation()}>{name}</Link> : <span>{name}</span>}<small>{id ?? "—"}</small></div>;
+}
+
+function SortableHeader({
+  label,
+  sortKey,
+  activeKey,
+  direction,
+  onSort,
+}: {
+  label: string;
+  sortKey: DisputeCaseSortKey;
+  activeKey: DisputeCaseSortKey | null;
+  direction: BoardSortDirection;
+  onSort: (key: DisputeCaseSortKey) => void;
+}) {
+  const active = activeKey === sortKey;
+  return <th scope="col" aria-sort={active ? direction : "none"}><button className={`table-sort${active ? " is-active" : ""}`} type="button" onClick={() => onSort(sortKey)}>{label}<span className="sort-indicator" aria-hidden="true">{active ? (direction === "ascending" ? "↑" : "↓") : "↕"}</span></button></th>;
 }

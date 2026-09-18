@@ -12,6 +12,7 @@ import { conductReportRoutes } from "../admin-routes";
 import { formatAdminTimestamp } from "../date-format";
 import { loadAllConductReportsFromMock as loadAllConductReportsFromMockData, loadConductReportsFromMock } from "./conduct-report-adapter";
 import { pageCount, pageRange, pageRows, type AdminBoardPageSize } from "../data/board-pagination";
+import { dateSortValue, sortBoardRows, toggleBoardSort, type BoardSortDirection } from "../data/board-sorting";
 import {
   CONDUCT_REPORT_UPDATED_EVENT,
   type ConductReportModel,
@@ -19,6 +20,7 @@ import {
 import { loadConductReportPageData, type ConductReportPageData } from "./conduct-report-service";
 
 type ConductReportTab = "all" | "open" | "confirmed" | "dismissed";
+type ConductReportSortKey = "id" | "quest" | "reportedMember" | "reporter" | "reason" | "status" | "reported";
 
 const tabs: Array<{ id: ConductReportTab; label: string }> = [
   { id: "open", label: "Open" },
@@ -56,6 +58,25 @@ function modelMatchesQuery(model: ConductReportModel, query: string): boolean {
   ].some((field) => field !== null && field.toLowerCase().includes(value));
 }
 
+function conductSortValue(model: ConductReportModel, key: ConductReportSortKey): string | number | null {
+  switch (key) {
+    case "id":
+      return model.id;
+    case "quest":
+      return model.questTitle;
+    case "reportedMember":
+      return model.reportedMemberName;
+    case "reporter":
+      return model.reporterName;
+    case "reason":
+      return model.reason;
+    case "status":
+      return model.statusLabel;
+    case "reported":
+      return dateSortValue(model.submittedAt);
+  }
+}
+
 function loadAllConductReportsFromMock(storage: Storage): ConductReportPageData {
   return loadAllConductReportsFromMockData(storage);
 }
@@ -74,6 +95,8 @@ export function ConductReportBoard({
   const [query, setQuery] = useState("");
   const [pageSize, setPageSize] = useState<AdminBoardPageSize>(10);
   const [pageNumber, setPageNumber] = useState(1);
+  const [sortKey, setSortKey] = useState<ConductReportSortKey | null>(null);
+  const [sortDirection, setSortDirection] = useState<BoardSortDirection>("ascending");
   const router = useRouter();
 
   useEffect(() => {
@@ -163,7 +186,8 @@ export function ConductReportBoard({
   }
   if (!page) return <AdminLoading message={translateText("Loading Conduct Reports…")} />;
 
-  const models = page.items.filter((model) => tabMatches(model, activeTab) && modelMatchesQuery(model, query));
+  const filteredModels = page.items.filter((model) => tabMatches(model, activeTab) && modelMatchesQuery(model, query));
+  const models = sortKey ? sortBoardRows(filteredModels, (model) => conductSortValue(model, sortKey), sortDirection) : filteredModels;
   const totalPages = pageCount(models.length, pageSize);
   const currentPage = Math.min(pageNumber, Math.max(totalPages, 1));
   const visibleModels = pageRows(models, currentPage, pageSize);
@@ -172,6 +196,12 @@ export function ConductReportBoard({
   const openDrawer = (id: string) => {
     router.push(conductReportRoutes.detail(id), { scroll: false });
   };
+
+  function sortBy(nextKey: ConductReportSortKey) {
+    setPageNumber(1);
+    setSortDirection((direction) => toggleBoardSort(sortKey, nextKey, direction));
+    setSortKey(nextKey);
+  }
 
   return (
     <>
@@ -219,20 +249,20 @@ export function ConductReportBoard({
               />
             </label>
             <PageSizeControls value={pageSize} disabled={loadingMore} translateText={translateText} onChange={(size) => { setPageSize(size); setPageNumber(1); if (size === "all") void loadAllPages(); }} />
-            <span className="count" aria-live="polite">{loadingMore ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}</span>
+            <span className="sort-help">{translateText("Click a column to sort")}</span><span className="count" aria-live="polite">{loadingMore ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}</span>
           </div>
           <div className="table-wrap" aria-label={translateText("Conduct Reports table")}>
             <Table className="data report-table">
               <caption>{translateText("Conduct Reports")}</caption>
               <thead>
                 <tr>
-                  <th>{translateText("Conduct Report")}</th>
-                  <th>{translateText("Quest")}</th>
-                  <th>{translateText("Reported Member")}</th>
-                  <th>{translateText("Reported by")}</th>
-                  <th>{translateText("Reason")}</th>
-                  <th>{translateText("Status")}</th>
-                  <th>{translateText("Reported")}</th>
+                  <SortableHeader label={translateText("Conduct Report")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} />
+                  <SortableHeader label={translateText("Quest")} sortKey="quest" activeKey={sortKey} direction={sortDirection} onSort={sortBy} />
+                  <SortableHeader label={translateText("Reported Member")} sortKey="reportedMember" activeKey={sortKey} direction={sortDirection} onSort={sortBy} />
+                  <SortableHeader label={translateText("Reported by")} sortKey="reporter" activeKey={sortKey} direction={sortDirection} onSort={sortBy} />
+                  <SortableHeader label={translateText("Reason")} sortKey="reason" activeKey={sortKey} direction={sortDirection} onSort={sortBy} />
+                  <SortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} />
+                  <SortableHeader label={translateText("Reported")} sortKey="reported" activeKey={sortKey} direction={sortDirection} onSort={sortBy} />
                 </tr>
               </thead>
               <tbody>
@@ -307,4 +337,21 @@ export function ConductReportBoard({
       </main>
     </>
   );
+}
+
+function SortableHeader({
+  label,
+  sortKey,
+  activeKey,
+  direction,
+  onSort,
+}: {
+  label: string;
+  sortKey: ConductReportSortKey;
+  activeKey: ConductReportSortKey | null;
+  direction: BoardSortDirection;
+  onSort: (key: ConductReportSortKey) => void;
+}) {
+  const active = activeKey === sortKey;
+  return <th scope="col" aria-sort={active ? direction : "none"}><button className={`table-sort${active ? " is-active" : ""}`} type="button" onClick={() => onSort(sortKey)}>{label}<span className="sort-indicator" aria-hidden="true">{active ? (direction === "ascending" ? "↑" : "↓") : "↕"}</span></button></th>;
 }

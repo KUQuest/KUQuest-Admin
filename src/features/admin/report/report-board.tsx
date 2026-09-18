@@ -12,6 +12,7 @@ import { reportRoutes } from "../admin-routes";
 import { formatAdminTimestamp } from "../date-format";
 import { loadAllReportCasesFromMock as loadAllReportCasesFromMockData, loadReportCasesFromMock } from "./report-adapter";
 import { pageCount, pageRange, pageRows, type AdminBoardPageSize } from "../data/board-pagination";
+import { dateSortValue, sortBoardRows, toggleBoardSort, type BoardSortDirection } from "../data/board-sorting";
 import {
   REPORT_CASE_UPDATED_EVENT,
   type ReportCaseModel,
@@ -19,6 +20,7 @@ import {
 import { loadReportCasePageData, type ReportCasePageData } from "./report-service";
 
 type ReportCaseTab = "all" | "open" | "dismissed" | "confirmed" | "restored";
+type ReportCaseSortKey = "id" | "source" | "reportedMember" | "reporter" | "type" | "status" | "reported";
 
 const tabs: Array<{ id: ReportCaseTab; label: string }> = [
   { id: "open", label: "Open" },
@@ -57,6 +59,25 @@ function modelMatchesQuery(model: ReportCaseModel, query: string): boolean {
   ].some((field) => field !== null && field.toLowerCase().includes(value));
 }
 
+function reportSortValue(model: ReportCaseModel, key: ReportCaseSortKey): string | number | null {
+  switch (key) {
+    case "id":
+      return model.id;
+    case "source":
+      return model.source;
+    case "reportedMember":
+      return model.reportedMemberName;
+    case "reporter":
+      return model.reporterName;
+    case "type":
+      return model.reportType;
+    case "status":
+      return model.statusLabel;
+    case "reported":
+      return dateSortValue(model.submittedAt);
+  }
+}
+
 function loadAllReportCasesFromMock(storage: Storage): ReportCasePageData {
   return loadAllReportCasesFromMockData(storage);
 }
@@ -72,6 +93,8 @@ export function ReportCaseBoard({ initialData }: { initialData?: ReportCasePageD
   const [query, setQuery] = useState("");
   const [pageSize, setPageSize] = useState<AdminBoardPageSize>(10);
   const [pageNumber, setPageNumber] = useState(1);
+  const [sortKey, setSortKey] = useState<ReportCaseSortKey | null>(null);
+  const [sortDirection, setSortDirection] = useState<BoardSortDirection>("ascending");
 
   useEffect(() => {
     if (initialData || isAdminApiEnabled()) return;
@@ -155,12 +178,19 @@ export function ReportCaseBoard({ initialData }: { initialData?: ReportCasePageD
     return <main className="admin-feedback"><section className="panel"><h1>{translateText("Report Cases unavailable")}</h1><p>{translateText(loadError)}</p></section></main>;
   }
 
-  const models = page.items.filter((model) => tabMatches(model, activeTab) && modelMatchesQuery(model, query));
+  const filteredModels = page.items.filter((model) => tabMatches(model, activeTab) && modelMatchesQuery(model, query));
+  const models = sortKey ? sortBoardRows(filteredModels, (model) => reportSortValue(model, sortKey), sortDirection) : filteredModels;
   const totalPages = pageCount(models.length, pageSize);
   const currentPage = Math.min(pageNumber, Math.max(totalPages, 1));
   const visibleModels = pageRows(models, currentPage, pageSize);
   const { start: pageStart, end: pageEnd } = pageRange(models.length, currentPage, pageSize);
   const openCount = page.items.filter((model) => model.status === "REPORT_CASE_PENDING").length;
+
+  function sortBy(nextKey: ReportCaseSortKey) {
+    setPageNumber(1);
+    setSortDirection((direction) => toggleBoardSort(sortKey, nextKey, direction));
+    setSortKey(nextKey);
+  }
 
   return (
       <main id="report-main" className="admin-route-page report-case-board" tabIndex={-1}>
@@ -170,11 +200,11 @@ export function ReportCaseBoard({ initialData }: { initialData?: ReportCasePageD
           <div className="tabs" role="tablist" aria-label={translateText("Report Case status filters")}>
             {tabs.map((tab) => <button key={tab.id} className={`tab ${activeTab === tab.id ? "active" : ""}`} type="button" role="tab" aria-label={tab.id === "open" ? translateText("Open") : translateText(tab.label)} aria-selected={activeTab === tab.id} onClick={() => { setActiveTab(tab.id); setPageNumber(1); }}>{translateText(tab.label)}{tab.id === "open" ? <span className="tab-count" aria-hidden="true"> ({openCount})</span> : null}</button>)}
           </div>
-          <div className="toolbar"><label className="inline-search" htmlFor="report-case-search">{translateText("Search Report Cases")}<input id="report-case-search" type="search" aria-label={translateText("Search Report Cases")} placeholder={translateText("Search by Report Case, Member, or Report type")} value={query} onChange={(event) => { setQuery(event.target.value); setPageNumber(1); }} /></label><PageSizeControls value={pageSize} disabled={loadingMore} translateText={translateText} onChange={(size) => { setPageSize(size); setPageNumber(1); if (size === "all") void loadAllPages(); }} /><span className="count" aria-live="polite">{loadingMore ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}</span></div>
+          <div className="toolbar"><label className="inline-search" htmlFor="report-case-search">{translateText("Search Report Cases")}<input id="report-case-search" type="search" aria-label={translateText("Search Report Cases")} placeholder={translateText("Search by Report Case, Member, or Report type")} value={query} onChange={(event) => { setQuery(event.target.value); setPageNumber(1); }} /></label><span className="sort-help">{translateText("Click a column to sort")}</span><PageSizeControls value={pageSize} disabled={loadingMore} translateText={translateText} onChange={(size) => { setPageSize(size); setPageNumber(1); if (size === "all") void loadAllPages(); }} /><span className="count" aria-live="polite">{loadingMore ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}</span></div>
           <div className="table-wrap" aria-label={translateText("Report Cases table")}>
             <Table className="data report-table">
               <caption>{translateText("Report Cases")}</caption>
-              <thead><tr><th>{translateText("Report Case")}</th><th>{translateText("Source")}</th><th>{translateText("Reported Member")}</th><th>{translateText("Reported by")}</th><th>{translateText("Report type")}</th><th>{translateText("Status")}</th><th>{translateText("Reported")}</th></tr></thead>
+              <thead><tr><SortableHeader label={translateText("Report Case")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Source")} sortKey="source" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Reported Member")} sortKey="reportedMember" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Reported by")} sortKey="reporter" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Report type")} sortKey="type" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Reported")} sortKey="reported" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead>
               <tbody>
                 {visibleModels.map((model) => {
                   return <tr key={model.id} data-report-id={model.id} tabIndex={0} aria-label={`${translateText("Open Report Case")} ${model.id}`} onClick={() => openDrawer(model.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openDrawer(model.id); } }}>
@@ -204,4 +234,21 @@ export function ReportCaseBoard({ initialData }: { initialData?: ReportCasePageD
         </section>
       </main>
   );
+}
+
+function SortableHeader({
+  label,
+  sortKey,
+  activeKey,
+  direction,
+  onSort,
+}: {
+  label: string;
+  sortKey: ReportCaseSortKey;
+  activeKey: ReportCaseSortKey | null;
+  direction: BoardSortDirection;
+  onSort: (key: ReportCaseSortKey) => void;
+}) {
+  const active = activeKey === sortKey;
+  return <th scope="col" aria-sort={active ? direction : "none"}><button className={`table-sort${active ? " is-active" : ""}`} type="button" onClick={() => onSort(sortKey)}>{label}<span className="sort-indicator" aria-hidden="true">{active ? (direction === "ascending" ? "↑" : "↓") : "↕"}</span></button></th>;
 }
