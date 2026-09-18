@@ -158,7 +158,7 @@ function Overview({ model, translateText, compact = false }: { model: DisputeCas
   }
 
   return (
-    <Card as="section" className="record-panel dispute-overview">
+    <Card as="section" className="record-panel dispute-overview grid !grid-cols-1 gap-[18px]">
       <CardHeader flush className="record-panel-head"><h2>{translateText("Dispute detail")}</h2><span className="badge">{translateText(model.category)}</span></CardHeader>
       <p className="record-description dispute-description">{model.detail}</p>
       <AdminOverviewMeta>
@@ -177,7 +177,7 @@ function PartyStatements({ model, translateText, compact = false, interactive = 
         <div><span>{translateText(model.filerRole)}</span><strong><MemberLink id={model.filerId} name={model.filerName} href={model.filerHref} interactive={interactive} /></strong>{model.filerId && <small>{model.filerId}</small>}</div>
         <div><span>{translateText(model.respondentRole)}</span><strong><MemberLink id={model.respondentId} name={model.respondentName} href={model.respondentHref} interactive={interactive} /></strong>{model.respondentId && <small>{model.respondentId}</small>}</div>
       </div>
-      <div className="dispute-statements"><div className="overview-group"><span>{translateText(model.filerRole === "Hirer" ? "Hirer statement" : "Worker statement")}</span><p>{model.filerStatement}</p></div><div className="overview-group"><span>{translateText(model.respondentRole === "Hirer" ? "Hirer statement" : "Worker statement")}</span><p>{model.respondentStatement}</p></div></div>
+      <div className="dispute-statements grid !gap-[14px] mt-[18px]"><div className="overview-group"><span>{translateText(model.filerRole === "Hirer" ? "Hirer statement" : "Worker statement")}</span><p>{model.filerStatement}</p></div><div className="overview-group"><span>{translateText(model.respondentRole === "Hirer" ? "Hirer statement" : "Worker statement")}</span><p>{model.respondentStatement}</p></div></div>
     </>
   );
   return compact ? <Card as="section" className="section"><CardHeader flush><h3>{translateText("Parties and statements")}</h3></CardHeader>{content}</Card> : <Card as="section" className="record-panel"><CardHeader flush><h2>{translateText("Parties and statements")}</h2></CardHeader>{content}</Card>;
@@ -212,7 +212,7 @@ function Timeline({ model, translateText }: { model: DisputeCaseModel; translate
 
 function DecisionDetails({ model, translateText }: { model: DisputeCaseModel; translateText: (value: string) => string }) {
   if (!model.decisionReason && !model.resolution && !model.resolvedBy) return null;
-  return <div className="overview-group"><span>{translateText("Reason for decision")}</span><p>{model.decisionReason ?? translateText("Reason not provided.")}</p><AdminOverviewMeta className="dispute-resolution-meta"><div><dt>{translateText("Outcome")}</dt><dd>{translateText(model.decisionLabel ?? model.statusLabel)}</dd></div>{model.resolvedAmountLabel && <div><dt>{translateText("Transferred")}</dt><dd>{model.resolvedAmountLabel}</dd></div>}{model.resolvedBy && <div><dt>{translateText("Resolved by")}</dt><dd>{model.resolvedBy}</dd></div>}</AdminOverviewMeta></div>;
+  return <div className="overview-group"><span>{translateText("Reason for decision")}</span><p>{model.decisionReason ?? translateText("Reason not provided.")}</p><AdminOverviewMeta className="dispute-resolution-meta !grid-cols-2 mt-[14px] max-[700px]:!grid-cols-1"><div><dt>{translateText("Outcome")}</dt><dd>{translateText(model.decisionLabel ?? model.statusLabel)}</dd></div>{model.resolvedAmountLabel && <div><dt>{translateText("Transferred")}</dt><dd>{model.resolvedAmountLabel}</dd></div>}{model.resolvedBy && <div><dt>{translateText("Resolved by")}</dt><dd>{model.resolvedBy}</dd></div>}</AdminOverviewMeta></div>;
 }
 
 function MemberSummary({ heading, id, name, href, translateText }: { heading: string; id: string | null; name: string; href: string | null; translateText: (value: string) => string }) {

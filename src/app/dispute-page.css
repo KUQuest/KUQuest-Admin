@@ -16,15 +16,6 @@
 .dispute-case-drawer-detail .record-panel-head {
   margin-bottom: 10px;
 }
-.dispute-resolution-meta {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin-top: 14px;
-}
-.dispute-statements {
-  display: grid;
-  gap: 14px;
-  margin-top: 18px;
-}
 .dispute-decision-dialog,
 .dispute-evidence-dialog {
   z-index: 60;
@@ -40,10 +31,6 @@
 }
 .dispute-evidence-dialog {
   width: min(620px, calc(100vw - 32px));
-}
-.dispute-overview {
-  display: grid;
-  gap: 18px;
 }
 .overview-meta > div {
   min-width: 0;
@@ -78,9 +65,4 @@
 .overview-group h3 {
   margin: 0;
   font-size: 12px;
-}
-@media (max-width: 700px) {
-  .dispute-resolution-meta {
-    grid-template-columns: 1fr;
-  }
 }
