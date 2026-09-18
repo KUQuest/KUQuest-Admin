@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import { Card } from "../../../components/ui/card";
+import { Card, CardHeader } from "../../../components/ui/card";
 import { isAdminMockEnabled } from "../../../lib/auth/admin-auth-mode";
 import type { AdminFinanceOverview } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
@@ -82,14 +82,14 @@ function FinanceOverviewSection({
 }) {
   const sourceLabel = isAdminApiEnabled() ? "Admin API" : "Local demo data";
   if (loading) {
-    return <Card as="section" className="overview-command-center-finance overview-command-center-finance-member-focused" aria-labelledby="overview-finance-heading"><div className="overview-command-center-section-head"><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p>{translateText("Member Wallet totals and lifetime volume.")}</p></div><span>{translateText(sourceLabel)}</span></div><p className="overview-command-center-note">{translateText(isAdminApiEnabled() ? "Reading the Finance Overview from the Admin API…" : "Loading the Finance Overview…")}</p></Card>;
+    return <Card as="section" className="overview-command-center-finance overview-command-center-finance-member-focused" aria-labelledby="overview-finance-heading"><CardHeader flush className="overview-command-center-section-head"><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p>{translateText("Member Wallet totals and lifetime volume.")}</p></div><span>{translateText(sourceLabel)}</span></CardHeader><p className="overview-command-center-note">{translateText(isAdminApiEnabled() ? "Reading the Finance Overview from the Admin API…" : "Loading the Finance Overview…")}</p></Card>;
   }
   if (error || !overview) {
-    return <Card as="section" className="overview-command-center-finance overview-command-center-finance-member-focused" aria-labelledby="overview-finance-heading"><div className="overview-command-center-section-head"><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p>{translateText("Member Wallet totals and lifetime volume.")}</p></div><span>{translateText("Unavailable")}</span></div><p className="overview-command-center-note">{error ? translateText(error) : translateText("Finance Overview is not available.")}</p></Card>;
+    return <Card as="section" className="overview-command-center-finance overview-command-center-finance-member-focused" aria-labelledby="overview-finance-heading"><CardHeader flush className="overview-command-center-section-head"><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p>{translateText("Member Wallet totals and lifetime volume.")}</p></div><span>{translateText("Unavailable")}</span></CardHeader><p className="overview-command-center-note">{error ? translateText(error) : translateText("Finance Overview is not available.")}</p></Card>;
   }
 
   return <Card as="section" className="overview-command-center-finance overview-command-center-finance-member-focused" aria-labelledby="overview-finance-heading">
-    <div className="overview-command-center-section-head"><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p>{translateText("Member Wallet totals and lifetime volume.")}</p></div><span>{translateText(sourceLabel)}</span></div>
+    <CardHeader flush className="overview-command-center-section-head"><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p>{translateText("Member Wallet totals and lifetime volume.")}</p></div><span>{translateText(sourceLabel)}</span></CardHeader>
     <div className="overview-command-center-finance-groups">
       <FinanceGroup title={translateText("All Member Wallet Summary")}>
         <div className="overview-command-center-finance-metrics"><FinanceMetric label={translateText("All Spending balance")} value={overview.memberBalancesSummary.totalSpendingSatang} /><FinanceMetric label={translateText("All Earnings balance")} value={overview.memberBalancesSummary.totalEarningsSatang} /><FinanceMetric label={translateText("All Funding reserved")} value={overview.memberBalancesSummary.totalFundingReservedSatang} /><FinanceMetric label={translateText("All Payout reserved")} value={overview.memberBalancesSummary.totalPayoutReservedSatang} /><FinanceMetric label={translateText("Total circulating")} value={overview.memberBalancesSummary.totalCirculatingSatang} /></div>
@@ -224,10 +224,10 @@ export function AdminOverview({
 
         <div className="overview-command-center-grid">
           <Card as="section" className="overview-command-center-table" aria-labelledby="overview-command-queue-heading">
-            <div className="overview-command-center-section-head">
+            <CardHeader flush className="overview-command-center-section-head">
               <div><h2 id="overview-command-queue-heading">{translateText("Queue map")}</h2><p>{translateText("What needs attention now.")}</p></div>
               <span>{translateText("Current counts")}</span>
-            </div>
+            </CardHeader>
             <div className="overview-command-center-table-head"><span>{translateText("Queue")}</span><span>{translateText("Detail")}</span><span>{translateText("State")}</span><span>{translateText("Waiting")}</span></div>
             <ul className="overview-command-center-queue">
               {model.queues.map((row) => {
@@ -246,10 +246,10 @@ export function AdminOverview({
           </Card>
 
           <Card as="section" className="overview-command-center-activity" aria-labelledby="overview-command-activity-heading">
-            <div className="overview-command-center-section-head">
+            <CardHeader flush className="overview-command-center-section-head">
               <div><h2 id="overview-command-activity-heading"><Link href={activityRoutes.list()}>{translateText("Activity Log")}</Link></h2><p>{translateText("Recent Admin changes.")}</p></div>
               <span>{translateText("Latest")} {model.activity.length}</span>
-            </div>
+            </CardHeader>
             {model.activity.length ? (
               <ol className="overview-command-center-timeline overview-command-center-timeline-scrollable">
                 {model.activity.map((entry, index) => (
@@ -266,7 +266,7 @@ export function AdminOverview({
 
         <div className="overview-command-center-snapshot">
           <Card as="section" className="overview-command-center-snapshot-card" aria-labelledby="overview-command-quest-heading">
-            <div className="overview-command-center-section-head"><div><h2 id="overview-command-quest-heading">{translateText("Quest States")}</h2><p>{translateText("Current distribution across Quests.")}</p></div><span>{countLabel(model.questTotal)} {translateText("total")}</span></div>
+            <CardHeader flush className="overview-command-center-section-head"><div><h2 id="overview-command-quest-heading">{translateText("Quest States")}</h2><p>{translateText("Current distribution across Quests.")}</p></div><span>{countLabel(model.questTotal)} {translateText("total")}</span></CardHeader>
             <ul className="overview-command-center-status-list">
               {model.questStates.map((entry) => (
                 <li key={entry.status} className={`overview-command-center-status-row ${questStateTones[entry.status]}`}>
@@ -279,7 +279,7 @@ export function AdminOverview({
           </Card>
 
           <Card as="section" className="overview-command-center-snapshot-card" aria-labelledby="overview-command-members-heading">
-            <div className="overview-command-center-section-head"><div><h2 id="overview-command-members-heading">{translateText("Members")}</h2><p>{translateText("Count by Member status.")}</p></div><span>{translateText(model.memberStatusSource)}</span></div>
+            <CardHeader flush className="overview-command-center-section-head"><div><h2 id="overview-command-members-heading">{translateText("Members")}</h2><p>{translateText("Count by Member status.")}</p></div><span>{translateText(model.memberStatusSource)}</span></CardHeader>
             <ul className="overview-command-center-status-list">
               {model.memberStatusCounts.map((entry) => (
                 <li key={entry.status} className={`overview-command-center-status-row overview-member-${entry.status.toLowerCase().replaceAll(" ", "-")}`}>
@@ -293,7 +293,7 @@ export function AdminOverview({
           </Card>
 
           <Card as="section" className="overview-command-center-snapshot-card" aria-labelledby="overview-command-wallets-heading">
-            <div className="overview-command-center-section-head"><div><h2 id="overview-command-wallets-heading">{translateText("Wallets")}</h2><p>{translateText("Count by Wallet status.")}</p></div><span>{translateText(model.walletStatusSource)}</span></div>
+            <CardHeader flush className="overview-command-center-section-head"><div><h2 id="overview-command-wallets-heading">{translateText("Wallets")}</h2><p>{translateText("Count by Wallet status.")}</p></div><span>{translateText(model.walletStatusSource)}</span></CardHeader>
             <ul className="overview-command-center-status-list">
               {model.walletStatusCounts.map((entry) => (
                 <li key={entry.status} className={`overview-command-center-status-row overview-wallet-${entry.status.toLowerCase()}`}>
