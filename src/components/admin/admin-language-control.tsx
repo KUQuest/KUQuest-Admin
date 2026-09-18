@@ -60,7 +60,7 @@ export function AdminLanguageControl({
   const showThai = useCallback(() => selectLanguage("th"), [selectLanguage]);
 
   return (
-    <div className="language-control" data-language-control>
+    <div className="language-control flex-none py-2" data-language-control>
       <span className="language-control-label">{translateText("Language")}</span>
       <fieldset className="language-options" aria-label={translateText("Language options")}>
         <legend className="visually-hidden">{translateText("Language options")}</legend>

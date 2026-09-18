@@ -84,7 +84,7 @@ export function AdminThemeControl({ translateText = identityText }: AdminThemeCo
   }, [chooseTheme]);
 
   return (
-    <div className="theme-control" ref={controlRef}>
+    <div className="theme-control relative mt-auto flex-none py-2" ref={controlRef}>
       <Button
         variant="ghost"
         size="lg"
@@ -100,7 +100,7 @@ export function AdminThemeControl({ translateText = identityText }: AdminThemeCo
         </span>
         <span className="theme-trigger-chevron" aria-hidden="true">⌄</span>
       </Button>
-      <div className="theme-menu" id="theme-options" hidden={!open}>
+      <div className="theme-menu absolute right-0 bottom-[calc(100%-1px)] z-30 w-full rounded-admin-md border border-admin-border bg-admin-surface p-[7px] shadow-admin-card" id="theme-options" hidden={!open}>
         <p className="theme-menu-title">{translateText("Choose a theme")}</p>
         <fieldset className="theme-options" aria-label={translateText("Theme options")}>
           {(Object.keys(themeDefinitions) as AdminTheme[]).map((option) => (
