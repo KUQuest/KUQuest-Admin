@@ -17,6 +17,7 @@ import { questStateLabel } from "../domain/rulebook";
 import { questStatusClass } from "../quest/quest-model";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
+import { RecordStatusBar } from "../../../components/admin/record-status-bar";
 import { ModerationCaseWorkspace, ModerationHistoryPanel } from "../moderation-case/moderation-case-workspace";
 import { hasModerationHistory } from "../moderation-case/moderation-case-context";
 import {
@@ -723,13 +724,7 @@ export function ConductReportDrawer({
           <div className="full-record-actions"><Button asChild size="lg" variant="outline"><Link href={conductReportRoutes.list()}>{translateText("Back to Conduct Reports")}</Link></Button></div>
         </div>
         <ConductReportAlert model={reportModel} translateText={translateText} />
-        <Card className="record-status-bar">
-          <div><span>{translateText("Status")}</span><strong><span className={`badge ${reportModel.badgeClass}`}>{translateText(reportModel.statusLabel)}</span></strong></div>
-          <div><span>{translateText("Reason")}</span><strong>{translateText(reportModel.reason)}</strong></div>
-          <div><span>{translateText("Reported")}</span><strong>{formatAdminTimestamp(reportModel.submittedAt)}</strong></div>
-          <div><span>{translateText("Reported Member")}</span><strong><MemberLink id={reportModel.reportedMemberId} name={reportModel.reportedMemberName} href={reportModel.reportedMemberHref} /></strong></div>
-          <div><span>{translateText("Quest")}</span><strong>{reportModel.questId ?? translateText("Not provided.")}</strong></div>
-        </Card>
+        <RecordStatusBar className="conduct-report-record-status-bar" items={[{ id: "status", label: translateText("Status"), value: <span className={`badge ${reportModel.badgeClass}`}>{translateText(reportModel.statusLabel)}</span> }, { id: "reason", label: translateText("Reason"), value: translateText(reportModel.reason) }, { id: "reported", label: translateText("Reported"), value: formatAdminTimestamp(reportModel.submittedAt) }, { id: "reported-member", label: translateText("Reported Member"), value: <MemberLink id={reportModel.reportedMemberId} name={reportModel.reportedMemberName} href={reportModel.reportedMemberHref} /> }, { id: "quest", label: translateText("Quest"), value: reportModel.questId ?? translateText("Not provided.") }]} />
         {body}
         {decisionDialog}
       </main>

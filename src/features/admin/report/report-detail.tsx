@@ -10,6 +10,7 @@ import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
+import { RecordStatusBar } from "../../../components/admin/record-status-bar";
 import { Button } from "../../../components/ui/button";
 import { Card } from "../../../components/ui/card";
 import { adminApi, type AdminEvidence, type ReportDecision } from "../api/admin-api";
@@ -714,7 +715,7 @@ export function ReportCaseDetail({
   const content = (
     <>
       <ReportAlert model={model} translateText={translateText} />
-      <Card className="record-status-bar"><div><span>{translateText("Status")}</span><strong><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></strong></div><div><span>{translateText("Report type")}</span><strong>{translateText(model.reportType)}</strong></div><div><span>{translateText("Submitted")}</span><strong>{formatAdminTimestamp(model.submittedAt)}</strong></div><div><span>{translateText("Reported Member")}</span><strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} /></strong></div><div><span>{translateText("Evidence")}</span><strong>{model.evidence.length || translateText("None")}</strong></div></Card>
+      <RecordStatusBar items={[{ id: "status", label: translateText("Status"), value: <span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span> }, { id: "report-type", label: translateText("Report type"), value: translateText(model.reportType) }, { id: "submitted", label: translateText("Submitted"), value: formatAdminTimestamp(model.submittedAt) }, { id: "reported-member", label: translateText("Reported Member"), value: <MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} /> }, { id: "evidence", label: translateText("Evidence"), value: model.evidence.length || translateText("None") }]} />
       <ReportCaseSections model={model} translateText={translateText} onOpenEvidence={openEvidence} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} actionReceipt={actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Report Case" resourceId={model.id} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {actionReceipt.reason}</p>} /> : null} />
     </>
   );

@@ -15,6 +15,7 @@ import { ApiError } from "../../../lib/api/client";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminActionReceipt, AdminActionSummary } from "../../../components/admin/admin-action-feedback";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
+import { RecordStatusBar } from "../../../components/admin/record-status-bar";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { Badge as UiBadge, Button as UiButton, Card, PageSizeControls, Pagination, Table, type ButtonSize } from "../../../components/ui";
 import { payoutRoutes } from "../admin-routes";
@@ -638,13 +639,7 @@ export function AdminPayoutDetailPage({
         <div className="full-record-actions"><Link className="btn" href={payoutRoutes.list()}>{translateText("Back to Payouts")}</Link></div>
       </div>
       <PayoutStatusAlert detail={detail} />
-      <Card className="record-status-bar payout-record-status-bar">
-        <div><span>{translateText("Status")}</span><strong><Badge status={detail.status} /></strong></div>
-        <div><span>{translateText("Student")}</span><strong>{detail.student.name}</strong></div>
-        <div><span>{translateText("Principal")}</span><strong>{formatPayoutMoney(detail.amounts.principalSatang)}</strong></div>
-        <div><span>{translateText("Created")}</span><strong>{formatPayoutDate(detail.createdAt)}</strong></div>
-        <div><span>{translateText("Destination type")}</span><strong>{translateText(readableValue(detail.destination.type))}</strong></div>
-      </Card>
+      <RecordStatusBar className="payout-record-status-bar" items={[{ id: "status", label: translateText("Status"), value: <Badge status={detail.status} /> }, { id: "student", label: translateText("Student"), value: detail.student.name }, { id: "principal", label: translateText("Principal"), value: formatPayoutMoney(detail.amounts.principalSatang) }, { id: "created", label: translateText("Created"), value: formatPayoutDate(detail.createdAt) }, { id: "destination-type", label: translateText("Destination type"), value: translateText(readableValue(detail.destination.type)) }]} />
       <div className="payout-detail-grid">{content}</div>
       {command ? <PayoutCommandDialog detail={detail} command={command} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandPending} /> : null}
     </main>

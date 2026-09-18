@@ -9,6 +9,7 @@ import { ApiError } from "../../../lib/api/client";
 import { AdminActionReceipt, AdminActionSummary } from "../../../components/admin/admin-action-feedback";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
+import { RecordStatusBar } from "../../../components/admin/record-status-bar";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { Badge as UiBadge, Button as UiButton, Card, PageSizeControls, Pagination, Table } from "../../../components/ui";
 import { disputeRoutes, questRoutes } from "../admin-routes";
@@ -812,13 +813,7 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
         <div className="full-record-actions"><Link className="btn" href={questRoutes.list()}>{translateText("Back to Quests")}</Link></div>
       </div>
       <QuestRecordAlert detail={detail} />
-      <Card className="record-status-bar quest-record-status-bar">
-        <div><span>{translateText("Status")}</span><strong><Badge state={detail.state} /></strong></div>
-        <div><span>{translateText("Participant mode")}</span><strong>{translateText(detail.participation === "GROUP" ? "Team" : "Solo")}</strong></div>
-        <div><span>{translateText("Created")}</span><strong>{formatQuestDate(detail.createdAt)}</strong></div>
-        <div><span>{translateText("Quest Funding Total")}</span><strong>{formatQuestMoney(finance?.quest.questFundingTotalSatang ?? detail.questFundingTotalSatang)}</strong></div>
-        <div><span>{translateText("Candidates")}</span><strong>{questCandidateCount(detail)}</strong></div>
-      </Card>
+      <RecordStatusBar className="quest-record-status-bar" items={[{ id: "status", label: translateText("Status"), value: <Badge state={detail.state} /> }, { id: "participant-mode", label: translateText("Participant mode"), value: translateText(detail.participation === "GROUP" ? "Team" : "Solo") }, { id: "created", label: translateText("Created"), value: formatQuestDate(detail.createdAt) }, { id: "funding-total", label: translateText("Quest Funding Total"), value: formatQuestMoney(finance?.quest.questFundingTotalSatang ?? detail.questFundingTotalSatang) }, { id: "candidates", label: translateText("Candidates"), value: questCandidateCount(detail) }]} />
       <div className="quest-detail-grid">{content}</div>
       {command ? <QuestCommandDialog detail={detail} command={command} dataSource={dataSource} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandPending} /> : null}
     </main>
