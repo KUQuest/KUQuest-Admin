@@ -7,6 +7,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { AdminActionReceipt, AdminActionSummary } from "../../../components/admin/admin-action-feedback";
 import { formatAdminTimestamp } from "../date-format";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
+import { AdminRecordHeader } from "../../../components/admin/admin-record-header";
+import { AdminRecordGrid } from "../../../components/admin/admin-record-grid";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { adminApi, type ReportDecision } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
@@ -504,13 +506,13 @@ function ConductReportDrawerBody({
   if (!compact) {
     return (
       <div className="conduct-report-detail-body">
-        <div className="full-record-grid">
-          <div className="record-primary">
+        <AdminRecordGrid
+          primary={<>
             <ConductReportOverview model={model} translateText={translateText} />
             <ConductEvidenceSection model={model} translateText={translateText} />
             <ConductReportTimeline model={model} translateText={translateText} />
-          </div>
-          <aside className="record-side">
+          </>}
+          side={<>
             <ConductMemberSummaryPanel heading="Reported Member" id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} translateText={translateText} />
             <ConductMemberSummaryPanel heading="Reported by" id={model.reporterId} name={model.reporterName} href={model.reporterHref} translateText={translateText} />
             <RelatedQuestPanel model={model} translateText={translateText} />
@@ -526,8 +528,8 @@ function ConductReportDrawerBody({
                 onStart={onStartDecision}
               />
             </Card>
-          </aside>
-        </div>
+          </>}
+        />
         {actionReceipt}
       </div>
     );
@@ -718,11 +720,14 @@ export function ConductReportDrawer({
   if (presentation === "page") {
     return (
       <main className="admin-route-page conduct-report-detail" tabIndex={-1}>
-        <div className="record-breadcrumb"><Link href={conductReportRoutes.list()}>{translateText("Conduct Reports")}</Link><span>›</span><span>{reportModel.id}</span></div>
-        <div className="full-record-head">
-          <div><div className="record-id">{reportModel.id}</div><h1>{translateText(reportModel.title)}</h1><p>{translateText(reportModel.reason)} · {translateText("reported")} {formatAdminTimestamp(reportModel.submittedAt)}</p></div>
-          <div className="full-record-actions"><Button asChild size="lg" variant="outline"><Link href={conductReportRoutes.list()}>{translateText("Back to Conduct Reports")}</Link></Button></div>
-        </div>
+        <AdminRecordHeader
+          breadcrumbHref={conductReportRoutes.list()}
+          breadcrumbLabel={translateText("Conduct Reports")}
+          recordId={reportModel.id}
+          title={translateText(reportModel.title)}
+          subtitle={`${translateText(reportModel.reason)} · ${translateText("reported")} ${formatAdminTimestamp(reportModel.submittedAt)}`}
+          actions={<Button asChild size="lg" variant="outline"><Link href={conductReportRoutes.list()}>{translateText("Back to Conduct Reports")}</Link></Button>}
+        />
         <ConductReportAlert model={reportModel} translateText={translateText} />
         <RecordStatusBar className="conduct-report-record-status-bar" items={[{ id: "status", label: translateText("Status"), value: <span className={`badge ${reportModel.badgeClass}`}>{translateText(reportModel.statusLabel)}</span> }, { id: "reason", label: translateText("Reason"), value: translateText(reportModel.reason) }, { id: "reported", label: translateText("Reported"), value: formatAdminTimestamp(reportModel.submittedAt) }, { id: "reported-member", label: translateText("Reported Member"), value: <MemberLink id={reportModel.reportedMemberId} name={reportModel.reportedMemberName} href={reportModel.reportedMemberHref} /> }, { id: "quest", label: translateText("Quest"), value: reportModel.questId ?? translateText("Not provided.") }]} />
         {body}

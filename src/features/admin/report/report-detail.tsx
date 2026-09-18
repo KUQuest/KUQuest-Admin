@@ -7,6 +7,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { AdminActionReceipt, AdminActionSummary } from "../../../components/admin/admin-action-feedback";
 import { formatAdminTimestamp } from "../date-format";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
+import { AdminRecordHeader } from "../../../components/admin/admin-record-header";
+import { AdminRecordGrid } from "../../../components/admin/admin-record-grid";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
@@ -493,22 +495,22 @@ function ReportCaseSections({
 
   return (
     <>
-      <div className="full-record-grid">
-        <div className="record-primary">
+      <AdminRecordGrid
+        primary={<>
           <ReportOverview model={model} translateText={translateText} />
           <PeopleInvolved model={model} translateText={translateText} />
           <EvidenceSection model={model} translateText={translateText} onOpen={onOpenEvidence} />
           <ReportTimeline model={model} translateText={translateText} />
-        </div>
-        <aside className="record-side">
+        </>}
+        side={<>
           <MemberSummaryPanel heading="Reported Member" id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} translateText={translateText} />
           <MemberSummaryPanel heading="Submitted by" id={model.reporterId} name={model.reporterName} href={model.reporterHref} translateText={translateText} />
           <Card as="section" className="record-panel report-decision-panel">
             <CardHeader flush><h2>{model.isActionable ? translateText("Report decision") : translateText("Recorded outcome")}</h2></CardHeader>
             {decisionPanel}
           </Card>
-        </aside>
-      </div>
+        </>}
+      />
       {actionReceipt}
     </>
   );
@@ -726,8 +728,14 @@ export function ReportCaseDetail({
 
   return (
     <main className="admin-route-page report-case-detail" tabIndex={-1}>
-      <div className="record-breadcrumb"><Link href={reportRoutes.list()}>{translateText("Report Cases")}</Link><span>›</span><span>{model.id}</span></div>
-      <div className="full-record-head"><div><div className="record-id">{model.id}</div><h1>{translateText(model.title)}</h1><p>{translateText(model.reportType)} · {translateText("submitted")} {formatAdminTimestamp(model.submittedAt)}</p></div><div className="full-record-actions"><Button asChild size="lg" variant="outline"><Link href={reportRoutes.list()}>{translateText("Back to Report Cases")}</Link></Button></div></div>
+      <AdminRecordHeader
+        breadcrumbHref={reportRoutes.list()}
+        breadcrumbLabel={translateText("Report Cases")}
+        recordId={model.id}
+        title={translateText(model.title)}
+        subtitle={`${translateText(model.reportType)} · ${translateText("submitted")} ${formatAdminTimestamp(model.submittedAt)}`}
+        actions={<Button asChild size="lg" variant="outline"><Link href={reportRoutes.list()}>{translateText("Back to Report Cases")}</Link></Button>}
+      />
       {content}
       {overlays}
     </main>

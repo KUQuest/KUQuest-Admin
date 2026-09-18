@@ -8,6 +8,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { ApiError } from "../../../lib/api/client";
 import { AdminActionReceipt, AdminActionSummary } from "../../../components/admin/admin-action-feedback";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
+import { AdminRecordHeader } from "../../../components/admin/admin-record-header";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { RecordStatusBar } from "../../../components/admin/record-status-bar";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
@@ -803,15 +804,14 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
 
   return (
     <main className="admin-route-page quest-detail-page" tabIndex={-1}>
-      <div className="record-breadcrumb"><Link href={questRoutes.list()}>{translateText("Quests")}</Link><span aria-hidden="true">›</span><span>{questDisplayIdFor(detail.id, detail.displayId)}</span></div>
-      <div className="full-record-head">
-        <div>
-          <div className="record-id">{questDisplayIdFor(detail.id, detail.displayId)}</div>
-          <h1>{detail.title}</h1>
-          <p>{translateText(detail.participation === "GROUP" ? "Team" : "Solo")} · {translateText("created")} {formatQuestDate(detail.createdAt)}</p>
-        </div>
-        <div className="full-record-actions"><Link className="btn" href={questRoutes.list()}>{translateText("Back to Quests")}</Link></div>
-      </div>
+      <AdminRecordHeader
+        breadcrumbHref={questRoutes.list()}
+        breadcrumbLabel={translateText("Quests")}
+        recordId={questDisplayIdFor(detail.id, detail.displayId)}
+        title={detail.title}
+        subtitle={`${translateText(detail.participation === "GROUP" ? "Team" : "Solo")} · ${translateText("created")} ${formatQuestDate(detail.createdAt)}`}
+        actions={<Link className="btn" href={questRoutes.list()}>{translateText("Back to Quests")}</Link>}
+      />
       <QuestRecordAlert detail={detail} />
       <RecordStatusBar className="quest-record-status-bar" items={[{ id: "status", label: translateText("Status"), value: <Badge state={detail.state} /> }, { id: "participant-mode", label: translateText("Participant mode"), value: translateText(detail.participation === "GROUP" ? "Team" : "Solo") }, { id: "created", label: translateText("Created"), value: formatQuestDate(detail.createdAt) }, { id: "funding-total", label: translateText("Quest Funding Total"), value: formatQuestMoney(finance?.quest.questFundingTotalSatang ?? detail.questFundingTotalSatang) }, { id: "candidates", label: translateText("Candidates"), value: questCandidateCount(detail) }]} />
       <div className="quest-detail-grid">{content}</div>

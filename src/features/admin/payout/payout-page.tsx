@@ -14,6 +14,7 @@ import {
 import { ApiError } from "../../../lib/api/client";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminActionReceipt, AdminActionSummary } from "../../../components/admin/admin-action-feedback";
+import { AdminRecordHeader } from "../../../components/admin/admin-record-header";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { RecordStatusBar } from "../../../components/admin/record-status-bar";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
@@ -629,15 +630,14 @@ export function AdminPayoutDetailPage({
 
   return (
     <main className="admin-route-page payout-detail-page" tabIndex={-1}>
-      <div className="record-breadcrumb"><Link href={payoutRoutes.list()}>{translateText("Payouts")}</Link><span aria-hidden="true">›</span><span>{detail.id}</span></div>
-      <div className="full-record-head">
-        <div>
-          <div className="record-id">{detail.id}</div>
-          <h1>{detail.id}</h1>
-          <p>{translateText("Payout for")} {detail.student.name} · {translateText("created")} {formatPayoutDate(detail.createdAt)}</p>
-        </div>
-        <div className="full-record-actions"><Link className="btn" href={payoutRoutes.list()}>{translateText("Back to Payouts")}</Link></div>
-      </div>
+      <AdminRecordHeader
+        breadcrumbHref={payoutRoutes.list()}
+        breadcrumbLabel={translateText("Payouts")}
+        recordId={detail.id}
+        title={detail.id}
+        subtitle={`${translateText("Payout for")} ${detail.student.name} · ${translateText("created")} ${formatPayoutDate(detail.createdAt)}`}
+        actions={<Link className="btn" href={payoutRoutes.list()}>{translateText("Back to Payouts")}</Link>}
+      />
       <PayoutStatusAlert detail={detail} />
       <RecordStatusBar className="payout-record-status-bar" items={[{ id: "status", label: translateText("Status"), value: <Badge status={detail.status} /> }, { id: "student", label: translateText("Student"), value: detail.student.name }, { id: "principal", label: translateText("Principal"), value: formatPayoutMoney(detail.amounts.principalSatang) }, { id: "created", label: translateText("Created"), value: formatPayoutDate(detail.createdAt) }, { id: "destination-type", label: translateText("Destination type"), value: translateText(readableValue(detail.destination.type)) }]} />
       <div className="payout-detail-grid">{content}</div>
