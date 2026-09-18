@@ -22,7 +22,7 @@ test.describe("Payout App Router route family", () => {
     expect(payoutApiRequests).toBe(0);
   });
 
-  test("preserves full Payout detail parity between direct page and drawer", async ({ page }) => {
+  test("keeps shared Payout values with page-specific sections", async ({ page }) => {
     const sharedDetailValues = [
       "Mali S.",
       "mali.s@ku.th",
@@ -38,10 +38,21 @@ test.describe("Payout App Router route family", () => {
     await expect(page.getByRole("heading", { level: 1, name: "PAY-9637" })).toBeVisible();
     await expect(page.locator(".payout-page-alert")).toContainText("Payout approval is required");
     await expect(page.locator(".payout-record-status-bar")).toBeVisible();
-    await expect(page.locator(".payout-detail-page .payout-detail-stack > .section")).toHaveCount(7);
-    for (const section of ["Payout summary", "Payout amounts", "Payout Destination", "Payout timing", "Why your approval is needed", "Payout history"]) {
+    await expect(page.locator(".payout-detail-page .payout-detail-stack .section")).toHaveCount(5);
+    for (const section of ["Payout summary", "Payout amounts", "Payout Destination", "Payout history"]) {
       await expect(page.getByRole("heading", { name: section })).toBeVisible();
     }
+    await expect(page.getByRole("heading", { name: "Payout timing" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Why your approval is needed" })).toHaveCount(0);
+    await expect(page.getByText("Occurred at", { exact: true })).toBeVisible();
+    await expect(page.getByText("Payout version", { exact: true })).toHaveCount(0);
+    for (const amountField of ["Maximum fee", "Maximum tax", "Maximum debit"]) {
+      await expect(page.getByText(amountField, { exact: true })).toHaveCount(0);
+    }
+    for (const amountField of ["Actual fee", "Actual tax", "Actual debit"]) {
+      await expect(page.getByText(amountField, { exact: true })).toBeVisible();
+    }
+    await expect(page.getByRole("heading", { name: "Payout amounts" }).locator("..").getByText("Not provided", { exact: true })).toHaveCount(0);
     await expect(page.getByText("PAY-9636", { exact: true })).toBeVisible();
     for (const value of sharedDetailValues) {
       await expect(page.getByText(value, { exact: true }).first()).toBeVisible();
@@ -51,7 +62,7 @@ test.describe("Payout App Router route family", () => {
 
     await page.reload();
     await expect(page.getByRole("heading", { level: 1, name: "PAY-9637" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Payout timing" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Payout timing" })).toHaveCount(0);
 
     await page.goto("/payout");
     const trigger = page.getByRole("link", { name: "Open Payout PAY-9637" });

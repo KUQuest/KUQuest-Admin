@@ -520,13 +520,18 @@ export type AdminMemberFinance = {
 export type AdminWallet = {
   id: string;
   userId: string;
-  member: {
+  /**
+   * The Wallet API normally embeds its Member. Keep this nullable at the
+   * Admin client boundary so one Wallet with a missing Member association
+   * cannot break the whole board.
+   */
+  member?: {
     firstName: string;
     lastName: string;
     studentId: string | null;
     email: string;
     telephone: string | null;
-  };
+  } | null;
   walletStatus: WalletStatus;
   balances: {
     spendingBalanceSatang: number;

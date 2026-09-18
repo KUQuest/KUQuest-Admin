@@ -1,6 +1,10 @@
 import { describe, expect, it } from "bun:test";
 
-import { mockWallets } from "../../src/features/admin/wallet/wallet-mock-data";
+import {
+  mockAllWallets,
+  mockWalletLedgerTransactions,
+  mockWallets,
+} from "../../src/features/admin/wallet/wallet-mock-data";
 import {
   pageWalletRows,
   searchWalletRows,
@@ -35,6 +39,35 @@ describe("Wallet route model", () => {
     });
     expect(row).not.toHaveProperty("walletStatus");
     expect(row).not.toHaveProperty("memberStatus");
+  });
+
+  it("keeps Wallet rows usable when the API omits the Member association", () => {
+    const wallet = {
+      ...mockWallets[0],
+      id: "WAL-MISSING-MEMBER",
+      userId: "member-orphan",
+      member: null,
+    } as unknown as Parameters<typeof walletRowFromApi>[0];
+
+    expect(walletRowFromApi(wallet)).toMatchObject({
+      id: "WAL-MISSING-MEMBER",
+      memberId: "member-orphan",
+      memberAvailable: false,
+      memberName: "Member not provided",
+      studentId: null,
+      email: "Email not provided",
+    });
+  });
+
+  it("provides the latest transaction date for every Mock Wallet with a statement", () => {
+    const walletsWithSealedStatements = mockAllWallets.filter((wallet) => (
+      mockWalletLedgerTransactions[wallet.id] ?? []
+    ).some((transaction) => transaction.sealedAt !== null));
+
+    expect(walletsWithSealedStatements.length).toBe(mockAllWallets.length);
+    expect(walletsWithSealedStatements.every((wallet) => Boolean(wallet.latestTransactionAt))).toBe(true);
+    expect(mockAllWallets.find((wallet) => wallet.id === "WAL-1006")?.latestTransactionAt)
+      .toBe("2026-09-01T06:00:00.000Z");
   });
 
   it("keeps Wallet status tabs separate from Member status values", () => {

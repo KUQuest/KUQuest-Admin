@@ -2,6 +2,9 @@
 .dispute-summary .btn {
   text-decoration: none;
 }
+.quest-detail-page {
+  max-width: 1280px;
+}
 .back-link {
   display: inline-flex;
   align-items: center;
@@ -80,6 +83,17 @@
   gap: 18px;
   align-items: start;
 }
+.quest-detail-stack {
+  display: grid;
+  gap: 18px;
+}
+.quest-detail-stack > .quest-detail-primary,
+.quest-detail-stack > .quest-detail-side {
+  display: contents;
+}
+.quest-detail-stack .panel + .panel {
+  margin-top: 0;
+}
 .record-primary,
 .record-side {
   display: grid;
@@ -106,10 +120,46 @@
 .record-panel-head h2 {
   margin: 0;
 }
+.quest-record-body {
+  padding: 0;
+}
 .record-description {
   max-width: 74ch;
   margin: 0;
   color: var(--muted);
+}
+.quest-description-block {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+.quest-description-block h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+.quest-summary-context {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 24px;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+.quest-summary-context-section {
+  min-width: 0;
+}
+.quest-summary-context-section h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+.quest-summary-context-section > p:not(.audit-note):not(.field-error) {
+  margin: 0;
+  color: var(--muted);
+}
+.quest-summary-context-wide {
+  grid-column: 1 / -1;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
 }
 .side-facts {
   display: grid;
@@ -296,6 +346,14 @@
   }
   .full-record-head h1 {
     font-size: 21px;
+  }
+}
+@media (max-width: 600px) {
+  .quest-summary-context {
+    grid-template-columns: 1fr;
+  }
+  .quest-summary-context-wide {
+    grid-column: auto;
   }
 }
 @media (max-width: 500px) {

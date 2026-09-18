@@ -1522,6 +1522,25 @@ dialog::backdrop {
   font-size: 12px;
   font-weight: 600;
 }
+.decision-amount-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--soft);
+}
+.decision-amount-summary span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.decision-amount-summary strong {
+  font-size: 14px;
+  text-align: right;
+}
 .dialog-body textarea {
   width: 100%;
   margin-top: 6px;

@@ -1,6 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
-import { MOCK_OPEN_QUEST_ID } from "../../src/features/admin/quest/quest-mock-data";
 import { signIn } from "./support/admin-auth";
 
 // Ports the legacy suite assertions (tests/e2e-legacy) to canonical routes.
@@ -41,7 +40,7 @@ test.describe("legacy parity on canonical routes", () => {
     await signIn(page);
     await page.goto("/wallet");
 
-    await expect(page.locator(".wallet-funds-summary")).toContainText("Member Wallet Summary");
+    await expect(page.locator(".wallet-funds-summary")).toContainText("All Member Wallet Summary");
     for (const label of ["Spending balance", "Earnings balance", "Funding reserved", "Payout reserved", "Total circulating"]) {
       await expect(page.locator(".wallet-funds-summary")).toContainText(label);
     }
@@ -153,6 +152,7 @@ test.describe("legacy parity on canonical routes", () => {
     const columns = await grid.evaluate((element) => getComputedStyle(element).gridTemplateColumns);
     expect(columns.split(" ")).toHaveLength(2);
     await expect(page.getByText(/Invalid Date/)).toHaveCount(0);
+    await expect(page.locator(".dispute-case-detail [data-moderation-case-workspace='context']")).toHaveCount(0);
   });
 
   test("Report Case detail keeps its alert layout", async ({ page }) => {
@@ -160,6 +160,7 @@ test.describe("legacy parity on canonical routes", () => {
     await page.goto("/report/RPT-8201");
 
     await expect(page.locator(".report-page-alert").first()).toHaveCSS("display", "flex");
+    await expect(page.locator(".report-case-detail [data-moderation-case-workspace='context']")).toHaveCount(0);
   });
 
   test("Dispute Case and Report Case pages show no Admin Chat composer in English or Thai", async ({ page }) => {
@@ -261,7 +262,7 @@ test.describe("legacy parity for inputs on mobile", () => {
 
   test("Quest termination reason accepts input on mobile", async ({ page }) => {
     await signIn(page);
-    await page.goto(`/quest/${MOCK_OPEN_QUEST_ID}`);
+    await page.goto("/quest/QST-12011");
     await page.getByRole("button", { name: "Terminate Quest" }).click();
 
     const dialog = page.getByRole("dialog", { name: "Terminate Quest" });

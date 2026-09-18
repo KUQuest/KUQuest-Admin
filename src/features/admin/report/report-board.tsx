@@ -8,6 +8,7 @@ import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { reportRoutes } from "../admin-routes";
+import { formatAdminTimestamp } from "../date-format";
 import { loadAllReportCasesFromMock as loadAllReportCasesFromMockData, loadReportCasesFromMock } from "./report-adapter";
 import {
   ADMIN_BOARD_PAGE_SIZES,
@@ -37,7 +38,7 @@ function tabMatches(model: ReportCaseModel, tab: ReportCaseTab): boolean {
     case "all":
       return true;
     case "open":
-      return model.isActionable;
+      return model.status === "REPORT_CASE_PENDING";
     case "dismissed":
       return model.status === "REPORT_CASE_DISMISSED";
     case "confirmed":
@@ -164,7 +165,7 @@ export function ReportCaseBoard({ initialData }: { initialData?: ReportCasePageD
   const currentPage = Math.min(pageNumber, Math.max(totalPages, 1));
   const visibleModels = pageRows(models, currentPage, pageSize);
   const { start: pageStart, end: pageEnd } = pageRange(models.length, currentPage, pageSize);
-  const openCount = page.items.filter((model) => model.isActionable).length;
+  const openCount = page.items.filter((model) => model.status === "REPORT_CASE_PENDING").length;
 
   return (
       <main id="report-main" className="admin-route-page report-case-board" tabIndex={-1}>
@@ -182,13 +183,13 @@ export function ReportCaseBoard({ initialData }: { initialData?: ReportCasePageD
               <tbody>
                 {visibleModels.map((model) => {
                   return <tr key={model.id} data-report-id={model.id} tabIndex={0} aria-label={`${translateText("Open Report Case")} ${model.id}`} onClick={() => openDrawer(model.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openDrawer(model.id); } }}>
-                    <td><button className="row-record-button" type="button" data-report-id={model.id} aria-label={`${translateText("Open Report Case")} ${model.id}`} onClick={(event) => { event.stopPropagation(); openDrawer(model.id); }}>{model.id}</button><small>{model.title}</small></td>
-                    <td>{model.source}</td>
+                    <td><button className="row-record-button" type="button" data-report-id={model.id} aria-label={`${translateText("Open Report Case")} ${model.id}`} onClick={(event) => { event.stopPropagation(); openDrawer(model.id); }}>{model.id}</button><small>{translateText(model.title)}</small></td>
+                    <td>{translateText(model.source)}</td>
                     <td>{model.reportedMemberHref ? <Link href={model.reportedMemberHref} onClick={(event) => event.stopPropagation()}>{model.reportedMemberName}</Link> : model.reportedMemberName}<small>{model.reportedMemberId || "—"}</small></td>
                     <td>{model.reporterHref ? <Link href={model.reporterHref} onClick={(event) => event.stopPropagation()}>{model.reporterName}</Link> : model.reporterName}<small>{model.reporterId ?? "—"}</small></td>
-                    <td>{model.reportType}</td>
+                    <td>{translateText(model.reportType)}</td>
                     <td><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></td>
-                    <td>{model.submittedAt}</td>
+                    <td>{formatAdminTimestamp(model.submittedAt)}</td>
                   </tr>;
                 })}
               </tbody>

@@ -183,9 +183,7 @@ export const mockDemoWallets: AdminWallet[] = Array.from({ length: 195 }, (_, in
     reservedForPayouts: index % 4 === 3 ? 0 : index % 6 === 0 ? 0 : 2500 + index * 125,
     createdAt: new Date(Date.UTC(2026, 6, 1 + index, 2, 0, 0)).toISOString(),
     updatedAt: new Date(Date.UTC(2026, 8, 1 + (index % 12), 6, 0, 0)).toISOString(),
-    latestTransactionAt: index % 7 === 0
-      ? ""
-      : new Date(Date.UTC(2026, 8, 1 + (index % 12), 6, 0, 0)).toISOString(),
+    latestTransactionAt: new Date(Date.UTC(2026, 8, 1 + (index % 12), 6, 0, 0)).toISOString(),
   });
 });
 

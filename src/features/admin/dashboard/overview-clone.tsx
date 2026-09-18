@@ -268,11 +268,12 @@ export function OverviewClone() {
       <div className="overview-command-center-snapshot">
         <section className="overview-command-center-snapshot-card" aria-labelledby="overview-command-quest-heading">
           <div className="overview-command-center-section-head"><div><h2 id="overview-command-quest-heading">Quest States</h2><p>Current distribution across Quests.</p></div><span>{countLabel(model.questTotal)} total</span></div>
-          <ul className="overview-command-center-state-list">
+          <ul className="overview-command-center-status-list">
             {model.questStates.map((entry) => (
-              <li key={entry.status}>
-                <span><span>{entry.label}</span><strong>{countLabel(entry.count)}</strong></span>
-                <span className="overview-command-center-state-track" aria-hidden="true"><span className={`overview-command-center-state-bar ${questStateTones[entry.status]}`} style={{ width: `${entry.percentage}%` }} /></span>
+              <li key={entry.status} className={`overview-command-center-status-row ${questStateTones[entry.status]}`}>
+                <span className="overview-command-center-status-dot" aria-hidden="true" />
+                <span><strong>{entry.label}</strong><small>Quest status</small></span>
+                <strong>{countLabel(entry.count)}</strong>
               </li>
             ))}
           </ul>

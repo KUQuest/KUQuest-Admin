@@ -29,6 +29,7 @@ export type WalletSortDirection = "ascending" | "descending";
 export type WalletBoardRow = {
   id: string;
   memberId: string;
+  memberAvailable: boolean;
   memberName: string;
   studentId: string | null;
   email: string;
@@ -101,18 +102,24 @@ function walletBalancesFromApi(balances: AdminWallet["balances"]): WalletDetailV
   };
 }
 
+const MEMBER_NOT_PROVIDED = "Member not provided";
+const EMAIL_NOT_PROVIDED = "Email not provided";
+
 function memberName(member: AdminWallet["member"]): string {
-  return `${member.firstName} ${member.lastName}`.trim() || member.email;
+  if (!member) return MEMBER_NOT_PROVIDED;
+  return `${member.firstName} ${member.lastName}`.trim() || member.email || MEMBER_NOT_PROVIDED;
 }
 
 export function walletRowFromApi(wallet: AdminWallet): WalletBoardRow {
   const status = walletStatusFor(wallet.walletStatus);
+  const member = wallet.member;
   return {
     id: wallet.id,
     memberId: wallet.userId,
-    memberName: memberName(wallet.member),
-    studentId: wallet.member.studentId,
-    email: wallet.member.email,
+    memberAvailable: Boolean(member),
+    memberName: memberName(member),
+    studentId: member?.studentId ?? null,
+    email: member?.email || EMAIL_NOT_PROVIDED,
     status,
     statusLabel: walletStatusLabel(status),
     currentBalanceSatang: wallet.balances.totalBalanceSatang,

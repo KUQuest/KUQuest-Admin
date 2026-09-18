@@ -102,6 +102,7 @@ const demoQuestStates = [
   "QUEST_COMPLETED",
   "QUEST_DRAFT",
   "QUEST_CANCELLED",
+  "QUEST_ASSIGNED",
 ] as const;
 
 const teamQuestTitles = [
@@ -142,7 +143,7 @@ function makeDemoQuest(index: number): AdminQuest {
   const state = demoQuestStates[index % demoQuestStates.length];
   const isTeamQuest = index % 7 === 3;
   const teamHeadcount = 2 + (index % 3);
-  const rewardSatang = index % 7 === 0 ? null : 7000 + index * 500;
+  const rewardSatang = 7000 + index * 500;
   // Keep canonical workflow records at the top of the default newest-first
   // board while the generated records still span many older dates.
   const createdAt = new Date(Date.UTC(2026, 7, 1, 4, 0, 0) - index * 86_400_000).toISOString();
@@ -158,7 +159,7 @@ function makeDemoQuest(index: number): AdminQuest {
     participation: isTeamQuest ? "GROUP" : "SINGLE",
     headcount: isTeamQuest ? teamHeadcount : 1,
     rewardSatang,
-    questFundingTotalSatang: rewardSatang === null ? null : rewardSatang + 240,
+    questFundingTotalSatang: rewardSatang + 240,
     startTime: new Date(Date.UTC(2026, 7, 2, 8, 0, 0) - index * 86_400_000).toISOString(),
     dueAt: index % 6 === 0 ? null : new Date(Date.UTC(2026, 7, 8, 15, 0, 0) - index * 86_400_000).toISOString(),
     hiddenAt: index % 11 === 0 ? new Date(Date.UTC(2026, 7, 3, 9, 0, 0) - index * 86_400_000).toISOString() : null,
@@ -168,8 +169,9 @@ function makeDemoQuest(index: number): AdminQuest {
   });
 }
 
-// Keep the original demo fixture small for tests that use it as a focused
-// scenario. The route service can use mockAllQuests for scale testing.
+// Keep the original demo fixture small for isolated API contract tests. These
+// records are not part of the Mock Quest board; the board uses the generated
+// records below so it reflects normal operating data.
 const mockDemoQuests: AdminQuest[] = Array.from({ length: 24 }, (_, index) => makeDemoQuest(index));
 const mockScaleQuests: AdminQuest[] = Array.from({ length: 171 }, (_, index) => makeDemoQuest(index + 24));
 
@@ -203,7 +205,20 @@ const mockCoreQuests: AdminQuest[] = [
   ...mockDemoQuests,
 ];
 
-export const mockQuests: AdminQuest[] = mockCoreQuests;
+const retiredMockQuestDisplayIds = new Set([
+  "QST-OPEN",
+  "QST-TEAM",
+  "QST-FAILED",
+  "QST-HIDDEN",
+  "QST-NO-DISPUTE",
+]);
+
+// The exported Mock collection is the data shown to Admins. Retired scenario
+// records stay private so isolated API contract tests can still build focused
+// payloads without putting those records back on the board.
+export const mockQuests: AdminQuest[] = mockCoreQuests.filter(
+  (quest) => !retiredMockQuestDisplayIds.has(quest.displayId ?? ""),
+);
 
 // The dashboard demo data keeps the original human-readable Quest references
 // used by Dispute Cases (QST-12001, QST-12008, and QST-12206–QST-12210).
@@ -232,7 +247,7 @@ const mockDisputeQuestAliases: AdminQuest[] = [
 ];
 
 export const mockAllQuests: AdminQuest[] = [
-  ...mockCoreQuests,
+  ...mockCoreQuests.filter((quest) => !retiredMockQuestDisplayIds.has(quest.displayId ?? "")),
   ...mockScaleQuests,
   ...mockDisputeQuestAliases,
 ];
@@ -296,6 +311,29 @@ function teamCandidatesFor(
   }];
 }
 
+function candidateApplicationsFor(quest: AdminQuest): AdminQuestDetail["candidates"]["applications"] {
+  if (quest.questStatus === "QUEST_DRAFT") return [];
+  if (quest.questStatus === "QUEST_OPEN") {
+    if (quest.participation !== "GROUP" || quest.mode !== "CANDIDATE") return [];
+    return [{
+      id: `${quest.id}-application-1`,
+      worker: demoQuestMemberFor(80),
+      applicationStatus: "APPLICATION_PENDING",
+      reworkLimit: 0,
+      appliedAt: quest.createdAt,
+    }];
+  }
+
+  const displayNumber = Number.parseInt((quest.displayId ?? "").replace(/\D/g, ""), 10);
+  return [{
+    id: `${quest.id}-application-1`,
+    worker: demoQuestMemberFor(Number.isFinite(displayNumber) ? displayNumber % mockDemoMemberSeeds.length : 80),
+    applicationStatus: "APPLICATION_SELECTED",
+    reworkLimit: 0,
+    appliedAt: quest.createdAt,
+  }];
+}
+
 function teamAssignmentsFor(
   quest: AdminQuest,
   members: readonly AdminQuestMember[],
@@ -344,19 +382,86 @@ function teamProofSubmissionsFor(
   }];
 }
 
+function singleAssignmentFor(quest: AdminQuest): AdminQuestDetail["assignments"] {
+  if (quest.participation !== "SINGLE" || quest.questStatus !== "QUEST_ASSIGNED") return [];
+
+  const displayNumber = Number.parseInt((quest.displayId ?? "").replace(/\D/g, ""), 10);
+  const worker = Number.isFinite(displayNumber)
+    ? demoQuestMemberFor(displayNumber % mockDemoMemberSeeds.length)
+    : assignedWorker;
+
+  return [{
+    id: `${quest.id}-assignment-1`,
+    worker,
+    assignmentStatus: "ASSIGNMENT_ACTIVE",
+    startedAt: null,
+    createdAt: quest.createdAt,
+  }];
+}
+
+function fieldEditHistoryFor(quest: AdminQuest): AdminQuestDetail["editHistory"] {
+  const displayNumber = Number.parseInt((quest.displayId ?? "").replace(/\D/g, ""), 10);
+  const hasDemoEdit = quest.id === MOCK_OPEN_QUEST_ID
+    || quest.id === MOCK_FAILED_QUEST_ID
+    || (Number.isFinite(displayNumber) && displayNumber % 13 === 0);
+  if (!hasDemoEdit) return [];
+
+  const createdAt = Date.parse(quest.createdAt);
+  const updatedAt = Date.parse(quest.updatedAt);
+  const firstEditAt = Number.isFinite(createdAt) ? quest.createdAt : quest.updatedAt;
+  const secondEditAt = Number.isFinite(updatedAt) && (!Number.isFinite(createdAt) || updatedAt >= createdAt)
+    ? quest.updatedAt
+    : firstEditAt;
+
+  return [
+    {
+      kind: "FIELD_EDIT",
+      id: `${quest.id}-edit-1`,
+      fieldName: "title",
+      oldValue: `${quest.title} · draft`,
+      newValue: quest.title,
+      editedAt: firstEditAt,
+      editedByUserId: quest.hirer.id,
+      editedByAdminId: null,
+    },
+    {
+      kind: "FIELD_EDIT",
+      id: `${quest.id}-edit-2`,
+      fieldName: "condition",
+      oldValue: "Original Quest Condition.",
+      newValue: "Complete the requested work and submit verifiable evidence.",
+      editedAt: secondEditAt,
+      editedByUserId: quest.hirer.id,
+      editedByAdminId: null,
+    },
+  ];
+}
+
+function hirerAttachmentsFor(quest: AdminQuest): NonNullable<AdminQuestDetail["images"]> | null {
+  const displayNumber = Number.parseInt((quest.displayId ?? "").replace(/\D/g, ""), 10);
+  const hasAttachments = quest.id === MOCK_OPEN_QUEST_ID
+    || quest.id === MOCK_TEAM_QUEST_ID
+    || quest.id === MOCK_FAILED_QUEST_ID
+    || quest.id === MOCK_UNLINKED_FAILED_QUEST_ID
+    || (quest.questStatus === "QUEST_FAILED" && Number.isFinite(displayNumber) && displayNumber % 2 === 0)
+    || (Number.isFinite(displayNumber) && displayNumber % 7 === 0);
+  if (!hasAttachments) return null;
+
+  const count = quest.id === MOCK_TEAM_QUEST_ID ? 2 : 1;
+  return Array.from({ length: count }, (_, position) => ({
+    imageId: `${quest.id}-hirer-image-${position + 1}`,
+    fileId: `${quest.id}-hirer-file-${position + 1}`,
+    position,
+    // Keep mock attachments local so the Admin preview is deterministic.
+    url: "/library-access-route.webp",
+    urlExpiresAt: "2026-09-14T10:15:00.000Z",
+  }));
+}
+
 export function mockQuestDetail(quest: AdminQuest): AdminQuestDetail {
   const teamMembers = quest.participation === "GROUP" ? teamMembersFor(quest) : [];
   const teamAssignments = teamAssignmentsFor(quest, teamMembers);
   const teamCandidates = teamCandidatesFor(quest, teamMembers);
-  const teamApplications = quest.participation === "GROUP" && quest.mode === "CANDIDATE" && quest.questStatus === "QUEST_OPEN"
-    ? [{
-        id: `${quest.id}-application-1`,
-        worker: demoQuestMemberFor(80),
-        applicationStatus: "APPLICATION_PENDING",
-        reworkLimit: 0,
-        appliedAt: quest.createdAt,
-      }]
-    : [];
   const detail: AdminQuestDetail = {
     ...quest,
     description: `Full description for ${quest.title}.`,
@@ -375,7 +480,7 @@ export function mockQuestDetail(quest: AdminQuest): AdminQuestDetail {
     cancelledAt: null,
     cancelledByUserId: null,
     cancelledByAdminId: null,
-    candidates: { applications: teamApplications, teams: teamCandidates },
+    candidates: { applications: candidateApplicationsFor(quest), teams: teamCandidates },
     assignments: teamAssignments.length
       ? teamAssignments
       : quest.id === MOCK_UNLINKED_FAILED_QUEST_ID
@@ -386,24 +491,15 @@ export function mockQuestDetail(quest: AdminQuest): AdminQuestDetail {
           startedAt: "2026-09-14T09:00:00.000Z",
           createdAt: "2026-09-14T08:50:00.000Z",
         }]
-      : [],
+      : singleAssignmentFor(quest),
     proofSubmissions: teamProofSubmissionsFor(quest, teamMembers),
-    editHistory: [],
+    editHistory: fieldEditHistoryFor(quest),
     timeline: questTimelineFor(quest),
     adminActions: [],
   };
 
-  if (quest.id === MOCK_OPEN_QUEST_ID) {
-    detail.images = [{
-      imageId: "00000000-0000-0000-0000-000000000501",
-      fileId: "00000000-0000-0000-0000-000000000502",
-      position: 0,
-      // Keep the mock attachment local so the Admin preview is deterministic
-      // and does not depend on an unavailable external CDN.
-      url: "/library-access-route.webp",
-      urlExpiresAt: "2026-09-14T10:15:00.000Z",
-    }];
-  }
+  const hirerAttachments = hirerAttachmentsFor(quest);
+  if (hirerAttachments) detail.images = hirerAttachments;
 
   if (quest.id === MOCK_TEAM_QUEST_ID) {
     detail.editHistory = [{
@@ -433,7 +529,7 @@ export function mockQuestDetail(quest: AdminQuest): AdminQuestDetail {
 }
 
 export function mockQuestDetailForId(questId: string): AdminQuestDetail | null {
-  const quest = [...mockAllQuests, ...mockDisputeQuestAliases].find(
+  const quest = mockAllQuests.find(
     (item) => item.id === questId || item.displayId === questId,
   );
   return quest ? mockQuestDetail(quest) : null;
@@ -480,7 +576,6 @@ export function mockQuestFinance(quest: AdminQuest): AdminQuestFinance {
 }
 
 export function mockDisputeIdForQuest(questId: string): string | null {
-  if (questId === MOCK_FAILED_QUEST_ID) return MOCK_DISPUTE_CASE_ID;
   if (questId === "QST-12001") return "DSP-5201";
   if (questId === "QST-12008") return "DSP-5202";
 

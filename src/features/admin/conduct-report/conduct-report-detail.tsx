@@ -5,14 +5,18 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { AdminActionReceipt, AdminActionSummary } from "../../../components/admin/admin-action-feedback";
+import { formatAdminTimestamp } from "../date-format";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { adminApi, type ReportDecision } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { conductReportRoutes } from "../admin-routes";
+import { questStateLabel } from "../domain/rulebook";
+import { questStatusClass } from "../quest/quest-model";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
-import { ModerationCaseWorkspace } from "../moderation-case/moderation-case-workspace";
+import { ModerationCaseWorkspace, ModerationHistoryPanel } from "../moderation-case/moderation-case-workspace";
+import { hasModerationHistory } from "../moderation-case/moderation-case-context";
 import {
   findConductReportFromMock,
   newConductReportIdempotencyKey,
@@ -20,6 +24,8 @@ import {
 } from "./conduct-report-adapter";
 import {
   CONDUCT_REPORT_UPDATED_EVENT,
+  conductReportReasonLabel,
+  conductReportStatusLabel,
   conductReportDecisionFor,
   conductReportModelFromRecord,
   type ConductReportDecisionChoice,
@@ -111,8 +117,8 @@ function ConductReportDecisionDialog({
             <AdminActionSummary
               title={translateText("Before you confirm")}
               affected={`${translateText("Conduct Report")} ${model.id} · ${translateText("Quest")} ${model.questId ?? "—"}`}
-              currentState={model.status}
-              nextState={nextState}
+              currentState={model.statusLabel}
+              nextState={conductReportStatusLabel(nextState)}
               effect={translateText(effect)}
               reversibility={translateText(choice === "confirmed-violation" ? "This decision is final. Review the Quest record before confirming." : "The decision is retained as an immutable audit record.")}
               warning={translateText("Use the Quest, Assignment, and Proof Submission record as the decision evidence.")}
@@ -197,13 +203,19 @@ function ConductReportAlert({
 function ConductReportOverview({
   model,
   translateText,
+  compact = false,
 }: {
   model: ConductReportModel;
   translateText: (value: string) => string;
+  compact?: boolean;
 }) {
   return (
-    <section className="section">
-      <h3>{translateText("Conduct Report overview")}</h3>
+    <section className={compact ? "section" : "record-panel conduct-report-overview"}>
+      {compact ? (
+        <h3>{translateText("Conduct Report overview")}</h3>
+      ) : (
+        <div className="record-panel-head"><h2>{translateText("Conduct Report detail")}</h2><span className="badge">{translateText(model.reason)}</span></div>
+      )}
       <div className="facts">
         <div className="fact">
           <span>{translateText("Status")}</span>
@@ -211,66 +223,132 @@ function ConductReportOverview({
         </div>
         <div className="fact">
           <span>{translateText("Reason")}</span>
-          <strong>{model.reason}</strong>
+          <strong>{translateText(model.reason)}</strong>
         </div>
         <div className="fact">
           <span>{translateText("Reported")}</span>
-          <strong>{model.submittedAt}</strong>
+          <strong>{formatAdminTimestamp(model.submittedAt)}</strong>
         </div>
       </div>
-    </section>
-  );
-}
-
-function QuestRecordSection({
-  model,
-  translateText,
-}: {
-  model: ConductReportModel;
-  translateText: (value: string) => string;
-}) {
-  return (
-    <section className="section">
-      <h3>{translateText("Quest record")}</h3>
-      <div className="facts">
-        <div className="fact">
-          <span>{translateText("Quest title")}</span>
-          <strong>{model.questTitle}</strong>
-        </div>
-        <div className="fact">
-          <span>{translateText("Quest ID")}</span>
-          <strong>{model.questId ?? "—"}</strong>
-        </div>
+      <dl className="overview-meta moderation-case-context-grid">
+        <div><dt>{translateText("Case")}</dt><dd>{model.id}</dd></div>
+        <div><dt>{translateText("Case type")}</dt><dd>{translateText("Conduct Report")}</dd></div>
+        <div><dt>{translateText("Source")}</dt><dd>{translateText("Quest record")}</dd></div>
+        <div><dt>{translateText("Submitted")}</dt><dd>{formatAdminTimestamp(model.submittedAt)}</dd></div>
+        <div><dt>{translateText("Evidence")}</dt><dd>{model.questRecord ? translateText("Quest record") : translateText("None")}</dd></div>
+        <div><dt>{translateText("Reason code")}</dt><dd>{model.reasonCode ? translateText(conductReportReasonLabel(model.reasonCode)) : "—"}</dd></div>
+      </dl>
+      <div className="overview-group">
+        <span>{translateText("Submitted detail")}</span>
+        <p>{model.detail}</p>
       </div>
-      {model.questRecord && <p className="conduct-report-quest-record">{model.questRecord}</p>}
-    </section>
-  );
-}
-
-function PeopleInvolved({
-  model,
-  translateText,
-  interactive = true,
-}: {
-  model: ConductReportModel;
-  translateText: (value: string) => string;
-  interactive?: boolean;
-}) {
-  return (
-    <section className="section">
-      <h3>{translateText("People involved")}</h3>
-      <div className="facts">
-        <div className="fact">
+      <div className="party-grid moderation-case-parties conduct-report-overview-parties">
+        <div>
           <span>{translateText("Reported Member")}</span>
-          <strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} interactive={interactive} /></strong>
+          <strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} interactive={!compact} /></strong>
           <small>{model.reportedMemberId || "—"}</small>
         </div>
-        <div className="fact">
+        <div>
           <span>{translateText("Reported by")}</span>
-          <strong><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} interactive={interactive} /></strong>
-          <small>{model.reporterId ?? "—"}</small>
+          <strong><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} interactive={!compact} /></strong>
+          <small>{model.reporterId || "—"}</small>
         </div>
       </div>
+    </section>
+  );
+}
+
+function ConductEvidenceSection({
+  model,
+  translateText,
+  compact = false,
+}: {
+  model: ConductReportModel;
+  translateText: (value: string) => string;
+  compact?: boolean;
+}) {
+  return (
+    <section className={compact ? "section" : "record-panel"}>
+      <div className="record-panel-head">
+        {compact ? <h3>{translateText("Evidence")}</h3> : <h2>{translateText("Evidence")}</h2>}
+        <span className="section-count">{model.questRecord ? 1 : 0}</span>
+      </div>
+      <div className="overview-group">
+        <span>{translateText("Quest record")}</span>
+        <p>{model.questRecord ?? translateText("No Quest record evidence was provided.")}</p>
+      </div>
+      <p className="audit-note">{translateText("Use the Assignment, Proof Submission, and Quest timestamps as the decision evidence.")}</p>
+    </section>
+  );
+}
+
+function RelatedQuestPanel({
+  model,
+  translateText,
+  compact = false,
+}: {
+  model: ConductReportModel;
+  translateText: (value: string) => string;
+  compact?: boolean;
+}) {
+  return (
+    <section className={compact ? "section related-quest-panel" : "record-panel related-quest-panel"}>
+      <div className="record-panel-head">
+        {compact ? <h3>{translateText("Related Quest")}</h3> : <h2>{translateText("Related Quest")}</h2>}
+        {model.questState && <span className={`badge ${questStatusClass(model.questState)}`}>{translateText(questStateLabel(model.questState))}</span>}
+      </div>
+      <div className="side-facts">
+        <div><span>{translateText("Quest")}</span><strong>{model.questTitle}</strong></div>
+        <div><span>{translateText("Quest ID")}</span><strong>{model.questId ?? "—"}</strong></div>
+        <div><span>{translateText("Quest State")}</span><strong>{model.questState ? translateText(questStateLabel(model.questState)) : translateText("Not provided.")}</strong></div>
+        <div><span>{translateText("Failed at")}</span><strong>{model.questFailedAt ? formatAdminTimestamp(model.questFailedAt) : translateText("Not provided.")}</strong></div>
+      </div>
+      {model.questHref
+        ? <Link className="btn full-width" href={model.questHref}>{translateText("Open Quest detail")}</Link>
+        : <p className="audit-note">{translateText("Related Quest was not provided.")}</p>}
+    </section>
+  );
+}
+
+function ConductMemberSummaryPanel({
+  heading,
+  id,
+  name,
+  href,
+  translateText,
+}: {
+  heading: string;
+  id: string | null;
+  name: string;
+  href: string | null;
+  translateText: (value: string) => string;
+}) {
+  return (
+    <section className="record-panel">
+      <h2>{translateText(heading)}</h2>
+      <div className="side-facts"><div><span>{translateText("Name")}</span><strong><MemberLink id={id} name={name} href={href} /></strong></div><div><span>{translateText("Member ID")}</span><strong>{id || "—"}</strong></div></div>
+      {href && <Link className="btn full-width" href={href}>{translateText("See Member profile")}</Link>}
+    </section>
+  );
+}
+
+function ConductModerationContext({ model, translateText }: { model: ConductReportModel; translateText: (value: string) => string }) {
+  const summary = model.moderationHistory;
+  const fallback = translateText("Not provided.");
+  const actionText = summary.previousActions.length ? summary.previousActions.map((action) => translateText(action)).join(" · ") : fallback;
+  const noteText = summary.adminNotes.length ? summary.adminNotes.join(" · ") : fallback;
+
+  return (
+    <section className="record-panel">
+      <div className="record-panel-head"><h2>{translateText("Member moderation context")}</h2><span className="section-count">{hasModerationHistory(summary) ? translateText("Available") : translateText("Partial")}</span></div>
+      <dl className="overview-meta moderation-case-history-grid">
+        <div><dt>{translateText("Current Member status")}</dt><dd>{summary.currentMemberStatus ? translateText(summary.currentMemberStatus) : fallback}</dd></div>
+        <div><dt>{translateText("Previous reports received")}</dt><dd>{summary.previousReportCount ?? fallback}</dd></div>
+        <div><dt>{translateText("Confirmed previous violations")}</dt><dd>{summary.confirmedViolationCount ?? fallback}</dd></div>
+      </dl>
+      <div className="overview-group"><span>{translateText("Previous moderation actions")}</span><p>{actionText}</p></div>
+      <div className="overview-group"><span>{translateText("Internal Admin notes")}</span><p>{noteText}</p></div>
+      <div className="overview-group"><span>{translateText("Policy boundary")}</span><p>{translateText("Conduct Reports use the Quest record. Work Chat or Candidate Inquiry history may be opened only for this case, with an Admin Action log entry.")}</p></div>
     </section>
   );
 }
@@ -285,8 +363,8 @@ function ResolutionDetails({
   const details = [
     ["Resolution", model.resolution],
     ["Resolved by", model.resolvedBy],
-    ["Resolution time", model.resolutionAt],
-    ["Closed at", model.closedAt],
+    ["Resolution time", model.resolutionAt ? formatAdminTimestamp(model.resolutionAt) : null],
+    ["Closed at", model.closedAt ? formatAdminTimestamp(model.closedAt) : null],
   ] as const;
 
   return (
@@ -308,6 +386,20 @@ function ResolutionDetails({
   );
 }
 
+function ConductReportTimeline({ model, translateText }: { model: ConductReportModel; translateText: (value: string) => string }) {
+  const events = model.status === "CONDUCT_REPORT_PENDING"
+    ? [
+      { title: "Conduct Report submitted", time: formatAdminTimestamp(model.submittedAt), detail: `${model.reporterName} reported ${model.reportedMemberName}.` },
+      { title: "Awaiting Admin decision", time: translateText("Open"), detail: translateText("Review the Quest record and submitted details.") },
+    ]
+    : [
+      { title: "Conduct Report submitted", time: formatAdminTimestamp(model.submittedAt), detail: `${model.reporterName} reported ${model.reportedMemberName}.` },
+      { title: "Conduct Report decision recorded", time: model.resolutionAt || model.closedAt ? formatAdminTimestamp(model.resolutionAt ?? model.closedAt) : translateText("Time not provided"), detail: model.decisionReason ?? model.decisionLabel ?? translateText("Record retained for audit.") },
+    ];
+
+  return <section className="record-panel"><h2>{translateText("Conduct Report timeline")}</h2><ol className="timeline">{events.map((event) => <li key={`${event.title}-${event.time}`}><strong>{translateText(event.title)}</strong><time>{event.time}</time><span>{translateText(event.detail)}</span></li>)}</ol></section>;
+}
+
 function DecisionControls({
   model,
   translateText,
@@ -327,7 +419,7 @@ function DecisionControls({
     return (
       <>
         <p className="audit-note">
-          {translateText("Decision recorded:")} <strong>{model.decisionLabel ?? model.statusLabel}</strong>.
+          {translateText("Decision recorded:")} <strong>{translateText(model.decisionLabel ?? model.statusLabel)}</strong>.
         </p>
         <ResolutionDetails model={model} translateText={translateText} />
       </>
@@ -406,22 +498,52 @@ function ConductReportDrawerBody({
   showFullLink?: boolean;
   actionReceipt?: ReactNode;
 }) {
-  return (
-    <div className={compact ? "conduct-report-drawer-detail" : "conduct-report-detail-body"}>
-      <div className="drawer-title">
-        <span className="att-icon warning" aria-hidden="true">⚑</span>
-        <div>
-          <h2>{model.title}</h2>
-          <p>{translateText("Quest")}: {model.questTitle}</p>
+  if (!compact) {
+    return (
+      <div className="conduct-report-detail-body">
+        <div className="full-record-grid">
+          <div className="record-primary">
+            <ConductReportOverview model={model} translateText={translateText} />
+            <ConductEvidenceSection model={model} translateText={translateText} />
+            <ConductReportTimeline model={model} translateText={translateText} />
+          </div>
+          <aside className="record-side">
+            <ConductMemberSummaryPanel heading="Reported Member" id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} translateText={translateText} />
+            <ConductMemberSummaryPanel heading="Reported by" id={model.reporterId} name={model.reporterName} href={model.reporterHref} translateText={translateText} />
+            <RelatedQuestPanel model={model} translateText={translateText} />
+            <ConductModerationContext model={model} translateText={translateText} />
+            <section className="record-panel report-decision-panel">
+              <h2>{model.isActionable ? translateText("Conduct Report decision") : translateText("Recorded outcome")}</h2>
+              <DecisionControls
+                model={model}
+                translateText={translateText}
+                selectedChoice={selectedChoice}
+                commandError={commandError}
+                onSelect={onSelectChoice}
+                onStart={onStartDecision}
+              />
+            </section>
+          </aside>
+        </div>
+        {actionReceipt}
+        <div className="full-record-actions">
+          {model.reportedMemberHref && <Link className="btn" href={model.reportedMemberHref}>{translateText("Member profile")}</Link>}
+          {model.questHref && <Link className="btn" href={model.questHref}>{translateText("Quest detail")}</Link>}
+          {showFullLink && <a className="btn primary" href={conductReportRoutes.detail(model.id)}>{translateText("Open full Conduct Report")}</a>}
         </div>
       </div>
-      {compact && <ConductReportAlert model={model} translateText={translateText} />}
+    );
+  }
+
+  return (
+    <div className="conduct-report-drawer-detail">
+      <ConductReportAlert model={model} translateText={translateText} />
       <ModerationCaseWorkspace
         kind="Conduct Report"
         caseId={model.id}
         statusLabel={model.statusLabel}
         badgeClass={model.badgeClass}
-        submittedAt={model.submittedAt}
+        submittedAt={formatAdminTimestamp(model.submittedAt)}
         source="Quest record"
         detail={model.detail}
         reportedMember={{ id: model.reportedMemberId, name: model.reportedMemberName, href: model.reportedMemberHref, role: "Reported Member" }}
@@ -432,15 +554,20 @@ function ConductReportDrawerBody({
         moderationHistory={model.moderationHistory}
         policyNote="Conduct Reports use the Quest record. Work Chat or Candidate Inquiry history may be opened only for this case, with an Admin Action log entry."
         translateText={translateText}
+        showDecisionContext={false}
+        showModerationHistory={false}
+        showRelatedRecord={false}
         compact={compact}
       >
-        <ConductReportOverview model={model} translateText={translateText} />
-        <section className="section">
-          <h3>{translateText("Conduct Report detail")}</h3>
-          <p>{model.detail}</p>
-        </section>
-        <QuestRecordSection model={model} translateText={translateText} />
-        <PeopleInvolved model={model} translateText={translateText} interactive={!compact} />
+        <ConductReportOverview model={model} translateText={translateText} compact />
+        <ConductEvidenceSection model={model} translateText={translateText} compact />
+        <RelatedQuestPanel model={model} translateText={translateText} compact />
+        <ModerationHistoryPanel
+          summary={model.moderationHistory}
+          translateText={translateText}
+          compact
+          member={{ id: model.reportedMemberId, name: model.reportedMemberName, href: model.reportedMemberHref }}
+        />
         <section className="section report-decision-panel">
           <h3>{model.isActionable ? translateText("Conduct Report decision") : translateText("Resolution")}</h3>
           <DecisionControls
@@ -565,7 +692,7 @@ export function ConductReportDrawer({
       onStartDecision={startDecision}
       compact={presentation === "drawer"}
       showFullLink={presentation === "drawer"}
-      actionReceipt={actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Conduct Report" resourceId={reportModel.id} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>Reason: {actionReceipt.reason}</p>} /> : null}
+      actionReceipt={actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Conduct Report" resourceId={reportModel.id} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {actionReceipt.reason}</p>} /> : null}
     />
   );
   const decisionDialog = (
@@ -591,10 +718,17 @@ export function ConductReportDrawer({
       <main className="admin-route-page conduct-report-detail" tabIndex={-1}>
         <div className="record-breadcrumb"><Link href={conductReportRoutes.list()}>{translateText("Conduct Reports")}</Link><span>›</span><span>{reportModel.id}</span></div>
         <div className="full-record-head">
-          <div><div className="record-id">{reportModel.id}</div><h1>{reportModel.title}</h1><p>{reportModel.reason} · {translateText("reported")} {reportModel.submittedAt}</p></div>
+          <div><div className="record-id">{reportModel.id}</div><h1>{translateText(reportModel.title)}</h1><p>{translateText(reportModel.reason)} · {translateText("reported")} {formatAdminTimestamp(reportModel.submittedAt)}</p></div>
           <div className="full-record-actions"><Link className="btn" href={conductReportRoutes.list()}>{translateText("Back to Conduct Reports")}</Link></div>
         </div>
         <ConductReportAlert model={reportModel} translateText={translateText} />
+        <div className="record-status-bar">
+          <div><span>{translateText("Status")}</span><strong><span className={`badge ${reportModel.badgeClass}`}>{translateText(reportModel.statusLabel)}</span></strong></div>
+          <div><span>{translateText("Reason")}</span><strong>{translateText(reportModel.reason)}</strong></div>
+          <div><span>{translateText("Reported")}</span><strong>{formatAdminTimestamp(reportModel.submittedAt)}</strong></div>
+          <div><span>{translateText("Reported Member")}</span><strong><MemberLink id={reportModel.reportedMemberId} name={reportModel.reportedMemberName} href={reportModel.reportedMemberHref} /></strong></div>
+          <div><span>{translateText("Quest")}</span><strong>{reportModel.questId ?? translateText("Not provided.")}</strong></div>
+        </div>
         {body}
         {decisionDialog}
       </main>
@@ -606,10 +740,10 @@ export function ConductReportDrawer({
       <AdminDrawer
         ariaLabel={translateText("Close Conduct Report drawer")}
         closeButtonAriaLabel={translateText("Close drawer")}
-        title={<><span aria-hidden="true">{reportModel.id}</span><span className="visually-hidden">{translateText("Conduct Report details")}</span></>}
+        title={<><span aria-hidden="true">{translateText(reportModel.title)}</span><span className="visually-hidden">{translateText("Conduct Report details")}</span></>}
         titleId="conduct-report-drawer-title"
-        subtitle={translateText("Conduct Report")}
-        className="conduct-report-drawer"
+        subtitle={<>{translateText("Conduct Report")} {reportModel.id} · {translateText("Conduct Report detail drawer")}</>}
+        className="conduct-report-drawer quest-style-drawer"
         openerAttribute="data-conduct-report-id"
         openerValue={reportModel.id}
         onClose={onClose}

@@ -99,6 +99,39 @@ describe("Wallet route service boundary", () => {
     expect(requests.some((request) => new URL(request.url).searchParams.get("cursor") === "wallet-next")).toBe(true);
   });
 
+  it("keeps the API Wallet board usable when a Wallet has no Member association", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    const walletWithoutMember = { ...mockWallets[0], member: null };
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = new Request(input, init);
+      if (new URL(request.url).pathname === "/api/v1/admin/wallets") {
+        return jsonResponse({ success: true, data: { items: [walletWithoutMember], nextCursor: null } });
+      }
+      return jsonResponse({
+        success: true,
+        data: {
+          memberBalancesSummary: {
+            totalSpendingSatang: 0,
+            totalEarningsSatang: 0,
+            totalFundingReservedSatang: 0,
+            totalPayoutReservedSatang: 0,
+            totalCirculatingSatang: 0,
+          },
+        },
+      });
+    }) as unknown as typeof globalThis.fetch;
+
+    const result = await loadWalletBoardPageData("kuquest-admin=session", "api");
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]).toMatchObject({
+      id: mockWallets[0]?.id,
+      memberAvailable: false,
+      memberName: "Member not provided",
+      memberId: mockWallets[0]?.userId,
+    });
+  });
+
   it("loads Wallet drawer data through the service with the server cookie", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     const requests: Request[] = [];

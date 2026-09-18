@@ -1,6 +1,5 @@
 import { expect, test } from "@playwright/test";
 
-import { MOCK_OPEN_QUEST_ID as OPEN_QUEST_ID } from "../../src/features/admin/quest/quest-mock-data";
 import { signIn } from "./support/admin-auth";
 
 test.describe("Admin canonical click flows", () => {
@@ -93,12 +92,12 @@ test.describe("Admin canonical click flows", () => {
 
     await page.locator('.admin-shell aside a[href="/quest"]').click();
     await expect(page).toHaveURL(/\/quest$/);
-    await page.getByRole("link", { name: "Open Quest QST-OPEN" }).click();
-    await expect(page).toHaveURL(new RegExp(`/quest/${OPEN_QUEST_ID}$`));
+    await page.getByRole("link", { name: "Open Quest QST-12011" }).click();
+    await expect(page).toHaveURL(/\/quest\/QST-12011$/);
     await expect(page.locator(".quest-drawer")).toBeVisible();
     await page.getByRole("link", { name: "Full Quest detail" }).click();
-    await expect(page).toHaveURL(new RegExp(`/quest/${OPEN_QUEST_ID}$`));
-    await expect(page.locator(".quest-detail-page h1")).toHaveText("Inspect campus signs");
+    await expect(page).toHaveURL(/\/quest\/QST-12011$/);
+    await expect(page.locator(".quest-detail-page h1")).toHaveText("Demo Quest 01");
 
     await page.locator('.admin-shell aside a[href="/payout"]').click();
     await expect(page).toHaveURL(/\/payout$/);

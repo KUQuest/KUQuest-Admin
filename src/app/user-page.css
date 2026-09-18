@@ -721,3 +721,115 @@
     border-bottom: 1px solid var(--border);
   }
 }
+
+/* Member detail surfaces use the same readable scale as the other Admin
+   record drawers. Keep labels and metadata smaller than the decision values,
+   but do not reduce them to the 10–11px legacy scale. */
+.admin-shell .user-detail-page,
+.admin-shell .user-drawer-detail {
+  --member-font-body: 16px;
+  --member-font-value: 15px;
+  --member-font-meta: 13px;
+  font-size: var(--member-font-body);
+  line-height: 1.5;
+}
+
+.admin-shell .user-detail-page .user-detail-panel h2,
+.admin-shell .user-drawer-detail .section h3 {
+  font-size: var(--member-font-body);
+  line-height: 1.4;
+}
+
+.admin-shell .user-detail-page .user-detail-panel h3 {
+  font-size: var(--member-font-body);
+  line-height: 1.4;
+}
+
+.admin-shell .user-detail-page .user-summary-identity p,
+.admin-shell .user-detail-page .user-summary-identity a,
+.admin-shell .user-detail-page .user-panel-heading p,
+.admin-shell .user-detail-page .user-detail-breadcrumb,
+.admin-shell .user-detail-page .user-simple-list span,
+.admin-shell .user-detail-page .user-simple-list p,
+.admin-shell .user-detail-page .user-payout-primary small,
+.admin-shell .user-detail-page .user-review-preview small,
+.admin-shell .user-detail-page .user-recent-reports small,
+.admin-shell .user-detail-page .user-work-item > span:last-child,
+.admin-shell .user-detail-page .user-admin-notes small,
+.admin-shell .user-detail-page .user-admin-notes p,
+.admin-shell .user-detail-page .audit-note {
+  font-size: var(--member-font-meta);
+  line-height: 1.45;
+}
+
+.admin-shell .user-detail-page .user-detail-tags span,
+.admin-shell .user-detail-page .user-summary-stats span,
+.admin-shell .user-detail-page .user-payout-stat-list span,
+.admin-shell .user-detail-page .user-counter-list span,
+.admin-shell .user-detail-page .user-facts dt,
+.admin-shell .user-detail-page .admin-only-label {
+  font-size: var(--member-font-meta);
+  line-height: 1.4;
+}
+
+.admin-shell .user-detail-page .user-facts dd {
+  font-size: var(--member-font-value);
+  line-height: 1.4;
+}
+
+.admin-shell .user-detail-page .user-simple-list strong,
+.admin-shell .user-detail-page .user-certificate-list strong,
+.admin-shell .user-detail-page .user-payout-primary strong,
+.admin-shell .user-detail-page .user-payout-secondary strong,
+.admin-shell .user-detail-page .user-review-preview strong,
+.admin-shell .user-detail-page .user-recent-reports strong,
+.admin-shell .user-detail-page .user-work-item strong,
+.admin-shell .user-detail-page .user-admin-notes strong {
+  font-size: var(--member-font-value);
+  line-height: 1.4;
+}
+
+.admin-shell .user-detail-page .user-detail-tabs a {
+  font-size: var(--member-font-value);
+  line-height: 1.4;
+}
+
+.admin-shell .user-detail-page .badge,
+.admin-shell .user-drawer-detail .badge {
+  font-size: var(--member-font-meta);
+  line-height: 1.35;
+}
+
+.admin-shell .user-detail-page .user-context-list > div > span,
+.admin-shell .user-detail-page .user-activity-list span,
+.admin-shell .user-detail-page .user-payout-summary span,
+.admin-shell .user-drawer-detail .user-context-list > div > span,
+.admin-shell .user-drawer-detail .user-activity-list span,
+.admin-shell .user-drawer-detail .user-payout-summary span {
+  font-size: var(--member-font-meta);
+  line-height: 1.4;
+}
+
+.admin-shell .user-detail-page .user-context-list > div > strong,
+.admin-shell .user-detail-page .user-context-list > div > .link,
+.admin-shell .user-detail-page .user-activity-list strong,
+.admin-shell .user-detail-page .user-payout-summary strong,
+.admin-shell .user-drawer-detail .user-context-list > div > strong,
+.admin-shell .user-drawer-detail .user-context-list > div > .link,
+.admin-shell .user-drawer-detail .user-activity-list strong,
+.admin-shell .user-drawer-detail .user-payout-summary strong {
+  font-size: var(--member-font-value);
+  line-height: 1.4;
+}
+
+.admin-shell .user-drawer-detail .user-simple-list strong {
+  font-size: var(--member-font-value);
+  line-height: 1.4;
+}
+
+.admin-shell .user-drawer-detail .user-simple-list span,
+.admin-shell .user-drawer-detail .user-simple-list p,
+.admin-shell .user-drawer-detail .audit-note {
+  font-size: var(--member-font-meta);
+  line-height: 1.45;
+}

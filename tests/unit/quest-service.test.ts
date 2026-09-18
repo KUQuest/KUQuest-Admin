@@ -22,7 +22,7 @@ describe("Quest route service", () => {
 
     const result = await loadQuestBoardPageData("", "mock");
 
-    expect(result.rows.some((row) => row.title === "Inspect campus signs")).toBe(true);
+    expect(result.rows.some((row) => row.displayId === "QST-12011" && row.title === "Demo Quest 01")).toBe(true);
   });
 
   it("includes a failed Quest linked from a Dispute Case in the mock Quest board", async () => {

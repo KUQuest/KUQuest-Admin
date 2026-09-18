@@ -21,9 +21,9 @@ const previousDashboardSeedVersion = "dashboard-bootstrap-v2-canonical-statuses"
 const previousCanonicalDashboardSeedVersion = "dashboard-bootstrap-v3-canonical-conduct-reports";
 
 const dashboardConductReportSeedData = [
-  { id: "CND-8301", reportedMemberId: "68000020", reportedUserName: "Amara Ariyawat", reporterId: "68000000", reporterName: "Akarin Ariyawat", reasonCode: "CONDUCT_ABANDONED", questId: "QST-12001", questTitle: "Verify dorm fire exits", questRecord: "Assignment accepted · Proof Submission not provided · dueAt 27 Aug 2026 · 15:00", details: "The Worker did not complete the assigned Quest and did not provide a Proof Submission.", reportedMemberStatus: "ACTIVE", previousReportCount: 0, confirmedViolationCount: 0, previousModerationActions: [], adminNotes: [], status: "CONDUCT_REPORT_PENDING", conductReportStatus: "CONDUCT_REPORT_PENDING", tone: "warning", reportedAt: "27 Aug 2026 · 15:30", version: 1 },
-  { id: "CND-8302", reportedMemberId: "68000040", reportedUserName: "Benja Ariyawat", reporterId: "68000020", reporterName: "Amara Ariyawat", reasonCode: "CONDUCT_OUT_OF_SCOPE", questId: "QST-12002", questTitle: "Design orientation social cards", questRecord: "Assignment completed · Quest reached terminal state", details: "The Hirer requested work outside the Quest Condition.", reportedMemberStatus: "FROZEN", previousReportCount: 0, confirmedViolationCount: 0, previousModerationActions: [], adminNotes: [], status: "CONDUCT_REPORT_UPHELD", conductReportStatus: "CONDUCT_REPORT_UPHELD", decision: "confirmed-violation", decisionLabel: "Violation confirmed", decisionReason: "The Quest record confirms the reported conduct violation.", resolution: "Violation confirmed; the Member Misconduct ladder was applied.", resolvedBy: "Admin", resolutionAt: "27 Aug 2026 · 16:47", closedAt: "27 Aug 2026 · 16:30", tone: "danger", reportedAt: "26 Aug 2026 · 10:20", version: 1 },
-  { id: "CND-8303", reportedMemberId: "68000000", reportedUserName: "Akarin Ariyawat", reporterId: "68000040", reporterName: "Benja Ariyawat", reasonCode: "CONDUCT_NO_SHOW", questId: "QST-12003", questTitle: "Photograph library study areas", questRecord: "Assignment cancelled before the dueAt", details: "The reported conduct was reviewed against the Quest record.", reportedMemberStatus: "FROZEN", previousReportCount: 0, confirmedViolationCount: 0, previousModerationActions: [], adminNotes: [], status: "CONDUCT_REPORT_DISMISSED", conductReportStatus: "CONDUCT_REPORT_DISMISSED", decision: "no-violation", decisionLabel: "No violation", decisionReason: "The Quest record does not confirm a conduct violation.", resolution: "Conduct Report dismissed; no policy violation found.", resolvedBy: "Admin", resolutionAt: "27 Aug 2026 · 11:47", closedAt: "27 Aug 2026 · 11:30", tone: "neutral", reportedAt: "25 Aug 2026 · 09:10", version: 1 },
+  { id: "CND-8301", reportedMemberId: "68000020", reportedUserName: "Amara Ariyawat", reporterId: "68000000", reporterName: "Akarin Ariyawat", reasonCode: "CONDUCT_ABANDONED", questId: "QST-12001", questTitle: "Verify dorm fire exits", questState: "QUEST_FAILED", failedAt: "2026-08-27T08:30:00.000Z", questRecord: "Assignment accepted · Proof Submission not provided · dueAt 27 Aug 2026 · 15:00", details: "The Worker did not complete the assigned Quest and did not provide a Proof Submission.", reportedMemberStatus: "ACTIVE", previousReportCount: 0, confirmedViolationCount: 0, previousModerationActions: [], adminNotes: [], status: "CONDUCT_REPORT_PENDING", conductReportStatus: "CONDUCT_REPORT_PENDING", tone: "warning", reportedAt: "27 Aug 2026 · 15:30", version: 1 },
+  { id: "CND-8302", reportedMemberId: "68000040", reportedUserName: "Benja Ariyawat", reporterId: "68000020", reporterName: "Amara Ariyawat", reasonCode: "CONDUCT_OUT_OF_SCOPE", questId: "QST-12002", questTitle: "Design orientation social cards", questState: "QUEST_IN_PROGRESS", questRecord: "Assignment completed · Quest reached terminal state", details: "The Hirer requested work outside the Quest Condition.", reportedMemberStatus: "FROZEN", previousReportCount: 0, confirmedViolationCount: 0, previousModerationActions: [], adminNotes: [], status: "CONDUCT_REPORT_UPHELD", conductReportStatus: "CONDUCT_REPORT_UPHELD", decision: "confirmed-violation", decisionLabel: "Violation confirmed", decisionReason: "The Quest record confirms the reported conduct violation.", resolution: "Violation confirmed; the Member Misconduct ladder was applied.", resolvedBy: "Admin", resolutionAt: "27 Aug 2026 · 16:47", closedAt: "27 Aug 2026 · 16:30", tone: "danger", reportedAt: "26 Aug 2026 · 10:20", version: 1 },
+  { id: "CND-8303", reportedMemberId: "68000000", reportedUserName: "Akarin Ariyawat", reporterId: "68000040", reporterName: "Benja Ariyawat", reasonCode: "CONDUCT_NO_SHOW", questId: "QST-12003", questTitle: "Photograph library study areas", questState: "QUEST_COMPLETED", questRecord: "Assignment cancelled before the dueAt", details: "The reported conduct was reviewed against the Quest record.", reportedMemberStatus: "FROZEN", previousReportCount: 0, confirmedViolationCount: 0, previousModerationActions: [], adminNotes: [], status: "CONDUCT_REPORT_DISMISSED", conductReportStatus: "CONDUCT_REPORT_DISMISSED", decision: "no-violation", decisionLabel: "No violation", decisionReason: "The Quest record does not confirm a conduct violation.", resolution: "Conduct Report dismissed; no policy violation found.", resolvedBy: "Admin", resolutionAt: "27 Aug 2026 · 11:47", closedAt: "27 Aug 2026 · 11:30", tone: "neutral", reportedAt: "25 Aug 2026 · 09:10", version: 1 },
 ];
 
 const dashboardDisputeSeedData = [
@@ -224,8 +224,108 @@ const dashboardDemoDisputeSeedData = Array.from({ length: MOCK_DEMO_RECORD_COUNT
     tone: "neutral",
     disputeDate: demoIsoDate(index + 3, 12),
     evidenceRefs: index % 5 === 0 ? [] : [`evidence-dsp-${5210 + index}`],
-    ...(status === "DISPUTE_CASE_RESOLVED" ? { resolvedAmountSatang: amountAtRiskSatang, resolvedWorkerId: respondent?.id, resolvedBy: "admin-demo", resolutionAt: demoIsoDate(index + 3, 16), closedAt: demoIsoDate(index + 3, 16), decision: "resolve", decisionLabel: "Worker wins", decisionReason: "Demo Worker allocation recorded." } : {}),
+    ...(status === "DISPUTE_CASE_RESOLVED" ? { resolvedAmountSatang: amountAtRiskSatang, resolvedWorkerId: respondent?.id, resolvedBy: "admin-demo", resolutionAt: demoIsoDate(index + 3, 16), closedAt: demoIsoDate(index + 3, 16), decision: "resolve", decisionLabel: "Worker wins", decisionReason: "Demo Worker outcome recorded." } : {}),
     ...(status === "DISPUTE_CASE_DISMISSED" ? { resolvedAmountSatang: null, resolvedBy: "admin-demo", resolutionAt: demoIsoDate(index + 3, 16), closedAt: demoIsoDate(index + 3, 16), decision: "dismiss", decisionLabel: "Hirer wins", decisionReason: "Demo Dispute Case dismissed." } : {}),
+    version: 1,
+  };
+});
+
+// Keep a second, deterministic set of open cases available for Mock QA. The
+// canonical records remain first so the queue still opens on its oldest case.
+const dashboardOpenDisputeSeedData = Array.from({ length: 10 }, (_, index) => {
+  const sequence = 5410 + index;
+  const filer = mockDemoMemberSeeds[index % mockDemoMemberSeeds.length];
+  const respondent = mockDemoMemberSeeds[(index + 1) % mockDemoMemberSeeds.length];
+  const amountAtRiskSatang = 300000 + index * 25000;
+  const questId = `QST-${12011 + index}`;
+  return {
+    id: `DSP-${sequence}`,
+    displayId: `DSP-${sequence}`,
+    questId,
+    questState: "QUEST_FAILED",
+    title: `Open Demo Dispute ${String(index + 1).padStart(2, "0")}`,
+    disputeType: ["Evidence", "Quality", "Scope"][index % 3],
+    amount: amountAtRiskSatang / 100,
+    amountAtRiskSatang,
+    filerUserId: filer?.id,
+    filerRole: "Hirer",
+    filerName: filer?.title,
+    respondentUserId: respondent?.id,
+    respondentRole: "Worker",
+    respondentName: respondent?.title,
+    filerStatement: "The submitted Proof Submission did not satisfy the Quest Condition.",
+    respondentStatement: "The Proof Submission records the work completed before the Quest failed.",
+    failedAt: demoIsoDate(index + 1, 8),
+    reportedMemberStatus: respondent?.memberStatus,
+    previousReportCount: index % 4,
+    confirmedViolationCount: respondent?.memberStatus === "Normal" ? 0 : index % 3,
+    previousModerationActions: index % 4 === 0 ? [] : ["Previous Dispute Case review"],
+    adminNotes: index % 4 === 1 ? ["Demo note: check both Member statements before deciding."] : [],
+    status: "DISPUTE_CASE_PENDING",
+    disputeCaseStatus: "DISPUTE_CASE_PENDING",
+    tone: "danger",
+    disputeDate: demoIsoDate(index + 1, 12),
+    evidenceRefs: [`evidence-dsp-${sequence}`],
+    version: 1,
+  };
+});
+
+const dashboardOpenReportSeedData = Array.from({ length: 10 }, (_, index) => {
+  const sequence = 8410 + index;
+  const reported = mockDemoMemberSeeds[(index + 12) % mockDemoMemberSeeds.length];
+  const reporter = mockDemoMemberSeeds[(index + 13) % mockDemoMemberSeeds.length];
+  const questIndex = index % MOCK_DEMO_RECORD_COUNT;
+  return {
+    id: `RPT-${sequence}`,
+    reportedMemberId: reported?.id,
+    reportedUserName: reported?.title,
+    reporterId: reporter?.id,
+    reporterName: reporter?.title,
+    category: ["Harassment or abuse", "Spam", "Fraud or payment issue", "Unsafe content"][index % 4],
+    details: "Open Demo Report Case requires Admin review of the supplied evidence.",
+    evidence: "Demo message capture",
+    evidenceRefs: [`evidence-rpt-${sequence}`],
+    questId: `QST-${12011 + questIndex}`,
+    questTitle: `Demo Quest ${String(questIndex + 1).padStart(3, "0")}`,
+    reportedMemberStatus: reported?.memberStatus,
+    previousReportCount: index % 4,
+    confirmedViolationCount: reported?.memberStatus === "Normal" ? 0 : index % 3,
+    previousModerationActions: index % 4 === 0 ? [] : ["Previous Report Case review"],
+    adminNotes: index % 4 === 1 ? ["Demo note: verify the related Member history."] : [],
+    status: "REPORT_CASE_PENDING",
+    reportCaseStatus: "REPORT_CASE_PENDING",
+    tone: "warning",
+    reportedAt: demoIsoDate(index + 1, 10),
+    version: 1,
+  };
+});
+
+const dashboardOpenConductReportSeedData = Array.from({ length: 10 }, (_, index) => {
+  const sequence = 8510 + index;
+  const reported = mockDemoMemberSeeds[(index + 16) % mockDemoMemberSeeds.length];
+  const reporter = mockDemoMemberSeeds[(index + 17) % mockDemoMemberSeeds.length];
+  const relatedQuest = dashboardDemoQuestSeedData[index];
+  return {
+    id: `CND-${sequence}`,
+    reportedMemberId: reported?.id,
+    reportedUserName: reported?.title,
+    reporterId: reporter?.id,
+    reporterName: reporter?.title,
+    reasonCode: ["CONDUCT_ABANDONED", "CONDUCT_NO_SHOW", "CONDUCT_OUT_OF_SCOPE"][index % 3],
+    questId: relatedQuest?.id,
+    questTitle: relatedQuest?.title,
+    questState: relatedQuest?.questState,
+    questRecord: "Assignment accepted · Proof Submission record is available.",
+    details: "Open Demo Conduct Report requires review of the Quest record.",
+    reportedMemberStatus: reported?.memberStatus,
+    previousReportCount: index % 5,
+    confirmedViolationCount: reported?.memberStatus === "Normal" ? 0 : index % 3,
+    previousModerationActions: index % 4 === 0 ? [] : ["Previous Conduct Report review"],
+    adminNotes: index % 4 === 2 ? ["Demo note: compare the Quest timeline and Proof Submission."] : [],
+    status: "CONDUCT_REPORT_PENDING",
+    conductReportStatus: "CONDUCT_REPORT_PENDING",
+    tone: "warning",
+    reportedAt: demoIsoDate(index + 1, 11),
     version: 1,
   };
 });
@@ -234,9 +334,9 @@ const dashboardSeedData: PersistedAdminData = {
   version: dashboardSeedVersion,
   collections: {
     users: [
-      { id: "68000000", title: "Akarin Ariyawat", status: "FROZEN", walletStatus: "FROZEN", tone: "danger", age: "Temporary all-quest ban · 6 days left" },
-      { id: "68000020", title: "Amara Ariyawat", status: "ACTIVE", walletStatus: "ACTIVE", tone: "warning", age: "1 active report" },
-      { id: "68000040", title: "Benja Ariyawat", status: "FROZEN", walletStatus: "FROZEN", tone: "danger", age: "Permanent all-quest ban" },
+      { id: "68000000", title: "Akarin Ariyawat", status: "FROZEN", walletStatus: "FROZEN", faculty: "Engineering", department: "Computer Engineering", occupation: "Student", tone: "danger", age: "Temporary all-quest ban · 6 days left" },
+      { id: "68000020", title: "Amara Ariyawat", status: "ACTIVE", walletStatus: "ACTIVE", faculty: "Management Sciences", department: "Business Administration", occupation: "Student", tone: "warning", age: "1 active report" },
+      { id: "68000040", title: "Benja Ariyawat", status: "FROZEN", walletStatus: "FROZEN", faculty: "Engineering", department: "Computer Engineering", occupation: "Student", tone: "danger", age: "Permanent all-quest ban" },
       ...dashboardDemoMemberSeedData,
     ],
     quests: [
@@ -258,13 +358,15 @@ const dashboardSeedData: PersistedAdminData = {
       { id: "PAY-9628", title: "Gunn Maneewan", amount: 850, status: "FAILED", payoutStatus: "FAILED", tone: "danger" },
       ...dashboardDemoPayoutSeedData,
     ],
-    disputes: [...dashboardDisputeSeedData, ...dashboardDemoDisputeSeedData],
+    disputes: [...dashboardDisputeSeedData, ...dashboardDemoDisputeSeedData, ...dashboardOpenDisputeSeedData],
     reports: [
       { id: "RPT-8201", reportedMemberId: "68000020", reportedUserName: "Amara Ariyawat", reporterId: "68000000", reporterName: "Akarin Ariyawat", category: "Harassment or abuse", details: "The submitted report requires review.", evidence: "Message capture", evidenceRefs: ["evidence-rpt-8201"], questId: "QST-12001", questTitle: "Verify dorm fire exits", reportedMemberStatus: "ACTIVE", previousReportCount: 0, confirmedViolationCount: 0, previousModerationActions: [], adminNotes: [], status: "REPORT_CASE_PENDING", reportCaseStatus: "REPORT_CASE_PENDING", tone: "warning", reportedAt: "27 Aug 2026 · 08:40" },
       { id: "RPT-8202", reportedMemberId: "68000040", reportedUserName: "Benja Ariyawat", reporterId: "68000000", reporterName: "Akarin Ariyawat", category: "Fraud or payment issue", details: "The submitted report requires review.", evidence: "Payment message capture", evidenceRefs: ["evidence-rpt-8202"], reportedMemberStatus: "FROZEN", previousReportCount: 0, confirmedViolationCount: 0, previousModerationActions: [], adminNotes: [], status: "REPORT_CASE_PENDING", reportCaseStatus: "REPORT_CASE_PENDING", tone: "warning", reportedAt: "27 Aug 2026 · 08:20" },
       ...dashboardConductReportSeedData,
       ...dashboardDemoReportSeedData,
       ...dashboardDemoConductReportSeedData,
+      ...dashboardOpenReportSeedData,
+      ...dashboardOpenConductReportSeedData,
     ],
   },
 };
@@ -378,6 +480,12 @@ function repairMissingSeedFields(
 function migrateExpandedMockSeed(storage: BrowserStorage, data: PersistedAdminData): PersistedAdminData {
   const seeded = dashboardSeedData.collections;
   const users = mergeSeedRecords(data.collections.users, seeded.users);
+  const repairedUsers = repairMissingSeedFields(
+    users.records,
+    seeded.users,
+    ["faculty", "department", "occupation"],
+    () => true,
+  );
   const quests = mergeSeedRecords(data.collections.quests, seeded.quests);
   const payouts = mergeSeedRecords(data.collections.payouts, seeded.payouts);
   const disputes = mergeSeedRecords(data.collections.disputes, seeded.disputes);
@@ -391,7 +499,7 @@ function migrateExpandedMockSeed(storage: BrowserStorage, data: PersistedAdminDa
   const repairedConductReports = repairMissingSeedFields(
     reports.records,
     seeded.reports,
-    ["questId", "questTitle", "questRecord", "reportedMemberId", "reportedUserName", "reporterId", "reporterName"],
+    ["questId", "questTitle", "questState", "failedAt", "questRecord", "reportedMemberId", "reportedUserName", "reporterId", "reporterName"],
     (record) => isConductReportStatus(record.status) || isConductReportStatus(record.conductReportStatus),
   );
   const repairedReportCases = repairMissingSeedFields(
@@ -402,7 +510,8 @@ function migrateExpandedMockSeed(storage: BrowserStorage, data: PersistedAdminDa
   );
   const repairedReportsChanged = reports.changed || repairedConductReports.changed || repairedReportCases.changed;
   const repairedDisputesChanged = disputes.changed || repairedDisputes.changed;
-  if (!users.changed && !quests.changed && !payouts.changed && !repairedDisputesChanged && !repairedReportsChanged && data.version === dashboardSeedVersion) {
+  const repairedUsersChanged = users.changed || repairedUsers.changed;
+  if (!repairedUsersChanged && !quests.changed && !payouts.changed && !repairedDisputesChanged && !repairedReportsChanged && data.version === dashboardSeedVersion) {
     return data;
   }
 
@@ -410,7 +519,7 @@ function migrateExpandedMockSeed(storage: BrowserStorage, data: PersistedAdminDa
     version: dashboardSeedVersion,
     collections: {
       ...data.collections,
-      users: users.records as PersistedAdminData["collections"]["users"],
+      users: repairedUsers.records as PersistedAdminData["collections"]["users"],
       quests: quests.records,
       payouts: payouts.records,
       disputes: repairedDisputes.records,

@@ -13,6 +13,7 @@ import {
 } from "react";
 
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
+import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { adminApi } from "../api/admin-api";
 import { walletStatusLabel, type WalletStatus } from "../domain/rulebook";
 import { memberTabHref } from "../member/member-model";
@@ -113,6 +114,7 @@ function WalletStatusCommandDialog({
   error: string | null;
   pending: boolean;
 }) {
+  const { translateText } = useAdminShell();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [reason, setReason] = useState("");
   const [fixture, setFixture] = useState<WalletStatusFixture>("success");
@@ -149,48 +151,49 @@ function WalletStatusCommandDialog({
     <form className="wallet-status-command-form" onSubmit={submit}>
       <div className="wallet-command-head">
         <div>
-          <strong id="wallet-status-command-title">{walletStatusActionLabel(targetStatus)}</strong>
+          <strong id="wallet-status-command-title">{translateText(walletStatusActionLabel(targetStatus))}</strong>
           <small>{row.memberName} · {row.id}</small>
         </div>
-        <button className="icon" type="button" aria-label="Close Wallet status command" onClick={onCancel} disabled={pending}><span className="close-lines" /></button>
+        <button className="icon" type="button" aria-label={translateText("Close Wallet status command")} onClick={onCancel} disabled={pending}><span className="close-lines" /></button>
       </div>
       <div className="wallet-command-body">
-        <p className="wallet-command-intro">Review the status change before saving. Every Wallet status change requires a reason.</p>
-        <section className="wallet-status-preview" aria-label="Wallet status change preview">
-          <div><span>Wallet</span><strong>{row.id}</strong></div>
-          <div><span>Member</span><strong>{row.memberName}</strong></div>
-          <div className="wallet-status-preview-transition"><span>Wallet Status</span><strong><Badge status={row.status} /><span aria-hidden="true"> → </span><Badge status={targetStatus} /></strong></div>
+        <p className="wallet-command-intro">{translateText("Review the status change before saving. Every Wallet status change requires a reason.")}</p>
+        <section className="wallet-status-preview" aria-label={translateText("Wallet status change preview")}>
+          <div><span>{translateText("Wallet")}</span><strong>{row.id}</strong></div>
+          <div><span>{translateText("Member")}</span><strong>{row.memberName}</strong></div>
+          <div className="wallet-status-preview-transition"><span>{translateText("Wallet Status")}</span><strong><Badge status={row.status} /><span aria-hidden="true"> → </span><Badge status={targetStatus} /></strong></div>
         </section>
-        <section className={`wallet-status-consequences wallet-status-consequences-${targetStatus.toLocaleLowerCase()}`} aria-label="Wallet status consequences">
-          <strong>{targetStatus === "ACTIVE" ? "Restore effect" : targetStatus === "FROZEN" ? "Temporary hold effect" : "Review hold effect"}</strong>
-          <ul>{transitionCopy.map((copy) => <li key={copy}>{copy}</li>)}</ul>
+        <section className={`wallet-status-consequences wallet-status-consequences-${targetStatus.toLocaleLowerCase()}`} aria-label={translateText("Wallet status consequences")}>
+          <strong>{translateText(targetStatus === "ACTIVE" ? "Restore effect" : targetStatus === "FROZEN" ? "Temporary hold effect" : "Review hold effect")}</strong>
+          <ul>{transitionCopy.map((copy) => <li key={copy}>{translateText(copy)}</li>)}</ul>
         </section>
-        <label htmlFor="wallet-status-reason">Reason <span aria-hidden="true">*</span>
+        <label htmlFor="wallet-status-reason">{translateText("Reason")} <span aria-hidden="true">*</span>
           <textarea id="wallet-status-reason" rows={4} minLength={1} maxLength={500} required value={reason} aria-invalid={validationError ? "true" : undefined} aria-describedby={validationError ? "wallet-status-reason-error" : undefined} onChange={(event) => { setReason(event.target.value); setValidationError(null); }} autoFocus />
         </label>
-        <p className="wallet-command-help">This reason is part of the Wallet status history. It does not change the Member Ban ladder.</p>
-        <label className="wallet-fixture-field" htmlFor="wallet-status-fixture">Mock response fixture <span>Development only</span>
+        <p className="wallet-command-help">{translateText("This reason is part of the Wallet status history. It does not change the Member Ban ladder.")}</p>
+        <label className="wallet-fixture-field" htmlFor="wallet-status-fixture">{translateText("Mock response fixture")} <span>{translateText("Development only")}</span>
           <select id="wallet-status-fixture" value={fixture} onChange={(event) => setFixture(event.target.value as WalletStatusFixture)}>
-            {WALLET_STATUS_FIXTURE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            {WALLET_STATUS_FIXTURE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{translateText(option.label)}</option>)}
           </select>
         </label>
-        {validationError || error ? <p id="wallet-status-reason-error" className="field-error" role="alert">{validationError ?? error}</p> : null}
+        {validationError || error ? <p id="wallet-status-reason-error" className="field-error" role="alert">{translateText(validationError ?? error ?? "")}</p> : null}
       </div>
       <div className="dialog-actions">
-        <button className="btn" type="button" onClick={onCancel} disabled={pending}>Cancel</button>
-        <button className={`btn ${walletStatusActionClass(targetStatus)}`} type="submit" disabled={pending}>{pending ? "Saving…" : walletStatusActionLabel(targetStatus)}</button>
+        <button className="btn" type="button" onClick={onCancel} disabled={pending}>{translateText("Cancel")}</button>
+        <button className={`btn ${walletStatusActionClass(targetStatus)}`} type="submit" disabled={pending}>{pending ? translateText("Saving…") : translateText(walletStatusActionLabel(targetStatus))}</button>
       </div>
     </form>
   </dialog>;
 }
 
 function Badge({ status, track = true }: { status: WalletStatus; track?: boolean }) {
+  const { translateText } = useAdminShell();
   const label = walletStatusLabel(status);
   return <span
     className={`badge ${walletStatusClass(status)}`}
     data-wallet-status={track ? status : undefined}
-    title={status === "CLOSED" ? "Closed — terminal Wallet status" : undefined}
-  >{label}</span>;
+    title={status === "CLOSED" ? translateText("Closed — terminal Wallet status") : undefined}
+  >{translateText(label)}</span>;
 }
 
 function SummaryMetric({ label, value }: { label: string; value: number }) {
@@ -208,19 +211,20 @@ function WalletSummary({
   dataSource: WalletDataSource;
   onRetry: () => void;
 }) {
+  const { translateText } = useAdminShell();
   const content = error
-    ? <div className="empty" role="alert"><h3>Wallet summary unavailable</h3><p>{error}</p><button className="btn" type="button" onClick={onRetry}>Try again</button></div>
+    ? <div className="empty" role="alert"><h3>{translateText("Wallet summary unavailable")}</h3><p>{translateText(error)}</p><button className="btn" type="button" onClick={onRetry}>{translateText("Try again")}</button></div>
     : summary
     ? <div className="wallet-finance-summary-grid">
-      <SummaryMetric label="Spending balance" value={summary.totalSpendingSatang} />
-      <SummaryMetric label="Earnings balance" value={summary.totalEarningsSatang} />
-      <SummaryMetric label="Funding reserved" value={summary.totalFundingReservedSatang} />
-      <SummaryMetric label="Payout reserved" value={summary.totalPayoutReservedSatang} />
-      <SummaryMetric label="Total circulating" value={summary.totalCirculatingSatang} />
+      <SummaryMetric label={translateText("Spending balance")} value={summary.totalSpendingSatang} />
+      <SummaryMetric label={translateText("Earnings balance")} value={summary.totalEarningsSatang} />
+      <SummaryMetric label={translateText("Funding reserved")} value={summary.totalFundingReservedSatang} />
+      <SummaryMetric label={translateText("Payout reserved")} value={summary.totalPayoutReservedSatang} />
+      <SummaryMetric label={translateText("Total circulating")} value={summary.totalCirculatingSatang} />
     </div>
     : null;
 
-  return <section className="wallet-funds-summary wallet-finance-summary" aria-labelledby="wallet-summary-heading"><div className="wallet-finance-summary-heading"><div><strong id="wallet-summary-heading">Member Wallet Summary</strong><small>{dataSource === "api" ? "Aggregate values from the Admin API" : "All Wallets · all statuses"}</small></div></div>{content}</section>;
+  return <section className="wallet-funds-summary wallet-finance-summary" aria-labelledby="wallet-summary-heading"><div className="wallet-finance-summary-heading"><div><strong id="wallet-summary-heading">{translateText("Member Wallet Summary")}</strong><small>{translateText(dataSource === "api" ? "Aggregate values from the Admin API" : "All Wallets · all statuses")}</small></div></div>{content}</section>;
 }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -246,6 +250,7 @@ function WalletDrawer({
   onClose: () => void;
   onStatusChanged: (walletId: string, nextStatus: WalletStatus, historyEntry: WalletHistoryView) => void;
 }) {
+  const { translateText } = useAdminShell();
   const [detail, setDetail] = useState<WalletDetailView | null>(null);
   const [history, setHistory] = useState<WalletHistoryView[]>([]);
   const [ledger, setLedger] = useState<WalletLedgerView[]>([]);
@@ -371,40 +376,46 @@ function WalletDrawer({
     }
   }
 
+  const statusActionContent = (
+    <>
+      {dataSource === "mock" ? <>
+        <p>{translateText("Change Wallet Status without changing the Member Ban status. A non-active Wallet blocks new commitments while existing obligations continue.")}</p>
+        {walletStatusTargets(detail?.status ?? row.status).length ? <div className="wallet-status-actions" aria-label={translateText("Wallet status actions")}>
+          {walletStatusTargets(detail?.status ?? row.status).map((targetStatus) => <button className={`btn ${walletStatusActionClass(targetStatus)}`} type="button" key={targetStatus} data-wallet-status-action={targetStatus} onClick={() => openStatusCommand(targetStatus)} disabled={statusCommandPending}>{translateText(walletStatusActionLabel(targetStatus))}</button>)}
+        </div> : <p className="audit-note">{translateText("Closed is terminal. No Wallet status change is available.")}</p>}
+      </> : <p>{translateText("Status commands will be connected to the Admin API in the API integration step.")}</p>}
+    </>
+  );
+
   return <AdminDrawer
-    ariaLabel="Close Wallet detail"
+    ariaLabel={translateText("Close Wallet detail")}
     title={row.id}
     titleId="wallet-drawer-title"
-    subtitle="Wallet detail drawer"
+    subtitle={translateText("Wallet detail drawer")}
     className="wallet-drawer"
     opener={opener}
     onClose={onClose}
     actions={!loading && !error && detail ? <>
       {dataSource === "api" ? <>
-        <button className="btn" type="button" disabled={actionPending !== null} onClick={() => { void verifyLedger(); }}>{actionPending === "verify" ? "Verifying…" : "Verify Ledger"}</button>
-        <button className="btn primary" type="button" disabled={actionPending !== null} onClick={() => { if (window.confirm("Rebuild this Wallet projection from the Ledger source of truth?")) void rebuildProjection(); }}>{actionPending === "rebuild" ? "Rebuilding…" : "Rebuild projection"}</button>
+        <button className="btn" type="button" disabled={actionPending !== null} onClick={() => { void verifyLedger(); }}>{actionPending === "verify" ? translateText("Verifying…") : translateText("Verify Ledger")}</button>
+        <button className="btn primary" type="button" disabled={actionPending !== null} onClick={() => { if (window.confirm(translateText("Rebuild this Wallet projection from the Ledger source of truth?"))) void rebuildProjection(); }}>{actionPending === "rebuild" ? translateText("Rebuilding…") : translateText("Rebuild projection")}</button>
       </> : null}
-      {detail ? <a className="btn" href={memberTabHref(detail.memberId, "wallet-statement")}>See Wallet Statement</a> : null}
-      <button className="btn" type="button" onClick={onClose}>Close record</button>
+      {detail ? <a className="btn" href={memberTabHref(detail.memberId, "wallet-statement")}>{translateText("See Wallet Statement")}</a> : null}
+      <button className="btn" type="button" onClick={onClose}>{translateText("Close record")}</button>
     </> : null}
   >
-        {loading ? <p aria-live="polite">Loading Wallet detail…</p> : error ? <div className="empty" role="alert"><h3>Wallet detail unavailable</h3><p>{error}</p><button className="btn" type="button" onClick={() => { startTransition(() => { void loadDetail(); }); }}>Try again</button></div> : detail ? <>
-          <section className="wallet-record"><div className="drawer-title"><span className="att-icon neutral">W</span><div><h2>{detail.memberName}</h2><p>{detail.email} · {detail.memberId}</p></div></div><div className="facts"><Fact label="Wallet Status"><Badge status={detail.status} /></Fact><Fact label="Current Wallet Balance">{formatWalletMoney(detail.currentBalanceSatang)}</Fact><Fact label="Wallet record">{detail.id}</Fact><Fact label="Latest Wallet Transaction Date">{formatWalletDate(detail.latestTransactionAt)}</Fact></div></section>
-          <Section title="Wallet status action">
-            {dataSource === "mock" ? <>
-              <p>Change Wallet Status without changing the Member Ban status. A non-active Wallet blocks new commitments while existing obligations continue.</p>
-              {walletStatusTargets(detail.status).length ? <div className="wallet-status-actions" aria-label="Wallet status actions">
-                {walletStatusTargets(detail.status).map((targetStatus) => <button className={`btn ${walletStatusActionClass(targetStatus)}`} type="button" key={targetStatus} data-wallet-status-action={targetStatus} onClick={() => openStatusCommand(targetStatus)} disabled={statusCommandPending}>{walletStatusActionLabel(targetStatus)}</button>)}
-              </div> : <p className="audit-note">Closed is terminal. No Wallet status change is available.</p>}
-            </> : <p>Status commands will be connected to the Admin API in the API integration step.</p>}
+        {loading ? <p aria-live="polite">{translateText("Loading Wallet detail…")}</p> : error ? <div className="empty" role="alert"><h3>{translateText("Wallet detail unavailable")}</h3><p>{translateText(error)}</p><button className="btn" type="button" onClick={() => { startTransition(() => { void loadDetail(); }); }}>{translateText("Try again")}</button></div> : detail ? <>
+          <section className="wallet-record"><div className="drawer-title"><span className="att-icon neutral">W</span><div><h2>{detail.memberName}</h2><p>{detail.email} · {detail.memberId}</p></div></div><div className="facts"><Fact label={translateText("Wallet Status")}><Badge status={detail.status} /></Fact><Fact label={translateText("Current Wallet Balance")}>{formatWalletMoney(detail.currentBalanceSatang)}</Fact><Fact label={translateText("Wallet record")}>{detail.id}</Fact><Fact label={translateText("Latest Wallet Transaction Date")}>{formatWalletDate(detail.latestTransactionAt)}</Fact></div></section>
+          <Section title={translateText("Wallet balances")}><div className="user-context-list"><div><span>{translateText("Spending Balance")}</span><strong>{formatWalletMoney(detail.balances.spendingBalanceSatang)}</strong></div><div><span>{translateText("Earnings Balance")}</span><strong>{formatWalletMoney(detail.balances.earningsBalanceSatang)}</strong></div><div><span>{translateText("Funding Reserved")}</span><strong>{formatWalletMoney(detail.balances.fundingReservedSatang)}</strong></div><div><span>{translateText("Reserved For Payouts")}</span><strong>{formatWalletMoney(detail.balances.reservedForPayoutsSatang)}</strong></div></div></Section>
+          <Section title={translateText("Ledger check")}><p>{translateText(detail.projectionMatchesLedger ? "Wallet projection matches the Ledger." : "Wallet projection does not match the Ledger.")}</p></Section>
+          {verification ? <Section title={translateText("Ledger verification")}><p>{translateText(verification.matches ? "Projected balances match the Ledger." : "Projected balances do not match the Ledger.")}</p><div className="facts"><Fact label={translateText("Projected Wallet Balance")}>{formatWalletMoney(verification.projectedTotal)}</Fact><Fact label={translateText("Ledger Wallet Balance")}>{formatWalletMoney(verification.ledgerTotal)}</Fact><Fact label={translateText("Activity count")}>{translateText(verification.activityCountMatches ? "Matches" : "Does not match")}</Fact></div></Section> : null}
+          <Section title={translateText("Wallet Statement")}><p>{translateText("Latest 5 committed and sealed Ledger Transactions, newest first.")}</p><WalletStatementTable transactions={ledger} /></Section>
+          <Section title={translateText("Wallet status history")}>
+            {history.length ? <ol className="timeline">{history.map((entry) => <li key={entry.id}><strong>{entry.fromStatus ? `${translateText(walletStatusLabel(entry.fromStatus))} → ` : ""}{translateText(walletStatusLabel(entry.toStatus))}</strong><time dateTime={entry.createdAt}>{formatWalletDate(entry.createdAt)}</time><span>{entry.reason}</span>{entry.actorAdminId ? <small>{translateText("Admin")} {entry.actorAdminId}</small> : null}</li>)}</ol> : <p>{translateText("No Wallet status changes are recorded.")}</p>}
           </Section>
-          <Section title="Wallet balances"><div className="user-context-list"><div><span>Spending Balance</span><strong>{formatWalletMoney(detail.balances.spendingBalanceSatang)}</strong></div><div><span>Earnings Balance</span><strong>{formatWalletMoney(detail.balances.earningsBalanceSatang)}</strong></div><div><span>Funding Reserved</span><strong>{formatWalletMoney(detail.balances.fundingReservedSatang)}</strong></div><div><span>Reserved For Payouts</span><strong>{formatWalletMoney(detail.balances.reservedForPayoutsSatang)}</strong></div></div></Section>
-          <Section title="Ledger check"><p>{detail.projectionMatchesLedger ? "Wallet projection matches the Ledger." : "Wallet projection does not match the Ledger."}</p></Section>
-          {verification ? <Section title="Ledger verification"><p>{verification.matches ? "Projected balances match the Ledger." : "Projected balances do not match the Ledger."}</p><div className="facts"><Fact label="Projected Wallet Balance">{formatWalletMoney(verification.projectedTotal)}</Fact><Fact label="Ledger Wallet Balance">{formatWalletMoney(verification.ledgerTotal)}</Fact><Fact label="Activity count">{verification.activityCountMatches ? "Matches" : "Does not match"}</Fact></div></Section> : null}
-          <Section title="Wallet Statement"><p>Latest 5 committed and sealed Ledger Transactions, newest first.</p><WalletStatementTable transactions={ledger} /></Section>
-          {history.length ? <Section title="Wallet status history"><ol className="timeline">{history.map((entry) => <li key={entry.id}><strong>{entry.fromStatus ? `${walletStatusLabel(entry.fromStatus)} → ` : ""}{walletStatusLabel(entry.toStatus)}</strong><time dateTime={entry.createdAt}>{formatWalletDate(entry.createdAt)}</time><span>{entry.reason}</span>{entry.actorAdminId ? <small>Admin {entry.actorAdminId}</small> : null}</li>)}</ol></Section> : <Section title="Wallet status history"><p>No Wallet status changes are recorded.</p></Section>}
-          {statusReceipt ? <section className="wallet-action-receipt" aria-label="Wallet status action receipt"><h3>Action receipt</h3><div className="wallet-status-preview"><div><span>Action ID</span><strong>{statusReceipt.id}</strong></div><div><span>Wallet Status</span><strong>{walletStatusLabel(statusReceipt.fromStatus)} → {walletStatusLabel(statusReceipt.toStatus)}</strong></div><div><span>Reason</span><strong>{statusReceipt.reason}</strong></div><div><span>Recorded</span><strong>{formatWalletDate(statusReceipt.createdAt)}</strong></div></div><p className="audit-note">This mock receipt represents the Activity Log event that the API integration will return.</p></section> : null}
-          {actionError || notice ? <p className={actionError ? "field-error" : "audit-note"} role={actionError ? "alert" : "status"}>{actionError ?? notice}</p> : null}
+          <Section title={translateText("Wallet status action")}>{statusActionContent}</Section>
+          {statusReceipt ? <section className="wallet-action-receipt" aria-label={translateText("Wallet status action receipt")}><h3>{translateText("Action receipt")}</h3><div className="wallet-status-preview"><div><span>{translateText("Action ID")}</span><strong>{statusReceipt.id}</strong></div><div><span>{translateText("Wallet Status")}</span><strong>{translateText(walletStatusLabel(statusReceipt.fromStatus))} → {translateText(walletStatusLabel(statusReceipt.toStatus))}</strong></div><div><span>{translateText("Reason")}</span><strong>{statusReceipt.reason}</strong></div><div><span>{translateText("Recorded")}</span><strong>{formatWalletDate(statusReceipt.createdAt)}</strong></div></div><p className="audit-note">{translateText("This mock receipt represents the Activity Log event that the API integration will return.")}</p></section> : null}
+          {actionError || notice ? <p className={actionError ? "field-error" : "audit-note"} role={actionError ? "alert" : "status"}>{translateText(actionError ?? notice ?? "")}</p> : null}
         </> : null}
     {statusCommand && detail ? <WalletStatusCommandDialog row={{ ...row, status: detail.status, statusLabel: walletStatusLabel(detail.status) }} targetStatus={statusCommand} onCancel={cancelStatusCommand} onSubmit={(reason, fixture) => { void submitStatusCommand(reason, fixture); }} error={statusCommandError} pending={statusCommandPending} /> : null}
   </AdminDrawer>;
@@ -429,6 +440,7 @@ function SortableHeader({
 
 export function AdminWalletPage({ initialData }: { initialData: WalletBoardPageData }) {
   const router = useRouter();
+  const { translateText } = useAdminShell();
   const drawerOpenerRef = useRef<HTMLElement | null>(null);
   const mockAllRows = initialData.dataSource === "mock" ? initialData.allRows : undefined;
   const defaultPageSize: WalletBoardPageSize = 10;
@@ -538,37 +550,37 @@ export function AdminWalletPage({ initialData }: { initialData: WalletBoardPageD
   }, []);
 
   if (initialData.boardError) return <main className="admin-route-page wallet-route-page" tabIndex={-1}>
-    <div className="page-head"><div><p className="admin-route-kicker">KUQuest Admin</p><h1>Wallets</h1><p>Review Wallet status and balances. Wallet detail is not a route in this migration.</p></div></div>
-    <section className="panel wallet-board" aria-label="Wallet review board">
+    <div className="page-head"><div><p className="admin-route-kicker">{translateText("KUQuest Admin")}</p><h1>{translateText("Wallets")}</h1><p>{translateText("Review Wallet status and balances. Wallet detail is not a route in this migration.")}</p></div></div>
+    <section className="panel wallet-board" aria-label={translateText("Wallet review board")}>
       <WalletSummary summary={initialData.summary} error={initialData.summaryError} dataSource={initialData.dataSource} onRetry={() => router.refresh()} />
-      <div className="empty" role="alert"><h2>Records are not available</h2><p>{initialData.boardError}</p><button className="btn primary" type="button" onClick={() => router.refresh()}>Try again</button></div>
+      <div className="empty" role="alert"><h2>{translateText("Records are not available")}</h2><p>{translateText(initialData.boardError)}</p><button className="btn primary" type="button" onClick={() => router.refresh()}>{translateText("Try again")}</button></div>
     </section>
   </main>;
 
   const resultLabel = !sortedRows.length
-    ? "Showing 0 of 0 results"
+    ? translateText("Showing 0 of 0 results")
     : pageSize === "all"
-    ? `Showing all ${sortedRows.length} ${sortedRows.length === 1 ? "result" : "results"}`
-    : `Showing ${pageStart}–${pageEnd} of ${sortedRows.length} ${sortedRows.length === 1 ? "result" : "results"}`;
-  const resultLabelWithLoading = isLoadingMore ? `${resultLabel} · Loading more records…` : resultLabel;
+    ? `${translateText("Showing all")} ${sortedRows.length} ${translateText(sortedRows.length === 1 ? "result" : "results")}`
+    : `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${sortedRows.length} ${translateText(sortedRows.length === 1 ? "result" : "results")}`;
+  const resultLabelWithLoading = isLoadingMore ? `${resultLabel} · ${translateText("Loading more records…")}` : resultLabel;
 
   return <main className="admin-route-page wallet-route-page" tabIndex={-1}>
-    <div className="page-head"><div><p className="admin-route-kicker">KUQuest Admin</p><h1>Wallets</h1><p>Review Wallet status and balances. Wallet detail is not a route in this migration.</p></div></div>
-    <section className="panel wallet-board" aria-label="Wallet review board">
+    <div className="page-head"><div><p className="admin-route-kicker">{translateText("KUQuest Admin")}</p><h1>{translateText("Wallets")}</h1><p>{translateText("Review Wallet status and balances. Wallet detail is not a route in this migration.")}</p></div></div>
+    <section className="panel wallet-board" aria-label={translateText("Wallet review board")}>
       <WalletSummary summary={initialData.summary} error={initialData.summaryError} dataSource={initialData.dataSource} onRetry={() => router.refresh()} />
-      <div className="tabs" aria-label="Wallet status filters">
-        {WALLET_BOARD_TABS.map((item) => <button className={`tab${tab === item.id ? " active" : ""}`} type="button" aria-pressed={tab === item.id} key={item.id} onClick={() => chooseTab(item.id)}>{item.label}{item.id === "all" ? ` (${rows.length})` : ""}</button>)}
+      <div className="tabs" aria-label={translateText("Wallet status filters")}>
+        {WALLET_BOARD_TABS.map((item) => <button className={`tab${tab === item.id ? " active" : ""}`} type="button" aria-pressed={tab === item.id} key={item.id} onClick={() => chooseTab(item.id)}>{translateText(item.label)}{item.id === "all" ? ` (${rows.length})` : ""}</button>)}
       </div>
       <div className="toolbar resource-toolbar">
-        <label className="inline-search search-field" htmlFor="wallet-search"><span className="visually-hidden">Search Wallets</span><input id="wallet-search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="Search Wallets…" autoComplete="off" /></label>
-        <span className="sort-help">Click a column to sort</span>
-        <div className="page-size-controls" aria-label="Rows per page">{([10, 25, 50, "all"] as const).map((size) => <button className={`page-size-button${pageSize === size ? " active" : ""}`} type="button" key={size} onClick={() => choosePageSize(size)}>{size === "all" ? "Show all" : `Show ${size}`}</button>)}</div>
-        <span className="count" aria-live="polite">{resultLabelWithLoading}</span>
+        <label className="inline-search search-field" htmlFor="wallet-search"><span className="visually-hidden">{translateText("Search Wallets")}</span><input id="wallet-search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={translateText("Search Wallets…")} autoComplete="off" /></label>
+        <span className="sort-help">{translateText("Click a column to sort")}</span>
+        <div className="page-size-controls" aria-label={translateText("Rows per page")}>{([10, 25, 50, "all"] as const).map((size) => <button className={`page-size-button${pageSize === size ? " active" : ""}`} type="button" key={size} onClick={() => choosePageSize(size)}>{size === "all" ? translateText("Show all") : `${translateText("Show")} ${size}`}</button>)}</div>
+        <span className="count" aria-live="polite">{translateText(resultLabelWithLoading)}</span>
       </div>
-      {backgroundLoadError ? <p className="field-error" role="alert">{backgroundLoadError} <button className="link" type="button" onClick={() => router.refresh()}>Try again</button></p> : null}
-      {initialData.boardError ? <p className="field-error" role="alert">{initialData.boardError} <button className="link" type="button" onClick={() => router.refresh()}>Try again</button></p> : null}
-      {!sortedRows.length ? <div className="empty"><h2>No matching records</h2><p>{query.trim() ? "Clear your search to see more results." : "There are no records in this view."}</p><button className="btn" type="button" onClick={resetView}>Reset view</button></div> : <section className="table-wrap wallet-board-table-wrap" aria-label="Wallets table"><table className="data wallet-board-table"><caption>Wallets</caption><thead><tr><SortableHeader label="Wallet / Member ID" sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Member" sortKey="member" activeKey={sortKey} direction={direction} onSort={sortBy} /><th scope="col">Email</th><SortableHeader label="Current Wallet Balance" sortKey="balance" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Latest Wallet Transaction Date" sortKey="latestTransactionAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Wallet status" sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Created" sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr data-wallet-row={row.id} key={row.id} tabIndex={0} aria-label={`Open Wallet ${row.id}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; openWalletDrawer(row, event.currentTarget); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openWalletDrawer(row, event.currentTarget); } }}><td><button className="row-record-button" type="button" data-wallet-drawer-trigger={row.id} aria-label={`Open Wallet ${row.id}`} onClick={(event) => openWalletDrawer(row, event.currentTarget)}>{row.id}</button><small>{row.memberId}</small><div className="wallet-mobile-key-facts" aria-label="Wallet summary"><div><span>Current Wallet Balance</span><strong>{formatWalletMoney(row.currentBalanceSatang)}</strong></div><div><span>Wallet Status</span><strong><Badge status={row.status} track={false} /></strong></div><div><span>Latest Wallet Transaction Date</span><strong>{formatWalletDate(row.latestTransactionAt)}</strong></div></div></td><td><Link className="user-record-link" data-member-link={row.memberId} href={memberTabHref(row.memberId, "overview")} aria-label={`Open Member ${row.memberName}`}><strong>{row.memberName}</strong></Link></td><td><strong>{row.email}</strong><small>{row.studentId || "Student ID not provided"}</small></td><td className="money">{formatWalletMoney(row.currentBalanceSatang)}</td><td>{formatWalletDate(row.latestTransactionAt)}</td><td><Badge status={row.status} /></td><td>{formatWalletDate(row.createdAt)}</td></tr>)}</tbody></table></section>}
-      {sortedRows.length ? <div className="table-pagination"><button className="page-nav" type="button" disabled={currentPage <= 1} onClick={() => setPage((value) => value - 1)}>Previous</button><span className="page-indicator">Page {currentPage} of {Math.max(totalPages, 1)}</span><button className="page-nav" type="button" disabled={currentPage >= totalPages} onClick={() => setPage((value) => value + 1)}>Next</button></div> : null}
+      {backgroundLoadError ? <p className="field-error" role="alert">{translateText(backgroundLoadError)} <button className="link" type="button" onClick={() => router.refresh()}>{translateText("Try again")}</button></p> : null}
+      {initialData.boardError ? <p className="field-error" role="alert">{translateText(initialData.boardError)} <button className="link" type="button" onClick={() => router.refresh()}>{translateText("Try again")}</button></p> : null}
+      {!sortedRows.length ? <div className="empty"><h2>{translateText("No matching records")}</h2><p>{query.trim() ? translateText("Clear your search to see more results.") : translateText("There are no records in this view.")}</p><button className="btn" type="button" onClick={resetView}>{translateText("Reset view")}</button></div> : <section className="table-wrap wallet-board-table-wrap" aria-label={translateText("Wallets table")}><table className="data wallet-board-table"><caption>{translateText("Wallets")}</caption><thead><tr><SortableHeader label={translateText("Wallet / Member ID")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Member")} sortKey="member" activeKey={sortKey} direction={direction} onSort={sortBy} /><th scope="col">{translateText("Email")}</th><SortableHeader label={translateText("Current Wallet Balance")} sortKey="balance" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Latest Wallet Transaction Date")} sortKey="latestTransactionAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Wallet status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Created")} sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr data-wallet-row={row.id} key={row.id} tabIndex={0} aria-label={`${translateText("Open Wallet")} ${row.id}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; openWalletDrawer(row, event.currentTarget); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openWalletDrawer(row, event.currentTarget); } }}><td><button className="row-record-button" type="button" data-wallet-drawer-trigger={row.id} aria-label={`${translateText("Open Wallet")} ${row.id}`} onClick={(event) => openWalletDrawer(row, event.currentTarget)}>{row.id}</button><small>{row.memberId}</small><div className="wallet-mobile-key-facts" aria-label={translateText("Wallet summary")}><div><span>{translateText("Current Wallet Balance")}</span><strong>{formatWalletMoney(row.currentBalanceSatang)}</strong></div><div><span>{translateText("Wallet Status")}</span><strong><Badge status={row.status} track={false} /></strong></div><div><span>{translateText("Latest Wallet Transaction Date")}</span><strong>{formatWalletDate(row.latestTransactionAt)}</strong></div></div></td><td>{row.memberAvailable ? <Link className="user-record-link" data-member-link={row.memberId} href={memberTabHref(row.memberId, "overview")} aria-label={`${translateText("Open Member")} ${row.memberName}`}><strong>{row.memberName}</strong></Link> : <strong>{row.memberName}</strong>}</td><td><strong>{row.email}</strong><small>{row.studentId || translateText("Student ID not provided")}</small></td><td className="money">{formatWalletMoney(row.currentBalanceSatang)}</td><td>{formatWalletDate(row.latestTransactionAt)}</td><td><Badge status={row.status} /></td><td>{formatWalletDate(row.createdAt)}</td></tr>)}</tbody></table></section>}
+      {sortedRows.length ? <div className="table-pagination"><button className="page-nav" type="button" disabled={currentPage <= 1} onClick={() => setPage((value) => value - 1)}>{translateText("Previous")}</button><span className="page-indicator">{translateText("Page")} {currentPage} {translateText("of")} {Math.max(totalPages, 1)}</span><button className="page-nav" type="button" disabled={currentPage >= totalPages} onClick={() => setPage((value) => value + 1)}>{translateText("Next")}</button></div> : null}
     </section>
     {selectedWallet ? <WalletDrawer row={selectedWallet} dataSource={initialData.dataSource} initialMockHistory={mockStatusHistory[selectedWallet.id] ?? []} opener={drawerOpenerRef.current} onClose={closeWalletDrawer} onStatusChanged={handleStatusChanged} /> : null}
   </main>;

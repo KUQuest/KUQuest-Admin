@@ -7,12 +7,13 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 
 import { ApiError } from "../../../lib/api/client";
 import { AdminActionReceipt, AdminActionSummary } from "../../../components/admin/admin-action-feedback";
+import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { disputeRoutes, questRoutes } from "../admin-routes";
 import {
   adminApi,
   type AdminQuestReasonCode,
 } from "../api/admin-api";
-import { canHideQuest, isQuestTerminal, type QuestState } from "../domain/rulebook";
+import { canHideQuest, isQuestTerminal, questStateLabel, type QuestState } from "../domain/rulebook";
 import {
   formatQuestDate,
   formatQuestMoney,
@@ -81,6 +82,10 @@ function readableValue(value: string): string {
     .replace(/\b\w/g, (letter) => letter.toLocaleUpperCase());
 }
 
+function readableFieldName(value: string): string {
+  return readableValue(value.replace(/([a-z])([A-Z])/g, "$1 $2"));
+}
+
 type AdminQuestEditRequest = Extract<QuestDetailView["editHistory"][number], { kind: "EDIT_REQUEST" }>;
 
 type QuestEditChange = {
@@ -121,7 +126,7 @@ function currentQuestValue(detail: QuestDetailView, field: string): unknown {
     case "proofRequired": return detail.proofRequired;
     case "locations": return detail.locations.map((location) => location.label);
     case "images": return detail.images?.map((image) => image.fileId);
-    default: return "Current accepted value not provided.";
+    default: return "Previous value not provided.";
   }
 }
 
@@ -145,27 +150,94 @@ function editChangesFor(detail: QuestDetailView, request: AdminQuestEditRequest)
 }
 
 function Badge({ state }: { state: QuestState }) {
-  return <span className={`badge ${questStatusClass(state)}`}>{readableValue(state.replace("QUEST_", ""))}</span>;
+  const { translateText } = useAdminShell();
+  return <span className={`badge ${questStatusClass(state)}`}>{translateText(readableValue(state.replace("QUEST_", "")))}</span>;
 }
 
-function Section({ title, count, children }: { title: string; count?: number; children: ReactNode }) {
+function Section({ title, count, children, variant = "panel" }: { title: string; count?: number; children: ReactNode; variant?: "panel" | "record" }) {
+  const { translateText } = useAdminShell();
+  const isRecord = variant === "record";
   return (
-    <section className="panel">
-      <div className="panel-head">
-        <h2>{title}</h2>
+    <section className={isRecord ? "record-panel" : "panel"}>
+      <div className={isRecord ? "record-panel-head" : "panel-head"}>
+        <h2>{translateText(title)}</h2>
         {count !== undefined ? <span className="section-count">{count}</span> : null}
       </div>
-      <div className="quest-detail-body">{children}</div>
+      <div className={`quest-detail-body${isRecord ? " quest-record-body" : ""}`}>{children}</div>
     </section>
   );
 }
 
 function Fact({ label, children }: { label: string; children: ReactNode }) {
-  return <div className="fact"><span>{label}</span><strong>{children}</strong></div>;
+  const { translateText } = useAdminShell();
+  return <div className="fact"><span>{translateText(label)}</span><strong>{children}</strong></div>;
+}
+
+function questCandidateCount(detail: QuestDetailView): number {
+  return detail.assignments.length > 0
+    ? detail.assignments.length
+    : detail.candidates.applications.length + detail.candidates.teams.length;
 }
 
 function ListEmpty({ children }: { children: ReactNode }) {
-  return <div className="submission-empty"><strong>{children}</strong></div>;
+  const { translateText } = useAdminShell();
+  return <div className="submission-empty"><strong>{typeof children === "string" ? translateText(children) : children}</strong></div>;
+}
+
+function QuestRecordAlert({ detail }: { detail: QuestDetailView }) {
+  const { translateText } = useAdminShell();
+  const stateLabel = readableValue(detail.state.replace("QUEST_", ""));
+  const hidden = Boolean(detail.hiddenAt);
+  const failed = detail.state === "QUEST_FAILED";
+  const message = hidden
+    ? translateText("This Quest is hidden from public discovery. Review the Quest record before restoring it.")
+    : failed
+      ? translateText("This Quest is failed. Review the Dispute Case, Proof Submissions, and Funding Reservation before taking action.")
+      : translateText("Review the Quest Condition, participants, Proof Submissions, and funding before taking action.");
+
+  return (
+    <div className={`dispute-page-alert quest-page-alert ${failed || hidden ? "active" : "closed"}`}>
+      <span aria-hidden="true">⚑</span>
+      <div>
+        <strong>{translateText("Quest State:")} {translateText(stateLabel)}</strong>
+        <p>{message}</p>
+      </div>
+      <span className={`badge ${questStatusClass(detail.state)}`}>{translateText(stateLabel)}</span>
+    </div>
+  );
+}
+
+function QuestFinancialSection({
+  finance,
+  fundingTotal,
+  reward,
+  platformFee,
+  platformFeeBps,
+  variant,
+}: {
+  finance: QuestFinanceView | null;
+  fundingTotal: number | null;
+  reward: number | null;
+  platformFee: number | null;
+  platformFeeBps: number | null;
+  variant: "panel" | "record";
+}) {
+  const { translateText } = useAdminShell();
+  return (
+    <Section title={translateText("Financial record")} variant={variant}>
+      <div className="financial-line"><span>{translateText("Quest Funding Total")}</span><strong>{formatQuestMoney(fundingTotal)}</strong></div>
+      <div className="financial-line"><span>{translateText("Quest Reward")}</span><strong>{formatQuestMoney(reward)}</strong></div>
+      <div className="financial-line"><span>{translateText("Platform Fee per Worker")}</span><strong>{formatQuestMoney(platformFee)}</strong></div>
+      <div className="financial-line"><span>{translateText("Platform Fee policy")}</span><strong>{platformFeeBps === null ? translateText("Not provided") : `${platformFeeBps / 100}%`}</strong></div>
+      {finance?.transfers.length ? (
+        <div className="quest-finance-list">
+          <h3>{translateText("Money movements")}</h3>
+          {finance.transfers.map((transfer) => <div className="financial-line" key={transfer.id}><span>{translateText(readableValue(transfer.type))}<small>{formatQuestDate(transfer.occurredAt)}</small></span><strong>{formatQuestMoney(transfer.amountSatang)}</strong></div>)}
+        </div>
+      ) : null}
+      {!finance ? <p className="audit-note">{translateText("Quest finance data is not available.")}</p> : null}
+    </Section>
+  );
 }
 
 function QuestDetailContent({
@@ -178,6 +250,7 @@ function QuestDetailContent({
   disputePending,
   disputeError,
   showFullDetailLink,
+  recordLayout = false,
 }: {
   detail: QuestDetailView;
   finance: QuestFinanceView | null;
@@ -188,7 +261,9 @@ function QuestDetailContent({
   disputePending: boolean;
   disputeError: string | null;
   showFullDetailLink: boolean;
+  recordLayout?: boolean;
 }) {
+  const { translateText } = useAdminShell();
   const state = detail.state;
   const hidden = Boolean(detail.hiddenAt);
   const [selectedWorkerId, setSelectedWorkerId] = useState("");
@@ -212,14 +287,14 @@ function QuestDetailContent({
         : statusLabel;
       const detailText = [
         readableValue(entry.event),
-        entry.reasonCode ? `Reason code: ${readableValue(entry.reasonCode)}` : null,
-        entry.actorId ? `Actor: ${entry.actorId}` : null,
+        entry.reasonCode ? `${translateText("Reason code:")} ${translateText(readableValue(entry.reasonCode))}` : null,
+        entry.actorId ? `${translateText("Actor:")} ${entry.actorId}` : null,
       ].filter(Boolean).join(" · ");
       return {
         id: `${entry.event}-${entry.occurredAt}-${index}`,
         title: transition,
         time: formatQuestDate(entry.occurredAt),
-        detail: detailText || "Quest State recorded.",
+        detail: detailText || translateText("Quest State recorded."),
       };
     });
   const timeline = statusTimeline.length
@@ -228,37 +303,113 @@ function QuestDetailContent({
         id: "current-state",
         title: readableValue(state.replace("QUEST_", "")),
         time: formatQuestDate(detail.updatedAt),
-        detail: "Quest State history is not provided.",
+        detail: translateText("Quest State history is not provided."),
       }];
+  const hasAcceptedRoster = detail.assignments.length > 0;
+  const candidateApplications = hasAcceptedRoster ? [] : detail.candidates.applications;
+  const candidateTeams = hasAcceptedRoster ? [] : detail.candidates.teams;
+  const candidateCount = questCandidateCount(detail);
+  const sectionVariant = recordLayout ? "record" : "panel";
+  const disputeRiskContent = disputeLookupError ? (
+    <p className="field-error" role="alert">{translateText(disputeLookupError)}</p>
+  ) : linkedDisputeId ? (
+    <>
+      <p>{translateText("A Dispute Case is linked to this Quest.")}</p>
+      <Link className="btn primary full-width" href={disputeRoutes.detail(linkedDisputeId)}>{translateText("Open Dispute Case")}</Link>
+    </>
+  ) : state === "QUEST_FAILED" ? (
+    <>
+      <p className="audit-note">{translateText("This Quest is Failed, but no linked Dispute Case was returned.")}</p>
+      {detail.assignments.length ? (
+        <form
+          className="dispute-open-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (selectedWorkerId) onOpenDispute(selectedWorkerId);
+          }}
+        >
+          <label htmlFor="quest-dispute-worker">{translateText("Worker")}
+            <select
+              id="quest-dispute-worker"
+              name="workerId"
+              value={selectedWorkerId}
+              onChange={(event) => setSelectedWorkerId(event.target.value)}
+              required
+              disabled={disputePending}
+            >
+              <option value="">{translateText("Select an assigned Worker")}</option>
+              {detail.assignments.map((assignment) => (
+                <option key={assignment.worker.id} value={assignment.worker.id}>
+                  {questMemberName(assignment.worker)}
+                </option>
+              ))}
+            </select>
+          </label>
+          {disputeError ? <p className="field-error" role="alert">{translateText(disputeError)}</p> : null}
+          <button className="btn primary dispute-open-submit" type="submit" disabled={disputePending}>
+            {disputePending ? translateText("Opening Dispute Case…") : translateText("Open Dispute Case")}
+          </button>
+          <p className="audit-note">{translateText("Select the assigned Worker for this failed Quest.")}</p>
+        </form>
+      ) : <p className="audit-note">{translateText("No assigned Worker was returned.")}</p>}
+    </>
+  ) : <p className="audit-note">{translateText("No linked Dispute Case was returned.")}</p>;
 
   return (
-    <div className="quest-detail-stack">
-      <Section title="Quest summary">
+    <div className={recordLayout ? "full-record-grid quest-full-record-grid" : "quest-detail-stack"}>
+      <div className={recordLayout ? "record-primary" : "quest-detail-primary"}>
+      <Section title="Quest summary" variant={sectionVariant}>
         <div className="facts quest-detail-facts">
-          <Fact label="Status"><Badge state={state} />{hidden ? <span className="badge neutral quest-hidden-overlay">Hidden</span> : null}</Fact>
+          <Fact label="Status"><Badge state={state} />{hidden ? <span className="badge neutral quest-hidden-overlay">{translateText("Hidden")}</span> : null}</Fact>
           <Fact label="Quest Funding Total">{formatQuestMoney(fundingTotal)}</Fact>
-          <Fact label="Participant mode">{detail.participation === "GROUP" ? "Team" : "Solo"}</Fact>
-          <Fact label="Candidate mode">{detail.mode === "FIRST_COME_FIRST_SERVED" ? "First come, first served" : "Candidate"}</Fact>
+          <Fact label="Participant mode">{translateText(detail.participation === "GROUP" ? "Team" : "Solo")}</Fact>
+          <Fact label="Candidate mode">{translateText(detail.mode === "FIRST_COME_FIRST_SERVED" ? "First come, first served" : "Candidate")}</Fact>
           <Fact label="Quest ID">{questDisplayIdFor(detail.id, detail.displayId)}</Fact>
         </div>
-      </Section>
-
-      <Section title="Quest description">
-        <p className="record-description">{detail.description || "No Quest description recorded."}</p>
-        <div className="requirement-box">
-          <strong>Quest Condition</strong>
-          <p>{detail.condition.text || "No Quest Condition text recorded."}</p>
-          {detail.condition.items.length ? (
-            <ol>
-              {detail.condition.items.map((item) => <li key={`${item.position}-${item.text}`}>{item.text}</li>)}
-            </ol>
-          ) : null}
+        <div className="quest-description-block">
+          <h3>{translateText("Quest description")}</h3>
+          <p className="record-description">{detail.description || translateText("No Quest description recorded.")}</p>
+          <div className="requirement-box">
+            <strong>{translateText("Quest Condition")}</strong>
+            <p>{detail.condition.text || translateText("No Quest Condition text recorded.")}</p>
+            {detail.condition.items.length ? (
+              <ol>
+                {detail.condition.items.map((item) => <li key={`${item.position}-${item.text}`}>{item.text}</li>)}
+              </ol>
+            ) : null}
+          </div>
         </div>
+        {!recordLayout ? <div className="quest-summary-context">
+          <div className="quest-summary-context-section">
+            <h3>{translateText("Hirer")}</h3>
+            <div className="hirer-profile-summary">
+              <strong>{questMemberName(detail.hirer)}</strong>
+              <span>{detail.hirer.email}</span>
+            </div>
+          </div>
+
+          <div className="quest-summary-context-section">
+            <h3>{translateText("Schedule and location")}</h3>
+            <div className="facts">
+              <Fact label="Starts">{formatQuestDate(detail.startTime)}</Fact>
+              <Fact label="Due">{formatQuestDate(detail.dueAt)}</Fact>
+            </div>
+            <div className="quest-detail-list-block">
+              <span className="fact-label">{translateText("Location")}</span>
+              <strong className="quest-detail-list-value">
+                {detail.locations.length
+                  ? detail.locations.map((location) => location.label || translateText("Location label not provided.")).join(" · ")
+                  : translateText("Location not provided.")}
+              </strong>
+            </div>
+          </div>
+
+        </div> : null}
       </Section>
 
-      <Section title="Hirer attachments" count={detail.images?.length ?? 0}>
+      <Section title="Hirer attachments" count={detail.images?.length ?? 0} variant={sectionVariant}>
         {detail.images === undefined ? (
-          <p className="audit-note">Hirer attachments are not available.</p>
+          <p className="audit-note">{translateText("Hirer attachments are not available.")}</p>
         ) : detail.images.length ? (
           <div className="related-list">
             {detail.images.map((image) => (
@@ -269,105 +420,84 @@ function QuestDetailContent({
                 rel="noreferrer"
                 target="_blank"
               >
-                <Image className="attachment-thumbnail" src={image.url} alt={`Hirer attachment ${image.position + 1}`} height={54} loading="lazy" unoptimized width={72} />
+                <Image className="attachment-thumbnail" src={image.url} alt={`${translateText("Hirer attachment")} ${image.position + 1}`} height={54} loading="lazy" unoptimized width={72} />
                 <span>
-                  <strong>Hirer attachment {image.position + 1}</strong>
-                  <small>{image.fileId} · Link expires {formatQuestDate(image.urlExpiresAt)}</small>
+                  <strong>{translateText("Hirer attachment")} {image.position + 1}</strong>
+                  <small>{image.fileId} · {translateText("Link expires")} {formatQuestDate(image.urlExpiresAt)}</small>
                 </span>
-                <span>Open</span>
+                <span>{translateText("Open")}</span>
               </a>
             ))}
           </div>
-        ) : <ListEmpty>No Hirer attachments were returned.</ListEmpty>}
+        ) : <ListEmpty>{translateText("No Hirer attachments were returned.")}</ListEmpty>}
       </Section>
 
       {pendingHirerChange ? (
-        <Section title="Pending Hirer changes">
+        <Section title="Pending Hirer changes" variant={sectionVariant}>
           <div className="change-warning">
             <div>
-              <strong>Current accepted terms remain active</strong>
-              <p>This proposal does not change the Worker agreement until every Active Worker consents.</p>
+              <strong>{translateText("Current accepted terms remain active")}</strong>
+              <p>{translateText("This proposal does not change the Worker agreement until every Active Worker consents.")}</p>
             </div>
           </div>
           <div className="change-meta">
-            <div><span>Status</span><strong>{pendingHirerChange.requestStatus}</strong></div>
-            <div><span>Requested by</span><strong>{pendingHirerChange.requestedByUserId === detail.hirer.id ? `${questMemberName(detail.hirer)} · Hirer` : pendingHirerChange.requestedByUserId ?? "Hirer not provided."}</strong></div>
-            <div><span>Requested at</span><strong>{formatQuestDate(pendingHirerChange.createdAt)}</strong></div>
-            <div><span>Expires at</span><strong>{formatQuestDate(pendingHirerChange.expiresAt)}</strong></div>
+            <div><span>{translateText("Status")}</span><strong>{translateText(pendingHirerChange.requestStatus)}</strong></div>
+            <div><span>{translateText("Requested by")}</span><strong>{pendingHirerChange.requestedByUserId === detail.hirer.id ? `${questMemberName(detail.hirer)} · ${translateText("Hirer")}` : pendingHirerChange.requestedByUserId ?? translateText("Hirer not provided.")}</strong></div>
+            <div><span>{translateText("Requested at")}</span><strong>{formatQuestDate(pendingHirerChange.createdAt)}</strong></div>
+            <div><span>{translateText("Expires at")}</span><strong>{formatQuestDate(pendingHirerChange.expiresAt)}</strong></div>
           </div>
           {pendingChanges.length ? (
             <div className="change-table">
-              <div className="change-row change-head"><span>Field</span><span>Accepted value</span><span>Proposed value</span></div>
+              <div className="change-row change-head"><span>{translateText("Field")}</span><span>{translateText("Previous value")}</span><span>{translateText("Proposed value")}</span></div>
               {pendingChanges.map((change) => (
                 <div className="change-row" key={change.field}>
-                  <strong>{change.field}</strong>
+                  <strong>{translateText(change.field)}</strong>
                   <span>{change.accepted}</span>
                   <span>{change.proposed}</span>
                 </div>
               ))}
             </div>
-          ) : <p className="audit-note">The proposed changes were not provided.</p>}
+          ) : <p className="audit-note">{translateText("The proposed changes were not provided.")}</p>}
           <div className="response-block">
-            <h3>Participant consent</h3>
+            <h3>{translateText("Participant consent")}</h3>
             {pendingHirerChange.responses.length ? (
               <div className="response-table">
-                <div className="response-row response-head"><span>Worker</span><span>Status</span></div>
+                <div className="response-row response-head"><span>{translateText("Worker")}</span><span>{translateText("Status")}</span></div>
                 {pendingHirerChange.responses.map((response) => {
                   const worker = detail.assignments.find((assignment) => assignment.worker.id === response.workerId)?.worker;
                   return (
                     <div className="response-row" key={response.workerId}>
-                      <span><strong>{worker ? questMemberName(worker) : response.workerId}</strong><small>{response.reason ?? "No response reason"}</small></span>
-                      <span className="response-status">{response.decision ?? "Pending"}</span>
+                      <span><strong>{worker ? questMemberName(worker) : response.workerId}</strong><small>{response.reason ?? translateText("No response reason")}</small></span>
+                      <span className="response-status">{response.decision ? translateText(response.decision) : translateText("Pending")}</span>
                     </div>
                   );
                 })}
               </div>
-            ) : <ListEmpty>No Worker responses were returned.</ListEmpty>}
+            ) : <ListEmpty>{translateText("No Worker responses were returned.")}</ListEmpty>}
           </div>
         </Section>
       ) : null}
 
-      <Section title="Hirer">
-        <div className="hirer-profile-summary">
-          <strong>{questMemberName(detail.hirer)}</strong>
-          <span>{detail.hirer.email}</span>
-        </div>
-      </Section>
-
-      <Section title="Schedule and location">
-        <div className="facts">
-          <Fact label="Starts">{formatQuestDate(detail.startTime)}</Fact>
-          <Fact label="Due">{formatQuestDate(detail.dueAt)}</Fact>
-        </div>
-        <div className="quest-detail-list-block">
-          <span className="fact-label">Location</span>
-          <strong className="quest-detail-list-value">
-            {detail.locations.length
-              ? detail.locations.map((location) => location.label || "Location label not provided.").join(" · ")
-              : "Location not provided."}
-          </strong>
-        </div>
-      </Section>
-
       <Section
-        title="Candidates and Assignments"
-        count={detail.candidates.applications.length + detail.candidates.teams.length + detail.assignments.length}
+        title="Candidates"
+        count={candidateCount}
+        variant={sectionVariant}
       >
-        {detail.candidates.applications.length ? (
+        {candidateApplications.length ? (
           <div className="related-list">
-            {detail.candidates.applications.map((application) => (
+            {candidateApplications.map((application) => (
               <div className="related-row" key={application.id}>
-                <span><strong>{questMemberName(application.worker)}</strong><small>Candidate · {readableValue(application.applicationStatus)}</small></span>
+                <span><strong>{questMemberName(application.worker)}</strong><small>{translateText("Candidate")} · {translateText(readableValue(application.applicationStatus))}</small></span>
                 <span>{formatQuestDate(application.appliedAt)}</span>
               </div>
             ))}
           </div>
         ) : null}
-        {detail.candidates.teams.length ? (
+        {candidateTeams.length ? (
           <div className="related-list quest-detail-list-gap">
-            {detail.candidates.teams.map((team) => (
+            {candidateTeams.map((team) => (
               <div className="related-row" key={team.id}>
-                <span><strong>{team.name}</strong><small>Candidate Team · {readableValue(team.teamStatus)} · {team.members.length} member{team.members.length === 1 ? "" : "s"}</small></span>
+                <span><strong>{team.name}</strong><small>{translateText("Candidate Team")} · {translateText(readableValue(team.teamStatus))} · {team.members.length} {translateText(team.members.length === 1 ? "member" : "members")}</small></span>
                 <span>{formatQuestDate(team.createdAt)}</span>
               </div>
             ))}
@@ -377,144 +507,109 @@ function QuestDetailContent({
           <div className="related-list quest-detail-list-gap">
             {detail.assignments.map((assignment) => (
               <div className="related-row" key={assignment.id}>
-                <span><strong>{questMemberName(assignment.worker)}</strong><small>Assignment · {readableValue(assignment.assignmentStatus)}</small></span>
-                <span>{assignment.startedAt ? `Started ${formatQuestDate(assignment.startedAt)}` : "Not started"}</span>
+                <span><strong>{questMemberName(assignment.worker)}</strong><small>{translateText("Assignment")} · {translateText(readableValue(assignment.assignmentStatus))}</small></span>
+                <span>{assignment.startedAt ? `${translateText("Started")} ${formatQuestDate(assignment.startedAt)}` : translateText("Not started")}</span>
               </div>
             ))}
           </div>
         ) : null}
-        {!detail.candidates.applications.length && !detail.candidates.teams.length && !detail.assignments.length ? <ListEmpty>No Candidates, Candidate Teams, or Assignments returned.</ListEmpty> : null}
+        {!candidateApplications.length && !candidateTeams.length && !detail.assignments.length ? <ListEmpty>{translateText("No Candidates, Candidate Teams, or Assignments returned.")}</ListEmpty> : null}
       </Section>
 
-      <Section title="Proof Submissions" count={detail.proofSubmissions.length}>
+      <Section title="Proof Submissions" count={detail.proofSubmissions.length} variant={sectionVariant}>
         {detail.proofSubmissions.length ? (
           <div className="related-list">
             {detail.proofSubmissions.map((submission) => (
               <div className="related-row" key={submission.id}>
-                <span><strong>{submission.worker ? questMemberName(submission.worker) : questMemberName(submission.submittedBy)}</strong><small>{readableValue(submission.submissionStatus)} · {formatQuestDate(submission.submittedAt)}</small><small>{submission.content || "No proof description."}</small></span>
-                <span>{submission.files.length} file{submission.files.length === 1 ? "" : "s"}</span>
+                <span><strong>{submission.worker ? questMemberName(submission.worker) : questMemberName(submission.submittedBy)}</strong><small>{translateText(readableValue(submission.submissionStatus))} · {formatQuestDate(submission.submittedAt)}</small><small>{submission.content || translateText("No proof description.")}</small></span>
+                <span>{submission.files.length} {translateText(submission.files.length === 1 ? "file" : "files")}</span>
               </div>
             ))}
           </div>
-        ) : <ListEmpty>No Proof Submissions returned.</ListEmpty>}
+        ) : <ListEmpty>{translateText("No Proof Submissions returned.")}</ListEmpty>}
       </Section>
 
-      <Section title="Financial record">
-        <div className="financial-line"><span>Quest Funding Total</span><strong>{formatQuestMoney(fundingTotal)}</strong></div>
-        <div className="financial-line"><span>Quest Reward</span><strong>{formatQuestMoney(reward)}</strong></div>
-        <div className="financial-line"><span>Platform Fee per Worker</span><strong>{formatQuestMoney(platformFee)}</strong></div>
-        <div className="financial-line"><span>Platform Fee policy</span><strong>{detail.platformFeeBps === null ? "Not provided" : `${detail.platformFeeBps / 100}%`}</strong></div>
-        {finance?.reservation ? (
-          <>
-            <div className="financial-line"><span>Funding Reservation</span><strong>{readableValue(finance.reservation.status)}</strong></div>
-            <div className="financial-line"><span>Reserved</span><strong>{formatQuestMoney(finance.reservation.totalReservedSatang)}</strong></div>
-            <div className="financial-line"><span>Remaining</span><strong>{formatQuestMoney(finance.reservation.remainingSatang)}</strong></div>
-          </>
-        ) : <p className="audit-note">No Funding Reservation was returned.</p>}
-        {finance?.transfers.length ? (
-          <div className="quest-finance-list">
-            <h3>Money movements</h3>
-            {finance.transfers.map((transfer) => <div className="financial-line" key={transfer.id}><span>{readableValue(transfer.type)}<small>{formatQuestDate(transfer.occurredAt)}</small></span><strong>{formatQuestMoney(transfer.amountSatang)}</strong></div>)}
-          </div>
-        ) : null}
-        {finance?.ledgerTransactions.length ? (
-          <div className="quest-finance-list">
-            <h3>Ledger Transactions</h3>
-            <ul className="related-list quest-ledger-list">
-              {finance.ledgerTransactions.map((transaction) => (
-                <li className="related-row" key={transaction.id}>
-                  <span>
-                    <strong>{readableValue(transaction.eventType)}</strong>
-                    <small>{formatQuestDate(transaction.createdAt)} · {transaction.businessReference || "Business reference not provided."}</small>
-                    <small>{transaction.description || "Description not provided."}</small>
-                  </span>
-                  <span>{transaction.postings.length} Ledger Posting{transaction.postings.length === 1 ? "" : "s"}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : finance ? <p className="audit-note">No Ledger Transactions were returned.</p> : null}
-        {!finance ? <p className="audit-note">Quest finance data is not available.</p> : null}
-      </Section>
+      {!recordLayout ? <QuestFinancialSection finance={finance} fundingTotal={fundingTotal} reward={reward} platformFee={platformFee} platformFeeBps={detail.platformFeeBps} variant={sectionVariant} /> : null}
 
-      <Section title="Quest edit history" count={detail.editHistory.length}>
+      <Section title="Quest edit history" count={detail.editHistory.length} variant={sectionVariant}>
         {detail.editHistory.length ? (
           <div className="related-list">
             {detail.editHistory.map((entry) => {
               const detailLabel = entry.kind === "FIELD_EDIT"
-                ? `Field · ${entry.fieldName}`
-                : `Request · ${readableValue(entry.requestStatus)}`;
+                ? `${translateText("Field")} · ${translateText(readableFieldName(entry.fieldName))}`
+                : `${translateText("Request")} · ${translateText(readableValue(entry.requestStatus))}`;
               const editedAt = entry.kind === "FIELD_EDIT" ? entry.editedAt : entry.createdAt;
               return (
                 <div className="related-row" key={entry.id}>
-                  <span><strong>{readableValue(entry.kind)}</strong><small>{detailLabel}</small></span>
+                  <span>
+                    <strong>{entry.kind === "FIELD_EDIT" ? translateText(readableFieldName(entry.fieldName)) : translateText(readableValue(entry.kind))}</strong>
+                    <small>{entry.kind === "FIELD_EDIT" ? `${editValueText(entry.oldValue)} → ${editValueText(entry.newValue)}` : detailLabel}</small>
+                  </span>
                   <span>{formatQuestDate(editedAt)}</span>
                 </div>
               );
             })}
           </div>
-        ) : <ListEmpty>No Quest edits returned.</ListEmpty>}
+        ) : <ListEmpty>{translateText("No Quest edits returned.")}</ListEmpty>}
       </Section>
 
-      <Section title="Dispute and risk">
-        {disputeLookupError ? (
-          <p className="field-error" role="alert">{disputeLookupError}</p>
-        ) : linkedDisputeId ? (
-          <>
-            <p>A Dispute Case is linked to this Quest.</p>
-            <Link className="btn primary full-width" href={disputeRoutes.detail(linkedDisputeId)}>Open Dispute Case</Link>
-          </>
-        ) : state === "QUEST_FAILED" ? (
-          <>
-            <p className="audit-note">This Quest is in QUEST_FAILED, but no linked Dispute Case was returned.</p>
-            {detail.assignments.length ? (
-              <form
-                className="dispute-open-form"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  if (selectedWorkerId) onOpenDispute(selectedWorkerId);
-                }}
-              >
-                <label htmlFor="quest-dispute-worker">Worker
-                  <select
-                    id="quest-dispute-worker"
-                    name="workerId"
-                    value={selectedWorkerId}
-                    onChange={(event) => setSelectedWorkerId(event.target.value)}
-                    required
-                    disabled={disputePending}
-                  >
-                    <option value="">Select an assigned Worker</option>
-                    {detail.assignments.map((assignment) => (
-                      <option key={assignment.worker.id} value={assignment.worker.id}>
-                        {questMemberName(assignment.worker)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {disputeError ? <p className="field-error" role="alert">{disputeError}</p> : null}
-                <button className="btn primary dispute-open-submit" type="submit" disabled={disputePending}>
-                  {disputePending ? "Opening Dispute Case…" : "Open Dispute Case"}
-                </button>
-                <p className="audit-note">Select the assigned Worker for this failed Quest.</p>
-              </form>
-            ) : <p className="audit-note">No assigned Worker was returned.</p>}
-          </>
-        ) : <p className="audit-note">No linked Dispute Case was returned.</p>}
-      </Section>
+      {!recordLayout ? (
+        <Section title="Overall Quest timeline" count={timeline.length} variant={sectionVariant}>
+          <ol className="timeline">
+            {timeline.map((entry) => <li key={entry.id}><strong>{translateText(entry.title)}</strong><time>{entry.time}</time><span>{translateText(entry.detail)}</span></li>)}
+          </ol>
+        </Section>
+      ) : null}
 
-      <Section title="Overall Quest timeline" count={timeline.length}>
-        <ol className="timeline">
-          {timeline.map((entry) => <li key={entry.id}><strong>{entry.title}</strong><time>{entry.time}</time><span>{entry.detail}</span></li>)}
-        </ol>
-      </Section>
+      {!recordLayout ? <Section title="Dispute and risk" variant={sectionVariant}><div className="quest-summary-context-section">{disputeRiskContent}</div></Section> : null}
+      </div>
+
+      <aside className={recordLayout ? "record-side" : "quest-detail-side"}>
+      {recordLayout ? (
+        <>
+          <Section title="Hirer" variant={sectionVariant}>
+            <div className="hirer-profile-summary">
+              <strong>{questMemberName(detail.hirer)}</strong>
+              <span>{detail.hirer.email}</span>
+            </div>
+          </Section>
+
+          <Section title="Schedule and location" variant={sectionVariant}>
+            <div className="facts">
+              <Fact label="Starts">{formatQuestDate(detail.startTime)}</Fact>
+              <Fact label="Due">{formatQuestDate(detail.dueAt)}</Fact>
+            </div>
+            <div className="quest-detail-list-block">
+              <span className="fact-label">{translateText("Location")}</span>
+              <strong className="quest-detail-list-value">
+                {detail.locations.length
+                  ? detail.locations.map((location) => location.label || translateText("Location label not provided.")).join(" · ")
+                  : translateText("Location not provided.")}
+              </strong>
+            </div>
+          </Section>
+
+          <QuestFinancialSection finance={finance} fundingTotal={fundingTotal} reward={reward} platformFee={platformFee} platformFeeBps={detail.platformFeeBps} variant={sectionVariant} />
+
+          <Section title="Overall Quest timeline" count={timeline.length} variant={sectionVariant}>
+            <ol className="timeline">
+              {timeline.map((entry) => <li key={entry.id}><strong>{translateText(entry.title)}</strong><time>{entry.time}</time><span>{translateText(entry.detail)}</span></li>)}
+            </ol>
+          </Section>
+
+          <Section title="Dispute and risk" variant={sectionVariant}>
+            <div className="quest-summary-context-section">{disputeRiskContent}</div>
+          </Section>
+        </>
+      ) : null}
 
       <div className="quest-command-actions">
-        {showFullDetailLink ? <a className="btn quest-full-detail-link" href={questRoutes.detail(detail.id)}>Full Quest detail</a> : null}
-        {!hidden && canHideQuest(state) ? <button className="btn" type="button" onClick={() => onCommand("hide")}>Hide Quest</button> : null}
-        {hidden ? <button className="btn" type="button" onClick={() => onCommand("restore")}>Restore Quest</button> : null}
-        {!isQuestTerminal(state) ? <button className="btn danger" type="button" onClick={() => onCommand("terminate")}>Terminate Quest</button> : null}
+        {showFullDetailLink ? <a className="btn quest-full-detail-link" href={questRoutes.detail(detail.id)}>{translateText("Full Quest detail")}</a> : null}
+        {!hidden && canHideQuest(state) ? <button className="btn" type="button" onClick={() => onCommand("hide")}>{translateText("Hide Quest")}</button> : null}
+        {hidden ? <button className="btn" type="button" onClick={() => onCommand("restore")}>{translateText("Restore Quest")}</button> : null}
+        {!isQuestTerminal(state) ? <button className="btn danger" type="button" onClick={() => onCommand("terminate")}>{translateText("Terminate Quest")}</button> : null}
       </div>
+      </aside>
     </div>
   );
 }
@@ -536,6 +631,7 @@ function QuestCommandDialog({
   error: string | null;
   pending: boolean;
 }) {
+  const { translateText } = useAdminShell();
   // The API requires a Restore reason. Mock mode keeps the same field visible
   // so the UI remains close to the live flow, but the fixture path allows an
   // Admin to submit Restore without a reason while the API contract is pending.
@@ -559,28 +655,28 @@ function QuestCommandDialog({
 
   return (
     <div className="quest-command-layer" role="presentation">
-      <button className="quest-command-backdrop" type="button" aria-label="Close command dialog" onClick={onCancel} />
+      <button className="quest-command-backdrop" type="button" aria-label={translateText("Close command dialog")} onClick={onCancel} />
       <dialog open className="quest-command-dialog" aria-labelledby="quest-command-title">
         <form onSubmit={submit}>
-          <h2 id="quest-command-title">{command === "hide" ? "Hide Quest" : command === "restore" ? "Restore Quest" : "Terminate Quest"}</h2>
-          <p>{command === "terminate" ? "This changes the Quest to QUEST_CANCELLED and preserves the Admin Action." : "The API Server remains the authority for this Quest action."}</p>
+          <h2 id="quest-command-title">{translateText(command === "hide" ? "Hide Quest" : command === "restore" ? "Restore Quest" : "Terminate Quest")}</h2>
+          <p>{translateText(command === "terminate" ? "This changes the Quest to Cancelled and preserves the Admin Action." : "The API Server remains the authority for this Quest action.")}</p>
           <AdminActionSummary
-            title="Before you confirm"
-            affected={`Quest ${detail.displayId || detail.id}`}
-            currentState={command === "restore" ? "HIDDEN" : command === "hide" ? "DISCOVERABLE" : detail.state}
-            nextState={command === "restore" ? "DISCOVERABLE" : command === "hide" ? "HIDDEN" : "QUEST_CANCELLED"}
-            effect={command === "hide"
+            title={translateText("Before you confirm")}
+            affected={`${translateText("Quest")} ${detail.displayId || detail.id}`}
+            currentState={translateText(command === "restore" ? "Hidden" : command === "hide" ? "Discoverable" : questStateLabel(detail.state))}
+            nextState={translateText(command === "restore" ? "Discoverable" : command === "hide" ? "Hidden" : questStateLabel("QUEST_CANCELLED"))}
+            effect={translateText(command === "hide"
               ? "Remove the Quest from public discovery only. Quest State and Quest Escrow do not change."
               : command === "restore"
                 ? "Return the Quest to public discovery. Quest State and Quest Escrow do not change."
-                : "Change the Quest to QUEST_CANCELLED. Review the Quest and Funding Reservation record before confirming."}
-            reversibility={command === "terminate" ? "This is a terminal Quest State. It has no restore path." : "An Admin can reverse this discovery visibility change with the opposite command."}
-            warning={command === "restore" && !reasonRequired ? "Restore reason is optional in mock mode. The visibility change is still recorded as an Admin Action." : "The API Server remains the authority for the final Quest result."}
+                : "Change the Quest to Cancelled. Review the Quest and Funding Reservation record before confirming.")}
+            reversibility={translateText(command === "terminate" ? "This is a terminal Quest State. It has no restore path." : "An Admin can reverse this discovery visibility change with the opposite command.")}
+            warning={translateText(command === "restore" && !reasonRequired ? "Restore reason is optional in mock mode. The visibility change is still recorded as an Admin Action." : "The API Server remains the authority for the final Quest result.")}
           />
-          <label htmlFor="quest-command-reason-code">Reason code{reasonRequired ? <span aria-hidden="true"> *</span> : null}<select id="quest-command-reason-code" required={reasonRequired} value={reasonCode} onChange={(event) => setReasonCode(event.target.value as AdminQuestReasonCode | "")} autoFocus><option value="">{reasonRequired ? "Select a reason code" : "No reason code"}</option>{reasonCodes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
-          <label htmlFor="quest-command-reason">Reason{reasonRequired ? <span aria-hidden="true"> *</span> : null}<textarea id="quest-command-reason" required={reasonRequired} minLength={reasonRequired ? 8 : undefined} maxLength={500} value={reason} onChange={(event) => { setReason(event.target.value); setValidationError(null); }} rows={4} /></label>
-          {validationError || error ? <p className="field-error" role="alert">{validationError || error}</p> : null}
-          <div className="dialog-actions"><button className="btn" type="button" onClick={onCancel} disabled={pending}>Cancel</button><button className={`btn ${command === "terminate" ? "danger" : "primary"}`} type="submit" disabled={pending}>{pending ? "Saving…" : "Confirm"}</button></div>
+          <label htmlFor="quest-command-reason-code">{translateText("Reason code")}{reasonRequired ? <span aria-hidden="true"> *</span> : null}<select id="quest-command-reason-code" required={reasonRequired} value={reasonCode} onChange={(event) => setReasonCode(event.target.value as AdminQuestReasonCode | "")} autoFocus><option value="">{translateText(reasonRequired ? "Select a reason code" : "No reason code")}</option>{reasonCodes.map((item) => <option key={item.value} value={item.value}>{translateText(item.label)}</option>)}</select></label>
+          <label htmlFor="quest-command-reason">{translateText("Reason")}{reasonRequired ? <span aria-hidden="true"> *</span> : null}<textarea id="quest-command-reason" required={reasonRequired} minLength={reasonRequired ? 8 : undefined} maxLength={500} value={reason} onChange={(event) => { setReason(event.target.value); setValidationError(null); }} rows={4} /></label>
+          {validationError || error ? <p className="field-error" role="alert">{translateText(validationError || error || "")}</p> : null}
+          <div className="dialog-actions"><button className="btn" type="button" onClick={onCancel} disabled={pending}>{translateText("Cancel")}</button><button className={`btn ${command === "terminate" ? "danger" : "primary"}`} type="submit" disabled={pending}>{pending ? translateText("Saving…") : translateText("Confirm")}</button></div>
         </form>
       </dialog>
     </div>
@@ -589,6 +685,7 @@ function QuestCommandDialog({
 
 export function QuestDetailPage({ questId, presentation = "page", initialData, dataSource }: QuestDetailPageProps) {
   const router = useRouter();
+  const { translateText } = useAdminShell();
   const drawerRef = useRef<HTMLDialogElement>(null);
   const drawerOpenerRef = useRef<HTMLElement | null>(null);
   const restoreDrawerFocusRef = useRef(false);
@@ -772,13 +869,13 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
     }
   }
 
-  const receipt = actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Quest" resourceId={detail.displayId || detail.id} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>Reason: {actionReceipt.reason}</p>} /> : null;
-  const content = <><QuestDetailContent detail={detail} finance={finance} linkedDisputeId={linkedDisputeId} disputeLookupError={disputeLookupError} onCommand={openCommand} onOpenDispute={openDispute} disputePending={disputePending} disputeError={disputeError} showFullDetailLink={presentation === "drawer"} />{receipt}</>;
+  const receipt = actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Quest" resourceId={detail.displayId || detail.id} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {translateText(actionReceipt.reason)}</p>} /> : null;
+  const content = <><QuestDetailContent detail={detail} finance={finance} linkedDisputeId={linkedDisputeId} disputeLookupError={disputeLookupError} onCommand={openCommand} onOpenDispute={openDispute} disputePending={disputePending} disputeError={disputeError} showFullDetailLink={presentation === "drawer"} recordLayout={presentation === "page"} />{receipt}</>;
 
   if (presentation === "drawer") {
     return (
       <>
-        <button className="scrim" type="button" tabIndex={-1} aria-label="Close Quest detail" onClick={closeDrawer} />
+        <button className="scrim" type="button" tabIndex={-1} aria-label={translateText("Close Quest detail")} onClick={closeDrawer} />
         <dialog
           ref={drawerRef}
           className="drawer open quest-drawer"
@@ -787,7 +884,7 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
           tabIndex={-1}
           open
         >
-          <div className="drawer-top"><div><strong id="quest-drawer-title">{detail.title}</strong><small>Quest {questDisplayIdFor(detail.id, detail.displayId)} · Quest detail drawer</small></div><button className="icon" type="button" aria-label="Close Quest detail" onClick={closeDrawer}><span className="close-lines" /></button></div>
+          <div className="drawer-top"><div><strong id="quest-drawer-title">{detail.title}</strong><small>{translateText("Quest")} {questDisplayIdFor(detail.id, detail.displayId)} · {translateText("Quest detail drawer")}</small></div><button className="icon" type="button" aria-label={translateText("Close Quest detail")} onClick={closeDrawer}><span className="close-lines" /></button></div>
           <div className="drawer-body">{content}</div>
         </dialog>
         {command ? <QuestCommandDialog detail={detail} command={command} dataSource={dataSource} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandPending} /> : null}
@@ -797,7 +894,23 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
 
   return (
     <main className="admin-route-page quest-detail-page" tabIndex={-1}>
-      <div className="page-head"><div><p className="admin-route-kicker">Quest</p><h1>{detail.title}</h1><p>Created by {questMemberName(detail.hirer)}</p></div><Link className="btn" href={questRoutes.list()}>Back to Quests</Link></div>
+      <div className="record-breadcrumb"><Link href={questRoutes.list()}>{translateText("Quests")}</Link><span aria-hidden="true">›</span><span>{questDisplayIdFor(detail.id, detail.displayId)}</span></div>
+      <div className="full-record-head">
+        <div>
+          <div className="record-id">{questDisplayIdFor(detail.id, detail.displayId)}</div>
+          <h1>{detail.title}</h1>
+          <p>{translateText(detail.participation === "GROUP" ? "Team" : "Solo")} · {translateText("created")} {formatQuestDate(detail.createdAt)}</p>
+        </div>
+        <div className="full-record-actions"><Link className="btn" href={questRoutes.list()}>{translateText("Back to Quests")}</Link></div>
+      </div>
+      <QuestRecordAlert detail={detail} />
+      <div className="record-status-bar quest-record-status-bar">
+        <div><span>{translateText("Status")}</span><strong><Badge state={detail.state} /></strong></div>
+        <div><span>{translateText("Participant mode")}</span><strong>{translateText(detail.participation === "GROUP" ? "Team" : "Solo")}</strong></div>
+        <div><span>{translateText("Created")}</span><strong>{formatQuestDate(detail.createdAt)}</strong></div>
+        <div><span>{translateText("Quest Funding Total")}</span><strong>{formatQuestMoney(finance?.quest.questFundingTotalSatang ?? detail.questFundingTotalSatang)}</strong></div>
+        <div><span>{translateText("Candidates")}</span><strong>{questCandidateCount(detail)}</strong></div>
+      </div>
       <div className="quest-detail-grid">{content}</div>
       {command ? <QuestCommandDialog detail={detail} command={command} dataSource={dataSource} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandPending} /> : null}
     </main>
@@ -806,6 +919,7 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
 
 export function AdminQuestPage({ initialData }: { initialData: QuestBoardPageData }) {
   const router = useRouter();
+  const { translateText } = useAdminShell();
   const [rows, setRows] = useState<QuestBoardRow[]>(initialData.rows);
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<QuestBoardTab>("all");
@@ -835,12 +949,12 @@ export function AdminQuestPage({ initialData }: { initialData: QuestBoardPageDat
 
   return (
     <main className="admin-route-page quest-route-page" tabIndex={-1}>
-      <div className="page-head"><div><p className="admin-route-kicker">KUQuest Admin</p><h1>Quests</h1><p>Review Quests through every Quest State.</p></div></div>
-      <section className="panel quest-board" aria-label="Quest board">
-        <div className="tabs" aria-label="Quest filters">{QUEST_BOARD_TABS.map((item) => <button className={`tab${tab === item.id ? " active" : ""}`} type="button" aria-pressed={tab === item.id} key={item.id} onClick={() => chooseTab(item.id)}>{item.label}{item.id === "all" ? ` (${rows.length})` : ""}</button>)}</div>
-        <div className="toolbar resource-toolbar"><label className="inline-search search-field" htmlFor="quest-search"><span className="visually-hidden">Search Quests</span><input id="quest-search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="Search Quests…" autoComplete="off" /></label><span className="sort-help">Click a column to sort</span><div className="page-size-controls">{([10, 25, 50, "all"] as const).map((size) => <button className={`page-size-button${pageSize === size ? " active" : ""}`} type="button" key={size} onClick={() => choosePageSize(size)}>{size === "all" ? "Show all" : `Show ${size}`}</button>)}</div><span className="count" aria-live="polite">Showing {pageStart}–{pageEnd} of {sortedRows.length} results</span></div>
-        {!sortedRows.length ? <div className="empty"><h2>No matching records</h2><p>There are no Quests in this view.</p><button className="btn" type="button" onClick={() => { setQuery(""); setTab("all"); }}>Reset view</button></div> : <div className="table-wrap" aria-label="quests table"><table className="data"><caption>Quests</caption><thead><tr><SortableHeader label="Quest" sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Title" sortKey="title" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Hirer" sortKey="hirer" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Created At" sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Quest Reward" sortKey="reward" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Status" sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr className="quest-row" data-quest-id={row.id} data-quest-drawer-trigger={row.id} key={row.id} tabIndex={0} aria-label={`Open Quest ${row.title}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; router.push(questRoutes.detail(row.id)); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); router.push(questRoutes.detail(row.id)); } }}><td><Link className="row-record-button" data-quest-drawer-trigger={row.id} href={questRoutes.detail(row.id)} aria-label={`Open Quest ${row.displayId}`}>{row.displayId}</Link></td><td><Link className="row-record-button quest-title-link" data-quest-drawer-trigger={row.id} href={questRoutes.detail(row.id)} aria-label={`Open Quest ${row.title}`}><strong>{row.title}</strong><small>{row.participationLabel} · {row.modeLabel}</small></Link></td><td><strong>{row.hirerName}</strong><small>{row.hirerEmail}</small></td><td>{formatQuestDate(row.createdAt)}</td><td className="money">{formatQuestMoney(row.rewardSatang)}</td><td><span className={`badge ${questStatusClass(row.state)}`}>{row.stateLabel}</span>{row.hiddenAt ? <span className="badge neutral quest-hidden-overlay">Hidden</span> : null}</td></tr>)}</tbody></table></div>}
-        {sortedRows.length ? <div className="table-pagination"><button className="page-nav" type="button" disabled={currentPage <= 1} onClick={() => setPage((value) => value - 1)}>Previous</button><span className="page-indicator">Page {currentPage} of {Math.max(totalPages, 1)}</span><button className="page-nav" type="button" disabled={currentPage >= totalPages} onClick={() => setPage((value) => value + 1)}>Next</button></div> : null}
+      <div className="page-head"><div><p className="admin-route-kicker">{translateText("KUQuest Admin")}</p><h1>{translateText("Quests")}</h1><p>{translateText("Review Quests through every Quest State.")}</p></div></div>
+      <section className="panel quest-board" aria-label={translateText("Quest board")}>
+        <div className="tabs" aria-label={translateText("Quest filters")}>{QUEST_BOARD_TABS.map((item) => <button className={`tab${tab === item.id ? " active" : ""}`} type="button" aria-pressed={tab === item.id} key={item.id} onClick={() => chooseTab(item.id)}>{translateText(item.label)}{item.id === "all" ? ` (${rows.length})` : ""}</button>)}</div>
+        <div className="toolbar resource-toolbar"><label className="inline-search search-field" htmlFor="quest-search"><span className="visually-hidden">{translateText("Search Quests")}</span><input id="quest-search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={translateText("Search Quests…")} autoComplete="off" /></label><span className="sort-help">{translateText("Click a column to sort")}</span><div className="page-size-controls">{([10, 25, 50, "all"] as const).map((size) => <button className={`page-size-button${pageSize === size ? " active" : ""}`} type="button" key={size} onClick={() => choosePageSize(size)}>{size === "all" ? translateText("Show all") : `${translateText("Show")} ${size}`}</button>)}</div><span className="count" aria-live="polite">{translateText("Showing")} {pageStart}–{pageEnd} {translateText("of")} {sortedRows.length} {translateText("results")}</span></div>
+        {!sortedRows.length ? <div className="empty"><h2>{translateText("No matching records")}</h2><p>{translateText("There are no Quests in this view.")}</p><button className="btn" type="button" onClick={() => { setQuery(""); setTab("all"); }}>{translateText("Reset view")}</button></div> : <div className="table-wrap" aria-label={translateText("Quests table")}><table className="data"><caption>{translateText("Quests")}</caption><thead><tr><SortableHeader label={translateText("Quest")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Title")} sortKey="title" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Hirer")} sortKey="hirer" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Created At")} sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Quest Reward")} sortKey="reward" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr className="quest-row" data-quest-id={row.id} data-quest-drawer-trigger={row.id} key={row.id} tabIndex={0} aria-label={`${translateText("Open Quest")} ${row.title}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; router.push(questRoutes.detail(row.id)); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); router.push(questRoutes.detail(row.id)); } }}><td><Link className="row-record-button" data-quest-drawer-trigger={row.id} href={questRoutes.detail(row.id)} aria-label={`${translateText("Open Quest")} ${row.displayId}`}>{row.displayId}</Link></td><td><Link className="row-record-button quest-title-link" data-quest-drawer-trigger={row.id} href={questRoutes.detail(row.id)} aria-label={`${translateText("Open Quest")} ${row.title}`}><strong>{row.title}</strong><small>{translateText(row.participationLabel)} · {translateText(row.modeLabel)}</small></Link></td><td><strong>{row.hirerName}</strong><small>{row.hirerEmail}</small></td><td>{formatQuestDate(row.createdAt)}</td><td className="money">{formatQuestMoney(row.rewardSatang)}</td><td><span className={`badge ${questStatusClass(row.state)}`}>{translateText(row.stateLabel)}</span>{row.hiddenAt ? <span className="badge neutral quest-hidden-overlay">{translateText("Hidden")}</span> : null}</td></tr>)}</tbody></table></div>}
+        {sortedRows.length ? <div className="table-pagination"><button className="page-nav" type="button" disabled={currentPage <= 1} onClick={() => setPage((value) => value - 1)}>{translateText("Previous")}</button><span className="page-indicator">{translateText("Page")} {currentPage} {translateText("of")} {Math.max(totalPages, 1)}</span><button className="page-nav" type="button" disabled={currentPage >= totalPages} onClick={() => setPage((value) => value + 1)}>{translateText("Next")}</button></div> : null}
       </section>
     </main>
   );

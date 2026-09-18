@@ -33,6 +33,7 @@ import {
   type ActivityLogFilters,
   type ActivityLogPageData,
 } from "./activity-log-service";
+import { formatAdminTimestamp } from "../date-format";
 
 export type ActivityLogBoardProps = {
   initialData?: ActivityLogPageData;
@@ -129,7 +130,7 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
         <div className="drawer-top">
           <div>
             <strong>{translateText("Activity log entry")}</strong>
-            <small>{activityLogActionLabel(entry.action)}</small>
+            <small>{translateText(activityLogActionLabel(entry.action))}</small>
           </div>
           <button ref={closeButtonRef} className="icon" type="button" aria-label={translateText("Close")} onClick={onClose}>×</button>
         </div>
@@ -137,33 +138,46 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
           <div className="drawer-title">
             <span className="att-icon neutral" aria-hidden="true">↺</span>
             <div>
-              <h2 id="activity-log-detail-title">{activityLogActionLabel(entry.action)}</h2>
-              <p><span className="activity-log-target">{displayValue(target)}</span></p>
+              <h2 id="activity-log-detail-title">{translateText(activityLogActionLabel(entry.action))}</h2>
+              <p><span className="activity-log-target">{translateText(displayValue(target))}</span></p>
             </div>
           </div>
-          <div className="facts">
-            <div className="fact"><span>{translateText("Timestamp")}</span><strong>{formatActivityLogTimestamp(entry.createdAt)}</strong></div>
-            <div className="fact"><span>{translateText("Actor")}</span><strong>{displayValue(entry.adminName)}</strong></div>
-            <div className="fact"><span>{translateText("Admin ID")}</span><strong>{displayValue(entry.adminId)}</strong></div>
-            <div className="fact"><span>{translateText("Admin first name")}</span><strong>{displayValue(entry.admin.firstName)}</strong></div>
-            <div className="fact"><span>{translateText("Admin last name")}</span><strong>{displayValue(entry.admin.lastName)}</strong></div>
-            <div className="fact"><span>{translateText("Action")}</span><strong>{activityLogActionLabel(entry.action)}</strong></div>
-            <div className="fact"><span>{translateText("Resource type")}</span><strong>{activityLogResourceTypeLabel(entry.resourceType)}</strong></div>
-            <div className="fact"><span>{translateText("Resource ID")}</span><strong>{displayValue(entry.resourceId)}</strong></div>
-            <div className="fact"><span>{translateText("Reason code")}</span><strong>{activityLogReasonLabel(entry.reasonCode)}</strong></div>
-            <div className="fact"><span>{translateText("Reason catalog version")}</span><strong>{displayValue(entry.reasonCatalogVersion)}</strong></div>
-            <div className="fact"><span>{translateText("Result version")}</span><strong>{displayValue(entry.resultVersion)}</strong></div>
-            <div className="fact"><span>{translateText("Result timestamp")}</span><strong>{displayValue(entry.resultTimestamp)}</strong></div>
-            <div className="fact"><span>{translateText("Activity ID")}</span><strong>{displayValue(entry.id)}</strong></div>
-            <div className="fact"><span>{translateText("Relative time")}</span><strong>{formatActivityLogRelativeTime(entry.createdAt)}</strong></div>
-          </div>
+          <section className="section activity-log-record-section" aria-labelledby="activity-log-record-heading">
+            <h3 id="activity-log-record-heading">{translateText("Activity record")}</h3>
+            <div className="facts">
+              <div className="fact"><span>{translateText("Timestamp")}</span><strong>{formatActivityLogTimestamp(entry.createdAt)}</strong></div>
+              <div className="fact"><span>{translateText("Action")}</span><strong>{translateText(activityLogActionLabel(entry.action))}</strong></div>
+              <div className="fact"><span>{translateText("Resource type")}</span><strong>{translateText(activityLogResourceTypeLabel(entry.resourceType))}</strong></div>
+              <div className="fact"><span>{translateText("Resource ID")}</span><strong>{displayValue(entry.resourceId)}</strong></div>
+              <div className="fact"><span>{translateText("Reason code")}</span><strong>{translateText(activityLogReasonLabel(entry.reasonCode))}</strong></div>
+              <div className="fact"><span>{translateText("Reason catalog version")}</span><strong>{displayValue(entry.reasonCatalogVersion)}</strong></div>
+              <div className="fact"><span>{translateText("Activity ID")}</span><strong>{displayValue(entry.id)}</strong></div>
+            </div>
+          </section>
+          <section className="section activity-log-admin-section" aria-labelledby="activity-log-admin-heading">
+            <h3 id="activity-log-admin-heading">{translateText("Admin")}</h3>
+            <div className="facts">
+              <div className="fact"><span>{translateText("Actor")}</span><strong>{displayValue(entry.adminName)}</strong></div>
+              <div className="fact"><span>{translateText("Admin ID")}</span><strong>{displayValue(entry.adminId)}</strong></div>
+              <div className="fact"><span>{translateText("Admin first name")}</span><strong>{displayValue(entry.admin.firstName)}</strong></div>
+              <div className="fact"><span>{translateText("Admin last name")}</span><strong>{displayValue(entry.admin.lastName)}</strong></div>
+            </div>
+          </section>
+          <section className="section activity-log-result-section" aria-labelledby="activity-log-result-heading">
+            <h3 id="activity-log-result-heading">{translateText("Result")}</h3>
+            <div className="facts">
+              <div className="fact"><span>{translateText("Result version")}</span><strong>{displayValue(entry.resultVersion)}</strong></div>
+              <div className="fact"><span>{translateText("Result timestamp")}</span><strong>{formatAdminTimestamp(entry.resultTimestamp)}</strong></div>
+              <div className="fact"><span>{translateText("Relative time")}</span><strong>{formatActivityLogRelativeTime(entry.createdAt)}</strong></div>
+            </div>
+          </section>
           <section className="section activity-log-state-section" aria-labelledby="activity-log-state-heading">
             <h3 id="activity-log-state-heading">{translateText("State change")}</h3>
             {entry.previousState || entry.newState ? (
               <div className="activity-log-state-change">
-                <div><span>{translateText("Previous state")}</span><strong>{activityLogStateLabel(entry.previousState)}</strong></div>
+                <div><span>{translateText("Previous state")}</span><strong>{translateText(activityLogStateLabel(entry.previousState))}</strong></div>
                 <span className="activity-log-state-arrow" aria-hidden="true">→</span>
-                <div><span>{translateText("New state")}</span><strong>{activityLogStateLabel(entry.newState)}</strong></div>
+                <div><span>{translateText("New state")}</span><strong>{translateText(activityLogStateLabel(entry.newState))}</strong></div>
               </div>
             ) : <p className="activity-log-missing-context">{translateText("Before and after state are not included in this record.")}</p>}
             {entry.note ? <p className="activity-log-note"><strong>{translateText("Admin note")}</strong>{entry.note}</p> : null}
@@ -350,7 +364,7 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
         {!loadError && !loading && !visibleEntries.length ? <div className="empty activity-log-empty"><h3>{translateText("No activity recorded")}</h3><p>{translateText("Administrative activity will appear here as actions are taken.")}</p></div> : null}
         {!loadError && visibleEntries.length ? <div className="table-wrap activity-log-table-wrap"><table className="data activity-log-table"><caption>{translateText("Activity Log records")}</caption><thead><tr><th scope="col">{translateText("Timestamp")}</th><th scope="col">{translateText("Actor")}</th><th scope="col">{translateText("Activity")}</th><th scope="col">{translateText("Target")}</th><th scope="col">{translateText("Reason")}</th><th scope="col">{translateText("Details")}</th></tr></thead><tbody>{visibleEntries.map((entry) => {
           const target = activityLogTargetLabel(entry);
-          return <tr key={entry.id}><td>{entry.createdAt ? <time dateTime={entry.createdAt}>{formatActivityLogTimestamp(entry.createdAt)}<small>{formatActivityLogRelativeTime(entry.createdAt)}</small></time> : translateText("Not provided")}</td><td aria-label={`${entry.adminName || translateText("Not provided")} · ${entry.adminId || translateText("Not provided")}`}><span className="activity-log-actor"><span className="avatar" aria-hidden="true">{entry.adminInitials}</span><span><strong>{entry.adminName || translateText("Not provided")}</strong><small>{entry.adminId || translateText("Not provided")}</small></span></span></td><td><strong className="activity-log-action">{activityLogActionLabel(entry.action)}</strong></td><td><span className="activity-log-target">{displayValue(target)}</span></td><td>{activityLogReasonLabel(entry.reasonCode)}</td><td><button className="btn activity-log-detail-button" type="button" onClick={() => setSelectedEntry(entry)} aria-label={translateText("View activity details")}>{translateText("View")}</button></td></tr>;
+          return <tr key={entry.id} tabIndex={0} aria-label={`${translateText("View activity details")}: ${translateText(activityLogActionLabel(entry.action))}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; setSelectedEntry(entry); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedEntry(entry); } }}><td>{entry.createdAt ? <time dateTime={entry.createdAt}>{formatActivityLogTimestamp(entry.createdAt)}<small>{formatActivityLogRelativeTime(entry.createdAt)}</small></time> : translateText("Not provided")}</td><td aria-label={`${entry.adminName || translateText("Not provided")} · ${entry.adminId || translateText("Not provided")}`}><span className="activity-log-actor"><span className="avatar" aria-hidden="true">{entry.adminInitials}</span><span><strong>{entry.adminName || translateText("Not provided")}</strong><small>{entry.adminId || translateText("Not provided")}</small></span></span></td><td><strong className="activity-log-action">{translateText(activityLogActionLabel(entry.action))}</strong></td><td><span className="activity-log-target">{translateText(displayValue(target))}</span></td><td>{translateText(activityLogReasonLabel(entry.reasonCode))}</td><td><button className="btn activity-log-detail-button" type="button" onClick={() => setSelectedEntry(entry)} aria-label={translateText("View activity details")}>{translateText("View")}</button></td></tr>;
         })}</tbody></table></div> : null}
         {filteredEntries.length ? <div className="table-pagination" aria-label={translateText("Activity Log pagination")}><button className="page-nav" type="button" disabled={currentPage <= 1} onClick={() => setPageNumber((value) => value - 1)}>{translateText("Previous")}</button><span className="page-indicator">{translateText("Page")} {currentPage} {translateText("of")} {Math.max(totalPages, 1)}</span><button className="page-nav" type="button" disabled={currentPage >= totalPages} onClick={() => setPageNumber((value) => value + 1)}>{translateText("Next")}</button></div> : null}
         {paginationError ? <div className="activity-log-error" role="alert"><p>{translateText(paginationError)}</p><button className="btn" type="button" onClick={loadMore}>{translateText("Try again")}</button></div> : null}

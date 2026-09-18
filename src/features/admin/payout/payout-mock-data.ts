@@ -14,6 +14,9 @@ type PayoutHistoryStep = {
   actor: "member" | "admin" | "provider";
 };
 
+const demoActualFeeSatang = 1200;
+const demoActualTaxSatang = 84;
+
 /**
  * Build a complete status timeline for a mock Payout.
  *
@@ -127,9 +130,17 @@ const makePayoutDetail = (input: {
   cancellationReasonCode?: string | null;
   providerReference?: string | null;
   providerStatus?: string | null;
+  actualFeeSatang?: number | null;
+  actualTaxSatang?: number | null;
+  actualDebitSatang?: number | null;
   history?: AdminPayoutDetail["history"];
 }): AdminPayoutDetail => {
   const studentId = input.studentId ?? `student-${input.id.toLowerCase()}`;
+  // Keep the Mock Payout records complete so every detail view has numeric
+  // fee, tax, and debit values to review.
+  const actualFeeSatang = input.actualFeeSatang ?? demoActualFeeSatang;
+  const actualTaxSatang = input.actualTaxSatang ?? demoActualTaxSatang;
+  const actualDebitSatang = input.actualDebitSatang ?? input.amount + actualFeeSatang + actualTaxSatang;
   return {
     id: input.id,
     student: {
@@ -144,9 +155,9 @@ const makePayoutDetail = (input: {
     maximumFeeSatang: 1500,
     maximumTaxSatang: 105,
     maximumDebitSatang: input.amount + 1605,
-    actualFeeSatang: null,
-    actualTaxSatang: null,
-    actualDebitSatang: null,
+    actualFeeSatang,
+    actualTaxSatang,
+    actualDebitSatang,
     bankCode: input.bankCode,
     bankName: input.bankName,
     destinationType: "BANK_ACCOUNT",
@@ -199,6 +210,9 @@ const mockPreviousPayout = makePayoutDetail({
   createdAt: "2026-08-28T03:12:00.000Z",
   updatedAt: "2026-08-28T03:20:00.000Z",
   version: 1,
+  actualFeeSatang: 1200,
+  actualTaxSatang: 84,
+  actualDebitSatang: 99284,
 });
 
 type DemoPayoutMember = {
@@ -273,6 +287,7 @@ function demoPayoutUpdatedAt(status: AdminApiPayoutStatus, index: number): strin
 const mockDemoPayoutDetails: AdminPayoutDetail[] = Array.from({ length: 196 }, (_, index) => {
   const member = demoPayoutMemberFor(Math.floor(index / payoutsPerDemoMember));
   const status = mockDemoPayoutStatusFor(index);
+  const amount = 45000 + index * 7500;
   const providerStatus = status === "SUBMITTED_TO_PROVIDER"
     ? "PROCESSING"
     : status === "PROVIDER_PENDING"
@@ -289,7 +304,7 @@ const mockDemoPayoutDetails: AdminPayoutDetail[] = Array.from({ length: 196 }, (
     lastName: member.lastName,
     email: member.email,
     status,
-    amount: 45000 + index * 7500,
+    amount,
     bankCode: ["KBANK", "SCB", "KTB"][index % 3],
     bankName: ["Kasikornbank", "Siam Commercial Bank", "Krung Thai Bank"][index % 3],
     destination: `•••• ${String(1200 + index).slice(-4)}`,

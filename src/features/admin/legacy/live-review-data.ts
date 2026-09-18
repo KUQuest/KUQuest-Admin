@@ -177,8 +177,9 @@ function satangToBaht(value: number): number {
   return value / 100;
 }
 
-function memberName(member: { firstName: string; lastName: string; email: string }): string {
-  return `${member.firstName} ${member.lastName}`.trim() || member.email;
+function memberName(member: { firstName: string; lastName: string; email: string } | null | undefined): string {
+  if (!member) return "Member not provided";
+  return `${member.firstName} ${member.lastName}`.trim() || member.email || "Member not provided";
 }
 
 function memberProfileLabel(member: AdminMemberListItem): string {
@@ -283,12 +284,15 @@ function mergeMemberFinance(record: LegacyRecord, finance: AdminMemberFinance): 
 }
 
 export function walletRecordFromApi(wallet: AdminWallet): LegacyRecord {
-  const name = memberName(wallet.member);
+  const member = wallet.member;
+  const name = memberName(member);
+  const email = member?.email || "Email not provided";
+  const studentId = member?.studentId || undefined;
   return {
     id: wallet.id,
     title: name,
-    person: wallet.member.email,
-    other: wallet.member.studentId || "Student ID not provided by the Admin API",
+    person: email,
+    other: studentId || "Student ID not provided",
     status: wallet.walletStatus,
     walletStatus: wallet.walletStatus,
     tone: toneForWallet(wallet.walletStatus),
@@ -300,7 +304,7 @@ export function walletRecordFromApi(wallet: AdminWallet): LegacyRecord {
     apiBacked: true,
     memberId: wallet.userId,
     walletId: wallet.id,
-    studentId: wallet.member.studentId || undefined,
+    studentId,
     walletTotalBalanceSatang: wallet.balances.totalBalanceSatang,
     walletSpendingBalanceSatang: wallet.balances.spendingBalanceSatang,
     walletEarningsBalanceSatang: wallet.balances.earningsBalanceSatang,

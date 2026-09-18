@@ -333,6 +333,32 @@ describe("live review data", () => {
     });
   });
 
+  it("keeps legacy Wallet records usable when the API omits the Member association", () => {
+    const wallet = walletRecordFromApi({
+      id: "wallet-orphan",
+      userId: "member-orphan",
+      member: null,
+      walletStatus: "ACTIVE",
+      balances: {
+        spendingBalanceSatang: 0,
+        earningsBalanceSatang: 0,
+        fundingReservedSatang: 0,
+        reservedForPayoutsSatang: 0,
+        totalBalanceSatang: 0,
+      },
+      createdAt: "2026-09-02T01:00:00.000Z",
+      updatedAt: "2026-09-02T02:00:00.000Z",
+      latestTransactionAt: null,
+    });
+
+    expect(wallet).toMatchObject({
+      id: "wallet-orphan",
+      title: "Member not provided",
+      person: "Email not provided",
+      memberId: "member-orphan",
+    });
+  });
+
   it("maps API Quest States to the canonical displayed Quest State", () => {
     expect(canonicalQuestStateForApi("QUEST_DISPUTED")).toBe("QUEST_FAILED");
     expect(canonicalQuestStateForApi("QUEST_SUBMITTED")).toBe("QUEST_IN_PROGRESS");

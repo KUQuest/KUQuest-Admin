@@ -14,6 +14,7 @@ import {
 import { ApiError } from "../../../lib/api/client";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminActionReceipt, AdminActionSummary } from "../../../components/admin/admin-action-feedback";
+import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { payoutRoutes } from "../admin-routes";
 import {
   adminApi,
@@ -91,7 +92,8 @@ function payoutReasonLabel(value: string): string {
 }
 
 function Badge({ status }: { status: PayoutStatus }) {
-  return <span className={`badge ${payoutStatusClass(status)}`}>{payoutStatusLabel(status)}</span>;
+  const { translateText } = useAdminShell();
+  return <span className={`badge ${payoutStatusClass(status)}`}>{translateText(payoutStatusLabel(status))}</span>;
 }
 
 function Section({ title, children, className }: { title: string; children: ReactNode; className?: string }) {
@@ -120,32 +122,34 @@ function PayoutDecisionActions({
   reconcilePending: boolean;
   showReconcileAction: boolean;
 }) {
+  const { translateText } = useAdminShell();
   const canDecide = detail.status === "PENDING_ADMIN_APPROVAL";
   const canReconcile = showReconcileAction
     && ["SUBMITTED_TO_PROVIDER", "PROVIDER_PENDING", "FAILED"].includes(detail.status);
 
   if (canDecide) {
     return <>
-      <button className="btn primary" type="button" onClick={() => onCommand("approve")}>Approve Payout</button>
-      <button className="btn danger" type="button" onClick={() => onCommand("reject")}>Reject Payout</button>
+      <button className="btn primary" type="button" onClick={() => onCommand("approve")}>{translateText("Approve Payout")}</button>
+      <button className="btn danger" type="button" onClick={() => onCommand("reject")}>{translateText("Reject Payout")}</button>
     </>;
   }
   if (canReconcile) {
     return <button className="btn primary" type="button" onClick={onReconcile} disabled={reconcilePending}>
-      {reconcilePending ? "Reconciling…" : "Reconcile with provider"}
+      {reconcilePending ? translateText("Reconciling…") : translateText("Reconcile with provider")}
     </button>;
   }
   return null;
 }
 
 function PayoutStatusAlert({ detail }: { detail: PayoutDetailView }) {
+  const { translateText } = useAdminShell();
   const needsApproval = detail.status === "PENDING_ADMIN_APPROVAL";
   const failed = detail.status === "FAILED";
   const tone = needsApproval ? "open" : failed ? "failed" : "closed";
-  const title = needsApproval ? "Payout approval is required" : detail.decisionContext.heading;
+  const title = needsApproval ? translateText("Payout approval is required") : translateText(detail.decisionContext.heading);
   const copy = needsApproval
-    ? "Review the masked destination and API-provided amounts before approving this Payout."
-    : detail.decisionContext.copy;
+    ? translateText("Review the masked destination and API-provided amounts before approving this Payout.")
+    : translateText(detail.decisionContext.copy);
 
   return (
     <output className={`dispute-page-alert payout-page-alert ${tone}`}>
@@ -155,7 +159,7 @@ function PayoutStatusAlert({ detail }: { detail: PayoutDetailView }) {
         <p>{copy}</p>
       </div>
       <span className={`badge ${payoutStatusClass(detail.status)}`}>
-        {payoutStatusLabel(detail.status)}
+        {translateText(payoutStatusLabel(detail.status))}
       </span>
     </output>
   );
@@ -170,6 +174,7 @@ function PayoutDetailContent({
   reconcilePending,
   showReconcileAction,
   showFullDetailLink,
+  fullDetail,
   actionReceipt,
   renderDecisionActions,
 }: {
@@ -181,6 +186,7 @@ function PayoutDetailContent({
   reconcilePending: boolean;
   showReconcileAction: boolean;
   showFullDetailLink: boolean;
+  fullDetail: boolean;
   actionReceipt?: {
     action: string;
     status: string;
@@ -189,118 +195,142 @@ function PayoutDetailContent({
   } | null;
   renderDecisionActions: boolean;
 }) {
+  const { translateText } = useAdminShell();
   const canDecide = detail.status === "PENDING_ADMIN_APPROVAL";
   const canReconcile = showReconcileAction
     && ["SUBMITTED_TO_PROVIDER", "PROVIDER_PENDING", "FAILED"].includes(detail.status);
   const outcomeReason = payoutOutcomeReason(detail);
+  const showDecisionContext = !fullDetail || detail.decisionContext.heading !== "Why your approval is needed";
+
+  const payoutSummarySection = <Section title={translateText("Payout summary")} className="payout-summary-section">
+    <div className="facts payout-detail-facts">
+      <Fact label={translateText("Status")}><Badge status={detail.status} /></Fact>
+      <Fact label={translateText("Payout record")}>{detail.id}</Fact>
+      <Fact label={translateText("Student")}>{detail.student.name}</Fact>
+      <Fact label={translateText("Student email")}>{detail.student.email}</Fact>
+      <Fact label={translateText("Quote")}>{detail.quoteId}</Fact>
+      <Fact label={translateText(fullDetail ? "Occurred at" : "Payout version")}>
+        {fullDetail ? formatPayoutDate(detail.createdAt) : detail.version}
+      </Fact>
+    </div>
+  </Section>;
+
+  const payoutAmountsSection = <Section title={translateText("Payout amounts")} className="payout-amounts-section">
+    <div className="payout-summary-grid">
+      <div><span>{translateText("Principal")}</span><strong>{formatPayoutMoney(detail.amounts.principalSatang)}</strong></div>
+      <div><span>{translateText("Recipient receipt")}</span><strong>{formatPayoutMoney(detail.amounts.receiptSatang)}</strong></div>
+      <div><span>{translateText("Actual fee")}</span><strong>{formatPayoutMoney(detail.amounts.actualFeeSatang)}</strong></div>
+      <div><span>{translateText("Actual tax")}</span><strong>{formatPayoutMoney(detail.amounts.actualTaxSatang)}</strong></div>
+      <div><span>{translateText("Actual debit")}</span><strong>{formatPayoutMoney(detail.amounts.actualDebitSatang)}</strong></div>
+    </div>
+    <p className="audit-note">{translateText("Actual fee, tax, and debit values are read from the Payout record.")}</p>
+  </Section>;
+
+  const payoutDestinationSection = <Section title={translateText("Payout Destination")} className="payout-destination-section">
+    <div className="facts">
+      <Fact label={translateText("Bank")}>{detail.destination.bankName}</Fact>
+      <Fact label={translateText("Bank code")}>{detail.destination.bankCode}</Fact>
+      <Fact label={translateText("Destination type")}>{translateText(readableValue(detail.destination.type))}</Fact>
+      <Fact label={translateText("Destination")}>{detail.destination.maskedValue}</Fact>
+      <Fact label={translateText("Routing")}>{detail.destination.maskedRoutingValue}</Fact>
+    </div>
+    <p className="audit-note">{translateText("Destination data is masked. Raw destination, encrypted payload, and Provider payload are not available to the Admin client.")}</p>
+  </Section>;
+
+  const payoutTimingSection = !fullDetail ? <Section title={translateText("Payout timing")} className="payout-timing-section">
+    <div className="payout-audit-list">
+      {detail.history.length ? detail.history.map((entry) => (
+        <div className="payout-audit-event" key={entry.id}>
+          <div><span>{translateText("Status")}</span><strong>{translateText(payoutStatusLabel(entry.toStatus))}</strong></div>
+          <div><span>{translateText("Occurred at")}</span><strong>{formatPayoutDate(entry.occurredAt)}</strong></div>
+          {entry.fromStatus ? <div><span>{translateText("Previous status")}</span><strong>{translateText(payoutStatusLabel(entry.fromStatus))}</strong></div> : null}
+          {entry.reason ? <div><span>{translateText("Reason")}</span><strong>{translateText(payoutReasonLabel(entry.reason))}</strong></div> : null}
+          {entry.actorAdminId ? <div><span>{translateText("Admin")}</span><strong>{entry.actorAdminId}</strong></div> : null}
+        </div>
+      )) : <p className="audit-note">{translateText("No Payout history is available.")}</p>}
+    </div>
+  </Section> : null;
+
+  const payoutDecisionContextSection = showDecisionContext ? <Section title={translateText(detail.decisionContext.heading)} className="payout-decision-context-section">
+    <p>{translateText(detail.decisionContext.copy)}</p>
+    <p className="audit-note">{translateText(detail.decisionContext.next)}</p>
+  </Section> : null;
+
+  const payoutHistorySection = <Section title={translateText("Payout history")} className="payout-history-section">
+    {detail.previousPayouts.length ? <div className="payout-previous-list">
+      {detail.previousPayouts.map((payout) => (
+        <div className="payout-previous-row" key={payout.id}>
+          <span><strong>{payout.id}</strong><small>{formatPayoutDate(payout.createdAt)}</small></span>
+          <span><strong>{formatPayoutMoney(payout.principalSatang)}</strong><Badge status={payout.status} /></span>
+        </div>
+      ))}
+    </div> : <p className="audit-note">{translateText("No previous Payouts are connected to this Student.")}</p>}
+  </Section>;
+
+  const payoutOutcomeSection = outcomeReason && (detail.status === "CANCELLED" || detail.status === "FAILED") ? (
+    <section className="section payout-outcome payout-outcome-section">
+      <h3>{translateText(detail.status === "FAILED" ? "Transfer failure reason" : "Rejection reason")}</h3>
+      <p>{translateText(payoutReasonLabel(outcomeReason))}</p>
+    </section>
+  ) : null;
+
+  const actionReceiptView = actionReceipt ? (
+    <AdminActionReceipt
+      action={actionReceipt.action}
+      resource="Payout"
+      resourceId={detail.id}
+      status={actionReceipt.status}
+      occurredAt={actionReceipt.occurredAt}
+      mock
+      details={actionReceipt.reason ? <p>{translateText("Reason")}: {actionReceipt.reason}</p> : undefined}
+    />
+  ) : null;
+
+  const payoutDecisionSection = canDecide || canReconcile ? (
+    <Section title={translateText(renderDecisionActions ? "Admin decision" : "Decision context")} className="payout-decision-section">
+      <p>{canDecide
+        ? translateText("Review the masked destination and API-provided amounts before deciding this Payout.")
+        : translateText("The Payout needs a Provider status check before the next Admin action.")}</p>
+      {renderDecisionActions ? <div className="payout-detail-actions">
+        <PayoutDecisionActions
+          detail={detail}
+          onCommand={onCommand}
+          onReconcile={onReconcile}
+          reconcilePending={reconcilePending}
+          showReconcileAction={showReconcileAction}
+        />
+      </div> : null}
+      {renderDecisionActions && reconcileError ? <p className="field-error" role="alert">{translateText(reconcileError)}</p> : null}
+      {renderDecisionActions && reconcileNotice ? <output>{translateText(reconcileNotice)}</output> : null}
+    </Section>
+  ) : null;
 
   return (
-    <div className="payout-detail-stack">
-      <Section title="Payout summary" className="payout-summary-section">
-        <div className="facts payout-detail-facts">
-          <Fact label="Status"><Badge status={detail.status} /></Fact>
-          <Fact label="Payout record">{detail.id}</Fact>
-          <Fact label="Student">{detail.student.name}</Fact>
-          <Fact label="Student email">{detail.student.email}</Fact>
-          <Fact label="Quote">{detail.quoteId}</Fact>
-          <Fact label="Payout version">{detail.version}</Fact>
+    <div className={`payout-detail-stack${fullDetail ? " payout-detail-full-stack" : ""}`}>
+      {payoutSummarySection}
+      {fullDetail ? <>
+        <div className="payout-detail-column payout-detail-primary-column">
+          {payoutAmountsSection}
+          {payoutHistorySection}
+          {payoutOutcomeSection}
         </div>
-      </Section>
-
-      <Section title="Payout amounts" className="payout-amounts-section">
-        <div className="payout-summary-grid">
-          <div><span>Principal</span><strong>{formatPayoutMoney(detail.amounts.principalSatang)}</strong></div>
-          <div><span>Recipient receipt</span><strong>{formatPayoutMoney(detail.amounts.receiptSatang)}</strong></div>
-          <div><span>Maximum fee</span><strong>{formatPayoutMoney(detail.amounts.maximumFeeSatang)}</strong></div>
-          <div><span>Maximum tax</span><strong>{formatPayoutMoney(detail.amounts.maximumTaxSatang)}</strong></div>
-          <div><span>Maximum debit</span><strong>{formatPayoutMoney(detail.amounts.maximumDebitSatang)}</strong></div>
-          <div><span>Actual fee</span><strong>{formatPayoutMoney(detail.amounts.actualFeeSatang)}</strong></div>
-          <div><span>Actual tax</span><strong>{formatPayoutMoney(detail.amounts.actualTaxSatang)}</strong></div>
-          <div><span>Actual debit</span><strong>{formatPayoutMoney(detail.amounts.actualDebitSatang)}</strong></div>
+        <div className="payout-detail-column payout-detail-secondary-column">
+          {payoutDestinationSection}
+          {payoutDecisionContextSection}
+          {payoutDecisionSection}
         </div>
-        <p className="audit-note">Amounts come from the Payout API. The Admin client does not calculate fees, tax, or debit values.</p>
-      </Section>
-
-      <Section title="Payout Destination" className="payout-destination-section">
-        <div className="facts">
-          <Fact label="Bank">{detail.destination.bankName}</Fact>
-          <Fact label="Bank code">{detail.destination.bankCode}</Fact>
-          <Fact label="Destination type">{readableValue(detail.destination.type)}</Fact>
-          <Fact label="Destination">{detail.destination.maskedValue}</Fact>
-          <Fact label="Routing">{detail.destination.maskedRoutingValue}</Fact>
-        </div>
-        <p className="audit-note">Destination data is masked. Raw destination, encrypted payload, and Provider payload are not available to the Admin client.</p>
-      </Section>
-
-      <Section title="Payout timing" className="payout-timing-section">
-        <div className="payout-audit-list">
-          {detail.history.length ? detail.history.map((entry) => (
-            <div className="payout-audit-event" key={entry.id}>
-              <div><span>Status</span><strong>{payoutStatusLabel(entry.toStatus)}</strong></div>
-              <div><span>Occurred at</span><strong>{formatPayoutDate(entry.occurredAt)}</strong></div>
-              {entry.fromStatus ? <div><span>Previous status</span><strong>{payoutStatusLabel(entry.fromStatus)}</strong></div> : null}
-              {entry.reason ? <div><span>Reason</span><strong>{entry.reason}</strong></div> : null}
-              {entry.actorAdminId ? <div><span>Admin</span><strong>{entry.actorAdminId}</strong></div> : null}
-            </div>
-          )) : <p className="audit-note">No Payout history is available.</p>}
-        </div>
-      </Section>
-
-      <Section title={detail.decisionContext.heading} className="payout-decision-context-section">
-        <p>{detail.decisionContext.copy}</p>
-        <p className="audit-note">{detail.decisionContext.next}</p>
-      </Section>
-
-      <Section title="Payout history" className="payout-history-section">
-        {detail.previousPayouts.length ? <div className="payout-previous-list">
-          {detail.previousPayouts.map((payout) => (
-            <div className="payout-previous-row" key={payout.id}>
-              <span><strong>{payout.id}</strong><small>{formatPayoutDate(payout.createdAt)}</small></span>
-              <span><strong>{formatPayoutMoney(payout.principalSatang)}</strong><Badge status={payout.status} /></span>
-            </div>
-          ))}
-        </div> : <p className="audit-note">No previous Payouts are connected to this Student.</p>}
-      </Section>
-
-      {outcomeReason && (detail.status === "CANCELLED" || detail.status === "FAILED") ? (
-        <section className="section payout-outcome payout-outcome-section">
-          <h3>{detail.status === "FAILED" ? "Transfer failure reason" : "Rejection reason"}</h3>
-          <p>{payoutReasonLabel(outcomeReason)}</p>
-        </section>
-      ) : null}
-
-      {actionReceipt ? (
-        <AdminActionReceipt
-          action={actionReceipt.action}
-          resource="Payout"
-          resourceId={detail.id}
-          status={actionReceipt.status}
-          occurredAt={actionReceipt.occurredAt}
-          mock
-          details={actionReceipt.reason ? <p>Reason: {actionReceipt.reason}</p> : undefined}
-        />
-      ) : null}
-
-      {canDecide || canReconcile ? (
-        <Section title={renderDecisionActions ? "Admin decision" : "Decision context"} className="payout-decision-section">
-          <p>{canDecide
-            ? "Review the masked destination and API-provided amounts before deciding this Payout."
-            : "The Payout needs a Provider status check before the next Admin action."}</p>
-          {renderDecisionActions ? <div className="payout-detail-actions">
-            <PayoutDecisionActions
-              detail={detail}
-              onCommand={onCommand}
-              onReconcile={onReconcile}
-              reconcilePending={reconcilePending}
-              showReconcileAction={showReconcileAction}
-            />
-          </div> : null}
-          {renderDecisionActions && reconcileError ? <p className="field-error" role="alert">{reconcileError}</p> : null}
-          {renderDecisionActions && reconcileNotice ? <output>{reconcileNotice}</output> : null}
-        </Section>
-      ) : null}
-
-      {showFullDetailLink ? <a className="btn payout-full-detail-link" href={payoutRoutes.detail(detail.id)}>Full Payout detail</a> : null}
+        {actionReceiptView}
+      </> : <>
+        {payoutAmountsSection}
+        {payoutDestinationSection}
+        {payoutTimingSection}
+        {payoutDecisionContextSection}
+        {payoutHistorySection}
+        {payoutOutcomeSection}
+        {actionReceiptView}
+        {payoutDecisionSection}
+      </>}
+      {showFullDetailLink ? <a className="btn payout-full-detail-link" href={payoutRoutes.detail(detail.id)}>{translateText("Full Payout detail")}</a> : null}
     </div>
   );
 }
@@ -320,6 +350,7 @@ function PayoutCommandDialog({
   error: string | null;
   pending: boolean;
 }) {
+  const { translateText } = useAdminShell();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [reasonCode, setReasonCode] = useState("");
   const [reason, setReason] = useState("");
@@ -381,38 +412,38 @@ function PayoutCommandDialog({
 
   return (
     <div className="command payout-command-layer" role="presentation">
-      <button className="command-backdrop" type="button" aria-label="Close Payout command dialog" onClick={onCancel} />
+      <button className="command-backdrop" type="button" aria-label={translateText("Close Payout command dialog")} onClick={onCancel} />
       <dialog ref={dialogRef} className="command-box" aria-labelledby="payout-command-title" aria-modal="true">
         <form className="dialog-body" onSubmit={submit}>
-          <h2 id="payout-command-title">{command === "approve" ? "Approve Payout" : "Reject Payout"}</h2>
-          <p>{command === "approve" ? "Review the destination and balance before approving this Payout." : "Choose a reason for rejecting this Payout."}</p>
+          <h2 id="payout-command-title">{translateText(command === "approve" ? "Approve Payout" : "Reject Payout")}</h2>
+          <p>{translateText(command === "approve" ? "Review the destination and balance before approving this Payout." : "Choose a reason for rejecting this Payout.")}</p>
           <AdminActionSummary
-            title={command === "approve" ? "Approval effect" : "Rejection effect"}
-            affected={`Payout ${detail.id} · ${detail.student.name}`}
+            title={translateText(command === "approve" ? "Approval effect" : "Rejection effect")}
+            affected={`${translateText("Payout")} ${detail.id} · ${detail.student.name}`}
             currentState={payoutStatusLabel(detail.status)}
             nextState={command === "approve" ? "Submitted to Provider" : "Cancelled"}
             effect={command === "approve"
-              ? "The Payout worker may start provider processing after approval."
-              : "The full Payout Reserve returns to the Member's Earnings Balance. No provider transfer starts."}
-            reversibility="The Admin decision is final. Provider status changes are separate."
+              ? translateText("The Payout worker may start provider processing after approval.")
+              : translateText("The full Payout Reserve returns to the Member's Earnings Balance. No provider transfer starts.")}
+            reversibility={translateText("The Admin decision is final. Provider status changes are separate.")}
           />
           {command === "reject" ? (
             <>
-              <label htmlFor="payout-reason-code">Reason code <span aria-hidden="true">*</span>
+              <label htmlFor="payout-reason-code">{translateText("Reason code")} <span aria-hidden="true">*</span>
                 <select id="payout-reason-code" required value={reasonCode} onChange={(event) => setReasonCode(event.target.value)} autoFocus>
-                  <option value="">Choose a reason</option>
-                  {rejectionReasonCodes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                  <option value="">{translateText("Choose a reason")}</option>
+                  {rejectionReasonCodes.map((item) => <option key={item.value} value={item.value}>{translateText(item.label)}</option>)}
                 </select>
               </label>
-              <label htmlFor="payout-reason">Reason <span aria-hidden="true">*</span>
+              <label htmlFor="payout-reason">{translateText("Reason")} <span aria-hidden="true">*</span>
                 <textarea id="payout-reason" name="reason" rows={4} minLength={8} maxLength={500} required value={reason} onChange={(event) => { setReason(event.target.value); setValidationError(null); }} />
               </label>
             </>
           ) : null}
-          {validationError || error ? <p className="field-error" role="alert">{validationError ?? error}</p> : null}
+          {validationError || error ? <p className="field-error" role="alert">{translateText(validationError ?? error ?? "")}</p> : null}
           <div className="dialog-actions">
-            <button className="btn" type="button" onClick={onCancel} disabled={pending}>Cancel</button>
-            <button className={`btn ${command === "approve" ? "primary" : "danger"}`} type="submit" disabled={submitDisabled}>{pending ? "Saving…" : command === "approve" ? "Approve Payout" : "Reject Payout"}</button>
+            <button className="btn" type="button" onClick={onCancel} disabled={pending}>{translateText("Cancel")}</button>
+            <button className={`btn ${command === "approve" ? "primary" : "danger"}`} type="submit" disabled={submitDisabled}>{pending ? translateText("Saving…") : translateText(command === "approve" ? "Approve Payout" : "Reject Payout")}</button>
           </div>
         </form>
       </dialog>
@@ -430,6 +461,7 @@ export function AdminPayoutDetailPage({
   presentation?: PayoutPresentation;
 }) {
   const router = useRouter();
+  const { translateText } = useAdminShell();
   const [detail, setDetail] = useState(data.detail);
   const [command, setCommand] = useState<PayoutCommand | null>(null);
   const [commandIdempotencyKey, setCommandIdempotencyKey] = useState<string | null>(null);
@@ -523,7 +555,7 @@ export function AdminPayoutDetailPage({
         await adminApi.reconcilePayout(detail.id);
         router.refresh();
       }
-      setReconcileNotice(`Payout ${detail.id} was reconciled with the Provider.`);
+      setReconcileNotice(`${translateText("Payout")} ${detail.id} ${translateText("was reconciled with the Provider.")}`);
     } catch (error) {
       setReconcileError(errorMessage(error));
     } finally {
@@ -540,6 +572,7 @@ export function AdminPayoutDetailPage({
     reconcilePending={reconcilePending}
     showReconcileAction={dataSource === "api"}
     showFullDetailLink={presentation === "drawer"}
+    fullDetail={presentation === "page"}
     actionReceipt={actionReceipt}
     renderDecisionActions={presentation !== "drawer"}
   />;
@@ -549,8 +582,8 @@ export function AdminPayoutDetailPage({
     && ["SUBMITTED_TO_PROVIDER", "PROVIDER_PENDING", "FAILED"].includes(detail.status);
   const drawerDecisionActions = presentation === "drawer" && (canDecide || canReconcile) ? <>
     <span className="payout-drawer-action-label">
-      <strong>{canDecide ? "Admin decision" : "Provider status check"}</strong>
-      <small>{canDecide ? "Review this Payout before choosing an outcome." : "Check the Provider status before the next Admin action."}</small>
+      <strong>{translateText(canDecide ? "Admin decision" : "Provider status check")}</strong>
+      <small>{translateText(canDecide ? "Review this Payout before choosing an outcome." : "Check the Provider status before the next Admin action.")}</small>
     </span>
     <PayoutDecisionActions
       detail={detail}
@@ -559,18 +592,18 @@ export function AdminPayoutDetailPage({
       reconcilePending={reconcilePending}
       showReconcileAction={dataSource === "api"}
     />
-    {reconcileError ? <p className="payout-drawer-action-feedback field-error" role="alert">{reconcileError}</p> : null}
-    {reconcileNotice ? <output className="payout-drawer-action-feedback">{reconcileNotice}</output> : null}
+    {reconcileError ? <p className="payout-drawer-action-feedback field-error" role="alert">{translateText(reconcileError)}</p> : null}
+    {reconcileNotice ? <output className="payout-drawer-action-feedback">{translateText(reconcileNotice)}</output> : null}
   </> : undefined;
 
   if (presentation === "drawer") {
     return (
       <>
         <AdminDrawer
-          ariaLabel="Close Payout detail"
+          ariaLabel={translateText("Close Payout detail")}
           title={detail.id}
           titleId="payout-drawer-title"
-          subtitle="Payout detail drawer"
+          subtitle={translateText("Payout detail drawer")}
           className="payout-drawer"
           openerAttribute="data-payout-drawer-trigger"
           openerValue={detail.id}
@@ -588,22 +621,22 @@ export function AdminPayoutDetailPage({
 
   return (
     <main className="admin-route-page payout-detail-page" tabIndex={-1}>
-      <div className="record-breadcrumb"><Link href={payoutRoutes.list()}>Payouts</Link><span aria-hidden="true">›</span><span>{detail.id}</span></div>
+      <div className="record-breadcrumb"><Link href={payoutRoutes.list()}>{translateText("Payouts")}</Link><span aria-hidden="true">›</span><span>{detail.id}</span></div>
       <div className="full-record-head">
         <div>
           <div className="record-id">{detail.id}</div>
           <h1>{detail.id}</h1>
-          <p>Payout for {detail.student.name} · created {formatPayoutDate(detail.createdAt)}</p>
+          <p>{translateText("Payout for")} {detail.student.name} · {translateText("created")} {formatPayoutDate(detail.createdAt)}</p>
         </div>
-        <div className="full-record-actions"><Link className="btn" href={payoutRoutes.list()}>Back to Payouts</Link></div>
+        <div className="full-record-actions"><Link className="btn" href={payoutRoutes.list()}>{translateText("Back to Payouts")}</Link></div>
       </div>
       <PayoutStatusAlert detail={detail} />
       <div className="record-status-bar payout-record-status-bar">
-        <div><span>Status</span><strong><Badge status={detail.status} /></strong></div>
-        <div><span>Student</span><strong>{detail.student.name}</strong></div>
-        <div><span>Principal</span><strong>{formatPayoutMoney(detail.amounts.principalSatang)}</strong></div>
-        <div><span>Created</span><strong>{formatPayoutDate(detail.createdAt)}</strong></div>
-        <div><span>Destination type</span><strong>{readableValue(detail.destination.type)}</strong></div>
+        <div><span>{translateText("Status")}</span><strong><Badge status={detail.status} /></strong></div>
+        <div><span>{translateText("Student")}</span><strong>{detail.student.name}</strong></div>
+        <div><span>{translateText("Principal")}</span><strong>{formatPayoutMoney(detail.amounts.principalSatang)}</strong></div>
+        <div><span>{translateText("Created")}</span><strong>{formatPayoutDate(detail.createdAt)}</strong></div>
+        <div><span>{translateText("Destination type")}</span><strong>{translateText(readableValue(detail.destination.type))}</strong></div>
       </div>
       <div className="payout-detail-grid">{content}</div>
       {command ? <PayoutCommandDialog detail={detail} command={command} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandPending} /> : null}
@@ -635,6 +668,7 @@ export function AdminPayoutPage({
   dataSource?: PayoutDataSource;
 }) {
   const router = useRouter();
+  const { translateText } = useAdminShell();
   const mockAllRows = initialData.allRows;
   const initialRows = mockAllRows ?? initialData.rows;
   const [rows, setRows] = useState<PayoutBoardRow[]>(initialRows);
@@ -691,19 +725,19 @@ export function AdminPayoutPage({
 
   return (
     <main className="admin-route-page payout-route-page" tabIndex={-1}>
-      <div className="page-head"><div><p className="admin-route-kicker">KUQuest Admin</p><h1>Payouts</h1><p>Review Payouts through the Admin approval queue.</p></div></div>
-      <section className="panel payout-board" aria-label="Payout review board">
-        <div className="tabs" aria-label="Payout filters">
-          {PAYOUT_BOARD_TABS.map((item) => <button className={`tab${tab === item.id ? " active" : ""}`} type="button" aria-pressed={tab === item.id} key={item.id} onClick={() => chooseTab(item.id)}>{item.label}{item.id === "PENDING_ADMIN_APPROVAL" ? ` (${rows.filter((row) => row.status === item.id).length})` : item.id === "all" ? ` (${rows.length})` : ""}</button>)}
+      <div className="page-head"><div><p className="admin-route-kicker">{translateText("KUQuest Admin")}</p><h1>{translateText("Payouts")}</h1><p>{translateText("Review Payouts through the Admin approval queue.")}</p></div></div>
+      <section className="panel payout-board" aria-label={translateText("Payout review board")}>
+        <div className="tabs" aria-label={translateText("Payout filters")}>
+          {PAYOUT_BOARD_TABS.map((item) => <button className={`tab${tab === item.id ? " active" : ""}`} type="button" aria-pressed={tab === item.id} key={item.id} onClick={() => chooseTab(item.id)}>{translateText(item.label)}{item.id === "PENDING_ADMIN_APPROVAL" ? ` (${rows.filter((row) => row.status === item.id).length})` : item.id === "all" ? ` (${rows.length})` : ""}</button>)}
         </div>
         <div className="toolbar resource-toolbar">
-          <label className="inline-search search-field" htmlFor="payout-search"><span className="visually-hidden">Search Payouts</span><input id="payout-search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="Search Payouts…" autoComplete="off" /></label>
-          <span className="sort-help">Click a column to sort</span>
-          <div className="page-size-controls">{([10, 25, 50, "all"] as const).map((size) => <button className={`page-size-button${pageSize === size ? " active" : ""}`} type="button" key={size} onClick={() => choosePageSize(size)}>{size === "all" ? "Show all" : `Show ${size}`}</button>)}</div>
-          <span className="count" aria-live="polite">Showing {pageStart}–{pageEnd} of {sortedRows.length} results</span>
+          <label className="inline-search search-field" htmlFor="payout-search"><span className="visually-hidden">{translateText("Search Payouts")}</span><input id="payout-search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={translateText("Search Payouts…")} autoComplete="off" /></label>
+          <span className="sort-help">{translateText("Click a column to sort")}</span>
+          <div className="page-size-controls">{([10, 25, 50, "all"] as const).map((size) => <button className={`page-size-button${pageSize === size ? " active" : ""}`} type="button" key={size} onClick={() => choosePageSize(size)}>{size === "all" ? translateText("Show all") : `${translateText("Show")} ${size}`}</button>)}</div>
+          <span className="count" aria-live="polite">{translateText("Showing")} {pageStart}–{pageEnd} {translateText("of")} {sortedRows.length} {translateText("results")}</span>
         </div>
-        {!sortedRows.length ? <div className="empty"><h2>No matching Payouts</h2><p>There are no Payouts in this view.</p><button className="btn" type="button" onClick={() => { setQuery(""); setTab("all"); }}>Reset view</button></div> : <div className="table-wrap" aria-label="Payouts table"><table className="data"><caption>Payouts</caption><thead><tr><SortableHeader label="Payout" sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Student" sortKey="student" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Created At" sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Principal" sortKey="amount" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label="Status" sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr className="payout-row" data-payout-id={row.id} data-payout-drawer-trigger={row.id} key={row.id} tabIndex={0} aria-label={`Open Payout ${row.id}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; void router.push(payoutRoutes.detail(row.id)); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); void router.push(payoutRoutes.detail(row.id)); } }}><td><Link className="row-record-button" data-payout-drawer-trigger={row.id} href={payoutRoutes.detail(row.id)} aria-label={`Open Payout ${row.id}`}>{row.id}</Link></td><td><strong>{row.studentName}</strong><small>{row.studentEmail}</small></td><td>{formatPayoutDate(row.createdAt)}</td><td className="money">{formatPayoutMoney(row.principalSatang)}</td><td><Badge status={row.status} /></td></tr>)}</tbody></table></div>}
-        {sortedRows.length ? <div className="table-pagination"><button className="page-nav" type="button" disabled={currentPage <= 1} onClick={() => setPage((value) => value - 1)}>Previous</button><span className="page-indicator">Page {currentPage} of {Math.max(totalPages, 1)}</span><button className="page-nav" type="button" disabled={currentPage >= totalPages} onClick={() => setPage((value) => value + 1)}>Next</button></div> : null}
+        {!sortedRows.length ? <div className="empty"><h2>{translateText("No matching Payouts")}</h2><p>{translateText("There are no Payouts in this view.")}</p><button className="btn" type="button" onClick={() => { setQuery(""); setTab("all"); }}>{translateText("Reset view")}</button></div> : <div className="table-wrap" aria-label={translateText("Payouts table")}><table className="data"><caption>{translateText("Payouts")}</caption><thead><tr><SortableHeader label={translateText("Payout")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Student")} sortKey="student" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Created At")} sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Principal")} sortKey="amount" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr className="payout-row" data-payout-id={row.id} data-payout-drawer-trigger={row.id} key={row.id} tabIndex={0} aria-label={`${translateText("Open Payout")} ${row.id}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; void router.push(payoutRoutes.detail(row.id)); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); void router.push(payoutRoutes.detail(row.id)); } }}><td><Link className="row-record-button" data-payout-drawer-trigger={row.id} href={payoutRoutes.detail(row.id)} aria-label={`${translateText("Open Payout")} ${row.id}`}>{row.id}</Link></td><td><strong>{row.studentName}</strong><small>{row.studentEmail}</small></td><td>{formatPayoutDate(row.createdAt)}</td><td className="money">{formatPayoutMoney(row.principalSatang)}</td><td><Badge status={row.status} /></td></tr>)}</tbody></table></div>}
+        {sortedRows.length ? <div className="table-pagination"><button className="page-nav" type="button" disabled={currentPage <= 1} onClick={() => setPage((value) => value - 1)}>{translateText("Previous")}</button><span className="page-indicator">{translateText("Page")} {currentPage} {translateText("of")} {Math.max(totalPages, 1)}</span><button className="page-nav" type="button" disabled={currentPage >= totalPages} onClick={() => setPage((value) => value + 1)}>{translateText("Next")}</button></div> : null}
       </section>
     </main>
   );

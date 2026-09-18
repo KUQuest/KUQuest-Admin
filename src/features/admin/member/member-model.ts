@@ -689,6 +689,11 @@ export function memberModelFromMockRecord(
   const studentId = nullableText(record.studentId) ?? id;
   const createdAt = text(record.accountCreatedAt ?? record.createdAt, "Not recorded");
   const walletId = nullableText(record.walletId) ?? `WAL-${id}`;
+  const academicProfile = {
+    faculty: nullableText(record.faculty) ?? (index % 2 === 0 ? "Engineering" : "Management Sciences"),
+    department: nullableText(record.department) ?? (index % 2 === 0 ? "Computer Engineering" : "Business Administration"),
+    occupation: nullableText(record.occupation) ?? "Student",
+  };
   if (options.summaryOnly) {
     const summary = baseModelFromListItem({
       id,
@@ -698,9 +703,9 @@ export function memberModelFromMockRecord(
       studentId,
       telephone: nullableText(record.telephone),
       academicYear: nullableNumber(record.academicYear),
-      faculty: nullableText(record.faculty),
-      department: nullableText(record.department),
-      occupation: nullableText(record.occupation),
+      faculty: academicProfile.faculty,
+      department: academicProfile.department,
+      occupation: academicProfile.occupation,
       wallet: walletStatus
         ? {
           id: walletId,
@@ -828,9 +833,9 @@ export function memberModelFromMockRecord(
     email: text(record.person, `${firstName.toLowerCase()}.${lastName.toLowerCase()}@ku.th`),
     telephone: nullableText(record.telephone),
     academicYear: nullableNumber(record.academicYear),
-    faculty: nullableText(record.faculty) ?? nullableText(record.other)?.split(" · ")[0] ?? null,
-    department: nullableText(record.department),
-    occupation: nullableText(record.occupation) ?? "Student",
+    faculty: academicProfile.faculty,
+    department: academicProfile.department,
+    occupation: academicProfile.occupation,
     bio: text(record.about, "KuQuest participant contributing to university marketplace projects."),
     tags: Array.isArray(record.tags) ? record.tags.filter((tag): tag is string => typeof tag === "string") : ["University", "Marketplace"],
     createdAt,

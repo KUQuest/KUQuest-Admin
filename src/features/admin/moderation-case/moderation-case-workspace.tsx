@@ -6,6 +6,7 @@ import type {
   ModerationHistorySummary,
 } from "./moderation-case-context";
 import { hasModerationHistory } from "./moderation-case-context";
+import { questStateLabel } from "../domain/rulebook";
 
 export type ModerationCaseKind = "Report Case" | "Conduct Report" | "Dispute Case";
 
@@ -34,6 +35,10 @@ export type ModerationCaseWorkspaceProps = {
   policyNote: string;
   translateText: (value: string) => string;
   compact?: boolean;
+  showCaseMetadata?: boolean;
+  showModerationHistory?: boolean;
+  showRelatedRecord?: boolean;
+  showDecisionContext?: boolean;
   children: ReactNode;
 };
 
@@ -48,19 +53,23 @@ function displayValue(value: string | number | null | undefined, fallback: strin
   return String(value);
 }
 
-function ModerationHistoryPanel({
+export function ModerationHistoryPanel({
   summary,
   translateText,
   compact,
+  member,
+  memberLabel = "Reported Member",
 }: {
   summary: ModerationHistorySummary;
   translateText: (value: string) => string;
   compact: boolean;
+  member?: { id: string | null; name: string; href: string | null } | null;
+  memberLabel?: string;
 }) {
   const fallback = translateText("Not provided.");
   const panelClass = compact ? "section moderation-case-history" : "record-panel moderation-case-history";
   const actionText = summary.previousActions.length
-    ? summary.previousActions.join(" · ")
+    ? summary.previousActions.map((action) => translateText(action)).join(" · ")
     : fallback;
   const noteText = summary.adminNotes.length
     ? summary.adminNotes.join(" · ")
@@ -72,8 +81,17 @@ function ModerationHistoryPanel({
         {compact ? <h3>{translateText("Member moderation context")}</h3> : <h2>{translateText("Member moderation context")}</h2>}
         <span className="section-count">{hasModerationHistory(summary) ? translateText("Available") : translateText("Partial")}</span>
       </div>
+      {member && (
+        <div className="overview-group moderation-case-history-member">
+          <span>{translateText(memberLabel)}</span>
+          <p>
+            <strong>{!compact && member.href && member.id ? <Link href={member.href}>{member.name}</Link> : member.name}</strong>
+            {member.id && <small> · {member.id}</small>}
+          </p>
+        </div>
+      )}
       <dl className="overview-meta moderation-case-history-grid">
-        <div><dt>{translateText("Current Member status")}</dt><dd>{displayValue(summary.currentMemberStatus, fallback)}</dd></div>
+        <div><dt>{translateText("Current Member status")}</dt><dd>{translateText(displayValue(summary.currentMemberStatus, fallback))}</dd></div>
         <div><dt>{translateText("Previous reports received")}</dt><dd>{displayValue(summary.previousReportCount, fallback)}</dd></div>
         <div><dt>{translateText("Confirmed previous violations")}</dt><dd>{displayValue(summary.confirmedViolationCount, fallback)}</dd></div>
       </dl>
@@ -107,6 +125,9 @@ function CaseContextPanel({
   policyNote,
   translateText,
   compact,
+  showCaseMetadata = true,
+  showModerationHistory = true,
+  showRelatedRecord = true,
 }: Omit<ModerationCaseWorkspaceProps, "children">) {
   const fallback = translateText("Not provided.");
   const panelClass = compact ? "section moderation-case-context" : "record-panel moderation-case-context";
@@ -120,13 +141,13 @@ function CaseContextPanel({
         </div>
         <span className={`badge ${badgeClass}`}>{translateText(statusLabel)}</span>
       </div>
-      <dl className="overview-meta moderation-case-context-grid">
+      {showCaseMetadata && <dl className="overview-meta moderation-case-context-grid">
         <div><dt>{translateText("Case")}</dt><dd>{caseId}</dd></div>
         <div><dt>{translateText("Case type")}</dt><dd>{translateText(kind)}</dd></div>
         <div><dt>{translateText("Source")}</dt><dd>{translateText(source)}</dd></div>
         <div><dt>{translateText("Submitted")}</dt><dd>{submittedAt}</dd></div>
         <div><dt>{translateText(evidenceLabel)}</dt><dd>{evidenceCount || translateText("None")}</dd></div>
-      </dl>
+      </dl>}
       <div className="overview-group">
         <span>{translateText("Submitted detail")}</span>
         <p>{detail || fallback}</p>
@@ -137,7 +158,7 @@ function CaseContextPanel({
           {reporter && <div><span>{translateText(reporter.role)}</span><strong><PersonLink person={reporter} interactive={!compact} /></strong><small>{reporter.id ?? "—"}</small></div>}
         </div>
       )}
-      {relatedRecord && (
+      {showRelatedRecord && relatedRecord && (
         <div className="overview-group moderation-case-related-record">
           <span>{translateText(kind === "Dispute Case" ? "Related Quest and settlement" : "Related Quest")}</span>
           <p>
@@ -146,7 +167,7 @@ function CaseContextPanel({
               : <strong>{relatedRecord.title ?? relatedRecord.id ?? fallback}</strong>}
             {relatedRecord.id && <small> · {relatedRecord.id}</small>}
           </p>
-          {relatedRecord.state && <p>{translateText("Quest State")}: {relatedRecord.state}</p>}
+          {relatedRecord.state && <p>{translateText("Quest State")}: {translateText(questStateLabel(relatedRecord.state))}</p>}
         </div>
       )}
       {financialSummary && financialSummary.length > 0 && (
@@ -158,18 +179,19 @@ function CaseContextPanel({
         <span>{translateText("Policy boundary")}</span>
         <p>{translateText(policyNote)}</p>
       </div>
-      {moderationHistory && <ModerationHistoryPanel summary={moderationHistory} translateText={translateText} compact={Boolean(compact)} />}
+      {showModerationHistory && moderationHistory && <ModerationHistoryPanel summary={moderationHistory} translateText={translateText} compact={Boolean(compact)} />}
     </section>
   );
 }
 
 export function ModerationCaseWorkspace({
   children,
+  showDecisionContext = true,
   ...props
 }: ModerationCaseWorkspaceProps) {
   return (
     <div className="moderation-case-workspace" data-moderation-case-workspace={props.kind}>
-      <CaseContextPanel {...props} />
+      {showDecisionContext && <CaseContextPanel {...props} />}
       {children}
     </div>
   );

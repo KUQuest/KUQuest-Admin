@@ -20,7 +20,21 @@ test.describe("Report Case routes", () => {
     await expect(page.locator("#report-main")).toBeVisible();
     await expect(page.locator("dialog.drawer.open")).toBeVisible();
     const drawer = page.locator("dialog.drawer.open");
-    await expect(drawer.getByText("Report detail", { exact: true })).toBeVisible();
+    await expect(drawer.getByRole("heading", { name: "Report overview", exact: true })).toBeVisible();
+    await expect(drawer.getByRole("heading", { name: "Decision context", exact: true })).toHaveCount(0);
+    await expect(drawer.getByRole("heading", { name: "Member moderation context", exact: true })).toBeVisible();
+    await expect(drawer.locator(".moderation-case-history")).toContainText("Reported Member");
+    await expect(drawer.getByRole("heading", { name: "Report detail", exact: true })).toHaveCount(0);
+    await expect(drawer.getByRole("heading", { name: "People involved", exact: true })).toBeVisible();
+    const sectionHeadings = await drawer.locator(".moderation-case-workspace > section h3").allTextContents();
+    expect(sectionHeadings).toEqual([
+      "Report overview",
+      "Evidence",
+      "Related Quest",
+      "People involved",
+      "Member moderation context",
+      "Report decision",
+    ]);
     await expect(drawer.locator(".moderation-case-workspace a:not(.btn)")).toHaveCount(0);
 
     await page.goBack();
@@ -33,6 +47,20 @@ test.describe("Report Case routes", () => {
     await page.getByRole("button", { name: "Close drawer" }).click();
     await expect(page).toHaveURL(/\/report$/);
     await expect(page.locator("dialog.drawer.open")).toHaveCount(0);
+  });
+
+  test("Open filter shows only Report Cases pending Admin review", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/report");
+
+    const main = page.locator("#report-main");
+    const openTab = main.getByRole("tab", { name: "Open", exact: true });
+    await openTab.click();
+    await expect(openTab).toHaveAttribute("aria-selected", "true");
+
+    const statuses = await main.locator("tbody tr[data-report-id] td:nth-child(6) .badge").allTextContents();
+    expect(statuses.length).toBeGreaterThan(0);
+    expect(new Set(statuses.map((status) => status.trim()))).toEqual(new Set(["Open"]));
   });
 
   test("renders direct detail, canonical Member links, and the decision command", async ({ page }) => {

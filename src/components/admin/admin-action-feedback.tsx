@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { formatAdminTimestamp } from "../../features/admin/date-format";
+import { useAdminShell } from "./admin-shell-context";
 
 export type AdminActionSummaryProps = {
   title: string;
@@ -10,6 +12,14 @@ export type AdminActionSummaryProps = {
   warning?: ReactNode;
   className?: string;
 };
+
+function displayState(value: string): string {
+  if (!value.includes("_")) return value;
+  return value
+    .replaceAll("_", " ")
+    .toLocaleLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toLocaleUpperCase());
+}
 
 /**
  * A compact, policy-facing preview for an Admin command.
@@ -27,36 +37,38 @@ export function AdminActionSummary({
   warning,
   className,
 }: AdminActionSummaryProps) {
+  const { translateText } = useAdminShell();
+
   return (
-    <section className={`admin-action-summary${className ? ` ${className}` : ""}`} aria-label={title}>
+    <section className={`admin-action-summary${className ? ` ${className}` : ""}`} aria-label={translateText(title)}>
       <div className="admin-action-summary-heading">
         <span className="admin-action-summary-icon" aria-hidden="true">!</span>
-        <h3>{title}</h3>
+        <h3>{translateText(title)}</h3>
       </div>
       <dl className="admin-action-summary-facts">
         <div>
-          <dt>Affected resource</dt>
+          <dt>{translateText("Affected resource")}</dt>
           <dd>{affected}</dd>
         </div>
         {currentState ? (
           <div>
-            <dt>Current state</dt>
-            <dd>{currentState}</dd>
+            <dt>{translateText("Current state")}</dt>
+            <dd>{translateText(displayState(currentState))}</dd>
           </div>
         ) : null}
         {nextState ? (
           <div>
-            <dt>New state</dt>
-            <dd>{nextState}</dd>
+            <dt>{translateText("New state")}</dt>
+            <dd>{translateText(displayState(nextState))}</dd>
           </div>
         ) : null}
         <div>
-          <dt>Effect</dt>
+          <dt>{translateText("Effect")}</dt>
           <dd>{effect}</dd>
         </div>
         {reversibility ? (
           <div>
-            <dt>Reversibility</dt>
+            <dt>{translateText("Reversibility")}</dt>
             <dd>{reversibility}</dd>
           </div>
         ) : null}
@@ -91,6 +103,7 @@ export function AdminActionReceipt({
   mock = false,
   onDismiss,
 }: AdminActionReceiptProps) {
+  const { translateText } = useAdminShell();
   const timestamp = occurredAt ?? new Date().toISOString();
 
   return (
@@ -98,19 +111,19 @@ export function AdminActionReceipt({
       <div className="admin-action-receipt-heading">
         <span className="admin-action-receipt-icon" aria-hidden="true">✓</span>
         <div>
-          <strong>{title}</strong>
-          {mock ? <small>Development fixture</small> : null}
+          <strong>{translateText(title)}</strong>
+          {mock ? <small>{translateText("Development fixture")}</small> : null}
         </div>
       </div>
       <dl className="admin-action-receipt-facts">
-        <div><dt>Action</dt><dd>{action}</dd></div>
-        <div><dt>Resource</dt><dd>{resource} · {resourceId}</dd></div>
-        <div><dt>Result</dt><dd>{status}</dd></div>
-        <div><dt>Admin</dt><dd>{admin}</dd></div>
-        <div><dt>Time</dt><dd><time dateTime={timestamp}>{timestamp}</time></dd></div>
+        <div><dt>{translateText("Action")}</dt><dd>{translateText(displayState(action))}</dd></div>
+        <div><dt>{translateText("Resource")}</dt><dd>{translateText(resource)} · {resourceId}</dd></div>
+        <div><dt>{translateText("Result")}</dt><dd>{translateText(displayState(status))}</dd></div>
+        <div><dt>{translateText("Admin")}</dt><dd>{admin}</dd></div>
+        <div><dt>{translateText("Time")}</dt><dd><time dateTime={timestamp}>{formatAdminTimestamp(timestamp)}</time></dd></div>
       </dl>
       {details ? <div className="admin-action-receipt-details">{details}</div> : null}
-      {onDismiss ? <button className="link" type="button" onClick={onDismiss}>Dismiss</button> : null}
+      {onDismiss ? <button className="link" type="button" onClick={onDismiss}>{translateText("Dismiss")}</button> : null}
     </output>
   );
 }

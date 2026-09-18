@@ -90,8 +90,8 @@ function FinanceOverviewSection({
   return <section className="overview-command-center-finance overview-command-center-finance-member-focused" aria-labelledby="overview-finance-heading">
     <div className="overview-command-center-section-head"><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p>{translateText("Member Wallet totals and lifetime volume.")}</p></div><span>{translateText(sourceLabel)}</span></div>
     <div className="overview-command-center-finance-groups">
-      <FinanceGroup title={translateText("Member Wallet Summary")}>
-        <div className="overview-command-center-finance-metrics"><FinanceMetric label={translateText("Spending balance")} value={overview.memberBalancesSummary.totalSpendingSatang} /><FinanceMetric label={translateText("Earnings balance")} value={overview.memberBalancesSummary.totalEarningsSatang} /><FinanceMetric label={translateText("Funding reserved")} value={overview.memberBalancesSummary.totalFundingReservedSatang} /><FinanceMetric label={translateText("Payout reserved")} value={overview.memberBalancesSummary.totalPayoutReservedSatang} /><FinanceMetric label={translateText("Total circulating")} value={overview.memberBalancesSummary.totalCirculatingSatang} /></div>
+      <FinanceGroup title={translateText("All Member Wallet Summary")}>
+        <div className="overview-command-center-finance-metrics"><FinanceMetric label={translateText("All Spending balance")} value={overview.memberBalancesSummary.totalSpendingSatang} /><FinanceMetric label={translateText("All Earnings balance")} value={overview.memberBalancesSummary.totalEarningsSatang} /><FinanceMetric label={translateText("All Funding reserved")} value={overview.memberBalancesSummary.totalFundingReservedSatang} /><FinanceMetric label={translateText("All Payout reserved")} value={overview.memberBalancesSummary.totalPayoutReservedSatang} /><FinanceMetric label={translateText("Total circulating")} value={overview.memberBalancesSummary.totalCirculatingSatang} /></div>
       </FinanceGroup>
       <FinanceGroup title={translateText("Lifetime Volume")}>
         <div className="overview-command-center-finance-metrics"><FinanceMetric label={translateText("Top-ups deposited")} value={overview.volumeLifetime.totalTopUpDepositedSatang} /><FinanceMetric label={translateText("Payouts completed")} value={overview.volumeLifetime.totalPayoutCompletedSatang} /><FinanceMetric label={translateText("Platform fees earned")} value={overview.volumeLifetime.totalPlatformFeesEarnedSatang} /></div>
@@ -185,7 +185,7 @@ export function AdminOverview({
   }, [initialData, router]);
 
   if (!model) return <OverviewLoading message={translateText(loadError ?? "Loading marketplace overview…")} />;
-  if (loadError) return <OverviewLoading message={loadError} />;
+  if (loadError) return <OverviewLoading message={translateText(loadError)} />;
 
   return (
     <>
@@ -238,7 +238,7 @@ export function AdminOverview({
                     {row.oldestId ? <small>{row.oldestId}</small> : null}
                   </span>
                   <span className={`overview-command-center-queue-status ${row.tone}`}><strong>{translateText(row.status)}</strong></span>
-                  <span className="overview-command-center-queue-waiting"><strong>{translateOverviewValue(row.waiting, translateText)}</strong><small>{translateText("Owner")}: {translateText(row.assignedAdmin)}</small></span>
+                  <span className="overview-command-center-queue-waiting"><strong>{translateOverviewValue(row.waiting, translateText)}</strong></span>
                 </li>;
               })}
             </ul>
@@ -255,7 +255,7 @@ export function AdminOverview({
                   <li key={dashboardActivityKey(entry, index)}>
                     <span className="overview-command-center-timeline-marker" aria-hidden="true">{index + 1}</span>
                     <span className="overview-command-center-timeline-avatar" aria-hidden="true">{entry.actor}</span>
-                    <span><strong>{entry.title}</strong><small>{entry.detail} · {relativeTime(entry.timestamp, translateText)}</small></span>
+                    <span><strong>{translateOverviewValue(entry.title, translateText)}</strong><small>{translateOverviewValue(entry.detail, translateText)} · {relativeTime(entry.timestamp, translateText)}</small></span>
                   </li>
                 ))}
               </ol>
@@ -266,11 +266,12 @@ export function AdminOverview({
         <div className="overview-command-center-snapshot">
           <section className="overview-command-center-snapshot-card" aria-labelledby="overview-command-quest-heading">
             <div className="overview-command-center-section-head"><div><h2 id="overview-command-quest-heading">{translateText("Quest States")}</h2><p>{translateText("Current distribution across Quests.")}</p></div><span>{countLabel(model.questTotal)} {translateText("total")}</span></div>
-            <ul className="overview-command-center-state-list">
+            <ul className="overview-command-center-status-list">
               {model.questStates.map((entry) => (
-                <li key={entry.status}>
-                  <span><span>{translateText(entry.label)}</span><strong>{countLabel(entry.count)}</strong></span>
-                  <span className="overview-command-center-state-track" aria-hidden="true"><span className={`overview-command-center-state-bar ${questStateTones[entry.status]}`} style={{ width: `${entry.percentage}%` }} /></span>
+                <li key={entry.status} className={`overview-command-center-status-row ${questStateTones[entry.status]}`}>
+                  <span className="overview-command-center-status-dot" aria-hidden="true" />
+                  <span><strong>{translateText(entry.label)}</strong><small>{translateText("Quest status")}</small></span>
+                  <strong>{countLabel(entry.count)}</strong>
                 </li>
               ))}
             </ul>

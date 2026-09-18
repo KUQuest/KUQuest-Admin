@@ -178,20 +178,22 @@ export function DisputeCaseBoard({ initialData }: { initialData?: DisputeCasePag
         <div className="table-wrap" aria-label={translateText("Dispute Cases table")}>
           <table className="data dispute-table">
             <caption>{translateText("Dispute Cases")}</caption>
-            <thead><tr><th>{translateText("Dispute Case")}</th><th>{translateText("Quest")}</th><th>{translateText("Filer")}</th><th>{translateText("Respondent")}</th><th>{translateText("Category")}</th><th>{translateText("Amount at risk")}</th><th>{translateText("Status")}</th><th>{translateText("Opened")}</th></tr></thead>
+            <thead><tr><th>{translateText("Dispute Case")}</th><th>{translateText("Quest")}</th><th>{translateText("Hirer")}</th><th>{translateText("Worker")}</th><th>{translateText("Category")}</th><th>{translateText("Amount at risk")}</th><th>{translateText("Status")}</th><th>{translateText("Opened")}</th></tr></thead>
             <tbody>
-              {visibleModels.map((model) => (
-                <tr key={model.id} data-dispute-id={model.id} data-dispute-display-id={model.displayId} data-dispute-status={model.status} tabIndex={0} aria-label={`${translateText("Open Dispute Case")} ${model.displayId}`} onClick={() => openDrawer(model.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openDrawer(model.id); } }}>
+              {visibleModels.map((model) => {
+                const hirer = partyMemberForRole(model, "Hirer");
+                const worker = partyMemberForRole(model, "Worker");
+                return <tr key={model.id} data-dispute-id={model.id} data-dispute-display-id={model.displayId} data-dispute-status={model.status} tabIndex={0} aria-label={`${translateText("Open Dispute Case")} ${model.displayId}`} onClick={() => openDrawer(model.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openDrawer(model.id); } }}>
                   <td><button className="table-link" type="button" onClick={(event) => { event.stopPropagation(); openDrawer(model.id); }}>{model.displayId}</button></td>
                   <td><Link href={model.questHref ?? questRoutes.list()} onClick={(event) => event.stopPropagation()}>{model.questTitle}</Link><small>{model.questId || "—"}</small></td>
-                  <td><MemberCell id={model.filerId} name={model.filerName} href={model.filerHref} /></td>
-                  <td><MemberCell id={model.respondentId} name={model.respondentName} href={model.respondentHref} /></td>
-                  <td>{model.category}</td>
+                  <td><MemberCell {...hirer} /></td>
+                  <td><MemberCell {...worker} /></td>
+                  <td>{translateText(model.category)}</td>
                   <td>{model.amountAtRiskLabel}</td>
                   <td><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></td>
                   <td>{model.submittedAt}</td>
                 </tr>
-              ))}
+              })}
             </tbody>
           </table>
           {models.length === 0 && <p className="empty-state">{translateText("No Dispute Cases match this view.")}</p>}
@@ -202,6 +204,17 @@ export function DisputeCaseBoard({ initialData }: { initialData?: DisputeCasePag
       </section>
     </main>
   );
+}
+
+function partyMemberForRole(model: DisputeCaseModel, role: "Hirer" | "Worker") {
+  const filer = { id: model.filerId, name: model.filerName, href: model.filerHref, role: model.filerRole };
+  const respondent = { id: model.respondentId, name: model.respondentName, href: model.respondentHref, role: model.respondentRole };
+  const matchingParty = [filer, respondent].find((party) => party.role.toLowerCase() === role.toLowerCase());
+  if (matchingParty) return matchingParty;
+  if (role === "Worker" && model.workerId) {
+    return { id: model.workerId, name: model.workerName, href: model.workerHref, role };
+  }
+  return role === "Hirer" ? filer : respondent;
 }
 
 function MemberCell({

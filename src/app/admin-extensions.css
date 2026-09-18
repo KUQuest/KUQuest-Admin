@@ -407,6 +407,89 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
   margin-top: 22px;
 }
 
+/* Keep Activity Log detail readable as separate record, Admin, result, and
+   state blocks. This follows the Report Case drawer rhythm. */
+.activity-log-detail {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding-block: 20px 28px;
+}
+.activity-log-detail > .drawer-title {
+  margin: 0;
+  padding: 0 0 4px;
+}
+.activity-log-detail > .section {
+  margin: 0;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+.activity-log-detail > .section h3 {
+  margin-bottom: 14px;
+}
+.activity-log-detail > .section .facts {
+  margin-top: 0;
+}
+.activity-log-detail > .drawer-actions {
+  margin-top: 0;
+}
+
+/* Member detail already has the right information groups. Give those groups
+   the same clear block treatment as the Report Case drawer. */
+.admin-shell dialog.drawer .user-drawer-detail {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding-block: 20px 28px;
+}
+.admin-shell dialog.drawer .user-drawer-detail > .drawer-title {
+  margin: 0;
+  padding: 0 0 4px;
+}
+.admin-shell dialog.drawer .user-drawer-detail > .section {
+  margin: 0;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+.admin-shell dialog.drawer .user-drawer-detail > .section h3 {
+  margin-bottom: 14px;
+}
+.admin-shell dialog.drawer .member-drawer-moderation-history [data-member-moderation-history] {
+  gap: 0;
+  margin-top: 8px;
+}
+.admin-shell dialog.drawer .member-drawer-moderation-history [data-member-moderation-history] > article {
+  padding: 16px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 0;
+}
+.admin-shell dialog.drawer .member-drawer-moderation-history [data-member-moderation-history] > article:first-of-type {
+  padding-top: 14px;
+}
+.admin-shell dialog.drawer .member-drawer-moderation-history [data-member-moderation-history] > article:last-of-type {
+  padding-bottom: 0;
+}
+.admin-shell dialog.drawer .member-drawer-moderation-history [data-member-moderation-history] > article > strong,
+.admin-shell dialog.drawer .member-drawer-moderation-history [data-member-moderation-history] > article > span {
+  display: block;
+}
+.admin-shell dialog.drawer .member-drawer-moderation-history [data-member-moderation-history] > article > strong {
+  margin-bottom: 6px;
+}
+.admin-shell dialog.drawer .member-drawer-moderation-history [data-member-moderation-history] > article > span {
+  margin-top: 6px;
+}
+.admin-shell dialog.drawer .member-drawer-moderation-history [data-member-moderation-history] > article > p {
+  margin-top: 9px;
+  line-height: 1.5;
+}
+
 /* Keep the Member report flow available for future entry points without
    exposing its action in the Member drawer. */
 .user-drawer-detail .drawer-actions > [hidden] {
@@ -2122,7 +2205,8 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
   align-items: start;
   gap: 18px;
 }
-.payout-detail-page .payout-detail-stack > .section {
+.payout-detail-page .payout-detail-stack > .section,
+.payout-detail-page .payout-detail-stack > .payout-detail-column > .section {
   min-width: 0;
   padding: 18px;
   border: 1px solid var(--border);
@@ -2130,32 +2214,36 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
   background: var(--surface);
   box-shadow: var(--shadow-card);
 }
-.payout-detail-page .payout-detail-stack > .section h3 {
+.payout-detail-page .payout-detail-stack > .section h3,
+.payout-detail-page .payout-detail-stack > .payout-detail-column > .section h3 {
   margin-bottom: 14px;
   font-size: 15px;
 }
-.payout-detail-page .payout-detail-stack > .section > p:not(.audit-note) {
+.payout-detail-page .payout-detail-stack > .section > p:not(.audit-note),
+.payout-detail-page .payout-detail-stack > .payout-detail-column > .section > p:not(.audit-note) {
   max-width: 74ch;
   color: var(--text);
 }
 .payout-detail-page .payout-detail-stack > .payout-summary-section {
   grid-column: 1 / -1;
 }
-.payout-detail-page .payout-detail-stack > .payout-amounts-section,
-.payout-detail-page .payout-detail-stack > .payout-timing-section,
-.payout-detail-page .payout-detail-stack > .payout-history-section {
+.payout-detail-page .payout-detail-stack > .payout-detail-column {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.payout-detail-page .payout-detail-stack > .payout-detail-primary-column {
   grid-column: 1;
 }
-.payout-detail-page .payout-detail-stack > .payout-destination-section,
-.payout-detail-page .payout-detail-stack > .payout-decision-context-section,
-.payout-detail-page .payout-detail-stack > .payout-decision-section,
-.payout-detail-page .payout-detail-stack > .payout-outcome-section {
+.payout-detail-page .payout-detail-stack > .payout-detail-secondary-column {
   grid-column: 2;
 }
 .payout-detail-page .payout-detail-stack > .admin-action-receipt {
   grid-column: 1 / -1;
 }
-.payout-detail-page .payout-detail-stack > .section .audit-note {
+.payout-detail-page .payout-detail-stack > .section .audit-note,
+.payout-detail-page .payout-detail-stack > .payout-detail-column > .section .audit-note {
   margin-top: 14px;
   padding: 11px 12px;
   border-radius: 9px;
@@ -2185,15 +2273,9 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
   .payout-detail-page .payout-detail-stack {
     grid-template-columns: 1fr;
   }
+  .payout-detail-page .payout-detail-stack > .payout-detail-column,
   .payout-detail-page .payout-detail-stack > .section,
-  .payout-detail-page .payout-detail-stack > .payout-summary-section,
-  .payout-detail-page .payout-detail-stack > .payout-amounts-section,
-  .payout-detail-page .payout-detail-stack > .payout-timing-section,
-  .payout-detail-page .payout-detail-stack > .payout-history-section,
-  .payout-detail-page .payout-detail-stack > .payout-destination-section,
-  .payout-detail-page .payout-detail-stack > .payout-decision-context-section,
-  .payout-detail-page .payout-detail-stack > .payout-decision-section,
-  .payout-detail-page .payout-detail-stack > .payout-outcome-section {
+  .payout-detail-page .payout-detail-stack > .payout-summary-section {
     grid-column: 1;
   }
 }
@@ -2376,6 +2458,34 @@ dialog.drawer.payout-drawer > .drawer-actions {
   flex-wrap: wrap;
   align-items: center;
   box-shadow: 0 -6px 18px color-mix(in srgb, var(--text) 9%, transparent);
+}
+/* Payout drawers use the same block rhythm as the moderation case drawer.
+   Keep each record group visible as its own surface instead of one long text
+   column. */
+dialog.drawer.payout-drawer > .drawer-body {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding-block: 20px 28px;
+}
+dialog.drawer.payout-drawer .payout-detail-stack {
+  display: grid;
+  gap: 14px;
+}
+dialog.drawer.payout-drawer .payout-detail-stack > .section,
+dialog.drawer.payout-drawer .payout-detail-stack > .admin-action-receipt {
+  margin: 0;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+dialog.drawer.payout-drawer .payout-detail-stack > .section h3 {
+  margin-bottom: 14px;
+}
+dialog.drawer.payout-drawer .payout-detail-stack > .payout-full-detail-link {
+  justify-self: start;
 }
 .payout-drawer-action-label,
 .payout-drawer-action-feedback {
@@ -3000,6 +3110,20 @@ dialog.command::backdrop { background: transparent; }
 .overview-member-temp-ban > strong:last-child { color: var(--status-member-temp-ban); }
 .overview-member-perm-ban .overview-command-center-status-dot { background: var(--status-member-perm-ban); }
 .overview-member-perm-ban > strong:last-child { color: var(--status-member-perm-ban); }
+.overview-quest-draft .overview-command-center-status-dot { background: var(--status-quest-draft); }
+.overview-quest-draft > strong:last-child { color: var(--status-quest-draft); }
+.overview-quest-open .overview-command-center-status-dot { background: var(--status-quest-open); }
+.overview-quest-open > strong:last-child { color: var(--status-quest-open); }
+.overview-quest-assigned .overview-command-center-status-dot { background: var(--status-quest-assigned); }
+.overview-quest-assigned > strong:last-child { color: var(--status-quest-assigned); }
+.overview-quest-in-progress .overview-command-center-status-dot { background: var(--status-quest-in-progress); }
+.overview-quest-in-progress > strong:last-child { color: var(--status-quest-in-progress); }
+.overview-quest-completed .overview-command-center-status-dot { background: var(--status-quest-completed); }
+.overview-quest-completed > strong:last-child { color: var(--status-quest-completed); }
+.overview-quest-cancelled .overview-command-center-status-dot { background: var(--status-quest-cancelled); }
+.overview-quest-cancelled > strong:last-child { color: var(--status-quest-cancelled); }
+.overview-quest-failed .overview-command-center-status-dot { background: var(--status-quest-failed); }
+.overview-quest-failed > strong:last-child { color: var(--status-quest-failed); }
 .overview-wallet-active .overview-command-center-status-dot { background: var(--status-wallet-active); }
 .overview-wallet-active > strong:last-child { color: var(--status-wallet-active); }
 .overview-wallet-frozen .overview-command-center-status-dot { background: var(--status-wallet-frozen); }
@@ -3115,6 +3239,35 @@ dialog.command::backdrop { background: transparent; }
 }
 .wallet-status-actions .btn {
   flex: 1 1 170px;
+}
+dialog.drawer.wallet-drawer > .drawer-body {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding-block: 20px 28px;
+}
+dialog.drawer.wallet-drawer > .drawer-body > .wallet-record,
+dialog.drawer.wallet-drawer > .drawer-body > .section,
+dialog.drawer.wallet-drawer > .drawer-body > .wallet-action-receipt {
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+dialog.drawer.wallet-drawer > .drawer-body > .section {
+  border-top: 1px solid var(--border);
+}
+dialog.drawer.wallet-drawer > .drawer-body > .section h3 {
+  margin-bottom: 14px;
+}
+dialog.drawer.wallet-drawer .wallet-statement-table-block,
+dialog.drawer.wallet-drawer .wallet-statement-table-wrap {
+  min-width: 0;
+  max-width: 100%;
 }
 .wallet-status-command-dialog {
   width: min(560px, calc(100vw - 28px));
@@ -3506,11 +3659,6 @@ dialog.command::backdrop { background: transparent; }
 .quest-finance-list h3 {
   margin: 0 0 4px;
   font-size: 13px;
-}
-.quest-ledger-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
 }
 .quest-command-actions {
   display: flex;
@@ -4442,4 +4590,863 @@ dialog.drawer.conduct-report-drawer .field-error,
 dialog.drawer.dispute-case-drawer .field-error {
   font-size: 14px;
   line-height: 1.45;
+}
+
+/* Use the same shell as the Quest detail drawer for every moderation record.
+   The drawer itself owns scrolling; its body remains a normal content flow
+   so each section has the same card rhythm as Quest detail. */
+.admin-shell dialog.drawer.quest-style-drawer {
+  display: block;
+  overflow: auto;
+}
+
+.admin-shell dialog.drawer.quest-style-drawer > .drawer-body {
+  min-block-size: auto;
+  overflow: visible;
+  padding-block: 20px;
+  scrollbar-gutter: auto;
+  overscroll-behavior: auto;
+}
+
+.admin-shell dialog.drawer.quest-style-drawer .moderation-case-workspace {
+  display: grid;
+  gap: 18px;
+}
+
+.admin-shell dialog.drawer.quest-style-drawer .moderation-case-workspace > .section,
+.admin-shell dialog.drawer.quest-style-drawer .moderation-case-workspace > .record-panel {
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.admin-shell dialog.drawer.quest-style-drawer .moderation-case-workspace > .section {
+  border-top: 1px solid var(--border);
+}
+
+.admin-shell dialog.drawer.quest-style-drawer .moderation-case-workspace > .section:first-child,
+.admin-shell dialog.drawer.quest-style-drawer .moderation-case-workspace > .record-panel:first-child {
+  border-top: 1px solid var(--border);
+}
+
+.admin-shell dialog.drawer.quest-style-drawer .moderation-case-workspace .moderation-case-history {
+  margin-block-start: 18px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.admin-shell dialog.drawer.quest-style-drawer > .drawer-body .drawer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  position: static;
+  margin-block-start: 18px;
+  padding: 18px 0 0;
+  border-top: 1px solid var(--border);
+  background: transparent;
+  box-shadow: none;
+}
+
+.admin-shell dialog.drawer.quest-style-drawer > .drawer-body .drawer-actions .btn {
+  flex: 1 1 180px;
+}
+
+@media (max-width: 720px) {
+  .admin-shell dialog.drawer.quest-style-drawer > .drawer-body {
+    padding-block: 16px;
+  }
+
+  .admin-shell dialog.drawer.quest-style-drawer .moderation-case-workspace > .section,
+  .admin-shell dialog.drawer.quest-style-drawer .moderation-case-workspace > .record-panel,
+  .admin-shell dialog.drawer.quest-style-drawer .moderation-case-workspace .moderation-case-history {
+    padding: 16px;
+  }
+}
+
+/* Use one Admin type scale for shared controls. The hierarchy remains
+   intentional: headings and status badges stay stronger than record text,
+   while labels and metadata use predictable smaller steps. */
+.admin-shell {
+  --admin-font-body: 16px;
+  --admin-font-table: 14px;
+  --admin-font-meta: 13px;
+  --admin-font-caption: 12px;
+  font-size: var(--admin-font-body);
+}
+
+.admin-shell .panel-head h2 {
+  font-size: var(--admin-font-body);
+  line-height: 1.4;
+}
+
+.admin-shell .panel-head p {
+  font-size: var(--admin-font-meta);
+  line-height: 1.45;
+}
+
+.admin-shell .count,
+.admin-shell .page-indicator {
+  font-size: var(--admin-font-meta);
+  line-height: 1.4;
+}
+
+.admin-shell .page-size-button,
+.admin-shell .page-nav {
+  font-size: var(--admin-font-meta);
+  line-height: 1.35;
+}
+
+.admin-shell table.data th {
+  font-size: var(--admin-font-table);
+}
+
+.admin-shell table.data td,
+.admin-shell table.data td > *,
+.admin-shell table.data td a,
+.admin-shell table.data td button,
+.admin-shell table.data td strong {
+  font-size: var(--admin-font-table);
+}
+
+.admin-shell table.data td small,
+.admin-shell table.data .badge {
+  font-size: var(--admin-font-caption);
+}
+
+/* Final Admin type-scale audit.
+   Record pages, drawers, and command surfaces share the same semantic sizes.
+   A value can still be stronger than its label, but the route must not change
+   the meaning of a size by using browser defaults or legacy 10–12px rules. */
+.admin-shell {
+  --admin-font-page-title: 24px;
+  --admin-font-drawer-title: 21px;
+  --admin-font-section: 16px;
+  --admin-font-value: 15px;
+  --admin-font-body: 16px;
+  --admin-font-table: 14px;
+  --admin-font-meta: 13px;
+  --admin-font-caption: 12px;
+}
+
+/* Board and full-record headings. */
+.admin-shell .admin-route-page > .page-head .admin-route-kicker,
+.admin-shell .admin-route-page > .full-record-head .record-id {
+  font-size: var(--admin-font-meta);
+  line-height: 1.4;
+}
+
+.admin-shell .admin-route-page > .page-head > div > p:not(.admin-route-kicker),
+.admin-shell .admin-route-page > .full-record-head > div > p {
+  font-size: var(--admin-font-body);
+  line-height: 1.5;
+}
+
+.admin-shell .admin-route-page > .page-head h1,
+.admin-shell .admin-route-page > .full-record-head h1,
+.admin-shell .admin-route-page .full-record-head h1 {
+  font-size: var(--admin-font-page-title);
+  line-height: 1.25;
+}
+
+.admin-shell .panel-head h2,
+.admin-shell .record-panel h2,
+.admin-shell .record-panel-head h2,
+.admin-shell .record-panel-head h3,
+.admin-shell .section h3 {
+  font-size: var(--admin-font-section);
+  line-height: 1.4;
+}
+
+.admin-shell .record-panel-head > div > p {
+  font-size: var(--admin-font-meta);
+  line-height: 1.45;
+}
+
+/* Full detail status strip. */
+.admin-shell .record-status-bar span:not(.badge) {
+  font-size: var(--admin-font-meta);
+  line-height: 1.4;
+}
+
+.admin-shell .record-status-bar strong {
+  font-size: var(--admin-font-value);
+  line-height: 1.4;
+}
+
+.admin-shell .record-status-bar .badge {
+  font-size: var(--admin-font-meta);
+  line-height: 1.35;
+}
+
+.admin-shell .record-breadcrumb {
+  font-size: var(--admin-font-meta);
+  line-height: 1.4;
+}
+
+/* Labels and values in full records and Quest detail. */
+.admin-shell .record-panel .fact span:not(.badge),
+.admin-shell .record-panel .fact-label,
+.admin-shell .record-panel .side-facts span,
+.admin-shell .record-panel .overview-meta dt,
+.admin-shell .record-panel .overview-group > span,
+.admin-shell .record-panel .party-grid > div > span,
+.admin-shell .record-panel .record-id {
+  font-size: var(--admin-font-meta);
+  line-height: 1.4;
+}
+
+.admin-shell .record-panel .fact strong,
+.admin-shell .record-panel .side-facts strong,
+.admin-shell .record-panel .overview-meta dd,
+.admin-shell .record-panel .party-grid strong,
+.admin-shell .record-panel .quest-detail-list-value {
+  font-size: var(--admin-font-value);
+  line-height: 1.4;
+}
+
+.admin-shell .record-panel .side-facts small,
+.admin-shell .record-panel .party-grid small,
+.admin-shell .record-panel .related-row small,
+.admin-shell .record-panel .file-row small,
+.admin-shell .record-panel .hirer-profile-summary span,
+.admin-shell .record-panel .evidence-item small {
+  font-size: var(--admin-font-meta);
+  line-height: 1.45;
+}
+
+.admin-shell .record-panel > p:not(.audit-note),
+.admin-shell .record-panel .record-description,
+.admin-shell .record-panel .overview-group > p,
+.admin-shell .record-panel .requirement-box,
+.admin-shell .record-panel .requirement-box p,
+.admin-shell .record-panel .requirement-box li {
+  font-size: var(--admin-font-body);
+  line-height: 1.5;
+}
+
+.admin-shell .record-panel .audit-note,
+.admin-shell .record-panel .field-error {
+  font-size: var(--admin-font-meta);
+  line-height: 1.45;
+}
+
+.admin-shell .record-panel .timeline strong {
+  font-size: var(--admin-font-value);
+  line-height: 1.4;
+}
+
+.admin-shell .record-panel .timeline time,
+.admin-shell .record-panel .timeline span {
+  font-size: var(--admin-font-meta);
+  line-height: 1.45;
+}
+
+.admin-shell .record-panel .financial-line,
+.admin-shell .record-panel .financial-line span,
+.admin-shell .record-panel .financial-line strong {
+  font-size: var(--admin-font-value);
+  line-height: 1.4;
+}
+
+.admin-shell .record-panel .financial-line small {
+  font-size: var(--admin-font-meta);
+  line-height: 1.4;
+}
+
+.admin-shell .record-panel .quest-finance-list h3 {
+  font-size: var(--admin-font-section);
+  line-height: 1.4;
+}
+
+/* All drawers use the same hierarchy as a full detail page. */
+.admin-shell dialog.drawer .panel-head h2,
+.admin-shell dialog.drawer .record-panel h2,
+.admin-shell dialog.drawer .record-panel-head h2,
+.admin-shell dialog.drawer .record-panel-head h3,
+.admin-shell dialog.drawer .section h3 {
+  font-size: var(--admin-font-section);
+  line-height: 1.4;
+}
+
+.admin-shell dialog.drawer .drawer-top > div small,
+.admin-shell .activity-log-dialog .drawer-top > div small {
+  font-size: var(--admin-font-meta);
+  line-height: 1.4;
+}
+
+.admin-shell dialog.drawer .drawer-title h2 {
+  font-size: var(--admin-font-drawer-title);
+  line-height: 1.4;
+}
+
+.admin-shell dialog.drawer .fact span:not(.badge),
+.admin-shell dialog.drawer .fact-label,
+.admin-shell dialog.drawer .party-grid > div > span,
+.admin-shell dialog.drawer .overview-meta dt,
+.admin-shell dialog.drawer .overview-group > span,
+.admin-shell dialog.drawer .section-count {
+  font-size: var(--admin-font-meta);
+  line-height: 1.4;
+}
+
+.admin-shell dialog.drawer .fact strong,
+.admin-shell dialog.drawer .party-grid strong,
+.admin-shell dialog.drawer .overview-meta dd,
+.admin-shell dialog.drawer .timeline strong,
+.admin-shell dialog.drawer .related-row strong,
+.admin-shell dialog.drawer .file-row strong,
+.admin-shell dialog.drawer .hirer-profile-summary strong {
+  font-size: var(--admin-font-value);
+  line-height: 1.4;
+}
+
+.admin-shell dialog.drawer .badge {
+  font-size: var(--admin-font-meta);
+  line-height: 1.35;
+}
+
+.admin-shell dialog.drawer .section > p:not(.audit-note),
+.admin-shell dialog.drawer .record-description,
+.admin-shell dialog.drawer .overview-group > p,
+.admin-shell dialog.drawer .requirement-box,
+.admin-shell dialog.drawer .requirement-box p,
+.admin-shell dialog.drawer .requirement-box li {
+  font-size: var(--admin-font-body);
+  line-height: 1.5;
+}
+
+.admin-shell dialog.drawer .audit-note,
+.admin-shell dialog.drawer .timeline time,
+.admin-shell dialog.drawer .timeline span,
+.admin-shell dialog.drawer .related-row small,
+.admin-shell dialog.drawer .file-row small,
+.admin-shell dialog.drawer .payout-previous-row small {
+  font-size: var(--admin-font-meta);
+  line-height: 1.45;
+}
+
+.admin-shell dialog.drawer .financial-line,
+.admin-shell dialog.drawer .financial-line span,
+.admin-shell dialog.drawer .financial-line strong {
+  font-size: var(--admin-font-value);
+  line-height: 1.4;
+}
+
+.admin-shell dialog.drawer .financial-line small {
+  font-size: var(--admin-font-meta);
+  line-height: 1.4;
+}
+
+/* Overview is an operational dashboard, but it follows the same text steps.
+   The large work count and finance amounts remain KPI values by design. */
+.admin-shell .overview-command-center h1 {
+  font-size: var(--admin-font-page-title);
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+}
+
+.admin-shell .overview-command-center-kicker,
+.admin-shell .overview-command-center-header p,
+.admin-shell .overview-command-center-section-head p {
+  font-size: var(--admin-font-meta);
+  line-height: 1.45;
+}
+
+.admin-shell .overview-command-center-section-head h2,
+.admin-shell .overview-command-center-command-head h2 {
+  font-size: var(--admin-font-section);
+  line-height: 1.4;
+}
+
+.admin-shell .overview-command-center-section-head > span,
+.admin-shell .overview-command-center-command-head > span,
+.admin-shell .overview-command-center-updated {
+  font-size: var(--admin-font-meta);
+  line-height: 1.4;
+}
+
+.admin-shell .overview-command-center-hero-copy small,
+.admin-shell .overview-command-center-hero-copy > span:not(.overview-command-center-hero-note),
+.admin-shell .overview-command-center-hero-stats > div > span,
+.admin-shell .overview-command-center-hero-stats small,
+.admin-shell .overview-command-center-hero-note {
+  font-size: var(--admin-font-meta);
+  line-height: 1.45;
+}
+
+.admin-shell .overview-command-center-hero-copy p,
+.admin-shell .overview-command-center-command-head p {
+  font-size: var(--admin-font-body);
+  line-height: 1.5;
+}
+
+.admin-shell .overview-command-center-table-head,
+.admin-shell .overview-command-center-queue-title strong,
+.admin-shell .overview-command-center-timeline strong,
+.admin-shell .overview-command-center-health-row strong,
+.admin-shell .overview-command-center-queue-waiting strong {
+  font-size: var(--admin-font-table);
+  line-height: 1.4;
+}
+
+.admin-shell .overview-command-center-queue-title small,
+.admin-shell .overview-command-center-timeline small,
+.admin-shell .overview-command-center-health-row small,
+.admin-shell .overview-command-center-queue-oldest,
+.admin-shell .overview-command-center-queue-waiting small,
+.admin-shell .overview-command-center-note,
+.admin-shell .overview-command-center-finance-metric span,
+.admin-shell .overview-command-center-state-list li > span:first-child,
+.admin-shell .overview-command-center-status-row small,
+.admin-shell .overview-command-center-status-fact {
+  font-size: var(--admin-font-meta);
+  line-height: 1.45;
+}
+
+.admin-shell .overview-command-center-queue-status {
+  font-size: var(--admin-font-caption);
+  line-height: 1.35;
+}
+
+.admin-shell .overview-command-center-finance-group h3 {
+  font-size: var(--admin-font-section);
+  line-height: 1.4;
+}
+
+.admin-shell .overview-command-center-finance-metric strong,
+.admin-shell .overview-command-center-status-fact strong {
+  font-size: var(--admin-font-value);
+  line-height: 1.4;
+}
+
+.admin-shell .overview-command-center-state-list strong,
+.admin-shell .overview-command-center-status-row > strong:last-child {
+  font-size: var(--admin-font-value);
+  line-height: 1.4;
+}
+
+/* Centered forms use the same body, label, value, and helper steps. */
+.admin-shell .admin-modal-layer > dialog,
+.admin-shell .party-chat-overlay .party-chat-modal,
+.admin-shell .wallet-status-command-dialog,
+.admin-shell .quest-command-dialog {
+  font-size: var(--admin-font-body);
+}
+
+.admin-shell .admin-modal-layer > dialog h2,
+.admin-shell .quest-command-dialog h2 {
+  font-size: 20px;
+  line-height: 1.35;
+}
+
+.admin-shell .chat-modal-head strong,
+.admin-shell .wallet-command-head strong {
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+.admin-shell .chat-modal-head small,
+.admin-shell .wallet-command-head small,
+.admin-shell .report-selected-user > small,
+.admin-shell .report-file small,
+.admin-shell .penalty-form > label small,
+.admin-shell .penalty-choice small,
+.admin-shell .penalty-policy-note span,
+.admin-shell .enforcement-record small,
+.admin-shell .wallet-command-help,
+.admin-shell .wallet-status-consequences li,
+.admin-shell .quest-command-dialog p {
+  font-size: var(--admin-font-meta);
+  line-height: 1.45;
+}
+
+.admin-shell .admin-modal-layer > dialog p,
+.admin-shell .chat-intro,
+.admin-shell .wallet-command-intro {
+  font-size: var(--admin-font-body);
+  line-height: 1.5;
+}
+
+.admin-shell .admin-modal-layer > dialog label,
+.admin-shell .report-form > label,
+.admin-shell .penalty-form legend,
+.admin-shell .penalty-form > label,
+.admin-shell .wallet-status-command-form label,
+.admin-shell .quest-command-dialog label {
+  font-size: var(--admin-font-meta);
+  line-height: 1.4;
+}
+
+.admin-shell .report-selected-user > span,
+.admin-shell .penalty-policy-note strong,
+.admin-shell .wallet-status-consequences strong {
+  font-size: var(--admin-font-value);
+  line-height: 1.4;
+}
+
+.admin-shell .report-selected-user > strong,
+.admin-shell .penalty-choice strong,
+.admin-shell .wallet-status-preview,
+.admin-shell .wallet-status-preview strong {
+  font-size: var(--admin-font-value);
+  line-height: 1.4;
+}
+
+.admin-shell .admin-modal-layer > dialog input,
+.admin-shell .admin-modal-layer > dialog select,
+.admin-shell .admin-modal-layer > dialog textarea,
+.admin-shell .wallet-status-command-form textarea,
+.admin-shell .wallet-status-command-form select,
+.admin-shell .quest-command-dialog textarea,
+.admin-shell .quest-command-dialog select {
+  font-size: var(--admin-font-body);
+  line-height: 1.45;
+}
+
+.admin-shell .admin-modal-layer .field-help,
+.admin-shell .admin-modal-layer .field-error,
+.admin-shell .dialog-actions .btn {
+  font-size: var(--admin-font-value);
+  line-height: 1.4;
+}
+
+/* Resolve route-specific selectors that were more specific than the shared
+   scale above. */
+.admin-shell .payout-detail-page .payout-detail-stack .section h3 {
+  font-size: var(--admin-font-section);
+  line-height: 1.4;
+}
+
+.admin-shell .payout-detail-page .payout-detail-stack .section .audit-note {
+  font-size: var(--admin-font-meta);
+  line-height: 1.45;
+}
+
+.admin-shell .dispute-page-alert p,
+.admin-shell .report-page-alert p,
+.admin-shell .payout-page-alert p {
+  font-size: var(--admin-font-meta);
+  line-height: 1.45;
+}
+
+.admin-shell .record-panel .badge,
+.admin-shell .full-record-head .badge,
+.admin-shell .record-status-bar .badge,
+.admin-shell .dispute-page-alert .badge,
+.admin-shell .report-page-alert .badge,
+.admin-shell .payout-page-alert .badge {
+  font-size: var(--admin-font-meta);
+  line-height: 1.35;
+}
+
+.admin-shell .record-panel .report-decision-option strong {
+  font-size: var(--admin-font-value);
+  line-height: 1.4;
+}
+
+.admin-shell .record-panel .report-decision-option small {
+  font-size: var(--admin-font-meta);
+  line-height: 1.45;
+}
+
+.admin-shell .record-panel .requirement-box strong,
+.admin-shell .record-panel .submission-empty strong,
+.admin-shell .record-panel .related-row strong,
+.admin-shell .record-panel .file-row strong {
+  font-size: var(--admin-font-value);
+  line-height: 1.4;
+}
+
+.admin-shell .record-panel .requirement-box strong {
+  display: block;
+}
+
+.admin-shell dialog.drawer .section p.audit-note,
+.admin-shell dialog.drawer .record-panel p.audit-note {
+  font-size: var(--admin-font-meta);
+  line-height: 1.45;
+}
+
+.admin-shell dialog.drawer .wallet-statement-scroll-hint {
+  font-size: var(--admin-font-meta);
+  line-height: 1.45;
+}
+
+.admin-shell .overview-command-center-header p {
+  font-size: var(--admin-font-body);
+  line-height: 1.5;
+}
+
+.admin-shell .api-data-notice {
+  font-size: var(--admin-font-meta);
+  line-height: 1.45;
+}
+
+/* Payout full detail uses .section instead of .record-panel. Keep its facts
+   and history on the shared Admin type scale as well. */
+.admin-shell .payout-detail-page .payout-detail-stack .section .fact span:not(.badge),
+.admin-shell .payout-detail-page .payout-detail-stack .section .payout-audit-list span {
+  font-size: var(--admin-font-meta);
+  line-height: 1.4;
+}
+
+.admin-shell .payout-detail-page .payout-detail-stack .section .fact strong,
+.admin-shell .payout-detail-page .payout-detail-stack .section .payout-audit-list strong,
+.admin-shell .payout-detail-page .payout-detail-stack .section .payout-previous-row strong {
+  font-size: var(--admin-font-value);
+  line-height: 1.4;
+}
+
+.admin-shell .payout-detail-page .payout-detail-stack .section .badge {
+  font-size: var(--admin-font-meta);
+  line-height: 1.35;
+}
+
+.admin-shell .payout-detail-page .payout-detail-stack .section .payout-previous-row small {
+  font-size: var(--admin-font-meta);
+  line-height: 1.45;
+}
+
+/* Apply the same steps to secondary surfaces. These rules cover the shell,
+   compact work drawers, wallet statements, and activity filters that use
+   older route-specific selectors. */
+.admin-shell .sidebar .nav-group > small,
+.admin-shell .sidebar .language-control-label {
+  font-size: var(--admin-font-caption);
+  line-height: 1.4;
+}
+
+.admin-shell .sidebar .theme-trigger-copy strong,
+.admin-shell .sidebar .profile strong {
+  font-size: var(--admin-font-meta);
+  line-height: 1.35;
+}
+
+.admin-shell .sidebar .theme-trigger-copy small,
+.admin-shell .sidebar .profile small {
+  font-size: var(--admin-font-caption);
+  line-height: 1.35;
+}
+
+.admin-shell .sidebar .language-option,
+.admin-shell .sidebar .logout-button,
+.admin-shell .sidebar .admin-nav-link b {
+  font-size: var(--admin-font-meta);
+  line-height: 1.35;
+}
+
+.admin-shell .overview-command-center-queue-title .overview-queue-process {
+  font-size: var(--admin-font-meta);
+  line-height: 1.35;
+}
+
+.admin-shell .overview-command-center-queue-title > strong > a {
+  font-size: var(--admin-font-table);
+  line-height: 1.4;
+}
+
+.admin-shell .overview-command-center-queue-status,
+.admin-shell .overview-command-center-queue-waiting {
+  font-size: var(--admin-font-meta);
+  line-height: 1.4;
+}
+
+.admin-shell .overview-command-center-queue-status strong {
+  font-size: var(--admin-font-meta);
+  line-height: 1.35;
+}
+
+.admin-shell .overview-command-center-queue-waiting strong {
+  font-size: var(--admin-font-value);
+  line-height: 1.35;
+}
+
+.admin-shell .overview-command-center-queue-waiting small,
+.admin-shell .overview-command-center-queue-oldest small {
+  font-size: var(--admin-font-meta);
+  line-height: 1.4;
+}
+
+.admin-shell .overview-command-center-timeline-marker,
+.admin-shell .overview-command-center-timeline-avatar {
+  font-size: var(--admin-font-caption);
+  line-height: 1;
+}
+
+.admin-shell .wallet-finance-summary-metric span,
+.admin-shell .wallet-finance-summary-heading small,
+.admin-shell .wallet-statement-balance span,
+.admin-shell .wallet-statement-filters label {
+  font-size: var(--admin-font-meta);
+  line-height: 1.4;
+}
+
+.admin-shell .wallet-statement-filters input,
+.admin-shell .wallet-statement-filters select {
+  font-size: var(--admin-font-table);
+  line-height: 1.4;
+}
+
+.admin-shell .activity-filter-grid label,
+.admin-shell .activity-log-status {
+  font-size: var(--admin-font-meta);
+  line-height: 1.4;
+}
+
+.admin-shell .activity-filter-grid input,
+.admin-shell .activity-filter-grid select {
+  font-size: var(--admin-font-table);
+  line-height: 1.4;
+}
+
+.admin-shell .section-count,
+.admin-shell .evidence-state {
+  font-size: var(--admin-font-meta);
+  line-height: 1.35;
+}
+
+.admin-shell dialog.drawer .side-facts span,
+.admin-shell dialog.drawer .user-context-list > div > span,
+.admin-shell dialog.drawer .wallet-finance-summary-metric span,
+.admin-shell dialog.drawer .wallet-statement-balance span,
+.admin-shell dialog.drawer .hirer-profile-summary span {
+  font-size: var(--admin-font-meta);
+  line-height: 1.4;
+}
+
+.admin-shell dialog.drawer .side-facts strong,
+.admin-shell dialog.drawer .user-context-list > div > strong,
+.admin-shell dialog.drawer .wallet-finance-summary-metric strong,
+.admin-shell dialog.drawer .wallet-statement-balance strong,
+.admin-shell dialog.drawer .quest-detail-list-value {
+  font-size: var(--admin-font-value);
+  line-height: 1.4;
+}
+
+.admin-shell dialog.drawer .file-row > span:last-child,
+.admin-shell dialog.drawer .related-row > span:last-child {
+  font-size: var(--admin-font-meta);
+  line-height: 1.4;
+}
+
+.admin-shell .file-row > span:last-child,
+.admin-shell .related-row > span:last-child,
+.admin-shell .timeline small {
+  font-size: var(--admin-font-meta);
+  line-height: 1.4;
+}
+
+.admin-shell .activity-log-table .avatar {
+  font-size: var(--admin-font-caption);
+  line-height: 1;
+}
+
+.admin-shell dialog.drawer .timeline small {
+  font-size: var(--admin-font-meta);
+  line-height: 1.4;
+}
+
+.admin-shell dialog.drawer .drawer-top > div > strong,
+.admin-shell .activity-log-dialog .drawer-top > div > strong {
+  font-size: var(--admin-font-drawer-title);
+  line-height: 1.3;
+}
+
+.admin-shell dialog.drawer .quest-finance-list h3 {
+  font-size: var(--admin-font-section);
+  line-height: 1.4;
+}
+
+.admin-shell .quest-description-block h3,
+.admin-shell .quest-summary-context-section h3 {
+  font-size: var(--admin-font-section);
+  line-height: 1.4;
+}
+
+.admin-shell .record-panel .quest-summary-context-section > p:not(.audit-note),
+.admin-shell dialog.drawer .quest-summary-context-section > p:not(.audit-note) {
+  font-size: var(--admin-font-body);
+  line-height: 1.5;
+}
+
+/* Confirmation summaries are decision context, not footnotes. Keep their
+   labels and affected-state values readable in every centered action dialog. */
+.admin-shell .admin-action-summary-heading h3,
+.admin-shell .admin-action-receipt-heading strong {
+  font-size: var(--admin-font-section);
+  line-height: 1.4;
+}
+
+.admin-shell .admin-action-summary-facts dt,
+.admin-shell .admin-action-receipt-facts dt {
+  font-size: var(--admin-font-meta);
+  line-height: 1.4;
+}
+
+.admin-shell .admin-action-summary-facts dd,
+.admin-shell .admin-action-receipt-facts dd {
+  font-size: var(--admin-font-value);
+  line-height: 1.4;
+}
+
+.admin-shell .admin-action-summary-warning,
+.admin-shell .admin-action-receipt-details,
+.admin-shell .admin-action-receipt-heading small {
+  font-size: var(--admin-font-meta);
+  line-height: 1.45;
+}
+
+.admin-shell .activity-log-dialog .activity-log-target,
+.admin-shell .activity-log-dialog .activity-log-state-change span {
+  font-size: var(--admin-font-meta);
+  line-height: 1.4;
+}
+
+.admin-shell .activity-log-dialog .activity-log-state-change strong {
+  font-size: var(--admin-font-value);
+  line-height: 1.4;
+}
+
+.admin-shell .activity-log-dialog .activity-log-state-arrow {
+  font-size: var(--admin-font-section);
+  line-height: 1;
+}
+
+.admin-shell .payout-detail-page .payout-detail-stack .section > p:not(.audit-note),
+.admin-shell .payout-detail-page .payout-outcome p {
+  font-size: var(--admin-font-body);
+  line-height: 1.5;
+}
+
+.admin-shell .payout-detail-page .payout-summary-grid span,
+.admin-shell .payout-detail-page .payout-audit-list span {
+  font-size: var(--admin-font-meta);
+  line-height: 1.4;
+}
+
+.admin-shell .payout-detail-page .payout-summary-grid strong,
+.admin-shell .payout-detail-page .payout-audit-list strong {
+  font-size: var(--admin-font-value);
+  line-height: 1.4;
+}
+
+/* Admin record text should read as part of the current surface, not as a
+   second blue/underlined visual system. Keep the native link semantics and
+   navigation, but make every non-button link look like surrounding text. */
+.admin-shell a:not(.btn),
+.admin-shell a:not(.btn):visited,
+.admin-shell a:not(.btn):hover {
+  color: inherit !important;
+  text-decoration: none !important;
+}
+
+.admin-shell a:not(.btn):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 3px;
 }

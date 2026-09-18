@@ -117,11 +117,9 @@ export function mockDemoMemberRecord(seed: MockDemoMemberSeed): AdminUser {
     ...(seed.memberStatus === "Flag" ? { redFlagExpiresAt: "2026-09-30T09:00:00.000Z" } : {}),
     ...(seed.memberStatus === "Temp Ban" ? { banExpiresAt: "2026-09-24T09:00:00.000Z" } : {}),
     ...(seed.memberStatus === "Normal" && index === 0 ? { newUserExemptionRemaining: 2 } : {}),
-    ...(index % 4 === 0 ? {} : {
-      faculty: index % 2 === 0 ? "Engineering" : "Management Sciences",
-      department: index % 2 === 0 ? "Computer Engineering" : "Business Administration",
-      occupation: "Student",
-    }),
+    faculty: index % 2 === 0 ? "Engineering" : "Management Sciences",
+    department: index % 2 === 0 ? "Computer Engineering" : "Business Administration",
+    occupation: "Student",
     ...(index % 3 === 0 ? {
       moderationHistory: [{
         event: `${seed.memberStatus} state recorded`,

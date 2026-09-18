@@ -6,7 +6,9 @@ import {
 import {
   isConductReportStatus,
   isReportCaseStatus,
+  questStateFor,
   type ConductReportStatus,
+  type QuestState,
 } from "../domain/rulebook";
 import { statusBadgeClass } from "../status-badge";
 
@@ -47,6 +49,8 @@ export type ConductReportModel = {
   questId: string | null;
   questTitle: string;
   questHref: string | null;
+  questState: QuestState | null;
+  questFailedAt: string | null;
   questRecord: string | null;
   reportedMemberId: string;
   reportedMemberName: string;
@@ -219,6 +223,9 @@ export function conductReportModelFromRecord(value: unknown): ConductReportModel
     quest?.title,
     record.title,
   ) ?? "Quest not recorded";
+  const questStateValue = firstText(record.questState, record.questStatus, quest?.questState, quest?.questStatus);
+  const questState = questStateValue ? questStateFor(questStateValue) : null;
+  const questFailedAt = firstText(record.failedAt, record.questFailedAt, quest?.failedAt);
   const decisionLabel = firstText(
     record.decisionLabel,
     status === "CONDUCT_REPORT_UPHELD" ? "Violation confirmed" : null,
@@ -237,6 +244,8 @@ export function conductReportModelFromRecord(value: unknown): ConductReportModel
     questId,
     questTitle,
     questHref: questId ? questRoutes.detail(questId) : null,
+    questState,
+    questFailedAt,
     questRecord: firstText(record.questRecord, record.questRecordSummary, record.questEvidence),
     reportedMemberId,
     reportedMemberName,

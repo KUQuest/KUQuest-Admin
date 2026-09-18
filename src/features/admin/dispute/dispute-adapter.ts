@@ -104,7 +104,7 @@ export function saveMockDisputeDecision(
   dispute.closedAt = now;
   dispute.tone = command === "DISPUTE_CASE_RESOLVED" ? "success" : "neutral";
   dispute.resolution = command === "DISPUTE_CASE_RESOLVED"
-    ? `Dispute Case resolved; ${options.amountSatang} Satang allocated to the Worker Earnings Balance.`
+    ? "Dispute Case resolved; the full remaining amount was transferred to the Worker Earnings Balance."
     : "Dispute Case dismissed; no money movement was made.";
   dispute.resolvedWorkerId = command === "DISPUTE_CASE_RESOLVED" ? options.workerId : null;
   dispute.resolvedAmountSatang = command === "DISPUTE_CASE_RESOLVED" ? options.amountSatang : null;

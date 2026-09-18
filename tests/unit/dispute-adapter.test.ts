@@ -65,7 +65,7 @@ describe("Dispute Case mock adapter", () => {
     expect(loadDisputeCasesFromMock(storage).items[0]?.status).toBe("DISPUTE_CASE_DISMISSED");
   });
 
-  it("persists a resolved positive Satang allocation", () => {
+  it("persists a resolved full Satang outcome", () => {
     const updated = saveMockDisputeDecision(memoryStorage(), "DSP-5202", "DISPUTE_CASE_RESOLVED", "The Worker completed the agreed Quest Condition.", {
       reasonCode: "DISPUTE_POLICY_REVIEW",
       workerId: "68000040",

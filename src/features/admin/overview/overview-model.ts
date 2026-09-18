@@ -167,13 +167,13 @@ export type OverviewApiSearchData = {
 };
 
 const questStateTones: Record<QuestState, string> = {
-  QUEST_DRAFT: "overview-bar-draft",
-  QUEST_OPEN: "overview-bar-open",
-  QUEST_ASSIGNED: "overview-bar-assigned",
-  QUEST_IN_PROGRESS: "overview-bar-progress",
-  QUEST_COMPLETED: "overview-bar-completed",
-  QUEST_CANCELLED: "overview-bar-cancelled",
-  QUEST_FAILED: "overview-bar-failed",
+  QUEST_DRAFT: "overview-quest-draft",
+  QUEST_OPEN: "overview-quest-open",
+  QUEST_ASSIGNED: "overview-quest-assigned",
+  QUEST_IN_PROGRESS: "overview-quest-in-progress",
+  QUEST_COMPLETED: "overview-quest-completed",
+  QUEST_CANCELLED: "overview-quest-cancelled",
+  QUEST_FAILED: "overview-quest-failed",
 };
 
 function countValue(value: unknown): number {
@@ -363,7 +363,7 @@ const mockQueueCases: Record<OverviewQueueId, OverviewQueueCase[]> = {
       id: "DSP-5201",
       queueId: "disputes",
       title: "Dispute Case · Verify dorm fire exits",
-      detail: "QUEST_FAILED case with money at risk.",
+      detail: "Failed Quest case with money at risk.",
       status: "DISPUTE_CASE_PENDING",
       createdAt: "2026-09-14T04:00:00.000Z",
       priority: "High",

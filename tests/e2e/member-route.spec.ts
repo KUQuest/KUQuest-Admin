@@ -15,12 +15,29 @@ test.describe("Member route family", () => {
     await expect(board.getByRole("heading", { level: 1, name: "Members" })).toBeVisible();
     await expect(board.locator("tbody tr[data-member-id]")).toHaveCount(10);
 
+    const headers = await board.locator("thead th").allTextContents();
+    expect(headers).toEqual([
+      "Member ID",
+      "Member",
+      "Student ID",
+      "Academic profile",
+      "Status",
+      "Wallet status",
+    ]);
+    const demoSearch = board.getByRole("searchbox", { name: "Search Members" });
+    await demoSearch.fill("Demo Member 01");
+    const demoRow = board.locator("tbody tr[data-member-id]").first();
+    await expect(demoRow.locator("td").nth(0)).toHaveText("68000100");
+    await expect(demoRow.locator("td").nth(2)).toHaveText("6510200100");
+    await demoSearch.fill("");
+
     const opener = board.getByRole("button", { name: "Open Member 68000000" });
     await opener.click();
     await expect(page).toHaveURL(/\/member\/68000000$/);
     const drawer = page.getByRole("dialog", { name: "Record details" });
     await expect(drawer).toBeVisible();
     await expect(drawer).toContainText("Akarin Ariyawat");
+    await expect(drawer.locator("[data-member-drawer-moderation-history]")).toContainText("Moderation History");
     await page.goBack();
     await expect(page).toHaveURL(/\/member$/);
     await expect(drawer).toHaveCount(0);

@@ -8,6 +8,7 @@ import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { conductReportRoutes } from "../admin-routes";
+import { formatAdminTimestamp } from "../date-format";
 import { loadAllConductReportsFromMock as loadAllConductReportsFromMockData, loadConductReportsFromMock } from "./conduct-report-adapter";
 import {
   ADMIN_BOARD_PAGE_SIZES,
@@ -268,7 +269,7 @@ export function ConductReportBoard({
                       >
                         {model.id}
                       </button>
-                      <small>{model.title}</small>
+                      <small>{translateText(model.title)}</small>
                     </td>
                     <td><strong>{model.questTitle}</strong><small>{model.questId ?? "—"}</small></td>
                     <td>
@@ -283,9 +284,9 @@ export function ConductReportBoard({
                         : model.reporterName}
                       <small>{model.reporterId ?? "—"}</small>
                     </td>
-                    <td>{model.reason}</td>
+                    <td>{translateText(model.reason)}</td>
                     <td><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></td>
-                    <td>{model.submittedAt}</td>
+                    <td>{formatAdminTimestamp(model.submittedAt)}</td>
                   </tr>
                 ))}
               </tbody>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { AdminActionReceipt, AdminActionSummary } from "../../../components/admin/admin-action-feedback";
+import { formatAdminTimestamp } from "../date-format";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
@@ -12,7 +13,8 @@ import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { adminApi, type AdminEvidence, type ReportDecision } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { reportRoutes } from "../admin-routes";
-import { ModerationCaseWorkspace } from "../moderation-case/moderation-case-workspace";
+import { reportCaseStatusLabel } from "../domain/rulebook";
+import { ModerationCaseWorkspace, ModerationHistoryPanel } from "../moderation-case/moderation-case-workspace";
 import {
   findReportCaseFromMock,
   newReportCaseIdempotencyKey,
@@ -118,8 +120,8 @@ function ReportDecisionDialog({
             <AdminActionSummary
               title={translateText("Before you confirm")}
               affected={`${translateText("Report Case")} ${model.id} · ${translateText("Message")}`}
-              currentState={model.status}
-              nextState={nextState}
+              currentState={model.statusLabel}
+              nextState={reportCaseStatusLabel(nextState)}
               effect={translateText(effect)}
               reversibility={translateText(reversibility)}
               warning={translateText("Read Message content only through the named Evidence Reference. The evidence read is logged as an Admin Action.")}
@@ -238,9 +240,11 @@ function ReportOverview({
       <>
         <section className="section">
           <h3>{translateText("Report overview")}</h3>
-          <div className="facts"><div className="fact"><span>{translateText("Status")}</span><strong><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></strong></div><div className="fact"><span>{translateText("Report type")}</span><strong>{model.reportType}</strong></div><div className="fact"><span>{translateText("Reported")}</span><strong>{model.submittedAt}</strong></div></div>
+          <div className="facts"><div className="fact"><span>{translateText("Status")}</span><strong><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></strong></div><div className="fact"><span>{translateText("Report type")}</span><strong>{translateText(model.reportType)}</strong></div><div className="fact"><span>{translateText("Reported")}</span><strong>{formatAdminTimestamp(model.submittedAt)}</strong></div></div>
+          <dl className="overview-meta moderation-case-context-grid"><div><dt>{translateText("Case")}</dt><dd>{model.id}</dd></div><div><dt>{translateText("Case type")}</dt><dd>{translateText("Report Case")}</dd></div><div><dt>{translateText("Source")}</dt><dd>{translateText("Message")}</dd></div><div><dt>{translateText("Submitted")}</dt><dd>{formatAdminTimestamp(model.submittedAt)}</dd></div><div><dt>{translateText("Evidence References")}</dt><dd>{model.evidence.length || translateText("None")}</dd></div></dl>
+          <div className="overview-group"><span>{translateText("Submitted detail")}</span><p>{model.detail}</p></div>
+          <div className="facts report-overview-parties"><div className="fact"><span>{translateText("Reported Member")}</span><strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} interactive={false} /></strong><small>{model.reportedMemberId ?? "—"}</small></div><div className="fact"><span>{translateText("Reporting Member")}</span><strong><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} interactive={false} /></strong><small>{model.reporterId ?? "—"}</small></div></div>
         </section>
-        <section className="section"><h3>{translateText("Report detail")}</h3><p>{model.detail}</p></section>
       </>
     );
   }
@@ -250,10 +254,24 @@ function ReportOverview({
       <div className="record-panel-head"><h2>{translateText("Report detail")}</h2></div>
       <p className="record-description">{model.detail}</p>
       <dl className="overview-meta">
-        <div><dt>{translateText("Report type")}</dt><dd>{model.reportType}</dd></div>
+        <div><dt>{translateText("Report type")}</dt><dd>{translateText(model.reportType)}</dd></div>
         <div><dt>{translateText("Submitted by")}</dt><dd><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} /></dd></div>
         <div><dt>{translateText("Reported Member")}</dt><dd><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} /></dd></div>
       </dl>
+    </section>
+  );
+}
+
+function RelatedQuestPanel({ model, translateText }: { model: ReportCaseModel; translateText: (value: string) => string }) {
+  if (!model.relatedQuestId && !model.relatedQuestTitle) return null;
+  return (
+    <section className="section related-quest-panel">
+      <div className="record-panel-head"><h3>{translateText("Related Quest")}</h3></div>
+      <div className="side-facts">
+        <div><span>{translateText("Quest")}</span><strong>{model.relatedQuestTitle ?? translateText("Not provided.")}</strong></div>
+        <div><span>{translateText("Quest ID")}</span><strong>{model.relatedQuestId ?? "—"}</strong></div>
+      </div>
+      {model.relatedQuestHref && <Link className="btn full-width" href={model.relatedQuestHref}>{translateText("Open Quest detail")}</Link>}
     </section>
   );
 }
@@ -341,8 +359,8 @@ function ResolutionDetails({ model, translateText }: { model: ReportCaseModel; t
   const details = [
     ["Resolution", model.resolution],
     ["Resolved by", model.resolvedBy],
-    ["Resolution time", model.resolutionAt],
-    ["Closed at", model.closedAt],
+    ["Resolution time", model.resolutionAt ? formatAdminTimestamp(model.resolutionAt) : null],
+    ["Closed at", model.closedAt ? formatAdminTimestamp(model.closedAt) : null],
   ] as const;
   return (
     <>
@@ -359,24 +377,24 @@ function ResolutionDetails({ model, translateText }: { model: ReportCaseModel; t
 function ReportTimeline({ model, translateText }: { model: ReportCaseModel; translateText: (value: string) => string }) {
   const events = model.status === "REPORT_CASE_PENDING"
     ? [
-      { title: "Report submitted", time: model.submittedAt, detail: `${model.reporterName} reported ${model.reportedMemberName}` },
+      { title: "Report submitted", time: formatAdminTimestamp(model.submittedAt), detail: `${model.reporterName} reported ${model.reportedMemberName}` },
       { title: "Awaiting Admin decision", time: translateText("Open"), detail: translateText("Review the submitted details and Evidence References.") },
     ]
     : model.status === "REPORT_CASE_HIDDEN"
       ? [
-        { title: "Report submitted", time: model.submittedAt, detail: `${model.reporterName} reported ${model.reportedMemberName}` },
-        { title: "Message hidden", time: model.resolutionAt ?? model.closedAt ?? translateText("Time not provided"), detail: translateText("The Report Case remains open for re-evaluation.") },
+        { title: "Report submitted", time: formatAdminTimestamp(model.submittedAt), detail: `${model.reporterName} reported ${model.reportedMemberName}` },
+        { title: "Message hidden", time: model.resolutionAt || model.closedAt ? formatAdminTimestamp(model.resolutionAt ?? model.closedAt) : translateText("Time not provided"), detail: translateText("The Report Case remains open for re-evaluation.") },
       ]
       : [
-        { title: "Report submitted", time: model.submittedAt, detail: `${model.reporterName} reported ${model.reportedMemberName}` },
-        { title: "Report Case decision recorded", time: model.resolutionAt ?? model.closedAt ?? translateText("Time not provided"), detail: model.decisionReason ?? model.decisionLabel ?? translateText("Record retained for audit.") },
+        { title: "Report submitted", time: formatAdminTimestamp(model.submittedAt), detail: `${model.reporterName} reported ${model.reportedMemberName}` },
+        { title: "Report Case decision recorded", time: model.resolutionAt || model.closedAt ? formatAdminTimestamp(model.resolutionAt ?? model.closedAt) : translateText("Time not provided"), detail: model.decisionReason ?? model.decisionLabel ?? translateText("Record retained for audit.") },
       ];
 
   return (
     <section className="record-panel">
       <h2>{translateText("Report timeline")}</h2>
       <ol className="timeline">
-        {events.map((event) => <li key={`${event.title}-${event.time}`}><strong>{translateText(event.title)}</strong><time>{event.time}</time><span>{event.detail}</span></li>)}
+        {events.map((event) => <li key={`${event.title}-${event.time}`}><strong>{translateText(event.title)}</strong><time>{event.time}</time><span>{translateText(event.detail)}</span></li>)}
       </ol>
     </section>
   );
@@ -400,7 +418,7 @@ function DecisionControls({
   if (!model.isActionable) {
     return (
       <>
-        <p className="audit-note">{translateText("Decision recorded:")} <strong>{model.decisionLabel ?? model.statusLabel}</strong>.</p>
+        <p className="audit-note">{translateText("Decision recorded:")} <strong>{translateText(model.decisionLabel ?? model.statusLabel)}</strong>.</p>
         <ResolutionDetails model={model} translateText={translateText} />
       </>
     );
@@ -470,22 +488,7 @@ function ReportCaseSections({
   );
 
   return (
-    <ModerationCaseWorkspace
-      kind="Report Case"
-      caseId={model.id}
-      statusLabel={model.statusLabel}
-      badgeClass={model.badgeClass}
-      submittedAt={model.submittedAt}
-      source="Message"
-      detail={model.detail}
-      reportedMember={{ id: model.reportedMemberId, name: model.reportedMemberName, href: model.reportedMemberHref, role: "Reported Member" }}
-      reporter={{ id: model.reporterId, name: model.reporterName, href: model.reporterHref, role: "Reporting Member" }}
-      relatedRecord={model.relatedQuestId ? { id: model.relatedQuestId, title: model.relatedQuestTitle, href: model.relatedQuestHref } : null}
-      evidenceCount={model.evidence.length}
-      moderationHistory={model.moderationHistory}
-      policyNote="Admin may read Message content only through the named Evidence Reference. Every evidence read is logged as an Admin Action."
-      translateText={translateText}
-    >
+    <>
       <div className="full-record-grid">
         <div className="record-primary">
           <ReportOverview model={model} translateText={translateText} />
@@ -503,7 +506,7 @@ function ReportCaseSections({
         </aside>
       </div>
       {actionReceipt}
-    </ModerationCaseWorkspace>
+    </>
   );
 }
 
@@ -528,14 +531,13 @@ function DrawerSections({
 }) {
   return (
     <div className="report-case-drawer-detail">
-      <div className="drawer-title"><span className="att-icon warning" aria-hidden="true">⚑</span><div><h2>{model.title}</h2><p>{translateText("Submitted by")} {model.reporterName}</p></div></div>
       <ReportAlert model={model} translateText={translateText} />
       <ModerationCaseWorkspace
         kind="Report Case"
         caseId={model.id}
         statusLabel={model.statusLabel}
         badgeClass={model.badgeClass}
-        submittedAt={model.submittedAt}
+        submittedAt={formatAdminTimestamp(model.submittedAt)}
         source="Message"
         detail={model.detail}
         reportedMember={{ id: model.reportedMemberId, name: model.reportedMemberName, href: model.reportedMemberHref, role: "Reported Member" }}
@@ -545,11 +547,21 @@ function DrawerSections({
         moderationHistory={model.moderationHistory}
         policyNote="Admin may read Message content only through the named Evidence Reference. Every evidence read is logged as an Admin Action."
         translateText={translateText}
+        showDecisionContext={false}
+        showModerationHistory={false}
+        showRelatedRecord={false}
         compact
       >
         <ReportOverview model={model} translateText={translateText} compact />
-        <PeopleInvolved model={model} translateText={translateText} compact />
         <EvidenceSection model={model} translateText={translateText} onOpen={onOpenEvidence} compact />
+        <RelatedQuestPanel model={model} translateText={translateText} />
+        <PeopleInvolved model={model} translateText={translateText} compact />
+        <ModerationHistoryPanel
+          summary={model.moderationHistory}
+          translateText={translateText}
+          compact
+          member={{ id: model.reportedMemberId, name: model.reportedMemberName, href: model.reportedMemberHref }}
+        />
         <section className="section report-decision-panel"><h3>{model.isActionable ? translateText("Report decision") : translateText("Resolution")}</h3><DecisionControls model={model} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelect={onSelectChoice} onStart={onStartDecision} /></section>
       </ModerationCaseWorkspace>
       {actionReceipt}
@@ -699,19 +711,19 @@ export function ReportCaseDetail({
   const content = (
     <>
       <ReportAlert model={model} translateText={translateText} />
-      <div className="record-status-bar"><div><span>{translateText("Status")}</span><strong><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></strong></div><div><span>{translateText("Report type")}</span><strong>{model.reportType}</strong></div><div><span>{translateText("Submitted")}</span><strong>{model.submittedAt}</strong></div><div><span>{translateText("Reported Member")}</span><strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} /></strong></div><div><span>{translateText("Evidence")}</span><strong>{model.evidence.length || translateText("None")}</strong></div></div>
-      <ReportCaseSections model={model} translateText={translateText} onOpenEvidence={openEvidence} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} actionReceipt={actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Report Case" resourceId={model.id} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>Reason: {actionReceipt.reason}</p>} /> : null} />
+      <div className="record-status-bar"><div><span>{translateText("Status")}</span><strong><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></strong></div><div><span>{translateText("Report type")}</span><strong>{translateText(model.reportType)}</strong></div><div><span>{translateText("Submitted")}</span><strong>{formatAdminTimestamp(model.submittedAt)}</strong></div><div><span>{translateText("Reported Member")}</span><strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} /></strong></div><div><span>{translateText("Evidence")}</span><strong>{model.evidence.length || translateText("None")}</strong></div></div>
+      <ReportCaseSections model={model} translateText={translateText} onOpenEvidence={openEvidence} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} actionReceipt={actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Report Case" resourceId={model.id} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {actionReceipt.reason}</p>} /> : null} />
     </>
   );
 
   if (drawer) {
-    return <><DrawerSections model={model} translateText={translateText} onOpenEvidence={openEvidence} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} actionReceipt={actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Report Case" resourceId={model.id} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>Reason: {actionReceipt.reason}</p>} /> : null} />{overlays}</>;
+    return <><DrawerSections model={model} translateText={translateText} onOpenEvidence={openEvidence} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} actionReceipt={actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Report Case" resourceId={model.id} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {actionReceipt.reason}</p>} /> : null} />{overlays}</>;
   }
 
   return (
     <main className="admin-route-page report-case-detail" tabIndex={-1}>
       <div className="record-breadcrumb"><Link href={reportRoutes.list()}>{translateText("Report Cases")}</Link><span>›</span><span>{model.id}</span></div>
-      <div className="full-record-head"><div><div className="record-id">{model.id}</div><h1>{model.title}</h1><p>{model.reportType} · {translateText("submitted")} {model.submittedAt}</p></div><div className="full-record-actions"><Link className="btn" href={reportRoutes.list()}>{translateText("Back to Report Cases")}</Link>{model.isActionable && model.status === "REPORT_CASE_PENDING" && <button className="btn danger" type="button" data-report-close="Close report" onClick={startDecision}>{translateText("Close report")}</button>}{model.isActionable && model.status === "REPORT_CASE_HIDDEN" && <button className="btn primary" type="button" data-report-decision="restore" onClick={() => { setSelectedChoice("restore"); setCommandError(null); setDialogOpen(true); }}>{translateText("Restore Message")}</button>}</div></div>
+      <div className="full-record-head"><div><div className="record-id">{model.id}</div><h1>{translateText(model.title)}</h1><p>{translateText(model.reportType)} · {translateText("submitted")} {formatAdminTimestamp(model.submittedAt)}</p></div><div className="full-record-actions"><Link className="btn" href={reportRoutes.list()}>{translateText("Back to Report Cases")}</Link>{model.isActionable && model.status === "REPORT_CASE_PENDING" && <button className="btn danger" type="button" data-report-close="Close report" onClick={startDecision}>{translateText("Close report")}</button>}{model.isActionable && model.status === "REPORT_CASE_HIDDEN" && <button className="btn primary" type="button" data-report-decision="restore" onClick={() => { setSelectedChoice("restore"); setCommandError(null); setDialogOpen(true); }}>{translateText("Restore Message")}</button>}</div></div>
       {content}
       {overlays}
     </main>
@@ -734,10 +746,10 @@ export function ReportCaseDrawer({
     <AdminDrawer
       ariaLabel={translateText("Close Report Case drawer")}
       closeButtonAriaLabel={translateText("Close drawer")}
-      title={<><span aria-hidden="true">{reportId}</span><span className="visually-hidden">{translateText("Report Case details")}</span></>}
+      title={<><span aria-hidden="true">{initialModel?.title ?? reportId}</span><span className="visually-hidden">{translateText("Report Case details")}</span></>}
       titleId="report-case-drawer-title"
-      subtitle={translateText("Report Case")}
-      className="report-case-drawer"
+      subtitle={<>{translateText("Report Case")} {initialModel?.id ?? reportId} · {translateText("Report Case detail drawer")}</>}
+      className="report-case-drawer quest-style-drawer"
       openerAttribute="data-report-id"
       openerValue={reportId}
       onClose={onClose}

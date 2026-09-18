@@ -202,21 +202,46 @@ test.describe("Quest route family", () => {
     expect(clientQuestReads).toEqual([]);
   });
 
-  test("opens the full Quest detail directly and keeps the detail action in the drawer only", async ({ page }) => {
+  test("opens the full Quest detail with context panels in the right column", async ({ page }) => {
     await page.goto(`/quest/${OPEN_QUEST_ID}`);
 
     await expect(page.locator(".quest-detail-page h1")).toHaveText("Inspect campus signs");
+    await expect(page.locator(".record-breadcrumb")).toContainText("Quests");
+    await expect(page.locator(".quest-page-alert")).toContainText("Quest State: Open");
+    await expect(page.locator(".quest-record-status-bar")).toBeVisible();
     await expect(page.getByText("Quest description", { exact: true })).toBeVisible();
     await expect(page.getByText("Schedule and location", { exact: true })).toBeVisible();
     await expect(page.getByText("Hirer attachments", { exact: true })).toBeVisible();
     await expect(page.getByRole("img", { name: "Hirer attachment 1" })).toBeVisible();
-    await expect(page.getByText("Ledger Transactions", { exact: true })).toBeVisible();
-    await expect(page.getByText("Quest Funding Reserved", { exact: true })).toBeVisible();
-    await expect(page.getByText("Funding Reservation created for the Quest.", { exact: true })).toBeVisible();
+    await expect(page.getByText("Ledger Transactions", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Funding Reservation", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Reserved", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Remaining", { exact: true })).toHaveCount(0);
     await expect(page.getByText("API version", { exact: true })).toHaveCount(0);
-    const timeline = page.locator("section.panel").filter({ has: page.getByRole("heading", { name: "Overall Quest timeline" }) });
+    await expect(page.locator(".quest-full-record-grid .record-primary")).toBeVisible();
+    await expect(page.locator(".quest-full-record-grid .record-side")).toBeVisible();
+    await expect(page.locator(".record-primary .quest-description-block")).toBeVisible();
+    const summary = page.locator(".quest-full-record-grid .record-primary > .record-panel").filter({ hasText: "Quest summary" });
+    await expect(summary).toBeVisible();
+    await expect(summary.getByRole("heading", { name: "Hirer", exact: true })).toHaveCount(0);
+    await expect(summary.getByRole("heading", { name: "Schedule and location", exact: true })).toHaveCount(0);
+    await expect(summary.getByRole("heading", { name: "Dispute and risk", exact: true })).toHaveCount(0);
+    const side = page.locator(".quest-full-record-grid .record-side");
+    await expect(side.getByRole("heading", { name: "Hirer", exact: true })).toBeVisible();
+    await expect(side.getByRole("heading", { name: "Schedule and location", exact: true })).toBeVisible();
+    await expect(side.getByRole("heading", { name: "Dispute and risk", exact: true })).toBeVisible();
+    await expect(page.locator(".record-primary > .record-panel").filter({ hasText: "Financial record" })).toHaveCount(0);
+    await expect(page.locator(".record-primary > .record-panel").filter({ hasText: "Overall Quest timeline" })).toHaveCount(0);
+    await expect(page.locator(".record-side > .record-panel").filter({ hasText: "Financial record" })).toBeVisible();
+    const timeline = page.locator("section.record-panel").filter({ has: page.getByRole("heading", { name: "Overall Quest timeline" }) });
     await expect(timeline.locator(".section-count")).toHaveText("2");
     await expect(timeline).toContainText("Draft → Open");
+    const editHistory = page.locator("section.record-panel").filter({ hasText: "Quest edit history" });
+    await expect(editHistory).toContainText("Title");
+    await expect(editHistory).toContainText("Inspect campus signs · draft → Inspect campus signs");
+    await expect(editHistory).toContainText("Original Quest Condition. → Complete the requested work and submit verifiable evidence.");
+    const sidePanelTitles = await side.locator(":scope > .record-panel").evaluateAll((panels) => panels.map((panel) => panel.querySelector(".record-panel-head h2")?.textContent?.trim()));
+    expect(sidePanelTitles.slice(0, 5)).toEqual(["Hirer", "Schedule and location", "Financial record", "Overall Quest timeline", "Dispute and risk"]);
     await expect(page.getByRole("link", { name: "Full Quest detail" })).toHaveCount(0);
 
     await page.reload();
@@ -231,6 +256,19 @@ test.describe("Quest route family", () => {
     await expect(drawer).toBeVisible();
     await expect(drawer).toContainText("Inspect campus signs");
     await expect(drawer.getByText("Quest summary", { exact: true })).toBeVisible();
+    const summary = drawer.locator(".quest-summary-context");
+    await expect(summary).toBeVisible();
+    await expect(summary.getByRole("heading", { name: "Hirer", exact: true })).toBeVisible();
+    await expect(summary.getByRole("heading", { name: "Schedule and location", exact: true })).toBeVisible();
+    await expect(summary.getByRole("heading", { name: "Dispute and risk", exact: true })).toHaveCount(0);
+    const disputeRisk = drawer.locator(".quest-detail-primary > .panel").filter({ hasText: "Dispute and risk" });
+    await expect(disputeRisk).toHaveCount(1);
+    await expect(disputeRisk.getByRole("heading", { name: "Dispute and risk", exact: true })).toBeVisible();
+    const panelTitles = await drawer.locator(".quest-detail-primary > .panel").evaluateAll((panels) => panels.map((panel) => panel.querySelector(".panel-head h2")?.textContent?.trim()));
+    expect(panelTitles.indexOf("Dispute and risk")).toBeGreaterThan(panelTitles.indexOf("Overall Quest timeline"));
+    await expect(drawer.locator(".quest-detail-side").getByRole("heading", { name: "Hirer", exact: true })).toHaveCount(0);
+    await expect(drawer.locator(".quest-detail-side").getByRole("heading", { name: "Schedule and location", exact: true })).toHaveCount(0);
+    await expect(drawer.locator(".quest-detail-side").getByRole("heading", { name: "Dispute and risk", exact: true })).toHaveCount(0);
     await expect(drawer.getByRole("link", { name: "Full Quest detail" })).toBeVisible();
 
     const drawerBox = await drawer.boundingBox();
@@ -247,6 +285,17 @@ test.describe("Quest route family", () => {
     await drawer.getByRole("link", { name: "Full Quest detail" }).click();
     await expect(page.locator(".quest-drawer")).toHaveCount(0);
     await expect(page.locator(".quest-detail-page h1")).toHaveText("Inspect campus signs");
+  });
+
+  test("counts only the selected Team roster for an assigned Team Quest", async ({ page }) => {
+    await page.goto("/quest");
+    await page.getByRole("link", { name: "Open Quest QST-TEAM" }).click();
+
+    const drawer = page.locator(".quest-drawer");
+    const candidates = drawer.locator(".quest-detail-primary > .panel").filter({ hasText: "Candidates" });
+    await expect(candidates.locator(".section-count")).toHaveText("3");
+    await expect(candidates.getByText("Demo Member 81", { exact: true })).toHaveCount(0);
+    await expect(candidates.locator(".related-row")).toHaveCount(3);
   });
 
   test("closes the detail drawer when clicking outside it", async ({ page }) => {

@@ -28,6 +28,11 @@ const copy = {
     signInToAdmin: "Sign in to admin",
     accessCopy: "Use your Kasetsart University email to access.",
     emailHelp: "Only @ku.th accounts can access this console.",
+    emailError: "Enter a valid Kasetsart University email ending in @ku.th.",
+    passwordError: "Enter a password with at least 8 characters.",
+    signInFailed: "Admin sign-in failed. Try again.",
+    passwordPlaceholder: "Enter your password",
+    brandAria: "KuQuest admin sign in",
     show: "Show",
     hide: "Hide",
   },
@@ -40,6 +45,11 @@ const copy = {
     signInToAdmin: "เข้าสู่ระบบผู้ดูแล",
     accessCopy: "ใช้อีเมล Kasetsart University เพื่อเข้าถึงระบบ",
     emailHelp: "เฉพาะบัญชี @ku.th เท่านั้นที่เข้าถึงระบบนี้ได้",
+    emailError: "ระบุอีเมลมหาวิทยาลัยเกษตรศาสตร์ที่ถูกต้องและลงท้ายด้วย @ku.th",
+    passwordError: "ระบุรหัสผ่านอย่างน้อย 8 ตัวอักษร",
+    signInFailed: "เข้าสู่ระบบ Admin ไม่สำเร็จ ลองอีกครั้ง",
+    passwordPlaceholder: "ระบุรหัสผ่าน",
+    brandAria: "เข้าสู่ระบบ Admin ของ KuQuest",
     show: "แสดง",
     hide: "ซ่อน",
   },
@@ -107,10 +117,10 @@ export function AdminLoginPage() {
     const normalizedEmail = email.trim().toLowerCase();
     const nextEmailError = /^[^\s@]+@ku\.th$/i.test(normalizedEmail)
       ? ""
-      : "Enter a valid Kasetsart University email ending in @ku.th.";
+      : copy[language].emailError;
     const nextPasswordError = password.length >= 8
       ? ""
-      : "Enter a password with at least 8 characters.";
+      : copy[language].passwordError;
 
     setEmailError(nextEmailError);
     setPasswordError(nextPasswordError);
@@ -135,16 +145,16 @@ export function AdminLoginPage() {
       );
       window.location.assign("/overview");
     } catch (error: unknown) {
-      setFormError(error instanceof Error ? error.message : "Admin sign-in failed. Try again.");
+      setFormError(error instanceof Error ? error.message : copy[language].signInFailed);
     } finally {
       setIsSubmitting(false);
     }
-  }, [email, password]);
+  }, [email, language, password]);
 
   return (
     <main className="login-shell" aria-labelledby="login-title">
       <section className="login-panel">
-        <Link className="login-brand" href="/login" aria-label="KuQuest admin sign in">
+        <Link className="login-brand" href="/login" aria-label={text.brandAria}>
           <Image src="/kuquest-logo.png?v=2" alt="" width={101} height={51} priority unoptimized />
           <span>KuQuest</span>
         </Link>
@@ -186,7 +196,7 @@ export function AdminLoginPage() {
             name="password"
             type={passwordVisible ? "text" : "password"}
             autoComplete="current-password"
-            placeholder="Enter your password"
+            placeholder={text.passwordPlaceholder}
             aria-describedby="password-error"
             aria-invalid={Boolean(passwordError)}
             value={password}

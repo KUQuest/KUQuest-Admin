@@ -63,13 +63,13 @@ export type OverviewCloneFallback = {
 };
 
 const questStateTones: Record<QuestState, string> = {
-  QUEST_DRAFT: "overview-bar-draft",
-  QUEST_OPEN: "overview-bar-open",
-  QUEST_ASSIGNED: "overview-bar-assigned",
-  QUEST_IN_PROGRESS: "overview-bar-progress",
-  QUEST_COMPLETED: "overview-bar-completed",
-  QUEST_CANCELLED: "overview-bar-cancelled",
-  QUEST_FAILED: "overview-bar-failed",
+  QUEST_DRAFT: "overview-quest-draft",
+  QUEST_OPEN: "overview-quest-open",
+  QUEST_ASSIGNED: "overview-quest-assigned",
+  QUEST_IN_PROGRESS: "overview-quest-in-progress",
+  QUEST_COMPLETED: "overview-quest-completed",
+  QUEST_CANCELLED: "overview-quest-cancelled",
+  QUEST_FAILED: "overview-quest-failed",
 };
 
 function countValue(value: unknown): number {

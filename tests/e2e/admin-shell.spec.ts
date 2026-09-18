@@ -140,12 +140,12 @@ test.describe("shared Admin shell", () => {
     await expect(finance).toBeVisible();
     await expect(finance.getByRole("heading", { name: "Finance Overview" })).toBeVisible();
     await expect(finance).toContainText("Local demo data");
-    await expect(finance).toContainText("Member Wallet Summary");
+    await expect(finance).toContainText("All Member Wallet Summary");
     await expect(finance).toContainText("Lifetime Volume");
     await expect(finance.getByText("Ledger Integrity", { exact: true })).toHaveCount(0);
     await expect(finance.getByText("Revenue", { exact: true })).toHaveCount(0);
     await expect(finance.getByText("Suspense", { exact: true })).toHaveCount(0);
-    for (const label of ["Spending balance", "Earnings balance", "Funding reserved", "Payout reserved", "Total circulating"]) {
+    for (const label of ["All Spending balance", "All Earnings balance", "All Funding reserved", "All Payout reserved", "Total circulating"]) {
       await expect(finance).toContainText(label);
     }
     const timeline = page.locator(".overview-command-center-timeline-scrollable");
@@ -244,6 +244,8 @@ test.describe("shared Admin shell", () => {
 
     const main = page.locator("#dispute-main");
     await expect(main.getByRole("heading", { level: 1, name: "Dispute Cases" })).toBeVisible();
+    await expect(main.locator("thead")).toContainText("Hirer");
+    await expect(main.locator("thead")).toContainText("Worker");
     const firstRow = main.locator('tbody tr[data-dispute-id="DSP-5201"]');
     await expect(firstRow).toHaveCount(1);
     await expect(firstRow.locator("td").first()).toContainText("DSP-5201");
@@ -258,7 +260,9 @@ test.describe("shared Admin shell", () => {
     const drawer = page.getByRole("dialog", { name: "Dispute Case details" });
     await expect(drawer).toBeVisible();
     await expect(drawer.locator(".moderation-case-workspace a:not(.btn)")).toHaveCount(0);
-    await expect(drawer.getByRole("link", { name: "Quest detail" })).toHaveAttribute("href", "/quest/QST-12001");
+    await expect(drawer.getByRole("link", { name: "Quest detail", exact: true })).toHaveAttribute("href", "/quest/QST-12001");
+    await expect(drawer.locator(".party-grid").first()).toContainText("Hirer");
+    await expect(drawer.locator(".party-grid").first()).toContainText("Worker");
     await expect(drawer.getByText("Hirer wins", { exact: true })).toBeVisible();
     await page.goBack();
     await expect(page).toHaveURL(/\/dispute$/);
@@ -268,10 +272,11 @@ test.describe("shared Admin shell", () => {
     await expect(drawer).toBeVisible();
     await drawer.getByLabel(/Worker wins/).check();
     await drawer.getByRole("button", { name: "Record Dispute Case decision" }).click();
-    const decisionDialog = page.getByRole("dialog", { name: "Confirm Worker allocation" });
+    const decisionDialog = page.getByRole("dialog", { name: "Confirm Worker wins" });
     await expect(decisionDialog).toBeVisible();
-    await decisionDialog.getByLabel("Reason code").selectOption("DISPUTE_EVIDENCE_REVIEW");
-    await decisionDialog.getByLabel("Worker allocation in Satang").fill("12501");
+    await expect(decisionDialog.getByLabel("Worker allocation in Satang")).toHaveCount(0);
+    await expect(decisionDialog.getByLabel("Reason code")).toHaveCount(0);
+    await expect(decisionDialog).toContainText("Full remaining amount");
     await decisionDialog.getByLabel("Reason for this decision").fill("The Worker completed the agreed Quest Condition.");
     await decisionDialog.getByRole("button", { name: "Confirm decision" }).click();
     await expect(decisionDialog).toBeHidden();
@@ -308,7 +313,7 @@ test.describe("shared Admin shell", () => {
     const decisionOpener = drawer.getByRole("button", { name: "Record Dispute Case decision" });
     await decisionOpener.click();
 
-    const decision = page.getByRole("dialog", { name: "Confirm Worker allocation" });
+    const decision = page.getByRole("dialog", { name: "Confirm Worker wins" });
     await expect(decision).toBeVisible();
     await expect(decision).toHaveAttribute("open", "");
     await expect.poll(() => page.evaluate(() => document.activeElement?.id)).toBe("dispute-reason-code");
@@ -364,9 +369,9 @@ test.describe("shared Admin shell", () => {
       "The Quest record confirms the reported conduct violation.",
     );
     await conductDecision.getByRole("button", { name: "Confirm decision" }).click();
-    await expect(conductQueue).toContainText("0 open");
+    await expect(conductQueue).toContainText("10 open");
     await expect(conductQueue).not.toContainText("CND-8301");
-    await expect(conductQueue.getByRole("link", { name: "Process next", exact: true })).toHaveCount(0);
+    await expect(conductQueue.getByRole("link", { name: "Process next", exact: true })).toHaveCount(1);
     await conductDrawer.getByRole("button", { name: "Close drawer" }).click();
 
     await expect(dashboard.locator(".overview-command-center-activity")).toContainText("Dispute Case Resolved");

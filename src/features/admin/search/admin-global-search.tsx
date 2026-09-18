@@ -242,7 +242,7 @@ export function AdminGlobalSearch({ open, onClose, initialData, initialError }: 
           <span>{translateText("Saved filters")}</span>
           {savedFilters.map((filter) => <button key={filter.id} className="link" type="button" onClick={() => applySavedFilter(filter)}>{filter.name}</button>)}
         </div> : null}
-        {saveMessage ? <output className="admin-global-search-message">{saveMessage}</output> : null}
+        {saveMessage ? <output className="admin-global-search-message">{translateText(saveMessage)}</output> : null}
         <div id="admin-global-search-results" aria-live="polite">
           {initialError && !data ? <p className="empty">{translateText(initialError)}</p> : null}
           {data?.source === "mock" ? <p className="api-data-notice admin-global-search-notice">{translateText("Fixture search is active. Results use local demo records.")}</p> : null}

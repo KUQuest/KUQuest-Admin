@@ -229,7 +229,7 @@ export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
         <div className="table-wrap" role="region" aria-label={translateText("Members table")}>
           <table className="data member-table">
             <caption>{translateText("Members")}</caption>
-            <thead><tr><th>{translateText("Student ID")}</th><th>{translateText("Member")}</th><th>{translateText("Member ID")}</th><th>{translateText("Academic profile")}</th><th>{translateText("Status")}</th><th>{translateText("Wallet status")}</th></tr></thead>
+            <thead><tr><th>{translateText("Member ID")}</th><th>{translateText("Member")}</th><th>{translateText("Student ID")}</th><th>{translateText("Academic profile")}</th><th>{translateText("Status")}</th><th>{translateText("Wallet status")}</th></tr></thead>
             <tbody>
               {visibleModels.map((model) => (
                 <tr
@@ -245,9 +245,9 @@ export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
                     }
                   }}
                 >
-                  <td><button className="table-link" type="button" aria-label={`${translateText("Open Member")} ${model.id}`} onClick={(event) => { event.stopPropagation(); openDrawer(model.id); }}>{model.studentId}</button></td>
+                  <td><button className="table-link" type="button" aria-label={`${translateText("Open Member")} ${model.id}`} onClick={(event) => { event.stopPropagation(); openDrawer(model.id); }}>{model.id}</button></td>
                   <td><Link className="user-record-link" href={memberRoutes.detail(model.id)} onClick={(event) => event.stopPropagation()}>{model.title}</Link><small>{model.email}</small></td>
-                  <td>{model.id}</td>
+                  <td>{model.studentId || "—"}</td>
                   <td>{[model.faculty, model.department, model.occupation].filter(Boolean).join(" · ") || "—"}</td>
                   <td>{model.memberStatus ? <span className={`badge ${memberStatusClass(model)}`}>{translateText(memberStatusText(model))}</span> : <span className="audit-note">{translateText(memberStatusText(model))}</span>}</td>
                   <td>{model.walletStatus ? <span className={`badge ${walletStatusClass(model)}`}>{translateText(walletStatusText(model))}</span> : <span className="audit-note">{translateText(walletStatusText(model))}</span>}</td>

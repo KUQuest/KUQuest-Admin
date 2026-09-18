@@ -252,8 +252,8 @@ export function disputeCaseModelFromRecord(
   const questState = questStateFor(record.questState ?? quest?.questStatus);
   const filerId = firstText(record.filerUserId, record.filerId);
   const respondentId = firstText(record.respondentUserId, record.respondentId);
-  const filerRole = firstText(record.filerRole) ?? "Filer";
-  const respondentRole = firstText(record.respondentRole) ?? "Respondent";
+  const filerRole = firstText(record.filerRole) ?? "Hirer";
+  const respondentRole = firstText(record.respondentRole) ?? "Worker";
   const workerId = firstText(
     record.resolvedWorkerId,
     record.workerId,
@@ -265,7 +265,7 @@ export function disputeCaseModelFromRecord(
     personName(record.filer),
     filerId ? `Member ${filerId}` : null,
     source === "mock" ? record.reporterName : null,
-    source === "mock" ? "Filer not provided" : null,
+    source === "mock" ? "Hirer not provided" : null,
   ) ?? missingValue;
   const respondentName = firstText(
     record.respondentName,
@@ -273,7 +273,7 @@ export function disputeCaseModelFromRecord(
     personName(record.worker),
     respondentId ? `Member ${respondentId}` : null,
     source === "mock" ? record.workerName : null,
-    source === "mock" ? "Respondent not provided" : null,
+    source === "mock" ? "Worker not provided" : null,
   ) ?? missingValue;
   const workerName = roleIs(filerRole, "Worker") ? filerName : respondentName;
   const amountAtRiskSatang = positiveInteger(record.amountAtRiskSatang)
@@ -328,13 +328,13 @@ export function disputeCaseModelFromRecord(
     filerName,
     filerHref: filerId ? memberRoutes.detail(filerId) : null,
     filerStatement: firstText(record.filerStatement, record.claim)
-      ?? (source === "mock" ? "The Filer submitted this Dispute Case for Admin review." : missingValue),
+      ?? (source === "mock" ? "The Hirer submitted this Dispute Case for Admin review." : missingValue),
     respondentId,
     respondentRole,
     respondentName,
     respondentHref: respondentId ? memberRoutes.detail(respondentId) : null,
     respondentStatement: firstText(record.respondentStatement, record.response)
-      ?? (source === "mock" ? "The Respondent statement was not provided in the demo record." : missingValue),
+      ?? (source === "mock" ? "The Worker statement was not provided in the demo record." : missingValue),
     amountAtRiskSatang,
     amountAtRiskLabel: formatSatang(amountAtRiskSatang, missingValue),
     sharedCapSatang,

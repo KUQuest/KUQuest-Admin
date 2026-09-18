@@ -55,7 +55,7 @@ export function AdminHeader({
           <path d="M4 7h16M4 12h16M4 17h16" />
         </svg>
       </button>
-      <span className="admin-shell-title">KUQuest Admin</span>
+      <span className="admin-shell-title">{translateText("KUQuest Admin")}</span>
       <button className="search admin-global-search-trigger" type="button" aria-label={translateText("Search marketplace records")} onClick={onOpenSearch}>
         <svg className="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
           <circle cx="11" cy="11" r="7" />
