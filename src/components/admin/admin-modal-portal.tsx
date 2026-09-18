@@ -1,7 +1,7 @@
 "use client";
 
 import { createPortal } from "react-dom";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -26,7 +26,7 @@ export function AdminModalPortal({ open, onClose, children }: AdminModalPortalPr
     setMounted(true);
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!mounted || !open) return;
     const layer = layerRef.current;
     if (!layer) return;
@@ -67,13 +67,13 @@ export function AdminModalPortal({ open, onClose, children }: AdminModalPortalPr
       if (event.target === layer) onCloseRef.current?.();
     };
 
-    layer.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown, true);
     layer.addEventListener("pointerdown", handlePointerDown);
     const frame = window.requestAnimationFrame(() => firstFocusable()?.focus({ preventScroll: true }));
 
     return () => {
       window.cancelAnimationFrame(frame);
-      layer.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("keydown", handleKeyDown, true);
       layer.removeEventListener("pointerdown", handlePointerDown);
       if (opener?.isConnected) opener.focus({ preventScroll: true });
     };
