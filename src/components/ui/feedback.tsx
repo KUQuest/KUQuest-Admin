@@ -1,7 +1,6 @@
 import type { HTMLAttributes, ReactNode } from "react";
-import { cn } from "./utils";
-
-export type BadgeTone = "neutral" | "info" | "success" | "warning" | "danger";
+import { cn } from "@/lib/utils";
+import type { BadgeTone } from "./badge";
 
 const badgeToneClasses: Record<BadgeTone, string> = {
   neutral: "bg-admin-soft text-admin-muted",
@@ -10,19 +9,6 @@ const badgeToneClasses: Record<BadgeTone, string> = {
   warning: "bg-admin-warning-soft text-admin-warning",
   danger: "bg-admin-danger-soft text-admin-danger",
 };
-
-export type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
-  tone?: BadgeTone;
-};
-
-export function Badge({ className, tone = "neutral", ...props }: BadgeProps) {
-  return (
-    <span
-      className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-sm font-medium leading-none", badgeToneClasses[tone], className)}
-      {...props}
-    />
-  );
-}
 
 export type AlertProps = HTMLAttributes<HTMLDivElement> & {
   tone?: BadgeTone;
@@ -41,10 +27,6 @@ export function Alert({ className, tone = "info", title, children, role = "statu
       <div>{children}</div>
     </div>
   );
-}
-
-export function Skeleton({ className, ...props }: HTMLAttributes<HTMLSpanElement>) {
-  return <span aria-hidden="true" className={cn("block animate-pulse rounded-admin-sm bg-admin-soft", className)} {...props} />;
 }
 
 export type EmptyStateProps = HTMLAttributes<HTMLDivElement> & {
