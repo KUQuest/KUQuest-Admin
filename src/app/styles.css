@@ -149,7 +149,7 @@ body {
   font-size: 14px;
   line-height: 1.45;
 }
-button,
+button:not([data-slot="button"]),
 input,
 textarea {
   font: inherit;

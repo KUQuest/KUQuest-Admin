@@ -94,6 +94,7 @@ test.describe("Report Case routes", () => {
     await expect(closeButton).toHaveCSS("min-height", "44px");
     await expect(closeButton).toHaveCSS("border-width", "1px");
     await expect(closeButton).toHaveCSS("border-color", "rgba(0, 0, 0, 0)");
+    await expect(closeButton).toHaveCSS("font-weight", "600");
   });
 
   test("gives clear feedback when no decision is selected and centers the confirmation form", async ({ page }) => {
