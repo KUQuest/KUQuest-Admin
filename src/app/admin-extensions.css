@@ -372,14 +372,6 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
     padding: 14px 20px 20px;
   }
 }
-.activity-log-dialog-backdrop {
-  position: fixed;
-  z-index: 70;
-  inset: 0;
-  display: grid;
-  place-items: stretch end;
-  background: var(--scrim-dialog);
-}
 .activity-log-dialog {
   position: static;
   width: min(560px, 100vw);
@@ -498,9 +490,6 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
 @media (max-width: 700px) {
   .activity-log-dialog {
     width: 100vw;
-  }
-  .activity-log-dialog-backdrop {
-    place-items: end stretch;
   }
 }
 @media (max-width: 1100px) {
