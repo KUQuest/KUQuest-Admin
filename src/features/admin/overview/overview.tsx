@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
+import { Card } from "../../../components/ui/card";
 import { isAdminMockEnabled } from "../../../lib/auth/admin-auth-mode";
 import type { AdminFinanceOverview } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
@@ -81,13 +82,13 @@ function FinanceOverviewSection({
 }) {
   const sourceLabel = isAdminApiEnabled() ? "Admin API" : "Local demo data";
   if (loading) {
-    return <section className="overview-command-center-finance overview-command-center-finance-member-focused" aria-labelledby="overview-finance-heading"><div className="overview-command-center-section-head"><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p>{translateText("Member Wallet totals and lifetime volume.")}</p></div><span>{translateText(sourceLabel)}</span></div><p className="overview-command-center-note">{translateText(isAdminApiEnabled() ? "Reading the Finance Overview from the Admin API…" : "Loading the Finance Overview…")}</p></section>;
+    return <Card as="section" className="overview-command-center-finance overview-command-center-finance-member-focused" aria-labelledby="overview-finance-heading"><div className="overview-command-center-section-head"><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p>{translateText("Member Wallet totals and lifetime volume.")}</p></div><span>{translateText(sourceLabel)}</span></div><p className="overview-command-center-note">{translateText(isAdminApiEnabled() ? "Reading the Finance Overview from the Admin API…" : "Loading the Finance Overview…")}</p></Card>;
   }
   if (error || !overview) {
-    return <section className="overview-command-center-finance overview-command-center-finance-member-focused" aria-labelledby="overview-finance-heading"><div className="overview-command-center-section-head"><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p>{translateText("Member Wallet totals and lifetime volume.")}</p></div><span>{translateText("Unavailable")}</span></div><p className="overview-command-center-note">{error ? translateText(error) : translateText("Finance Overview is not available.")}</p></section>;
+    return <Card as="section" className="overview-command-center-finance overview-command-center-finance-member-focused" aria-labelledby="overview-finance-heading"><div className="overview-command-center-section-head"><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p>{translateText("Member Wallet totals and lifetime volume.")}</p></div><span>{translateText("Unavailable")}</span></div><p className="overview-command-center-note">{error ? translateText(error) : translateText("Finance Overview is not available.")}</p></Card>;
   }
 
-  return <section className="overview-command-center-finance overview-command-center-finance-member-focused" aria-labelledby="overview-finance-heading">
+  return <Card as="section" className="overview-command-center-finance overview-command-center-finance-member-focused" aria-labelledby="overview-finance-heading">
     <div className="overview-command-center-section-head"><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p>{translateText("Member Wallet totals and lifetime volume.")}</p></div><span>{translateText(sourceLabel)}</span></div>
     <div className="overview-command-center-finance-groups">
       <FinanceGroup title={translateText("All Member Wallet Summary")}>
@@ -97,11 +98,11 @@ function FinanceOverviewSection({
         <div className="overview-command-center-finance-metrics"><FinanceMetric label={translateText("Top-ups deposited")} value={overview.volumeLifetime.totalTopUpDepositedSatang} /><FinanceMetric label={translateText("Payouts completed")} value={overview.volumeLifetime.totalPayoutCompletedSatang} /><FinanceMetric label={translateText("Platform fees earned")} value={overview.volumeLifetime.totalPlatformFeesEarnedSatang} /></div>
       </FinanceGroup>
     </div>
-  </section>;
+  </Card>;
 }
 
 function OverviewLoading({ message }: { message: string }) {
-  return <main id="dashboard-main" className="overview-command-center" tabIndex={-1} aria-busy="true"><section className="panel"><p>{message}</p></section></main>;
+  return <main id="dashboard-main" className="overview-command-center" tabIndex={-1} aria-busy="true"><Card as="section" className="panel"><p>{message}</p></Card></main>;
 }
 
 export function AdminOverview({
@@ -198,7 +199,7 @@ export function AdminOverview({
           </div>
         </header>
 
-        <section className="overview-command-center-command" aria-label={translateText("Work left")}>
+        <Card as="section" className="overview-command-center-command" aria-label={translateText("Work left")}>
           <div className="overview-command-center-hero">
             <div className="overview-command-center-hero-copy">
               <small>{translateText("Work left")}</small>
@@ -217,12 +218,12 @@ export function AdminOverview({
               ))}
             </div>
           </div>
-        </section>
+        </Card>
 
         <FinanceOverviewSection overview={financeOverview} loading={financeOverviewLoading} error={financeOverviewError} translateText={translateText} />
 
         <div className="overview-command-center-grid">
-          <section className="overview-command-center-table" aria-labelledby="overview-command-queue-heading">
+          <Card as="section" className="overview-command-center-table" aria-labelledby="overview-command-queue-heading">
             <div className="overview-command-center-section-head">
               <div><h2 id="overview-command-queue-heading">{translateText("Queue map")}</h2><p>{translateText("What needs attention now.")}</p></div>
               <span>{translateText("Current counts")}</span>
@@ -242,9 +243,9 @@ export function AdminOverview({
                 </li>;
               })}
             </ul>
-          </section>
+          </Card>
 
-          <section className="overview-command-center-activity" aria-labelledby="overview-command-activity-heading">
+          <Card as="section" className="overview-command-center-activity" aria-labelledby="overview-command-activity-heading">
             <div className="overview-command-center-section-head">
               <div><h2 id="overview-command-activity-heading"><Link href={activityRoutes.list()}>{translateText("Activity Log")}</Link></h2><p>{translateText("Recent Admin changes.")}</p></div>
               <span>{translateText("Latest")} {model.activity.length}</span>
@@ -260,11 +261,11 @@ export function AdminOverview({
                 ))}
               </ol>
             ) : <p className="overview-command-center-note">{translateText("No administrative activity is available.")}</p>}
-          </section>
+          </Card>
         </div>
 
         <div className="overview-command-center-snapshot">
-          <section className="overview-command-center-snapshot-card" aria-labelledby="overview-command-quest-heading">
+          <Card as="section" className="overview-command-center-snapshot-card" aria-labelledby="overview-command-quest-heading">
             <div className="overview-command-center-section-head"><div><h2 id="overview-command-quest-heading">{translateText("Quest States")}</h2><p>{translateText("Current distribution across Quests.")}</p></div><span>{countLabel(model.questTotal)} {translateText("total")}</span></div>
             <ul className="overview-command-center-status-list">
               {model.questStates.map((entry) => (
@@ -275,9 +276,9 @@ export function AdminOverview({
                 </li>
               ))}
             </ul>
-          </section>
+          </Card>
 
-          <section className="overview-command-center-snapshot-card" aria-labelledby="overview-command-members-heading">
+          <Card as="section" className="overview-command-center-snapshot-card" aria-labelledby="overview-command-members-heading">
             <div className="overview-command-center-section-head"><div><h2 id="overview-command-members-heading">{translateText("Members")}</h2><p>{translateText("Count by Member status.")}</p></div><span>{translateText(model.memberStatusSource)}</span></div>
             <ul className="overview-command-center-status-list">
               {model.memberStatusCounts.map((entry) => (
@@ -289,9 +290,9 @@ export function AdminOverview({
               ))}
             </ul>
             {model.memberStatusSource === "Unavailable" ? <p className="overview-command-center-note">{translateText("Member status counts are not provided by the Admin API.")}</p> : model.memberStatusSource === "Local fallback" ? <p className="overview-command-center-note">{translateText("Member status counts use local fallback data because the Admin API does not provide them.")}</p> : null}
-          </section>
+          </Card>
 
-          <section className="overview-command-center-snapshot-card" aria-labelledby="overview-command-wallets-heading">
+          <Card as="section" className="overview-command-center-snapshot-card" aria-labelledby="overview-command-wallets-heading">
             <div className="overview-command-center-section-head"><div><h2 id="overview-command-wallets-heading">{translateText("Wallets")}</h2><p>{translateText("Count by Wallet status.")}</p></div><span>{translateText(model.walletStatusSource)}</span></div>
             <ul className="overview-command-center-status-list">
               {model.walletStatusCounts.map((entry) => (
@@ -303,7 +304,7 @@ export function AdminOverview({
               ))}
             </ul>
             {model.walletStatusSource === "Unavailable" ? <p className="overview-command-center-note">{translateText("Wallet status counts are not provided by the Admin API.")}</p> : model.walletStatusSource === "Local fallback" ? <p className="overview-command-center-note">{translateText("Wallet status counts use local fallback data because the Admin API does not provide them.")}</p> : null}
-          </section>
+          </Card>
         </div>
       </main>
     </>
