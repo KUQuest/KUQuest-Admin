@@ -109,8 +109,7 @@
   margin: 0 0 12px;
   font-size: 14px;
 }
-.edit-history-content > dl,
-.edit-change dl {
+.edit-history-content > dl {
   margin: 0;
 }
 .edit-history-content > dl > div {
@@ -119,57 +118,17 @@
   gap: 10px;
   padding: 5px 0;
 }
-.edit-history-content dt,
-.edit-change dt {
+.edit-history-content dt {
   color: var(--muted);
   font-size: 11px;
 }
-.edit-history-content dd,
-.edit-change dd {
+.edit-history-content dd {
   margin: 0;
-}
-.edit-change-list {
-  margin-top: 14px;
-  border-top: 1px solid var(--border);
-}
-.edit-change {
-  padding: 13px 0;
-  border-bottom: 1px solid var(--border);
-}
-.edit-change > div:first-child {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-.edit-change > div:first-child span {
-  color: var(--warn);
-  font-size: 11px;
-  font-weight: 600;
-}
-.edit-change dl {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-.edit-change dl > div {
-  padding: 9px 10px;
-  border-radius: 8px;
-  background: var(--soft);
-}
-.edit-change dd {
-  margin-top: 3px;
-  font-size: 12px;
 }
 @media (max-width: 650px) {
   .edit-history-entry {
     grid-template-columns: 1fr;
     gap: 12px;
-  }
-  .edit-change dl {
-    grid-template-columns: 1fr;
-    gap: 8px;
   }
 }
 .dispute-summary p {

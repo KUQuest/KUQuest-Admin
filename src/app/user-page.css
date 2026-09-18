@@ -62,7 +62,6 @@
 .user-summary-identity a:hover {
   text-decoration: underline;
 }
-.user-summary-badges,
 .user-detail-tags {
   display: flex;
   flex-wrap: wrap;
@@ -500,24 +499,6 @@
 .user-activity-list article:last-child {
   padding-bottom: 0;
 }
-.user-activity-dot {
-  position: relative;
-  display: block;
-  width: 7px;
-  height: 7px;
-  margin-top: 5px;
-  border-radius: 50%;
-  background: var(--accent);
-}
-.user-activity-list article:not(:last-child) .user-activity-dot::after {
-  position: absolute;
-  top: 7px;
-  left: 3px;
-  width: 1px;
-  height: calc(100% + 18px);
-  background: var(--border);
-  content: "";
-}
 .user-activity-list strong,
 .user-activity-list time {
   display: block;
@@ -567,10 +548,6 @@
 .user-detail-table .link {
   margin-right: 5px;
 }
-.danger-link {
-  color: var(--danger) !important;
-}
-
 @media (max-width: 900px) {
   .user-quest-history-row {
     grid-template-columns: 1fr;
@@ -682,10 +659,8 @@
 
 .admin-shell .user-detail-page .user-context-list > div > span,
 .admin-shell .user-detail-page .user-activity-list span,
-.admin-shell .user-detail-page .user-payout-summary span,
 .admin-shell .user-drawer-detail .user-context-list > div > span,
-.admin-shell .user-drawer-detail .user-activity-list span,
-.admin-shell .user-drawer-detail .user-payout-summary span {
+.admin-shell .user-drawer-detail .user-activity-list span {
   font-size: var(--member-font-meta);
   line-height: 1.4;
 }
@@ -693,11 +668,9 @@
 .admin-shell .user-detail-page .user-context-list > div > strong,
 .admin-shell .user-detail-page .user-context-list > div > .link,
 .admin-shell .user-detail-page .user-activity-list strong,
-.admin-shell .user-detail-page .user-payout-summary strong,
 .admin-shell .user-drawer-detail .user-context-list > div > strong,
 .admin-shell .user-drawer-detail .user-context-list > div > .link,
-.admin-shell .user-drawer-detail .user-activity-list strong,
-.admin-shell .user-drawer-detail .user-payout-summary strong {
+.admin-shell .user-drawer-detail .user-activity-list strong {
   font-size: var(--member-font-value);
   line-height: 1.4;
 }
