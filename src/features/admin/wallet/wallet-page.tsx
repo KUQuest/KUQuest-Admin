@@ -160,15 +160,15 @@ function WalletStatusCommandDialog({
       </div>
       <div className="wallet-command-body">
         <p className="wallet-command-intro">{translateText("Review the status change before saving. Every Wallet status change requires a reason.")}</p>
-        <section className="wallet-status-preview" aria-label={translateText("Wallet status change preview")}>
+        <Card as="section" className="wallet-status-preview" aria-label={translateText("Wallet status change preview")}>
           <div><span>{translateText("Wallet")}</span><strong>{row.id}</strong></div>
           <div><span>{translateText("Member")}</span><strong>{row.memberName}</strong></div>
           <div className="wallet-status-preview-transition"><span>{translateText("Wallet Status")}</span><strong><Badge status={row.status} /><span aria-hidden="true"> → </span><Badge status={targetStatus} /></strong></div>
-        </section>
-        <section className={`wallet-status-consequences wallet-status-consequences-${targetStatus.toLocaleLowerCase()}`} aria-label={translateText("Wallet status consequences")}>
+        </Card>
+        <Card as="section" className={`wallet-status-consequences wallet-status-consequences-${targetStatus.toLocaleLowerCase()}`} aria-label={translateText("Wallet status consequences")}>
           <strong>{translateText(targetStatus === "ACTIVE" ? "Restore effect" : targetStatus === "FROZEN" ? "Temporary hold effect" : "Review hold effect")}</strong>
           <ul>{transitionCopy.map((copy) => <li key={copy}>{translateText(copy)}</li>)}</ul>
-        </section>
+        </Card>
         <label htmlFor="wallet-status-reason">{translateText("Reason")} <span aria-hidden="true">*</span>
           <textarea id="wallet-status-reason" rows={4} minLength={1} maxLength={500} required value={reason} aria-invalid={validationError ? "true" : undefined} aria-describedby={validationError ? "wallet-status-reason-error" : undefined} onChange={(event) => { setReason(event.target.value); setValidationError(null); }} autoFocus />
         </label>
@@ -227,7 +227,7 @@ function WalletSummary({
     </div>
     : null;
 
-  return <section className="wallet-funds-summary wallet-finance-summary" aria-labelledby="wallet-summary-heading"><div className="wallet-finance-summary-heading"><div><strong id="wallet-summary-heading">{translateText("Member Wallet Summary")}</strong><small>{translateText(dataSource === "api" ? "Aggregate values from the Admin API" : "All Wallets · all statuses")}</small></div></div>{content}</section>;
+  return <Card as="section" className="wallet-funds-summary wallet-finance-summary" aria-labelledby="wallet-summary-heading"><div className="wallet-finance-summary-heading"><div><strong id="wallet-summary-heading">{translateText("Member Wallet Summary")}</strong><small>{translateText(dataSource === "api" ? "Aggregate values from the Admin API" : "All Wallets · all statuses")}</small></div></div>{content}</Card>;
 }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {

@@ -565,7 +565,7 @@ function ConductReportDrawerBody({
           compact
           member={{ id: model.reportedMemberId, name: model.reportedMemberName, href: model.reportedMemberHref }}
         />
-        <section className="section report-decision-panel">
+        <Card as="section" className="section report-decision-panel">
           <h3>{model.isActionable ? translateText("Conduct Report decision") : translateText("Resolution")}</h3>
           <DecisionControls
             model={model}
@@ -575,7 +575,7 @@ function ConductReportDrawerBody({
             onSelect={onSelectChoice}
             onStart={onStartDecision}
           />
-        </section>
+        </Card>
       </ModerationCaseWorkspace>
       {actionReceipt}
       {compact && (

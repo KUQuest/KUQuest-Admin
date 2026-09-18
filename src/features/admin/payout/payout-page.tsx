@@ -272,10 +272,10 @@ function PayoutDetailContent({
   </Section>;
 
   const payoutOutcomeSection = outcomeReason && (detail.status === "CANCELLED" || detail.status === "FAILED") ? (
-    <section className="section payout-outcome payout-outcome-section">
+    <Card as="section" className="section payout-outcome payout-outcome-section">
       <h3>{translateText(detail.status === "FAILED" ? "Transfer failure reason" : "Rejection reason")}</h3>
       <p>{translateText(payoutReasonLabel(outcomeReason))}</p>
-    </section>
+    </Card>
   ) : null;
 
   const actionReceiptView = actionReceipt ? (
