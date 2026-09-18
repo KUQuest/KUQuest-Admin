@@ -95,6 +95,14 @@ test.describe("Report Case routes", () => {
     await expect(closeButton).toHaveCSS("border-width", "1px");
     await expect(closeButton).toHaveCSS("border-color", "rgba(0, 0, 0, 0)");
     await expect(closeButton).toHaveCSS("font-weight", "600");
+    const actionTextStyles = await page.locator(".full-record-head .full-record-actions [data-slot=\"button\"]").evaluateAll((elements) => elements.map((element) => {
+      const style = getComputedStyle(element);
+      return { fontFamily: style.fontFamily, fontWeight: style.fontWeight };
+    }));
+    expect(actionTextStyles).toHaveLength(2);
+    expect(new Set(actionTextStyles.map((style) => style.fontFamily)).size).toBe(1);
+    expect(actionTextStyles[0]?.fontFamily).toContain("Figtree");
+    expect(new Set(actionTextStyles.map((style) => style.fontWeight))).toEqual(new Set(["600"]));
   });
 
   test("gives clear feedback when no decision is selected and centers the confirmation form", async ({ page }) => {
