@@ -132,7 +132,7 @@ export function AdminSidebar({
         <Image className="block size-10 w-20 shrink-0 object-contain" src="/kuquest-logo.png?v=2" alt="" width={101} height={51} priority unoptimized />
         <span>KuQuest</span>
       </div>
-      <nav className="grid gap-0.5" aria-label={translateText("Primary navigation")}>
+      <nav className="gap-0.5" aria-label={translateText("Primary navigation")}>
         {primaryAdminNavigation.map((item) => (
           <AdminNavigationLink
             active={item.key === activeKey}
@@ -145,7 +145,7 @@ export function AdminSidebar({
       </nav>
       <div className="nav-group mt-[22px]">
         <small>{translateText("SYSTEM")}</small>
-        <nav className="grid gap-0.5" aria-label={translateText("System navigation")}>
+        <nav className="gap-0.5" aria-label={translateText("System navigation")}>
           {systemAdminNavigation.map((item) => (
             <AdminNavigationLink
               active={item.key === activeKey}

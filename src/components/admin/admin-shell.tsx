@@ -114,7 +114,7 @@ export function AdminShell({ identity, children }: AdminShellProps) {
 
   return (
     <AdminShellProvider language={language} translateText={translateText} openGlobalSearch={openGlobalSearch}>
-      <div className="admin-shell-layout admin-shell min-h-screen grid grid-cols-[240px_minmax(0,1fr)] grid-rows-[56px_1fr] max-[900px]:grid-cols-1">
+      <div className="admin-shell-layout admin-shell min-h-screen grid !grid-cols-[240px_minmax(0,1fr)] grid-rows-[56px_1fr] max-[900px]:!grid-cols-1">
         <AdminSidebar
           open={mobileNavigationOpen}
           onNavigate={closeMobileNavigation}
