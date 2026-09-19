@@ -245,6 +245,9 @@ test.describe("Quest route family", () => {
     await expect(drawer.locator(".quest-detail-side").getByRole("heading", { name: "Schedule and location", exact: true })).toHaveCount(0);
     await expect(drawer.locator(".quest-detail-side").getByRole("heading", { name: "Dispute and risk", exact: true })).toHaveCount(0);
     await expect(drawer.getByRole("link", { name: "Full Quest detail" })).toBeVisible();
+    const commandActions = drawer.locator(".quest-command-actions");
+    await expect(commandActions).toHaveCSS("position", "sticky");
+    await expect(commandActions.locator(".btn")).toHaveCount(3);
 
     const drawerBox = await drawer.boundingBox();
     const viewport = page.viewportSize();

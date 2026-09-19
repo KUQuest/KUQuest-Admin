@@ -4227,21 +4227,61 @@ dialog.drawer.dispute-case-drawer .field-error {
   box-shadow: var(--shadow-card);
 }
 
-.admin-shell dialog.drawer .drawer-content-flow > .drawer-actions {
+.admin-shell dialog.drawer .drawer-content-flow > .drawer-actions,
+.admin-shell dialog.drawer.quest-style-drawer > .drawer-body .drawer-content-flow > .drawer-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin: 0;
-  padding: 18px 0 0;
+  position: sticky;
+  bottom: -28px;
+  z-index: 4;
+  margin: 18px -24px -28px;
+  padding: 14px 24px;
   border-top: 1px solid var(--border);
-  background: transparent;
-  box-shadow: none;
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  box-shadow: 0 -6px 18px color-mix(in srgb, var(--text) 9%, transparent);
 }
 
-.admin-shell dialog.drawer .drawer-content-flow > .drawer-actions .btn {
+.admin-shell dialog.drawer .drawer-content-flow > .drawer-actions .btn,
+.admin-shell dialog.drawer.quest-style-drawer > .drawer-body .drawer-content-flow > .drawer-actions .btn {
   flex: 1 1 180px;
   min-block-size: 44px;
   text-align: center;
+}
+
+.admin-shell dialog.drawer .payout-decision-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.admin-shell dialog.drawer .payout-decision-actions > * {
+  inline-size: 100%;
+}
+
+.admin-shell dialog.drawer .quest-command-actions {
+  position: sticky;
+  bottom: -28px;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  margin: 18px -24px -28px;
+  padding: 14px 24px;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  box-shadow: 0 -6px 18px color-mix(in srgb, var(--text) 9%, transparent);
+}
+
+.admin-shell dialog.drawer .quest-command-actions .btn {
+  inline-size: 100%;
+  min-block-size: 44px;
+  margin: 0;
+  text-align: center;
+}
+
+.admin-shell dialog.drawer .quest-command-actions .quest-full-detail-link {
+  margin-inline-end: 0;
 }
 
 /* The shared shell owns the outer padding. Do not create a second inset in
@@ -4259,6 +4299,18 @@ dialog.drawer.dispute-case-drawer .field-error {
 
   .admin-shell dialog.drawer .drawer-content-flow > .drawer-actions .btn {
     flex-basis: 100%;
+  }
+
+  .admin-shell dialog.drawer .drawer-content-flow > .drawer-actions,
+  .admin-shell dialog.drawer .quest-command-actions {
+    bottom: -24px;
+    margin-inline: -16px;
+    margin-block-end: -24px;
+    padding-inline: 16px;
+  }
+
+  .admin-shell dialog.drawer .payout-decision-actions {
+    grid-template-columns: 1fr;
   }
 }
 

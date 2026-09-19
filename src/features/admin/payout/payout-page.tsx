@@ -300,7 +300,7 @@ function PayoutDetailContent({
       <p>{canDecide
         ? translateText("Review the masked destination and API-provided amounts before deciding this Payout.")
         : translateText("The Payout needs a Provider status check before the next Admin action.")}</p>
-      {renderDecisionActions ? <div className="mt-4 flex flex-wrap items-center gap-2">
+      {renderDecisionActions ? <div className="payout-decision-actions mt-4 flex flex-wrap items-center gap-2">
         <PayoutDecisionActions
           detail={detail}
           onCommand={onCommand}

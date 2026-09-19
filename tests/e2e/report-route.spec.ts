@@ -36,6 +36,9 @@ test.describe("Report Case routes", () => {
       "Report decision",
     ]);
     await expect(drawer.locator(".moderation-case-workspace a:not(.btn)")).toHaveCount(0);
+    const drawerActions = drawer.locator(".report-case-drawer-detail > .drawer-actions");
+    await expect(drawerActions).toHaveCSS("position", "sticky");
+    await expect(drawerActions.locator("a, button")).toHaveCount(2);
 
     await page.goBack();
     await expect(page).toHaveURL(/\/report$/);
