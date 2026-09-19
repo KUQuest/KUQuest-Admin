@@ -4261,3 +4261,31 @@ dialog.drawer.dispute-case-drawer .field-error {
     flex-basis: 100%;
   }
 }
+
+/* Keep the header and action bar fixed while the record content scrolls.
+   Without a constrained flex child, the body grows with its content and the
+   browser scrolls the dialog instead of the drawer content region. */
+.admin-shell dialog.drawer,
+.admin-shell .activity-log-dialog {
+  display: flex;
+  flex-direction: column;
+  block-size: 100dvh;
+  max-block-size: 100dvh;
+  overflow: hidden;
+}
+
+.admin-shell dialog.drawer > .drawer-top,
+.admin-shell .activity-log-dialog > .drawer-top,
+.admin-shell dialog.drawer > .drawer-actions,
+.admin-shell .activity-log-dialog > .drawer-actions {
+  flex: 0 0 auto;
+}
+
+.admin-shell dialog.drawer > .admin-drawer-content,
+.admin-shell .activity-log-dialog > .admin-drawer-content {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}

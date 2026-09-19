@@ -132,6 +132,45 @@ test.describe("shared Admin shell", () => {
     await expect(page.getByRole("dialog", { name: "Dispute Case details" })).toBeVisible();
   });
 
+  test("scrolls the content area inside Quest, Wallet, and Activity drawers", async ({ page }) => {
+    await signIn(page);
+
+    const drawerCases = [
+      {
+        route: "/quest",
+        open: async () => page.locator("tbody tr").first().click(),
+      },
+      {
+        route: "/wallet",
+        open: async () => page.getByRole("button", { name: "Open Wallet WAL-1001" }).click(),
+      },
+      {
+        route: "/activity",
+        open: async () => page.getByRole("button", { name: "View activity details" }).first().click(),
+      },
+    ] as const;
+
+    for (const drawerCase of drawerCases) {
+      await page.goto(drawerCase.route);
+      await drawerCase.open();
+
+      const drawer = page.locator("dialog.drawer.open");
+      const content = drawer.locator(":scope > .admin-drawer-content");
+      await expect(drawer).toBeVisible();
+      await expect.poll(() => content.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
+
+      await content.evaluate((element) => { element.scrollTop = 0; });
+      const contentBox = await content.boundingBox();
+      expect(contentBox).not.toBeNull();
+      await page.mouse.move(contentBox!.x + 20, contentBox!.y + 350);
+      await page.waitForTimeout(50);
+      await page.mouse.wheel(0, 600);
+      await expect.poll(() => content.evaluate((element) => element.scrollTop > 0)).toBe(true);
+
+      await drawer.locator(":scope > .drawer-top").getByRole("button").click();
+    }
+  });
+
   test("shows the Finance Overview summary without platform Revenue or Suspense", async ({ page }) => {
     await signIn(page);
     await page.goto("/overview");
