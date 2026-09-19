@@ -24,3 +24,8 @@ export const adminRecordSideFacts = "grid gap-[14px] [&_span]:block [&_span]:tex
 
 export const adminRecordCount = "inline-flex min-w-[22px] items-center justify-center rounded-full bg-admin-soft px-2 py-0.5 text-xs font-semibold leading-[1.35] text-admin-muted";
 
+export const adminBoardCount = "ml-auto text-sm text-admin-muted";
+
+export const adminBoardPagination = "flex items-center justify-between gap-3 border-t border-admin-border px-3.5 py-2.5";
+
+export const adminBoardTable = "min-w-[51.25rem] [&_tbody>tr]:cursor-pointer [&_tbody>tr>td>strong]:text-xs";

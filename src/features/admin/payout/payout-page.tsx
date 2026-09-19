@@ -19,8 +19,9 @@ import { AdminPageHeader } from "../../../components/admin/admin-page-header";
 import { AdminStatusAlert } from "../../../components/admin/admin-status-alert";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { RecordStatusBar } from "../../../components/admin/record-status-bar";
+import { adminBoardPagination, adminBoardTable, adminRecordFact, adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import { Badge as UiBadge, Button as UiButton, Card, CardHeader, Input, PageSizeControls, Pagination, Table, Tabs, TabsList, TabsTrigger, type ButtonSize } from "../../../components/ui";
+import { Badge as UiBadge, Button as UiButton, Card, CardHeader, EmptyState, Input, PageSizeControls, Pagination, Table, Tabs, TabsList, TabsTrigger, type ButtonSize } from "../../../components/ui";
 import { payoutRoutes } from "../admin-routes";
 import {
   adminApi,
@@ -104,15 +105,15 @@ function Badge({ status }: { status: PayoutStatus }) {
 
 function Section({ title, children, className }: { title: string; children: ReactNode; className?: string }) {
   return (
-    <Card as="section" className={`section${className ? ` ${className}` : ""}`}>
-      <CardHeader flush><h3>{title}</h3></CardHeader>
+    <Card as="section" className={`${adminRecordSection}${className ? ` ${className}` : ""}`}>
+      <CardHeader flush className={adminRecordHeader}><h3 className={adminRecordHeading}>{title}</h3></CardHeader>
       {children}
     </Card>
   );
 }
 
 function Fact({ label, children }: { label: string; children: ReactNode }) {
-  return <div className="fact"><span>{label}</span><strong>{children}</strong></div>;
+  return <div className={adminRecordFact}><span>{label}</span><strong>{children}</strong></div>;
 }
 
 function PayoutDecisionActions({
@@ -211,7 +212,7 @@ function PayoutDetailContent({
   const fullSectionClass = fullDetail ? "!p-[18px] border border-admin-border rounded-admin-md bg-admin-surface shadow-admin-card [&_h3]:mb-[14px]" : "";
 
   const payoutSummarySection = <Section title={translateText("Payout summary")} className={`payout-summary-section ${fullDetail ? "col-span-full" : ""} ${fullSectionClass}`}>
-    <div className="facts payout-detail-facts">
+    <div className={`${adminRecordFacts} payout-detail-facts`}>
       <Fact label={translateText("Status")}><Badge status={detail.status} /></Fact>
       <Fact label={translateText("Payout record")}>{detail.id}</Fact>
       <Fact label={translateText("Student")}>{detail.student.name}</Fact>
@@ -235,7 +236,7 @@ function PayoutDetailContent({
   </Section>;
 
   const payoutDestinationSection = <Section title={translateText("Payout Destination")} className={`payout-destination-section ${fullSectionClass}`}>
-    <div className="facts">
+    <div className={adminRecordFacts}>
       <Fact label={translateText("Bank")}>{detail.destination.bankName}</Fact>
       <Fact label={translateText("Bank code")}>{detail.destination.bankCode}</Fact>
       <Fact label={translateText("Destination type")}>{translateText(readableValue(detail.destination.type))}</Fact>
@@ -276,8 +277,8 @@ function PayoutDetailContent({
   </Section>;
 
   const payoutOutcomeSection = outcomeReason && (detail.status === "CANCELLED" || detail.status === "FAILED") ? (
-    <Card as="section" className={`section payout-outcome payout-outcome-section ${fullSectionClass}`}>
-      <CardHeader flush><h3>{translateText(detail.status === "FAILED" ? "Transfer failure reason" : "Rejection reason")}</h3></CardHeader>
+    <Card as="section" className={`${adminRecordSection} payout-outcome payout-outcome-section ${fullSectionClass}`}>
+      <CardHeader flush className={adminRecordHeader}><h3 className={adminRecordHeading}>{translateText(detail.status === "FAILED" ? "Transfer failure reason" : "Rejection reason")}</h3></CardHeader>
       <p>{translateText(payoutReasonLabel(outcomeReason))}</p>
     </Card>
   ) : null;
@@ -725,8 +726,8 @@ export function AdminPayoutPage({
           <PageSizeControls value={pageSize} translateText={translateText} onChange={choosePageSize} />
           <span className="ml-auto text-sm text-admin-muted max-[600px]:hidden" aria-live="polite">{translateText("Showing")} {pageStart}–{pageEnd} {translateText("of")} {sortedRows.length} {translateText("results")}</span>
         </div>
-        {!sortedRows.length ? <div className="empty"><h2>{translateText("No matching Payouts")}</h2><p>{translateText("There are no Payouts in this view.")}</p><UiButton variant="outline" type="button" onClick={() => { setQuery(""); setTab("all"); }}>{translateText("Reset view")}</UiButton></div> : <div className="table-wrap" aria-label={translateText("Payouts table")}><Table className="data"><caption>{translateText("Payouts")}</caption><thead><tr><SortableHeader label={translateText("Payout")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Student")} sortKey="student" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Created At")} sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Principal")} sortKey="amount" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr className="payout-row" data-payout-id={row.id} data-payout-drawer-trigger={row.id} key={row.id} tabIndex={0} aria-label={`${translateText("Open Payout")} ${row.id}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; void router.push(payoutRoutes.detail(row.id)); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); void router.push(payoutRoutes.detail(row.id)); } }}><td><Link className="row-record-button" data-payout-drawer-trigger={row.id} href={payoutRoutes.detail(row.id)} aria-label={`${translateText("Open Payout")} ${row.id}`}>{row.id}</Link></td><td><strong>{row.studentName}</strong><small>{row.studentEmail}</small></td><td>{formatPayoutDate(row.createdAt)}</td><td className="money">{formatPayoutMoney(row.principalSatang)}</td><td><Badge status={row.status} /></td></tr>)}</tbody></Table></div>}
-        {sortedRows.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPage} ariaLabel={translateText("Payouts pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className="table-pagination" /> : null}
+        {!sortedRows.length ? <EmptyState title={translateText("No matching Payouts")} description={translateText("There are no Payouts in this view.")} action={<UiButton variant="outline" type="button" onClick={() => { setQuery(""); setTab("all"); }}>{translateText("Reset view")}</UiButton>} /> : <div className="overflow-x-auto" aria-label={translateText("Payouts table")}><Table className={adminBoardTable}><caption>{translateText("Payouts")}</caption><thead><tr><SortableHeader label={translateText("Payout")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Student")} sortKey="student" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Created At")} sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Principal")} sortKey="amount" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr className="payout-row" data-payout-id={row.id} data-payout-drawer-trigger={row.id} key={row.id} tabIndex={0} aria-label={`${translateText("Open Payout")} ${row.id}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; void router.push(payoutRoutes.detail(row.id)); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); void router.push(payoutRoutes.detail(row.id)); } }}><td><Link className="row-record-button" data-payout-drawer-trigger={row.id} href={payoutRoutes.detail(row.id)} aria-label={`${translateText("Open Payout")} ${row.id}`}>{row.id}</Link></td><td><strong>{row.studentName}</strong><small>{row.studentEmail}</small></td><td>{formatPayoutDate(row.createdAt)}</td><td className="money">{formatPayoutMoney(row.principalSatang)}</td><td><Badge status={row.status} /></td></tr>)}</tbody></Table></div>}
+        {sortedRows.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPage} ariaLabel={translateText("Payouts pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className={adminBoardPagination} /> : null}
       </Card>
     </main>
   );

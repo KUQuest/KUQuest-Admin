@@ -6,6 +6,7 @@ import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminPageHeader } from "../../../components/admin/admin-page-header";
 import { Button, Card, CardHeader } from "../../../components/ui";
 import { memberRoutes } from "../admin-routes";
+import { adminRecordFact, adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
 import { walletStatusLabel, type WalletStatus } from "../domain/rulebook";
 import {
   formatWalletDate,
@@ -29,15 +30,15 @@ export function AdminWalletStatementPage({ data }: { data: WalletStatementPageDa
     <Card as="section" className="overflow-hidden" aria-label={translateText("Wallet Statement")}>
       <Card as="section" className="wallet-record">
         <div className="drawer-title"><span className="att-icon neutral">W</span><div><h2>{wallet.memberName}</h2><p>{wallet.email} · {wallet.memberId}</p></div></div>
-        <div className="facts">
-          <div className="fact"><span>{translateText("Wallet Status")}</span><strong><WalletStatusBadge status={wallet.status} /></strong></div>
-          <div className="fact"><span>{translateText("Current Wallet Balance")}</span><strong>{formatWalletMoney(wallet.currentBalanceSatang)}</strong></div>
-          <div className="fact"><span>{translateText("Wallet record")}</span><strong>{wallet.id}</strong></div>
-          <div className="fact"><span>{translateText("Latest Wallet Transaction Date")}</span><strong>{formatWalletDate(wallet.latestTransactionAt)}</strong></div>
+        <div className={adminRecordFacts}>
+          <div className={adminRecordFact}><span>{translateText("Wallet Status")}</span><strong><WalletStatusBadge status={wallet.status} /></strong></div>
+          <div className={adminRecordFact}><span>{translateText("Current Wallet Balance")}</span><strong>{formatWalletMoney(wallet.currentBalanceSatang)}</strong></div>
+          <div className={adminRecordFact}><span>{translateText("Wallet record")}</span><strong>{wallet.id}</strong></div>
+          <div className={adminRecordFact}><span>{translateText("Latest Wallet Transaction Date")}</span><strong>{formatWalletDate(wallet.latestTransactionAt)}</strong></div>
         </div>
       </Card>
-      <Card as="section" className="section">
-        <CardHeader flush><h2>{translateText("Wallet Statement")}</h2></CardHeader>
+      <Card as="section" className={adminRecordSection}>
+        <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Wallet Statement")}</h2></CardHeader>
         <p>{translateText("Committed and sealed Ledger Transactions affecting this Wallet.")}</p>
         <WalletStatementTable transactions={ledger} />
       </Card>

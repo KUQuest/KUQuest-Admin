@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { AdminPageHeader } from "../../../components/admin/admin-page-header";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import { Button, Card, CardHeader, Input, PageSizeControls, Pagination, Table, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
+import { Button, Card, CardHeader, EmptyState, Input, PageSizeControls, Pagination, Table, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { memberRoutes } from "../admin-routes";
 import { loadAllMembersFromMock as loadAllMembersFromMockData, loadMembersFromMock } from "./member-adapter";
@@ -22,6 +22,7 @@ import {
   walletStatusText,
 } from "./member-model";
 import { loadMemberPageData } from "./member-service";
+import { adminBoardCount, adminBoardPagination, adminBoardTable } from "../../../components/admin/admin-record-styles";
 
 const tabs = [
   { id: "all", label: "All" },
@@ -171,7 +172,7 @@ export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
             <h2 id="member-board-heading">{translateText("Members")}</h2>
             <p>{translateText("Review Member profiles, Wallet status, and moderation history.")}</p>
           </div>
-          <span className="count">{visibleModels.length} {translateText("shown")}</span>
+          <span className={adminBoardCount}>{visibleModels.length} {translateText("shown")}</span>
         </CardHeader>
         <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value as MemberTab); setPageNumber(1); }}>
           <TabsList className="flex w-full justify-start gap-1 overflow-x-auto rounded-none border-b border-admin-border px-3" aria-label={translateText("Filter Members")}>
@@ -192,12 +193,12 @@ export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
             />
           </label>
           <PageSizeControls value={pageSize} disabled={loadingMore} translateText={translateText} onChange={(size) => { setPageSize(size); setPageNumber(1); if (size === "all") void loadAllPages(); }} />
-          <span className="count" aria-live="polite">
+          <span className={adminBoardCount} aria-live="polite">
             {loadingMore ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}
           </span>
         </div>
-        <div className="table-wrap" role="region" aria-label={translateText("Members table")}>
-          <Table className="data member-table">
+        <div className="overflow-x-auto" role="region" aria-label={translateText("Members table")}>
+          <Table className={`${adminBoardTable} member-table`}>
             <caption>{translateText("Members")}</caption>
             <thead><tr><th>{translateText("Member ID")}</th><th>{translateText("Member")}</th><th>{translateText("Student ID")}</th><th>{translateText("Academic profile")}</th><th>{translateText("Status")}</th><th>{translateText("Wallet status")}</th></tr></thead>
             <tbody>
@@ -225,10 +226,10 @@ export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
               ))}
             </tbody>
           </Table>
-          {models.length === 0 && <p className="empty-state">{translateText("No matching Members")}</p>}
+          {models.length === 0 && <EmptyState className="border-0 rounded-none p-6" title={translateText("No matching Members")} />}
         </div>
         {paginationError && <p className="field-error" role="alert">{translateText(paginationError)}</p>}
-        {models.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Members pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className="table-pagination" /> : null}
+        {models.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Members pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className={adminBoardPagination} /> : null}
         {page.nextCursor && <Button variant="outline" type="button" onClick={loadMore} disabled={loadingMore}>{loadingMore ? translateText("Loading…") : translateText("Load more Members")}</Button>}
       </Card>
     </main>

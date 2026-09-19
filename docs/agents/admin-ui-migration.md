@@ -7,9 +7,11 @@ The Admin App now uses Tailwind utilities and the shared shadcn-style primitives
 - The Admin shell uses the shared `Button`, `Sidebar`, `Card`, `Input`, `Tabs`, and `Table` primitives.
 - Board page headers use `AdminPageHeader`.
 - Board filters use `Input` and Radix Tabs.
+- Canonical boards use shared `Table`, `EmptyState`, `Pagination`, and page-size controls. Board counts, table overflow, and pagination spacing use shared Tailwind recipes instead of the legacy `.count`, `.table-wrap`, `.data`, and `.table-pagination` selectors.
 - Pagination and page-size controls use the shared `Button` primitive.
 - Record actions, modal actions, drawer actions, and route error states use the shared `Button` primitive.
 - Native record drawers keep one shared header, scrollable content region, and sticky action footer.
+- Canonical record surfaces use the shared Tailwind recipes in `src/components/admin/admin-record-styles.ts` for sections, headings, facts, party grids, side facts, and counts. This covers moderation records, Quest, Payout, Wallet, Wallet Statement, Activity Log detail, and Member detail.
 
 ## Intentional CSS exceptions
 
@@ -23,11 +25,11 @@ The CSS files imported by the Admin layout are still required for these cases:
 - the Overview command centre compatibility view;
 - native form controls and shared focus-visible and touch-target rules.
 
-These selectors are not a second component system. They are compatibility rules for domain data and native controls. New UI must use the shared primitives and Tailwind utilities first.
+Legacy record markup keeps its small compatibility stylesheet at `src/features/admin/legacy/legacy-record.css`. It owns only selectors that are emitted by the retired client-rendered runtime, such as `.overview-meta` and `.overview-group`. These selectors are not a second component system. They are compatibility rules for domain data and native controls. New UI must use the shared primitives and Tailwind utilities first.
 
 ## CSS audit
 
-The CSS inventory was checked against `src/` and `tests/`. The audit removed retired selectors from `styles.css` and `admin-extensions.css`, including the old Admin navigation link, table link, filter-tab, shell-kicker, and payout action rules. Remaining class selectors have active consumers. Status and theme classes that are assembled at runtime remain because the legacy renderer and status badge model use them.
+The CSS inventory was checked against `src/` and `tests/`. The audit removed retired selectors from `styles.css` and `admin-extensions.css`, including the old Admin navigation link, table link, filter-tab, shell-kicker, and payout action rules. The canonical detail fact and section selectors were then replaced with Tailwind recipes; the remaining route CSS covers dense tables, timelines, native dialogs, status tokens, and feature-specific data presentation. Status and theme classes that are assembled at runtime remain because the legacy renderer and status badge model use them. Do not remove these rules without checking both the canonical route and the legacy runtime.
 
 ## Verification
 

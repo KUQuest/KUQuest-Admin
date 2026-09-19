@@ -245,7 +245,7 @@ export function AdminGlobalSearch({ open, onClose, initialData, initialError }: 
         </div> : null}
         {saveMessage ? <output className="admin-global-search-message">{translateText(saveMessage)}</output> : null}
         <div id="admin-global-search-results" aria-live="polite">
-          {initialError && !data ? <p className="empty">{translateText(initialError)}</p> : null}
+          {initialError && !data ? <p className="p-[60px_24px] text-center text-sm text-admin-muted">{translateText(initialError)}</p> : null}
           {data?.source === "mock" ? <p className="api-data-notice admin-global-search-notice">{translateText("Fixture search is active. Results use local demo records.")}</p> : null}
           {groups.map((group) => (
             <section key={group.kind} className="admin-global-search-group" aria-labelledby={`admin-global-search-group-${group.kind}`}>
@@ -262,8 +262,8 @@ export function AdminGlobalSearch({ open, onClose, initialData, initialError }: 
               ))}
             </section>
           ))}
-          {!initialError && query && !results.length ? <p className="empty">{translateText("No matching records")}</p> : null}
-          {!initialError && !query ? <p className="empty">{translateText("Type an ID, name, or status to search all Admin records.")}</p> : null}
+          {!initialError && query && !results.length ? <p className="p-[60px_24px] text-center text-sm text-admin-muted">{translateText("No matching records")}</p> : null}
+          {!initialError && !query ? <p className="p-[60px_24px] text-center text-sm text-admin-muted">{translateText("Type an ID, name, or status to search all Admin records.")}</p> : null}
         </div>
       </div>
     </dialog>

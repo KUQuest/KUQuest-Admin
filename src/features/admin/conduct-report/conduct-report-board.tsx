@@ -19,6 +19,7 @@ import {
   type ConductReportModel,
 } from "./conduct-report-model";
 import { loadConductReportPageData, type ConductReportPageData } from "./conduct-report-service";
+import { adminBoardCount, adminBoardPagination, adminBoardTable } from "../../../components/admin/admin-record-styles";
 
 type ConductReportTab = "all" | "open" | "confirmed" | "dismissed";
 type ConductReportSortKey = "id" | "quest" | "reportedMember" | "reporter" | "reason" | "status" | "reported";
@@ -214,7 +215,7 @@ export function ConductReportBoard({
               <CardTitle id="conduct-report-board-heading">{translateText("Conduct Reports")}</CardTitle>
               <CardDescription>{translateText("Conduct Report behavior is separate from Report Case behavior.")}</CardDescription>
             </div>
-            <span className="count">{visibleModels.length} {translateText("shown")}</span>
+            <span className={adminBoardCount}>{visibleModels.length} {translateText("shown")}</span>
           </CardHeader>
           <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value as ConductReportTab); setPageNumber(1); }}>
             <TabsList className="flex w-full justify-start gap-1 overflow-x-auto rounded-none border-b border-admin-border px-3" aria-label={translateText("Conduct Report status filters")}>
@@ -235,10 +236,10 @@ export function ConductReportBoard({
               />
             </label>
             <PageSizeControls value={pageSize} disabled={loadingMore} translateText={translateText} onChange={(size) => { setPageSize(size); setPageNumber(1); if (size === "all") void loadAllPages(); }} />
-            <span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span><span className="count" aria-live="polite">{loadingMore ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}</span>
+            <span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span><span className={adminBoardCount} aria-live="polite">{loadingMore ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}</span>
           </div>
           <div className="overflow-x-auto" aria-label={translateText("Conduct Reports table")}>
-            <Table className="data !min-w-[760px]">
+            <Table className={`${adminBoardTable} !min-w-[760px]`}>
               <caption>{translateText("Conduct Reports")}</caption>
               <thead>
                 <TableRow>
@@ -307,14 +308,14 @@ export function ConductReportBoard({
           </div>
           {page.nextCursor && (
             <div className="border-t border-admin-border px-3 py-3 text-sm text-admin-muted">
-              {models.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Conduct Reports pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className="table-pagination" /> : null}
+              {models.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Conduct Reports pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className={adminBoardPagination} /> : null}
               <Button variant="outline" size="sm" type="button" data-conduct-report-load-more onClick={loadMore} disabled={loadingMore}>
                 {translateText(loadingMore ? "Loading more Conduct Reports…" : "Load more Conduct Reports")}
               </Button>
               {paginationError && <p className="field-error" role="alert">{translateText(paginationError)}</p>}
             </div>
           )}
-          {!page.nextCursor && models.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Conduct Reports pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className="table-pagination" /> : null}
+          {!page.nextCursor && models.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Conduct Reports pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className={adminBoardPagination} /> : null}
         </Card>
       </main>
     </>

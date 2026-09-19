@@ -9,6 +9,7 @@ import type { MouseEvent } from "react";
 
 import "../../app/admin-extensions.css";
 import "../../app/theme.css";
+import "./legacy/legacy-record.css";
 
 import { readAdminData } from "./data/legacy-admin-data-adapter";
 import type { PersistedAdminData } from "./data/admin-records";

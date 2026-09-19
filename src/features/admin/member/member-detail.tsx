@@ -9,8 +9,9 @@ import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { AdminPageHeader } from "../../../components/admin/admin-page-header";
-import { Button, Card, CardContent, CardHeader } from "../../../components/ui";
+import { Button, Card, CardContent, CardHeader, Table } from "../../../components/ui";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
+import { adminRecordCount, adminRecordSection } from "../../../components/admin/admin-record-styles";
 import { ADMIN_LEDGER_EVENT_TYPES, adminApi } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { memberRoutes } from "../admin-routes";
@@ -168,7 +169,7 @@ function MemberModerationSummary({ model, translateText, onRecordViolation }: { 
 }
 
 function MemberRecentReports({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
-  return <Card as="section" className="user-detail-panel"><CardHeader flush className="user-panel-heading"><h2>{translateText("Recent Reports")}</h2><span className="section-count">{model.reports.length}</span></CardHeader>{model.reportsError ? <p className="audit-note">{translateText(model.reportsError)}</p> : model.reports.length ? <div className="user-recent-reports">{model.reports.slice(0, 3).map((report) => <Link key={report.id} href={report.href}><span><strong>{report.id}</strong><small>{translateText(report.category)}</small></span><span className="badge">{translateText(reportCaseStatusLabel(report.status))}</span></Link>)}</div> : <p className="audit-note">{translateText("No reports have been filed against this account.")}</p>}</Card>;
+  return <Card as="section" className="user-detail-panel"><CardHeader flush className="user-panel-heading"><h2>{translateText("Recent Reports")}</h2><span className={adminRecordCount}>{model.reports.length}</span></CardHeader>{model.reportsError ? <p className="audit-note">{translateText(model.reportsError)}</p> : model.reports.length ? <div className="user-recent-reports">{model.reports.slice(0, 3).map((report) => <Link key={report.id} href={report.href}><span><strong>{report.id}</strong><small>{translateText(report.category)}</small></span><span className="badge">{translateText(reportCaseStatusLabel(report.status))}</span></Link>)}</div> : <p className="audit-note">{translateText("No reports have been filed against this account.")}</p>}</Card>;
 }
 
 function AdminNotes({ model, translateText, onAddNote, limit }: { model: MemberModel; translateText: (value: string) => string; onAddNote: () => void; limit?: number }) {
@@ -194,7 +195,7 @@ function MemberPayoutPreview({ model, translateText }: { model: MemberModel; tra
   const total = model.payouts.length
     ? model.payouts.reduce((sum, payout) => sum + (payout.amountSatang || 0), 0)
     : model.stats.totalPaidOutSatang;
-  return <Card as="section" className="user-detail-panel"><CardHeader flush className="user-panel-heading"><div><h2>{translateText("Payouts")}</h2><p>{translateText("Payout records associated with this Member.")}</p></div><span className="section-count">{payoutCount}</span></CardHeader><div className="user-payout-stat-list"><div><strong>{payoutCount}</strong><span>{translateText("Payouts")}</span></div><div><strong>{formatMoneySatang(total)}</strong><span>{translateText("Total paid out")}</span></div></div>{model.payouts.length ? <div className="user-payout-list">{model.payouts.map((payout) => <div className="user-payout-row" key={payout.id}><span className="user-payout-primary"><strong>{payout.id}</strong><small>{payout.createdAt}</small></span><span className="user-payout-secondary"><strong>{payout.amountSatang === null ? "—" : formatMoneySatang(payout.amountSatang)}</strong><small>{translateText(payoutStatusLabel(payout.status))}</small></span></div>)}</div> : <p className="audit-note">{payoutCount ? translateText("Payout detail is not provided by the Admin API.") : translateText("No Payout records are available.")}</p>}</Card>;
+  return <Card as="section" className="user-detail-panel"><CardHeader flush className="user-panel-heading"><div><h2>{translateText("Payouts")}</h2><p>{translateText("Payout records associated with this Member.")}</p></div><span className={adminRecordCount}>{payoutCount}</span></CardHeader><div className="user-payout-stat-list"><div><strong>{payoutCount}</strong><span>{translateText("Payouts")}</span></div><div><strong>{formatMoneySatang(total)}</strong><span>{translateText("Total paid out")}</span></div></div>{model.payouts.length ? <div className="user-payout-list">{model.payouts.map((payout) => <div className="user-payout-row" key={payout.id}><span className="user-payout-primary"><strong>{payout.id}</strong><small>{payout.createdAt}</small></span><span className="user-payout-secondary"><strong>{payout.amountSatang === null ? "—" : formatMoneySatang(payout.amountSatang)}</strong><small>{translateText(payoutStatusLabel(payout.status))}</small></span></div>)}</div> : <p className="audit-note">{payoutCount ? translateText("Payout detail is not provided by the Admin API.") : translateText("No Payout records are available.")}</p>}</Card>;
 }
 
 function MemberReviewPreview({ model, translateText, onOpenReviews }: { model: MemberModel; translateText: (value: string) => string; onOpenReviews: () => void }) {
@@ -217,7 +218,7 @@ function OverviewTab({ model, translateText, onRecordViolation, onAddNote, onOpe
 
 function ActivityTab({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
   const completed = completedQuestCount(model);
-  return <Card as="section" className="user-detail-panel user-tab-panel"><CardHeader flush className="user-panel-heading"><div><h2>{translateText("Quest history")}</h2><p>{translateText("All connected Quests")} · {completed} {translateText("completed")}</p></div><span className="section-count">{model.quests.length}</span></CardHeader>{model.quests.length ? <div className="user-quest-history-list">{model.quests.map((quest) => <Link className="user-quest-history-row" key={quest.id} href={quest.href}><div className="user-quest-history-primary"><div className="user-quest-history-title"><strong>{quest.title}</strong><span>{quest.id}</span></div><div className="user-quest-history-fields"><div className="user-quest-history-field"><span>{translateText("Role")}</span><strong>{translateText(quest.role)}</strong></div><div className="user-quest-history-field"><span>{translateText("Status")}</span><strong>{translateText(questStateLabel(quest.status))}</strong></div><div className="user-quest-history-field"><span>{translateText("Created")}</span><strong>{quest.createdAt}</strong></div></div></div></Link>)}</div> : <p className="audit-note">{translateText("Quest history is not provided by the Admin API.")}</p>}</Card>;
+  return <Card as="section" className="user-detail-panel user-tab-panel"><CardHeader flush className="user-panel-heading"><div><h2>{translateText("Quest history")}</h2><p>{translateText("All connected Quests")} · {completed} {translateText("completed")}</p></div><span className={adminRecordCount}>{model.quests.length}</span></CardHeader>{model.quests.length ? <div className="user-quest-history-list">{model.quests.map((quest) => <Link className="user-quest-history-row" key={quest.id} href={quest.href}><div className="user-quest-history-primary"><div className="user-quest-history-title"><strong>{quest.title}</strong><span>{quest.id}</span></div><div className="user-quest-history-fields"><div className="user-quest-history-field"><span>{translateText("Role")}</span><strong>{translateText(quest.role)}</strong></div><div className="user-quest-history-field"><span>{translateText("Status")}</span><strong>{translateText(questStateLabel(quest.status))}</strong></div><div className="user-quest-history-field"><span>{translateText("Created")}</span><strong>{quest.createdAt}</strong></div></div></div></Link>)}</div> : <p className="audit-note">{translateText("Quest history is not provided by the Admin API.")}</p>}</Card>;
 }
 
 function PayoutsTab({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
@@ -277,8 +278,8 @@ function WalletStatementTab({ model, translateText }: { model: MemberModel; tran
       {rows.length ? (
         <div className="wallet-statement-table-block">
           <p className="wallet-statement-scroll-hint">{translateText("On narrow screens, scroll horizontally to view all Wallet Statement columns.")}</p>
-          <div className="table-wrap wallet-statement-table-wrap" role="region" aria-label={translateText("Wallet Statement table")}>
-            <table className="data wallet-statement-table">
+          <div className="overflow-x-auto wallet-statement-table-wrap" role="region" aria-label={translateText("Wallet Statement table")}>
+            <Table className="wallet-statement-table [&_tbody>tr]:cursor-default [&_tbody>tr>td>strong]:text-xs">
               <caption>{translateText("Wallet Statement")}</caption>
               <thead><tr><th>{translateText("Date")}</th><th>{translateText("Event type")}</th><th>{translateText("Signed amount")}</th><th>{translateText("Compartment movement")}</th><th>{translateText("Resulting Wallet balance")}</th></tr></thead>
               <tbody>{rows.map((row) => <tr key={row.transaction.id}>
@@ -288,7 +289,7 @@ function WalletStatementTab({ model, translateText }: { model: MemberModel; tran
                 <td className="wallet-statement-movement">{row.movement.map((movement) => <span key={movement.accountType}>{translateText(movement.accountType)}: {formatMoneySatang(movement.amountSatang, true)}</span>)}</td>
                 <td className="money">{formatMoneySatang(row.resultingWalletBalanceSatang)}</td>
               </tr>)}</tbody>
-            </table>
+            </Table>
           </div>
         </div>
       ) : <p className="audit-note">{translateText("No sealed Ledger Transactions match these filters.")}</p>}
@@ -349,13 +350,13 @@ function ReviewsTab({
       </div>
       <p className="audit-note">{translateText("Review records are read-only. Review Hide or Unhide is not an accepted Admin moderation command.")}</p>
       {reviews.length ? (
-        <div className="table-wrap">
-          <table className="data user-detail-table">
+        <div className="overflow-x-auto">
+          <Table className="user-detail-table [&_tbody>tr]:cursor-default">
             <thead><tr><th>{translateText("Reviewer")}</th><th>{translateText("Rating")}</th><th>{translateText("Review")}</th><th>{translateText("Date")}</th><th>{translateText("Status")}</th></tr></thead>
             <tbody>{reviews.map((review) => {
               return <tr key={`${review.reviewer}-${review.date}`}><td>{review.reviewer}</td><td>{"★".repeat(review.rating)}</td><td>{review.review}</td><td>{review.date}</td><td>{translateText(reviewStatusLabel(review.status))}</td></tr>;
             })}</tbody>
-          </table>
+          </Table>
         </div>
       ) : <p className="audit-note">{translateText("No reviews match these filters.")}</p>}
     </Card>
@@ -363,7 +364,7 @@ function ReviewsTab({
 }
 
 function ReportsTable({ reports, translateText }: { reports: MemberModel["reports"]; translateText: (value: string) => string }) {
-  return reports.length ? <div className="table-wrap"><table className="data user-detail-table"><thead><tr><th>{translateText("Case")}</th><th>{translateText("Type")}</th><th>{translateText("Reported by")}</th><th>{translateText("Reason")}</th><th>{translateText("Status")}</th><th>{translateText("Reported")}</th></tr></thead><tbody>{reports.map((report) => <tr key={report.id}><td><Link href={report.href}>{report.id}</Link></td><td>{translateText(report.kind)}</td><td>{report.reporterName}</td><td>{report.detail}</td><td>{translateText(reportCaseStatusLabel(report.status))}</td><td>{report.reportedAt}</td></tr>)}</tbody></table></div> : <p className="audit-note">{translateText("No related cases are available.")}</p>;
+  return reports.length ? <div className="overflow-x-auto"><Table className="user-detail-table [&_tbody>tr]:cursor-default"><thead><tr><th>{translateText("Case")}</th><th>{translateText("Type")}</th><th>{translateText("Reported by")}</th><th>{translateText("Reason")}</th><th>{translateText("Status")}</th><th>{translateText("Reported")}</th></tr></thead><tbody>{reports.map((report) => <tr key={report.id}><td><Link href={report.href}>{report.id}</Link></td><td>{translateText(report.kind)}</td><td>{report.reporterName}</td><td>{report.detail}</td><td>{translateText(reportCaseStatusLabel(report.status))}</td><td>{report.reportedAt}</td></tr>)}</tbody></Table></div> : <p className="audit-note">{translateText("No related cases are available.")}</p>;
 }
 
 function ReportsTab({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
@@ -375,7 +376,7 @@ function ReportsTab({ model, translateText }: { model: MemberModel; translateTex
             <h2>{translateText("Reports and Conduct Reports")}</h2>
             <p>{translateText("Cases received against this Member and cases submitted by this Member.")}</p>
           </div>
-          <span className="section-count">{model.reports.length + model.reportsSubmitted.length}</span>
+          <span className={adminRecordCount}>{model.reports.length + model.reportsSubmitted.length}</span>
         </CardHeader>
         <Card as="section" className="user-detail-panel">
           <CardHeader flush className="user-panel-heading">
@@ -383,7 +384,7 @@ function ReportsTab({ model, translateText }: { model: MemberModel; translateTex
               <h3>{translateText("Reports received")}</h3>
               <p>{translateText("Report Cases and Conduct Reports filed against this Member.")}</p>
             </div>
-            <span className="section-count">{model.reports.length}</span>
+            <span className={adminRecordCount}>{model.reports.length}</span>
           </CardHeader>
           {model.reportsError ? <p className="audit-note">{translateText(model.reportsError)}</p> : <ReportsTable reports={model.reports} translateText={translateText} />}
         </Card>
@@ -393,7 +394,7 @@ function ReportsTab({ model, translateText }: { model: MemberModel; translateTex
               <h3>{translateText("Reports submitted")}</h3>
               <p>{translateText("Cases submitted by this Member about another Member or Quest.")}</p>
             </div>
-            <span className="section-count">{model.reportsSubmitted.length}</span>
+            <span className={adminRecordCount}>{model.reportsSubmitted.length}</span>
           </CardHeader>
           {model.reportsSubmittedError ? <p className="audit-note">{translateText(model.reportsSubmittedError)} {translateText("This data is shown only in the mock UI.")}</p> : <ReportsTable reports={model.reportsSubmitted} translateText={translateText} />}
         </Card>
@@ -416,7 +417,7 @@ function PenaltyHistoryTab({ model, translateText, onAddNote }: { model: MemberM
             <h2>{translateText("Moderation History")}</h2>
             <p>{translateText("Factual Red Flag, Member Ban, Report Case, and Conduct Report events for this Member.")}</p>
           </div>
-          <span className="section-count">{model.penaltyHistory.length}</span>
+          <span className={adminRecordCount}>{model.penaltyHistory.length}</span>
         </CardHeader>
         <MemberModerationTimeline model={model} translateText={translateText} />
         <AdminNotes model={model} translateText={translateText} onAddNote={onAddNote} />
@@ -489,23 +490,23 @@ function DrawerContent({ model, translateText, onRecordViolation, onRemovePenalt
   return (
     <div className="user-drawer-detail drawer-content-flow">
       <div className="drawer-title"><span className="att-icon info" aria-hidden="true">◉</span><div><h2>{model.title}</h2><p>{model.email} · {model.studentId || "—"}</p></div></div>
-      <Card as="section" className="section">
+      <Card as="section" className={adminRecordSection}>
         <CardHeader flush><h3>{translateText("Account")}</h3></CardHeader>
         <div className="user-context-list"><div><span>{translateText("Student ID")}</span><strong>{model.studentId || "—"}</strong></div><div><span>{translateText("Member ID")}</span><strong>{model.id}</strong></div><div><span>{translateText("Created")}</span><strong>{model.createdAt}</strong></div></div>
       </Card>
-      <Card as="section" className="section">
+      <Card as="section" className={adminRecordSection}>
         <CardHeader flush><h3>{translateText("Wallet")}</h3></CardHeader>
         <div className="user-context-list"><div><span>{translateText("Wallet record")}</span><strong>{model.walletId || "—"}</strong></div><div><span>{translateText("Wallet Status")}</span><strong>{walletBadge(model, translateText)}</strong></div><div><span>{translateText("Current Wallet Balance")}</span><strong>{model.walletBalances ? formatMoneySatang(currentWalletBalance(model.walletBalances)) : "—"}</strong></div><div><span>{translateText("Latest Wallet Transaction Date")}</span><strong>{latestTransactionAt ? formatWalletDate(latestTransactionAt) : "—"}</strong></div></div>
       </Card>
-      <Card as="section" className="section">
+      <Card as="section" className={adminRecordSection}>
         <CardHeader flush><h3>{translateText("Moderation")}</h3></CardHeader>
         <div className="user-context-list"><div><span>{translateText("Member Status")}</span><strong>{statusBadge(model, translateText)}</strong></div><div><span>{translateText("Confirmed violations")}</span><strong>{model.confirmedViolationCount === null ? translateText("Not provided by the Admin API") : model.confirmedViolationCount}</strong></div></div>
       </Card>
-      <Card as="section" className="section member-drawer-moderation-history" data-member-drawer-moderation-history>
-        <CardHeader flush className="user-panel-heading"><h3>{translateText("Moderation History")}</h3><span className="section-count">{model.penaltyHistory.length}</span></CardHeader>
+      <Card as="section" className={`${adminRecordSection} member-drawer-moderation-history`} data-member-drawer-moderation-history>
+        <CardHeader flush className="user-panel-heading"><h3>{translateText("Moderation History")}</h3><span className={adminRecordCount}>{model.penaltyHistory.length}</span></CardHeader>
         <MemberModerationTimeline model={model} translateText={translateText} />
       </Card>
-      <Card as="section" className="section">
+      <Card as="section" className={adminRecordSection}>
         <CardHeader flush><h3>{translateText("Activity summary")}</h3></CardHeader>
         <div className="user-activity-list"><div><span>{translateText("Completed quests")}</span><strong>{completedQuestCount(model)}</strong></div><div><span>{translateText("Reports received")}</span><strong>{model.reports.length}</strong></div></div>
       </Card>
