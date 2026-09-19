@@ -2,7 +2,20 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 export const Table = React.forwardRef<HTMLTableElement, React.TableHTMLAttributes<HTMLTableElement>>(({ className, ...props }, ref) => (
-  <table ref={ref} data-slot="table" className={cn("w-full min-w-[40rem] border-collapse text-left text-sm", className)} {...props} />
+  <table
+    ref={ref}
+    data-slot="table"
+    className={cn(
+      "w-full min-w-[40rem] border-collapse text-left text-sm text-admin-text",
+      "[&_caption]:sr-only [&_thead]:border-b [&_thead]:border-admin-border [&_thead]:bg-admin-soft",
+      "[&_th]:h-10 [&_th]:whitespace-nowrap [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:text-sm [&_th]:font-semibold [&_th]:text-admin-muted",
+      "[&_tbody>tr]:border-b [&_tbody>tr]:border-admin-border-subtle [&_tbody>tr:hover]:bg-admin-hover",
+      "[&_td]:h-[58px] [&_td]:px-3 [&_td]:py-2 [&_td]:align-top",
+      "[&_td>strong]:block [&_td>small]:mt-0.5 [&_td>small]:block [&_td>small]:text-xs [&_td>small]:text-admin-muted",
+      className,
+    )}
+    {...props}
+  />
 ));
 Table.displayName = "Table";
 

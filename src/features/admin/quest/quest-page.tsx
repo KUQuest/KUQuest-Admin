@@ -9,11 +9,12 @@ import { ApiError } from "../../../lib/api/client";
 import { AdminActionReceipt, AdminActionSummary } from "../../../components/admin/admin-action-feedback";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminRecordHeader } from "../../../components/admin/admin-record-header";
+import { AdminPageHeader } from "../../../components/admin/admin-page-header";
 import { AdminStatusAlert } from "../../../components/admin/admin-status-alert";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { RecordStatusBar } from "../../../components/admin/record-status-bar";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import { Badge as UiBadge, Button as UiButton, Card, CardContent, CardHeader, CardTitle, PageSizeControls, Pagination, Table } from "../../../components/ui";
+import { Badge as UiBadge, Button as UiButton, Card, CardContent, CardHeader, CardTitle, Input, PageSizeControls, Pagination, Table, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
 import { disputeRoutes, questRoutes } from "../admin-routes";
 import {
   adminApi,
@@ -321,7 +322,7 @@ function QuestDetailContent({
   ) : linkedDisputeId ? (
     <>
       <p>{translateText("A Dispute Case is linked to this Quest.")}</p>
-      <Link className="btn primary full-width" href={disputeRoutes.detail(linkedDisputeId)}>{translateText("Open Dispute Case")}</Link>
+      <UiButton asChild variant="primary" className="w-full"><Link href={disputeRoutes.detail(linkedDisputeId)}>{translateText("Open Dispute Case")}</Link></UiButton>
     </>
   ) : state === "QUEST_FAILED" ? (
     <>
@@ -352,9 +353,9 @@ function QuestDetailContent({
             </select>
           </label>
           {disputeError ? <p className="field-error" role="alert">{translateText(disputeError)}</p> : null}
-          <button className="btn primary dispute-open-submit" type="submit" disabled={disputePending}>
+          <UiButton variant="primary" className="dispute-open-submit" type="submit" disabled={disputePending}>
             {disputePending ? translateText("Opening Dispute Case…") : translateText("Open Dispute Case")}
-          </button>
+          </UiButton>
           <p className="audit-note">{translateText("Select the assigned Worker for this failed Quest.")}</p>
         </form>
       ) : <p className="audit-note">{translateText("No assigned Worker was returned.")}</p>}
@@ -610,10 +611,10 @@ function QuestDetailContent({
       ) : null}
 
       <div className="quest-command-actions">
-        {showFullDetailLink ? <a className="btn quest-full-detail-link" href={questRoutes.detail(detail.id)}>{translateText("Full Quest detail")}</a> : null}
-        {!hidden && canHideQuest(state) ? <UiButton variant="outline" className="btn" type="button" onClick={() => onCommand("hide")}>{translateText("Hide Quest")}</UiButton> : null}
-        {hidden ? <UiButton variant="outline" className="btn" type="button" onClick={() => onCommand("restore")}>{translateText("Restore Quest")}</UiButton> : null}
-        {!isQuestTerminal(state) ? <UiButton variant="danger" className="btn danger" type="button" onClick={() => onCommand("terminate")}>{translateText("Terminate Quest")}</UiButton> : null}
+        {showFullDetailLink ? <UiButton asChild variant="outline" className="quest-full-detail-link"><a href={questRoutes.detail(detail.id)}>{translateText("Full Quest detail")}</a></UiButton> : null}
+        {!hidden && canHideQuest(state) ? <UiButton variant="outline" type="button" onClick={() => onCommand("hide")}>{translateText("Hide Quest")}</UiButton> : null}
+        {hidden ? <UiButton variant="outline" type="button" onClick={() => onCommand("restore")}>{translateText("Restore Quest")}</UiButton> : null}
+        {!isQuestTerminal(state) ? <UiButton variant="danger" type="button" onClick={() => onCommand("terminate")}>{translateText("Terminate Quest")}</UiButton> : null}
       </div>
       </aside>
     </div>
@@ -683,7 +684,7 @@ function QuestCommandDialog({
           <label htmlFor="quest-command-reason-code">{translateText("Reason code")}{reasonRequired ? <span aria-hidden="true"> *</span> : null}<select id="quest-command-reason-code" required={reasonRequired} value={reasonCode} onChange={(event) => setReasonCode(event.target.value as AdminQuestReasonCode | "")} autoFocus><option value="">{translateText(reasonRequired ? "Select a reason code" : "No reason code")}</option>{reasonCodes.map((item) => <option key={item.value} value={item.value}>{translateText(item.label)}</option>)}</select></label>
           <label htmlFor="quest-command-reason">{translateText("Reason")}{reasonRequired ? <span aria-hidden="true"> *</span> : null}<textarea id="quest-command-reason" required={reasonRequired} minLength={reasonRequired ? 8 : undefined} maxLength={500} value={reason} onChange={(event) => { setReason(event.target.value); setValidationError(null); }} rows={4} /></label>
           {validationError || error ? <p className="field-error" role="alert">{translateText(validationError || error || "")}</p> : null}
-          <div className="dialog-actions"><button className="btn" type="button" onClick={onCancel} disabled={pending}>{translateText("Cancel")}</button><button className={`btn ${command === "terminate" ? "danger" : "primary"}`} type="submit" disabled={pending}>{pending ? translateText("Saving…") : translateText("Confirm")}</button></div>
+          <div className="dialog-actions"><UiButton variant="outline" type="button" onClick={onCancel} disabled={pending}>{translateText("Cancel")}</UiButton><UiButton variant={command === "terminate" ? "danger" : "primary"} type="submit" disabled={pending}>{pending ? translateText("Saving…") : translateText("Confirm")}</UiButton></div>
         </form>
       </dialog>
       </div>
@@ -853,11 +854,15 @@ export function AdminQuestPage({ initialData }: { initialData: QuestBoardPageDat
 
   return (
     <main className="admin-route-page quest-route-page" tabIndex={-1}>
-      <div className="page-head"><div><p className="admin-route-kicker">{translateText("KUQuest Admin")}</p><h1>{translateText("Quests")}</h1><p>{translateText("Review Quests through every Quest State.")}</p></div></div>
-      <Card as="section" className="panel quest-board" aria-label={translateText("Quest board")}>
-        <div className="tabs" aria-label={translateText("Quest filters")}>{QUEST_BOARD_TABS.map((item) => <button className={`tab${tab === item.id ? " active" : ""}`} type="button" aria-pressed={tab === item.id} key={item.id} onClick={() => chooseTab(item.id)}>{translateText(item.label)}{item.id === "all" ? ` (${rows.length})` : ""}</button>)}</div>
-        <div className="toolbar resource-toolbar"><label className="inline-search search-field" htmlFor="quest-search"><span className="visually-hidden">{translateText("Search Quests")}</span><input id="quest-search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={translateText("Search Quests…")} autoComplete="off" /></label><span className="sort-help">{translateText("Click a column to sort")}</span><PageSizeControls value={pageSize} translateText={translateText} onChange={choosePageSize} /><span className="count" aria-live="polite">{translateText("Showing")} {pageStart}–{pageEnd} {translateText("of")} {sortedRows.length} {translateText("results")}</span></div>
-        {!sortedRows.length ? <div className="empty"><h2>{translateText("No matching records")}</h2><p>{translateText("There are no Quests in this view.")}</p><button className="btn" type="button" onClick={() => { setQuery(""); setTab("all"); }}>{translateText("Reset view")}</button></div> : <div className="table-wrap" aria-label={translateText("Quests table")}><Table className="data"><caption>{translateText("Quests")}</caption><thead><tr><SortableHeader label={translateText("Quest")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Title")} sortKey="title" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Hirer")} sortKey="hirer" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Created At")} sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Quest Reward")} sortKey="reward" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr className="quest-row" data-quest-id={row.id} data-quest-drawer-trigger={row.id} key={row.id} tabIndex={0} aria-label={`${translateText("Open Quest")} ${row.title}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; router.push(questRoutes.detail(row.id)); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); router.push(questRoutes.detail(row.id)); } }}><td><Link className="row-record-button" data-quest-drawer-trigger={row.id} href={questRoutes.detail(row.id)} aria-label={`${translateText("Open Quest")} ${row.displayId}`}>{row.displayId}</Link></td><td><Link className="row-record-button quest-title-link" data-quest-drawer-trigger={row.id} href={questRoutes.detail(row.id)} aria-label={`${translateText("Open Quest")} ${row.title}`}><strong>{row.title}</strong><small>{translateText(row.participationLabel)} · {translateText(row.modeLabel)}</small></Link></td><td><strong>{row.hirerName}</strong><small>{row.hirerEmail}</small></td><td>{formatQuestDate(row.createdAt)}</td><td className="money">{formatQuestMoney(row.rewardSatang)}</td><td><span className={`badge ${questStatusClass(row.state)}`}>{translateText(row.stateLabel)}</span>{row.hiddenAt ? <span className="badge neutral quest-hidden-overlay">{translateText("Hidden")}</span> : null}</td></tr>)}</tbody></Table></div>}
+      <AdminPageHeader title={translateText("Quests")} description={translateText("Review Quests through every Quest State.")} />
+      <Card as="section" className="overflow-hidden quest-board" aria-label={translateText("Quest board")}>
+        <Tabs value={tab} onValueChange={(value) => chooseTab(value as QuestBoardTab)} className="w-full gap-0">
+          <TabsList className="w-full flex-nowrap justify-start overflow-x-auto rounded-none border-b border-admin-border bg-transparent p-0" aria-label={translateText("Quest filters")}>
+            {QUEST_BOARD_TABS.map((item) => <TabsTrigger key={item.id} value={item.id} className="min-h-11 shrink-0 rounded-none border-b-2 border-transparent px-3 py-2 text-sm text-admin-muted shadow-none hover:bg-transparent data-[state=active]:border-admin-accent data-[state=active]:bg-transparent data-[state=active]:text-admin-text data-[state=active]:shadow-none">{translateText(item.label)}{item.id === "all" ? ` (${rows.length})` : ""}</TabsTrigger>)}
+          </TabsList>
+        </Tabs>
+        <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2"><label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text" htmlFor="quest-search"><span className="visually-hidden">{translateText("Search Quests")}</span><Input className="h-9 min-h-9 px-3 py-1.5 text-sm" id="quest-search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={translateText("Search Quests…")} autoComplete="off" /></label><span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span><PageSizeControls value={pageSize} translateText={translateText} onChange={choosePageSize} /><span className="ml-auto text-sm text-admin-muted max-[600px]:hidden" aria-live="polite">{translateText("Showing")} {pageStart}–{pageEnd} {translateText("of")} {sortedRows.length} {translateText("results")}</span></div>
+        {!sortedRows.length ? <div className="empty"><h2>{translateText("No matching records")}</h2><p>{translateText("There are no Quests in this view.")}</p><UiButton variant="outline" type="button" onClick={() => { setQuery(""); setTab("all"); }}>{translateText("Reset view")}</UiButton></div> : <div className="table-wrap" aria-label={translateText("Quests table")}><Table className="data"><caption>{translateText("Quests")}</caption><thead><tr><SortableHeader label={translateText("Quest")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Title")} sortKey="title" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Hirer")} sortKey="hirer" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Created At")} sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Quest Reward")} sortKey="reward" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr className="quest-row" data-quest-id={row.id} data-quest-drawer-trigger={row.id} key={row.id} tabIndex={0} aria-label={`${translateText("Open Quest")} ${row.title}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; router.push(questRoutes.detail(row.id)); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); router.push(questRoutes.detail(row.id)); } }}><td><Link className="row-record-button" data-quest-drawer-trigger={row.id} href={questRoutes.detail(row.id)} aria-label={`${translateText("Open Quest")} ${row.displayId}`}>{row.displayId}</Link></td><td><Link className="row-record-button quest-title-link" data-quest-drawer-trigger={row.id} href={questRoutes.detail(row.id)} aria-label={`${translateText("Open Quest")} ${row.title}`}><strong>{row.title}</strong><small>{translateText(row.participationLabel)} · {translateText(row.modeLabel)}</small></Link></td><td><strong>{row.hirerName}</strong><small>{row.hirerEmail}</small></td><td>{formatQuestDate(row.createdAt)}</td><td className="money">{formatQuestMoney(row.rewardSatang)}</td><td><span className={`badge ${questStatusClass(row.state)}`}>{translateText(row.stateLabel)}</span>{row.hiddenAt ? <span className="badge neutral quest-hidden-overlay">{translateText("Hidden")}</span> : null}</td></tr>)}</tbody></Table></div>}
         {sortedRows.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPage} ariaLabel={translateText("Quests pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className="table-pagination" /> : null}
       </Card>
     </main>

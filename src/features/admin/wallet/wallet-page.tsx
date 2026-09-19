@@ -13,9 +13,10 @@ import {
 } from "react";
 
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
+import { AdminPageHeader } from "../../../components/admin/admin-page-header";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import { Badge as UiBadge, Button as UiButton, Card, CardHeader, PageSizeControls, Pagination, Table } from "../../../components/ui";
+import { Badge as UiBadge, Button as UiButton, Card, CardHeader, Input, PageSizeControls, Pagination, Table, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
 import { adminApi } from "../api/admin-api";
 import { walletStatusLabel, type WalletStatus } from "../domain/rulebook";
 import { memberTabHref } from "../member/member-model";
@@ -181,8 +182,8 @@ function WalletStatusCommandDialog({
         {validationError || error ? <p id="wallet-status-reason-error" className="field-error" role="alert">{translateText(validationError ?? error ?? "")}</p> : null}
       </div>
       <div className="dialog-actions">
-        <button className="btn" type="button" onClick={onCancel} disabled={pending}>{translateText("Cancel")}</button>
-        <button className={`btn ${walletStatusActionClass(targetStatus)}`} type="submit" disabled={pending}>{pending ? translateText("Saving…") : translateText(walletStatusActionLabel(targetStatus))}</button>
+        <UiButton variant="outline" type="button" onClick={onCancel} disabled={pending}>{translateText("Cancel")}</UiButton>
+        <UiButton variant={targetStatus === "ACTIVE" ? "primary" : "danger"} type="submit" disabled={pending}>{pending ? translateText("Saving…") : translateText(walletStatusActionLabel(targetStatus))}</UiButton>
       </div>
     </form>
   </dialog></AdminModalPortal>;
@@ -216,7 +217,7 @@ function WalletSummary({
 }) {
   const { translateText } = useAdminShell();
   const content = error
-    ? <div className="empty" role="alert"><h3>{translateText("Wallet summary unavailable")}</h3><p>{translateText(error)}</p><button className="btn" type="button" onClick={onRetry}>{translateText("Try again")}</button></div>
+    ? <div className="empty" role="alert"><h3>{translateText("Wallet summary unavailable")}</h3><p>{translateText(error)}</p><UiButton variant="outline" type="button" onClick={onRetry}>{translateText("Try again")}</UiButton></div>
     : summary
     ? <div className="wallet-finance-summary-grid">
       <SummaryMetric label={translateText("Spending balance")} value={summary.totalSpendingSatang} />
@@ -384,7 +385,7 @@ function WalletDrawer({
       {dataSource === "mock" ? <>
         <p>{translateText("Change Wallet Status without changing the Member Ban status. A non-active Wallet blocks new commitments while existing obligations continue.")}</p>
         {walletStatusTargets(detail?.status ?? row.status).length ? <div className="wallet-status-actions" aria-label={translateText("Wallet status actions")}>
-          {walletStatusTargets(detail?.status ?? row.status).map((targetStatus) => <UiButton variant={walletStatusActionClass(targetStatus) === "danger" ? "danger" : "outline"} className={`btn ${walletStatusActionClass(targetStatus)}`} type="button" key={targetStatus} data-wallet-status-action={targetStatus} onClick={() => openStatusCommand(targetStatus)} disabled={statusCommandPending}>{translateText(walletStatusActionLabel(targetStatus))}</UiButton>)}
+          {walletStatusTargets(detail?.status ?? row.status).map((targetStatus) => <UiButton variant={walletStatusActionClass(targetStatus) === "danger" ? "danger" : "outline"} type="button" key={targetStatus} data-wallet-status-action={targetStatus} onClick={() => openStatusCommand(targetStatus)} disabled={statusCommandPending}>{translateText(walletStatusActionLabel(targetStatus))}</UiButton>)}
         </div> : <p className="audit-note">{translateText("Closed is terminal. No Wallet status change is available.")}</p>}
       </> : <p>{translateText("Status commands will be connected to the Admin API in the API integration step.")}</p>}
     </>
@@ -400,14 +401,14 @@ function WalletDrawer({
     onClose={onClose}
     actions={!loading && !error && detail ? <>
       {dataSource === "api" ? <>
-        <UiButton variant="outline" className="btn" type="button" disabled={actionPending !== null} onClick={() => { void verifyLedger(); }}>{actionPending === "verify" ? translateText("Verifying…") : translateText("Verify Ledger")}</UiButton>
-        <UiButton variant="primary" className="btn primary" type="button" disabled={actionPending !== null} onClick={() => { if (window.confirm(translateText("Rebuild this Wallet projection from the Ledger source of truth?"))) void rebuildProjection(); }}>{actionPending === "rebuild" ? translateText("Rebuilding…") : translateText("Rebuild projection")}</UiButton>
+        <UiButton variant="outline" type="button" disabled={actionPending !== null} onClick={() => { void verifyLedger(); }}>{actionPending === "verify" ? translateText("Verifying…") : translateText("Verify Ledger")}</UiButton>
+        <UiButton variant="primary" type="button" disabled={actionPending !== null} onClick={() => { if (window.confirm(translateText("Rebuild this Wallet projection from the Ledger source of truth?"))) void rebuildProjection(); }}>{actionPending === "rebuild" ? translateText("Rebuilding…") : translateText("Rebuild projection")}</UiButton>
       </> : null}
-      {detail ? <a className="btn" href={memberTabHref(detail.memberId, "wallet-statement")}>{translateText("See Wallet Statement")}</a> : null}
-      <button className="btn" type="button" onClick={onClose}>{translateText("Close record")}</button>
+      {detail ? <UiButton asChild variant="outline"><a href={memberTabHref(detail.memberId, "wallet-statement")}>{translateText("See Wallet Statement")}</a></UiButton> : null}
+      <UiButton variant="outline" type="button" onClick={onClose}>{translateText("Close record")}</UiButton>
     </> : null}
   >
-        {loading ? <p aria-live="polite">{translateText("Loading Wallet detail…")}</p> : error ? <div className="empty" role="alert"><h3>{translateText("Wallet detail unavailable")}</h3><p>{translateText(error)}</p><button className="btn" type="button" onClick={() => { startTransition(() => { void loadDetail(); }); }}>{translateText("Try again")}</button></div> : detail ? <>
+        {loading ? <p aria-live="polite">{translateText("Loading Wallet detail…")}</p> : error ? <div className="empty" role="alert"><h3>{translateText("Wallet detail unavailable")}</h3><p>{translateText(error)}</p><UiButton variant="outline" type="button" onClick={() => { startTransition(() => { void loadDetail(); }); }}>{translateText("Try again")}</UiButton></div> : detail ? <>
           <Card as="section" className="wallet-record"><div className="drawer-title"><span className="att-icon neutral">W</span><div><h2>{detail.memberName}</h2><p>{detail.email} · {detail.memberId}</p></div></div><div className="facts"><Fact label={translateText("Wallet Status")}><Badge status={detail.status} /></Fact><Fact label={translateText("Current Wallet Balance")}>{formatWalletMoney(detail.currentBalanceSatang)}</Fact><Fact label={translateText("Wallet record")}>{detail.id}</Fact><Fact label={translateText("Latest Wallet Transaction Date")}>{formatWalletDate(detail.latestTransactionAt)}</Fact></div></Card>
           <Section title={translateText("Wallet balances")}><div className="user-context-list"><div><span>{translateText("Spending Balance")}</span><strong>{formatWalletMoney(detail.balances.spendingBalanceSatang)}</strong></div><div><span>{translateText("Earnings Balance")}</span><strong>{formatWalletMoney(detail.balances.earningsBalanceSatang)}</strong></div><div><span>{translateText("Funding Reserved")}</span><strong>{formatWalletMoney(detail.balances.fundingReservedSatang)}</strong></div><div><span>{translateText("Reserved For Payouts")}</span><strong>{formatWalletMoney(detail.balances.reservedForPayoutsSatang)}</strong></div></div></Section>
           <Section title={translateText("Ledger check")}><p>{translateText(detail.projectionMatchesLedger ? "Wallet projection matches the Ledger." : "Wallet projection does not match the Ledger.")}</p></Section>
@@ -553,10 +554,10 @@ export function AdminWalletPage({ initialData }: { initialData: WalletBoardPageD
   }, []);
 
   if (initialData.boardError) return <main className="admin-route-page wallet-route-page" tabIndex={-1}>
-    <div className="page-head"><div><p className="admin-route-kicker">{translateText("KUQuest Admin")}</p><h1>{translateText("Wallets")}</h1><p>{translateText("Review Wallet status and balances. Wallet detail is not a route in this migration.")}</p></div></div>
-    <Card as="section" className="panel wallet-board" aria-label={translateText("Wallet review board")}>
+    <AdminPageHeader title={translateText("Wallets")} description={translateText("Review Wallet status and balances. Wallet detail is not a route in this migration.")} />
+    <Card as="section" className="overflow-hidden wallet-board" aria-label={translateText("Wallet review board")}>
       <WalletSummary summary={initialData.summary} error={initialData.summaryError} dataSource={initialData.dataSource} onRetry={() => router.refresh()} />
-      <div className="empty" role="alert"><h2>{translateText("Records are not available")}</h2><p>{translateText(initialData.boardError)}</p><button className="btn primary" type="button" onClick={() => router.refresh()}>{translateText("Try again")}</button></div>
+      <div className="empty" role="alert"><h2>{translateText("Records are not available")}</h2><p>{translateText(initialData.boardError)}</p><UiButton variant="primary" type="button" onClick={() => router.refresh()}>{translateText("Try again")}</UiButton></div>
     </Card>
   </main>;
 
@@ -568,21 +569,23 @@ export function AdminWalletPage({ initialData }: { initialData: WalletBoardPageD
   const resultLabelWithLoading = isLoadingMore ? `${resultLabel} · ${translateText("Loading more records…")}` : resultLabel;
 
   return <main className="admin-route-page wallet-route-page" tabIndex={-1}>
-    <div className="page-head"><div><p className="admin-route-kicker">{translateText("KUQuest Admin")}</p><h1>{translateText("Wallets")}</h1><p>{translateText("Review Wallet status and balances. Wallet detail is not a route in this migration.")}</p></div></div>
-    <Card as="section" className="panel wallet-board" aria-label={translateText("Wallet review board")}>
+    <AdminPageHeader title={translateText("Wallets")} description={translateText("Review Wallet status and balances. Wallet detail is not a route in this migration.")} />
+    <Card as="section" className="overflow-hidden wallet-board" aria-label={translateText("Wallet review board")}>
       <WalletSummary summary={initialData.summary} error={initialData.summaryError} dataSource={initialData.dataSource} onRetry={() => router.refresh()} />
-      <div className="tabs" aria-label={translateText("Wallet status filters")}>
-        {WALLET_BOARD_TABS.map((item) => <button className={`tab${tab === item.id ? " active" : ""}`} type="button" aria-pressed={tab === item.id} key={item.id} onClick={() => chooseTab(item.id)}>{translateText(item.label)}{item.id === "all" ? ` (${rows.length})` : ""}</button>)}
-      </div>
-      <div className="toolbar resource-toolbar">
-        <label className="inline-search search-field" htmlFor="wallet-search"><span className="visually-hidden">{translateText("Search Wallets")}</span><input id="wallet-search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={translateText("Search Wallets…")} autoComplete="off" /></label>
-        <span className="sort-help">{translateText("Click a column to sort")}</span>
+      <Tabs value={tab} onValueChange={(value) => chooseTab(value as WalletBoardTab)} className="w-full gap-0">
+        <TabsList className="w-full flex-nowrap justify-start overflow-x-auto rounded-none border-b border-admin-border bg-transparent p-0" aria-label={translateText("Wallet status filters")}>
+          {WALLET_BOARD_TABS.map((item) => <TabsTrigger key={item.id} value={item.id} className="min-h-11 shrink-0 rounded-none border-b-2 border-transparent px-3 py-2 text-sm text-admin-muted shadow-none hover:bg-transparent data-[state=active]:border-admin-accent data-[state=active]:bg-transparent data-[state=active]:text-admin-text data-[state=active]:shadow-none">{translateText(item.label)}{item.id === "all" ? ` (${rows.length})` : ""}</TabsTrigger>)}
+        </TabsList>
+      </Tabs>
+      <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2">
+        <label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text" htmlFor="wallet-search"><span className="visually-hidden">{translateText("Search Wallets")}</span><Input className="h-9 min-h-9 px-3 py-1.5 text-sm" id="wallet-search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={translateText("Search Wallets…")} autoComplete="off" /></label>
+        <span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span>
         <PageSizeControls value={pageSize} translateText={translateText} onChange={choosePageSize} />
-        <span className="count" aria-live="polite">{translateText(resultLabelWithLoading)}</span>
+        <span className="ml-auto text-sm text-admin-muted max-[600px]:hidden" aria-live="polite">{translateText(resultLabelWithLoading)}</span>
       </div>
-      {backgroundLoadError ? <p className="field-error" role="alert">{translateText(backgroundLoadError)} <button className="link" type="button" onClick={() => router.refresh()}>{translateText("Try again")}</button></p> : null}
-      {initialData.boardError ? <p className="field-error" role="alert">{translateText(initialData.boardError)} <button className="link" type="button" onClick={() => router.refresh()}>{translateText("Try again")}</button></p> : null}
-      {!sortedRows.length ? <div className="empty"><h2>{translateText("No matching records")}</h2><p>{query.trim() ? translateText("Clear your search to see more results.") : translateText("There are no records in this view.")}</p><button className="btn" type="button" onClick={resetView}>{translateText("Reset view")}</button></div> : <section className="table-wrap wallet-board-table-wrap" aria-label={translateText("Wallets table")}><Table className="data wallet-board-table"><caption>{translateText("Wallets")}</caption><thead><tr><SortableHeader label={translateText("Wallet / Member ID")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Member")} sortKey="member" activeKey={sortKey} direction={direction} onSort={sortBy} /><th scope="col">{translateText("Email")}</th><SortableHeader label={translateText("Current Wallet Balance")} sortKey="balance" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Latest Wallet Transaction Date")} sortKey="latestTransactionAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Wallet status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Created")} sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr data-wallet-row={row.id} key={row.id} tabIndex={0} aria-label={`${translateText("Open Wallet")} ${row.id}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; openWalletDrawer(row, event.currentTarget); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openWalletDrawer(row, event.currentTarget); } }}><td><button className="row-record-button" type="button" data-wallet-drawer-trigger={row.id} aria-label={`${translateText("Open Wallet")} ${row.id}`} onClick={(event) => openWalletDrawer(row, event.currentTarget)}>{row.id}</button><small>{row.memberId}</small><div className="wallet-mobile-key-facts" aria-label={translateText("Wallet summary")}><div><span>{translateText("Current Wallet Balance")}</span><strong>{formatWalletMoney(row.currentBalanceSatang)}</strong></div><div><span>{translateText("Wallet Status")}</span><strong><Badge status={row.status} track={false} /></strong></div><div><span>{translateText("Latest Wallet Transaction Date")}</span><strong>{formatWalletDate(row.latestTransactionAt)}</strong></div></div></td><td>{row.memberAvailable ? <Link className="user-record-link" data-member-link={row.memberId} href={memberTabHref(row.memberId, "overview")} aria-label={`${translateText("Open Member")} ${row.memberName}`}><strong>{row.memberName}</strong></Link> : <strong>{row.memberName}</strong>}</td><td><strong>{row.email}</strong><small>{row.studentId || translateText("Student ID not provided")}</small></td><td className="money">{formatWalletMoney(row.currentBalanceSatang)}</td><td>{formatWalletDate(row.latestTransactionAt)}</td><td><Badge status={row.status} /></td><td>{formatWalletDate(row.createdAt)}</td></tr>)}</tbody></Table></section>}
+      {backgroundLoadError ? <p className="field-error" role="alert">{translateText(backgroundLoadError)} <UiButton variant="link" size="sm" type="button" onClick={() => router.refresh()}>{translateText("Try again")}</UiButton></p> : null}
+      {initialData.boardError ? <p className="field-error" role="alert">{translateText(initialData.boardError)} <UiButton variant="link" size="sm" type="button" onClick={() => router.refresh()}>{translateText("Try again")}</UiButton></p> : null}
+      {!sortedRows.length ? <div className="empty"><h2>{translateText("No matching records")}</h2><p>{query.trim() ? translateText("Clear your search to see more results.") : translateText("There are no records in this view.")}</p><UiButton variant="outline" type="button" onClick={resetView}>{translateText("Reset view")}</UiButton></div> : <section className="table-wrap wallet-board-table-wrap" aria-label={translateText("Wallets table")}><Table className="data wallet-board-table"><caption>{translateText("Wallets")}</caption><thead><tr><SortableHeader label={translateText("Wallet / Member ID")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Member")} sortKey="member" activeKey={sortKey} direction={direction} onSort={sortBy} /><th scope="col">{translateText("Email")}</th><SortableHeader label={translateText("Current Wallet Balance")} sortKey="balance" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Latest Wallet Transaction Date")} sortKey="latestTransactionAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Wallet status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Created")} sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr data-wallet-row={row.id} key={row.id} tabIndex={0} aria-label={`${translateText("Open Wallet")} ${row.id}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; openWalletDrawer(row, event.currentTarget); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openWalletDrawer(row, event.currentTarget); } }}><td><button className="row-record-button" type="button" data-wallet-drawer-trigger={row.id} aria-label={`${translateText("Open Wallet")} ${row.id}`} onClick={(event) => openWalletDrawer(row, event.currentTarget)}>{row.id}</button><small>{row.memberId}</small><div className="wallet-mobile-key-facts" aria-label={translateText("Wallet summary")}><div><span>{translateText("Current Wallet Balance")}</span><strong>{formatWalletMoney(row.currentBalanceSatang)}</strong></div><div><span>{translateText("Wallet Status")}</span><strong><Badge status={row.status} track={false} /></strong></div><div><span>{translateText("Latest Wallet Transaction Date")}</span><strong>{formatWalletDate(row.latestTransactionAt)}</strong></div></div></td><td>{row.memberAvailable ? <Link className="user-record-link" data-member-link={row.memberId} href={memberTabHref(row.memberId, "overview")} aria-label={`${translateText("Open Member")} ${row.memberName}`}><strong>{row.memberName}</strong></Link> : <strong>{row.memberName}</strong>}</td><td><strong>{row.email}</strong><small>{row.studentId || translateText("Student ID not provided")}</small></td><td className="money">{formatWalletMoney(row.currentBalanceSatang)}</td><td>{formatWalletDate(row.latestTransactionAt)}</td><td><Badge status={row.status} /></td><td>{formatWalletDate(row.createdAt)}</td></tr>)}</tbody></Table></section>}
       {sortedRows.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPage} ariaLabel={translateText("Wallets pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className="table-pagination" /> : null}
     </Card>
     {selectedWallet ? <WalletDrawer row={selectedWallet} dataSource={initialData.dataSource} initialMockHistory={mockStatusHistory[selectedWallet.id] ?? []} opener={drawerOpenerRef.current} onClose={closeWalletDrawer} onStatusChanged={handleStatusChanged} /> : null}

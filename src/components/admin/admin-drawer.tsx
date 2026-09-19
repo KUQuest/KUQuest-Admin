@@ -4,6 +4,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 
 import { Button } from "../ui/button";
 import { CardContent, CardFooter, CardHeader } from "../ui/card";
+import { cn } from "../ui/utils";
 
 const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -128,11 +129,11 @@ export function AdminDrawer({
   }, [opener, openerAttribute, openerValue, outsideClassName]);
 
   return <>
-    <button className="scrim" type="button" tabIndex={-1} aria-label={ariaLabel} onClick={onClose} />
-    <dialog ref={drawerRef} className={`drawer open${className ? ` ${className}` : ""}`} aria-modal="true" aria-labelledby={titleId} tabIndex={-1} open>
-      <CardHeader flush className="drawer-top"><div><strong id={titleId}>{title}</strong><small>{subtitle}</small></div><Button variant="ghost" size="icon" className="icon shrink-0" type="button" aria-label={closeButtonAriaLabel ?? ariaLabel} onClick={onClose}><span className="close-lines" /></Button></CardHeader>
-      <CardContent flush className="drawer-body admin-drawer-content">{children}</CardContent>
-      {actions ? <CardFooter flush className="drawer-actions">{actions}</CardFooter> : null}
+    <button className="scrim fixed inset-0 z-40 cursor-default border-0 bg-admin-scrim p-0" type="button" tabIndex={-1} aria-label={ariaLabel} onClick={onClose} />
+    <dialog ref={drawerRef} data-slot="admin-drawer" className={cn("drawer open fixed inset-y-0 right-0 z-[45] m-0 flex h-dvh w-full max-w-[640px] flex-col overflow-hidden border-0 bg-admin-surface p-0 shadow-admin", className)} aria-modal="true" aria-labelledby={titleId} tabIndex={-1} open>
+      <CardHeader flush data-slot="drawer-header" className="drawer-top sticky top-0 z-[3] flex min-h-[68px] shrink-0 items-center justify-between gap-3 border-b border-admin-border bg-admin-surface/95 px-5 py-3 backdrop-blur-md"><div className="min-w-0"><strong id={titleId} className="block text-lg font-semibold leading-tight text-admin-text">{title}</strong><small className="mt-0.5 block text-sm text-admin-muted">{subtitle}</small></div><Button variant="ghost" size="icon" className="icon shrink-0" type="button" aria-label={closeButtonAriaLabel ?? ariaLabel} onClick={onClose}><span className="close-lines" /></Button></CardHeader>
+      <CardContent flush data-slot="drawer-content" className="drawer-body admin-drawer-content min-h-0 flex-1 overflow-y-auto px-6 py-5 pb-28">{children}</CardContent>
+      {actions ? <CardFooter flush data-slot="drawer-footer" className="drawer-actions sticky bottom-0 z-[3] flex shrink-0 flex-col gap-2 border-t border-admin-border bg-admin-surface/95 px-5 py-3 backdrop-blur-md md:flex-row">{actions}</CardFooter> : null}
     </dialog>
   </>;
 }

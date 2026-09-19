@@ -14,7 +14,7 @@ import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { adminApi, type ReportDecision } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { Button } from "../../../components/ui/button";
-import { Card, CardHeader } from "../../../components/ui/card";
+import { Card, CardContent, CardHeader } from "../../../components/ui/card";
 import { AdminOverviewMeta } from "../../../components/admin/admin-overview-meta";
 import { conductReportRoutes } from "../admin-routes";
 import { questStateLabel } from "../domain/rulebook";
@@ -153,12 +153,12 @@ function ConductReportDecisionDialog({
           {error && <p className="field-error" role="alert">{translateText(error)}</p>}
         </div>
         <div className="dialog-actions">
-          <button className="btn" type="button" onClick={onCancel} disabled={busy}>
+          <Button variant="outline" type="button" onClick={onCancel} disabled={busy}>
             {translateText("Cancel")}
-          </button>
-          <button className="btn danger" type="submit" disabled={busy || reason.trim().length < 8}>
+          </Button>
+          <Button variant="danger" type="submit" disabled={busy || reason.trim().length < 8}>
             {busy ? translateText("Saving…") : translateText("Confirm decision")}
-          </button>
+          </Button>
         </div>
       </form>
       </dialog>
@@ -305,7 +305,7 @@ function RelatedQuestPanel({
         <div><span>{translateText("Failed at")}</span><strong>{model.questFailedAt ? formatAdminTimestamp(model.questFailedAt) : translateText("Not provided.")}</strong></div>
       </div>
       {model.questHref
-        ? <Link className="btn full-width" href={model.questHref}>{translateText("Open Quest detail")}</Link>
+        ? <Button asChild variant="outline" className="mt-3 w-full"><Link href={model.questHref}>{translateText("Open Quest detail")}</Link></Button>
         : <p className="audit-note">{translateText("Related Quest was not provided.")}</p>}
     </Card>
   );
@@ -328,7 +328,7 @@ function ConductMemberSummaryPanel({
     <Card as="section" className="record-panel">
       <CardHeader flush><h2>{translateText(heading)}</h2></CardHeader>
       <div className="side-facts"><div><span>{translateText("Name")}</span><strong><MemberLink id={id} name={name} href={href} /></strong></div><div><span>{translateText("Member ID")}</span><strong>{id || "—"}</strong></div></div>
-      {href && <Link className="btn full-width" href={href}>{translateText("See Member profile")}</Link>}
+      {href && <Button asChild variant="outline" className="mt-3 w-full"><Link href={href}>{translateText("See Member profile")}</Link></Button>}
     </Card>
   );
 }
@@ -466,14 +466,15 @@ function DecisionControls({
         </div>
       </fieldset>
       {commandError && <p className="field-error" role="alert">{translateText(commandError)}</p>}
-      <button
-        className="btn danger full-width"
+      <Button
+        variant="danger"
+        className="w-full"
         type="button"
         data-conduct-report-close="Close report"
         onClick={onStart}
       >
         {translateText("Close report")}
-      </button>
+      </Button>
     </>
   );
 }
@@ -795,7 +796,7 @@ export function ConductReportDetail({
 
   if (loading && !reportModel) return <AdminLoading message={translateText("Loading Conduct Report…")} />;
   if (!reportModel) {
-    return <main className="admin-feedback"><Card as="section" className="panel"><CardHeader flush><h1>{translateText("Conduct Report not found")}</h1></CardHeader><p>{translateText(loadError ?? "The requested Conduct Report was not found.")}</p>{presentation === "page" && <Link className="btn primary" href={conductReportRoutes.list()}>{translateText("Return to Conduct Reports")}</Link>}</Card></main>;
+    return <main className="admin-feedback"><Card as="section" className="overflow-hidden"><CardHeader><h1 className="text-lg font-semibold">{translateText("Conduct Report not found")}</h1></CardHeader><CardContent className="space-y-4"><p>{translateText(loadError ?? "The requested Conduct Report was not found.")}</p>{presentation === "page" && <Button asChild variant="primary"><Link href={conductReportRoutes.list()}>{translateText("Return to Conduct Reports")}</Link></Button>}</CardContent></Card></main>;
   }
 
   return <ConductReportDrawer model={reportModel} presentation={presentation} onClose={onClose ?? (() => undefined)} onUpdated={onUpdated} />;

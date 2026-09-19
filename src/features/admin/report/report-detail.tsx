@@ -15,7 +15,7 @@ import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { RecordStatusBar } from "../../../components/admin/record-status-bar";
 import { Button } from "../../../components/ui/button";
-import { Card, CardHeader } from "../../../components/ui/card";
+import { Card, CardContent, CardHeader } from "../../../components/ui/card";
 import { AdminOverviewMeta } from "../../../components/admin/admin-overview-meta";
 import { adminApi, type AdminEvidence, type ReportDecision } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
@@ -151,10 +151,10 @@ function ReportDecisionDialog({
           {error && <p className="field-error" role="alert">{translateText(error)}</p>}
         </div>
         <div className="dialog-actions">
-          <button className="btn" type="button" onClick={onCancel} disabled={busy}>{translateText("Cancel")}</button>
-          <button className="btn danger" type="submit" disabled={busy || reason.trim().length < 8}>
+          <Button variant="outline" type="button" onClick={onCancel} disabled={busy}>{translateText("Cancel")}</Button>
+          <Button variant="danger" type="submit" disabled={busy || reason.trim().length < 8}>
             {busy ? translateText("Saving…") : translateText("Confirm decision")}
-          </button>
+          </Button>
         </div>
       </form>
       </dialog>
@@ -196,7 +196,7 @@ function EvidencePreview({
         {!state.loading && !state.error && (
           <pre className="report-evidence-context">{evidenceContext(state.evidence?.context, translateText)}</pre>
         )}
-        <div className="dialog-actions"><button className="btn" type="button" onClick={onClose}>{translateText("Close")}</button></div>
+        <div className="dialog-actions"><Button variant="outline" type="button" onClick={onClose}>{translateText("Close")}</Button></div>
       </div>
       </dialog>
     </AdminModalPortal>
@@ -278,7 +278,7 @@ function RelatedQuestPanel({ model, translateText }: { model: ReportCaseModel; t
         <div><span>{translateText("Quest")}</span><strong>{model.relatedQuestTitle ?? translateText("Not provided.")}</strong></div>
         <div><span>{translateText("Quest ID")}</span><strong>{model.relatedQuestId ?? "—"}</strong></div>
       </div>
-      {model.relatedQuestHref && <Link className="btn full-width" href={model.relatedQuestHref}>{translateText("Open Quest detail")}</Link>}
+      {model.relatedQuestHref && <Button asChild variant="outline" className="mt-3 w-full"><Link href={model.relatedQuestHref}>{translateText("Open Quest detail")}</Link></Button>}
     </Card>
   );
 }
@@ -358,7 +358,7 @@ function MemberSummaryPanel({
     <Card as="section" className="record-panel">
       <CardHeader flush><h2>{translateText(heading)}</h2></CardHeader>
       <div className="side-facts"><div><span>{translateText("Name")}</span><strong><MemberLink id={id} name={name} href={href} /></strong></div><div><span>{translateText("Member ID")}</span><strong>{id || "—"}</strong></div></div>
-      {href && <Link className="btn full-width" href={href}>{translateText("See Member profile")}</Link>}
+      {href && <Button asChild variant="outline" className="mt-3 w-full"><Link href={href}>{translateText("See Member profile")}</Link></Button>}
     </Card>
   );
 }
@@ -438,9 +438,9 @@ function DecisionControls({
         <p className="audit-note">{translateText("This Message is hidden. A reason is required before the Admin restores it.")}</p>
         <ResolutionDetails model={model} translateText={translateText} />
         {commandError && <p className="field-error" role="alert">{translateText(commandError)}</p>}
-        <button className="btn primary full-width" type="button" data-report-decision="restore" onClick={() => { onSelect("restore"); onStart(); }}>
+        <Button variant="primary" className="w-full" type="button" data-report-decision="restore" onClick={() => { onSelect("restore"); onStart(); }}>
           {translateText("Restore Message")}
-        </button>
+        </Button>
       </>
     );
   }
@@ -460,7 +460,7 @@ function DecisionControls({
         </div>
       </fieldset>
       {commandError && <p className="field-error" role="alert">{translateText(commandError)}</p>}
-      <button className="btn danger full-width" type="button" data-report-close="Close report" onClick={onStart}>{translateText("Close report")}</button>
+      <Button variant="danger" className="w-full" type="button" data-report-close="Close report" onClick={onStart}>{translateText("Close report")}</Button>
     </>
   );
 }
@@ -639,7 +639,7 @@ export function ReportCaseDetail({
   if (!model) {
     return (
       <main className={drawer ? "drawer-body" : "admin-feedback"}>
-        <Card as="section" className="panel"><CardHeader flush><h1>{translateText("Report Case not found")}</h1></CardHeader><p>{translateText(loadError ?? "The requested Report Case was not found.")}</p>{!drawer && <Link className="btn primary" href={reportRoutes.list()}>{translateText("Return to Report Cases")}</Link>}</Card>
+      <Card as="section" className="overflow-hidden"><CardHeader><h1 className="text-lg font-semibold">{translateText("Report Case not found")}</h1></CardHeader><CardContent className="space-y-4"><p>{translateText(loadError ?? "The requested Report Case was not found.")}</p>{!drawer && <Button asChild variant="primary"><Link href={reportRoutes.list()}>{translateText("Return to Report Cases")}</Link></Button>}</CardContent></Card>
       </main>
     );
   }

@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
-import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, TableCell, TableHead, TableRow } from "../../../components/ui";
+import { AdminPageHeader } from "../../../components/admin/admin-page-header";
+import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, TableCell, TableHead, TableRow, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { reportRoutes } from "../admin-routes";
 import { formatAdminTimestamp } from "../date-format";
@@ -175,7 +176,7 @@ export function ReportCaseBoard({ initialData }: { initialData?: ReportCasePageD
 
   if (!page) return <AdminLoading message={translateText(loadError ?? "Loading Report Cases…")} />;
   if (loadError) {
-    return <main className="admin-feedback"><Card as="section" className="panel"><CardHeader flush><h1>{translateText("Report Cases unavailable")}</h1></CardHeader><p>{translateText(loadError)}</p></Card></main>;
+    return <main className="admin-feedback"><Card as="section" className="overflow-hidden"><CardHeader><h1 className="text-lg font-semibold">{translateText("Report Cases unavailable")}</h1></CardHeader><p className="p-5">{translateText(loadError)}</p></Card></main>;
   }
 
   const filteredModels = page.items.filter((model) => tabMatches(model, activeTab) && modelMatchesQuery(model, query));
@@ -194,14 +195,16 @@ export function ReportCaseBoard({ initialData }: { initialData?: ReportCasePageD
 
   return (
       <main id="report-main" className="admin-route-page report-case-board" tabIndex={-1}>
-        <div className="page-head"><div><p className="admin-route-kicker">{translateText("KUQuest Admin")}</p><h1>{translateText("Report Cases")}</h1><p>{translateText("Review Report Cases about Message or Attachment content.")}</p></div></div>
+        <AdminPageHeader title={translateText("Report Cases")} description={translateText("Review Report Cases about Message or Attachment content.")} />
         <Card as="section" className="overflow-hidden" aria-labelledby="report-case-board-heading">
           <CardHeader className="flex min-h-[60px] items-center justify-between gap-4">
             <div><CardTitle id="report-case-board-heading">{translateText("Report Cases")}</CardTitle><CardDescription>{translateText("Report Case behavior is separate from Conduct Report behavior.")}</CardDescription></div><span className="count">{visibleModels.length} {translateText("shown")}</span>
           </CardHeader>
-          <div className="admin-filter-tabs flex gap-1 overflow-x-auto border-b border-admin-border px-3" role="tablist" aria-label={translateText("Report Case status filters")}>
-            {tabs.map((tab) => <Button key={tab.id} variant="ghost" size="sm" className={`min-h-10 rounded-none border-0 border-b-2 border-transparent px-3 py-2 text-sm font-medium text-admin-muted hover:bg-transparent hover:text-admin-text focus-visible:outline-2 focus-visible:outline-admin-accent ${activeTab === tab.id ? "border-admin-accent text-admin-text font-semibold" : ""}`} type="button" role="tab" tabIndex={0} aria-label={tab.id === "open" ? translateText("Open") : translateText(tab.label)} aria-selected={activeTab === tab.id} onClick={() => { setActiveTab(tab.id); setPageNumber(1); }}>{translateText(tab.label)}{tab.id === "open" ? <span className="tab-count" aria-hidden="true"> ({openCount})</span> : null}</Button>)}
-          </div>
+          <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value as ReportCaseTab); setPageNumber(1); }}>
+            <TabsList className="flex w-full justify-start gap-1 overflow-x-auto rounded-none border-b border-admin-border px-3" aria-label={translateText("Report Case status filters")}>
+              {tabs.map((tab) => <TabsTrigger key={tab.id} value={tab.id} className="min-h-10 shrink-0 rounded-none border-b-2 border-transparent px-3 py-2 text-sm text-admin-muted data-[state=active]:border-admin-accent data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-admin-text data-[state=active]:shadow-none">{translateText(tab.label)}{tab.id === "open" ? ` (${openCount})` : null}</TabsTrigger>)}
+            </TabsList>
+          </Tabs>
           <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2"><label className="admin-filter-label flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text" htmlFor="report-case-search">{translateText("Search Report Cases")}<Input className="admin-filter-input h-9 min-h-9 px-3 py-1.5 text-sm" id="report-case-search" type="search" aria-label={translateText("Search Report Cases")} placeholder={translateText("Search by Report Case, Member, or Report type")} value={query} onChange={(event) => { setQuery(event.target.value); setPageNumber(1); }} /></label><span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span><PageSizeControls value={pageSize} disabled={loadingMore} translateText={translateText} onChange={(size) => { setPageSize(size); setPageNumber(1); if (size === "all") void loadAllPages(); }} /><span className="count" aria-live="polite">{loadingMore ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}</span></div>
           <div className="overflow-x-auto" aria-label={translateText("Report Cases table")}>
             <Table className="data !min-w-[760px]">

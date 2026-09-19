@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { AdminLoading } from "../../../components/admin/admin-feedback";
+import { AdminPageHeader } from "../../../components/admin/admin-page-header";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, TableCell, TableHead, TableRow } from "../../../components/ui";
+import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, TableCell, TableHead, TableRow, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { conductReportRoutes } from "../admin-routes";
 import { formatAdminTimestamp } from "../date-format";
@@ -177,9 +178,9 @@ export function ConductReportBoard({
   if (loadError) {
     return (
       <main className="admin-feedback">
-        <Card as="section" className="panel">
-          <CardHeader flush><h1>{translateText("Conduct Reports unavailable")}</h1></CardHeader>
-          <p>{translateText(loadError)}</p>
+        <Card as="section" className="overflow-hidden">
+          <CardHeader><h1 className="text-lg font-semibold">{translateText("Conduct Reports unavailable")}</h1></CardHeader>
+          <p className="p-5">{translateText(loadError)}</p>
         </Card>
       </main>
     );
@@ -206,13 +207,7 @@ export function ConductReportBoard({
   return (
     <>
       <main id="conduct-report-main" className="admin-route-page conduct-report-board" tabIndex={-1}>
-        <div className="page-head">
-          <div>
-            <p className="admin-route-kicker">{translateText("KUQuest Admin")}</p>
-            <h1>{translateText("Conduct Reports")}</h1>
-            <p>{translateText("Review Member behavior on Quests.")}</p>
-          </div>
-        </div>
+        <AdminPageHeader title={translateText("Conduct Reports")} description={translateText("Review Member behavior on Quests.")} />
         <Card as="section" className="overflow-hidden" aria-labelledby="conduct-report-board-heading">
           <CardHeader className="flex min-h-[60px] items-center justify-between gap-4">
             <div>
@@ -221,24 +216,11 @@ export function ConductReportBoard({
             </div>
             <span className="count">{visibleModels.length} {translateText("shown")}</span>
           </CardHeader>
-          <div className="admin-filter-tabs flex gap-1 overflow-x-auto border-b border-admin-border px-3" role="tablist" aria-label={translateText("Conduct Report status filters")}>
-            {tabs.map((tab) => (
-              <Button
-                key={tab.id}
-                variant="ghost"
-                size="sm"
-                className={`min-h-10 rounded-none border-0 border-b-2 border-transparent px-3 py-2 text-sm font-medium text-admin-muted hover:bg-transparent hover:text-admin-text focus-visible:outline-2 focus-visible:outline-admin-accent ${activeTab === tab.id ? "border-admin-accent text-admin-text font-semibold" : ""}`}
-                type="button"
-                role="tab"
-                tabIndex={0}
-                aria-label={tab.id === "open" ? translateText("Open") : translateText(tab.label)}
-                aria-selected={activeTab === tab.id}
-                onClick={() => { setActiveTab(tab.id); setPageNumber(1); }}
-              >
-                {translateText(tab.label)}{tab.id === "open" ? <span className="tab-count" aria-hidden="true"> ({openCount})</span> : null}
-              </Button>
-            ))}
-          </div>
+          <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value as ConductReportTab); setPageNumber(1); }}>
+            <TabsList className="flex w-full justify-start gap-1 overflow-x-auto rounded-none border-b border-admin-border px-3" aria-label={translateText("Conduct Report status filters")}>
+              {tabs.map((tab) => <TabsTrigger key={tab.id} value={tab.id} className="min-h-10 shrink-0 rounded-none border-b-2 border-transparent px-3 py-2 text-sm text-admin-muted data-[state=active]:border-admin-accent data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-admin-text data-[state=active]:shadow-none">{translateText(tab.label)}{tab.id === "open" ? ` (${openCount})` : null}</TabsTrigger>)}
+            </TabsList>
+          </Tabs>
           <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2">
             <label className="admin-filter-label flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text" htmlFor="conduct-report-search">
               {translateText("Search Conduct Reports")}

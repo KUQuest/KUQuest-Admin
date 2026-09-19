@@ -15,11 +15,12 @@ import { ApiError } from "../../../lib/api/client";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminActionReceipt, AdminActionSummary } from "../../../components/admin/admin-action-feedback";
 import { AdminRecordHeader } from "../../../components/admin/admin-record-header";
+import { AdminPageHeader } from "../../../components/admin/admin-page-header";
 import { AdminStatusAlert } from "../../../components/admin/admin-status-alert";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { RecordStatusBar } from "../../../components/admin/record-status-bar";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import { Badge as UiBadge, Button as UiButton, Card, CardHeader, PageSizeControls, Pagination, Table, type ButtonSize } from "../../../components/ui";
+import { Badge as UiBadge, Button as UiButton, Card, CardHeader, Input, PageSizeControls, Pagination, Table, Tabs, TabsList, TabsTrigger, type ButtonSize } from "../../../components/ui";
 import { payoutRoutes } from "../admin-routes";
 import {
   adminApi,
@@ -136,12 +137,12 @@ function PayoutDecisionActions({
 
   if (canDecide) {
     return <>
-      <UiButton size={size} variant="primary" className="btn primary" type="button" onClick={() => onCommand("approve")}>{translateText("Approve Payout")}</UiButton>
-      <UiButton size={size} variant="danger" className="btn danger" type="button" onClick={() => onCommand("reject")}>{translateText("Reject Payout")}</UiButton>
+      <UiButton size={size} variant="primary" type="button" onClick={() => onCommand("approve")}>{translateText("Approve Payout")}</UiButton>
+      <UiButton size={size} variant="danger" type="button" onClick={() => onCommand("reject")}>{translateText("Reject Payout")}</UiButton>
     </>;
   }
   if (canReconcile) {
-    return <UiButton size={size} variant="primary" className="btn primary" type="button" onClick={onReconcile} disabled={reconcilePending}>
+    return <UiButton size={size} variant="primary" type="button" onClick={onReconcile} disabled={reconcilePending}>
       {reconcilePending ? translateText("Reconciling…") : translateText("Reconcile with provider")}
     </UiButton>;
   }
@@ -340,7 +341,7 @@ function PayoutDetailContent({
         {actionReceiptView}
         {payoutDecisionSection}
       </>}
-      {showFullDetailLink ? <a className="btn payout-full-detail-link" href={payoutRoutes.detail(detail.id)}>{translateText("Full Payout detail")}</a> : null}
+      {showFullDetailLink ? <UiButton asChild variant="outline" className="payout-full-detail-link"><a href={payoutRoutes.detail(detail.id)}>{translateText("Full Payout detail")}</a></UiButton> : null}
     </div>
   );
 }
@@ -453,8 +454,8 @@ function PayoutCommandDialog({
           ) : null}
           {validationError || error ? <p className="field-error" role="alert">{translateText(validationError ?? error ?? "")}</p> : null}
           <div className="dialog-actions">
-            <button className="btn" type="button" onClick={onCancel} disabled={pending}>{translateText("Cancel")}</button>
-            <button className={`btn ${command === "approve" ? "primary" : "danger"}`} type="submit" disabled={submitDisabled}>{pending ? translateText("Saving…") : translateText(command === "approve" ? "Approve Payout" : "Reject Payout")}</button>
+            <UiButton variant="outline" type="button" onClick={onCancel} disabled={pending}>{translateText("Cancel")}</UiButton>
+            <UiButton variant={command === "approve" ? "primary" : "danger"} type="submit" disabled={submitDisabled}>{pending ? translateText("Saving…") : translateText(command === "approve" ? "Approve Payout" : "Reject Payout")}</UiButton>
           </div>
         </form>
       </dialog>
@@ -603,7 +604,7 @@ export function AdminPayoutDetailPage({
           outsideClassName="payout-command-layer"
           escapeDisabled={command !== null}
           onClose={closeDrawer}
-          actions={<a className="btn" href={payoutRoutes.detail(detail.id)}>{translateText("Full Payout detail")}</a>}
+          actions={<UiButton asChild variant="outline"><a href={payoutRoutes.detail(detail.id)}>{translateText("Full Payout detail")}</a></UiButton>}
         >
           {content}
         </AdminDrawer>
@@ -711,18 +712,20 @@ export function AdminPayoutPage({
 
   return (
     <main className="admin-route-page payout-route-page" tabIndex={-1}>
-      <div className="page-head"><div><p className="admin-route-kicker">{translateText("KUQuest Admin")}</p><h1>{translateText("Payouts")}</h1><p>{translateText("Review Payouts through the Admin approval queue.")}</p></div></div>
-      <Card as="section" className="panel payout-board" aria-label={translateText("Payout review board")}>
-        <div className="tabs" aria-label={translateText("Payout filters")}>
-          {PAYOUT_BOARD_TABS.map((item) => <button className={`tab${tab === item.id ? " active" : ""}`} type="button" aria-pressed={tab === item.id} key={item.id} onClick={() => chooseTab(item.id)}>{translateText(item.label)}{item.id === "PENDING_ADMIN_APPROVAL" ? ` (${rows.filter((row) => row.status === item.id).length})` : item.id === "all" ? ` (${rows.length})` : ""}</button>)}
-        </div>
-        <div className="toolbar resource-toolbar">
-          <label className="inline-search search-field" htmlFor="payout-search"><span className="visually-hidden">{translateText("Search Payouts")}</span><input id="payout-search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={translateText("Search Payouts…")} autoComplete="off" /></label>
-          <span className="sort-help">{translateText("Click a column to sort")}</span>
+      <AdminPageHeader title={translateText("Payouts")} description={translateText("Review Payouts through the Admin approval queue.")} />
+      <Card as="section" className="overflow-hidden payout-board" aria-label={translateText("Payout review board")}>
+        <Tabs value={tab} onValueChange={(value) => chooseTab(value as PayoutBoardTab)} className="w-full gap-0">
+          <TabsList className="w-full flex-nowrap justify-start overflow-x-auto rounded-none border-b border-admin-border bg-transparent p-0" aria-label={translateText("Payout filters")}>
+            {PAYOUT_BOARD_TABS.map((item) => <TabsTrigger key={item.id} value={item.id} className="min-h-11 shrink-0 rounded-none border-b-2 border-transparent px-3 py-2 text-sm text-admin-muted shadow-none hover:bg-transparent data-[state=active]:border-admin-accent data-[state=active]:bg-transparent data-[state=active]:text-admin-text data-[state=active]:shadow-none">{translateText(item.label)}{item.id === "PENDING_ADMIN_APPROVAL" ? ` (${rows.filter((row) => row.status === item.id).length})` : item.id === "all" ? ` (${rows.length})` : ""}</TabsTrigger>)}
+          </TabsList>
+        </Tabs>
+        <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2">
+          <label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text" htmlFor="payout-search"><span className="visually-hidden">{translateText("Search Payouts")}</span><Input className="h-9 min-h-9 px-3 py-1.5 text-sm" id="payout-search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={translateText("Search Payouts…")} autoComplete="off" /></label>
+          <span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span>
           <PageSizeControls value={pageSize} translateText={translateText} onChange={choosePageSize} />
-          <span className="count" aria-live="polite">{translateText("Showing")} {pageStart}–{pageEnd} {translateText("of")} {sortedRows.length} {translateText("results")}</span>
+          <span className="ml-auto text-sm text-admin-muted max-[600px]:hidden" aria-live="polite">{translateText("Showing")} {pageStart}–{pageEnd} {translateText("of")} {sortedRows.length} {translateText("results")}</span>
         </div>
-        {!sortedRows.length ? <div className="empty"><h2>{translateText("No matching Payouts")}</h2><p>{translateText("There are no Payouts in this view.")}</p><button className="btn" type="button" onClick={() => { setQuery(""); setTab("all"); }}>{translateText("Reset view")}</button></div> : <div className="table-wrap" aria-label={translateText("Payouts table")}><Table className="data"><caption>{translateText("Payouts")}</caption><thead><tr><SortableHeader label={translateText("Payout")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Student")} sortKey="student" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Created At")} sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Principal")} sortKey="amount" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr className="payout-row" data-payout-id={row.id} data-payout-drawer-trigger={row.id} key={row.id} tabIndex={0} aria-label={`${translateText("Open Payout")} ${row.id}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; void router.push(payoutRoutes.detail(row.id)); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); void router.push(payoutRoutes.detail(row.id)); } }}><td><Link className="row-record-button" data-payout-drawer-trigger={row.id} href={payoutRoutes.detail(row.id)} aria-label={`${translateText("Open Payout")} ${row.id}`}>{row.id}</Link></td><td><strong>{row.studentName}</strong><small>{row.studentEmail}</small></td><td>{formatPayoutDate(row.createdAt)}</td><td className="money">{formatPayoutMoney(row.principalSatang)}</td><td><Badge status={row.status} /></td></tr>)}</tbody></Table></div>}
+        {!sortedRows.length ? <div className="empty"><h2>{translateText("No matching Payouts")}</h2><p>{translateText("There are no Payouts in this view.")}</p><UiButton variant="outline" type="button" onClick={() => { setQuery(""); setTab("all"); }}>{translateText("Reset view")}</UiButton></div> : <div className="table-wrap" aria-label={translateText("Payouts table")}><Table className="data"><caption>{translateText("Payouts")}</caption><thead><tr><SortableHeader label={translateText("Payout")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Student")} sortKey="student" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Created At")} sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Principal")} sortKey="amount" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr className="payout-row" data-payout-id={row.id} data-payout-drawer-trigger={row.id} key={row.id} tabIndex={0} aria-label={`${translateText("Open Payout")} ${row.id}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; void router.push(payoutRoutes.detail(row.id)); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); void router.push(payoutRoutes.detail(row.id)); } }}><td><Link className="row-record-button" data-payout-drawer-trigger={row.id} href={payoutRoutes.detail(row.id)} aria-label={`${translateText("Open Payout")} ${row.id}`}>{row.id}</Link></td><td><strong>{row.studentName}</strong><small>{row.studentEmail}</small></td><td>{formatPayoutDate(row.createdAt)}</td><td className="money">{formatPayoutMoney(row.principalSatang)}</td><td><Badge status={row.status} /></td></tr>)}</tbody></Table></div>}
         {sortedRows.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPage} ariaLabel={translateText("Payouts pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className="table-pagination" /> : null}
       </Card>
     </main>

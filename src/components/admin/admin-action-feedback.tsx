@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { formatAdminTimestamp } from "../../features/admin/date-format";
 import { useAdminShell } from "./admin-shell-context";
+import { Button } from "../ui/button";
 
 export type AdminActionSummaryProps = {
   title: string;
@@ -123,7 +124,7 @@ export function AdminActionReceipt({
         <div><dt>{translateText("Time")}</dt><dd><time dateTime={timestamp}>{formatAdminTimestamp(timestamp)}</time></dd></div>
       </dl>
       {details ? <div className="admin-action-receipt-details">{details}</div> : null}
-      {onDismiss ? <button className="link" type="button" onClick={onDismiss}>{translateText("Dismiss")}</button> : null}
+      {onDismiss ? <Button variant="link" size="sm" type="button" onClick={onDismiss}>{translateText("Dismiss")}</Button> : null}
     </output>
   );
 }

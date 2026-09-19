@@ -3,7 +3,8 @@
 import Link from "next/link";
 
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import { Card, CardHeader } from "../../../components/ui";
+import { AdminPageHeader } from "../../../components/admin/admin-page-header";
+import { Button, Card, CardHeader } from "../../../components/ui";
 import { memberRoutes } from "../admin-routes";
 import { walletStatusLabel, type WalletStatus } from "../domain/rulebook";
 import {
@@ -24,15 +25,8 @@ export function AdminWalletStatementPage({ data }: { data: WalletStatementPageDa
   const { wallet, ledger } = data;
 
   return <main className="admin-route-page wallet-statement-route-page" tabIndex={-1}>
-    <div className="page-head">
-      <div>
-        <p className="admin-route-kicker">{translateText("Member Wallet")}</p>
-        <h1>{translateText("Wallet Statement")}</h1>
-        <p>{wallet.memberName} · {wallet.email}</p>
-      </div>
-      {wallet.memberAvailable ? <Link className="btn" href={memberRoutes.detail(wallet.memberId)}>{translateText("Back to Member")}</Link> : null}
-    </div>
-    <Card as="section" className="panel" aria-label={translateText("Wallet Statement")}>
+    <AdminPageHeader kicker={translateText("Member Wallet")} title={translateText("Wallet Statement")} description={`${wallet.memberName} · ${wallet.email}`} actions={wallet.memberAvailable ? <Button asChild variant="outline"><Link href={memberRoutes.detail(wallet.memberId)}>{translateText("Back to Member")}</Link></Button> : null} />
+    <Card as="section" className="overflow-hidden" aria-label={translateText("Wallet Statement")}>
       <Card as="section" className="wallet-record">
         <div className="drawer-title"><span className="att-icon neutral">W</span><div><h2>{wallet.memberName}</h2><p>{wallet.email} · {wallet.memberId}</p></div></div>
         <div className="facts">

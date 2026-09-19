@@ -22,13 +22,13 @@ export function PageSizeControls({
   className,
 }: PageSizeControlsProps) {
   return (
-    <div className={cn("page-size-controls", className)} aria-label={translateText("Rows per page")}>
+    <div className={cn("flex flex-wrap gap-1", className)} aria-label={translateText("Rows per page")}>
       {boardPageSizes.map((size) => (
         <Button
           key={size}
           variant="outline"
           size="xs"
-          className={cn("page-size-button", value === size && "active")}
+          className={cn("min-h-8 border-admin-border bg-admin-surface px-2 text-xs text-admin-muted hover:border-admin-accent hover:bg-admin-accent-soft hover:text-admin-text", value === size && "border-admin-accent bg-admin-accent-soft text-admin-text")}
           type="button"
           disabled={disabled}
           aria-pressed={value === size}
@@ -69,11 +69,11 @@ export function Pagination({
   const safePage = Math.min(Math.max(page, 1), Math.max(pageCount, 1));
   return (
     <nav className={cn("flex items-center justify-between gap-3", className)} aria-label={ariaLabel}>
-      <Button variant="outline" size="xs" className={cn("page-nav", buttonClassName)} disabled={safePage <= 1} onClick={() => onPageChange(safePage - 1)}>
+      <Button variant="outline" size="xs" className={cn("min-h-8 border-admin-border bg-admin-surface px-2 text-xs text-admin-muted hover:border-admin-accent hover:bg-admin-accent-soft hover:text-admin-text", buttonClassName)} disabled={safePage <= 1} onClick={() => onPageChange(safePage - 1)}>
         {previousLabel}
       </Button>
       <span className="page-indicator text-sm text-admin-muted" aria-live="polite">{pageLabel} {safePage} {ofLabel} {Math.max(pageCount, 1)}</span>
-      <Button variant="outline" size="xs" className={cn("page-nav", buttonClassName)} disabled={safePage >= pageCount} onClick={() => onPageChange(safePage + 1)}>
+      <Button variant="outline" size="xs" className={cn("min-h-8 border-admin-border bg-admin-surface px-2 text-xs text-admin-muted hover:border-admin-accent hover:bg-admin-accent-soft hover:text-admin-text", buttonClassName)} disabled={safePage >= pageCount} onClick={() => onPageChange(safePage + 1)}>
         {nextLabel}
       </Button>
     </nav>

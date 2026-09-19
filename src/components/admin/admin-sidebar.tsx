@@ -18,6 +18,7 @@ import { AdminLanguageControl } from "./admin-language-control";
 import { AdminThemeControl } from "./admin-theme-control";
 import { Sidebar } from "../ui/sidebar";
 import { Button } from "../ui/button";
+import { cn } from "../ui/utils";
 
 type AdminSidebarProps = {
   open: boolean;
@@ -57,8 +58,8 @@ function AdminNavigationLink({
   active,
   item,
   counts,
-  translateText,
-}: {
+    translateText,
+  }: {
   active: boolean;
   item: AdminNavigationItem;
   counts: AdminNavigationCounts | null;
@@ -68,14 +69,17 @@ function AdminNavigationLink({
 
   return (
     <Link
-      className={`admin-nav-link${active ? " active" : ""}`}
+      className={cn(
+        "flex min-h-9 w-full items-center gap-2.5 rounded-admin-sm px-2.5 text-sm font-medium text-admin-text no-underline transition-colors hover:bg-admin-surface",
+        active && "bg-admin-surface font-bold shadow-admin-low",
+      )}
       href={item.href}
       aria-current={active ? "page" : undefined}
       data-navigation-key={item.key}
     >
-      <span aria-hidden="true"><NavigationIcon name={item.icon} /></span>
+      <span className="flex size-5 shrink-0 items-center justify-center text-admin-accent" aria-hidden="true"><NavigationIcon name={item.icon} /></span>
       {translateText(item.label)}
-      {typeof count === "number" && <b className="admin-nav-count">{count}</b>}
+      {typeof count === "number" && <b className="ml-auto min-w-5 rounded-full bg-admin-soft px-1.5 py-0.5 text-center text-xs font-semibold leading-tight text-admin-muted">{count}</b>}
     </Link>
   );
 }
@@ -116,7 +120,7 @@ export function AdminSidebar({
 
   const navigationHidden = isMobile && !open;
   const sidebarClassName = [
-    "sidebar admin-sidebar row-span-full sticky top-0 h-screen w-auto min-h-full flex flex-col z-20 px-[10px] py-3 border-r border-admin-border bg-admin-sidebar text-admin-text transition-transform duration-200 ease-out",
+    "admin-sidebar row-span-full sticky top-0 z-20 flex h-screen min-h-full w-auto flex-col border-r border-admin-border bg-admin-sidebar px-2.5 py-3 text-admin-text transition-transform duration-200 ease-out",
     "max-[900px]:fixed max-[900px]:left-0 max-[900px]:w-[260px] max-[900px]:shadow-admin",
     open ? "max-[900px]:translate-x-0" : "max-[900px]:-translate-x-[102%]",
   ].join(" ");
@@ -128,11 +132,11 @@ export function AdminSidebar({
       aria-hidden={navigationHidden ? true : undefined}
       inert={navigationHidden ? true : undefined}
     >
-      <div className="brand h-[50px] flex items-center gap-2 px-2 pb-2 text-[22px] leading-none font-bold">
+      <div className="flex h-[50px] items-center gap-2 px-2 pb-2 text-[22px] font-bold leading-none">
         <Image className="block size-10 w-20 shrink-0 object-contain" src="/kuquest-logo.png?v=2" alt="" width={101} height={51} priority unoptimized />
         <span>KuQuest</span>
       </div>
-      <nav className="gap-0.5" aria-label={translateText("Primary navigation")}>
+      <nav className="grid gap-0.5" aria-label={translateText("Primary navigation")}>
         {primaryAdminNavigation.map((item) => (
           <AdminNavigationLink
             active={item.key === activeKey}
@@ -143,9 +147,9 @@ export function AdminSidebar({
           />
         ))}
       </nav>
-      <div className="nav-group mt-[22px]">
-        <small>{translateText("SYSTEM")}</small>
-        <nav className="gap-0.5" aria-label={translateText("System navigation")}>
+      <div className="mt-[22px]">
+        <small className="mb-1 block px-2.5 text-xs font-bold tracking-[0.07em] text-admin-muted">{translateText("SYSTEM")}</small>
+        <nav className="grid gap-0.5" aria-label={translateText("System navigation")}>
           {systemAdminNavigation.map((item) => (
             <AdminNavigationLink
               active={item.key === activeKey}
@@ -163,13 +167,13 @@ export function AdminSidebar({
         onLanguageChange={onLanguageChange}
         translateText={translateText}
       />
-      <div className="profile mt-0 flex items-center gap-[9px] px-[7px] py-2.5 border-t border-admin-border">
-        <span className="size-[30px] grid place-items-center rounded-full bg-admin-avatar text-admin-accent-strong text-[10px] font-bold" aria-hidden="true">{initials}</span>
-        <div>
-          <strong>{adminName}</strong>
-          <small>{translateText("Admin")}</small>
+      <div className="mt-0 flex items-center gap-2 border-t border-admin-border px-2 py-2.5">
+        <span className="grid size-[30px] shrink-0 place-items-center rounded-full bg-admin-avatar text-[10px] font-bold text-admin-accent-strong" aria-hidden="true">{initials}</span>
+        <div className="min-w-0">
+          <strong className="block truncate text-sm font-semibold">{adminName}</strong>
+          <small className="block text-xs text-admin-muted">{translateText("Admin")}</small>
         </div>
-        <Button variant="outline" size="sm" className="logout-button" type="button" onClick={onLogout}>
+        <Button variant="outline" size="sm" className="ml-auto shrink-0 px-2 text-xs" type="button" onClick={onLogout}>
           {translateText("Log out")}
         </Button>
       </div>

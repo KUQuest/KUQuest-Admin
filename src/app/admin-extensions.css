@@ -319,7 +319,7 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
   line-height: 1.45;
 }
 
-.admin-modal-layer .dialog-actions .btn {
+.admin-modal-layer .dialog-actions :where(.btn, [data-slot="button"]) {
   min-height: 42px;
   font-size: 15px;
 }
@@ -3825,7 +3825,7 @@ dialog.drawer.dispute-case-drawer .field-error {
 
 .admin-shell .admin-modal-layer .field-help,
 .admin-shell .admin-modal-layer .field-error,
-.admin-shell .dialog-actions .btn {
+.admin-shell .dialog-actions :where(.btn, [data-slot="button"]) {
   font-size: var(--admin-font-value);
   line-height: 1.4;
 }
@@ -4242,8 +4242,8 @@ dialog.drawer.dispute-case-drawer .field-error {
   box-shadow: 0 -6px 18px color-mix(in srgb, var(--text) 9%, transparent);
 }
 
-.admin-shell dialog.drawer .drawer-content-flow > .drawer-actions .btn,
-.admin-shell dialog.drawer.quest-style-drawer > .drawer-body .drawer-content-flow > .drawer-actions .btn {
+.admin-shell dialog.drawer .drawer-content-flow > .drawer-actions :where(.btn, [data-slot="button"]),
+.admin-shell dialog.drawer.quest-style-drawer > .drawer-body .drawer-content-flow > .drawer-actions :where(.btn, [data-slot="button"]) {
   flex: 1 1 180px;
   min-block-size: 44px;
   text-align: center;
@@ -4273,7 +4273,7 @@ dialog.drawer.dispute-case-drawer .field-error {
   box-shadow: 0 -6px 18px color-mix(in srgb, var(--text) 9%, transparent);
 }
 
-.admin-shell dialog.drawer .quest-command-actions .btn {
+.admin-shell dialog.drawer .quest-command-actions :where(.btn, [data-slot="button"]) {
   inline-size: 100%;
   min-block-size: 44px;
   margin: 0;
@@ -4297,7 +4297,7 @@ dialog.drawer.dispute-case-drawer .field-error {
     padding-inline: 16px;
   }
 
-  .admin-shell dialog.drawer .drawer-content-flow > .drawer-actions .btn {
+  .admin-shell dialog.drawer .drawer-content-flow > .drawer-actions :where(.btn, [data-slot="button"]) {
     flex-basis: 100%;
   }
 

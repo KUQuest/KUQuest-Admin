@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
+import { Button } from "../../../components/ui";
 import { isAdminMockEnabled } from "../../../lib/auth/admin-auth-mode";
 import {
   loadOverviewMockData,
@@ -235,12 +236,12 @@ export function AdminGlobalSearch({ open, onClose, initialData, initialError }: 
             <label htmlFor="admin-global-search-save-name">{translateText("Save this filter")}
               <input id="admin-global-search-save-name" type="text" value={saveName} onChange={(event) => setSaveName(event.target.value)} placeholder={translateText("Filter name")} />
             </label>
-            <button className="btn" type="submit" disabled={!saveName.trim()}>{translateText("Save")}</button>
+            <Button variant="outline" type="submit" disabled={!saveName.trim()}>{translateText("Save")}</Button>
           </form>
         </div>
         {savedFilters.length ? <div className="admin-global-search-saved" aria-label={translateText("Saved filters")}>
           <span>{translateText("Saved filters")}</span>
-          {savedFilters.map((filter) => <button key={filter.id} className="link" type="button" onClick={() => applySavedFilter(filter)}>{filter.name}</button>)}
+          {savedFilters.map((filter) => <Button key={filter.id} variant="link" size="sm" type="button" onClick={() => applySavedFilter(filter)}>{filter.name}</Button>)}
         </div> : null}
         {saveMessage ? <output className="admin-global-search-message">{translateText(saveMessage)}</output> : null}
         <div id="admin-global-search-results" aria-live="polite">

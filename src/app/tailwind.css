@@ -29,6 +29,7 @@
   --color-admin-accent-soft: var(--accent-soft);
   --color-admin-sidebar: var(--surface-sidebar);
   --color-admin-avatar: var(--surface-avatar);
+  --color-admin-scrim: var(--scrim);
 
   --color-admin-danger: var(--danger);
   --color-admin-danger-soft: var(--danger-soft);

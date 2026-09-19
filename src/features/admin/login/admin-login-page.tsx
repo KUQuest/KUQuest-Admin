@@ -15,6 +15,7 @@ import { adminApi } from "../api/admin-api";
 import { ADMIN_SESSION_KEY } from "../legacy/auth";
 import { isAdminMockEnabled } from "../../../lib/auth/admin-auth-mode";
 import { ADMIN_MOCK_SESSION_COOKIE } from "../../../lib/auth/admin-session-policy";
+import { Button } from "../../../components/ui";
 
 type AdminLanguage = "en" | "th";
 
@@ -205,7 +206,7 @@ export function AdminLoginPage() {
           />
           <p className="login-error" id="password-error" role="alert" hidden={!passwordError}>{passwordError}</p>
           <p className="login-error" id="login-form-error" role="alert" hidden={!formError}>{formError}</p>
-          <button className="btn primary login-submit" type="submit" disabled={isSubmitting}>{text.signIn}</button>
+          <Button variant="primary" className="login-submit" type="submit" disabled={isSubmitting}>{text.signIn}</Button>
         </form>
         <div className="language-control login-language">
           <fieldset className="login-language-options" aria-label={text.languageOptions}>
