@@ -329,8 +329,6 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
 .admin-shell table.data a,
 .admin-shell table.data a:visited,
 .admin-shell table.data a:hover,
-.admin-shell table.data button.table-link,
-.admin-shell table.data button.table-link:hover,
 .admin-shell table.data button.row-record-button,
 .admin-shell table.data button.row-record-button:hover {
   color: inherit !important;
@@ -338,7 +336,6 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
 }
 
 .admin-shell table.data a:focus-visible,
-.admin-shell table.data button.table-link:focus-visible,
 .admin-shell table.data button.row-record-button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
@@ -1477,26 +1474,6 @@ dialog.drawer.payout-drawer .payout-detail-stack > .section h3 {
 dialog.drawer.payout-drawer .payout-detail-stack > .payout-full-detail-link {
   justify-self: start;
 }
-.payout-drawer-action-label,
-.payout-drawer-action-feedback {
-  flex: 1 0 100%;
-}
-.payout-drawer-action-label {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-.payout-drawer-action-label strong {
-  font-size: 12px;
-}
-.payout-drawer-action-label small {
-  color: var(--muted);
-  font-size: 11px;
-}
-.payout-drawer-action-feedback {
-  margin: 0;
-  font-size: 11px;
-}
 @media (max-width: 420px) {
   .payout-summary-grid {
     grid-template-columns: 1fr;
@@ -1506,11 +1483,6 @@ dialog.drawer.payout-drawer .payout-detail-stack > .payout-full-detail-link {
     flex-direction: column;
     gap: 4px;
   }
-}
-
-.badge.success.quest-status-completed {
-  color: var(--success);
-  background: var(--success-soft);
 }
 
 .sidebar .logout-button {
@@ -3026,14 +2998,6 @@ dialog.drawer.dispute-case-drawer .timeline strong {
 .admin-shell dialog.drawer .requirement-box ul {
   font-size: 14px;
 }
-.admin-shell dialog.drawer .payout-drawer-action-label strong {
-  font-size: 14px;
-}
-.admin-shell dialog.drawer .payout-drawer-action-label small,
-.admin-shell dialog.drawer .payout-drawer-action-feedback {
-  font-size: 13px;
-}
-
 .admin-shell .activity-log-dialog {
   font-size: 16px;
 }
@@ -3412,7 +3376,6 @@ dialog.drawer.dispute-case-drawer .field-error {
   --admin-font-control: 1.142857rem;
 }
 
-.admin-shell .admin-filter-tabs [data-slot="button"],
 .admin-shell .tabs .tab,
 .admin-shell .admin-filter-input,
 .admin-shell .inline-search input {
@@ -3458,13 +3421,11 @@ dialog.drawer.dispute-case-drawer .field-error {
 }
 
 /* Board and full-record headings. */
-.admin-shell .admin-route-page > .page-head .admin-route-kicker,
 .admin-shell .admin-route-page > .full-record-head .record-id {
   font-size: var(--admin-font-meta);
   line-height: 1.4;
 }
 
-.admin-shell .admin-route-page > .page-head > div > p:not(.admin-route-kicker),
 .admin-shell .admin-route-page > .full-record-head > div > p {
   font-size: var(--admin-font-body);
   line-height: 1.5;
@@ -3945,13 +3906,6 @@ dialog.drawer.dispute-case-drawer .field-error {
 .admin-shell .sidebar .theme-trigger-copy small,
 .admin-shell .sidebar .profile small {
   font-size: var(--admin-font-caption);
-  line-height: 1.35;
-}
-
-.admin-shell .sidebar .language-option,
-.admin-shell .sidebar .logout-button,
-.admin-shell .sidebar .admin-nav-link b {
-  font-size: var(--admin-font-meta);
   line-height: 1.35;
 }
 
