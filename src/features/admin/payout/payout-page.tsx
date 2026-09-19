@@ -206,7 +206,7 @@ function PayoutDetailContent({
   const canReconcile = showReconcileAction
     && ["SUBMITTED_TO_PROVIDER", "PROVIDER_PENDING", "FAILED"].includes(detail.status);
   const outcomeReason = payoutOutcomeReason(detail);
-  const showDecisionContext = !fullDetail || detail.decisionContext.heading !== "Why your approval is needed";
+  const showDecisionContext = !canDecide && !canReconcile;
   const fullSectionClass = fullDetail ? "!p-[18px] border border-admin-border rounded-admin-md bg-admin-surface shadow-admin-card [&_h3]:mb-[14px]" : "";
 
   const payoutSummarySection = <Section title={translateText("Payout summary")} className={`payout-summary-section ${fullDetail ? "col-span-full" : ""} ${fullSectionClass}`}>
@@ -300,7 +300,7 @@ function PayoutDetailContent({
       <p>{canDecide
         ? translateText("Review the masked destination and API-provided amounts before deciding this Payout.")
         : translateText("The Payout needs a Provider status check before the next Admin action.")}</p>
-      {renderDecisionActions ? <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-admin-border pt-4">
+      {renderDecisionActions ? <div className="mt-4 flex flex-wrap items-center gap-2">
         <PayoutDecisionActions
           detail={detail}
           onCommand={onCommand}
@@ -583,30 +583,11 @@ export function AdminPayoutDetailPage({
     reconcileNotice={reconcileNotice}
     reconcilePending={reconcilePending}
     showReconcileAction={dataSource === "api"}
-    showFullDetailLink={presentation === "drawer"}
+    showFullDetailLink={false}
     fullDetail={presentation === "page"}
     actionReceipt={actionReceipt}
-    renderDecisionActions={presentation !== "drawer"}
+    renderDecisionActions
   />;
-
-  const canDecide = detail.status === "PENDING_ADMIN_APPROVAL";
-  const canReconcile = dataSource === "api"
-    && ["SUBMITTED_TO_PROVIDER", "PROVIDER_PENDING", "FAILED"].includes(detail.status);
-  const drawerDecisionActions = presentation === "drawer" && (canDecide || canReconcile) ? <>
-    <span className="payout-drawer-action-label">
-      <strong>{translateText(canDecide ? "Admin decision" : "Provider status check")}</strong>
-      <small>{translateText(canDecide ? "Review this Payout before choosing an outcome." : "Check the Provider status before the next Admin action.")}</small>
-    </span>
-    <PayoutDecisionActions
-      detail={detail}
-      onCommand={(nextCommand) => { setCommandError(null); setCommandIdempotencyKey(newIdempotencyKey(nextCommand, detail.id)); setCommand(nextCommand); }}
-      onReconcile={() => { void reconcilePayout(); }}
-      reconcilePending={reconcilePending}
-      showReconcileAction={dataSource === "api"}
-    />
-    {reconcileError ? <p className="payout-drawer-action-feedback field-error" role="alert">{translateText(reconcileError)}</p> : null}
-    {reconcileNotice ? <output className="payout-drawer-action-feedback">{translateText(reconcileNotice)}</output> : null}
-  </> : undefined;
 
   if (presentation === "drawer") {
     return (
@@ -622,7 +603,7 @@ export function AdminPayoutDetailPage({
           outsideClassName="payout-command-layer"
           escapeDisabled={command !== null}
           onClose={closeDrawer}
-          actions={drawerDecisionActions}
+          actions={<a className="btn" href={payoutRoutes.detail(detail.id)}>{translateText("Full Payout detail")}</a>}
         >
           {content}
         </AdminDrawer>

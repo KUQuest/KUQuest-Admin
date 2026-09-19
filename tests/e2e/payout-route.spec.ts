@@ -77,7 +77,7 @@ test.describe("Payout App Router route family", () => {
     expect(drawerBox!.x).toBeGreaterThanOrEqual(viewport!.width / 2);
     expect(drawerBox!.x + drawerBox!.width).toBe(viewport!.width);
     await expect(drawer.getByRole("link", { name: "Full Payout detail" })).toBeVisible();
-    for (const section of ["Payout summary", "Payout amounts", "Payout Destination", "Payout timing", "Why your approval is needed", "Payout history"]) {
+    for (const section of ["Payout summary", "Payout amounts", "Payout Destination", "Payout timing", "Admin decision", "Payout history"]) {
       await expect(drawer.getByRole("heading", { name: section })).toBeVisible();
     }
     await expect(drawer.getByText("PAY-9636", { exact: true })).toBeVisible();
@@ -88,11 +88,11 @@ test.describe("Payout App Router route family", () => {
     const closeButton = drawer.getByRole("button", { name: "Close Payout detail" });
     const fullDetailLink = drawer.getByRole("link", { name: "Full Payout detail" });
     const approveButton = drawer.getByRole("button", { name: "Approve Payout" });
-    await fullDetailLink.focus();
-    await page.keyboard.press("Tab");
-    await expect(approveButton).toBeFocused();
+    const rejectButton = drawer.getByRole("button", { name: "Reject Payout" });
     await approveButton.focus();
-    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");
+    await expect(rejectButton).toBeFocused();
+    await page.keyboard.press("Tab");
     await expect(fullDetailLink).toBeFocused();
 
     await closeButton.click();
@@ -134,19 +134,19 @@ test.describe("Payout App Router route family", () => {
     await expect(page.getByRole("dialog", { name: "PAY-9637" })).toHaveCount(0);
   });
 
-  test("keeps Payout decision actions visible while reviewing the detail drawer", async ({ page }) => {
+  test("keeps Payout decision actions in the scrollable detail drawer", async ({ page }) => {
     await signIn(page);
     await page.goto("/payout");
     await page.getByRole("link", { name: "Open Payout PAY-9637" }).click();
 
     const drawer = page.getByRole("dialog", { name: "PAY-9637" });
-    const actionBar = drawer.locator(":scope > .drawer-actions");
-    const approveButton = actionBar.getByRole("button", { name: "Approve Payout" });
-    const rejectButton = actionBar.getByRole("button", { name: "Reject Payout" });
+    const decisionSection = drawer.getByRole("heading", { name: "Admin decision" }).locator("xpath=ancestor::section[1]");
+    const approveButton = decisionSection.getByRole("button", { name: "Approve Payout" });
+    const rejectButton = decisionSection.getByRole("button", { name: "Reject Payout" });
 
-    await expect(actionBar).toBeVisible();
-    await expect(approveButton).toBeInViewport();
-    await expect(rejectButton).toBeInViewport();
+    await expect(decisionSection).toBeVisible();
+    await expect(approveButton).toBeVisible();
+    await expect(rejectButton).toBeVisible();
 
     await drawer.locator(":scope > .drawer-body").evaluate((body) => {
       body.scrollTop = body.scrollHeight;
