@@ -2390,9 +2390,6 @@ dialog.drawer.dispute-case-drawer .fact span,
 dialog.drawer.report-case-drawer .party-grid span,
 dialog.drawer.conduct-report-drawer .party-grid span,
 dialog.drawer.dispute-case-drawer .party-grid span,
-dialog.drawer.report-case-drawer .overview-meta dt,
-dialog.drawer.conduct-report-drawer .overview-meta dt,
-dialog.drawer.dispute-case-drawer .overview-meta dt,
 dialog.drawer.report-case-drawer .overview-group > span,
 dialog.drawer.conduct-report-drawer .overview-group > span,
 dialog.drawer.dispute-case-drawer .overview-group > span {
@@ -2404,10 +2401,7 @@ dialog.drawer.conduct-report-drawer .fact strong,
 dialog.drawer.dispute-case-drawer .fact strong,
 dialog.drawer.report-case-drawer .party-grid strong,
 dialog.drawer.conduct-report-drawer .party-grid strong,
-dialog.drawer.dispute-case-drawer .party-grid strong,
-dialog.drawer.report-case-drawer .overview-meta dd,
-dialog.drawer.conduct-report-drawer .overview-meta dd,
-dialog.drawer.dispute-case-drawer .overview-meta dd {
+dialog.drawer.dispute-case-drawer .party-grid strong {
   font-size: 14px;
   line-height: 1.35;
 }
@@ -2818,7 +2812,6 @@ dialog.drawer.dispute-case-drawer .timeline strong {
 .admin-shell dialog.drawer .fact span,
 .admin-shell dialog.drawer .fact small,
 .admin-shell dialog.drawer .party-grid span,
-.admin-shell dialog.drawer .overview-meta dt,
 .admin-shell dialog.drawer .overview-group > span,
 .admin-shell dialog.drawer .section-count,
 .admin-shell dialog.drawer .audit-note,
@@ -2835,7 +2828,6 @@ dialog.drawer.dispute-case-drawer .timeline strong {
 }
 .admin-shell dialog.drawer .fact strong,
 .admin-shell dialog.drawer .party-grid strong,
-.admin-shell dialog.drawer .overview-meta dd,
 .admin-shell dialog.drawer .timeline strong,
 .admin-shell dialog.drawer .payout-summary-grid strong,
 .admin-shell dialog.drawer .payout-audit-list strong {
@@ -2938,19 +2930,13 @@ dialog.drawer.dispute-case-drawer {
 }
 dialog.drawer.report-case-drawer .facts,
 dialog.drawer.conduct-report-drawer .facts,
-dialog.drawer.dispute-case-drawer .facts,
-dialog.drawer.report-case-drawer .overview-meta,
-dialog.drawer.conduct-report-drawer .overview-meta,
-dialog.drawer.dispute-case-drawer .overview-meta {
+dialog.drawer.dispute-case-drawer .facts {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.15rem 1.35rem;
 }
 dialog.drawer.report-case-drawer .fact,
 dialog.drawer.conduct-report-drawer .fact,
 dialog.drawer.dispute-case-drawer .fact,
-dialog.drawer.report-case-drawer .overview-meta > div,
-dialog.drawer.conduct-report-drawer .overview-meta > div,
-dialog.drawer.dispute-case-drawer .overview-meta > div,
 dialog.drawer.report-case-drawer .party-grid > div,
 dialog.drawer.conduct-report-drawer .party-grid > div,
 dialog.drawer.dispute-case-drawer .party-grid > div {
@@ -2959,9 +2945,6 @@ dialog.drawer.dispute-case-drawer .party-grid > div {
 dialog.drawer.report-case-drawer .fact strong,
 dialog.drawer.conduct-report-drawer .fact strong,
 dialog.drawer.dispute-case-drawer .fact strong,
-dialog.drawer.report-case-drawer .overview-meta dd,
-dialog.drawer.conduct-report-drawer .overview-meta dd,
-dialog.drawer.dispute-case-drawer .overview-meta dd,
 dialog.drawer.report-case-drawer .party-grid strong,
 dialog.drawer.conduct-report-drawer .party-grid strong,
 dialog.drawer.dispute-case-drawer .party-grid strong {
@@ -3002,10 +2985,7 @@ dialog.drawer.dispute-case-drawer .moderation-case-related-record p {
   }
   dialog.drawer.report-case-drawer .facts,
   dialog.drawer.conduct-report-drawer .facts,
-  dialog.drawer.dispute-case-drawer .facts,
-  dialog.drawer.report-case-drawer .overview-meta,
-  dialog.drawer.conduct-report-drawer .overview-meta,
-  dialog.drawer.dispute-case-drawer .overview-meta {
+  dialog.drawer.dispute-case-drawer .facts {
     grid-template-columns: 1fr;
   }
 }
@@ -3079,9 +3059,6 @@ dialog.drawer.dispute-case-drawer .moderation-case-related-record p {
   .admin-shell dialog.drawer.report-case-drawer .facts,
   .admin-shell dialog.drawer.conduct-report-drawer .facts,
   .admin-shell dialog.drawer.dispute-case-drawer .facts,
-  .admin-shell dialog.drawer.report-case-drawer .overview-meta,
-  .admin-shell dialog.drawer.conduct-report-drawer .overview-meta,
-  .admin-shell dialog.drawer.dispute-case-drawer .overview-meta,
   .admin-shell dialog.drawer.report-case-drawer .party-grid,
   .admin-shell dialog.drawer.conduct-report-drawer .party-grid,
   .admin-shell dialog.drawer.dispute-case-drawer .party-grid,
@@ -3328,7 +3305,6 @@ dialog.drawer.dispute-case-drawer .field-error {
 .admin-shell .record-panel .fact span:not(.badge),
 .admin-shell .record-panel .fact-label,
 .admin-shell .record-panel .side-facts span,
-.admin-shell .record-panel .overview-meta dt,
 .admin-shell .record-panel .overview-group > span,
 .admin-shell .record-panel .party-grid > div > span,
 .admin-shell .record-panel .record-id {
@@ -3338,7 +3314,6 @@ dialog.drawer.dispute-case-drawer .field-error {
 
 .admin-shell .record-panel .fact strong,
 .admin-shell .record-panel .side-facts strong,
-.admin-shell .record-panel .overview-meta dd,
 .admin-shell .record-panel .party-grid strong,
 .admin-shell .record-panel .quest-detail-list-value {
   font-size: var(--admin-font-value);
@@ -3423,7 +3398,6 @@ dialog.drawer.dispute-case-drawer .field-error {
 .admin-shell dialog.drawer .fact span:not(.badge),
 .admin-shell dialog.drawer .fact-label,
 .admin-shell dialog.drawer .party-grid > div > span,
-.admin-shell dialog.drawer .overview-meta dt,
 .admin-shell dialog.drawer .overview-group > span,
 .admin-shell dialog.drawer .section-count {
   font-size: var(--admin-font-meta);
@@ -3432,7 +3406,6 @@ dialog.drawer.dispute-case-drawer .field-error {
 
 .admin-shell dialog.drawer .fact strong,
 .admin-shell dialog.drawer .party-grid strong,
-.admin-shell dialog.drawer .overview-meta dd,
 .admin-shell dialog.drawer .timeline strong,
 .admin-shell dialog.drawer .related-row strong,
 .admin-shell dialog.drawer .file-row strong,

@@ -17,6 +17,17 @@ import { RecordStatusBar } from "../../../components/admin/record-status-bar";
 import { Button } from "../../../components/ui/button";
 import { Card, CardContent, CardHeader } from "../../../components/ui/card";
 import { AdminOverviewMeta } from "../../../components/admin/admin-overview-meta";
+import {
+  adminRecordCount,
+  adminRecordFact,
+  adminRecordFacts,
+  adminRecordGroup,
+  adminRecordHeader,
+  adminRecordHeading,
+  adminRecordPartyGrid,
+  adminRecordSection,
+  adminRecordSideFacts,
+} from "../../../components/admin/admin-record-styles";
 import { adminApi, type AdminDisputeReasonCode, type DisputeResolution } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { disputeRoutes, questRoutes } from "../admin-routes";
@@ -146,20 +157,20 @@ function Overview({ model, translateText, compact = false }: { model: DisputeCas
   if (compact) {
     return (
       <>
-        <Card as="section" className="section">
-          <CardHeader flush><h3>{translateText("Dispute overview")}</h3></CardHeader>
-          <div className="facts"><div className="fact"><span>{translateText("Status")}</span><strong><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></strong></div><div className="fact"><span>{translateText("Category")}</span><strong>{translateText(model.category)}</strong></div><div className="fact"><span>{translateText("Amount at risk")}</span><strong>{model.amountAtRiskLabel}</strong></div></div>
-          <AdminOverviewMeta className="moderation-case-context-grid"><div><dt>{translateText("Case")}</dt><dd>{model.displayId}</dd></div><div><dt>{translateText("Case type")}</dt><dd>{translateText("Dispute Case")}</dd></div><div><dt>{translateText("Source")}</dt><dd>{translateText("Quest settlement")}</dd></div><div><dt>{translateText("Submitted")}</dt><dd>{model.submittedAt}</dd></div><div><dt>{translateText("Evidence References")}</dt><dd>{model.evidence.length || translateText("None")}</dd></div></AdminOverviewMeta>
-          <div className="overview-group"><span>{translateText("Submitted detail")}</span><p>{model.detail}</p></div>
-          <div className="party-grid"><div><span>{translateText(model.filerRole)}</span><strong><MemberLink id={model.filerId} name={model.filerName} href={model.filerHref} interactive={false} /></strong><small>{model.filerId ?? "—"}</small></div><div><span>{translateText(model.respondentRole)}</span><strong><MemberLink id={model.respondentId} name={model.respondentName} href={model.respondentHref} interactive={false} /></strong><small>{model.respondentId ?? "—"}</small></div></div>
+        <Card as="section" className={adminRecordSection}>
+          <CardHeader flush className={adminRecordHeader}><h3 className={adminRecordHeading}>{translateText("Dispute overview")}</h3></CardHeader>
+          <div className={adminRecordFacts}><div className={adminRecordFact}><span>{translateText("Status")}</span><strong><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></strong></div><div className={adminRecordFact}><span>{translateText("Category")}</span><strong>{translateText(model.category)}</strong></div><div className={adminRecordFact}><span>{translateText("Amount at risk")}</span><strong>{model.amountAtRiskLabel}</strong></div></div>
+          <AdminOverviewMeta className="moderation-case-context-grid !grid-cols-2 max-[600px]:!grid-cols-1"><div><dt>{translateText("Case")}</dt><dd>{model.displayId}</dd></div><div><dt>{translateText("Case type")}</dt><dd>{translateText("Dispute Case")}</dd></div><div><dt>{translateText("Source")}</dt><dd>{translateText("Quest settlement")}</dd></div><div><dt>{translateText("Submitted")}</dt><dd>{model.submittedAt}</dd></div><div><dt>{translateText("Evidence References")}</dt><dd>{model.evidence.length || translateText("None")}</dd></div></AdminOverviewMeta>
+          <div className={adminRecordGroup}><span>{translateText("Submitted detail")}</span><p>{model.detail}</p></div>
+          <div className={adminRecordPartyGrid}><div><span>{translateText(model.filerRole)}</span><strong><MemberLink id={model.filerId} name={model.filerName} href={model.filerHref} interactive={false} /></strong><small>{model.filerId ?? "—"}</small></div><div><span>{translateText(model.respondentRole)}</span><strong><MemberLink id={model.respondentId} name={model.respondentName} href={model.respondentHref} interactive={false} /></strong><small>{model.respondentId ?? "—"}</small></div></div>
         </Card>
       </>
     );
   }
 
   return (
-    <Card as="section" className="record-panel dispute-overview grid !grid-cols-1 gap-[18px]">
-      <CardHeader flush className="record-panel-head"><h2>{translateText("Dispute detail")}</h2><span className="badge">{translateText(model.category)}</span></CardHeader>
+    <Card as="section" className={`${adminRecordSection} dispute-overview grid !grid-cols-1 gap-[18px]`}>
+      <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Dispute detail")}</h2><span className="badge">{translateText(model.category)}</span></CardHeader>
       <p className="record-description dispute-description">{model.detail}</p>
       <AdminOverviewMeta>
         <div><dt>{translateText("Quest")}</dt><dd><Link href={model.questHref ?? questRoutes.list()}>{model.questTitle}</Link></dd></div>
@@ -173,19 +184,19 @@ function Overview({ model, translateText, compact = false }: { model: DisputeCas
 function PartyStatements({ model, translateText, compact = false, interactive = true }: { model: DisputeCaseModel; translateText: (value: string) => string; compact?: boolean; interactive?: boolean }) {
   const content = (
     <>
-      <div className="party-grid">
+      <div className={adminRecordPartyGrid}>
         <div><span>{translateText(model.filerRole)}</span><strong><MemberLink id={model.filerId} name={model.filerName} href={model.filerHref} interactive={interactive} /></strong>{model.filerId && <small>{model.filerId}</small>}</div>
         <div><span>{translateText(model.respondentRole)}</span><strong><MemberLink id={model.respondentId} name={model.respondentName} href={model.respondentHref} interactive={interactive} /></strong>{model.respondentId && <small>{model.respondentId}</small>}</div>
       </div>
-      <div className="dispute-statements grid !gap-[14px] mt-[18px]"><div className="overview-group"><span>{translateText(model.filerRole === "Hirer" ? "Hirer statement" : "Worker statement")}</span><p>{model.filerStatement}</p></div><div className="overview-group"><span>{translateText(model.respondentRole === "Hirer" ? "Hirer statement" : "Worker statement")}</span><p>{model.respondentStatement}</p></div></div>
+      <div className="dispute-statements mt-[18px] grid gap-[14px]"><div className={adminRecordGroup}><span>{translateText(model.filerRole === "Hirer" ? "Hirer statement" : "Worker statement")}</span><p>{model.filerStatement}</p></div><div className={adminRecordGroup}><span>{translateText(model.respondentRole === "Hirer" ? "Hirer statement" : "Worker statement")}</span><p>{model.respondentStatement}</p></div></div>
     </>
   );
-  return compact ? <Card as="section" className="section"><CardHeader flush><h3>{translateText("Parties and statements")}</h3></CardHeader>{content}</Card> : <Card as="section" className="record-panel"><CardHeader flush><h2>{translateText("Parties and statements")}</h2></CardHeader>{content}</Card>;
+  return <Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}>{compact ? <h3 className={adminRecordHeading}>{translateText("Parties and statements")}</h3> : <h2 className={adminRecordHeading}>{translateText("Parties and statements")}</h2>}</CardHeader>{content}</Card>;
 }
 
 function EvidenceSection({ model, translateText, onOpen, compact = false }: { model: DisputeCaseModel; translateText: (value: string) => string; onOpen: (reference: string) => void; compact?: boolean }) {
   const content = <>
-    <CardHeader flush className="record-panel-head">{compact ? <h3>{translateText("Evidence")}</h3> : <h2>{translateText("Evidence")}</h2>}<span className="section-count">{model.evidence.length}</span></CardHeader>
+    <CardHeader flush className={adminRecordHeader}>{compact ? <h3 className={adminRecordHeading}>{translateText("Evidence")}</h3> : <h2 className={adminRecordHeading}>{translateText("Evidence")}</h2>}<span className={adminRecordCount}>{model.evidence.length}</span></CardHeader>
     {model.evidence.length === 0 && <p className="audit-note">{translateText("No Evidence Reference was provided.")}</p>}
     {model.evidence.length > 0 && <div className="evidence-stack">{model.evidence.map((evidence) => evidence.reference
       ? <button key={evidence.reference} className="evidence-item" type="button" onClick={() => onOpen(evidence.reference as string)}><span className="evidence-state">✓</span><span><strong>{evidence.label}</strong><small>{translateText("Bounded Evidence Reference")}</small></span><span>{translateText("Open")}</span></button>
@@ -193,7 +204,7 @@ function EvidenceSection({ model, translateText, onOpen, compact = false }: { mo
     </div>}
   </>;
   return (
-    compact ? <Card as="section" className="section">{content}</Card> : <Card as="section" className="record-panel">{content}</Card>
+    <Card as="section" className={adminRecordSection}>{content}</Card>
   );
 }
 
@@ -207,23 +218,23 @@ function Timeline({ model, translateText }: { model: DisputeCaseModel; translate
       { title: "Dispute Case opened", time: model.submittedAt, detail: `${model.filerName} filed the Dispute Case.` },
       { title: "Dispute Case decision recorded", time: model.resolutionAt ?? model.closedAt ?? translateText("Time not provided"), detail: model.decisionReason ?? model.decisionLabel ?? translateText("Record retained for audit.") },
     ];
-  return <Card as="section" className="record-panel"><CardHeader flush><h2>{translateText("Dispute timeline")}</h2></CardHeader><ol className="timeline">{events.map((event) => <li key={`${event.title}-${event.time}`}><strong>{translateText(event.title)}</strong><time>{event.time}</time><span>{translateText(event.detail)}</span></li>)}</ol></Card>;
+  return <Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Dispute timeline")}</h2></CardHeader><ol className="timeline">{events.map((event) => <li key={`${event.title}-${event.time}`}><strong>{translateText(event.title)}</strong><time>{event.time}</time><span>{translateText(event.detail)}</span></li>)}</ol></Card>;
 }
 
 function DecisionDetails({ model, translateText }: { model: DisputeCaseModel; translateText: (value: string) => string }) {
   if (!model.decisionReason && !model.resolution && !model.resolvedBy) return null;
-  return <div className="overview-group"><span>{translateText("Reason for decision")}</span><p>{model.decisionReason ?? translateText("Reason not provided.")}</p><AdminOverviewMeta className="dispute-resolution-meta !grid-cols-2 mt-[14px] max-[700px]:!grid-cols-1"><div><dt>{translateText("Outcome")}</dt><dd>{translateText(model.decisionLabel ?? model.statusLabel)}</dd></div>{model.resolvedAmountLabel && <div><dt>{translateText("Transferred")}</dt><dd>{model.resolvedAmountLabel}</dd></div>}{model.resolvedBy && <div><dt>{translateText("Resolved by")}</dt><dd>{model.resolvedBy}</dd></div>}</AdminOverviewMeta></div>;
+  return <div className={adminRecordGroup}><span>{translateText("Reason for decision")}</span><p>{model.decisionReason ?? translateText("Reason not provided.")}</p><AdminOverviewMeta className="dispute-resolution-meta !grid-cols-2 mt-[14px] max-[700px]:!grid-cols-1"><div><dt>{translateText("Outcome")}</dt><dd>{translateText(model.decisionLabel ?? model.statusLabel)}</dd></div>{model.resolvedAmountLabel && <div><dt>{translateText("Transferred")}</dt><dd>{model.resolvedAmountLabel}</dd></div>}{model.resolvedBy && <div><dt>{translateText("Resolved by")}</dt><dd>{model.resolvedBy}</dd></div>}</AdminOverviewMeta></div>;
 }
 
 function MemberSummary({ heading, id, name, href, translateText }: { heading: string; id: string | null; name: string; href: string | null; translateText: (value: string) => string }) {
-  return <Card as="section" className="record-panel"><CardHeader flush><h2>{translateText(heading)}</h2></CardHeader><div className="side-facts"><div><span>{translateText("Name")}</span><strong><MemberLink id={id} name={name} href={href} /></strong></div><div><span>{translateText("Member ID")}</span><strong>{id ?? "—"}</strong></div></div>{href && <Button asChild variant="outline" className="mt-3 w-full"><Link href={href}>{translateText("See Member profile")}</Link></Button>}</Card>;
+  return <Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText(heading)}</h2></CardHeader><div className={adminRecordSideFacts}><div><span>{translateText("Name")}</span><strong><MemberLink id={id} name={name} href={href} /></strong></div><div><span>{translateText("Member ID")}</span><strong>{id ?? "—"}</strong></div></div>{href && <Button asChild variant="outline" className="mt-3 w-full"><Link href={href}>{translateText("See Member profile")}</Link></Button>}</Card>;
 }
 
 function RelatedQuestPanel({ model, translateText }: { model: DisputeCaseModel; translateText: (value: string) => string }) {
   return (
-    <Card as="section" className="section related-quest-panel">
-      <CardHeader flush className="record-panel-head"><h3>{translateText("Related Quest")}</h3><span className={`badge ${questStatusClass(model.questState)}`}>{translateText(questStateLabel(model.questState))}</span></CardHeader>
-      <div className="side-facts">
+    <Card as="section" className={`${adminRecordSection} related-quest-panel`}>
+      <CardHeader flush className={adminRecordHeader}><h3 className={adminRecordHeading}>{translateText("Related Quest")}</h3><span className={`badge ${questStatusClass(model.questState)}`}>{translateText(questStateLabel(model.questState))}</span></CardHeader>
+      <div className={adminRecordSideFacts}>
         <div><span>{translateText("Quest")}</span><strong>{model.questTitle}</strong></div>
         <div><span>{translateText("Quest ID")}</span><strong>{model.questId}</strong></div>
         <div><span>{translateText("Quest State")}</span><strong>{translateText(questStateLabel(model.questState))}</strong></div>
@@ -320,7 +331,7 @@ function FullSections({ model, translateText, onOpenEvidence, selectedChoice, co
   return <>
     <AdminRecordGrid
       primary={<><Overview model={model} translateText={translateText} /><PartyStatements model={model} translateText={translateText} /><EvidenceSection model={model} translateText={translateText} onOpen={onOpenEvidence} /><Timeline model={model} translateText={translateText} /></>}
-      side={<><MemberSummary heading={model.filerRole} id={model.filerId} name={model.filerName} href={model.filerHref} translateText={translateText} /><MemberSummary heading={model.respondentRole} id={model.respondentId} name={model.respondentName} href={model.respondentHref} translateText={translateText} /><Card as="section" className="record-panel"><CardHeader flush><h2>{translateText("Related Quest")}</h2></CardHeader><div className="side-facts"><div><span>{translateText("Quest")}</span><strong>{model.questTitle}</strong></div><div><span>{translateText("Quest State")}</span><strong>{translateText(questStateLabel(model.questState))}</strong></div><div><span>{translateText("Failed at")}</span><strong>{model.questFailedAt ? formatAdminTimestamp(model.questFailedAt) : translateText("Not provided.")}</strong></div></div><Button asChild variant="outline" className="mt-3 w-full"><Link href={model.questHref ?? questRoutes.list()}>{translateText("Open Quest detail")}</Link></Button></Card><Card as="section" className="record-panel dispute-decision-panel"><CardHeader flush><h2>{model.isActionable ? translateText("Dispute decision") : translateText("Recorded outcome")}</h2></CardHeader><DecisionControls model={model} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelect={onSelectChoice} onStart={onStartDecision} /></Card></>}
+      side={<><MemberSummary heading={model.filerRole} id={model.filerId} name={model.filerName} href={model.filerHref} translateText={translateText} /><MemberSummary heading={model.respondentRole} id={model.respondentId} name={model.respondentName} href={model.respondentHref} translateText={translateText} /><Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Related Quest")}</h2></CardHeader><div className={adminRecordSideFacts}><div><span>{translateText("Quest")}</span><strong>{model.questTitle}</strong></div><div><span>{translateText("Quest State")}</span><strong>{translateText(questStateLabel(model.questState))}</strong></div><div><span>{translateText("Failed at")}</span><strong>{model.questFailedAt ? formatAdminTimestamp(model.questFailedAt) : translateText("Not provided.")}</strong></div></div><Button asChild variant="outline" className="mt-3 w-full"><Link href={model.questHref ?? questRoutes.list()}>{translateText("Open Quest detail")}</Link></Button></Card><Card as="section" className={`${adminRecordSection} dispute-decision-panel`}><CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{model.isActionable ? translateText("Dispute decision") : translateText("Recorded outcome")}</h2></CardHeader><DecisionControls model={model} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelect={onSelectChoice} onStart={onStartDecision} /></Card></>}
     />{actionReceipt}
   </>;
 }
@@ -359,7 +370,7 @@ function DrawerSections({ model, translateText, onOpenEvidence, selectedChoice, 
       member={{ id: model.respondentId, name: model.respondentName, href: model.respondentHref }}
       memberLabel={model.respondentRole}
     />
-    <Card as="section" className="section dispute-decision-panel"><CardHeader flush><h3>{model.isActionable ? translateText("Dispute decision") : translateText("Resolution")}</h3></CardHeader><DecisionControls model={model} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelect={onSelectChoice} onStart={onStartDecision} /></Card>
+    <Card as="section" className={`${adminRecordSection} dispute-decision-panel`}><CardHeader flush className={adminRecordHeader}><h3 className={adminRecordHeading}>{model.isActionable ? translateText("Dispute decision") : translateText("Resolution")}</h3></CardHeader><DecisionControls model={model} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelect={onSelectChoice} onStart={onStartDecision} /></Card>
   </ModerationCaseWorkspace>{actionReceipt}<div className="drawer-actions">{model.questHref && <Button asChild size="lg" variant="outline"><Link href={model.questHref}>{translateText("Quest detail")}</Link></Button>}<Button asChild size="lg" variant="primary"><a href={disputeRoutes.detail(model.id)}>{translateText("Open full Dispute Case")}</a></Button></div></div>;
 }
 

@@ -32,21 +32,6 @@
 .dispute-evidence-dialog {
   width: min(620px, calc(100vw - 32px));
 }
-.overview-meta > div {
-  min-width: 0;
-}
-.overview-meta dt {
-  margin-bottom: 4px;
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 600;
-}
-.overview-meta dd {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
 .overview-group > span {
   display: block;
   margin-bottom: 7px;

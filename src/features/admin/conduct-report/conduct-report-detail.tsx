@@ -16,6 +16,17 @@ import { isAdminApiEnabled } from "../api/admin-provider";
 import { Button } from "../../../components/ui/button";
 import { Card, CardContent, CardHeader } from "../../../components/ui/card";
 import { AdminOverviewMeta } from "../../../components/admin/admin-overview-meta";
+import {
+  adminRecordCount,
+  adminRecordFact,
+  adminRecordFacts,
+  adminRecordGroup,
+  adminRecordHeader,
+  adminRecordHeading,
+  adminRecordPartyGrid,
+  adminRecordSection,
+  adminRecordSideFacts,
+} from "../../../components/admin/admin-record-styles";
 import { conductReportRoutes } from "../admin-routes";
 import { questStateLabel } from "../domain/rulebook";
 import { questStatusClass } from "../quest/quest-model";
@@ -211,27 +222,27 @@ function ConductReportOverview({
   compact?: boolean;
 }) {
   return (
-    <Card as="section" className={compact ? "section" : "record-panel conduct-report-overview"}>
+    <Card as="section" className={`${adminRecordSection} conduct-report-overview`}>
       {compact ? (
-        <CardHeader flush><h3>{translateText("Conduct Report overview")}</h3></CardHeader>
+        <CardHeader flush className={adminRecordHeader}><h3 className={adminRecordHeading}>{translateText("Conduct Report overview")}</h3></CardHeader>
       ) : (
-        <CardHeader flush className="record-panel-head"><h2>{translateText("Conduct Report detail")}</h2><span className="badge">{translateText(model.reason)}</span></CardHeader>
+        <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Conduct Report detail")}</h2><span className="badge">{translateText(model.reason)}</span></CardHeader>
       )}
-      <div className="facts">
-        <div className="fact">
+      <div className={adminRecordFacts}>
+        <div className={adminRecordFact}>
           <span>{translateText("Status")}</span>
           <strong><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></strong>
         </div>
-        <div className="fact">
+        <div className={adminRecordFact}>
           <span>{translateText("Reason")}</span>
           <strong>{translateText(model.reason)}</strong>
         </div>
-        <div className="fact">
+        <div className={adminRecordFact}>
           <span>{translateText("Reported")}</span>
           <strong>{formatAdminTimestamp(model.submittedAt)}</strong>
         </div>
       </div>
-      <AdminOverviewMeta className="moderation-case-context-grid">
+      <AdminOverviewMeta className="moderation-case-context-grid !grid-cols-2 max-[600px]:!grid-cols-1">
         <div><dt>{translateText("Case")}</dt><dd>{model.id}</dd></div>
         <div><dt>{translateText("Case type")}</dt><dd>{translateText("Conduct Report")}</dd></div>
         <div><dt>{translateText("Source")}</dt><dd>{translateText("Quest record")}</dd></div>
@@ -239,11 +250,11 @@ function ConductReportOverview({
         <div><dt>{translateText("Evidence")}</dt><dd>{model.questRecord ? translateText("Quest record") : translateText("None")}</dd></div>
         <div><dt>{translateText("Reason code")}</dt><dd>{model.reasonCode ? translateText(conductReportReasonLabel(model.reasonCode)) : "—"}</dd></div>
       </AdminOverviewMeta>
-      <div className="overview-group">
+      <div className={adminRecordGroup}>
         <span>{translateText("Submitted detail")}</span>
         <p>{model.detail}</p>
       </div>
-      <div className="party-grid moderation-case-parties conduct-report-overview-parties">
+      <div className={`${adminRecordPartyGrid} moderation-case-parties conduct-report-overview-parties`}>
         <div>
           <span>{translateText("Reported Member")}</span>
           <strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} interactive={!compact} /></strong>
@@ -269,12 +280,12 @@ function ConductEvidenceSection({
   compact?: boolean;
 }) {
   return (
-    <Card as="section" className={compact ? "section" : "record-panel"}>
-      <CardHeader flush className="record-panel-head">
-        {compact ? <h3>{translateText("Evidence")}</h3> : <h2>{translateText("Evidence")}</h2>}
-        <span className="section-count">{model.questRecord ? 1 : 0}</span>
+    <Card as="section" className={adminRecordSection}>
+      <CardHeader flush className={adminRecordHeader}>
+        {compact ? <h3 className={adminRecordHeading}>{translateText("Evidence")}</h3> : <h2 className={adminRecordHeading}>{translateText("Evidence")}</h2>}
+        <span className={adminRecordCount}>{model.questRecord ? 1 : 0}</span>
       </CardHeader>
-      <div className="overview-group">
+      <div className={adminRecordGroup}>
         <span>{translateText("Quest record")}</span>
         <p>{model.questRecord ?? translateText("No Quest record evidence was provided.")}</p>
       </div>
@@ -293,12 +304,12 @@ function RelatedQuestPanel({
   compact?: boolean;
 }) {
   return (
-    <Card as="section" className={compact ? "section related-quest-panel" : "record-panel related-quest-panel"}>
-      <CardHeader flush className="record-panel-head">
-        {compact ? <h3>{translateText("Related Quest")}</h3> : <h2>{translateText("Related Quest")}</h2>}
+    <Card as="section" className={`${adminRecordSection} related-quest-panel`}>
+      <CardHeader flush className={adminRecordHeader}>
+        {compact ? <h3 className={adminRecordHeading}>{translateText("Related Quest")}</h3> : <h2 className={adminRecordHeading}>{translateText("Related Quest")}</h2>}
         {model.questState && <span className={`badge ${questStatusClass(model.questState)}`}>{translateText(questStateLabel(model.questState))}</span>}
       </CardHeader>
-      <div className="side-facts">
+      <div className={adminRecordSideFacts}>
         <div><span>{translateText("Quest")}</span><strong>{model.questTitle}</strong></div>
         <div><span>{translateText("Quest ID")}</span><strong>{model.questId ?? "—"}</strong></div>
         <div><span>{translateText("Quest State")}</span><strong>{model.questState ? translateText(questStateLabel(model.questState)) : translateText("Not provided.")}</strong></div>
@@ -325,9 +336,9 @@ function ConductMemberSummaryPanel({
   translateText: (value: string) => string;
 }) {
   return (
-    <Card as="section" className="record-panel">
-      <CardHeader flush><h2>{translateText(heading)}</h2></CardHeader>
-      <div className="side-facts"><div><span>{translateText("Name")}</span><strong><MemberLink id={id} name={name} href={href} /></strong></div><div><span>{translateText("Member ID")}</span><strong>{id || "—"}</strong></div></div>
+    <Card as="section" className={adminRecordSection}>
+      <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText(heading)}</h2></CardHeader>
+      <div className={adminRecordSideFacts}><div><span>{translateText("Name")}</span><strong><MemberLink id={id} name={name} href={href} /></strong></div><div><span>{translateText("Member ID")}</span><strong>{id || "—"}</strong></div></div>
       {href && <Button asChild variant="outline" className="mt-3 w-full"><Link href={href}>{translateText("See Member profile")}</Link></Button>}
     </Card>
   );
@@ -340,16 +351,16 @@ function ConductModerationContext({ model, translateText }: { model: ConductRepo
   const noteText = summary.adminNotes.length ? summary.adminNotes.join(" · ") : fallback;
 
   return (
-    <Card as="section" className="record-panel">
-      <CardHeader flush className="record-panel-head"><h2>{translateText("Member moderation context")}</h2><span className="section-count">{hasModerationHistory(summary) ? translateText("Available") : translateText("Partial")}</span></CardHeader>
-      <AdminOverviewMeta className="moderation-case-history-grid">
+    <Card as="section" className={adminRecordSection}>
+      <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Member moderation context")}</h2><span className={adminRecordCount}>{hasModerationHistory(summary) ? translateText("Available") : translateText("Partial")}</span></CardHeader>
+      <AdminOverviewMeta className="moderation-case-history-grid !grid-cols-2 max-[600px]:!grid-cols-1">
         <div><dt>{translateText("Current Member status")}</dt><dd>{summary.currentMemberStatus ? translateText(summary.currentMemberStatus) : fallback}</dd></div>
         <div><dt>{translateText("Previous reports received")}</dt><dd>{summary.previousReportCount ?? fallback}</dd></div>
         <div><dt>{translateText("Confirmed previous violations")}</dt><dd>{summary.confirmedViolationCount ?? fallback}</dd></div>
       </AdminOverviewMeta>
-      <div className="overview-group"><span>{translateText("Previous moderation actions")}</span><p>{actionText}</p></div>
-      <div className="overview-group"><span>{translateText("Internal Admin notes")}</span><p>{noteText}</p></div>
-      <div className="overview-group"><span>{translateText("Policy boundary")}</span><p>{translateText("Conduct Reports use the Quest record. Work Chat or Candidate Inquiry history may be opened only for this case, with an Admin Action log entry.")}</p></div>
+      <div className={adminRecordGroup}><span>{translateText("Previous moderation actions")}</span><p>{actionText}</p></div>
+      <div className={adminRecordGroup}><span>{translateText("Internal Admin notes")}</span><p>{noteText}</p></div>
+      <div className={adminRecordGroup}><span>{translateText("Policy boundary")}</span><p>{translateText("Conduct Reports use the Quest record. Work Chat or Candidate Inquiry history may be opened only for this case, with an Admin Action log entry.")}</p></div>
     </Card>
   );
 }
@@ -371,7 +382,7 @@ function ResolutionDetails({
   return (
     <>
       {model.decisionReason && (
-        <div className="overview-group">
+        <div className={adminRecordGroup}>
           <span>{translateText("Reason for decision")}</span>
           <p>{model.decisionReason}</p>
         </div>
@@ -398,7 +409,7 @@ function ConductReportTimeline({ model, translateText }: { model: ConductReportM
       { title: "Conduct Report decision recorded", time: model.resolutionAt || model.closedAt ? formatAdminTimestamp(model.resolutionAt ?? model.closedAt) : translateText("Time not provided"), detail: model.decisionReason ?? model.decisionLabel ?? translateText("Record retained for audit.") },
     ];
 
-  return <Card as="section" className="record-panel"><CardHeader flush><h2>{translateText("Conduct Report timeline")}</h2></CardHeader><ol className="timeline">{events.map((event) => <li key={`${event.title}-${event.time}`}><strong>{translateText(event.title)}</strong><time>{event.time}</time><span>{translateText(event.detail)}</span></li>)}</ol></Card>;
+  return <Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Conduct Report timeline")}</h2></CardHeader><ol className="timeline">{events.map((event) => <li key={`${event.title}-${event.time}`}><strong>{translateText(event.title)}</strong><time>{event.time}</time><span>{translateText(event.detail)}</span></li>)}</ol></Card>;
 }
 
 function DecisionControls({
@@ -514,8 +525,8 @@ function ConductReportDrawerBody({
             <ConductMemberSummaryPanel heading="Reported by" id={model.reporterId} name={model.reporterName} href={model.reporterHref} translateText={translateText} />
             <RelatedQuestPanel model={model} translateText={translateText} />
             <ConductModerationContext model={model} translateText={translateText} />
-            <Card as="section" className="record-panel report-decision-panel">
-              <CardHeader flush><h2>{model.isActionable ? translateText("Conduct Report decision") : translateText("Recorded outcome")}</h2></CardHeader>
+            <Card as="section" className={`${adminRecordSection} report-decision-panel`}>
+              <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{model.isActionable ? translateText("Conduct Report decision") : translateText("Recorded outcome")}</h2></CardHeader>
               <DecisionControls
                 model={model}
                 translateText={translateText}
@@ -565,8 +576,8 @@ function ConductReportDrawerBody({
           compact
           member={{ id: model.reportedMemberId, name: model.reportedMemberName, href: model.reportedMemberHref }}
         />
-        <Card as="section" className="section report-decision-panel">
-          <CardHeader flush><h3>{model.isActionable ? translateText("Conduct Report decision") : translateText("Resolution")}</h3></CardHeader>
+        <Card as="section" className={`${adminRecordSection} report-decision-panel`}>
+          <CardHeader flush className={adminRecordHeader}><h3 className={adminRecordHeading}>{model.isActionable ? translateText("Conduct Report decision") : translateText("Resolution")}</h3></CardHeader>
           <DecisionControls
             model={model}
             translateText={translateText}
