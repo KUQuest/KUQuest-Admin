@@ -4192,3 +4192,72 @@ dialog.drawer.dispute-case-drawer .field-error {
 .admin-shell .row-record-button strong {
   font-weight: 700;
 }
+
+/* Shared record-drawer system. Every record drawer uses the Dispute Case
+   rhythm: one predictable shell, one readable scroll region, and one card
+   surface for each meaningful group. Domain-specific fields stay in their
+   own sections. */
+.admin-shell dialog.drawer > .admin-drawer-content {
+  min-block-size: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  padding-block: 20px 28px;
+  padding-inline: 24px;
+}
+
+.admin-shell dialog.drawer .drawer-content-flow {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  min-inline-size: 0;
+  padding-block: 0;
+}
+
+.admin-shell dialog.drawer .drawer-content-flow .section,
+.admin-shell dialog.drawer .drawer-content-flow .panel,
+.admin-shell dialog.drawer .drawer-content-flow .record-panel,
+.admin-shell dialog.drawer .drawer-content-flow .wallet-record,
+.admin-shell dialog.drawer .drawer-content-flow .admin-action-receipt {
+  min-inline-size: 0;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.admin-shell dialog.drawer .drawer-content-flow > .drawer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 18px 0 0;
+  border-top: 1px solid var(--border);
+  background: transparent;
+  box-shadow: none;
+}
+
+.admin-shell dialog.drawer .drawer-content-flow > .drawer-actions .btn {
+  flex: 1 1 180px;
+  min-block-size: 44px;
+  text-align: center;
+}
+
+/* The shared shell owns the outer padding. Do not create a second inset in
+   the content-specific layouts. */
+.admin-shell dialog.drawer .activity-log-detail,
+.admin-shell dialog.drawer .user-drawer-detail {
+  padding-block: 0;
+}
+
+@media (max-width: 720px) {
+  .admin-shell dialog.drawer > .admin-drawer-content {
+    padding-block: 16px 24px;
+    padding-inline: 16px;
+  }
+
+  .admin-shell dialog.drawer .drawer-content-flow > .drawer-actions .btn {
+    flex-basis: 100%;
+  }
+}

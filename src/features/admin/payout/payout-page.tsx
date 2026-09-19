@@ -316,7 +316,7 @@ function PayoutDetailContent({
   ) : null;
 
   return (
-    <div className={`payout-detail-stack grid !grid-cols-1 gap-[18px]${fullDetail ? " !grid-cols-[minmax(0,1.65fr)_minmax(290px,0.72fr)] max-[1000px]:!grid-cols-1" : ""}`}>
+    <div className={`payout-detail-stack drawer-content-flow grid !grid-cols-1 gap-[18px]${fullDetail ? " !grid-cols-[minmax(0,1.65fr)_minmax(290px,0.72fr)] max-[1000px]:!grid-cols-1" : ""}`}>
       {payoutSummarySection}
       {fullDetail ? <>
         <div className="payout-detail-column payout-detail-primary-column grid min-w-0 !grid-cols-1 gap-[18px] [grid-column:1] max-[1000px]:[grid-column:1]">

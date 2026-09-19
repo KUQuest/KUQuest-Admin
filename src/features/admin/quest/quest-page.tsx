@@ -362,7 +362,7 @@ function QuestDetailContent({
   ) : <p className="audit-note">{translateText("No linked Dispute Case was returned.")}</p>;
 
   return (
-    <div className={recordLayout ? "grid items-start gap-[18px] !grid-cols-[minmax(0,1.65fr)_minmax(290px,0.72fr)] max-[1000px]:!grid-cols-1" : "grid !grid-cols-1 gap-[18px]"}>
+    <div className={`drawer-content-flow ${recordLayout ? "grid items-start gap-[18px] !grid-cols-[minmax(0,1.65fr)_minmax(290px,0.72fr)] max-[1000px]:!grid-cols-1" : "grid !grid-cols-1 gap-[18px]"}`}>
       <div className={recordLayout ? "grid min-w-0 !grid-cols-1 gap-[18px]" : "contents"}>
       <Section title="Quest summary" variant={sectionVariant}>
         <div className="facts quest-detail-facts">

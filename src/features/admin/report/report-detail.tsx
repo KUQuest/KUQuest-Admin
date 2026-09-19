@@ -538,7 +538,7 @@ function DrawerSections({
   actionReceipt?: ReactNode;
 }) {
   return (
-    <div className="report-case-drawer-detail">
+    <div className="report-case-drawer-detail drawer-content-flow">
       <ReportAlert model={model} translateText={translateText} />
       <ModerationCaseWorkspace
         kind="Report Case"

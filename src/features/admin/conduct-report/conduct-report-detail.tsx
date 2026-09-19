@@ -532,7 +532,7 @@ function ConductReportDrawerBody({
   }
 
   return (
-    <div className="conduct-report-drawer-detail">
+    <div className="conduct-report-drawer-detail drawer-content-flow">
       <ConductReportAlert model={model} translateText={translateText} />
       <ModerationCaseWorkspace
         kind="Conduct Report"

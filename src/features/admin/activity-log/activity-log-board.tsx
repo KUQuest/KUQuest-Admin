@@ -76,7 +76,7 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
       className="activity-log-dialog"
       onClose={onClose}
     >
-        <div className="activity-log-detail">
+        <div className="activity-log-detail drawer-content-flow">
           <div className="drawer-title">
             <span className="att-icon neutral" aria-hidden="true">↺</span>
             <div>

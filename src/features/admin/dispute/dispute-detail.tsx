@@ -326,7 +326,7 @@ function FullSections({ model, translateText, onOpenEvidence, selectedChoice, co
 }
 
 function DrawerSections({ model, translateText, onOpenEvidence, selectedChoice, commandError, onSelectChoice, onStartDecision, actionReceipt }: { model: DisputeCaseModel; translateText: (value: string) => string; onOpenEvidence: (reference: string) => void; selectedChoice: DisputeCaseDecisionChoice | null; commandError: string | null; onSelectChoice: (choice: DisputeCaseDecisionChoice) => void; onStartDecision: () => void; actionReceipt?: ReactNode }) {
-  return <div className="dispute-case-drawer-detail"><DisputeAlert model={model} translateText={translateText} /><ModerationCaseWorkspace
+  return <div className="dispute-case-drawer-detail drawer-content-flow"><DisputeAlert model={model} translateText={translateText} /><ModerationCaseWorkspace
     kind="Dispute Case"
     caseId={model.displayId}
     statusLabel={model.statusLabel}

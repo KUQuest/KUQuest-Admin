@@ -486,7 +486,7 @@ function DrawerContent({ model, translateText, onRecordViolation, onRemovePenalt
     && model.memberStatus !== "Normal";
   const latestTransactionAt = latestWalletTransactionAt(model);
   return (
-    <div className="drawer-body user-drawer-detail">
+    <div className="user-drawer-detail drawer-content-flow">
       <div className="drawer-title"><span className="att-icon info" aria-hidden="true">◉</span><div><h2>{model.title}</h2><p>{model.email} · {model.studentId || "—"}</p></div></div>
       <Card as="section" className="section">
         <CardHeader flush><h3>{translateText("Account")}</h3></CardHeader>
