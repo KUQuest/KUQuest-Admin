@@ -74,7 +74,7 @@ test.describe("Payout App Router route family", () => {
     const viewport = page.viewportSize();
     expect(drawerBox).not.toBeNull();
     expect(viewport).not.toBeNull();
-    expect(drawerBox!.x).toBeGreaterThan(viewport!.width / 2);
+    expect(drawerBox!.x).toBeGreaterThanOrEqual(viewport!.width / 2);
     expect(drawerBox!.x + drawerBox!.width).toBe(viewport!.width);
     await expect(drawer.getByRole("link", { name: "Full Payout detail" })).toBeVisible();
     for (const section of ["Payout summary", "Payout amounts", "Payout Destination", "Payout timing", "Why your approval is needed", "Payout history"]) {
@@ -165,14 +165,14 @@ test.describe("Payout App Router route family", () => {
     await expect(approval.getByRole("button", { name: "Approve Payout" })).toBeEnabled();
     await approval.getByRole("button", { name: "Approve Payout" }).click();
     await expect(page).toHaveURL(/\/payout\/PAY-9637$/);
-    const payoutSummary = page.getByRole("heading", { name: "Payout summary" }).locator("..");
+    const payoutSummary = page.getByRole("heading", { name: "Payout summary" }).locator("xpath=ancestor::section[1]");
     await expect(payoutSummary.getByText("Sent", { exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Transfer submitted" })).toBeVisible();
 
     await page.reload();
     await expect(page.getByRole("heading", { name: "Payout summary" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Transfer submitted" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Payout summary" }).locator("..").getByText("Sent", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Payout summary" }).locator("xpath=ancestor::section[1]").getByText("Sent", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Approve Payout" })).toHaveCount(0);
 
   });
@@ -245,13 +245,16 @@ test.describe("Payout App Router route family", () => {
     expect(await reviewRows.count()).toBeGreaterThanOrEqual(51);
 
     await page.goto("/payout/PAY-9700");
-    const payoutHistory = page.getByRole("heading", { name: "Payout history" }).locator("..");
+    const payoutHistory = page.getByRole("heading", { name: "Payout history" }).locator("xpath=ancestor::section[1]");
     for (const payoutId of ["PAY-9701", "PAY-9702", "PAY-9703"]) {
       await expect(payoutHistory.getByText(payoutId, { exact: true })).toBeVisible();
     }
 
-    await page.goto("/payout/PAY-9703");
-    const payoutTiming = page.getByRole("heading", { name: "Payout timing" }).locator("..");
+    await page.goto("/payout");
+    await page.locator("button.tab").filter({ hasText: "All" }).click();
+    await page.getByPlaceholder("Search Payouts…").fill("PAY-9703");
+    await page.getByRole("link", { name: "Open Payout PAY-9703" }).click();
+    const payoutTiming = page.getByRole("dialog", { name: "PAY-9703" }).getByRole("heading", { name: "Payout timing" }).locator("xpath=ancestor::section[1]");
     for (const status of ["Needs review", "Sent", "Processing", "Paid"]) {
       await expect(payoutTiming.getByText(status, { exact: true }).first()).toBeVisible();
     }

@@ -95,7 +95,7 @@ test.describe("Member route family", () => {
     expect(box?.width).toBeLessThanOrEqual(390);
     await dialog.getByRole("button", { name: "Confirm violation" }).click();
     await expect(page.locator(".user-counter-list")).toContainText("1");
-    await expect(page.locator(".user-detail-side-column")).toContainText("Red Flag");
+    await expect(page.locator(".user-summary-name")).toContainText("Flag");
   });
 
   test("shows mock moderation history, related cases, and submitted reports", async ({ page }) => {

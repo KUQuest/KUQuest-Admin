@@ -92,11 +92,14 @@ test.describe("Admin canonical click flows", () => {
 
     await page.locator('.admin-shell aside a[href="/quest"]').click();
     await expect(page).toHaveURL(/\/quest$/);
-    await page.getByRole("link", { name: "Open Quest QST-12011" }).click();
-    await expect(page).toHaveURL(/\/quest\/QST-12011$/);
+    const questLink = page.getByRole("link", { name: "Open Quest QST-12011" });
+    const questHref = await questLink.getAttribute("href");
+    expect(questHref).toMatch(/^\/quest\/00000000-0000-0000-0000-000000000600$/);
+    await questLink.click();
+    await expect(page).toHaveURL(/\/quest\/00000000-0000-0000-0000-000000000600$/);
     await expect(page.locator(".quest-drawer")).toBeVisible();
     await page.getByRole("link", { name: "Full Quest detail" }).click();
-    await expect(page).toHaveURL(/\/quest\/QST-12011$/);
+    await expect(page).toHaveURL(/\/quest\/00000000-0000-0000-0000-000000000600$/);
     await expect(page.locator(".quest-detail-page h1")).toHaveText("Demo Quest 01");
 
     await page.locator('.admin-shell aside a[href="/payout"]').click();

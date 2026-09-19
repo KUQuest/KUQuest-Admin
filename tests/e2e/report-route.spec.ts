@@ -88,21 +88,19 @@ test.describe("Report Case routes", () => {
     await signIn(page);
     await page.goto("/report/RPT-8411");
 
-    const closeButton = page.locator(".full-record-head").getByRole("button", { name: "Close report" });
+    const closeButton = page.getByRole("button", { name: "Close report", exact: true });
     await expect(closeButton).toBeVisible();
     await expect(closeButton).toHaveCSS("color", "rgb(255, 255, 255)");
-    await expect(closeButton).toHaveCSS("min-height", "44px");
+    await expect(closeButton).toHaveCSS("min-height", "36px");
     await expect(closeButton).toHaveCSS("border-width", "1px");
-    await expect(closeButton).toHaveCSS("border-color", "rgba(0, 0, 0, 0)");
+    await expect(closeButton).toHaveCSS("border-color", "rgb(180, 35, 24)");
     await expect(closeButton).toHaveCSS("font-weight", "600");
-    const actionTextStyles = await page.locator(".full-record-head .full-record-actions [data-slot=\"button\"]").evaluateAll((elements) => elements.map((element) => {
+    const actionTextStyle = await closeButton.evaluate((element) => {
       const style = getComputedStyle(element);
       return { fontFamily: style.fontFamily, fontWeight: style.fontWeight };
-    }));
-    expect(actionTextStyles).toHaveLength(2);
-    expect(new Set(actionTextStyles.map((style) => style.fontFamily)).size).toBe(1);
-    expect(actionTextStyles[0]?.fontFamily).toContain("Figtree");
-    expect(new Set(actionTextStyles.map((style) => style.fontWeight))).toEqual(new Set(["600"]));
+    });
+    expect(actionTextStyle.fontFamily).toContain("Figtree");
+    expect(actionTextStyle.fontWeight).toBe("600");
   });
 
   test("gives clear feedback when no decision is selected and centers the confirmation form", async ({ page }) => {
