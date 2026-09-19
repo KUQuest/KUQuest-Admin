@@ -25,6 +25,10 @@ The CSS files imported by the Admin layout are still required for these cases:
 
 These selectors are not a second component system. They are compatibility rules for domain data and native controls. New UI must use the shared primitives and Tailwind utilities first.
 
+## CSS audit
+
+The CSS inventory was checked against `src/` and `tests/`. The audit removed retired selectors from `styles.css` and `admin-extensions.css`, including the old Admin navigation link, table link, filter-tab, shell-kicker, and payout action rules. Remaining class selectors have active consumers. Status and theme classes that are assembled at runtime remain because the legacy renderer and status badge model use them.
+
 ## Verification
 
 Run these checks from the repository root:
