@@ -1,4 +1,4 @@
-import type { BrowserStorage } from "../data/legacy-admin-data-adapter";
+import type { BrowserStorage } from "../data/admin-demo-data-adapter";
 import type { PersistedAdminData } from "../data/admin-records";
 import {
   activityLogActionLabel,

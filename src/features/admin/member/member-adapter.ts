@@ -1,7 +1,7 @@
 import {
   ADMIN_DEMO_DATA_KEY,
   type BrowserStorage,
-} from "../data/legacy-admin-data-adapter";
+} from "../data/admin-demo-data-adapter";
 import { pageMockItems } from "../data/mock-pagination";
 import { loadDashboardData } from "../dashboard/dashboard-bootstrap";
 import type { PersistedAdminData } from "../data/admin-records";

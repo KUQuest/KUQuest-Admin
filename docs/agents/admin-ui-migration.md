@@ -21,15 +21,17 @@ The CSS files imported by the Admin layout are still required for these cases:
 - native `<dialog>` positioning, transitions, focus behaviour, and the drawer scrim;
 - dense record tables, sticky keys, sorting states, and responsive table overflow;
 - feature-specific domain layouts for Quest, Dispute Case, Report Case, Conduct Report, Wallet, Payout, and Member detail data;
-- legacy compatibility routes under `src/features/admin/legacy/**`;
+- legacy fixture and model helpers that are still required by Mock data and unit-test boundaries;
 - the Overview command centre compatibility view;
 - native form controls and shared focus-visible and touch-target rules.
 
-Legacy record markup keeps its small compatibility stylesheet at `src/features/admin/legacy/legacy-record.css`. It owns only selectors that are emitted by the retired client-rendered runtime, such as `.overview-meta` and `.overview-group`. These selectors are not a second component system. They are compatibility rules for domain data and native controls. New UI must use the shared primitives and Tailwind utilities first.
+The retired client-rendered Admin page, Overview clone, legacy record stylesheet, and legacy runtime folder have been removed. Mock fixture storage now uses `src/features/admin/data/admin-demo-data-adapter.ts`. New UI must use the shared primitives and Tailwind utilities first.
 
 ## CSS audit
 
-The CSS inventory was checked against `src/` and `tests/`. The audit removed retired selectors from `styles.css` and `admin-extensions.css`, including the old Admin navigation link, table link, filter-tab, shell-kicker, and payout action rules. The canonical detail fact and section selectors were then replaced with Tailwind recipes; the remaining route CSS covers dense tables, timelines, native dialogs, status tokens, and feature-specific data presentation. Status and theme classes that are assembled at runtime remain because the legacy renderer and status badge model use them. Do not remove these rules without checking both the canonical route and the legacy runtime.
+The CSS inventory was checked against `src/` and `tests/`. The audit removed retired selectors from `styles.css` and `admin-extensions.css`, including the old Admin navigation link, table link, filter-tab, shell-kicker, and payout action rules. The canonical detail fact and section selectors were then replaced with Tailwind recipes; the remaining route CSS covers dense tables, timelines, native dialogs, status tokens, and feature-specific data presentation. Status and theme classes that are assembled at runtime remain because the canonical status badge model uses them. Do not remove these rules without checking the canonical route and its responsive states.
+
+The cleanup reduced the imported Admin CSS from 7,851 to 5,138 lines. The remaining CSS is used by the App Router shell, active feature surfaces, native dialogs, responsive tables, themes, and runtime status tokens. No retired renderer stylesheet or legacy record selector remains in `src/app`.
 
 ## Verification
 

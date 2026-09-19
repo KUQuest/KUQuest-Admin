@@ -18,7 +18,7 @@ import { isAdminMockEnabled } from "../../lib/auth/admin-auth-mode";
 import { AdminHeader } from "./admin-header";
 import { AdminSidebar } from "./admin-sidebar";
 import { AdminShellProvider } from "./admin-shell-context";
-import { ADMIN_SESSION_KEY } from "../../features/admin/legacy/auth";
+import { ADMIN_SESSION_KEY } from "../../features/admin/admin-auth";
 import { ADMIN_MOCK_SESSION_COOKIE } from "../../lib/auth/admin-session-policy";
 
 type AdminShellProps = {

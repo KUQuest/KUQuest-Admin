@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
 import { loadDashboardData } from "../../src/features/admin/dashboard/dashboard-bootstrap";
-import { ADMIN_DEMO_DATA_KEY } from "../../src/features/admin/data/legacy-admin-data-adapter";
+import { ADMIN_DEMO_DATA_KEY } from "../../src/features/admin/data/admin-demo-data-adapter";
 import { loadMembersFromMock } from "../../src/features/admin/member/member-adapter";
 import { loadConductReportsFromMock } from "../../src/features/admin/conduct-report/conduct-report-adapter";
 import { conductReportsOnly } from "../../src/features/admin/conduct-report/conduct-report-model";

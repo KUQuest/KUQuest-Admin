@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import type { BrowserStorage } from "../../src/features/admin/data/legacy-admin-data-adapter";
+import type { BrowserStorage } from "../../src/features/admin/data/admin-demo-data-adapter";
 import { loadOverviewModelFromMock } from "../../src/features/admin/overview/overview-adapter";
 import { mockPendingPayout } from "../../src/features/admin/payout/payout-mock-data";
 import {

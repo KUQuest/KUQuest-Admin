@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   ADMIN_DEMO_DATA_KEY,
   type BrowserStorage,
-} from "../../src/features/admin/data/legacy-admin-data-adapter";
+} from "../../src/features/admin/data/admin-demo-data-adapter";
 import { recordMemberViolation, removeMemberPenalty } from "../../src/features/admin/member/member-adapter";
 
 import type { AdminMemberDetail } from "../../src/features/admin/api/admin-api";

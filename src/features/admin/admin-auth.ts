@@ -1,7 +1,6 @@
 export const ADMIN_SESSION_KEY = "kuquest-admin-session";
 
 export type SessionStorage = Pick<Storage, "getItem">;
-
 export type BrowserLocation = Pick<Location, "replace">;
 
 export function hasAdminSession(storage: SessionStorage): boolean {

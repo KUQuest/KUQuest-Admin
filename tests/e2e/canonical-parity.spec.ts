@@ -2,8 +2,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 
 import { signIn } from "./support/admin-auth";
 
-// Ports the legacy suite assertions (tests/e2e-legacy) to canonical routes.
-// Legacy checks for features that the canonical routes do not have yet are listed in tests/e2e-legacy/README.md.
+// Coverage for behaviour that was previously checked only by the retired client renderer.
 
 const mobileViewport = { width: 390, height: 844 };
 
@@ -35,7 +34,7 @@ async function openMemberDrawer(page: Page) {
   return drawer;
 }
 
-test.describe("legacy parity on canonical routes", () => {
+test.describe("canonical parity coverage", () => {
   test("Wallet board shows Wallet funds and balance columns", async ({ page }) => {
     await signIn(page);
     await page.goto("/wallet");

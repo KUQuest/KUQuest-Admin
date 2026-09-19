@@ -2,7 +2,7 @@ import {
   ADMIN_DEMO_DATA_KEY,
   readAdminData,
   type BrowserStorage,
-} from "../data/legacy-admin-data-adapter";
+} from "../data/admin-demo-data-adapter";
 import type { PersistedAdminData } from "../data/admin-records";
 import {
   MOCK_DEMO_RECORD_COUNT,

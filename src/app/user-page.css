@@ -13,9 +13,6 @@
 .user-detail-breadcrumb a:hover {
   text-decoration: underline;
 }
-.user-detail-page-head {
-  margin-bottom: 18px;
-}
 .user-detail-panel {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -136,38 +133,6 @@
   margin: 7px 0 0;
   font-size: 12px;
 }
-.user-work-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-.user-work-item {
-  display: grid;
-  grid-template-columns: 44px 1fr;
-  gap: 2px 10px;
-  align-items: center;
-  padding: 10px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-}
-.user-work-thumb {
-  display: grid;
-  grid-row: span 2;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 6px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: 20px;
-}
-.user-work-item strong {
-  font-size: 12px;
-}
-.user-work-item > span:last-child {
-  color: var(--muted);
-  font-size: 11px;
-}
 .user-payout-stat-list {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -189,11 +154,6 @@
 .user-payout-stat-list span {
   color: var(--muted);
   font-size: 10px;
-}
-.user-panel-heading-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
 }
 .user-payout-list {
   display: grid;
@@ -385,23 +345,10 @@
   margin: 6px 0 0;
   font-size: 12px;
 }
-.user-note-label {
-  display: block;
-  margin-bottom: 6px;
-  font-size: 12px;
-  font-weight: 600;
-}
 .user-detail-panel textarea {
   width: 100%;
   resize: vertical;
   margin-bottom: 9px;
-}
-.user-action-stack {
-  display: grid;
-  gap: 8px;
-}
-.user-action-stack .btn {
-  width: 100%;
 }
 .user-tab-panel {
   grid-column: 1 / -1;
@@ -472,50 +419,6 @@
   justify-self: start;
   max-width: 100%;
 }
-.user-quest-history-action {
-  align-self: center;
-  color: var(--accent);
-  font-size: 11px;
-  white-space: nowrap;
-}
-.user-quest-history-row:hover .user-quest-history-action {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-.user-detail-panel .user-activity-list {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-}
-.user-activity-list article {
-  display: grid;
-  grid-template-columns: 12px 1fr;
-  gap: 9px;
-  padding: 0 0 18px;
-}
-.user-activity-list article:last-child {
-  padding-bottom: 0;
-}
-.user-activity-list strong,
-.user-activity-list time {
-  display: block;
-}
-.user-activity-list strong {
-  font-size: 13px;
-  text-align: left;
-}
-.user-activity-list time {
-  margin-top: 2px;
-  color: var(--muted);
-  font-size: 12px;
-}
-.user-activity-list p {
-  margin: 4px 0 0;
-  font-size: 12px;
-}
 .user-review-toolbar {
   display: flex;
   align-items: center;
@@ -556,9 +459,6 @@
   .user-quest-history-fields {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .user-quest-history-action {
-    justify-self: start;
-  }
 }
 @media (max-width: 600px) {
   .user-review-toolbar {
@@ -567,9 +467,6 @@
   }
   .user-review-filters {
     gap: 18px;
-  }
-  .user-work-grid {
-    grid-template-columns: 1fr;
   }
   .user-quest-history-fields {
     grid-template-columns: 1fr;
@@ -597,8 +494,7 @@
   line-height: 1.5;
 }
 
-.admin-shell .user-detail-page .user-detail-panel h2,
-.admin-shell .user-drawer-detail .section h3 {
+.admin-shell .user-detail-page .user-detail-panel h2 {
   font-size: var(--member-font-body);
   line-height: 1.4;
 }
@@ -617,7 +513,6 @@
 .admin-shell .user-detail-page .user-payout-primary small,
 .admin-shell .user-detail-page .user-review-preview small,
 .admin-shell .user-detail-page .user-recent-reports small,
-.admin-shell .user-detail-page .user-work-item > span:last-child,
 .admin-shell .user-detail-page .user-admin-notes small,
 .admin-shell .user-detail-page .user-admin-notes p,
 .admin-shell .user-detail-page .audit-note {
@@ -645,7 +540,6 @@
 .admin-shell .user-detail-page .user-payout-secondary strong,
 .admin-shell .user-detail-page .user-review-preview strong,
 .admin-shell .user-detail-page .user-recent-reports strong,
-.admin-shell .user-detail-page .user-work-item strong,
 .admin-shell .user-detail-page .user-admin-notes strong {
   font-size: var(--member-font-value);
   line-height: 1.4;
@@ -655,24 +549,6 @@
 .admin-shell .user-drawer-detail .badge {
   font-size: var(--member-font-meta);
   line-height: 1.35;
-}
-
-.admin-shell .user-detail-page .user-context-list > div > span,
-.admin-shell .user-detail-page .user-activity-list span,
-.admin-shell .user-drawer-detail .user-context-list > div > span,
-.admin-shell .user-drawer-detail .user-activity-list span {
-  font-size: var(--member-font-meta);
-  line-height: 1.4;
-}
-
-.admin-shell .user-detail-page .user-context-list > div > strong,
-.admin-shell .user-detail-page .user-context-list > div > .link,
-.admin-shell .user-detail-page .user-activity-list strong,
-.admin-shell .user-drawer-detail .user-context-list > div > strong,
-.admin-shell .user-drawer-detail .user-context-list > div > .link,
-.admin-shell .user-drawer-detail .user-activity-list strong {
-  font-size: var(--member-font-value);
-  line-height: 1.4;
 }
 
 .admin-shell .user-drawer-detail .user-simple-list strong {
@@ -693,11 +569,9 @@
 .admin-shell .user-detail-page .user-quest-history-title > span,
 .admin-shell .user-detail-page .user-quest-history-field > span,
 .admin-shell .user-detail-page .user-quest-history-field small,
-.admin-shell .user-detail-page .user-quest-history-action,
 .admin-shell .user-drawer-detail .user-quest-history-title > span,
 .admin-shell .user-drawer-detail .user-quest-history-field > span,
-.admin-shell .user-drawer-detail .user-quest-history-field small,
-.admin-shell .user-drawer-detail .user-quest-history-action {
+.admin-shell .user-drawer-detail .user-quest-history-field small {
   font-size: var(--member-font-meta);
   line-height: 1.4;
 }

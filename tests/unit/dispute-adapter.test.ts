@@ -4,7 +4,7 @@ import {
   loadDisputeCasesFromMock,
   saveMockDisputeDecision,
 } from "../../src/features/admin/dispute/dispute-adapter";
-import { ADMIN_DEMO_DATA_KEY } from "../../src/features/admin/data/legacy-admin-data-adapter";
+import { ADMIN_DEMO_DATA_KEY } from "../../src/features/admin/data/admin-demo-data-adapter";
 
 function memoryStorage() {
   const values = new Map<string, string>();

@@ -4,7 +4,7 @@ import {
   loadConductReportsFromMock,
   saveMockConductReportDecision,
 } from "../../src/features/admin/conduct-report/conduct-report-adapter";
-import { ADMIN_DEMO_DATA_KEY } from "../../src/features/admin/data/legacy-admin-data-adapter";
+import { ADMIN_DEMO_DATA_KEY } from "../../src/features/admin/data/admin-demo-data-adapter";
 import { findMemberFromMock } from "../../src/features/admin/member/member-adapter";
 
 function memoryStorage() {

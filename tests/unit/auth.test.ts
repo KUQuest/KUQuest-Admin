@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { hasAdminSession, requireAdminSession } from "../../src/features/admin/legacy/auth";
+import { hasAdminSession, requireAdminSession } from "../../src/features/admin/admin-auth";
 
 function storageWith(value: string | null): Pick<Storage, "getItem"> {
   return { getItem: () => value };
