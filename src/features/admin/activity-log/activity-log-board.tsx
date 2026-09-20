@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminPageHeader } from "../../../components/admin/admin-page-header";
@@ -12,26 +12,21 @@ import { isAdminApiEnabled } from "../api/admin-provider";
 import {
   activityLogCsv,
   activityLogActionLabel,
-  activityLogEntryMatchesFilters,
-  activityLogFixturePageData,
   activityLogMatchesSearch,
   activityLogReasonLabel,
   activityLogResourceTypeLabel,
   activityLogStateLabel,
   activityLogTargetLabel,
   activityTargetHref,
-  DEFAULT_ACTIVITY_LOG_FILTERS,
   formatActivityLogRelativeTime,
   formatActivityLogTimestamp,
   type ActivityLogEntry,
 } from "./activity-log-model";
-import { pageCount, pageRange, pageRows, type AdminBoardPageSize } from "../data/board-pagination";
-import { sortBoardRows, toggleBoardSort, type BoardSortDirection } from "../data/board-sorting";
-import {
-  loadActivityLogPageData,
-  type ActivityLogFilters,
-  type ActivityLogPageData,
-} from "./activity-log-service";
+import { pageCount, pageRange, pageRows } from "../data/board-pagination";
+import { sortBoardRows, type BoardSortDirection } from "../data/board-sorting";
+import type { ActivityLogPageData } from "./activity-log-service";
+import { useActivityLogBoardStore, type ActivityLogSortKey } from "./activity-log-board-store";
+import { useActivityLogQuery } from "./activity-log-query";
 import { formatAdminTimestamp } from "../date-format";
 
 export type ActivityLogBoardProps = {
@@ -44,23 +39,7 @@ type ActivityLogDetailProps = {
   onClose: () => void;
   onOpenTarget: (entry: ActivityLogEntry) => void;
 };
-type ActivityLogSortKey = "timestamp" | "actor" | "activity" | "target" | "reason";
 const EMPTY_ACTIVITY_LOG_ENTRIES: ActivityLogEntry[] = [];
-
-function loadAllActivityLogFromMock(filters: ActivityLogFilters): ActivityLogPageData {
-  const firstPage = activityLogFixturePageData(filters);
-  const items = [...firstPage.items];
-  let cursor = firstPage.nextCursor ?? undefined;
-
-  while (cursor) {
-    const nextPage = activityLogFixturePageData(filters, cursor);
-    items.push(...nextPage.items);
-    if (nextPage.nextCursor === cursor) break;
-    cursor = nextPage.nextCursor ?? undefined;
-  }
-
-  return { ...firstPage, items, nextCursor: null };
-}
 
 function displayValue(value: string | number | null | undefined): string {
   return value === null || value === undefined || value === "" ? "Not provided" : String(value);
@@ -157,19 +136,36 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
   const router = useRouter();
   const apiEnabled = isAdminApiEnabled();
   const mockEnabled = isAdminMockEnabled();
-  const [page, setPage] = useState<ActivityLogPageData | null>(initialData ?? (mockEnabled ? activityLogFixturePageData() : null));
-  const [appliedFilters, setAppliedFilters] = useState<ActivityLogFilters>(DEFAULT_ACTIVITY_LOG_FILTERS);
-  const [draftFilters, setDraftFilters] = useState<ActivityLogFilters>(DEFAULT_ACTIVITY_LOG_FILTERS);
-  const [search, setSearch] = useState("");
-  const [loadError, setLoadError] = useState<string | null>(initialError ?? null);
+  const {
+    appliedFilters,
+    draftFilters,
+    search,
+    pageSize,
+    pageNumber,
+    sortKey,
+    sortDirection,
+    setDraftFilters,
+    applyFilters: applyBoardFilters,
+    clearFilters: clearBoardFilters,
+    setSearch,
+    setPageSize,
+    setPageNumber,
+    sortBy,
+    reset,
+  } = useActivityLogBoardStore();
+  const query = useActivityLogQuery(appliedFilters, initialData);
+  const page = query.data?.pages.reduce<ActivityLogPageData | null>((current, next) => current
+    ? { ...next, items: [...current.items, ...next.items] }
+    : next, null) ?? null;
+  const entries = page?.items ?? EMPTY_ACTIVITY_LOG_ENTRIES;
+  const queryError = query.error instanceof Error ? query.error.message : query.error ? "The Admin API is unavailable." : null;
+  const loadError = queryError ?? initialError ?? null;
   const [paginationError, setPaginationError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<ActivityLogEntry | null>(null);
-  const [pageSize, setPageSize] = useState<AdminBoardPageSize>(10);
-  const [pageNumber, setPageNumber] = useState(1);
-  const [sortKey, setSortKey] = useState<ActivityLogSortKey | null>(null);
-  const [sortDirection, setSortDirection] = useState<BoardSortDirection>("ascending");
-  const requestId = useRef(0);
+  const loading = query.isPending || query.isFetching;
+  useEffect(() => {
+    reset();
+  }, [reset]);
   const closeDetails = useCallback(() => setSelectedEntry(null), []);
   const openLinkedDetail = useCallback((entry: ActivityLogEntry) => {
     const href = activityTargetHref(entry.resourceType, entry.resourceId);
@@ -178,12 +174,10 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
     router.push(href, { scroll: false });
   }, [closeDetails, router]);
 
-  const entries = page?.items ?? EMPTY_ACTIVITY_LOG_ENTRIES;
   const filteredEntries = useMemo(
     () => entries
-      .filter((entry) => activityLogEntryMatchesFilters(entry, appliedFilters))
       .filter((entry) => activityLogMatchesSearch(entry, search)),
-    [appliedFilters, entries, search],
+    [entries, search],
   );
   const sortedEntries = useMemo(
     () => sortKey ? sortBoardRows(filteredEntries, (entry) => activityLogSortValue(entry, sortKey), sortDirection) : filteredEntries,
@@ -197,92 +191,29 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
   );
   const { start: pageStart, end: pageEnd } = pageRange(sortedEntries.length, currentPage, pageSize);
 
-  function sortBy(nextKey: ActivityLogSortKey) {
-    setPageNumber(1);
-    setSortDirection((direction) => toggleBoardSort(sortKey, nextKey, direction));
-    setSortKey(nextKey);
-  }
-
-  const loadPage = useCallback(async (filters: ActivityLogFilters, cursor?: string, append = false) => {
-    const currentRequestId = ++requestId.current;
-    setLoading(true);
-    setLoadError(null);
-    if (!append) setPaginationError(null);
-    if (!apiEnabled && mockEnabled) {
-      const nextPage = cursor
-        ? activityLogFixturePageData(filters, cursor)
-        : loadAllActivityLogFromMock(filters);
-      setPage((current) => append && current
-        ? { ...nextPage, items: [...current.items, ...nextPage.items] }
-        : nextPage);
-      setLoading(false);
-      return;
-    }
-    try {
-      const nextPage = await loadActivityLogPageData(undefined, filters, cursor);
-      if (currentRequestId !== requestId.current) return;
-      if (append) setPaginationError(null);
-      setPage((current) => append && current
-        ? { ...nextPage, items: [...current.items, ...nextPage.items] }
-        : nextPage);
-    } catch (error: unknown) {
-      if (currentRequestId !== requestId.current) return;
-      const message = error instanceof Error ? error.message : "The Admin API is unavailable.";
-      if (append) setPaginationError(message);
-      else setLoadError(message);
-    } finally {
-      if (currentRequestId === requestId.current) setLoading(false);
-    }
-  }, [apiEnabled, mockEnabled]);
-
-  useEffect(() => {
-    if (apiEnabled || !mockEnabled || initialData?.source === "api") return;
-    let cancelled = false;
-    try {
-      const nextPage = loadAllActivityLogFromMock(DEFAULT_ACTIVITY_LOG_FILTERS);
-      if (!cancelled) setPage(nextPage);
-    } catch (error: unknown) {
-      if (!cancelled) setLoadError(error instanceof Error ? error.message : "The Activity Log fixtures could not load.");
-    }
-    return () => {
-      cancelled = true;
-    };
-  }, [apiEnabled, initialData, mockEnabled]);
-
   const applyFilters = useCallback((event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const nextFilters = {
-      action: draftFilters.action.trim(),
-      resourceType: draftFilters.resourceType.trim(),
-      resourceId: draftFilters.resourceId.trim(),
-      adminId: draftFilters.adminId.trim(),
-      fromDate: draftFilters.fromDate,
-      toDate: draftFilters.toDate,
-      sort: draftFilters.sort,
-    } satisfies ActivityLogFilters;
-    setAppliedFilters(nextFilters);
-    setPageNumber(1);
-    setPage(null);
-    void loadPage(nextFilters);
-  }, [draftFilters, loadPage]);
+    setPaginationError(null);
+    applyBoardFilters();
+  }, [applyBoardFilters]);
 
   const clearFilters = useCallback(() => {
-    setDraftFilters(DEFAULT_ACTIVITY_LOG_FILTERS);
-    setAppliedFilters(DEFAULT_ACTIVITY_LOG_FILTERS);
-    setPageNumber(1);
-    setPage(null);
-    void loadPage(DEFAULT_ACTIVITY_LOG_FILTERS);
-  }, [loadPage]);
+    setPaginationError(null);
+    clearBoardFilters();
+  }, [clearBoardFilters]);
 
   const loadMore = useCallback(() => {
-    if (!page?.nextCursor || loading) return;
-    void loadPage(appliedFilters, page.nextCursor, true);
-  }, [appliedFilters, loadPage, loading, page]);
+    if (!query.hasNextPage || query.isFetchingNextPage) return;
+    setPaginationError(null);
+    void query.fetchNextPage().catch((error: unknown) => {
+      setPaginationError(error instanceof Error ? error.message : "More Activity Log records could not load.");
+    });
+  }, [query]);
 
   const retry = useCallback(() => {
-    setPage(null);
-    void loadPage(appliedFilters);
-  }, [appliedFilters, loadPage]);
+    setPaginationError(null);
+    void query.refetch();
+  }, [query]);
 
   const exportCsv = useCallback(() => {
     const csv = activityLogCsv(filteredEntries);
@@ -312,17 +243,17 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
         <CardHeader className="flex min-h-[60px] items-center justify-between gap-4"><div><CardTitle id="activity-log-heading">{translateText("Activity Log")}</CardTitle><CardDescription>{translateText("Review the administrative audit trail.")}</CardDescription></div><span className={adminBoardCount} aria-live="polite">{filteredEntries.length} {translateText("loaded entries")}</span></CardHeader>
         <form className="mb-4 grid gap-3.5 rounded-admin-sm border border-admin-border bg-admin-soft p-3.5" onSubmit={applyFilters}>
           <div className="grid grid-cols-2 gap-3 min-[701px]:grid-cols-3 min-[1101px]:grid-cols-5">
-            <label className="grid gap-1.5 text-sm font-semibold text-admin-muted" htmlFor="activity-action-filter">{translateText("Action filter")}<Input id="activity-action-filter" type="search" value={draftFilters.action} onChange={(event) => setDraftFilters((current) => ({ ...current, action: event.target.value }))} /></label>
-            <label className="grid gap-1.5 text-sm font-semibold text-admin-muted" htmlFor="activity-resource-type-filter">{translateText("Resource type filter")}<Input id="activity-resource-type-filter" type="search" value={draftFilters.resourceType} onChange={(event) => setDraftFilters((current) => ({ ...current, resourceType: event.target.value }))} /></label>
-            <label className="grid gap-1.5 text-sm font-semibold text-admin-muted" htmlFor="activity-resource-id-filter">{translateText("Resource ID filter")}<Input id="activity-resource-id-filter" type="search" value={draftFilters.resourceId} onChange={(event) => setDraftFilters((current) => ({ ...current, resourceId: event.target.value }))} /></label>
-            <label className="grid gap-1.5 text-sm font-semibold text-admin-muted" htmlFor="activity-admin-id-filter">{translateText("Admin ID filter")}<Input id="activity-admin-id-filter" type="search" value={draftFilters.adminId} onChange={(event) => setDraftFilters((current) => ({ ...current, adminId: event.target.value }))} /></label>
-            <label className="grid gap-1.5 text-sm font-semibold text-admin-muted" htmlFor="activity-from-date-filter">{translateText("From date")}<Input id="activity-from-date-filter" type="date" value={draftFilters.fromDate} onChange={(event) => setDraftFilters((current) => ({ ...current, fromDate: event.target.value }))} /></label>
-            <label className="grid gap-1.5 text-sm font-semibold text-admin-muted" htmlFor="activity-to-date-filter">{translateText("To date")}<Input id="activity-to-date-filter" type="date" value={draftFilters.toDate} onChange={(event) => setDraftFilters((current) => ({ ...current, toDate: event.target.value }))} /></label>
-            <label className="grid gap-1.5 text-sm font-semibold text-admin-muted" htmlFor="activity-sort">{translateText("Sort activity")}<Select value={draftFilters.sort} onValueChange={(value) => setDraftFilters((current) => ({ ...current, sort: value === "oldest" ? "oldest" : "newest" }))}><SelectTrigger id="activity-sort"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="newest">{translateText("Newest first")}</SelectItem><SelectItem value="oldest">{translateText("Oldest first")}</SelectItem></SelectContent></Select></label>
+            <label className="grid gap-1.5 text-sm font-semibold text-admin-muted" htmlFor="activity-action-filter">{translateText("Action filter")}<Input id="activity-action-filter" type="search" value={draftFilters.action} onChange={(event) => setDraftFilters({ action: event.target.value })} /></label>
+            <label className="grid gap-1.5 text-sm font-semibold text-admin-muted" htmlFor="activity-resource-type-filter">{translateText("Resource type filter")}<Input id="activity-resource-type-filter" type="search" value={draftFilters.resourceType} onChange={(event) => setDraftFilters({ resourceType: event.target.value })} /></label>
+            <label className="grid gap-1.5 text-sm font-semibold text-admin-muted" htmlFor="activity-resource-id-filter">{translateText("Resource ID filter")}<Input id="activity-resource-id-filter" type="search" value={draftFilters.resourceId} onChange={(event) => setDraftFilters({ resourceId: event.target.value })} /></label>
+            <label className="grid gap-1.5 text-sm font-semibold text-admin-muted" htmlFor="activity-admin-id-filter">{translateText("Admin ID filter")}<Input id="activity-admin-id-filter" type="search" value={draftFilters.adminId} onChange={(event) => setDraftFilters({ adminId: event.target.value })} /></label>
+            <label className="grid gap-1.5 text-sm font-semibold text-admin-muted" htmlFor="activity-from-date-filter">{translateText("From date")}<Input id="activity-from-date-filter" type="date" value={draftFilters.fromDate} onChange={(event) => setDraftFilters({ fromDate: event.target.value })} /></label>
+            <label className="grid gap-1.5 text-sm font-semibold text-admin-muted" htmlFor="activity-to-date-filter">{translateText("To date")}<Input id="activity-to-date-filter" type="date" value={draftFilters.toDate} onChange={(event) => setDraftFilters({ toDate: event.target.value })} /></label>
+            <label className="grid gap-1.5 text-sm font-semibold text-admin-muted" htmlFor="activity-sort">{translateText("Sort activity")}<Select value={draftFilters.sort} onValueChange={(value) => setDraftFilters({ sort: value === "oldest" ? "oldest" : "newest" })}><SelectTrigger id="activity-sort"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="newest">{translateText("Newest first")}</SelectItem><SelectItem value="oldest">{translateText("Oldest first")}</SelectItem></SelectContent></Select></label>
           </div>
           <div className="flex justify-end gap-2 max-[700px]:justify-start"><Button variant="primary" type="submit" disabled={loading}>{translateText("Apply filters")}</Button><Button variant="outline" type="button" onClick={clearFilters} disabled={loading}>{translateText("Clear filters")}</Button></div>
         </form>
-        <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2"><label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text max-[600px]:basis-full max-[600px]:max-w-none" htmlFor="activity-search"><span className="visually-hidden">{translateText("Search loaded activity")}</span><Input className="h-9 min-h-9 px-3 py-1.5 text-sm" id="activity-search" type="search" value={search} onChange={(event) => { setSearch(event.target.value); setPageNumber(1); }} placeholder={translateText("Search loaded activity")}/></label><span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span><PageSizeControls value={pageSize} translateText={translateText} onChange={(size) => { setPageSize(size); setPageNumber(1); }} /><span className={`${adminBoardCount} max-[720px]:block max-[720px]:w-full max-[720px]:ms-0`} aria-live="polite">{sortedEntries.length ? pageSize === "all" ? `${translateText("Showing all")} ${sortedEntries.length} ${translateText(sortedEntries.length === 1 ? "result" : "results")}` : `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${sortedEntries.length} ${translateText(sortedEntries.length === 1 ? "result" : "results")}` : translateText("Showing 0 of 0 results")}</span></div>
+        <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2"><label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text max-[600px]:basis-full max-[600px]:max-w-none" htmlFor="activity-search"><span className="visually-hidden">{translateText("Search loaded activity")}</span><Input className="h-9 min-h-9 px-3 py-1.5 text-sm" id="activity-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={translateText("Search loaded activity")}/></label><span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span><PageSizeControls value={pageSize} translateText={translateText} onChange={setPageSize} /><span className={`${adminBoardCount} max-[720px]:block max-[720px]:w-full max-[720px]:ms-0`} aria-live="polite">{sortedEntries.length ? pageSize === "all" ? `${translateText("Showing all")} ${sortedEntries.length} ${translateText(sortedEntries.length === 1 ? "result" : "results")}` : `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${sortedEntries.length} ${translateText(sortedEntries.length === 1 ? "result" : "results")}` : translateText("Showing 0 of 0 results")}</span></div>
         <output id="activity-status" className="mb-2 block min-h-5 text-sm text-admin-muted" aria-live="polite">{loading ? translateText("Loading activity") : `${filteredEntries.length} ${translateText("loaded entries")}`}</output>
         {mockEnabled ? <p className="api-data-notice m-0 mb-3 rounded-lg px-3 py-2.5 text-[13px]">{translateText("Fixture data is active. Some records do not include before and after state.")}</p> : null}
         {loadError ? <div className="mb-3 flex items-center gap-2.5 rounded-admin-sm border border-admin-danger bg-admin-danger-soft px-3 py-2.5 text-sm text-admin-danger" role="alert"><strong>{translateText("Activity log is not available")}</strong><p className="m-0 flex-1">{translateText(loadError)}</p><Button variant="outline" type="button" onClick={retry}>{translateText("Try again")}</Button></div> : null}
@@ -334,7 +265,7 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
         })}</tbody></Table></div> : null}
         {filteredEntries.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Activity Log pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className={adminBoardPagination} /> : null}
         {paginationError ? <div className="mb-3 flex items-center gap-2.5 rounded-admin-sm border border-admin-danger bg-admin-danger-soft px-3 py-2.5 text-sm text-admin-danger" role="alert"><p className="m-0 flex-1">{translateText(paginationError)}</p><Button variant="outline" type="button" onClick={loadMore}>{translateText("Try again")}</Button></div> : null}
-        {page?.nextCursor ? <div className="flex justify-center pt-4"><Button variant="outline" type="button" onClick={loadMore} disabled={loading}>{translateText(loading ? "Loading more" : "Load more")}</Button></div> : null}
+        {query.hasNextPage ? <div className="flex justify-center pt-4"><Button variant="outline" type="button" onClick={loadMore} disabled={query.isFetchingNextPage}>{translateText(query.isFetchingNextPage ? "Loading more" : "Load more")}</Button></div> : null}
       </Card>
       {selectedEntry ? <ActivityLogDetail entry={selectedEntry} onClose={closeDetails} onOpenTarget={openLinkedDetail} /> : null}
     </main>
