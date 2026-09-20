@@ -23,7 +23,6 @@ import {
   recordMemberViolation,
   removeMemberPenalty,
   saveMemberNote,
-  submitMemberReport,
 } from "./member-adapter";
 import { MEMBER_UPDATED_EVENT } from "./member-board";
 import {
@@ -455,14 +454,6 @@ function NoteDialog({ model, open, busy, error, translateText, onCancel, onConfi
   return <AdminModalPortal open onClose={onCancel}><dialog open className="party-chat-overlay fixed inset-0 z-[90] m-0 grid h-full w-full max-w-none place-items-center rounded-none border-0 bg-transparent p-5 shadow-none max-[600px]:p-3" aria-modal="true" aria-label={translateText(`Add admin note for ${model.title}`)}><form className="party-chat-modal flex max-h-[min(720px,90vh)] w-full max-w-[560px] flex-col overflow-hidden rounded-[14px] bg-admin-surface shadow-admin" onSubmit={(event) => { event.preventDefault(); if (note.trim().length < 4) return; onConfirm(note.trim()); }}><div className="chat-modal-head"><div><strong>{translateText("Add admin note")}</strong><small>{model.title} · {model.id}</small></div><button className="icon" type="button" aria-label={translateText("Close admin note form")} onClick={onCancel}><span className="close-lines" /></button></div><div className="dialog-body p-5"><label htmlFor="member-admin-note">{translateText("Internal note")}</label><textarea id="member-admin-note" name="note" rows={4} minLength={4} maxLength={500} required value={note} onChange={(event) => setNote(event.target.value)} />{error && <p className="field-error" role="alert">{translateText(error)}</p>}</div><div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5"><Button variant="outline" type="button" onClick={onCancel} disabled={busy}>{translateText("Cancel")}</Button><Button variant="primary" type="submit" disabled={busy || note.trim().length < 4}>{busy ? translateText("Saving…") : translateText("Save note")}</Button></div></form></dialog></AdminModalPortal>;
 }
 
-function ReportMemberDialog({ model, open, busy, error, translateText, onCancel, onConfirm }: { model: MemberModel; open: boolean; busy: boolean; error: string | null; translateText: (value: string) => string; onCancel: () => void; onConfirm: (category: string, details: string) => void }) {
-  const [category, setCategory] = useState("Harassment or abuse");
-  const [details, setDetails] = useState("");
-  useEffect(() => { if (open) { setCategory("Harassment or abuse"); setDetails(""); } }, [open, model.id]);
-  if (!open) return null;
-  return <AdminModalPortal open onClose={onCancel}><dialog open className="member-action-dialog" aria-modal="true" aria-label={translateText(`Report ${model.title}`)}><form className="party-chat-modal report-modal flex max-h-[min(720px,90vh)] w-full max-w-[560px] flex-col overflow-hidden rounded-[14px] bg-admin-surface shadow-admin" onSubmit={(event) => { event.preventDefault(); if (details.trim().length < 20) return; onConfirm(category, details.trim()); }}><div className="chat-modal-head"><div><strong>{translateText("Report Member")}</strong><small>{model.title} · {model.id}</small></div><button className="icon" type="button" aria-label={translateText("Close report form")} onClick={onCancel}><span className="close-lines" /></button></div><div className="dialog-body p-5"><p className="chat-intro -mt-[5px] mb-3 text-admin-muted">{translateText("Record a report submitted by one KUQuest Member about another. This report does not apply a penalty automatically.")}</p><div className="report-selected-user" role="group" aria-label={translateText("Reported Member")}><span>{translateText("Reported Member")}</span><strong>{model.title}</strong><small>{translateText("Student ID")} · {model.studentId}</small></div><label htmlFor="member-report-category">{translateText("Report type")}</label><select id="member-report-category" aria-label={translateText("Report type")} value={category} onChange={(event) => setCategory(event.target.value)}><option value="Harassment or abuse">{translateText("Harassment or abuse")}</option><option value="Fraud or payment issue">{translateText("Fraud or payment issue")}</option><option value="Other policy concern">{translateText("Other policy concern")}</option></select><label htmlFor="member-report-details">{translateText("What happened?")}</label><textarea id="member-report-details" aria-label={translateText("What happened?")} minLength={20} maxLength={500} rows={5} required value={details} onChange={(event) => setDetails(event.target.value)} />{(error || (details.length > 0 && details.trim().length < 20)) && <p className="field-error" role="alert">{translateText(error || "Enter at least 20 characters describing the report.")}</p>}</div><div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5"><Button variant="outline" type="button" onClick={onCancel} disabled={busy}>{translateText("Cancel")}</Button><Button variant="primary" type="submit" disabled={busy || details.trim().length < 20}>{busy ? translateText("Saving…") : translateText("Submit report")}</Button></div></form></dialog></AdminModalPortal>;
-}
-
 function DetailTabs({ model, activeTab, translateText }: { model: MemberModel; activeTab: MemberTab; translateText: (value: string) => string }) {
   const labels: Record<MemberTab, string> = { overview: "Overview", activity: "Activity", payouts: "Payouts", "wallet-statement": "Wallet Statement", reviews: "Reviews", reports: "Reports", "penalty-history": "Penalty History" };
   return <nav className="flex min-h-[42px] gap-[22px] overflow-x-auto border-b border-admin-border mb-[18px] max-[600px]:gap-[15px]" aria-label={translateText("Member detail sections")}>{Object.entries(labels).map(([value, label]) => {
@@ -471,7 +462,7 @@ function DetailTabs({ model, activeTab, translateText }: { model: MemberModel; a
   })}</nav>;
 }
 
-function DrawerContent({ model, translateText, onRecordViolation, onRemovePenalty, onReport }: { model: MemberModel; translateText: (value: string) => string; onRecordViolation: () => void; onRemovePenalty: () => void; onReport: () => void }) {
+function DrawerContent({ model, translateText, onRecordViolation, onRemovePenalty }: { model: MemberModel; translateText: (value: string) => string; onRecordViolation: () => void; onRemovePenalty: () => void }) {
   const canRecord = model.source === "mock"
     && model.confirmedViolationCount !== null
     && !["FROZEN", "SUSPENDED", "CLOSED"].includes(model.walletStatus || "");
@@ -530,7 +521,6 @@ export function MemberDetail({ memberId, initialModel = null, initialTab = "over
   const [penaltyOpen, setPenaltyOpen] = useState(false);
   const [removePenaltyOpen, setRemovePenaltyOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
-  const [reportOpen, setReportOpen] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -618,31 +608,15 @@ export function MemberDetail({ memberId, initialModel = null, initialTab = "over
     setActionBusy(false);
   };
 
-  const submitReport = (category: string, details: string) => {
-    if (!model) return;
-    if (isAdminApiEnabled()) {
-      setActionError("New Member reports are not available from the Admin API.");
-      return;
-    }
-    setActionBusy(true);
-    const nextModel = submitMemberReport(localStorage, model.id, category, details);
-    if (!nextModel) setActionError("The report could not be saved.");
-    else {
-      updateModel(nextModel);
-      setReportOpen(false);
-    }
-    setActionBusy(false);
-  };
-
   if (loading && !model) return <AdminLoading message={translateText("Loading Member…")} />;
   if (!model) {
     return <main className={drawer ? "drawer-body" : "admin-feedback"}><Card as="section" className="overflow-hidden"><CardHeader><h1 className="text-lg font-semibold">{translateText("Member not found")}</h1></CardHeader><CardContent className="space-y-4"><p>{translateText(loadError || "No Member record matches this identifier.")}</p>{!drawer && <Button asChild variant="primary"><Link href={memberRoutes.list()}>{translateText("Return to Members")}</Link></Button>}</CardContent></Card></main>;
   }
 
-  const overlays = <><PenaltyDialog model={model} open={penaltyOpen} busy={actionBusy} error={actionError} translateText={translateText} onCancel={() => { if (!actionBusy) { setPenaltyOpen(false); setActionError(null); } }} onConfirm={confirmPenalty} /><RemovePenaltyDialog model={model} open={removePenaltyOpen} busy={actionBusy} error={actionError} translateText={translateText} onCancel={() => { if (!actionBusy) { setRemovePenaltyOpen(false); setActionError(null); } }} onConfirm={removePenalty} /><NoteDialog model={model} open={noteOpen} busy={actionBusy} error={actionError} translateText={translateText} onCancel={() => { if (!actionBusy) { setNoteOpen(false); setActionError(null); } }} onConfirm={saveNote} /><ReportMemberDialog model={model} open={reportOpen} busy={actionBusy} error={actionError} translateText={translateText} onCancel={() => { if (!actionBusy) { setReportOpen(false); setActionError(null); } }} onConfirm={submitReport} /></>;
+  const overlays = <><PenaltyDialog model={model} open={penaltyOpen} busy={actionBusy} error={actionError} translateText={translateText} onCancel={() => { if (!actionBusy) { setPenaltyOpen(false); setActionError(null); } }} onConfirm={confirmPenalty} /><RemovePenaltyDialog model={model} open={removePenaltyOpen} busy={actionBusy} error={actionError} translateText={translateText} onCancel={() => { if (!actionBusy) { setRemovePenaltyOpen(false); setActionError(null); } }} onConfirm={removePenalty} /><NoteDialog model={model} open={noteOpen} busy={actionBusy} error={actionError} translateText={translateText} onCancel={() => { if (!actionBusy) { setNoteOpen(false); setActionError(null); } }} onConfirm={saveNote} /></>;
 
   if (drawer) {
-    return <>{overlays}<DrawerContent model={model} translateText={translateText} onRecordViolation={() => { setActionError(null); setPenaltyOpen(true); }} onRemovePenalty={() => { setActionError(null); setRemovePenaltyOpen(true); }} onReport={() => { setActionError(null); setReportOpen(true); }} /></>;
+    return <>{overlays}<DrawerContent model={model} translateText={translateText} onRecordViolation={() => { setActionError(null); setPenaltyOpen(true); }} onRemovePenalty={() => { setActionError(null); setRemovePenaltyOpen(true); }} /></>;
   }
 
   const tabContent = activeTab === "activity"

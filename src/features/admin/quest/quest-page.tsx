@@ -73,6 +73,22 @@ const reasonCodes: Array<{ value: AdminQuestReasonCode; label: string }> = [
   { value: "SAFETY_REVIEW", label: "Safety review" },
 ];
 
+function applyMockStateOverrides(rows: QuestBoardRow[], dataSource: QuestDataSource): QuestBoardRow[] {
+  if (dataSource !== "mock" || typeof window === "undefined") return rows;
+  return rows.map((row) => {
+    const override = readMockQuestOverride(window.localStorage, row.id)
+      ?? readMockQuestOverride(window.localStorage, row.displayId);
+    if (!override) return row;
+    return {
+      ...row,
+      state: override.state,
+      stateLabel: questStateLabel(override.state),
+      hiddenAt: override.hiddenAt,
+      version: override.version,
+    };
+  });
+}
+
 function newIdempotencyKey(action: QuestCommand, questId: string): string {
   const id = typeof globalThis.crypto?.randomUUID === "function"
     ? globalThis.crypto.randomUUID()
@@ -850,24 +866,8 @@ export function AdminQuestPage({ initialData, dataSource = "api" }: { initialDat
   const [sortKey, setSortKey] = useState<QuestSortKey>("createdAt");
   const [sortDirection, setSortDirection] = useState<QuestSortDirection>("descending");
 
-  function applyMockStateOverrides(rows: QuestBoardRow[]): QuestBoardRow[] {
-    if (dataSource !== "mock" || typeof window === "undefined") return rows;
-    return rows.map((row) => {
-      const override = readMockQuestOverride(window.localStorage, row.id)
-        ?? readMockQuestOverride(window.localStorage, row.displayId);
-      if (!override) return row;
-      return {
-        ...row,
-        state: override.state,
-        stateLabel: questStateLabel(override.state),
-        hiddenAt: override.hiddenAt,
-        version: override.version,
-      };
-    });
-  }
-
   useEffect(() => {
-    const syncRows = () => setRows(applyMockStateOverrides(initialData.rows));
+    const syncRows = () => setRows(applyMockStateOverrides(initialData.rows, dataSource));
     syncRows();
     if (dataSource !== "mock") return;
     window.addEventListener(QUEST_MOCK_STATE_EVENT, syncRows);

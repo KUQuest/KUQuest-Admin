@@ -279,33 +279,3 @@ export function removeMemberPenalty(
   persist(storage, data);
   return result;
 }
-
-export function submitMemberReport(
-  storage: BrowserStorage,
-  memberId: string,
-  category: string,
-  details: string,
-): MemberModel | null {
-  const data = loadDashboardData(storage);
-  const record = memberRecord(data, memberId);
-  if (!record) return null;
-  const title = typeof record.title === "string" ? record.title : memberId;
-  const reporter = data.collections.users.find((candidate) => candidate.id !== memberId);
-  const reporterRecord = reporter as Record<string, unknown> | undefined;
-  const report = {
-    id: `RPT-${Date.now()}`,
-    reportedMemberId: memberId,
-    reportedUserName: title,
-    reporterId: reporter?.id ?? "mock-admin",
-    reporterName: typeof reporterRecord?.title === "string" ? reporterRecord.title : "Admin",
-    category,
-    details,
-    status: "REPORT_CASE_PENDING",
-    reportCaseStatus: "REPORT_CASE_PENDING",
-    reportedAt: new Date().toISOString(),
-    tone: "warning",
-  };
-  data.collections.reports = [...data.collections.reports, report];
-  persist(storage, data);
-  return memberModelFromMockRecord(record, data);
-}
