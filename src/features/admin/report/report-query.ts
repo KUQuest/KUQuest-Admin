@@ -1,15 +1,21 @@
 import { useEffect, useMemo } from "react";
-import { useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
 import { isAdminApiEnabled } from "../api/admin-provider";
 import {
+  findReportCaseFromMock,
   loadAllReportCasesFromMock,
   loadReportCasesFromMock,
 } from "./report-adapter";
 import { loadReportCasePageData, type ReportCasePageData } from "./report-service";
-import { REPORT_CASE_UPDATED_EVENT, type ReportCaseModel } from "./report-model";
+import { adminApi } from "../api/admin-api";
+import { REPORT_CASE_UPDATED_EVENT, reportCaseModelFromRecord, type ReportCaseModel } from "./report-model";
 
 export const reportBoardQueryKey = ["admin", "report-cases", "board"] as const;
+
+export function reportDetailQueryKey(reportId: string) {
+  return ["admin", "report-cases", "detail", reportId] as const;
+}
 
 function pageFromQueryData(pages: ReportCasePageData[]): ReportCasePageData {
   const lastPage = pages.at(-1);
@@ -62,4 +68,42 @@ export function useReportBoardQuery(initialData?: ReportCasePageData) {
   }, [queryClient]);
 
   return { ...query, data };
+}
+
+export function useReportDetailQuery(reportId: string, initialModel?: ReportCaseModel | null) {
+  const queryClient = useQueryClient();
+  const apiEnabled = isAdminApiEnabled();
+  const queryKey = reportDetailQueryKey(reportId);
+  const query = useQuery({
+    queryKey,
+    queryFn: async () => {
+      const record = apiEnabled
+        ? await adminApi.getReport(reportId)
+        : findReportCaseFromMock(localStorage, reportId);
+      const model = reportCaseModelFromRecord(record);
+      if (!model || model.id !== reportId) throw new Error("The Report Case was not found.");
+      return model;
+    },
+    initialData: initialModel ?? undefined,
+    staleTime: initialModel ? Infinity : 0,
+    gcTime: Infinity,
+    refetchOnMount: !initialModel,
+    refetchOnWindowFocus: false,
+  });
+
+  useEffect(() => {
+    if (initialModel) queryClient.setQueryData(queryKey, initialModel);
+  }, [initialModel, queryClient, queryKey]);
+
+  useEffect(() => {
+    const updateRecord = (event: Event) => {
+      const model = (event as CustomEvent<ReportCaseModel>).detail;
+      if (!model || model.id !== reportId) return;
+      queryClient.setQueryData(queryKey, model);
+    };
+    window.addEventListener(REPORT_CASE_UPDATED_EVENT, updateRecord);
+    return () => window.removeEventListener(REPORT_CASE_UPDATED_EVENT, updateRecord);
+  }, [queryClient, queryKey, reportId]);
+
+  return { ...query, data: query.data ?? null, queryKey };
 }

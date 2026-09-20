@@ -35,7 +35,6 @@ import { reportRoutes } from "../admin-routes";
 import { reportCaseStatusLabel } from "../domain/rulebook";
 import { ModerationCaseWorkspace, ModerationHistoryPanel } from "../moderation-case/moderation-case-workspace";
 import {
-  findReportCaseFromMock,
   newReportCaseIdempotencyKey,
   saveMockReportDecision,
 } from "./report-adapter";
@@ -46,6 +45,7 @@ import {
   type ReportCaseDecisionChoice,
   type ReportCaseModel,
 } from "./report-model";
+import { useReportDetailQuery } from "./report-query";
 
 type ReportCaseDetailProps = {
   reportId: string;
@@ -595,9 +595,7 @@ export function ReportCaseDetail({
   onUpdated,
 }: ReportCaseDetailProps) {
   const { translateText } = useAdminShell();
-  const [reportModel, setReportModel] = useState<ReportCaseModel | null>(initialModel);
-  const [loading, setLoading] = useState(!initialModel);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const { data: reportModel, isPending, error } = useReportDetailQuery(reportId, initialModel);
   const [selectedChoice, setSelectedChoice] = useState<ReportCaseDecisionChoice | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [commandBusy, setCommandBusy] = useState(false);
@@ -610,46 +608,13 @@ export function ReportCaseDetail({
     occurredAt: string;
   } | null>(null);
 
-  useEffect(() => {
-    if (initialModel && !drawer) return;
-    let cancelled = false;
-    setLoading(true);
-    setLoadError(null);
-
-    const request = isAdminApiEnabled()
-      ? adminApi.getReport(reportId)
-      : Promise.resolve(findReportCaseFromMock(localStorage, reportId));
-
-    void request.then((nextRecord) => {
-      if (cancelled) return undefined;
-      const nextModel = reportCaseModelFromRecord(nextRecord);
-      if (!nextModel || nextModel.id !== reportId) {
-        setReportModel(null);
-        setLoadError("The Report Case was not found.");
-      } else {
-        setReportModel(nextModel);
-      }
-      return undefined;
-    }).catch((error: unknown) => {
-      if (cancelled) return undefined;
-      setLoadError(error instanceof Error ? error.message : "The Report Case could not load.");
-      return undefined;
-    }).finally(() => {
-      if (!cancelled) setLoading(false);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [drawer, initialModel, reportId]);
-
   const model = reportModel;
 
-  if (loading && !model) return <AdminLoading message={translateText("Loading Report Case…")} />;
+  if (isPending && !model) return <AdminLoading message={translateText("Loading Report Case…")} />;
   if (!model) {
     return (
       <main className={drawer ? "drawer-body" : "admin-feedback"}>
-      <Card as="section" className="overflow-hidden"><CardHeader><h1 className="text-lg font-semibold">{translateText("Report Case not found")}</h1></CardHeader><CardContent className="space-y-4"><p>{translateText(loadError ?? "The requested Report Case was not found.")}</p>{!drawer && <Button asChild variant="primary"><Link href={reportRoutes.list()}>{translateText("Return to Report Cases")}</Link></Button>}</CardContent></Card>
+      <Card as="section" className="overflow-hidden"><CardHeader><h1 className="text-lg font-semibold">{translateText("Report Case not found")}</h1></CardHeader><CardContent className="space-y-4"><p>{translateText(error instanceof Error ? error.message : "The requested Report Case was not found.")}</p>{!drawer && <Button asChild variant="primary"><Link href={reportRoutes.list()}>{translateText("Return to Report Cases")}</Link></Button>}</CardContent></Card>
       </main>
     );
   }
@@ -699,7 +664,6 @@ export function ReportCaseDetail({
       if (!updatedModel || updatedModel.id !== model.id) {
         throw new Error(isAdminApiEnabled() ? "The Admin API returned an invalid Report Case." : "The Report Case record is invalid.");
       }
-      setReportModel(updatedModel);
       window.dispatchEvent(new CustomEvent(REPORT_CASE_UPDATED_EVENT, { detail: updatedModel }));
       onUpdated?.(updatedModel);
       setDialogOpen(false);
