@@ -219,6 +219,7 @@ test.describe("Quest route family", () => {
     const sidePanelTitles = await side.locator(':scope > section[data-slot="card"]').evaluateAll((panels) => panels.map((panel) => panel.querySelector('[data-slot="card-title"]')?.textContent?.trim()));
     expect(sidePanelTitles.slice(0, 5)).toEqual(["Hirer", "Schedule and location", "Financial record", "Overall Quest timeline", "Dispute and risk"]);
     await expect(page.getByRole("link", { name: "Full Quest detail" })).toHaveCount(0);
+    await expect(page.locator(".quest-command-actions")).toHaveCSS("position", "static");
 
     await page.reload();
     await expect(page.locator(".quest-detail-page h1")).toHaveText("Demo Quest 07");

@@ -611,7 +611,7 @@ function QuestDetailContent({
         </>
       ) : null}
 
-      <div className="quest-command-actions sticky bottom-[-28px] z-[4] grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-2 -mx-6 -mb-7 mt-[18px] border-t border-admin-border bg-[color-mix(in_srgb,var(--surface)_96%,transparent)] px-6 py-3.5 shadow-[0_-6px_18px_color-mix(in_srgb,var(--text)_9%,transparent)] max-[720px]:bottom-[-24px] max-[720px]:-mx-4 max-[720px]:-mb-6 max-[720px]:px-4 [&_[data-slot=button]]:m-0 [&_[data-slot=button]]:min-h-11 [&_[data-slot=button]]:w-full [&_[data-slot=button]]:text-center">
+      <div className={`quest-command-actions grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-2 [&_[data-slot=button]]:m-0 [&_[data-slot=button]]:min-h-11 [&_[data-slot=button]]:w-full [&_[data-slot=button]]:text-center ${recordLayout ? "mt-[18px] border-t border-admin-border pt-[18px]" : "sticky bottom-[-28px] z-[4] -mx-6 -mb-7 mt-[18px] border-t border-admin-border bg-[color-mix(in_srgb,var(--surface)_96%,transparent)] px-6 py-3.5 shadow-[0_-6px_18px_color-mix(in_srgb,var(--text)_9%,transparent)] max-[720px]:bottom-[-24px] max-[720px]:-mx-4 max-[720px]:-mb-6 max-[720px]:px-4"}`}>
         {showFullDetailLink ? <UiButton asChild variant="outline"><a href={questRoutes.detail(detail.id)}>{translateText("Full Quest detail")}</a></UiButton> : null}
         {!hidden && canHideQuest(state) ? <UiButton variant="outline" type="button" onClick={() => onCommand("hide")}>{translateText("Hide Quest")}</UiButton> : null}
         {hidden ? <UiButton variant="outline" type="button" onClick={() => onCommand("restore")}>{translateText("Restore Quest")}</UiButton> : null}
