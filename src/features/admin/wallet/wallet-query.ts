@@ -2,7 +2,8 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { adminApi } from "../api/admin-api";
-import type { WalletBoardPageData } from "./wallet-service";
+import { loadWalletDrawerDataAction } from "./wallet-actions";
+import type { WalletBoardPageData, WalletDataSource, WalletDrawerData } from "./wallet-service";
 import { mockAllWallets } from "./wallet-mock-data";
 import { walletRowsFromApi, type WalletBoardRow } from "./wallet-model";
 
@@ -11,6 +12,10 @@ export type WalletBoardQueryData = {
 };
 
 export const walletBoardQueryKey = ["admin", "wallets", "board"] as const;
+
+export function walletDrawerQueryKey(walletId: string, dataSource: WalletDataSource) {
+  return ["admin", "wallets", "detail", walletId, dataSource] as const;
+}
 
 async function loadAllWalletRowsFromApi(): Promise<WalletBoardQueryData> {
   const wallets = [] as Awaited<ReturnType<typeof adminApi.listWallets>>["items"];
@@ -37,6 +42,18 @@ export function useWalletBoardQuery(initialData: WalletBoardPageData) {
       : loadAllWalletRowsFromApi(),
     initialData: initialBoardData,
     enabled: !initialData.boardError,
+    staleTime: dataSource === "mock" ? Infinity : 0,
+    gcTime: Infinity,
+    refetchOnMount: dataSource === "api",
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useWalletDrawerQuery(walletId: string, dataSource: WalletDataSource) {
+  return useQuery<WalletDrawerData>({
+    queryKey: walletDrawerQueryKey(walletId, dataSource),
+    queryFn: () => loadWalletDrawerDataAction(walletId),
+    enabled: Boolean(walletId),
     staleTime: dataSource === "mock" ? Infinity : 0,
     gcTime: Infinity,
     refetchOnMount: dataSource === "api",

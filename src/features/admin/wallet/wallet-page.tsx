@@ -8,7 +8,6 @@ import {
   useEffect,
   useRef,
   useState,
-  startTransition,
   type FormEvent,
   type ReactNode,
 } from "react";
@@ -22,7 +21,7 @@ import { Badge as UiBadge, Button as UiButton, Card, CardDescription, CardHeader
 import { adminApi } from "../api/admin-api";
 import { walletStatusLabel, type WalletStatus } from "../domain/rulebook";
 import { memberTabHref } from "../member/member-model";
-import { loadWalletDrawerDataAction, verifyWalletProjectionAction } from "./wallet-actions";
+import { verifyWalletProjectionAction } from "./wallet-actions";
 import { WalletStatementTable } from "./wallet-statement-table";
 import {
   formatWalletDate,
@@ -36,17 +35,15 @@ import {
   WALLET_BOARD_TABS,
   type WalletBoardRow,
   type WalletBoardTab,
-  type WalletDetailView,
   type WalletFinanceSummary,
   type WalletHistoryView,
-  type WalletLedgerView,
   type WalletSortDirection,
   type WalletSortKey,
   type WalletSortSelection,
   type WalletVerificationView,
 } from "./wallet-model";
 import { useWalletBoardStore } from "./wallet-board-store";
-import { useWalletBoardQuery, walletBoardQueryKey, type WalletBoardQueryData } from "./wallet-query";
+import { useWalletBoardQuery, useWalletDrawerQuery, walletBoardQueryKey, walletDrawerQueryKey, type WalletBoardQueryData } from "./wallet-query";
 import type { WalletDataSource, WalletBoardPageData } from "./wallet-service";
 
 type WalletStatusTarget = Exclude<WalletStatus, "CLOSED">;
@@ -245,25 +242,23 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
 function WalletDrawer({
   row,
   dataSource,
-  initialMockHistory,
   opener,
   onClose,
   onStatusChanged,
 }: {
   row: WalletBoardRow;
   dataSource: WalletDataSource;
-  initialMockHistory: WalletHistoryView[];
   opener: HTMLElement | null;
   onClose: () => void;
-  onStatusChanged: (walletId: string, nextStatus: WalletStatus, historyEntry: WalletHistoryView) => void;
+  onStatusChanged: (walletId: string, nextStatus: WalletStatus) => void;
 }) {
   const { translateText } = useAdminShell();
-  const [detail, setDetail] = useState<WalletDetailView | null>(null);
-  const [history, setHistory] = useState<WalletHistoryView[]>([]);
-  const [ledger, setLedger] = useState<WalletLedgerView[]>([]);
+  const queryClient = useQueryClient();
+  const { data: drawerData, isPending: loading, error, refetch } = useWalletDrawerQuery(row.id, dataSource);
+  const detail = drawerData?.detail ? { ...drawerData.detail, status: row.status, statusLabel: walletStatusLabel(row.status) } : null;
+  const history = drawerData?.history ?? [];
+  const ledger = drawerData?.ledger ?? [];
   const [verification, setVerification] = useState<WalletVerificationView | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [actionPending, setActionPending] = useState<"verify" | "rebuild" | null>(null);
@@ -271,31 +266,6 @@ function WalletDrawer({
   const [statusCommandError, setStatusCommandError] = useState<string | null>(null);
   const [statusCommandPending, setStatusCommandPending] = useState(false);
   const [statusReceipt, setStatusReceipt] = useState<WalletStatusReceipt | null>(null);
-  const initialMockHistoryRef = useRef(initialMockHistory);
-  const rowStatusRef = useRef(row.status);
-  rowStatusRef.current = row.status;
-
-  const loadDetail = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    setActionError(null);
-    setNotice(null);
-    setVerification(null);
-    try {
-      const result = await loadWalletDrawerDataAction(row.id);
-      setDetail({ ...result.detail, status: rowStatusRef.current, statusLabel: walletStatusLabel(rowStatusRef.current) });
-      setHistory([...initialMockHistoryRef.current, ...result.history]);
-      setLedger(result.ledger);
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Wallet detail is not available.");
-    } finally {
-      setLoading(false);
-    }
-  }, [row.id]);
-
-  useEffect(() => {
-    startTransition(() => { void loadDetail(); });
-  }, [loadDetail]);
 
   async function verifyLedger() {
     setActionPending("verify");
@@ -323,7 +293,7 @@ function WalletDrawer({
     try {
       if (dataSource === "api") {
         await adminApi.rebuildWalletProjection(row.id);
-        await loadDetail();
+        await refetch();
       }
       setNotice(`Wallet projection rebuilt for ${row.id}.`);
     } catch (rebuildError) {
@@ -370,11 +340,15 @@ function WalletDrawer({
         reason,
         createdAt,
       };
-      setDetail((current) => current ? { ...current, status: statusCommand, statusLabel: walletStatusLabel(statusCommand) } : current);
-      setHistory((current) => [historyEntry, ...current]);
+      queryClient.setQueryData(walletDrawerQueryKey(row.id, dataSource), (current: typeof drawerData) => current
+        ? {
+            ...current,
+            history: [historyEntry, ...current.history],
+          }
+        : current);
       setStatusReceipt(receipt);
       setNotice(`Wallet status changed to ${walletStatusLabel(statusCommand)}.`);
-      onStatusChanged(row.id, statusCommand, historyEntry);
+      onStatusChanged(row.id, statusCommand);
       setStatusCommand(null);
     } catch (commandError) {
       setStatusCommandError(commandError instanceof Error ? commandError.message : "Wallet status command failed.");
@@ -407,7 +381,7 @@ function WalletDrawer({
       <UiButton variant="outline" type="button" onClick={onClose}>{translateText("Close record")}</UiButton>
     </> : null}
   >
-        {loading ? <p aria-live="polite">{translateText("Loading Wallet detail…")}</p> : error ? <EmptyState role="alert" title={translateText("Wallet detail unavailable")} description={translateText(error)} action={<UiButton variant="outline" type="button" onClick={() => { startTransition(() => { void loadDetail(); }); }}>{translateText("Try again")}</UiButton>} /> : detail ? <>
+        {loading ? <p aria-live="polite">{translateText("Loading Wallet detail…")}</p> : error ? <EmptyState role="alert" title={translateText("Wallet detail unavailable")} description={translateText(error instanceof Error ? error.message : "Wallet detail is not available.")} action={<UiButton variant="outline" type="button" onClick={() => { void refetch(); }}>{translateText("Try again")}</UiButton>} /> : detail ? <>
           <Card as="section" className="wallet-record m-0 min-w-0 max-w-full p-[18px]"><div className="drawer-title"><span className="att-icon neutral">W</span><div><h2>{detail.memberName}</h2><p>{detail.email} · {detail.memberId}</p></div></div><div className={adminRecordFacts}><Fact label={translateText("Wallet Status")}><Badge status={detail.status} /></Fact><Fact label={translateText("Current Wallet Balance")}>{formatWalletMoney(detail.currentBalanceSatang)}</Fact><Fact label={translateText("Wallet record")}>{detail.id}</Fact><Fact label={translateText("Latest Wallet Transaction Date")}>{formatWalletDate(detail.latestTransactionAt)}</Fact></div></Card>
           <Section title={translateText("Wallet balances")}><div className="grid gap-3"><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Spending Balance")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{formatWalletMoney(detail.balances.spendingBalanceSatang)}</strong></div><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Earnings Balance")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{formatWalletMoney(detail.balances.earningsBalanceSatang)}</strong></div><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Funding Reserved")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{formatWalletMoney(detail.balances.fundingReservedSatang)}</strong></div><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Reserved For Payouts")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{formatWalletMoney(detail.balances.reservedForPayoutsSatang)}</strong></div></div></Section>
           <Section title={translateText("Ledger check")}><p>{translateText(detail.projectionMatchesLedger ? "Wallet projection matches the Ledger." : "Wallet projection does not match the Ledger.")}</p></Section>
@@ -463,11 +437,9 @@ export function AdminWalletPage({ initialData }: { initialData: WalletBoardPageD
     reset,
   } = useWalletBoardStore();
   const [selectedWallet, setSelectedWallet] = useState<WalletBoardRow | null>(null);
-  const [mockStatusHistory, setMockStatusHistory] = useState<Record<string, WalletHistoryView[]>>({});
 
   useEffect(() => {
     reset();
-    setMockStatusHistory({});
   }, [reset]);
 
   const filteredRows = searchWalletRows(rows, search).filter((row) => walletMatchesTab(row, tab));
@@ -491,7 +463,7 @@ export function AdminWalletPage({ initialData }: { initialData: WalletBoardPageD
     setSelectedWallet(null);
   }, []);
 
-  const handleStatusChanged = useCallback((walletId: string, nextStatus: WalletStatus, historyEntry: WalletHistoryView) => {
+  const handleStatusChanged = useCallback((walletId: string, nextStatus: WalletStatus) => {
     queryClient.setQueryData<WalletBoardQueryData>([...walletBoardQueryKey, initialData.dataSource], (current) => current
       ? { ...current, rows: current.rows.map((row) => row.id === walletId
         ? { ...row, status: nextStatus, statusLabel: walletStatusLabel(nextStatus) }
@@ -500,10 +472,6 @@ export function AdminWalletPage({ initialData }: { initialData: WalletBoardPageD
     setSelectedWallet((current) => current?.id === walletId
       ? { ...current, status: nextStatus, statusLabel: walletStatusLabel(nextStatus) }
       : current);
-    setMockStatusHistory((current) => ({
-      ...current,
-      [walletId]: [historyEntry, ...(current[walletId] ?? [])],
-    }));
   }, [initialData.dataSource, queryClient]);
 
   if (initialData.boardError) return <main className="admin-route-page wallet-route-page" tabIndex={-1}>
@@ -547,6 +515,6 @@ export function AdminWalletPage({ initialData }: { initialData: WalletBoardPageD
       {!sortedRows.length ? <EmptyState title={translateText("No matching records")} description={search.trim() ? translateText("Clear your search to see more results.") : translateText("There are no records in this view.")} action={<UiButton variant="outline" type="button" onClick={resetView}>{translateText("Reset view")}</UiButton>} /> : <section className="overflow-x-auto wallet-board-table-wrap" aria-label={translateText("Wallets table")}><Table className={`${adminBoardTable} wallet-board-table`}><caption>{translateText("Wallets")}</caption><thead><tr><SortableHeader label={translateText("Wallet / Member ID")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Member")} sortKey="member" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><th scope="col">{translateText("Email")}</th><SortableHeader label={translateText("Current Wallet Balance")} sortKey="balance" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Latest Wallet Transaction Date")} sortKey="latestTransactionAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Wallet status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Created")} sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr data-wallet-row={row.id} key={row.id} tabIndex={0} aria-label={`${translateText("Open Wallet")} ${row.id}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; openWalletDrawer(row, event.currentTarget); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openWalletDrawer(row, event.currentTarget); } }}><td><button className="row-record-button" type="button" data-wallet-drawer-trigger={row.id} aria-label={`${translateText("Open Wallet")} ${row.id}`} onClick={(event) => openWalletDrawer(row, event.currentTarget)}>{row.id}</button><small>{row.memberId}</small><div className="wallet-mobile-key-facts" aria-label={translateText("Wallet summary")}><div><span>{translateText("Current Wallet Balance")}</span><strong>{formatWalletMoney(row.currentBalanceSatang)}</strong></div><div><span>{translateText("Wallet Status")}</span><strong><Badge status={row.status} track={false} /></strong></div><div><span>{translateText("Latest Wallet Transaction Date")}</span><strong>{formatWalletDate(row.latestTransactionAt)}</strong></div></div></td><td>{row.memberAvailable ? <Link className="user-record-link" data-member-link={row.memberId} href={memberTabHref(row.memberId, "overview")} aria-label={`${translateText("Open Member")} ${row.memberName}`}><strong>{row.memberName}</strong></Link> : <strong>{row.memberName}</strong>}</td><td><strong>{row.email}</strong><small>{row.studentId || translateText("Student ID not provided")}</small></td><td className="money">{formatWalletMoney(row.currentBalanceSatang)}</td><td>{formatWalletDate(row.latestTransactionAt)}</td><td><Badge status={row.status} /></td><td>{formatWalletDate(row.createdAt)}</td></tr>)}</tbody></Table></section>}
       {sortedRows.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Wallets pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className={adminBoardPagination} /> : null}
     </Card>
-    {selectedWallet ? <WalletDrawer row={selectedWallet} dataSource={initialData.dataSource} initialMockHistory={mockStatusHistory[selectedWallet.id] ?? []} opener={drawerOpenerRef.current} onClose={closeWalletDrawer} onStatusChanged={handleStatusChanged} /> : null}
+    {selectedWallet ? <WalletDrawer row={selectedWallet} dataSource={initialData.dataSource} opener={drawerOpenerRef.current} onClose={closeWalletDrawer} onStatusChanged={handleStatusChanged} /> : null}
   </main>;
 }
