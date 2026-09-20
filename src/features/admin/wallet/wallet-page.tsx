@@ -381,16 +381,12 @@ function WalletDrawer({
     }
   }
 
-  const statusActionContent = (
-    <>
-      {dataSource === "mock" ? <>
+  const statusActionContent = dataSource === "mock" ? <>
         <p>{translateText("Change Wallet Status without changing the Member Ban status. A non-active Wallet blocks new commitments while existing obligations continue.")}</p>
         {walletStatusTargets(detail?.status ?? row.status).length ? <div className="wallet-status-actions mt-3 flex flex-wrap gap-2 [&_[data-slot=button]]:min-w-[170px] [&_[data-slot=button]]:flex-1" aria-label={translateText("Wallet status actions")}>
           {walletStatusTargets(detail?.status ?? row.status).map((targetStatus) => <UiButton variant={walletStatusActionClass(targetStatus) === "danger" ? "danger" : "outline"} type="button" key={targetStatus} data-wallet-status-action={targetStatus} onClick={() => openStatusCommand(targetStatus)} disabled={statusCommandPending}>{translateText(walletStatusActionLabel(targetStatus))}</UiButton>)}
         </div> : <p className="audit-note">{translateText("Closed is terminal. No Wallet status change is available.")}</p>}
-      </> : <p>{translateText("Status commands will be connected to the Admin API in the API integration step.")}</p>}
-    </>
-  );
+      </> : <p>{translateText("Status commands will be connected to the Admin API in the API integration step.")}</p>;
 
   return <AdminDrawer
     ariaLabel={translateText("Close Wallet detail")}

@@ -217,8 +217,7 @@ export function AdminOverview({
   if (loadError) return <OverviewLoading message={translateText(loadError)} />;
 
   return (
-    <>
-      <main id="dashboard-main" className="overview-command-center col-start-2 min-w-0 mx-auto w-full max-w-[1400px] px-[34px] pb-11 pt-[30px] max-[900px]:col-start-1 max-[820px]:px-5 max-[820px]:py-6 max-[560px]:px-5" tabIndex={-1}>
+    <main id="dashboard-main" className="overview-command-center col-start-2 min-w-0 mx-auto w-full max-w-[1400px] px-[34px] pb-11 pt-[30px] max-[900px]:col-start-1 max-[820px]:px-5 max-[820px]:py-6 max-[560px]:px-5" tabIndex={-1}>
         <header className="overview-command-center-header mb-6 flex items-end justify-between gap-6 max-[560px]:items-start max-[560px]:flex-col max-[560px]:gap-2.5">
           <div>
             <span className="overview-command-center-kicker mb-2 block text-[13px] font-extrabold uppercase tracking-[.13em] text-admin-accent">{translateText("KUQuest Admin")}</span>
@@ -334,7 +333,6 @@ export function AdminOverview({
             {model.walletStatusSource === "Unavailable" ? <p className={overviewNote}>{translateText("Wallet status counts are not provided by the Admin API.")}</p> : model.walletStatusSource === "Local fallback" ? <p className={overviewNote}>{translateText("Wallet status counts use local fallback data because the Admin API does not provide them.")}</p> : null}
           </Card>
         </div>
-      </main>
-    </>
+    </main>
   );
 }

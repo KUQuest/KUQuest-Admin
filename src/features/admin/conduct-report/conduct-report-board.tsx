@@ -206,8 +206,7 @@ export function ConductReportBoard({
   }
 
   return (
-    <>
-      <main id="conduct-report-main" className="admin-route-page conduct-report-board" tabIndex={-1}>
+    <main id="conduct-report-main" className="admin-route-page conduct-report-board" tabIndex={-1}>
         <AdminPageHeader title={translateText("Conduct Reports")} description={translateText("Review Member behavior on Quests.")} />
         <Card as="section" className="overflow-hidden" aria-labelledby="conduct-report-board-heading">
           <CardHeader className="flex min-h-[60px] items-center justify-between gap-4">
@@ -320,8 +319,7 @@ export function ConductReportBoard({
           )}
           {!page.nextCursor && models.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Conduct Reports pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className={adminBoardPagination} /> : null}
         </Card>
-      </main>
-    </>
+    </main>
   );
 }
 
