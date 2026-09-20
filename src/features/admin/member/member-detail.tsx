@@ -12,14 +12,13 @@ import { AdminPageHeader } from "../../../components/admin/admin-page-header";
 import { Button, Card, CardContent, CardHeader, Table } from "../../../components/ui";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { adminRecordCount, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
-import { ADMIN_LEDGER_EVENT_TYPES, adminApi } from "../api/admin-api";
+import { ADMIN_LEDGER_EVENT_TYPES } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { memberRoutes } from "../admin-routes";
 import { formatAdminTimestamp } from "../date-format";
 import { payoutStatusLabel, questStateLabel, reportCaseStatusLabel } from "../domain/rulebook";
 import { filterReviews } from "../user-reviews/review-model";
 import {
-  findMemberFromMock,
   recordMemberViolation,
   removeMemberPenalty,
   saveMemberNote,
@@ -29,7 +28,6 @@ import {
   currentWalletBalance,
   formatMoneySatang,
   formatWalletDate,
-  memberModelFromApi,
   memberStatusClass,
   memberStatusText,
   memberTabHref,
@@ -40,6 +38,7 @@ import {
   type MemberModel,
   type MemberTab,
 } from "./member-model";
+import { useMemberDetailQuery } from "./member-query";
 
 export type MemberDetailProps = {
   memberId: string;
@@ -514,10 +513,8 @@ function DrawerContent({ model, translateText, onRecordViolation, onRemovePenalt
 export function MemberDetail({ memberId, initialModel = null, initialTab = "overview", drawer = false }: MemberDetailProps) {
   const { translateText } = useAdminShell();
   const router = useRouter();
-  const [model, setModel] = useState<MemberModel | null>(initialModel);
+  const { data: model, isPending, error } = useMemberDetailQuery(memberId, initialModel);
   const [activeTab, setActiveTab] = useState<MemberTab>(initialTab);
-  const [loading, setLoading] = useState(!initialModel);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [penaltyOpen, setPenaltyOpen] = useState(false);
   const [removePenaltyOpen, setRemovePenaltyOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
@@ -526,36 +523,8 @@ export function MemberDetail({ memberId, initialModel = null, initialTab = "over
 
   useEffect(() => setActiveTab(initialTab), [initialTab]);
 
-  useEffect(() => {
-    if (initialModel) {
-      setModel(initialModel);
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    setLoadError(null);
-    const request = isAdminApiEnabled()
-      ? Promise.all([adminApi.getMember(memberId), adminApi.getMemberFinance(memberId)]).then(([detail, finance]) => memberModelFromApi(detail, finance))
-      : Promise.resolve(findMemberFromMock(localStorage, memberId));
-    void request.then((nextModel) => {
-      if (cancelled) return;
-      if (!nextModel) setLoadError("The requested Member was not found.");
-      setModel(nextModel);
-      return undefined;
-    }).catch((error: unknown) => {
-      if (!cancelled) setLoadError(error instanceof Error ? error.message : "The Member could not load.");
-    }).finally(() => {
-      if (!cancelled) setLoading(false);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [drawer, initialModel, memberId]);
-
   const updateModel = (nextModel: MemberModel | null) => {
     if (!nextModel) return;
-    setModel(nextModel);
     window.dispatchEvent(new CustomEvent(MEMBER_UPDATED_EVENT, { detail: nextModel }));
   };
 
@@ -609,9 +578,9 @@ export function MemberDetail({ memberId, initialModel = null, initialTab = "over
     setActionBusy(false);
   };
 
-  if (loading && !model) return <AdminLoading message={translateText("Loading Member…")} />;
+  if (isPending && !model) return <AdminLoading message={translateText("Loading Member…")} />;
   if (!model) {
-    return <main className={drawer ? "drawer-body" : "admin-feedback"}><Card as="section" className="overflow-hidden"><CardHeader><h1 className="text-lg font-semibold">{translateText("Member not found")}</h1></CardHeader><CardContent className="space-y-4"><p>{translateText(loadError || "No Member record matches this identifier.")}</p>{!drawer && <Button asChild variant="primary"><Link href={memberRoutes.list()}>{translateText("Return to Members")}</Link></Button>}</CardContent></Card></main>;
+    return <main className={drawer ? "drawer-body" : "admin-feedback"}><Card as="section" className="overflow-hidden"><CardHeader><h1 className="text-lg font-semibold">{translateText("Member not found")}</h1></CardHeader><CardContent className="space-y-4"><p>{translateText(error instanceof Error ? error.message : "No Member record matches this identifier.")}</p>{!drawer && <Button asChild variant="primary"><Link href={memberRoutes.list()}>{translateText("Return to Members")}</Link></Button>}</CardContent></Card></main>;
   }
 
   const overlays = <><PenaltyDialog model={model} open={penaltyOpen} busy={actionBusy} error={actionError} translateText={translateText} onCancel={() => { if (!actionBusy) { setPenaltyOpen(false); setActionError(null); } }} onConfirm={confirmPenalty} /><RemovePenaltyDialog model={model} open={removePenaltyOpen} busy={actionBusy} error={actionError} translateText={translateText} onCancel={() => { if (!actionBusy) { setRemovePenaltyOpen(false); setActionError(null); } }} onConfirm={removePenalty} /><NoteDialog model={model} open={noteOpen} busy={actionBusy} error={actionError} translateText={translateText} onCancel={() => { if (!actionBusy) { setNoteOpen(false); setActionError(null); } }} onConfirm={saveNote} /></>;

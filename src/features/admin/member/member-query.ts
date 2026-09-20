@@ -1,13 +1,18 @@
 import { useEffect, useMemo } from "react";
-import { useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { loadAllMembersFromMock, loadMembersFromMock } from "./member-adapter";
 import { MEMBER_UPDATED_EVENT } from "./member-events";
+import { findMemberFromMock } from "./member-adapter";
 import type { MemberModel, MemberPageData } from "./member-model";
-import { loadMemberPageData } from "./member-service";
+import { loadMemberDetailFromApi, loadMemberPageData } from "./member-service";
 
 export const memberBoardQueryKey = ["admin", "members", "board"] as const;
+
+export function memberDetailQueryKey(memberId: string) {
+  return ["admin", "members", "detail", memberId] as const;
+}
 
 function pageFromQueryData(pages: MemberPageData[]): MemberPageData {
   const lastPage = pages.at(-1);
@@ -60,4 +65,45 @@ export function useMemberBoardQuery(initialData?: MemberPageData) {
   }, [queryClient]);
 
   return { ...query, data };
+}
+
+export function useMemberDetailQuery(memberId: string, initialModel?: MemberModel | null) {
+  const queryClient = useQueryClient();
+  const apiEnabled = isAdminApiEnabled();
+  const queryKey = memberDetailQueryKey(memberId);
+  const query = useQuery({
+    queryKey,
+    queryFn: async () => {
+      const model = apiEnabled
+        ? await loadMemberDetailFromApi(memberId)
+        : findMemberFromMock(localStorage, memberId);
+      if (!model) throw new Error("The requested Member was not found.");
+      return model;
+    },
+    initialData: initialModel ?? undefined,
+    staleTime: initialModel ? Infinity : 0,
+    gcTime: Infinity,
+    refetchOnMount: !initialModel,
+    refetchOnWindowFocus: false,
+  });
+
+  useEffect(() => {
+    if (initialModel) queryClient.setQueryData(queryKey, initialModel);
+  }, [initialModel, queryClient, queryKey]);
+
+  useEffect(() => {
+    const updateMember = (event: Event) => {
+      const model = (event as CustomEvent<MemberModel>).detail;
+      if (!model || model.id !== memberId) return;
+      queryClient.setQueryData(queryKey, model);
+    };
+    window.addEventListener(MEMBER_UPDATED_EVENT, updateMember);
+    return () => window.removeEventListener(MEMBER_UPDATED_EVENT, updateMember);
+  }, [memberId, queryClient, queryKey]);
+
+  return {
+    ...query,
+    data: query.data ?? null,
+    queryKey,
+  };
 }
