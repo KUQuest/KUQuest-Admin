@@ -615,6 +615,7 @@ const thaiTranslations: Record<string, string> = {
   "Candidate mode": "โหมดผู้สมัคร",
   "First come, first served": "มาก่อนได้ก่อน",
   "Quest summary": "สรุป Quest",
+  "Quest actions": "การดำเนินการ Quest",
   "Quest description": "คำอธิบาย Quest",
   "No Quest description recorded.": "ไม่ได้บันทึกคำอธิบาย Quest",
   "Quest Condition": "เงื่อนไข Quest",

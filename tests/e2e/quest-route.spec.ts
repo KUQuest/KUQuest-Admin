@@ -233,6 +233,9 @@ test.describe("Quest route family", () => {
     await expect(side.getByRole("heading", { name: "Hirer", exact: true })).toBeVisible();
     await expect(side.getByRole("heading", { name: "Schedule and location", exact: true })).toBeVisible();
     await expect(side.getByRole("heading", { name: "Dispute and risk", exact: true })).toBeVisible();
+    await expect(side.getByRole("heading", { name: "Quest actions", exact: true })).toBeVisible();
+    await expect(side.getByRole("button", { name: "Hide Quest", exact: true })).toBeVisible();
+    await expect(side.getByRole("button", { name: "Terminate Quest", exact: true })).toBeVisible();
     await expect(side.locator('section[data-slot="card"]').filter({ hasText: "Financial record" })).toBeVisible();
     const timeline = page.locator('section[data-slot="card"]').filter({ has: page.getByRole("heading", { name: "Overall Quest timeline" }) });
     await expect(timeline.locator('[data-slot="card-header"] > span')).toHaveText("2");
