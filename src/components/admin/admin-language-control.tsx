@@ -61,7 +61,7 @@ export function AdminLanguageControl({
 
   return (
     <div className="language-control flex-none py-2" data-language-control>
-      <span className="language-control-label mb-1.5 block px-2.5 text-xs font-bold uppercase tracking-[0.07em] text-admin-muted">{translateText("Language")}</span>
+      <span className="language-control-label mb-1.5 block px-0 text-xs font-bold uppercase tracking-[0.07em] text-admin-muted">{translateText("Language")}</span>
       <fieldset className="language-options grid grid-cols-2 gap-1" aria-label={translateText("Language options")}>
         <legend className="visually-hidden">{translateText("Language options")}</legend>
         <Button variant="outline" size="sm" className="language-option min-h-9 w-auto bg-admin-soft px-2 py-1.5 text-xs text-admin-muted aria-pressed:border-admin-accent aria-pressed:bg-admin-accent-soft aria-pressed:text-admin-accent" type="button" aria-pressed={language === "en"} onClick={showEnglish}>

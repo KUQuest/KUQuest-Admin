@@ -13,9 +13,9 @@ import { AdminPageHeader } from "../../../components/admin/admin-page-header";
 import { AdminStatusAlert } from "../../../components/admin/admin-status-alert";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { RecordStatusBar } from "../../../components/admin/record-status-bar";
-import { adminBoardPagination, adminBoardTable, adminRecordCount, adminRecordDescription, adminRecordFact, adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
+import { adminBoardCount, adminBoardPagination, adminBoardTable, adminRecordCount, adminRecordDescription, adminRecordFact, adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import { Badge as UiBadge, Button as UiButton, Card, CardContent, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
+import { Badge as UiBadge, Button as UiButton, Card, CardContent, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
 import { disputeRoutes, questRoutes } from "../admin-routes";
 import {
   adminApi,
@@ -375,7 +375,7 @@ function QuestDetailContent({
           <Fact label="Quest ID">{questDisplayIdFor(detail.id, detail.displayId)}</Fact>
         </div>
         <div className="quest-description-block mt-[18px] border-t border-admin-border pt-[18px]">
-          <h3 className="m-0 mb-[10px] text-[14px]">{translateText("Quest description")}</h3>
+          <h3 className={`${adminRecordHeading} mb-[10px]`}>{translateText("Quest description")}</h3>
           <p className={adminRecordDescription}>{detail.description || translateText("No Quest description recorded.")}</p>
           <div className="requirement-box">
             <strong>{translateText("Quest Condition")}</strong>
@@ -389,7 +389,7 @@ function QuestDetailContent({
         </div>
         {!recordLayout ? <div className="quest-summary-context mt-[18px] grid !grid-cols-2 gap-x-6 gap-y-[18px] border-t border-admin-border pt-[18px] max-[600px]:!grid-cols-1">
           <div className="quest-summary-context-section min-w-0">
-            <h3 className="m-0 mb-[10px] text-[14px]">{translateText("Hirer")}</h3>
+            <h3 className={`${adminRecordHeading} mb-[10px]`}>{translateText("Hirer")}</h3>
             <div className="hirer-profile-summary">
               <strong>{questMemberName(detail.hirer)}</strong>
               <span>{detail.hirer.email}</span>
@@ -397,7 +397,7 @@ function QuestDetailContent({
           </div>
 
           <div className="quest-summary-context-section min-w-0">
-            <h3 className="m-0 mb-[10px] text-[14px]">{translateText("Schedule and location")}</h3>
+            <h3 className={`${adminRecordHeading} mb-[10px]`}>{translateText("Schedule and location")}</h3>
             <div className={adminRecordFacts}>
               <Fact label="Starts">{formatQuestDate(detail.startTime)}</Fact>
               <Fact label="Due">{formatQuestDate(detail.dueAt)}</Fact>
@@ -467,7 +467,7 @@ function QuestDetailContent({
             </div>
           ) : <p className="audit-note">{translateText("The proposed changes were not provided.")}</p>}
           <div className="response-block">
-            <h3>{translateText("Participant consent")}</h3>
+            <h3 className={adminRecordHeading}>{translateText("Participant consent")}</h3>
             {pendingHirerChange.responses.length ? (
               <div className="response-table">
                 <div className="response-row response-head"><span>{translateText("Worker")}</span><span>{translateText("Status")}</span></div>
@@ -857,12 +857,16 @@ export function AdminQuestPage({ initialData }: { initialData: QuestBoardPageDat
     <main className="admin-route-page quest-route-page" tabIndex={-1}>
       <AdminPageHeader title={translateText("Quests")} description={translateText("Review Quests through every Quest State.")} />
       <Card as="section" className="overflow-hidden quest-board" aria-label={translateText("Quest board")}>
-        <Tabs value={tab} onValueChange={(value) => chooseTab(value as QuestBoardTab)} className="w-full gap-0">
-          <TabsList className="w-full flex-nowrap justify-start overflow-x-auto rounded-none border-b border-admin-border bg-transparent p-0" aria-label={translateText("Quest filters")}>
-            {QUEST_BOARD_TABS.map((item) => <TabsTrigger key={item.id} value={item.id} className="min-h-11 shrink-0 rounded-none border-b-2 border-transparent px-3 py-2 text-sm text-admin-muted shadow-none hover:bg-transparent data-[state=active]:border-admin-accent data-[state=active]:bg-transparent data-[state=active]:text-admin-text data-[state=active]:shadow-none">{translateText(item.label)}{item.id === "all" ? ` (${rows.length})` : ""}</TabsTrigger>)}
+        <CardHeader className="flex min-h-[60px] items-center justify-between gap-4">
+          <div><CardTitle>{translateText("Quests")}</CardTitle><CardDescription>{translateText("Review Quests through every Quest State.")}</CardDescription></div>
+          <span className={adminBoardCount}>{sortedRows.length} {translateText("shown")}</span>
+        </CardHeader>
+        <Tabs value={tab} onValueChange={(value) => chooseTab(value as QuestBoardTab)}>
+          <TabsList className="px-3" aria-label={translateText("Quest filters")}>
+            {QUEST_BOARD_TABS.map((item) => <TabsTrigger key={item.id} value={item.id}>{translateText(item.label)}{item.id === "all" ? ` (${rows.length})` : ""}</TabsTrigger>)}
           </TabsList>
         </Tabs>
-        <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2"><label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text" htmlFor="quest-search"><span className="visually-hidden">{translateText("Search Quests")}</span><Input className="h-9 min-h-9 px-3 py-1.5 text-sm" id="quest-search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={translateText("Search Quests…")} autoComplete="off" /></label><span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span><PageSizeControls value={pageSize} translateText={translateText} onChange={choosePageSize} /><span className="ml-auto text-sm text-admin-muted max-[600px]:hidden" aria-live="polite">{translateText("Showing")} {pageStart}–{pageEnd} {translateText("of")} {sortedRows.length} {translateText("results")}</span></div>
+        <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2"><label className="admin-filter-label flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text" htmlFor="quest-search"><span className="visually-hidden">{translateText("Search Quests")}</span><Input className="admin-filter-input h-9 min-h-9 px-3 py-1.5 text-sm" id="quest-search" type="search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={translateText("Search Quests…")} autoComplete="off" /></label><span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span><PageSizeControls value={pageSize} translateText={translateText} onChange={choosePageSize} /><span className="ml-auto text-sm text-admin-muted max-[600px]:hidden" aria-live="polite">{translateText("Showing")} {pageStart}–{pageEnd} {translateText("of")} {sortedRows.length} {translateText("results")}</span></div>
         {!sortedRows.length ? <EmptyState title={translateText("No matching records")} description={translateText("There are no Quests in this view.")} action={<UiButton variant="outline" type="button" onClick={() => { setQuery(""); setTab("all"); }}>{translateText("Reset view")}</UiButton>} /> : <div className="overflow-x-auto" aria-label={translateText("Quests table")}><Table className={adminBoardTable}><caption>{translateText("Quests")}</caption><thead><tr><SortableHeader label={translateText("Quest")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Title")} sortKey="title" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Hirer")} sortKey="hirer" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Created At")} sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Quest Reward")} sortKey="reward" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr className="quest-row" data-quest-id={row.id} data-quest-drawer-trigger={row.id} key={row.id} tabIndex={0} aria-label={`${translateText("Open Quest")} ${row.title}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; router.push(questRoutes.detail(row.id)); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); router.push(questRoutes.detail(row.id)); } }}><td><Link className="row-record-button" data-quest-drawer-trigger={row.id} href={questRoutes.detail(row.id)} aria-label={`${translateText("Open Quest")} ${row.displayId}`}>{row.displayId}</Link></td><td><Link className="row-record-button quest-title-link" data-quest-drawer-trigger={row.id} href={questRoutes.detail(row.id)} aria-label={`${translateText("Open Quest")} ${row.title}`}><strong>{row.title}</strong><small>{translateText(row.participationLabel)} · {translateText(row.modeLabel)}</small></Link></td><td><strong>{row.hirerName}</strong><small>{row.hirerEmail}</small></td><td>{formatQuestDate(row.createdAt)}</td><td className="money">{formatQuestMoney(row.rewardSatang)}</td><td><span className={`badge ${questStatusClass(row.state)}`}>{translateText(row.stateLabel)}</span>{row.hiddenAt ? <span className="badge neutral quest-hidden-overlay">{translateText("Hidden")}</span> : null}</td></tr>)}</tbody></Table></div>}
         {sortedRows.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPage} ariaLabel={translateText("Quests pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className={adminBoardPagination} /> : null}
       </Card>

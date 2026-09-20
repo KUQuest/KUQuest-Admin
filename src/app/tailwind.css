@@ -14,6 +14,24 @@
 @theme inline {
   --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
 
+  /* Admin readable type scale: each default utility is two pixels larger. */
+  --text-xs: 0.875rem;
+  --text-xs--line-height: 1.35;
+  --text-sm: 1rem;
+  --text-sm--line-height: 1.45;
+  --text-base: 1.125rem;
+  --text-base--line-height: 1.5;
+  --text-lg: 1.25rem;
+  --text-lg--line-height: 1.4;
+  --text-xl: 1.5rem;
+  --text-xl--line-height: 1.35;
+  --text-2xl: 1.625rem;
+  --text-2xl--line-height: 1.25;
+  --text-3xl: 2rem;
+  --text-3xl--line-height: 1.2;
+  --text-4xl: 2.375rem;
+  --text-4xl--line-height: 1.15;
+
   --color-admin-bg: var(--bg);
   --color-admin-surface: var(--surface);
   --color-admin-soft: var(--soft);
@@ -122,3 +140,30 @@
 
 /* Keep the foundation visible to the compiler until the first utility migration. */
 @source inline("bg-admin-bg text-admin-text shadow-admin-card p-admin-4");
+
+/* Shared App Router board frame. The retired global shell used to provide
+   this spacing through a bare `main` selector. Keep the spacing on the
+   current Admin shell instead of repeating it on every board page. */
+.admin-shell-layout > main:not(.overview-command-center) {
+  grid-column: 2;
+  min-width: 0;
+  width: 100%;
+  max-width: 1400px;
+  margin-inline: auto;
+  padding: 28px 32px 64px;
+}
+
+@media (max-width: 900px) {
+  .admin-shell-layout > main:not(.overview-command-center) {
+    grid-column: 1;
+    max-width: none;
+    padding: 22px 18px 52px;
+  }
+}
+
+@media (max-width: 600px) {
+  .admin-shell-layout > main:not(.overview-command-center) {
+    width: 100%;
+    padding: 18px 16px 44px;
+  }
+}

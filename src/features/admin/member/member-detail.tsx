@@ -11,10 +11,11 @@ import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { AdminPageHeader } from "../../../components/admin/admin-page-header";
 import { Button, Card, CardContent, CardHeader, Table } from "../../../components/ui";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import { adminRecordCount, adminRecordSection } from "../../../components/admin/admin-record-styles";
+import { adminRecordCount, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
 import { ADMIN_LEDGER_EVENT_TYPES, adminApi } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { memberRoutes } from "../admin-routes";
+import { formatAdminTimestamp } from "../date-format";
 import { payoutStatusLabel, questStateLabel, reportCaseStatusLabel } from "../domain/rulebook";
 import { filterReviews, type ReviewFilter } from "../user-reviews/review-model";
 import {
@@ -161,7 +162,7 @@ function MemberModerationSummary({ model, translateText, onRecordViolation }: { 
     <Card as="section" className="user-detail-panel">
       <CardHeader flush><h2>{translateText("Moderation Summary")}</h2></CardHeader>
       <div className="user-counter-list"><div><strong>{model.reports.length}</strong><span>{translateText("Reports received")}</span></div><div><strong>{model.confirmedViolationCount === null ? translateText("Not provided by the Admin API") : model.confirmedViolationCount}</strong><span>{translateText("Confirmed violations")}</span></div><div><strong>{activeWarnings}</strong><span>{translateText("Active Red Flags")}</span></div><div><strong>{suspensions}</strong><span>{translateText("Suspensions")}</span></div></div>
-      <p className="audit-note">{translateText("Next outcome:")} <strong>{nextOutcome ? `${translateText(nextOutcome.label)}${nextOutcome.durationDays ? ` · ${nextOutcome.durationDays} ${translateText("days")}` : ""}` : translateText("Not provided by the Admin API")}</strong>{expiresAt ? ` · ${translateText("Expires")} ${expiresAt}` : ""}.</p>
+      <p className="audit-note">{translateText("Next outcome:")} <strong>{nextOutcome ? `${translateText(nextOutcome.label)}${nextOutcome.durationDays ? ` · ${nextOutcome.durationDays} ${translateText("days")}` : ""}` : translateText("Not provided by the Admin API")}</strong>{expiresAt ? ` · ${translateText("Expires")} ${formatAdminTimestamp(expiresAt, "Asia/Bangkok")}` : ""}.</p>
       {model.statusReason && <p className="audit-note">{translateText("Reason")}: {model.statusReason}</p>}
       {canRecord && <Button variant="primary" type="button" onClick={onRecordViolation}>{translateText("Record violation")}</Button>}
     </Card>
@@ -405,7 +406,7 @@ function ReportsTab({ model, translateText }: { model: MemberModel; translateTex
 
 function MemberModerationTimeline({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
   const unavailable = model.source === "api" && !model.penaltyHistory.length;
-  return unavailable ? <p className="audit-note">{translateText("Penalty history is not provided by the Admin API.")} {translateText("The API integration is not available in this build.")}</p> : model.penaltyHistory.length ? <div className="user-simple-list" data-member-moderation-history><p className="audit-note">{model.source === "mock" ? translateText("Fixture data for UI review. It is not a server record.") : translateText("Moderation history provided by the Admin API.")}</p>{model.penaltyHistory.map((entry) => <article key={`${entry.at}-${entry.event}-${entry.caseId || entry.outcome || "event"}`}><strong>{translateText(entry.event)}</strong><span>{entry.at} · {translateText("by")} {entry.by}</span>{entry.reason && <p>{entry.reason}</p>}{(entry.previousStatus || entry.newStatus || entry.outcome || entry.durationDays || entry.expiresAt) && <p>{entry.previousStatus && `${translateText("Previous status")}: ${translateText(entry.previousStatus)}`}{entry.previousStatus && entry.newStatus ? " · " : ""}{entry.newStatus && `${translateText("New status")}: ${translateText(entry.newStatus)}`}{(entry.previousStatus || entry.newStatus) && entry.outcome ? " · " : ""}{entry.outcome && `${translateText("Outcome")}: ${translateText(entry.outcome)}`}{entry.durationDays ? ` · ${entry.durationDays} ${translateText("days")}` : ""}{entry.expiresAt ? ` · ${translateText("Expires")} ${entry.expiresAt}` : ""}</p>}{entry.caseId && <p><span>{translateText(entry.caseType || "Related case")}:</span> {entry.caseHref ? <Link href={entry.caseHref} aria-label={`${translateText("Open related case")} ${entry.caseId}`}>{entry.caseId}</Link> : <strong>{entry.caseId}</strong>}</p>}</article>)}</div> : <p className="audit-note">{translateText("No moderation events are recorded for this Member.")}</p>;
+  return unavailable ? <p className="audit-note">{translateText("Penalty history is not provided by the Admin API.")} {translateText("The API integration is not available in this build.")}</p> : model.penaltyHistory.length ? <div className="user-simple-list" data-member-moderation-history><p className="audit-note">{model.source === "mock" ? translateText("Fixture data for UI review. It is not a server record.") : translateText("Moderation history provided by the Admin API.")}</p>{model.penaltyHistory.map((entry) => <article key={`${entry.at}-${entry.event}-${entry.caseId || entry.outcome || "event"}`}><strong>{translateText(entry.event)}</strong><span>{formatAdminTimestamp(entry.at, "Asia/Bangkok")} · {translateText("by")} {entry.by}</span>{entry.reason && <p>{entry.reason}</p>}{(entry.previousStatus || entry.newStatus || entry.outcome || entry.durationDays || entry.expiresAt) && <p>{entry.previousStatus && `${translateText("Previous status")}: ${translateText(entry.previousStatus)}`}{entry.previousStatus && entry.newStatus ? " · " : ""}{entry.newStatus && `${translateText("New status")}: ${translateText(entry.newStatus)}`}{(entry.previousStatus || entry.newStatus) && entry.outcome ? " · " : ""}{entry.outcome && `${translateText("Outcome")}: ${translateText(entry.outcome)}`}{entry.durationDays ? ` · ${entry.durationDays} ${translateText("days")}` : ""}{entry.expiresAt ? ` · ${translateText("Expires")} ${formatAdminTimestamp(entry.expiresAt, "Asia/Bangkok")}` : ""}</p>}{entry.caseId && <p><span>{translateText(entry.caseType || "Related case")}:</span> {entry.caseHref ? <Link href={entry.caseHref} aria-label={`${translateText("Open related case")} ${entry.caseId}`}>{entry.caseId}</Link> : <strong>{entry.caseId}</strong>}</p>}</article>)}</div> : <p className="audit-note">{translateText("No moderation events are recorded for this Member.")}</p>;
 }
 
 function PenaltyHistoryTab({ model, translateText, onAddNote }: { model: MemberModel; translateText: (value: string) => string; onAddNote: () => void }) {
@@ -489,25 +490,37 @@ function DrawerContent({ model, translateText, onRecordViolation, onRemovePenalt
   const latestTransactionAt = latestWalletTransactionAt(model);
   return (
     <div className="user-drawer-detail drawer-content-flow">
-      <div className="drawer-title"><span className="att-icon info" aria-hidden="true">◉</span><div><h2>{model.title}</h2><p>{model.email} · {model.studentId || "—"}</p></div></div>
+      <Card as="section" className={`${adminRecordSection} member-drawer-overview`}>
+        <CardHeader flush className={adminRecordHeader}>
+          <h2 className={adminRecordHeading}>{translateText("Member overview")}</h2>
+          {statusBadge(model, translateText)}
+        </CardHeader>
+        <div className="member-drawer-identity">
+          <span className="att-icon info" aria-hidden="true">◉</span>
+          <div className="member-drawer-identity-copy">
+            <strong>{model.title}</strong>
+            <p>{model.email} · {model.studentId || "—"}</p>
+          </div>
+        </div>
+      </Card>
       <Card as="section" className={adminRecordSection}>
-        <CardHeader flush><h3>{translateText("Account")}</h3></CardHeader>
+        <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Account")}</h2></CardHeader>
         <div className="user-context-list"><div><span>{translateText("Student ID")}</span><strong>{model.studentId || "—"}</strong></div><div><span>{translateText("Member ID")}</span><strong>{model.id}</strong></div><div><span>{translateText("Created")}</span><strong>{model.createdAt}</strong></div></div>
       </Card>
       <Card as="section" className={adminRecordSection}>
-        <CardHeader flush><h3>{translateText("Wallet")}</h3></CardHeader>
+        <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Wallet")}</h2></CardHeader>
         <div className="user-context-list"><div><span>{translateText("Wallet record")}</span><strong>{model.walletId || "—"}</strong></div><div><span>{translateText("Wallet Status")}</span><strong>{walletBadge(model, translateText)}</strong></div><div><span>{translateText("Current Wallet Balance")}</span><strong>{model.walletBalances ? formatMoneySatang(currentWalletBalance(model.walletBalances)) : "—"}</strong></div><div><span>{translateText("Latest Wallet Transaction Date")}</span><strong>{latestTransactionAt ? formatWalletDate(latestTransactionAt) : "—"}</strong></div></div>
       </Card>
       <Card as="section" className={adminRecordSection}>
-        <CardHeader flush><h3>{translateText("Moderation")}</h3></CardHeader>
+        <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Moderation")}</h2></CardHeader>
         <div className="user-context-list"><div><span>{translateText("Member Status")}</span><strong>{statusBadge(model, translateText)}</strong></div><div><span>{translateText("Confirmed violations")}</span><strong>{model.confirmedViolationCount === null ? translateText("Not provided by the Admin API") : model.confirmedViolationCount}</strong></div></div>
       </Card>
       <Card as="section" className={`${adminRecordSection} member-drawer-moderation-history`} data-member-drawer-moderation-history>
-        <CardHeader flush className="user-panel-heading"><h3>{translateText("Moderation History")}</h3><span className={adminRecordCount}>{model.penaltyHistory.length}</span></CardHeader>
+        <CardHeader flush className={`${adminRecordHeader} user-panel-heading`}><h2 className={adminRecordHeading}>{translateText("Moderation History")}</h2><span className={adminRecordCount}>{model.penaltyHistory.length}</span></CardHeader>
         <MemberModerationTimeline model={model} translateText={translateText} />
       </Card>
       <Card as="section" className={adminRecordSection}>
-        <CardHeader flush><h3>{translateText("Activity summary")}</h3></CardHeader>
+        <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Activity summary")}</h2></CardHeader>
         <div className="user-activity-list"><div><span>{translateText("Completed quests")}</span><strong>{completedQuestCount(model)}</strong></div><div><span>{translateText("Reports received")}</span><strong>{model.reports.length}</strong></div></div>
       </Card>
       <div className="drawer-actions"><Button variant="outline" type="button" onClick={onReport} hidden>{translateText("Report Member")}</Button>{canRecord && <Button variant="primary" type="button" onClick={onRecordViolation}>{translateText("Record violation")}</Button>}{canRemovePenalty && <Button variant="danger" type="button" onClick={onRemovePenalty}>{translateText("Remove penalty")}</Button>}<Button asChild variant="outline"><a href={memberRoutes.detail(model.id)}>{translateText("See full Member profile")}</a></Button></div>

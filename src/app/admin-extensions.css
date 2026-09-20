@@ -7,12 +7,12 @@
   gap: 12px;
   margin-top: 6px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
 }
 .field-error {
   margin: 6px 0 0;
   color: var(--danger);
-  font-size: 12px;
+  font-size: 14px;
 }
 /* Decision choices in a drawer use the same readable type as the centered
    confirmation form. Keep the supporting explanation on its own line. */
@@ -25,13 +25,13 @@ dialog.drawer.dispute-case-drawer .report-decision-option {
 dialog.drawer.report-case-drawer .report-decision-option strong,
 dialog.drawer.conduct-report-drawer .report-decision-option strong,
 dialog.drawer.dispute-case-drawer .report-decision-option strong {
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.35;
 }
 dialog.drawer.report-case-drawer .report-decision-option small,
 dialog.drawer.conduct-report-drawer .report-decision-option small,
 dialog.drawer.dispute-case-drawer .report-decision-option small {
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.45;
 }
 
@@ -64,7 +64,7 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
   background: var(--surface);
   color: var(--text);
   box-shadow: var(--shadow);
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .admin-modal-layer > dialog.member-action-dialog > .party-chat-modal {
@@ -137,24 +137,24 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
 }
 
 .admin-modal-layer > dialog h2 {
-  font-size: 20px;
+  font-size: 22px;
   line-height: 1.3;
 }
 
 .admin-modal-layer > dialog p {
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.5;
 }
 
 .admin-modal-layer > dialog label {
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.4;
 }
 
 .admin-modal-layer > dialog input,
 .admin-modal-layer > dialog select,
 .admin-modal-layer > dialog textarea {
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1.4;
 }
 
@@ -164,28 +164,28 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
 }
 
 .admin-modal-layer .report-decision-option strong {
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.35;
 }
 
 .admin-modal-layer .report-decision-option small {
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.45;
 }
 
 .admin-modal-layer .field-help {
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.4;
 }
 
 .admin-modal-layer .field-error {
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.45;
 }
 
 .admin-modal-layer .dialog-actions :where(.btn, [data-slot="button"]) {
   min-height: 42px;
-  font-size: 15px;
+  font-size: 17px;
 }
 
 @media (max-width: 600px) {
@@ -312,7 +312,7 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
 .chat-intro {
   margin: -5px 0 12px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
 }
 .party-chat-overlay {
   position: fixed;
@@ -347,12 +347,12 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
 }
 .chat-modal-head small {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
 }
 .penalty-modal { max-width: 520px; }
 .penalty-policy-note { display: grid; gap: 4px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--accent-soft); }
-.penalty-policy-note strong { font-size: 12px; }
-.penalty-policy-note span { color: var(--muted); font-size: 11px; }
+.penalty-policy-note strong { font-size: 14px; }
+.penalty-policy-note span { color: var(--muted); font-size: 13px; }
 .penalty-preview {
   display: grid;
   gap: 8px;
@@ -365,7 +365,7 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  font-size: 12px;
+  font-size: 14px;
 }
 .penalty-preview span {
   color: var(--muted);
@@ -400,7 +400,7 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
 .submission-empty p {
   margin: 4px 0 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 @media (max-width: 500px) {
   .attachment-thumbnail {
@@ -417,7 +417,7 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
   padding: 8px 0;
 }
 .hirer-profile-summary > strong {
-  font-size: 13px;
+  font-size: 15px;
 }
 @media (max-width: 600px) {
   .icon {
@@ -450,7 +450,7 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
 }
 .evidence-preview-head small {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
 }
 .report-decision-options {
   display: grid;
@@ -484,11 +484,11 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
   box-shadow: 0 0 0 1px var(--accent);
 }
 .report-decision-option strong {
-  font-size: 12px;
+  font-size: 14px;
 }
 .report-decision-option small {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .payout-detail-page .payout-record-status-bar strong {
@@ -525,7 +525,7 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
 .payout-previous-row small {
   margin-top: 2px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
 }
 .payout-previous-row > span:last-child {
   display: flex;
@@ -545,12 +545,12 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
 .payout-audit-list span {
   display: block;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
 }
 .payout-summary-grid strong {
   display: block;
   margin-top: 2px;
-  font-size: 13px;
+  font-size: 15px;
   font-variant-numeric: tabular-nums;
 }
 .payout-audit-list {
@@ -583,7 +583,7 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
   overflow-wrap: anywhere;
 }
 .payout-audit-list strong {
-  font-size: 12px;
+  font-size: 14px;
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
@@ -598,7 +598,7 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
 .payout-outcome p {
   margin: 0;
   color: var(--danger);
-  font-size: 12px;
+  font-size: 14px;
 }
 dialog.drawer.payout-drawer {
   display: flex;
@@ -658,6 +658,12 @@ dialog.drawer.payout-drawer .payout-detail-stack > .payout-full-detail-link {
   max-width: 1400px;
   padding: 30px 34px 44px;
 }
+.admin-shell-layout > main.overview-command-center {
+  grid-column: 2;
+  min-width: 0;
+  width: 100%;
+  margin: 0 auto;
+}
 .overview-command-center-header,
 .overview-command-center-section-head {
   display: flex;
@@ -702,7 +708,7 @@ dialog.command::backdrop { background: transparent; }
 .overview-command-center-hero-stats a {
   grid-column: 1;
   overflow-wrap: anywhere;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 800;
 }
 .overview-command-center-queue-oldest a {
@@ -712,7 +718,7 @@ dialog.command::backdrop { background: transparent; }
   display: block;
   margin-bottom: 8px;
   color: var(--accent);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: .13em;
   text-transform: uppercase;
@@ -720,7 +726,7 @@ dialog.command::backdrop { background: transparent; }
 .overview-command-center h1 {
   margin: 0;
   color: var(--overview-ink);
-  font-size: clamp(30px, 4vw, 44px);
+  font-size: calc(clamp(30px, 4vw, 44px) + 2px);
   letter-spacing: -.045em;
   line-height: 1;
 }
@@ -728,7 +734,7 @@ dialog.command::backdrop { background: transparent; }
 .overview-command-center-section-head p {
   margin: 8px 0 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 15px;
 }
 .overview-command-center-command {
   margin-bottom: 34px;
@@ -762,14 +768,14 @@ dialog.command::backdrop { background: transparent; }
 .overview-command-center-hero-copy small,
 .overview-command-center-hero-copy > span:not(.overview-command-center-hero-note) {
   color: color-mix(in srgb, var(--ink-inverse) 72%, transparent);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 800;
   letter-spacing: .08em;
   text-transform: uppercase;
 }
 .overview-command-center-hero-copy strong {
   margin-top: 9px;
-  font-size: 68px;
+  font-size: 70px;
   letter-spacing: -.08em;
   line-height: .9;
 }
@@ -777,7 +783,7 @@ dialog.command::backdrop { background: transparent; }
   max-width: 28ch;
   margin: 16px 0 0;
   color: color-mix(in srgb, var(--ink-inverse) 82%, transparent);
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.5;
 }
 .overview-command-center-hero-note {
@@ -786,7 +792,7 @@ dialog.command::backdrop { background: transparent; }
   border: 1px solid color-mix(in srgb, var(--ink-inverse) 23%, transparent);
   border-radius: 999px;
   color: var(--ink-inverse);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
 }
 .overview-command-center-hero-stats {
@@ -810,18 +816,18 @@ dialog.command::backdrop { background: transparent; }
   color: color-mix(in srgb, var(--ink-inverse) 84%, transparent);
 }
 .overview-command-center-hero-stats > div > span {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 800;
 }
 .overview-command-center-hero-stats strong {
   color: var(--ink-inverse);
-  font-size: 32px;
+  font-size: 34px;
   letter-spacing: -.05em;
   line-height: 1;
 }
 .overview-command-center-hero-stats small {
   grid-column: 1 / -1;
-  font-size: 11px;
+  font-size: 13px;
 }
 .overview-command-center-section-head {
   padding-bottom: 12px;
@@ -830,12 +836,12 @@ dialog.command::backdrop { background: transparent; }
 .overview-command-center-section-head h2 {
   margin: 0;
   color: var(--overview-ink);
-  font-size: 17px;
+  font-size: 19px;
   letter-spacing: -.02em;
 }
 .overview-command-center-section-head > span {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
   white-space: nowrap;
 }
@@ -870,7 +876,7 @@ dialog.command::backdrop { background: transparent; }
   padding: 10px 18px;
   color: var(--faint);
   background: var(--soft);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: .08em;
   text-transform: uppercase;
@@ -894,18 +900,18 @@ dialog.command::backdrop { background: transparent; }
 .overview-command-center-queue-title strong,
 .overview-command-center-timeline strong {
   color: var(--overview-ink);
-  font-size: 12px;
+  font-size: 14px;
 }
 .overview-command-center-queue-title small,
 .overview-command-center-timeline small {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
 }
 .overview-command-center-queue-oldest {
   min-width: 0;
   overflow-wrap: anywhere;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.35;
 }
 .overview-command-center-queue-status {
@@ -914,14 +920,14 @@ dialog.command::backdrop { background: transparent; }
   border-radius: 999px;
   background: var(--accent-soft);
   color: var(--accent);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
 }
 .overview-command-center-queue-status.overview-queue-status-overdue { background: var(--danger-soft); color: var(--danger); }
 .overview-command-center-queue-status.overview-queue-status-review { background: var(--warn-soft); color: var(--warn); }
 .overview-command-center-queue-waiting {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
 }
 .overview-command-center-timeline {
@@ -950,7 +956,7 @@ dialog.command::backdrop { background: transparent; }
   border: 1px solid var(--border);
   border-radius: 50%;
   color: var(--faint);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 800;
 }
 .overview-command-center-timeline-avatar {
@@ -961,7 +967,7 @@ dialog.command::backdrop { background: transparent; }
   border-radius: 8px;
   background: var(--surface-avatar);
   color: var(--accent2);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
 }
 .overview-command-center-snapshot {
@@ -992,15 +998,15 @@ dialog.command::backdrop { background: transparent; }
   border-right: 1px solid var(--border);
 }
 .overview-command-center-finance-group:last-child { border-right: 0; }
-.overview-command-center-finance-group h3 { margin: 0 0 12px; color: var(--overview-ink); font-size: 13px; }
+.overview-command-center-finance-group h3 { margin: 0 0 12px; color: var(--overview-ink); font-size: 15px; }
 .overview-command-center-finance-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
 .overview-command-center-finance-metric { display: grid; gap: 4px; min-width: 0; }
-.overview-command-center-finance-metric span { color: var(--muted); font-size: 11px; line-height: 1.3; }
-.overview-command-center-finance-metric strong { color: var(--overview-ink); font-size: 16px; font-variant-numeric: tabular-nums; }
+.overview-command-center-finance-metric span { color: var(--muted); font-size: 13px; line-height: 1.3; }
+.overview-command-center-finance-metric strong { color: var(--overview-ink); font-size: 18px; font-variant-numeric: tabular-nums; }
 .overview-command-center-note {
   margin: 13px 18px 17px;
   color: var(--faint);
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.45;
 }
 .overview-command-center-status-list {
@@ -1029,10 +1035,10 @@ dialog.command::backdrop { background: transparent; }
 }
 .overview-command-center-status-row small {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 12px;
 }
 .overview-command-center-status-row > strong:last-child {
-  font-size: 18px;
+  font-size: 20px;
   font-variant-numeric: tabular-nums;
 }
 .overview-member-normal .overview-command-center-status-dot { background: var(--status-member-normal); }
@@ -1080,6 +1086,9 @@ dialog.command::backdrop { background: transparent; }
   .overview-command-center-grid { grid-template-columns: 1fr; }
   .overview-command-center-timeline-scrollable { max-block-size: min(520px, 60vh); }
 }
+@media (max-width: 900px) {
+  .admin-shell-layout > main.overview-command-center { grid-column: 1; }
+}
 @media (max-width: 560px) {
   .overview-command-center-header,
   .overview-command-center-section-head { align-items: flex-start; flex-direction: column; gap: 10px; }
@@ -1111,18 +1120,18 @@ dialog.command::backdrop { background: transparent; }
 }
 .wallet-funds-summary span,
 .wallet-funds-summary small { color: var(--muted); }
-.wallet-funds-summary span { font-size: 12px; font-weight: 700; }
-.wallet-funds-summary strong { font-size: 26px; font-variant-numeric: tabular-nums; }
-.wallet-funds-summary small { font-size: 11px; }
+.wallet-funds-summary span { font-size: 14px; font-weight: 700; }
+.wallet-funds-summary strong { font-size: 28px; font-variant-numeric: tabular-nums; }
+.wallet-funds-summary small { font-size: 13px; }
 .wallet-finance-summary { gap: 12px; }
 .wallet-finance-summary-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .wallet-finance-summary-heading > div { display: grid; gap: 3px; }
-.wallet-finance-summary-heading strong { font-size: 16px; }
-.wallet-finance-summary-heading small { font-size: 11px; font-weight: 500; }
+.wallet-finance-summary-heading strong { font-size: 18px; }
+.wallet-finance-summary-heading small { font-size: 13px; font-weight: 500; }
 .wallet-finance-summary-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
 .wallet-finance-summary-metric { display: grid; gap: 3px; min-width: 0; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
-.wallet-finance-summary-metric span { overflow: hidden; font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-.wallet-finance-summary-metric strong { font-size: 15px; }
+.wallet-finance-summary-metric span { overflow: hidden; font-size: 13px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.wallet-finance-summary-metric strong { font-size: 17px; }
 .wallet-status-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1185,12 +1194,12 @@ dialog.drawer.wallet-drawer .wallet-statement-table-wrap {
   display: block;
 }
 .wallet-command-head strong {
-  font-size: 15px;
+  font-size: 17px;
 }
 .wallet-command-head small {
   margin-top: 3px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
 }
 .wallet-command-body {
   display: grid;
@@ -1203,7 +1212,7 @@ dialog.drawer.wallet-drawer .wallet-statement-table-wrap {
 .wallet-command-help {
   margin: 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.5;
 }
 .wallet-status-preview {
@@ -1219,7 +1228,7 @@ dialog.drawer.wallet-drawer .wallet-statement-table-wrap {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  font-size: 12px;
+  font-size: 14px;
 }
 .wallet-status-preview span {
   color: var(--muted);
@@ -1255,20 +1264,20 @@ dialog.drawer.wallet-drawer .wallet-statement-table-wrap {
 }
 .wallet-status-consequences strong {
   display: block;
-  font-size: 12px;
+  font-size: 14px;
 }
 .wallet-status-consequences ul {
   display: grid;
   gap: 5px;
   margin: 7px 0 0;
   padding-left: 18px;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.45;
 }
 .wallet-status-command-form label {
   display: grid;
   gap: 5px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
 }
 .wallet-status-command-form textarea,
@@ -1288,7 +1297,7 @@ dialog.drawer.wallet-drawer .wallet-statement-table-wrap {
 .wallet-status-command-form select {
   min-height: 36px;
   padding: 0 9px;
-  font-size: 12px;
+  font-size: 14px;
 }
 .wallet-status-command-form textarea[aria-invalid="true"] {
   border-color: var(--danger);
@@ -1299,7 +1308,7 @@ dialog.drawer.wallet-drawer .wallet-statement-table-wrap {
 }
 .wallet-fixture-field span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 500;
 }
 .wallet-status-command-form .dialog-actions {
@@ -1314,7 +1323,7 @@ dialog.drawer.wallet-drawer .wallet-statement-table-wrap {
 }
 .wallet-action-receipt h3 {
   margin: 0 0 10px;
-  font-size: 13px;
+  font-size: 15px;
 }
 .wallet-action-receipt .wallet-status-preview {
   background: var(--surface);
@@ -1325,7 +1334,7 @@ dialog.drawer.wallet-drawer .wallet-statement-table-wrap {
 .wallet-drawer .timeline li small {
   display: block;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 12px;
 }
 .wallet-mobile-key-facts {
   display: none;
@@ -1361,16 +1370,16 @@ dialog.drawer.wallet-drawer .wallet-statement-table-wrap {
 .wallet-statement-balance span {
   overflow: hidden;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .wallet-statement-balance strong {
-  font-size: 15px;
+  font-size: 17px;
   font-variant-numeric: tabular-nums;
 }
-.wallet-statement-filters label { display: grid; gap: 4px; color: var(--muted); font-size: 11px; font-weight: 700; }
+.wallet-statement-filters label { display: grid; gap: 4px; color: var(--muted); font-size: 13px; font-weight: 700; }
 .wallet-statement-filters select,
 .wallet-statement-filters input { width: 100%; min-height: 35px; padding: 0 8px; border: 1px solid var(--strong); border-radius: 7px; background: var(--surface); color: var(--text); }
 .wallet-statement-filters .btn { min-height: 35px; }
@@ -1383,7 +1392,7 @@ dialog.drawer.wallet-drawer .wallet-statement-table-wrap {
   border-radius: 7px;
   background: var(--soft);
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.4;
 }
 .wallet-statement-table-block > .wallet-statement-scroll-hint {
@@ -1427,12 +1436,12 @@ dialog.drawer.wallet-drawer .wallet-statement-table-wrap {
   }
   .wallet-mobile-key-facts span {
     color: var(--muted);
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 600;
     line-height: 1.25;
   }
   .wallet-mobile-key-facts strong {
-    font-size: 11px;
+    font-size: 13px;
     line-height: 1.3;
   }
   .wallet-mobile-key-facts .badge {
@@ -1481,7 +1490,7 @@ dialog.drawer.wallet-drawer .wallet-statement-table-wrap {
   margin-top: 16px;
 }
 .quest-detail-list-value {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
 }
 .quest-detail-list-gap {
@@ -1497,7 +1506,7 @@ dialog.drawer.wallet-drawer .wallet-statement-table-wrap {
 }
 .hirer-profile-summary span {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 .quest-finance-list {
   margin-top: 12px;
@@ -1506,7 +1515,7 @@ dialog.drawer.wallet-drawer .wallet-statement-table-wrap {
 }
 .quest-finance-list h3 {
   margin: 0 0 4px;
-  font-size: 13px;
+  font-size: 15px;
 }
 .quest-command-actions {
   display: flex;
@@ -1553,17 +1562,17 @@ dialog.drawer.wallet-drawer .wallet-statement-table-wrap {
 }
 .quest-command-dialog h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: 20px;
 }
 .quest-command-dialog p {
   margin: 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 .quest-command-dialog label {
   display: grid;
   gap: 5px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
 }
 .quest-command-dialog textarea,
@@ -1628,19 +1637,19 @@ dialog.drawer.dispute-case-drawer > .drawer-body .drawer-actions {
 dialog.drawer.report-case-drawer,
 dialog.drawer.conduct-report-drawer,
 dialog.drawer.dispute-case-drawer {
-  font-size: 16px;
+  font-size: 18px;
 }
 
 dialog.drawer.report-case-drawer .drawer-title h2,
 dialog.drawer.conduct-report-drawer .drawer-title h2,
 dialog.drawer.dispute-case-drawer .drawer-title h2 {
-  font-size: 21px;
+  font-size: 23px;
 }
 
 dialog.drawer.report-case-drawer .drawer-title p,
 dialog.drawer.conduct-report-drawer .drawer-title p,
 dialog.drawer.dispute-case-drawer .drawer-title p {
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1.5;
 }
 
@@ -1662,14 +1671,14 @@ dialog.drawer.dispute-case-drawer .timeline time,
 dialog.drawer.report-case-drawer .timeline span,
 dialog.drawer.conduct-report-drawer .timeline span,
 dialog.drawer.dispute-case-drawer .timeline span {
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.4;
 }
 
 dialog.drawer.report-case-drawer .timeline strong,
 dialog.drawer.conduct-report-drawer .timeline strong,
 dialog.drawer.dispute-case-drawer .timeline strong {
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.4;
 }
 
@@ -1710,7 +1719,7 @@ dialog.drawer.dispute-case-drawer .timeline strong {
   justify-self: start;
   margin-top: 2px;
   padding: 0;
-  font-size: 11px;
+  font-size: 13px;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -1720,12 +1729,12 @@ dialog.drawer.dispute-case-drawer .timeline strong {
 }
 .overview-command-center-queue-status strong {
   color: inherit;
-  font-size: 10px;
+  font-size: 12px;
 }
 .overview-command-center-queue-status small,
 .overview-command-center-queue-waiting small {
   color: inherit;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1.25;
 }
@@ -1735,7 +1744,7 @@ dialog.drawer.dispute-case-drawer .timeline strong {
 }
 .overview-command-center-queue-waiting strong {
   color: var(--overview-ink);
-  font-size: 11px;
+  font-size: 13px;
 }
 .overview-command-center-queue-waiting small {
   color: var(--muted);
@@ -1744,7 +1753,7 @@ dialog.drawer.dispute-case-drawer .timeline strong {
   margin: 0 0 12px;
   padding: 10px 12px;
   border-radius: 8px;
-  font-size: 11px;
+  font-size: 13px;
 }
 .activity-log-state-change {
   display: grid;
@@ -1765,23 +1774,23 @@ dialog.drawer.dispute-case-drawer .timeline strong {
 }
 .activity-log-state-change span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 12px;
 }
 .activity-log-state-change strong {
   margin-top: 4px;
   overflow-wrap: anywhere;
-  font-size: 12px;
+  font-size: 14px;
 }
 .activity-log-state-arrow {
   color: var(--accent);
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 800;
 }
 .activity-log-missing-context,
 .activity-log-note {
   margin: 0;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.45;
 }
 .activity-log-note {
@@ -1814,7 +1823,7 @@ dialog.drawer.dispute-case-drawer .timeline strong {
   display: grid;
   gap: 5px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
 }
 .admin-global-search-controls select,
@@ -1827,7 +1836,7 @@ dialog.drawer.dispute-case-drawer .timeline strong {
   background: var(--surface);
   color: var(--text);
   font: inherit;
-  font-size: 12px;
+  font-size: 14px;
 }
 .admin-global-search-save {
   display: grid;
@@ -1850,7 +1859,7 @@ dialog.drawer.dispute-case-drawer .timeline strong {
 .admin-global-search-saved > span {
   margin-right: 4px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
 }
 .admin-global-search-saved .link {
@@ -1858,20 +1867,20 @@ dialog.drawer.dispute-case-drawer .timeline strong {
   padding: 4px 9px;
   border-radius: 999px;
   background: var(--accent-soft);
-  font-size: 11px;
+  font-size: 13px;
   white-space: nowrap;
 }
 .admin-global-search-message {
   display: block;
   margin: 10px 16px 0;
   color: var(--success);
-  font-size: 11px;
+  font-size: 13px;
 }
 .admin-global-search-notice {
   margin: 12px 16px 4px;
   padding: 9px 10px;
   border-radius: 8px;
-  font-size: 11px;
+  font-size: 13px;
 }
 .admin-global-search-group h3 {
   display: flex;
@@ -1882,7 +1891,7 @@ dialog.drawer.dispute-case-drawer .timeline strong {
   padding: 10px 16px 7px;
   border-bottom: 1px solid var(--border);
   color: var(--muted);
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: .08em;
   text-transform: uppercase;
 }
@@ -1892,7 +1901,7 @@ dialog.drawer.dispute-case-drawer .timeline strong {
   border-radius: 999px;
   background: var(--soft);
   color: var(--text);
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0;
   text-align: center;
 }
@@ -1936,7 +1945,7 @@ dialog.drawer.dispute-case-drawer .timeline strong {
 }
 .admin-global-search-result-meta > small {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: .04em;
   text-transform: uppercase;
@@ -1948,7 +1957,7 @@ dialog.drawer.dispute-case-drawer .timeline strong {
   border-radius: 999px;
   background: var(--soft);
   color: var(--text);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   line-height: 1.2;
   overflow-wrap: anywhere;
@@ -1991,19 +2000,19 @@ dialog.drawer.dispute-case-drawer .timeline strong {
 /* Keep every Admin drawer readable at the requested larger type size. The
    board tables keep their compact density so an Admin can scan many records. */
 .admin-shell {
-  font-size: 16px;
+  font-size: 18px;
 }
 .admin-shell dialog.drawer {
-  font-size: 16px;
+  font-size: 18px;
 }
 .admin-shell dialog.drawer .drawer-top > div small {
-  font-size: 13px;
+  font-size: 15px;
 }
 .admin-shell dialog.drawer .drawer-title h2 {
-  font-size: 21px;
+  font-size: 23px;
 }
 .admin-shell dialog.drawer .drawer-title p {
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1.5;
 }
 .admin-shell dialog.drawer .audit-note,
@@ -2015,12 +2024,12 @@ dialog.drawer.dispute-case-drawer .timeline strong {
 .admin-shell dialog.drawer .payout-summary-grid span,
 .admin-shell dialog.drawer .payout-audit-list span,
 .admin-shell dialog.drawer .payout-previous-row small {
-  font-size: 13px;
+  font-size: 15px;
 }
 .admin-shell dialog.drawer .timeline strong,
 .admin-shell dialog.drawer .payout-summary-grid strong,
 .admin-shell dialog.drawer .payout-audit-list strong {
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.4;
 }
 .admin-shell dialog.drawer .badge,
@@ -2028,16 +2037,16 @@ dialog.drawer.dispute-case-drawer .timeline strong {
 .admin-shell dialog.drawer .financial-line,
 .admin-shell dialog.drawer .requirement-box strong,
 .admin-shell dialog.drawer .requirement-box ul {
-  font-size: 14px;
+  font-size: 16px;
 }
 .admin-shell .activity-log-dialog {
-  font-size: 16px;
+  font-size: 18px;
 }
 .admin-shell .activity-log-dialog .drawer-title h2 {
-  font-size: 21px;
+  font-size: 23px;
 }
 .admin-shell .activity-log-dialog .drawer-title p {
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1.5;
 }
 
@@ -2076,7 +2085,7 @@ a.activity-log-target:hover {
 }
 .overview-command-center-queue-oldest small {
   color: var(--faint);
-  font-size: 0.8rem;
+  font-size: calc(0.8rem + 2px);
   font-variant-numeric: tabular-nums;
   line-height: 1.3;
 }
@@ -2177,24 +2186,28 @@ dialog.drawer.dispute-case-drawer .moderation-case-related-record p {
 dialog.drawer.report-case-drawer .field-error,
 dialog.drawer.conduct-report-drawer .field-error,
 dialog.drawer.dispute-case-drawer .field-error {
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.45;
 }
 
 /* Use the same shell as the Quest detail drawer for every moderation record.
-   The drawer itself owns scrolling; its body remains a normal content flow
-   so each section has the same card rhythm as Quest detail. */
+   Keep the header fixed, give the body the only scroll region, and leave the
+   action bar inside that region so its sticky position is calculated against
+   the visible drawer rather than the full record height. */
 .admin-shell dialog.drawer.quest-style-drawer {
-  display: block;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .admin-shell dialog.drawer.quest-style-drawer > .drawer-body {
-  min-block-size: auto;
-  overflow: visible;
-  padding-block: 20px;
-  scrollbar-gutter: auto;
-  overscroll-behavior: auto;
+  flex: 1 1 auto;
+  min-block-size: 0;
+  min-inline-size: 0;
+  overflow-y: auto;
+  padding-block: 20px 28px;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
 }
 
 .admin-shell dialog.drawer.quest-style-drawer .moderation-case-workspace {
@@ -2229,7 +2242,13 @@ dialog.drawer.dispute-case-drawer .field-error {
 
 @media (max-width: 720px) {
   .admin-shell dialog.drawer.quest-style-drawer > .drawer-body {
-    padding-block: 16px;
+    padding-block: 16px 24px;
+  }
+
+  .admin-shell dialog.drawer.quest-style-drawer > .drawer-body .drawer-content-flow > .drawer-actions {
+    bottom: -24px;
+    margin-inline: -16px;
+    margin-block-end: -24px;
   }
 
   .admin-shell dialog.drawer.quest-style-drawer .moderation-case-workspace .moderation-case-history {
@@ -2241,10 +2260,10 @@ dialog.drawer.dispute-case-drawer .field-error {
    intentional: headings and status badges stay stronger than record text,
    while labels and metadata use predictable smaller steps. */
 .admin-shell {
-  --admin-font-body: 16px;
-  --admin-font-table: 14px;
-  --admin-font-meta: 13px;
-  --admin-font-caption: 12px;
+  --admin-font-body: 18px;
+  --admin-font-table: 16px;
+  --admin-font-meta: 15px;
+  --admin-font-caption: 14px;
   font-size: var(--admin-font-body);
 }
 
@@ -2252,7 +2271,7 @@ dialog.drawer.dispute-case-drawer .field-error {
    boards and the Tailwind boards must not produce different text sizes for
    the same task. */
 .admin-shell {
-  --admin-font-control: 1.142857rem;
+  --admin-font-control: 16px;
 }
 
 .admin-shell .admin-filter-input,
@@ -2266,19 +2285,29 @@ dialog.drawer.dispute-case-drawer .field-error {
   line-height: 1.4;
 }
 
+/* Board filters use the same compact row on desktop. On a narrow viewport the
+   search field gets a full row, so its label cannot collapse to a 20px sliver
+   beside the page-size controls. */
+@media (max-width: 600px) {
+  .admin-shell .admin-filter-label {
+    flex: 1 1 100%;
+    max-width: none;
+  }
+}
+
 /* Final Admin type-scale audit.
    Record pages, drawers, and command surfaces share the same semantic sizes.
    A value can still be stronger than its label, but the route must not change
    the meaning of a size by using browser defaults or legacy 10–12px rules. */
 .admin-shell {
-  --admin-font-page-title: 24px;
-  --admin-font-drawer-title: 21px;
-  --admin-font-section: 16px;
-  --admin-font-value: 15px;
-  --admin-font-body: 16px;
-  --admin-font-table: 14px;
-  --admin-font-meta: 13px;
-  --admin-font-caption: 12px;
+  --admin-font-page-title: 26px;
+  --admin-font-drawer-title: 23px;
+  --admin-font-section: 18px;
+  --admin-font-value: 17px;
+  --admin-font-body: 18px;
+  --admin-font-table: 16px;
+  --admin-font-meta: 15px;
+  --admin-font-caption: 14px;
 }
 
 /* Board and full-record headings. */
@@ -2467,13 +2496,13 @@ dialog.drawer.dispute-case-drawer .field-error {
 
 .admin-shell .admin-modal-layer > dialog h2,
 .admin-shell .quest-command-dialog h2 {
-  font-size: 20px;
+  font-size: 22px;
   line-height: 1.35;
 }
 
 .admin-shell .chat-modal-head strong,
 .admin-shell .wallet-command-head strong {
-  font-size: 18px;
+  font-size: 20px;
   line-height: 1.35;
 }
 
@@ -2889,6 +2918,12 @@ dialog.drawer.dispute-case-drawer .field-error {
     padding-inline: 16px;
   }
 
+  .admin-shell dialog.drawer.quest-style-drawer > .drawer-body .drawer-content-flow > .drawer-actions {
+    bottom: -24px;
+    margin-inline: -16px;
+    margin-block-end: -24px;
+  }
+
   .admin-shell dialog.drawer .payout-decision-actions {
     grid-template-columns: 1fr;
   }
@@ -2920,4 +2955,134 @@ dialog.drawer.dispute-case-drawer .field-error {
   overflow-y: auto;
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
+}
+
+/* Keep equivalent record controls at the same size across legacy and
+   Tailwind boards. These rules are scoped to the Admin shell so the public
+   application keeps its own type scale. */
+.admin-shell .badge,
+.admin-shell [data-slot="badge"] {
+  font-size: var(--admin-font-meta);
+  line-height: 1.35;
+}
+
+.admin-shell .row-record-button,
+.admin-shell .member-table tbody td:first-child [data-slot="button"] {
+  font-size: var(--admin-font-table);
+  line-height: 1.4;
+}
+
+.admin-shell [data-slot="tabs-trigger"][data-state="active"] {
+  font-weight: 600;
+}
+
+.admin-shell [data-slot="table"] tbody td > strong {
+  font-size: var(--admin-font-table);
+  line-height: 1.4;
+}
+
+.admin-shell .wallet-action-receipt h3 {
+  font-size: var(--admin-font-section);
+  line-height: 1.4;
+}
+
+.admin-shell .payout-summary-grid span,
+.admin-shell .payout-audit-list span,
+.admin-shell .payout-destination-facts > div > span {
+  font-size: var(--admin-font-meta);
+  line-height: 1.4;
+}
+
+.admin-shell .payout-summary-grid strong,
+.admin-shell .payout-audit-list strong,
+.admin-shell .payout-destination-facts > div > strong {
+  font-size: var(--admin-font-value);
+  line-height: 1.4;
+}
+
+/* Apply the same label/value rhythm to every drawer record surface. The
+   shared record recipes keep their compact board scale outside drawers. */
+.admin-shell dialog.drawer .admin-record-fact > span,
+.admin-shell dialog.drawer .admin-record-side-facts > div > span,
+.admin-shell dialog.drawer .admin-record-party-grid > div > span,
+.admin-shell dialog.drawer [data-slot="admin-overview-meta"] dt,
+.admin-shell dialog.drawer .admin-record-group > span {
+  font-size: var(--admin-font-meta);
+  line-height: 1.4;
+}
+
+.admin-shell dialog.drawer .admin-record-fact > strong,
+.admin-shell dialog.drawer .admin-record-side-facts > div > strong,
+.admin-shell dialog.drawer .admin-record-party-grid > div > strong,
+.admin-shell dialog.drawer [data-slot="admin-overview-meta"] dd {
+  font-size: var(--admin-font-value);
+  line-height: 1.4;
+}
+
+.admin-shell dialog.drawer .admin-record-fact > small,
+.admin-shell dialog.drawer .admin-record-side-facts > div > small,
+.admin-shell dialog.drawer .admin-record-party-grid > div > small {
+  font-size: var(--admin-font-meta);
+  line-height: 1.45;
+}
+
+.admin-shell dialog.drawer .admin-record-group > p {
+  font-size: var(--admin-font-body);
+  line-height: 1.5;
+}
+
+.admin-shell dialog.drawer .evidence-item strong,
+.admin-shell dialog.drawer .related-row strong,
+.admin-shell dialog.drawer .file-row strong,
+.admin-shell dialog.drawer .timeline strong {
+  font-size: var(--admin-font-value);
+  line-height: 1.4;
+}
+
+.admin-shell dialog.drawer .evidence-item > span:last-child {
+  font-size: var(--admin-font-meta);
+  line-height: 1.4;
+}
+
+.admin-shell dialog.drawer .payout-previous-row strong {
+  font-size: var(--admin-font-value);
+  line-height: 1.4;
+}
+
+.admin-shell dialog.drawer .requirement-box ul {
+  font-size: var(--admin-font-body);
+  line-height: 1.5;
+}
+
+.admin-shell dialog.drawer .quest-command-actions :where(.btn, [data-slot="button"]) {
+  font-size: var(--admin-font-body);
+  line-height: 1.4;
+}
+
+.admin-shell dialog.drawer.wallet-drawer .wallet-record .drawer-title h2 {
+  font-size: var(--admin-font-value);
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.admin-shell dialog.drawer.wallet-drawer .wallet-record .drawer-title p {
+  font-size: var(--admin-font-meta);
+  line-height: 1.4;
+}
+
+.admin-shell .activity-log-dialog .activity-log-detail > .drawer-title h2 {
+  font-size: var(--admin-font-section);
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.admin-shell .activity-log-dialog .activity-log-missing-context,
+.admin-shell .activity-log-dialog .activity-log-note {
+  font-size: var(--admin-font-meta);
+  line-height: 1.45;
+}
+
+.admin-shell .activity-log-dialog .activity-log-note strong {
+  font-size: var(--admin-font-value);
+  line-height: 1.4;
 }

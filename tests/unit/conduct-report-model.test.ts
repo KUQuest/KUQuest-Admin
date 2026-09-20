@@ -68,7 +68,7 @@ describe("Conduct Report model", () => {
       reportedMemberName: "Amara Ariyawat",
       reporterName: "Benja Ariyawat",
       detail: "The Worker was asked to perform work outside the Quest Condition.",
-      submittedAt: "2026-09-12T12:00:00.000Z",
+      submittedAt: "12 Sep 2026 12:00",
       version: 3,
     });
     expect(model?.reportedMemberHref).toBe("/member/member-reported");

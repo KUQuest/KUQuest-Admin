@@ -146,7 +146,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.45;
 }
 button:not([data-slot="button"]),
@@ -184,19 +184,19 @@ button:not([data-slot="button"]) {
   display: block;
 }
 .theme-trigger-copy strong {
-  font-size: 12px;
+  font-size: 14px;
 }
 .theme-trigger-copy small {
   margin-top: 2px;
   overflow: hidden;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .theme-trigger-chevron {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 20px;
   line-height: 1;
   transform: translateY(-1px);
 }
@@ -218,7 +218,7 @@ button:not([data-slot="button"]) {
 .theme-menu-title {
   margin: 3px 7px 6px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
 }
 .theme-options {
@@ -238,19 +238,19 @@ fieldset.theme-options {
   min-width: 0;
 }
 .theme-option-copy strong {
-  font-size: 12px;
+  font-size: 14px;
 }
 .theme-option-copy small {
   margin-top: 2px;
   overflow: hidden;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .theme-option-check {
   color: var(--accent);
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   opacity: 0;
 }
@@ -272,7 +272,7 @@ fieldset.theme-options {
   display: block;
   margin: 0 10px 6px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -295,7 +295,7 @@ fieldset.language-options {
   border-radius: 8px;
   background: var(--soft);
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -319,7 +319,7 @@ fieldset.language-options {
   border: 1px solid var(--border);
   border-radius: 5px;
   background: var(--soft);
-  font: 11px Figtree;
+  font: 13px Figtree;
 }
 .icon {
   position: relative;
@@ -359,7 +359,7 @@ fieldset.language-options {
   display: grid;
   place-items: center;
   border-radius: 9px;
-  font-size: 16px;
+  font-size: 18px;
 }
 .att-icon.danger {
   color: var(--danger);
@@ -381,7 +381,7 @@ fieldset.language-options {
   border-radius: 50%;
   background: var(--surface-avatar);
   color: var(--accent2);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
 }
 .resource {
@@ -400,7 +400,7 @@ fieldset.language-options {
 }
 .page-indicator {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 .table-sort {
   display: inline-flex;
@@ -427,7 +427,7 @@ fieldset.language-options {
 }
 .sort-indicator {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1;
 }
 .table-sort.is-active .sort-indicator {
@@ -439,7 +439,7 @@ fieldset.language-options {
   border: 0;
   background: transparent;
   color: var(--text);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -471,7 +471,7 @@ fieldset.language-options {
   gap: 5px;
   padding: 3px 8px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
 }
 .badge:before {
@@ -667,6 +667,9 @@ fieldset.language-options {
   transition: transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
   overflow: auto;
 }
+dialog.drawer {
+  inset: 0 0 0 auto;
+}
 .quest-drawer {
   left: auto;
   right: 0;
@@ -723,7 +726,7 @@ dialog.drawer.wallet-drawer {
 }
 .drawer-title h2 {
   margin: 0 0 5px;
-  font-size: 19px;
+  font-size: 21px;
 }
 .drawer-title p {
   margin: 0;
@@ -764,16 +767,16 @@ dialog.drawer.wallet-drawer {
 .timeline time,
 .timeline span {
   display: block;
-  font-size: 12px;
+  font-size: 14px;
 }
 .timeline time {
   color: var(--text);
-  font-size: 11px;
+  font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
 .timeline span {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
 }
 .drawer-actions {
   position: sticky;
@@ -789,7 +792,7 @@ dialog.drawer.wallet-drawer {
 }
 .drawer-actions > [data-slot="button"] {
   min-height: 44px;
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1.4;
   text-align: center;
 }
@@ -818,7 +821,7 @@ dialog::backdrop {
 }
 .dialog-body h2 {
   margin: 14px 0 5px;
-  font-size: 18px;
+  font-size: 20px;
 }
 .dialog-body p {
   margin: 0;
@@ -827,7 +830,7 @@ dialog::backdrop {
 .dialog-body label {
   display: block;
   margin-top: 16px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
 }
 .decision-amount-summary {
@@ -843,10 +846,10 @@ dialog::backdrop {
 }
 .decision-amount-summary span {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 .decision-amount-summary strong {
-  font-size: 14px;
+  font-size: 16px;
   text-align: right;
 }
 .dialog-body textarea {
@@ -904,7 +907,7 @@ dialog::backdrop {
   height: 100%;
   border: 0;
   outline: 0;
-  font-size: 15px;
+  font-size: 17px;
 }
 .result {
   width: 100%;
@@ -1005,7 +1008,7 @@ svg.ui-icon {
 .drawer-top > div small {
   display: block;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
 }
 .requirement-box {
   margin-top: 14px;
@@ -1014,13 +1017,13 @@ svg.ui-icon {
   background: var(--soft);
 }
 .requirement-box strong {
-  font-size: 12px;
+  font-size: 14px;
 }
 .requirement-box ul {
   margin: 7px 0 0;
   padding-left: 18px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 .related-list {
   border: 1px solid var(--border);
@@ -1064,7 +1067,7 @@ svg.ui-icon {
 .related-row > span:last-child,
 .file-row > span:last-child {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
 }
 .related-row > strong {
   flex: 1;
@@ -1081,7 +1084,7 @@ svg.ui-icon {
   justify-content: space-between;
   padding: 8px 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 .financial-line strong {
   color: var(--text);
@@ -1098,7 +1101,7 @@ svg.ui-icon {
   padding: 10px;
   border-radius: 8px;
   background: var(--soft);
-  font-size: 11px;
+  font-size: 13px;
 }
 .api-data-notice {
   border-left: 3px solid var(--info);
@@ -1160,7 +1163,7 @@ svg.ui-icon {
 .evidence-item small,
 .evidence-item > span:last-child {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
 }
 .evidence-state {
   width: 22px;
@@ -1170,7 +1173,7 @@ svg.ui-icon {
   border-radius: 50%;
   color: var(--success);
   background: var(--success-soft);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
 }
 .evidence-state.pending {
@@ -1194,7 +1197,7 @@ svg.ui-icon {
 .admin-action-summary-heading h3,
 .admin-action-receipt-heading strong {
   margin: 0;
-  font-size: 13px;
+  font-size: 15px;
 }
 .admin-action-summary-icon,
 .admin-action-receipt-icon {
@@ -1206,7 +1209,7 @@ svg.ui-icon {
   border-radius: 7px;
   color: var(--danger);
   background: var(--danger-soft);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 800;
 }
 .admin-action-receipt {
@@ -1223,7 +1226,7 @@ svg.ui-icon {
   display: block;
   margin-top: 2px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 12px;
 }
 .admin-action-summary-facts,
 .admin-action-receipt-facts {
@@ -1240,13 +1243,13 @@ svg.ui-icon {
 .admin-action-summary-facts dt,
 .admin-action-receipt-facts dt {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
 }
 .admin-action-summary-facts dd,
 .admin-action-receipt-facts dd {
   margin: 0;
   color: var(--text);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
 }
 .admin-action-summary-warning {
@@ -1254,14 +1257,14 @@ svg.ui-icon {
   padding-top: 10px;
   border-top: 1px solid var(--border);
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
 }
 .admin-action-receipt-details {
   margin-top: 10px;
   padding-top: 10px;
   border-top: 1px solid var(--border);
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
 }
 .admin-action-receipt > .link {
   margin-top: 10px;

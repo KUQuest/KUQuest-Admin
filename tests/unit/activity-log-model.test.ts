@@ -42,8 +42,8 @@ describe("Activity Log model", () => {
     });
   });
 
-  it("formats the API timestamp in ICT and keeps a relative time for scanning", () => {
-    expect(formatActivityLogTimestamp(entry.createdAt)).toBe("08 Sep 2026, 15:00 ICT");
+  it("formats the API timestamp and keeps a relative time for scanning", () => {
+    expect(formatActivityLogTimestamp(entry.createdAt)).toBe("08 Sep 2026 15:00");
     expect(formatActivityLogRelativeTime(entry.createdAt, Date.parse("2026-09-08T10:00:00.000Z"))).toBe("2 hours ago");
   });
 

@@ -1,5 +1,6 @@
 import type { PersistedAdminData } from "../data/admin-records";
 import type { AdminActivityLog, AdminOverview } from "../api/admin-api";
+import { formatAdminTimestamp } from "../date-format";
 import {
   activityLogActionLabel,
   activityLogReasonLabel,
@@ -208,7 +209,7 @@ export function dashboardModel(
       title: `Resolve ${text(record, "disputeType")} dispute`,
       detail: `${text(record, "id")} · ${text(record, "title")}`,
       metric: `฿${formatAmount(number(record, "amount"))} held`,
-      age: text(record, "disputeDate"),
+      age: formatAdminTimestamp(text(record, "disputeDate"), "Asia/Bangkok"),
       tone: tone(record, "danger"),
       timestamp: reviewTimestamp(record),
     })),
@@ -218,7 +219,7 @@ export function dashboardModel(
       title: "New user report",
       detail: `${text(record, "id")} · ${text(record, "reportedUserName")}`,
       metric: "Active report",
-      age: text(record, "reportedAt"),
+      age: formatAdminTimestamp(text(record, "reportedAt"), "Asia/Bangkok"),
       tone: tone(record, "warning"),
       timestamp: reviewTimestamp(record),
     })),

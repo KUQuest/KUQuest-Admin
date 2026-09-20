@@ -1,4 +1,5 @@
 import { memberRoutes, questRoutes } from "../admin-routes";
+import { formatAdminTimestamp } from "../date-format";
 import {
   moderationHistoryFromRecord,
   type ModerationHistorySummary,
@@ -164,19 +165,8 @@ function formatSatang(value: number | null, fallback = missingApiValue): string 
 function formatDate(value: unknown, fallback: string): string {
   const raw = text(value);
   if (!raw) return fallback;
-
-  const timestamp = Date.parse(raw);
-  if (Number.isNaN(timestamp)) return raw;
-
-  return new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Asia/Bangkok",
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(new Date(timestamp)).replace(",", " ·");
+  const formatted = formatAdminTimestamp(raw, "Asia/Bangkok");
+  return formatted === "Not provided" ? fallback : formatted;
 }
 
 function sevenDayHoldDeadline(value: unknown, fallback = missingApiValue): string | null {

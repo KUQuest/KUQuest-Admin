@@ -5,6 +5,7 @@ import type {
   AdminMemberListItem,
   AdminReportCase,
 } from "../api/admin-api";
+import { formatAdminTimestamp } from "../date-format";
 import type { AdminReview, PersistedAdminData } from "../data/admin-records";
 import {
   memberStatusFor,
@@ -214,18 +215,7 @@ function nullableNumber(value: unknown): number | null {
 function dateLabel(value: unknown, fallback = "Not recorded"): string {
   const raw = text(value).trim();
   if (!raw) return fallback;
-  const date = new Date(raw.replace(" · ", " "));
-  if (Number.isNaN(date.getTime())) return raw;
-  return `${date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "Asia/Bangkok",
-  })} · ${date.toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Asia/Bangkok",
-  })} ICT`;
+  return formatAdminTimestamp(raw, "Asia/Bangkok");
 }
 
 function balancesFromWallet(wallet: {
@@ -369,7 +359,7 @@ const memberMockModerationFixtures: Readonly<Record<string, MemberMockModeration
     history: [
       {
         event: "Conduct Report dismissed",
-        at: "27 Aug 2026 · 11:47 ICT",
+        at: "27 Aug 2026 11:47",
         by: "Admin",
         reason: "The Quest record did not confirm a conduct violation.",
         outcome: "No violation",
@@ -379,35 +369,35 @@ const memberMockModerationFixtures: Readonly<Record<string, MemberMockModeration
       },
       {
         event: "Red Flag expired",
-        at: "26 Aug 2026 · 09:00 ICT",
+        at: "26 Aug 2026 09:00",
         by: "System",
         reason: "The 7-day Red Flag duration ended.",
         previousStatus: "Flag",
         newStatus: "Normal",
         outcome: "Red Flag expired",
         durationDays: 7,
-        expiresAt: "26 Aug 2026 · 09:00 ICT",
+        expiresAt: "26 Aug 2026 09:00",
       },
       {
         event: "Red Flag applied",
-        at: "19 Aug 2026 · 09:00 ICT",
+        at: "19 Aug 2026 09:00",
         by: "Admin",
         reason: "First confirmed Misconduct violation in the fixture scenario.",
         newStatus: "Flag",
         outcome: "7-day Red Flag",
         durationDays: 7,
-        expiresAt: "26 Aug 2026 · 09:00 ICT",
+        expiresAt: "26 Aug 2026 09:00",
       },
       {
         event: "Account created",
-        at: "12 Aug 2026 · 09:00 ICT",
+        at: "12 Aug 2026 09:00",
         by: "System",
         reason: "Member registration completed.",
       },
     ],
     notes: [
       {
-        at: "27 Aug 2026 · 12:05 ICT",
+        at: "27 Aug 2026 12:05",
         by: "Admin",
         note: "Reviewed the Quest record after the Conduct Report. No policy action was required.",
       },
@@ -417,7 +407,7 @@ const memberMockModerationFixtures: Readonly<Record<string, MemberMockModeration
     history: [
       {
         event: "Report Case received",
-        at: "27 Aug 2026 · 08:40 ICT",
+        at: "27 Aug 2026 08:40",
         by: "System",
         reason: "Harassment or abuse report is waiting for Admin review.",
         outcome: "Pending review",
@@ -427,14 +417,14 @@ const memberMockModerationFixtures: Readonly<Record<string, MemberMockModeration
       },
       {
         event: "Account created",
-        at: "15 Aug 2026 · 10:15 ICT",
+        at: "15 Aug 2026 10:15",
         by: "System",
         reason: "Member registration completed.",
       },
     ],
     notes: [
       {
-        at: "27 Aug 2026 · 09:00 ICT",
+        at: "27 Aug 2026 09:00",
         by: "Admin",
         note: "Keep the Report Case open until the Evidence Reference is reviewed.",
       },
@@ -444,7 +434,7 @@ const memberMockModerationFixtures: Readonly<Record<string, MemberMockModeration
     history: [
       {
         event: "Permanent Member Ban applied",
-        at: "27 Aug 2026 · 16:47 ICT",
+        at: "27 Aug 2026 16:47",
         by: "Admin",
         reason: "The Conduct Report was upheld from the Quest record.",
         newStatus: "Perm Ban",
@@ -455,7 +445,7 @@ const memberMockModerationFixtures: Readonly<Record<string, MemberMockModeration
       },
       {
         event: "Conduct Report upheld",
-        at: "27 Aug 2026 · 16:30 ICT",
+        at: "27 Aug 2026 16:30",
         by: "Admin",
         reason: "The Quest record confirmed the reported conduct violation.",
         outcome: "Violation confirmed",
@@ -465,24 +455,24 @@ const memberMockModerationFixtures: Readonly<Record<string, MemberMockModeration
       },
       {
         event: "Temporary Member Ban applied",
-        at: "20 Aug 2026 · 16:47 ICT",
+        at: "20 Aug 2026 16:47",
         by: "Admin",
         reason: "Second confirmed Misconduct violation in the fixture scenario.",
         newStatus: "Temp Ban",
         outcome: "7-day temporary Member Ban",
         durationDays: 7,
-        expiresAt: "27 Aug 2026 · 16:47 ICT",
+        expiresAt: "27 Aug 2026 16:47",
       },
       {
         event: "Account created",
-        at: "18 Aug 2026 · 14:00 ICT",
+        at: "18 Aug 2026 14:00",
         by: "System",
         reason: "Member registration completed.",
       },
     ],
     notes: [
       {
-        at: "27 Aug 2026 · 16:50 ICT",
+        at: "27 Aug 2026 16:50",
         by: "Admin",
         note: "Permanent Member Ban is linked to the upheld Conduct Report. Wallet status is shown separately.",
       },
@@ -960,7 +950,10 @@ export function formatMoneySatang(value: number, signed = false): string {
 }
 
 export function formatWalletDate(value: string): string {
-  return dateLabel(value);
+  const raw = value.trim();
+  if (!raw) return "Not provided";
+  const formatted = formatAdminTimestamp(raw, "Asia/Bangkok");
+  return formatted === raw && !raw.match(/^\d{1,2}\s+[A-Za-z]{3}\s+\d{4}/) ? "Not provided" : formatted;
 }
 
 export function nextPenaltyFor(model: MemberModel): MemberActionOutcome {

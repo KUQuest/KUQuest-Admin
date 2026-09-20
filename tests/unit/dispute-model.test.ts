@@ -59,7 +59,7 @@ describe("Dispute Case model", () => {
     expect(model?.workerHref).toBe("/member/member-worker");
     expect(model?.submittedAt).not.toContain("Invalid Date");
     expect(model?.displayId).toBe("DSP-42");
-    expect(model?.moneyHoldDeadline).toBe("19 Sept 2026 · 19:00");
+    expect(model?.moneyHoldDeadline).toBe("19 Sep 2026 19:00");
     expect(model?.moderationHistory.currentMemberStatus).toBe("ACTIVE");
   });
 

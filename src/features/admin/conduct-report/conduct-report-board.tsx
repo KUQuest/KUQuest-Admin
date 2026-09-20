@@ -218,13 +218,13 @@ export function ConductReportBoard({
             <span className={adminBoardCount}>{visibleModels.length} {translateText("shown")}</span>
           </CardHeader>
           <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value as ConductReportTab); setPageNumber(1); }}>
-            <TabsList className="flex w-full justify-start gap-1 overflow-x-auto rounded-none border-b border-admin-border px-3" aria-label={translateText("Conduct Report status filters")}>
-              {tabs.map((tab) => <TabsTrigger key={tab.id} value={tab.id} className="min-h-10 shrink-0 rounded-none border-b-2 border-transparent px-3 py-2 text-sm text-admin-muted data-[state=active]:border-admin-accent data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-admin-text data-[state=active]:shadow-none">{translateText(tab.label)}{tab.id === "open" ? ` (${openCount})` : null}</TabsTrigger>)}
+            <TabsList className="px-3" aria-label={translateText("Conduct Report status filters")}>
+              {tabs.map((tab) => <TabsTrigger key={tab.id} value={tab.id}>{translateText(tab.label)}{tab.id === "open" ? ` (${openCount})` : null}</TabsTrigger>)}
             </TabsList>
           </Tabs>
           <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2">
             <label className="admin-filter-label flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text" htmlFor="conduct-report-search">
-              {translateText("Search Conduct Reports")}
+              <span className="visually-hidden">{translateText("Search Conduct Reports")}</span>
               <Input
                 className="admin-filter-input h-9 min-h-9 px-3 py-1.5 text-sm"
                 id="conduct-report-search"

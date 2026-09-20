@@ -5,6 +5,7 @@ import type {
   AdminQuestFinance,
   AdminQuestMember,
 } from "../api/admin-api";
+import { formatAdminTimestamp } from "../date-format";
 import { questStateFor, questStateLabel, type QuestState } from "../domain/rulebook";
 
 export type QuestMemberView = {
@@ -542,19 +543,7 @@ export function questPageCount(rowCount: number, pageSize: QuestBoardPageSize): 
 }
 
 export function formatQuestDate(value: string | null | undefined): string {
-  if (!value) return "Not provided";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return `${date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "Asia/Bangkok",
-  })} · ${date.toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Asia/Bangkok",
-  })} ICT`;
+  return formatAdminTimestamp(value, "Asia/Bangkok");
 }
 
 export function formatQuestMoney(satang: number | null | undefined): string {

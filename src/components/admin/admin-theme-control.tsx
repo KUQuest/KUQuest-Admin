@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
+import { ChevronDown } from "lucide-react";
 
 import {
   normalizeAdminTheme,
@@ -98,7 +99,7 @@ export function AdminThemeControl({ translateText = identityText }: AdminThemeCo
           <strong className="block text-sm font-semibold">{translateText("Theme")}</strong>
           <small className="mt-0.5 block truncate text-xs text-admin-muted">{translateText(themeDefinitions[theme].label)}</small>
         </span>
-        <span className="theme-trigger-chevron text-lg leading-none text-admin-muted" aria-hidden="true">⌄</span>
+        <ChevronDown className="theme-trigger-chevron size-4 shrink-0 text-admin-muted" aria-hidden="true" />
       </Button>
       <div className="theme-menu absolute right-0 bottom-[calc(100%-1px)] z-30 w-full rounded-admin-md border border-admin-border bg-admin-surface p-[7px] shadow-admin-card" id="theme-options" hidden={!open}>
         <p className="theme-menu-title mx-2 mb-1.5 mt-1 text-xs font-semibold text-admin-muted">{translateText("Choose a theme")}</p>

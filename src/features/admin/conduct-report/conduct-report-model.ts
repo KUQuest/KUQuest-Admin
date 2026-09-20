@@ -1,4 +1,5 @@
 import { memberRoutes, questRoutes } from "../admin-routes";
+import { formatAdminTimestamp } from "../date-format";
 import {
   moderationHistoryFromRecord,
   type ModerationHistorySummary,
@@ -256,8 +257,7 @@ export function conductReportModelFromRecord(value: unknown): ConductReportModel
     moderationHistory: moderationHistoryFromRecord(record),
     detail: firstText(record.details, record.description)
       ?? "No Conduct Report detail was provided.",
-    submittedAt: firstText(record.reportedAt, record.submittedAt, record.createdAt)
-      ?? "Time not provided",
+    submittedAt: formatAdminTimestamp(firstText(record.reportedAt, record.submittedAt, record.createdAt) ?? "Time not provided"),
     decisionLabel,
     decisionReason: firstText(record.decisionReason),
     resolution: firstText(record.resolution),

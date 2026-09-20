@@ -4,7 +4,7 @@
   gap: 8px;
   margin: 2px 0 16px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 .user-detail-breadcrumb a {
   color: var(--accent);
@@ -28,12 +28,12 @@
   border-radius: 50%;
   background: var(--surface-avatar);
   color: var(--accent2);
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
 }
 .user-summary-identity h2 {
   margin: 0 0 3px;
-  font-size: 20px;
+  font-size: 22px;
 }
 .user-summary-name {
   display: flex;
@@ -49,7 +49,7 @@
   display: block;
   margin: 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 15px;
 }
 .user-summary-identity a {
   color: var(--accent);
@@ -71,14 +71,14 @@
   border: 1px solid var(--border);
   border-radius: 999px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
 }
 .user-detail-panel {
   padding: 16px 18px;
 }
 .user-detail-panel h2 {
   margin: 0 0 12px;
-  font-size: 15px;
+  font-size: 17px;
 }
 .user-detail-panel p {
   color: var(--muted);
@@ -98,7 +98,7 @@
 }
 .user-panel-heading p {
   margin: 0 0 10px;
-  font-size: 12px;
+  font-size: 14px;
 }
 .user-simple-list,
 .user-certificate-list,
@@ -120,18 +120,18 @@
 .user-simple-list strong,
 .user-certificate-list strong {
   display: block;
-  font-size: 13px;
+  font-size: 15px;
 }
 .user-simple-list span,
 .user-certificate-list span {
   display: block;
   margin-top: 2px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 .user-simple-list p {
   margin: 7px 0 0;
-  font-size: 12px;
+  font-size: 14px;
 }
 .user-payout-stat-list {
   display: grid;
@@ -149,11 +149,11 @@
   border-right: 0;
 }
 .user-payout-stat-list strong {
-  font-size: 15px;
+  font-size: 17px;
 }
 .user-payout-stat-list span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 12px;
 }
 .user-payout-list {
   display: grid;
@@ -185,12 +185,12 @@
 }
 .user-payout-primary strong,
 .user-payout-secondary strong {
-  font-size: 12px;
+  font-size: 14px;
 }
 .user-payout-primary small {
   overflow: hidden;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -204,14 +204,14 @@
   gap: 8px;
   align-items: baseline;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 15px;
 }
 .user-review-summary strong {
   color: var(--text);
-  font-size: 15px;
+  font-size: 17px;
 }
 .user-review-summary span {
-  font-size: 14px;
+  font-size: 16px;
 }
 .user-review-count {
   color: var(--muted);
@@ -227,7 +227,7 @@
   background: transparent;
   color: var(--muted);
   font: inherit;
-  font-size: 14px;
+  font-size: 16px;
   cursor: pointer;
 }
 .user-review-rating-link:hover,
@@ -253,14 +253,14 @@
 .user-review-preview strong,
 .user-recent-reports strong {
   display: block;
-  font-size: 12px;
+  font-size: 14px;
 }
 .user-review-preview small,
 .user-recent-reports small {
   display: block;
   margin-top: 2px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
 }
 .user-recent-reports > a {
   color: var(--text);
@@ -287,12 +287,12 @@
 }
 .user-facts dt {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 .user-facts dd {
   margin: 0;
   text-align: right;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
 }
 .user-counter-list {
@@ -311,15 +311,15 @@
   border-right: 0;
 }
 .user-counter-list strong {
-  font-size: 18px;
+  font-size: 20px;
 }
 .user-counter-list span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 12px;
 }
 .admin-only-label {
   color: var(--warn);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
 }
 .user-admin-notes {
@@ -335,15 +335,15 @@
   display: block;
 }
 .user-admin-notes strong {
-  font-size: 11px;
+  font-size: 13px;
 }
 .user-admin-notes small {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
 }
 .user-admin-notes p {
   margin: 6px 0 0;
-  font-size: 12px;
+  font-size: 14px;
 }
 .user-detail-panel textarea {
   width: 100%;
@@ -383,11 +383,11 @@
   gap: 7px;
 }
 .user-quest-history-title strong {
-  font-size: 13px;
+  font-size: 15px;
 }
 .user-quest-history-title > span {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
 }
 .user-quest-history-fields {
   display: grid;
@@ -403,15 +403,15 @@
 }
 .user-quest-history-field > span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 12px;
 }
 .user-quest-history-field strong {
-  font-size: 12px;
+  font-size: 14px;
 }
 .user-quest-history-field small {
   overflow: hidden;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -487,9 +487,9 @@
    but do not reduce them to the 10–11px legacy scale. */
 .admin-shell .user-detail-page,
 .admin-shell .user-drawer-detail {
-  --member-font-body: 16px;
-  --member-font-value: 15px;
-  --member-font-meta: 13px;
+  --member-font-body: 18px;
+  --member-font-value: 17px;
+  --member-font-meta: 15px;
   font-size: var(--member-font-body);
   line-height: 1.5;
 }
@@ -561,6 +561,81 @@
 .admin-shell .user-drawer-detail .audit-note {
   font-size: var(--member-font-meta);
   line-height: 1.45;
+}
+
+/* Keep the Member drawer's identity block in the same card rhythm as the
+   other record drawers. The drawer header identifies the record; this block
+   gives the first content section a clear overview and status. */
+.admin-shell .member-drawer-overview {
+  min-width: 0;
+}
+
+.admin-shell .member-drawer-identity {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.admin-shell .member-drawer-identity .att-icon {
+  flex: 0 0 35px;
+}
+
+.admin-shell .member-drawer-identity-copy {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.admin-shell .member-drawer-identity-copy strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--member-font-body);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.admin-shell .member-drawer-identity-copy p {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: var(--member-font-meta);
+  line-height: 1.45;
+}
+
+/* Drawer fact groups contain a label and a value on separate visual lines.
+   Keep the value block-level so long identifiers and dates cannot join the
+   label text. */
+.admin-shell .user-context-list,
+.admin-shell .user-activity-list {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-shell .user-context-list > div,
+.admin-shell .user-activity-list > div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.admin-shell .user-context-list > div > span,
+.admin-shell .user-activity-list > div > span {
+  display: block;
+  color: var(--muted);
+  font-size: var(--member-font-meta);
+  line-height: 1.4;
+}
+
+.admin-shell .user-context-list > div > strong,
+.admin-shell .user-activity-list > div > strong {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--member-font-value);
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 /* Quest history still had the old 10–13px rules after the Member scale was

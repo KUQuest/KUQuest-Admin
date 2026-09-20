@@ -16,8 +16,8 @@ import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminPageHeader } from "../../../components/admin/admin-page-header";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import { adminBoardPagination, adminBoardTable, adminRecordFact, adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
-import { Badge as UiBadge, Button as UiButton, Card, CardHeader, EmptyState, Input, PageSizeControls, Pagination, Table, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
+import { adminBoardCount, adminBoardPagination, adminBoardTable, adminRecordFact, adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
+import { Badge as UiBadge, Button as UiButton, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
 import { adminApi } from "../api/admin-api";
 import { walletStatusLabel, type WalletStatus } from "../domain/rulebook";
 import { memberTabHref } from "../member/member-model";
@@ -557,6 +557,10 @@ export function AdminWalletPage({ initialData }: { initialData: WalletBoardPageD
   if (initialData.boardError) return <main className="admin-route-page wallet-route-page" tabIndex={-1}>
     <AdminPageHeader title={translateText("Wallets")} description={translateText("Review Wallet status and balances. Wallet detail is not a route in this migration.")} />
     <Card as="section" className="overflow-hidden wallet-board" aria-label={translateText("Wallet review board")}>
+      <CardHeader className="flex min-h-[60px] items-center justify-between gap-4">
+        <div><CardTitle>{translateText("Wallets")}</CardTitle><CardDescription>{translateText("Review Wallet status and balances.")}</CardDescription></div>
+        <span className={adminBoardCount}>0 {translateText("shown")}</span>
+      </CardHeader>
       <WalletSummary summary={initialData.summary} error={initialData.summaryError} dataSource={initialData.dataSource} onRetry={() => router.refresh()} />
       <EmptyState role="alert" title={translateText("Records are not available")} description={translateText(initialData.boardError)} action={<UiButton variant="primary" type="button" onClick={() => router.refresh()}>{translateText("Try again")}</UiButton>} />
     </Card>
@@ -572,14 +576,18 @@ export function AdminWalletPage({ initialData }: { initialData: WalletBoardPageD
   return <main className="admin-route-page wallet-route-page" tabIndex={-1}>
     <AdminPageHeader title={translateText("Wallets")} description={translateText("Review Wallet status and balances. Wallet detail is not a route in this migration.")} />
     <Card as="section" className="overflow-hidden wallet-board" aria-label={translateText("Wallet review board")}>
+      <CardHeader className="flex min-h-[60px] items-center justify-between gap-4">
+        <div><CardTitle>{translateText("Wallets")}</CardTitle><CardDescription>{translateText("Review Wallet status and balances.")}</CardDescription></div>
+        <span className={adminBoardCount}>{sortedRows.length} {translateText("shown")}</span>
+      </CardHeader>
       <WalletSummary summary={initialData.summary} error={initialData.summaryError} dataSource={initialData.dataSource} onRetry={() => router.refresh()} />
-      <Tabs value={tab} onValueChange={(value) => chooseTab(value as WalletBoardTab)} className="w-full gap-0">
-        <TabsList className="w-full flex-nowrap justify-start overflow-x-auto rounded-none border-b border-admin-border bg-transparent p-0" aria-label={translateText("Wallet status filters")}>
-          {WALLET_BOARD_TABS.map((item) => <TabsTrigger key={item.id} value={item.id} className="min-h-11 shrink-0 rounded-none border-b-2 border-transparent px-3 py-2 text-sm text-admin-muted shadow-none hover:bg-transparent data-[state=active]:border-admin-accent data-[state=active]:bg-transparent data-[state=active]:text-admin-text data-[state=active]:shadow-none">{translateText(item.label)}{item.id === "all" ? ` (${rows.length})` : ""}</TabsTrigger>)}
+      <Tabs value={tab} onValueChange={(value) => chooseTab(value as WalletBoardTab)}>
+        <TabsList className="px-3" aria-label={translateText("Wallet status filters")}>
+          {WALLET_BOARD_TABS.map((item) => <TabsTrigger key={item.id} value={item.id}>{translateText(item.label)}{item.id === "all" ? ` (${rows.length})` : ""}</TabsTrigger>)}
         </TabsList>
       </Tabs>
       <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2">
-        <label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text" htmlFor="wallet-search"><span className="visually-hidden">{translateText("Search Wallets")}</span><Input className="h-9 min-h-9 px-3 py-1.5 text-sm" id="wallet-search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={translateText("Search Wallets…")} autoComplete="off" /></label>
+        <label className="admin-filter-label flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text" htmlFor="wallet-search"><span className="visually-hidden">{translateText("Search Wallets")}</span><Input className="admin-filter-input h-9 min-h-9 px-3 py-1.5 text-sm" id="wallet-search" type="search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={translateText("Search Wallets…")} autoComplete="off" /></label>
         <span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span>
         <PageSizeControls value={pageSize} translateText={translateText} onChange={choosePageSize} />
         <span className="ml-auto text-sm text-admin-muted max-[600px]:hidden" aria-live="polite">{translateText(resultLabelWithLoading)}</span>

@@ -21,11 +21,11 @@ export function CardHeader({ className, flush = false, ...props }: CardHeaderPro
 }
 
 export function CardTitle({ className, children, ...props }: HTMLAttributes<HTMLHeadingElement>) {
-  return <h2 data-slot="card-title" className={cn("text-base font-semibold text-admin-text", className)} {...props}>{children}</h2>;
+  return <h2 data-slot="card-title" className={cn("m-0 text-base font-semibold text-admin-text", className)} {...props}>{children}</h2>;
 }
 
 export function CardDescription({ className, ...props }: HTMLAttributes<HTMLParagraphElement>) {
-  return <p data-slot="card-description" className={cn("mt-1 text-sm text-admin-muted", className)} {...props} />;
+  return <p data-slot="card-description" className={cn("m-0 mt-1 text-sm text-admin-muted", className)} {...props} />;
 }
 
 type CardContentProps = HTMLAttributes<HTMLDivElement> & {

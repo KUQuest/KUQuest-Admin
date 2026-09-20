@@ -132,7 +132,7 @@ export function AdminSidebar({
       aria-hidden={navigationHidden ? true : undefined}
       inert={navigationHidden ? true : undefined}
     >
-      <div className="flex h-[50px] items-center gap-2 px-2 pb-2 text-[22px] font-bold leading-none">
+      <div className="flex h-[50px] items-center gap-2 px-2 pb-2 text-[24px] font-bold leading-none">
         <Image className="block size-10 w-20 shrink-0 object-contain" src="/kuquest-logo.png?v=2" alt="" width={101} height={51} priority unoptimized />
         <span>KuQuest</span>
       </div>
@@ -168,7 +168,7 @@ export function AdminSidebar({
         translateText={translateText}
       />
       <div className="mt-0 flex items-center gap-2 border-t border-admin-border px-2 py-2.5">
-        <span className="grid size-[30px] shrink-0 place-items-center rounded-full bg-admin-avatar text-[10px] font-bold text-admin-accent-strong" aria-hidden="true">{initials}</span>
+        <span className="grid size-[30px] shrink-0 place-items-center rounded-full bg-admin-avatar text-[12px] font-bold text-admin-accent-strong" aria-hidden="true">{initials}</span>
         <div className="min-w-0">
           <strong className="block truncate text-sm font-semibold">{adminName}</strong>
           <small className="block text-xs text-admin-muted">{translateText("Admin")}</small>

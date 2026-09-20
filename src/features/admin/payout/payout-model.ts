@@ -2,6 +2,7 @@ import type {
   AdminPayout,
   AdminPayoutDetail,
 } from "../api/admin-api";
+import { formatAdminTimestamp } from "../date-format";
 import {
   payoutStatusFor,
   payoutStatusLabel,
@@ -288,19 +289,7 @@ export function payoutPageCount(rowCount: number, pageSize: PayoutBoardPageSize)
 }
 
 export function formatPayoutDate(value: string | null | undefined): string {
-  if (!value) return "Not provided";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return `${date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "Asia/Bangkok",
-  })} · ${date.toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Asia/Bangkok",
-  })} ICT`;
+  return formatAdminTimestamp(value, "Asia/Bangkok");
 }
 
 export function formatPayoutMoney(satang: number | null | undefined): string {

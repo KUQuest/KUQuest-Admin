@@ -19,9 +19,9 @@ import { AdminPageHeader } from "../../../components/admin/admin-page-header";
 import { AdminStatusAlert } from "../../../components/admin/admin-status-alert";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { RecordStatusBar } from "../../../components/admin/record-status-bar";
-import { adminBoardPagination, adminBoardTable, adminRecordFact, adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
+import { adminBoardCount, adminBoardPagination, adminBoardTable, adminRecordFact, adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import { Badge as UiBadge, Button as UiButton, Card, CardHeader, EmptyState, Input, PageSizeControls, Pagination, Table, Tabs, TabsList, TabsTrigger, type ButtonSize } from "../../../components/ui";
+import { Badge as UiBadge, Button as UiButton, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, Tabs, TabsList, TabsTrigger, type ButtonSize } from "../../../components/ui";
 import { payoutRoutes } from "../admin-routes";
 import {
   adminApi,
@@ -236,7 +236,7 @@ function PayoutDetailContent({
   </Section>;
 
   const payoutDestinationSection = <Section title={translateText("Payout Destination")} className={`payout-destination-section ${fullSectionClass}`}>
-    <div className={adminRecordFacts}>
+    <div className={`${adminRecordFacts} payout-destination-facts`}>
       <Fact label={translateText("Bank")}>{detail.destination.bankName}</Fact>
       <Fact label={translateText("Bank code")}>{detail.destination.bankCode}</Fact>
       <Fact label={translateText("Destination type")}>{translateText(readableValue(detail.destination.type))}</Fact>
@@ -715,13 +715,17 @@ export function AdminPayoutPage({
     <main className="admin-route-page payout-route-page" tabIndex={-1}>
       <AdminPageHeader title={translateText("Payouts")} description={translateText("Review Payouts through the Admin approval queue.")} />
       <Card as="section" className="overflow-hidden payout-board" aria-label={translateText("Payout review board")}>
-        <Tabs value={tab} onValueChange={(value) => chooseTab(value as PayoutBoardTab)} className="w-full gap-0">
-          <TabsList className="w-full flex-nowrap justify-start overflow-x-auto rounded-none border-b border-admin-border bg-transparent p-0" aria-label={translateText("Payout filters")}>
-            {PAYOUT_BOARD_TABS.map((item) => <TabsTrigger key={item.id} value={item.id} className="min-h-11 shrink-0 rounded-none border-b-2 border-transparent px-3 py-2 text-sm text-admin-muted shadow-none hover:bg-transparent data-[state=active]:border-admin-accent data-[state=active]:bg-transparent data-[state=active]:text-admin-text data-[state=active]:shadow-none">{translateText(item.label)}{item.id === "PENDING_ADMIN_APPROVAL" ? ` (${rows.filter((row) => row.status === item.id).length})` : item.id === "all" ? ` (${rows.length})` : ""}</TabsTrigger>)}
+        <CardHeader className="flex min-h-[60px] items-center justify-between gap-4">
+          <div><CardTitle>{translateText("Payouts")}</CardTitle><CardDescription>{translateText("Review Payouts through the Admin approval queue.")}</CardDescription></div>
+          <span className={adminBoardCount}>{sortedRows.length} {translateText("shown")}</span>
+        </CardHeader>
+        <Tabs value={tab} onValueChange={(value) => chooseTab(value as PayoutBoardTab)}>
+          <TabsList className="px-3" aria-label={translateText("Payout filters")}>
+            {PAYOUT_BOARD_TABS.map((item) => <TabsTrigger key={item.id} value={item.id}>{translateText(item.label)}{item.id === "PENDING_ADMIN_APPROVAL" ? ` (${rows.filter((row) => row.status === item.id).length})` : item.id === "all" ? ` (${rows.length})` : ""}</TabsTrigger>)}
           </TabsList>
         </Tabs>
         <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2">
-          <label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text" htmlFor="payout-search"><span className="visually-hidden">{translateText("Search Payouts")}</span><Input className="h-9 min-h-9 px-3 py-1.5 text-sm" id="payout-search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={translateText("Search Payouts…")} autoComplete="off" /></label>
+          <label className="admin-filter-label flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text" htmlFor="payout-search"><span className="visually-hidden">{translateText("Search Payouts")}</span><Input className="admin-filter-input h-9 min-h-9 px-3 py-1.5 text-sm" id="payout-search" type="search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={translateText("Search Payouts…")} autoComplete="off" /></label>
           <span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span>
           <PageSizeControls value={pageSize} translateText={translateText} onChange={choosePageSize} />
           <span className="ml-auto text-sm text-admin-muted max-[600px]:hidden" aria-live="polite">{translateText("Showing")} {pageStart}–{pageEnd} {translateText("of")} {sortedRows.length} {translateText("results")}</span>

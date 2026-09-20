@@ -6,6 +6,7 @@ import type {
   AdminWalletStatusHistoryEntry,
   AdminWalletVerification,
 } from "../api/admin-api";
+import { formatAdminTimestamp } from "../date-format";
 import {
   walletStatusFor,
   walletStatusLabel,
@@ -304,19 +305,10 @@ export function walletPageCount(rowCount: number, pageSize: WalletBoardPageSize)
 }
 
 export function formatWalletDate(value: string | null | undefined): string {
-  if (!value) return "Not provided";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Not provided";
-  return `${date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "Asia/Bangkok",
-  })} · ${date.toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Asia/Bangkok",
-  })} ICT`;
+  const formatted = formatAdminTimestamp(value, "Asia/Bangkok");
+  return formatted === (value?.trim() || "") && !value?.trim().match(/^\d{1,2}\s+[A-Za-z]{3}\s+\d{4}/)
+    ? "Not provided"
+    : formatted;
 }
 
 export function formatWalletMoney(satang: number | null | undefined): string {

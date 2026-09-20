@@ -70,7 +70,7 @@ describe("Report Case model", () => {
       reporterName: "Benja Ariyawat",
       reportType: "Harassment",
       detail: "The submitted report requires review.",
-      submittedAt: "2026-09-12T12:00:00.000Z",
+      submittedAt: "12 Sep 2026 12:00",
       version: 3,
     });
     expect(model?.reportedMemberHref).toBe("/member/member-reported");

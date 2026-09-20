@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { AdminPageHeader } from "../../../components/admin/admin-page-header";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import { Button, Card, CardHeader, EmptyState, Input, PageSizeControls, Pagination, Table, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
+import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { memberRoutes } from "../admin-routes";
 import { loadAllMembersFromMock as loadAllMembersFromMockData, loadMembersFromMock } from "./member-adapter";
@@ -167,23 +167,23 @@ export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
     <main id="member-main" className="admin-route-page member-board" tabIndex={-1}>
       <AdminPageHeader title={translateText("Members")} description={translateText("Review Member profiles and account status.")} />
       <Card as="section" className="resource overflow-hidden" aria-labelledby="member-board-heading">
-        <CardHeader flush className="flex min-h-[60px] items-center justify-between gap-4 border-b border-admin-border px-4 py-3">
+        <CardHeader className="flex min-h-[60px] items-center justify-between gap-4">
           <div>
-            <h2 id="member-board-heading">{translateText("Members")}</h2>
-            <p>{translateText("Review Member profiles, Wallet status, and moderation history.")}</p>
+            <CardTitle id="member-board-heading">{translateText("Members")}</CardTitle>
+            <CardDescription>{translateText("Review Member profiles, Wallet status, and moderation history.")}</CardDescription>
           </div>
           <span className={adminBoardCount}>{visibleModels.length} {translateText("shown")}</span>
         </CardHeader>
         <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value as MemberTab); setPageNumber(1); }}>
-          <TabsList className="flex w-full justify-start gap-1 overflow-x-auto rounded-none border-b border-admin-border px-3" aria-label={translateText("Filter Members")}>
-            {visibleTabs.map((tab) => <TabsTrigger key={tab.id} value={tab.id} className="min-h-10 shrink-0 rounded-none border-b-2 border-transparent px-3 py-2 text-sm text-admin-muted data-[state=active]:border-admin-accent data-[state=active]:bg-transparent data-[state=active]:text-admin-text data-[state=active]:shadow-none">{translateText(tab.label)}</TabsTrigger>)}
+          <TabsList className="px-3" aria-label={translateText("Filter Members")}>
+            {visibleTabs.map((tab) => <TabsTrigger key={tab.id} value={tab.id}>{translateText(tab.label)}</TabsTrigger>)}
           </TabsList>
         </Tabs>
         <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2">
-          <label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text" htmlFor="member-search">
-            {translateText("Search Members")}
+          <label className="admin-filter-label flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text" htmlFor="member-search">
+            <span className="visually-hidden">{translateText("Search Members")}</span>
             <Input
-              className="h-9 min-h-9 px-3 py-1.5 text-sm"
+              className="admin-filter-input h-9 min-h-9 px-3 py-1.5 text-sm"
               id="member-search"
               type="search"
               aria-label={translateText("Search Members")}

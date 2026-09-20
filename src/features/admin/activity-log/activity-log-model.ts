@@ -1,4 +1,5 @@
 import type { AdminActivityLog } from "../api/admin-api";
+import { formatAdminTimestamp } from "../date-format";
 import {
   activityRoutes,
   conductReportRoutes,
@@ -340,21 +341,8 @@ function timestampValue(value: string | null): number | null {
 }
 
 export function formatActivityLogTimestamp(value: string | null): string {
-  const timestamp = timestampValue(value);
-  if (timestamp === null) return "Not provided";
-
-  const parts = new Intl.DateTimeFormat("en-US", {
-    day: "2-digit",
-    hour: "2-digit",
-    hour12: false,
-    hourCycle: "h23",
-    minute: "2-digit",
-    month: "short",
-    timeZone: "Asia/Bangkok",
-    year: "numeric",
-  }).formatToParts(new Date(timestamp));
-  const part = (type: Intl.DateTimeFormatPartTypes): string => parts.find((item) => item.type === type)?.value || "";
-  return `${part("day")} ${part("month")} ${part("year")}, ${part("hour")}:${part("minute")} ICT`;
+  const formatted = formatAdminTimestamp(value, "Asia/Bangkok");
+  return formatted === value && timestampValue(value) === null ? "Not provided" : formatted;
 }
 
 export function formatActivityLogRelativeTime(value: string | null, now = Date.now()): string {
@@ -368,7 +356,7 @@ export function formatActivityLogRelativeTime(value: string | null, now = Date.n
   if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days} day${days === 1 ? "" : "s"} ago`;
-  return formatActivityLogTimestamp(value).split(",")[0];
+  return formatActivityLogTimestamp(value).split(" ").slice(0, 3).join(" ");
 }
 
 export function activityLogMatchesSearch(entry: ActivityLogEntry, query: string): boolean {

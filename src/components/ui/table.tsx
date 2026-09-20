@@ -11,7 +11,7 @@ export const Table = React.forwardRef<HTMLTableElement, React.TableHTMLAttribute
       "[&_th]:h-10 [&_th]:whitespace-nowrap [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:text-sm [&_th]:font-semibold [&_th]:text-admin-muted",
       "[&_tbody>tr]:border-b [&_tbody>tr]:border-admin-border-subtle [&_tbody>tr:hover]:bg-admin-hover",
       "[&_td]:h-[58px] [&_td]:px-3 [&_td]:py-2 [&_td]:align-top",
-      "[&_td>strong]:block [&_td>small]:mt-0.5 [&_td>small]:block [&_td>small]:text-xs [&_td>small]:text-admin-muted",
+      "[&_td>strong]:block [&_td_small]:mt-0.5 [&_td_small]:block [&_td_small]:text-xs [&_td_small]:text-admin-muted",
       className,
     )}
     {...props}

@@ -20,7 +20,7 @@ test.describe("Conduct Report routes", () => {
       "Member moderation context",
       "Conduct Report decision",
     ]);
-    await expect(drawer.getByText("Assignment accepted · Proof Submission not provided · dueAt 27 Aug 2026 · 15:00", { exact: true })).toBeVisible();
+    await expect(drawer.getByText("Assignment accepted · Proof Submission not provided · dueAt 27 Aug 2026 15:00", { exact: true })).toBeVisible();
     await expect(drawer.getByText("QST-12001", { exact: true })).toBeVisible();
     const parties = drawer.locator(".conduct-report-overview-parties");
     await expect(parties.getByText("Reported Member", { exact: true })).toBeVisible();
@@ -48,8 +48,8 @@ test.describe("Conduct Report routes", () => {
     await expect(page.getByRole("heading", { name: "Conduct Report timeline", exact: true })).toBeVisible();
     await expect(page.locator(".conduct-report-detail .conduct-report-overview")).toContainText("CND-8301");
     await expect(page.locator(".conduct-report-detail .conduct-report-overview")).toContainText("Akarin Ariyawat");
-    await expect(page.locator(".conduct-report-detail-body > .grid > div:first-child")).toContainText("Assignment accepted · Proof Submission not provided · dueAt 27 Aug 2026 · 15:00");
+    await expect(page.locator(".conduct-report-detail-body > .grid > div:first-child")).toContainText("Assignment accepted · Proof Submission not provided · dueAt 27 Aug 2026 15:00");
     await expect(relatedQuest).toContainText("QST-12001");
-    await expect(page.getByText("Assignment accepted · Proof Submission not provided · dueAt 27 Aug 2026 · 15:00", { exact: true })).toBeVisible();
+    await expect(page.getByText("Assignment accepted · Proof Submission not provided · dueAt 27 Aug 2026 15:00", { exact: true })).toBeVisible();
   });
 });
