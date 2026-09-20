@@ -208,26 +208,26 @@ export function AdminLoginPage() {
           <p className="login-error" id="login-form-error" role="alert" hidden={!formError}>{formError}</p>
           <Button variant="primary" className="login-submit" type="submit" disabled={isSubmitting}>{text.signIn}</Button>
         </form>
-        <div className="language-control login-language">
-          <fieldset className="login-language-options" aria-label={text.languageOptions}>
-            <legend className="language-control-label">{text.language}</legend>
-            <div className="language-options">
-            <button
-              className="language-option"
+        <div className="mt-6 border-t border-admin-border pt-4">
+          <fieldset className="m-0 grid min-w-0 gap-1 border-0 p-0" aria-label={text.languageOptions}>
+            <legend className="mb-1.5 block text-xs font-bold uppercase tracking-[0.07em] text-admin-muted">{text.language}</legend>
+            <div className="grid grid-cols-2 gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              className="min-h-9 bg-admin-soft px-2 py-1.5 text-xs text-admin-muted aria-pressed:border-admin-accent aria-pressed:bg-admin-accent-soft aria-pressed:text-admin-accent"
               type="button"
               aria-pressed={language === "en"}
               onClick={showEnglish}
-            >
-              English
-            </button>
-            <button
-              className="language-option"
+            >English</Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="min-h-9 bg-admin-soft px-2 py-1.5 text-xs text-admin-muted aria-pressed:border-admin-accent aria-pressed:bg-admin-accent-soft aria-pressed:text-admin-accent"
               type="button"
               aria-pressed={language === "th"}
               onClick={showThai}
-            >
-              ไทย
-            </button>
+            >ไทย</Button>
             </div>
           </fieldset>
         </div>

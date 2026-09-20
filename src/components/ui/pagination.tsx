@@ -72,7 +72,7 @@ export function Pagination({
       <Button variant="outline" size="xs" className={cn("min-h-8 border-admin-border bg-admin-surface px-2 text-xs text-admin-muted hover:border-admin-accent hover:bg-admin-accent-soft hover:text-admin-text", buttonClassName)} disabled={safePage <= 1} onClick={() => onPageChange(safePage - 1)}>
         {previousLabel}
       </Button>
-      <span className="page-indicator text-sm text-admin-muted" aria-live="polite">{pageLabel} {safePage} {ofLabel} {Math.max(pageCount, 1)}</span>
+      <span className="text-sm text-admin-muted" aria-live="polite">{pageLabel} {safePage} {ofLabel} {Math.max(pageCount, 1)}</span>
       <Button variant="outline" size="xs" className={cn("min-h-8 border-admin-border bg-admin-surface px-2 text-xs text-admin-muted hover:border-admin-accent hover:bg-admin-accent-soft hover:text-admin-text", buttonClassName)} disabled={safePage >= pageCount} onClick={() => onPageChange(safePage + 1)}>
         {nextLabel}
       </Button>

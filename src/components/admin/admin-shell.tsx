@@ -30,6 +30,13 @@ function identityName(identity: AdminIdentity): string {
   return `${identity.firstName} ${identity.lastName}`.trim() || identity.email;
 }
 
+function hasBrowserMockSession(): boolean {
+  return document.cookie.split(";").some((part) => {
+    const [name, value] = part.trim().split("=", 2);
+    return name === ADMIN_MOCK_SESSION_COOKIE && Boolean(value);
+  });
+}
+
 export function AdminShell({ identity, children }: AdminShellProps) {
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [language, setLanguage] = useState<AdminLanguage>("en");
@@ -51,7 +58,7 @@ export function AdminShell({ identity, children }: AdminShellProps) {
     const finishLogout = () => {
       window.localStorage.removeItem(ADMIN_SESSION_KEY);
       document.cookie = `${ADMIN_MOCK_SESSION_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax`;
-      window.location.assign("/login");
+      window.location.replace("/login");
     };
 
     if (isAdminMockEnabled()) {
@@ -89,6 +96,38 @@ export function AdminShell({ identity, children }: AdminShellProps) {
     void loadNavigationCounts();
     return () => {
       cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    let checking = false;
+
+    const redirectIfSessionMissing = async () => {
+      if (cancelled || checking) return;
+      checking = true;
+      try {
+        if (isAdminMockEnabled()) {
+          if (!hasBrowserMockSession()) window.location.replace("/login");
+          return;
+        }
+
+        const session = await adminApi.getSession();
+        if (!session && !cancelled) window.location.replace("/login");
+      } catch {
+        if (!cancelled) window.location.replace("/login");
+      } finally {
+        checking = false;
+      }
+    };
+
+    window.addEventListener("pageshow", redirectIfSessionMissing);
+    window.addEventListener("popstate", redirectIfSessionMissing);
+    void redirectIfSessionMissing();
+    return () => {
+      cancelled = true;
+      window.removeEventListener("pageshow", redirectIfSessionMissing);
+      window.removeEventListener("popstate", redirectIfSessionMissing);
     };
   }, []);
 

@@ -10,6 +10,9 @@ import { AdminShell } from "../../components/admin/admin-shell";
 import { ForbiddenPage } from "../../components/admin/forbidden-page";
 import { getAdminSession } from "../../lib/auth/admin-session";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 type AdminLayoutProps = {
   children: React.ReactNode;
   modal: React.ReactNode;

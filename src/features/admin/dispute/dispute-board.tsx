@@ -18,7 +18,7 @@ import {
   type DisputeCaseModel,
 } from "./dispute-model";
 import { loadDisputeCasePageData, type DisputeCasePageData } from "./dispute-service";
-import { adminBoardCount, adminBoardPagination, adminBoardTable } from "../../../components/admin/admin-record-styles";
+import { adminBoardCount, adminBoardPagination, adminBoardTable, adminSortIndicator, adminTableSort } from "../../../components/admin/admin-record-styles";
 
 type DisputeCaseTab = "all" | "open" | "dismissed" | "resolved";
 type DisputeCaseSortKey = "id" | "quest" | "hirer" | "worker" | "category" | "amount" | "status" | "opened";
@@ -276,5 +276,5 @@ function SortableHeader({
   onSort: (key: DisputeCaseSortKey) => void;
 }) {
   const active = activeKey === sortKey;
-  return <TableHead aria-sort={active ? direction : "none"}><button className={`table-sort${active ? " is-active" : ""}`} type="button" onClick={() => onSort(sortKey)}>{label}<span className="sort-indicator" aria-hidden="true">{active ? (direction === "ascending" ? "↑" : "↓") : "↕"}</span></button></TableHead>;
+  return <TableHead aria-sort={active ? direction : "none"}><button className={adminTableSort(active)} type="button" onClick={() => onSort(sortKey)}>{label}<span className={adminSortIndicator(active)} aria-hidden="true">{active ? (direction === "ascending" ? "↑" : "↓") : "↕"}</span></button></TableHead>;
 }

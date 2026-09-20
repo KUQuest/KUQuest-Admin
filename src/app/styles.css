@@ -169,150 +169,6 @@ button:not([data-slot="button"]) {
   scrollbar-width: thin;
   scrollbar-color: var(--strong) transparent;
 }
-.theme-control {
-  position: relative;
-  flex: 0 0 auto;
-  margin-top: auto;
-  padding: 8px 0;
-}
-.theme-trigger-copy {
-  min-width: 0;
-  flex: 1;
-}
-.theme-trigger-copy strong,
-.theme-trigger-copy small {
-  display: block;
-}
-.theme-trigger-copy strong {
-  font-size: 14px;
-}
-.theme-trigger-copy small {
-  margin-top: 2px;
-  overflow: hidden;
-  color: var(--muted);
-  font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.theme-trigger-chevron {
-  color: var(--muted);
-  font-size: 20px;
-  line-height: 1;
-  transform: translateY(-1px);
-}
-.theme-menu {
-  position: absolute;
-  z-index: 30;
-  right: 0;
-  bottom: calc(100% - 1px);
-  width: 100%;
-  padding: 7px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
-  box-shadow: var(--shadow-card);
-}
-.theme-menu[hidden] {
-  display: none;
-}
-.theme-menu-title {
-  margin: 3px 7px 6px;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 600;
-}
-.theme-options {
-  display: grid;
-  gap: 2px;
-}
-fieldset.theme-options {
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-.theme-option-copy,
-.theme-option-copy strong,
-.theme-option-copy small {
-  display: block;
-  min-width: 0;
-}
-.theme-option-copy strong {
-  font-size: 14px;
-}
-.theme-option-copy small {
-  margin-top: 2px;
-  overflow: hidden;
-  color: var(--muted);
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.theme-option-check {
-  color: var(--accent);
-  font-size: 16px;
-  font-weight: 700;
-  opacity: 0;
-}
-.theme-swatch {
-  width: 18px;
-  height: 18px;
-  display: block;
-  border: 1px solid var(--border);
-  border-radius: 5px;
-}
-.theme-swatch-grey { background: var(--theme-preview-grey); }
-.theme-swatch-green { background: var(--theme-preview-green); }
-.theme-swatch-dark { background: var(--theme-preview-dark); }
-.language-control {
-  flex: 0 0 auto;
-  padding: 8px 0;
-}
-.language-control-label {
-  display: block;
-  margin: 0 10px 6px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-.language-options {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px;
-}
-fieldset.language-options {
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-.language-option {
-  min-height: 36px;
-  padding: 6px 8px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--soft);
-  color: var(--muted);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.language-option:hover,
-.language-option[aria-pressed="true"] {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-.login-language {
-  margin-top: 24px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
-}
-.login-language .language-control-label {
-  margin-left: 0;
-}
 .command-input kbd {
   margin-left: auto;
   padding: 1px 6px;
@@ -397,41 +253,6 @@ fieldset.language-options {
   padding: 0 11px;
   border: 1px solid var(--strong);
   border-radius: 8px;
-}
-.page-indicator {
-  color: var(--muted);
-  font-size: 14px;
-}
-.table-sort {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-height: 28px;
-  margin: -4px -7px;
-  padding: 4px 7px;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: inherit;
-  text-align: left;
-  font: inherit;
-  cursor: pointer;
-}
-.table-sort:hover,
-.table-sort:focus-visible {
-  background: var(--hover);
-  color: var(--text);
-}
-.table-sort.is-active {
-  color: var(--text);
-}
-.sort-indicator {
-  color: var(--muted);
-  font-size: 15px;
-  line-height: 1;
-}
-.table-sort.is-active .sort-indicator {
-  color: var(--accent);
 }
 .row-record-button {
   min-height: 32px;
@@ -955,7 +776,6 @@ dialog::backdrop {
   .row-record-button {
     min-height: 44px;
   }
-  .table-sort,
   input:not([type="checkbox"]):not([type="radio"]),
   select {
     min-height: 44px;

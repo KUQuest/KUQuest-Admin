@@ -104,6 +104,18 @@ test.describe("shared Admin shell", () => {
     await expect(page).toHaveURL("/quest");
   });
 
+  test("does not restore a protected page after logout and browser Back", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/quest");
+
+    await page.getByRole("button", { name: "Log out" }).click();
+    await expect(page).toHaveURL(/\/login$/);
+
+    await page.goBack();
+    await expect(page).toHaveURL(/\/login$/);
+    await expect(page.getByRole("heading", { name: "Sign in to admin" })).toBeVisible();
+  });
+
   test("renders the canonical Activity Log route with mock audit fixtures", async ({ page }) => {
     await signIn(page);
     await page.goto("/activity");

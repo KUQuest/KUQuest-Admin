@@ -19,7 +19,7 @@ import {
   type ReportCaseModel,
 } from "./report-model";
 import { loadReportCasePageData, type ReportCasePageData } from "./report-service";
-import { adminBoardCount, adminBoardPagination, adminBoardTable } from "../../../components/admin/admin-record-styles";
+import { adminBoardCount, adminBoardPagination, adminBoardTable, adminSortIndicator, adminTableSort } from "../../../components/admin/admin-record-styles";
 
 type ReportCaseTab = "all" | "open" | "dismissed" | "confirmed" | "restored";
 type ReportCaseSortKey = "id" | "source" | "reportedMember" | "reporter" | "type" | "status" | "reported";
@@ -256,5 +256,5 @@ function SortableHeader({
   onSort: (key: ReportCaseSortKey) => void;
 }) {
   const active = activeKey === sortKey;
-  return <TableHead aria-sort={active ? direction : "none"}><button className={`table-sort${active ? " is-active" : ""}`} type="button" onClick={() => onSort(sortKey)}>{label}<span className="sort-indicator" aria-hidden="true">{active ? (direction === "ascending" ? "↑" : "↓") : "↕"}</span></button></TableHead>;
+  return <TableHead aria-sort={active ? direction : "none"}><button className={adminTableSort(active)} type="button" onClick={() => onSort(sortKey)}>{label}<span className={adminSortIndicator(active)} aria-hidden="true">{active ? (direction === "ascending" ? "↑" : "↓") : "↕"}</span></button></TableHead>;
 }
