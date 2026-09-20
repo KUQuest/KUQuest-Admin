@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useCallback,
   useEffect,
@@ -33,7 +34,6 @@ import {
   walletPageCount,
   walletStatusClass,
   WALLET_BOARD_TABS,
-  type WalletBoardPageSize,
   type WalletBoardRow,
   type WalletBoardTab,
   type WalletDetailView,
@@ -45,6 +45,8 @@ import {
   type WalletSortSelection,
   type WalletVerificationView,
 } from "./wallet-model";
+import { useWalletBoardStore } from "./wallet-board-store";
+import { useWalletBoardQuery, walletBoardQueryKey, type WalletBoardQueryData } from "./wallet-query";
 import type { WalletDataSource, WalletBoardPageData } from "./wallet-service";
 
 type WalletStatusTarget = Exclude<WalletStatus, "CLOSED">;
@@ -442,91 +444,42 @@ function SortableHeader({
 export function AdminWalletPage({ initialData }: { initialData: WalletBoardPageData }) {
   const router = useRouter();
   const { translateText } = useAdminShell();
+  const queryClient = useQueryClient();
   const drawerOpenerRef = useRef<HTMLElement | null>(null);
-  const mockAllRows = initialData.dataSource === "mock" ? initialData.allRows : undefined;
-  const defaultPageSize: WalletBoardPageSize = 10;
-  const initialRows = mockAllRows ?? initialData.rows;
-  const [rows, setRows] = useState<WalletBoardRow[]>(initialRows);
-  const [isLoadingMore, setIsLoadingMore] = useState(Boolean(initialData.remainingRows));
-  const [backgroundLoadError, setBackgroundLoadError] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
-  const [tab, setTab] = useState<WalletBoardTab>("all");
-  const [pageSize, setPageSize] = useState<WalletBoardPageSize>(defaultPageSize);
-  const [page, setPage] = useState(1);
-  const [sortKey, setSortKey] = useState<WalletSortSelection>(null);
-  const [sortDirection, setSortDirection] = useState<WalletSortDirection>("ascending");
-  const direction = sortDirection;
+  const { data: boardData, isFetching, error: queryError } = useWalletBoardQuery(initialData);
+  const rows = boardData?.rows ?? [];
+  const {
+    search,
+    tab,
+    pageSize,
+    pageNumber,
+    sortKey,
+    sortDirection,
+    setSearch,
+    setTab,
+    setPageSize,
+    setPageNumber,
+    sortBy,
+    reset,
+  } = useWalletBoardStore();
   const [selectedWallet, setSelectedWallet] = useState<WalletBoardRow | null>(null);
   const [mockStatusHistory, setMockStatusHistory] = useState<Record<string, WalletHistoryView[]>>({});
 
   useEffect(() => {
-    setRows(initialData.dataSource === "mock" && initialData.allRows ? initialData.allRows : initialData.rows);
-    setPageSize(defaultPageSize);
+    reset();
     setMockStatusHistory({});
-    const remainingRows = initialData.remainingRows;
-    setIsLoadingMore(Boolean(remainingRows));
-    setBackgroundLoadError(null);
-    if (!remainingRows) return;
+  }, [reset]);
 
-    let cancelled = false;
-    void Promise.resolve(remainingRows).then(({ rows: loadedRows, error }) => {
-      if (cancelled) return;
-      if (error) {
-        setBackgroundLoadError(error);
-        setIsLoadingMore(false);
-        return;
-      }
-      setRows((currentRows) => {
-        const existingIds = new Set(currentRows.map((row) => row.id));
-        return [...currentRows, ...loadedRows.filter((row) => !existingIds.has(row.id))];
-      });
-      setIsLoadingMore(false);
-      return undefined;
-    }).catch(() => {
-      if (!cancelled) {
-        setBackgroundLoadError("Some Wallet records could not be loaded.");
-        setIsLoadingMore(false);
-      }
-    });
-
-    return () => { cancelled = true; };
-  }, [initialData]);
-
-  const filteredRows = searchWalletRows(rows, query).filter((row) => walletMatchesTab(row, tab));
+  const filteredRows = searchWalletRows(rows, search).filter((row) => walletMatchesTab(row, tab));
   const sortedRows = sortWalletRows(filteredRows, sortKey, sortDirection);
   const totalPages = walletPageCount(sortedRows.length, pageSize);
-  const currentPage = Math.min(page, Math.max(totalPages, 1));
+  const currentPage = Math.min(pageNumber, Math.max(totalPages, 1));
   const visibleRows = pageWalletRows(sortedRows, currentPage, pageSize);
   const pageStart = visibleRows.length ? (pageSize === "all" ? 1 : (currentPage - 1) * pageSize + 1) : 0;
   const pageEnd = visibleRows.length ? pageStart + visibleRows.length - 1 : 0;
 
-  function chooseTab(nextTab: WalletBoardTab) {
-    setTab(nextTab);
-    setPage(1);
-  }
-
-  function choosePageSize(nextSize: WalletBoardPageSize) {
-    setPageSize(nextSize);
-    setPage(1);
-  }
-
-  function sortBy(nextKey: WalletSortKey) {
-    setPage(1);
-    if (sortKey === nextKey) setSortDirection((currentDirection) => currentDirection === "ascending" ? "descending" : "ascending");
-    else {
-      setSortKey(nextKey);
-      setSortDirection("ascending");
-    }
-  }
-
   function resetView() {
-    setRows(mockAllRows ?? initialData.rows);
-    setQuery("");
-    setTab("all");
-    setPageSize(defaultPageSize);
-    setPage(1);
-    setSortKey(null);
-    setSortDirection("ascending");
+    reset();
   }
 
   function openWalletDrawer(row: WalletBoardRow, opener: HTMLElement) {
@@ -539,9 +492,11 @@ export function AdminWalletPage({ initialData }: { initialData: WalletBoardPageD
   }, []);
 
   const handleStatusChanged = useCallback((walletId: string, nextStatus: WalletStatus, historyEntry: WalletHistoryView) => {
-    setRows((currentRows) => currentRows.map((row) => row.id === walletId
-      ? { ...row, status: nextStatus, statusLabel: walletStatusLabel(nextStatus) }
-      : row));
+    queryClient.setQueryData<WalletBoardQueryData>([...walletBoardQueryKey, initialData.dataSource], (current) => current
+      ? { ...current, rows: current.rows.map((row) => row.id === walletId
+        ? { ...row, status: nextStatus, statusLabel: walletStatusLabel(nextStatus) }
+        : row) }
+      : current);
     setSelectedWallet((current) => current?.id === walletId
       ? { ...current, status: nextStatus, statusLabel: walletStatusLabel(nextStatus) }
       : current);
@@ -549,7 +504,7 @@ export function AdminWalletPage({ initialData }: { initialData: WalletBoardPageD
       ...current,
       [walletId]: [historyEntry, ...(current[walletId] ?? [])],
     }));
-  }, []);
+  }, [initialData.dataSource, queryClient]);
 
   if (initialData.boardError) return <main className="admin-route-page wallet-route-page" tabIndex={-1}>
     <AdminPageHeader title={translateText("Wallets")} description={translateText("Review Wallet status and balances. Wallet detail is not a route in this migration.")} />
@@ -568,8 +523,6 @@ export function AdminWalletPage({ initialData }: { initialData: WalletBoardPageD
     : pageSize === "all"
     ? `${translateText("Showing all")} ${sortedRows.length} ${translateText(sortedRows.length === 1 ? "result" : "results")}`
     : `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${sortedRows.length} ${translateText(sortedRows.length === 1 ? "result" : "results")}`;
-  const resultLabelWithLoading = isLoadingMore ? `${resultLabel} · ${translateText("Loading more records…")}` : resultLabel;
-
   return <main className="admin-route-page wallet-route-page" tabIndex={-1}>
     <AdminPageHeader title={translateText("Wallets")} description={translateText("Review Wallet status and balances. Wallet detail is not a route in this migration.")} />
     <Card as="section" className="overflow-hidden wallet-board" aria-label={translateText("Wallet review board")}>
@@ -578,21 +531,21 @@ export function AdminWalletPage({ initialData }: { initialData: WalletBoardPageD
         <span className={adminBoardCount}>{sortedRows.length} {translateText("shown")}</span>
       </CardHeader>
       <WalletSummary summary={initialData.summary} error={initialData.summaryError} dataSource={initialData.dataSource} onRetry={() => router.refresh()} />
-      <Tabs value={tab} onValueChange={(value) => chooseTab(value as WalletBoardTab)}>
+      <Tabs value={tab} onValueChange={(value) => setTab(value as WalletBoardTab)}>
         <TabsList className="px-3" aria-label={translateText("Wallet status filters")}>
           {WALLET_BOARD_TABS.map((item) => <TabsTrigger key={item.id} value={item.id}>{translateText(item.label)}{item.id === "all" ? ` (${rows.length})` : ""}</TabsTrigger>)}
         </TabsList>
       </Tabs>
       <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2">
-        <label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text max-[600px]:basis-full max-[600px]:max-w-none" htmlFor="wallet-search"><span className="visually-hidden">{translateText("Search Wallets")}</span><Input className="h-9 min-h-9 px-3 py-1.5 text-sm" id="wallet-search" type="search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={translateText("Search Wallets…")} autoComplete="off" /></label>
+        <label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text max-[600px]:basis-full max-[600px]:max-w-none" htmlFor="wallet-search"><span className="visually-hidden">{translateText("Search Wallets")}</span><Input className="h-9 min-h-9 px-3 py-1.5 text-sm" id="wallet-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={translateText("Search Wallets…")} autoComplete="off" /></label>
         <span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span>
-        <PageSizeControls value={pageSize} translateText={translateText} onChange={choosePageSize} />
-        <span className="ml-auto text-sm text-admin-muted max-[600px]:hidden" aria-live="polite">{translateText(resultLabelWithLoading)}</span>
+        <PageSizeControls value={pageSize} translateText={translateText} onChange={setPageSize} />
+        <span className="ml-auto text-sm text-admin-muted max-[600px]:hidden" aria-live="polite">{translateText(resultLabel)}{isFetching ? ` · ${translateText("Loading more records…")}` : ""}</span>
       </div>
-      {backgroundLoadError ? <p className="field-error" role="alert">{translateText(backgroundLoadError)} <UiButton variant="link" size="sm" type="button" onClick={() => router.refresh()}>{translateText("Try again")}</UiButton></p> : null}
+      {queryError ? <p className="field-error" role="alert">{translateText(queryError instanceof Error ? queryError.message : "Some Wallet records could not be loaded.")} <UiButton variant="link" size="sm" type="button" onClick={() => router.refresh()}>{translateText("Try again")}</UiButton></p> : null}
       {initialData.boardError ? <p className="field-error" role="alert">{translateText(initialData.boardError)} <UiButton variant="link" size="sm" type="button" onClick={() => router.refresh()}>{translateText("Try again")}</UiButton></p> : null}
-      {!sortedRows.length ? <EmptyState title={translateText("No matching records")} description={query.trim() ? translateText("Clear your search to see more results.") : translateText("There are no records in this view.")} action={<UiButton variant="outline" type="button" onClick={resetView}>{translateText("Reset view")}</UiButton>} /> : <section className="overflow-x-auto wallet-board-table-wrap" aria-label={translateText("Wallets table")}><Table className={`${adminBoardTable} wallet-board-table`}><caption>{translateText("Wallets")}</caption><thead><tr><SortableHeader label={translateText("Wallet / Member ID")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Member")} sortKey="member" activeKey={sortKey} direction={direction} onSort={sortBy} /><th scope="col">{translateText("Email")}</th><SortableHeader label={translateText("Current Wallet Balance")} sortKey="balance" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Latest Wallet Transaction Date")} sortKey="latestTransactionAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Wallet status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Created")} sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr data-wallet-row={row.id} key={row.id} tabIndex={0} aria-label={`${translateText("Open Wallet")} ${row.id}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; openWalletDrawer(row, event.currentTarget); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openWalletDrawer(row, event.currentTarget); } }}><td><button className="row-record-button" type="button" data-wallet-drawer-trigger={row.id} aria-label={`${translateText("Open Wallet")} ${row.id}`} onClick={(event) => openWalletDrawer(row, event.currentTarget)}>{row.id}</button><small>{row.memberId}</small><div className="wallet-mobile-key-facts" aria-label={translateText("Wallet summary")}><div><span>{translateText("Current Wallet Balance")}</span><strong>{formatWalletMoney(row.currentBalanceSatang)}</strong></div><div><span>{translateText("Wallet Status")}</span><strong><Badge status={row.status} track={false} /></strong></div><div><span>{translateText("Latest Wallet Transaction Date")}</span><strong>{formatWalletDate(row.latestTransactionAt)}</strong></div></div></td><td>{row.memberAvailable ? <Link className="user-record-link" data-member-link={row.memberId} href={memberTabHref(row.memberId, "overview")} aria-label={`${translateText("Open Member")} ${row.memberName}`}><strong>{row.memberName}</strong></Link> : <strong>{row.memberName}</strong>}</td><td><strong>{row.email}</strong><small>{row.studentId || translateText("Student ID not provided")}</small></td><td className="money">{formatWalletMoney(row.currentBalanceSatang)}</td><td>{formatWalletDate(row.latestTransactionAt)}</td><td><Badge status={row.status} /></td><td>{formatWalletDate(row.createdAt)}</td></tr>)}</tbody></Table></section>}
-      {sortedRows.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPage} ariaLabel={translateText("Wallets pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className={adminBoardPagination} /> : null}
+      {!sortedRows.length ? <EmptyState title={translateText("No matching records")} description={search.trim() ? translateText("Clear your search to see more results.") : translateText("There are no records in this view.")} action={<UiButton variant="outline" type="button" onClick={resetView}>{translateText("Reset view")}</UiButton>} /> : <section className="overflow-x-auto wallet-board-table-wrap" aria-label={translateText("Wallets table")}><Table className={`${adminBoardTable} wallet-board-table`}><caption>{translateText("Wallets")}</caption><thead><tr><SortableHeader label={translateText("Wallet / Member ID")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Member")} sortKey="member" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><th scope="col">{translateText("Email")}</th><SortableHeader label={translateText("Current Wallet Balance")} sortKey="balance" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Latest Wallet Transaction Date")} sortKey="latestTransactionAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Wallet status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Created")} sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr data-wallet-row={row.id} key={row.id} tabIndex={0} aria-label={`${translateText("Open Wallet")} ${row.id}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; openWalletDrawer(row, event.currentTarget); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openWalletDrawer(row, event.currentTarget); } }}><td><button className="row-record-button" type="button" data-wallet-drawer-trigger={row.id} aria-label={`${translateText("Open Wallet")} ${row.id}`} onClick={(event) => openWalletDrawer(row, event.currentTarget)}>{row.id}</button><small>{row.memberId}</small><div className="wallet-mobile-key-facts" aria-label={translateText("Wallet summary")}><div><span>{translateText("Current Wallet Balance")}</span><strong>{formatWalletMoney(row.currentBalanceSatang)}</strong></div><div><span>{translateText("Wallet Status")}</span><strong><Badge status={row.status} track={false} /></strong></div><div><span>{translateText("Latest Wallet Transaction Date")}</span><strong>{formatWalletDate(row.latestTransactionAt)}</strong></div></div></td><td>{row.memberAvailable ? <Link className="user-record-link" data-member-link={row.memberId} href={memberTabHref(row.memberId, "overview")} aria-label={`${translateText("Open Member")} ${row.memberName}`}><strong>{row.memberName}</strong></Link> : <strong>{row.memberName}</strong>}</td><td><strong>{row.email}</strong><small>{row.studentId || translateText("Student ID not provided")}</small></td><td className="money">{formatWalletMoney(row.currentBalanceSatang)}</td><td>{formatWalletDate(row.latestTransactionAt)}</td><td><Badge status={row.status} /></td><td>{formatWalletDate(row.createdAt)}</td></tr>)}</tbody></Table></section>}
+      {sortedRows.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Wallets pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className={adminBoardPagination} /> : null}
     </Card>
     {selectedWallet ? <WalletDrawer row={selectedWallet} dataSource={initialData.dataSource} initialMockHistory={mockStatusHistory[selectedWallet.id] ?? []} opener={drawerOpenerRef.current} onClose={closeWalletDrawer} onStatusChanged={handleStatusChanged} /> : null}
   </main>;
