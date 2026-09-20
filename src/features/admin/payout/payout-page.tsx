@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type FormEvent,
@@ -61,6 +63,8 @@ import {
   readMockPayoutOverrides,
   saveMockPayoutOverride,
 } from "./payout-mock-state";
+import { usePayoutBoardStore } from "./payout-board-store";
+import { usePayoutBoardQuery } from "./payout-query";
 
 type PayoutPresentation = "page" | "drawer";
 type PayoutCommand = "approve" | "reject";
@@ -658,40 +662,55 @@ export function AdminPayoutPage({
 }) {
   const router = useRouter();
   const { translateText } = useAdminShell();
-  const mockAllRows = initialData.allRows;
-  const initialRows = mockAllRows ?? initialData.rows;
-  const [rows, setRows] = useState<PayoutBoardRow[]>(initialRows);
-  const [query, setQuery] = useState("");
-  const [tab, setTab] = useState<PayoutBoardTab>("PENDING_ADMIN_APPROVAL");
-  const [pageSize, setPageSize] = useState<PayoutBoardPageSize>(10);
-  const [page, setPage] = useState(1);
-  const [sortKey, setSortKey] = useState<PayoutSortKey>("createdAt");
-  const [sortDirection, setSortDirection] = useState<PayoutSortDirection>("descending");
+  const queryClient = useQueryClient();
+  const { data: boardData, queryKey } = usePayoutBoardQuery(initialData, dataSource);
+  const {
+    query,
+    tab,
+    pageSize,
+    page,
+    sortKey,
+    sortDirection,
+    setQuery,
+    setTab,
+    setPageSize,
+    setPage,
+    sortBy,
+    reset,
+  } = usePayoutBoardStore();
 
   useEffect(() => {
-    const nextRows = initialData.allRows ?? initialData.rows;
-    if (dataSource !== "mock" || typeof window === "undefined") {
-      setRows(nextRows);
-      return;
-    }
+    reset();
+  }, [reset]);
+
+  const rows = useMemo(() => {
+    const nextRows = boardData.allRows ?? boardData.rows;
+    if (dataSource !== "mock" || typeof window === "undefined") return nextRows;
     const overrides = readMockPayoutOverrides(window.localStorage);
-    setRows(nextRows.map((row) => applyMockPayoutOverrideToRow(row, overrides[row.id] ?? null)));
-  }, [dataSource, initialData]);
+    return nextRows.map((row) => applyMockPayoutOverrideToRow(row, overrides[row.id] ?? null));
+  }, [boardData, dataSource]);
 
   useEffect(() => {
     if (dataSource !== "mock") return;
     const updateRow = (event: Event) => {
       const nextDetail = (event as CustomEvent<PayoutDetailView>).detail;
       if (!nextDetail?.id) return;
-      setRows((current) => current.map((row) => (
-        row.id === nextDetail.id
-          ? applyMockPayoutOverrideToRow(row, payoutMockOverrideFromDetail(nextDetail))
-          : row
-      )));
+      queryClient.setQueryData<PayoutBoardPageData>(queryKey, (current) => {
+        if (!current) return current;
+        const override = payoutMockOverrideFromDetail(nextDetail);
+        const updateRows = (currentRows: PayoutBoardRow[]) => currentRows.map((row) => (
+          row.id === nextDetail.id ? applyMockPayoutOverrideToRow(row, override) : row
+        ));
+        return {
+          ...current,
+          rows: updateRows(current.rows),
+          allRows: current.allRows ? updateRows(current.allRows) : current.allRows,
+        };
+      });
     };
     window.addEventListener(PAYOUT_MOCK_UPDATED_EVENT, updateRow);
     return () => window.removeEventListener(PAYOUT_MOCK_UPDATED_EVENT, updateRow);
-  }, [dataSource]);
+  }, [dataSource, queryClient, queryKey]);
 
   const filteredRows = searchPayoutRows(rows, query).filter((row) => payoutMatchesTab(row, tab));
   const sortedRows = sortPayoutRows(filteredRows, sortKey, sortDirection);
@@ -703,14 +722,8 @@ export function AdminPayoutPage({
 
   function chooseTab(nextTab: PayoutBoardTab) {
     setTab(nextTab);
-    setPage(1);
   }
-  function choosePageSize(nextSize: PayoutBoardPageSize) { setPageSize(nextSize); setPage(1); }
-  function sortBy(nextKey: PayoutSortKey) {
-    setPage(1);
-    if (sortKey === nextKey) setSortDirection((direction) => direction === "ascending" ? "descending" : "ascending");
-    else { setSortKey(nextKey); setSortDirection("ascending"); }
-  }
+  function choosePageSize(nextSize: PayoutBoardPageSize) { setPageSize(nextSize); }
 
   return (
     <main className="admin-route-page payout-route-page" tabIndex={-1}>
@@ -726,7 +739,7 @@ export function AdminPayoutPage({
           </TabsList>
         </Tabs>
         <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2">
-          <label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text max-[600px]:basis-full max-[600px]:max-w-none" htmlFor="payout-search"><span className="visually-hidden">{translateText("Search Payouts")}</span><Input className="h-9 min-h-9 px-3 py-1.5 text-sm" id="payout-search" type="search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={translateText("Search Payouts…")} autoComplete="off" /></label>
+          <label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text max-[600px]:basis-full max-[600px]:max-w-none" htmlFor="payout-search"><span className="visually-hidden">{translateText("Search Payouts")}</span><Input className="h-9 min-h-9 px-3 py-1.5 text-sm" id="payout-search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={translateText("Search Payouts…")} autoComplete="off" /></label>
           <span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span>
           <PageSizeControls value={pageSize} translateText={translateText} onChange={choosePageSize} />
           <span className="ml-auto text-sm text-admin-muted max-[600px]:hidden" aria-live="polite">{translateText("Showing")} {pageStart}–{pageEnd} {translateText("of")} {sortedRows.length} {translateText("results")}</span>

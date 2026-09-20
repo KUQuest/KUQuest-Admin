@@ -18,6 +18,7 @@ import { isAdminMockEnabled } from "../../lib/auth/admin-auth-mode";
 import { AdminHeader } from "./admin-header";
 import { AdminSidebar } from "./admin-sidebar";
 import { AdminShellProvider } from "./admin-shell-context";
+import { AdminQueryProvider } from "./admin-query-provider";
 import { ADMIN_SESSION_KEY } from "../../features/admin/admin-auth";
 import { ADMIN_MOCK_SESSION_COOKIE } from "../../lib/auth/admin-session-policy";
 
@@ -160,27 +161,29 @@ export function AdminShell({ identity, children }: AdminShellProps) {
   }, [mobileNavigationOpen]);
 
   return (
-    <AdminShellProvider language={language} translateText={translateText} openGlobalSearch={openGlobalSearch}>
-      <div className="admin-shell-layout admin-shell min-h-screen grid !grid-cols-[240px_minmax(0,1fr)] grid-rows-[56px_1fr] max-[900px]:!grid-cols-1">
-        <AdminSidebar
-          open={mobileNavigationOpen}
-          onNavigate={closeMobileNavigation}
-          adminName={adminName}
-          counts={navigationCounts}
-          language={language}
-          onLanguageChange={changeLanguage}
-          onLogout={handleLogout}
-          translateText={translateText}
-        />
-        <AdminHeader
-          mobileNavigationOpen={mobileNavigationOpen}
-          onToggleNavigation={toggleMobileNavigation}
-          onOpenSearch={openGlobalSearch}
-          translateText={translateText}
-        />
-        {children}
-        <AdminGlobalSearch open={globalSearchOpen} onClose={closeGlobalSearch} />
-      </div>
-    </AdminShellProvider>
+    <AdminQueryProvider>
+      <AdminShellProvider language={language} translateText={translateText} openGlobalSearch={openGlobalSearch}>
+        <div className="admin-shell-layout admin-shell min-h-screen grid !grid-cols-[240px_minmax(0,1fr)] grid-rows-[56px_1fr] max-[900px]:!grid-cols-1">
+          <AdminSidebar
+            open={mobileNavigationOpen}
+            onNavigate={closeMobileNavigation}
+            adminName={adminName}
+            counts={navigationCounts}
+            language={language}
+            onLanguageChange={changeLanguage}
+            onLogout={handleLogout}
+            translateText={translateText}
+          />
+          <AdminHeader
+            mobileNavigationOpen={mobileNavigationOpen}
+            onToggleNavigation={toggleMobileNavigation}
+            onOpenSearch={openGlobalSearch}
+            translateText={translateText}
+          />
+          {children}
+          <AdminGlobalSearch open={globalSearchOpen} onClose={closeGlobalSearch} />
+        </div>
+      </AdminShellProvider>
+    </AdminQueryProvider>
   );
 }
