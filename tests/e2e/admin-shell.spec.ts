@@ -144,6 +144,21 @@ test.describe("shared Admin shell", () => {
     await expect(page.getByRole("dialog", { name: "Dispute Case details" })).toBeVisible();
   });
 
+  test("sorts Activity Log records by column in both directions", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/activity");
+
+    const main = page.locator("#activity-main");
+    const actorSort = main.getByRole("button", { name: /^Actor/ });
+    await expect(actorSort).toBeVisible();
+    await actorSort.click();
+    await expect(main.locator("thead th").nth(1)).toHaveAttribute("aria-sort", "ascending");
+    await expect(main.locator("tbody tr").first().locator("td").nth(1)).toContainText("Narin Admin");
+    await actorSort.click();
+    await expect(main.locator("thead th").nth(1)).toHaveAttribute("aria-sort", "descending");
+    await expect(main.locator("tbody tr").first().locator("td").nth(1)).toContainText("Supansa Admin");
+  });
+
   test("scrolls the content area inside Quest, Wallet, and Activity drawers", async ({ page }) => {
     await signIn(page);
 

@@ -56,7 +56,7 @@ function isSearchFilter(value: string | null): value is SearchFilter {
 
 function SearchResultIcon({ kind }: { kind: OverviewSearchResult["kind"] }) {
   const iconProps = {
-    className: "admin-global-search-icon",
+    className: "admin-global-search-icon block size-[17px]",
     viewBox: "0 0 24 24",
     fill: "none",
     stroke: "currentColor",
@@ -201,9 +201,9 @@ export function AdminGlobalSearch({ open, onClose, initialData, initialError }: 
   if (!open) return null;
 
   return (
-    <dialog open id="overview-command" className="command" aria-modal="true" aria-labelledby="admin-global-search-title" data-global-search="true">
+    <dialog open id="overview-command" className="command fixed inset-0 z-[70] m-0 h-full max-h-none w-full max-w-none rounded-none border-0 p-0 [background:transparent]" aria-modal="true" aria-labelledby="admin-global-search-title" data-global-search="true">
       <button className="command-backdrop" type="button" aria-label={translateText("Close search")} onClick={onClose} />
-      <div className="command-box admin-global-search-box">
+      <div className="command-box admin-global-search-box w-[min(760px,calc(100vw-28px))] max-h-[min(78dvh,760px)]">
         <div className="command-input">
           <span aria-hidden="true">⌕</span>
           <h2 id="admin-global-search-title" className="visually-hidden">{translateText("Search marketplace records")}</h2>
@@ -222,9 +222,9 @@ export function AdminGlobalSearch({ open, onClose, initialData, initialError }: 
             <span className="close-lines" />
           </button>
         </div>
-        <div className="admin-global-search-controls">
-          <label htmlFor="admin-global-search-type">{translateText("Search type")}
-              <select id="admin-global-search-type" value={kind} onChange={(event) => {
+        <div className="admin-global-search-controls grid grid-cols-[minmax(160px,.7fr)_minmax(0,1.3fr)] items-end gap-3 border-b border-admin-border bg-admin-soft px-4 py-3 max-[600px]:grid-cols-1">
+          <label className="grid gap-1 text-[13px] font-bold text-admin-muted" htmlFor="admin-global-search-type">{translateText("Search type")}
+              <select className="min-h-9 w-full rounded-md border border-admin-border-strong bg-admin-surface px-2 text-sm text-admin-text" id="admin-global-search-type" value={kind} onChange={(event) => {
                 const nextKind = isSearchFilter(event.target.value) ? event.target.value : "all";
                 setKind(nextKind);
                 syncSearchParams(query, nextKind);
@@ -232,31 +232,31 @@ export function AdminGlobalSearch({ open, onClose, initialData, initialError }: 
               {searchFilterOptions.map((option) => <option key={option.value} value={option.value}>{translateText(option.label)}</option>)}
             </select>
           </label>
-          <form className="admin-global-search-save" onSubmit={saveCurrentFilter}>
-            <label htmlFor="admin-global-search-save-name">{translateText("Save this filter")}
-              <input id="admin-global-search-save-name" type="text" value={saveName} onChange={(event) => setSaveName(event.target.value)} placeholder={translateText("Filter name")} />
+          <form className="admin-global-search-save grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2" onSubmit={saveCurrentFilter}>
+            <label className="grid gap-1 text-[13px] font-bold text-admin-muted" htmlFor="admin-global-search-save-name">{translateText("Save this filter")}
+              <input className="min-h-9 w-full rounded-md border border-admin-border-strong bg-admin-surface px-2 text-sm text-admin-text" id="admin-global-search-save-name" type="text" value={saveName} onChange={(event) => setSaveName(event.target.value)} placeholder={translateText("Filter name")} />
             </label>
-            <Button variant="outline" type="submit" disabled={!saveName.trim()}>{translateText("Save")}</Button>
+            <Button className="min-h-9" variant="outline" type="submit" disabled={!saveName.trim()}>{translateText("Save")}</Button>
           </form>
         </div>
-        {savedFilters.length ? <div className="admin-global-search-saved" aria-label={translateText("Saved filters")}>
-          <span>{translateText("Saved filters")}</span>
-          {savedFilters.map((filter) => <Button key={filter.id} variant="link" size="sm" type="button" onClick={() => applySavedFilter(filter)}>{filter.name}</Button>)}
+        {savedFilters.length ? <div className="admin-global-search-saved flex items-center gap-1.5 overflow-x-auto border-b border-admin-border px-4 py-2 whitespace-nowrap" aria-label={translateText("Saved filters")}>
+          <span className="mr-1 text-[13px] font-bold text-admin-muted">{translateText("Saved filters")}</span>
+          {savedFilters.map((filter) => <Button className="min-h-7 rounded-full bg-admin-accent-soft px-2.5 py-1 text-[13px] whitespace-nowrap" key={filter.id} variant="link" size="sm" type="button" onClick={() => applySavedFilter(filter)}>{filter.name}</Button>)}
         </div> : null}
-        {saveMessage ? <output className="admin-global-search-message">{translateText(saveMessage)}</output> : null}
+        {saveMessage ? <output className="admin-global-search-message mx-4 mt-2.5 block text-[13px] text-admin-success">{translateText(saveMessage)}</output> : null}
         <div id="admin-global-search-results" aria-live="polite">
           {initialError && !data ? <p className="p-[60px_24px] text-center text-sm text-admin-muted">{translateText(initialError)}</p> : null}
-          {data?.source === "mock" ? <p className="api-data-notice admin-global-search-notice">{translateText("Fixture search is active. Results use local demo records.")}</p> : null}
+          {data?.source === "mock" ? <p className="api-data-notice admin-global-search-notice mx-4 my-3 mb-1 rounded-lg p-[9px_10px] text-[13px]">{translateText("Fixture search is active. Results use local demo records.")}</p> : null}
           {groups.map((group) => (
             <section key={group.kind} className="admin-global-search-group" aria-labelledby={`admin-global-search-group-${group.kind}`}>
-              <h3 id={`admin-global-search-group-${group.kind}`}>{translateText(overviewSearchResultLabel(group.kind))}<span>{group.items.length}</span></h3>
+              <h3 className="m-0 flex items-center justify-between gap-2 border-b border-admin-border px-4 pb-2 pt-2.5 text-xs font-bold uppercase tracking-[.08em] text-admin-muted" id={`admin-global-search-group-${group.kind}`}>{translateText(overviewSearchResultLabel(group.kind))}<span className="min-w-5 rounded-full bg-admin-soft px-1.5 py-0.5 text-center text-xs tracking-normal text-admin-text">{group.items.length}</span></h3>
               {group.items.map((result) => (
-                <Link key={`${result.kind}-${result.id}`} className="result" href={result.href} onClick={onClose}>
-                  <span className="admin-global-search-marker"><SearchResultIcon kind={result.kind} /></span>
-                  <span className="admin-global-search-result-copy"><strong>{result.title}</strong><small>{result.id} · {translateText(result.detail)}</small></span>
-                  <span className="admin-global-search-result-meta">
-                    <small>{translateText("Status")}</small>
-                    <strong className="admin-global-search-status">{translateText(result.status)}</strong>
+                <Link key={`${result.kind}-${result.id}`} className="result grid w-full grid-cols-[35px_minmax(0,1fr)_auto] items-center gap-2.5 border-0 border-b border-admin-border-subtle bg-admin-surface px-4 py-2.5 text-left !text-admin-text no-underline hover:bg-admin-hover focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-admin-accent max-[600px]:grid-cols-[35px_minmax(0,1fr)]" href={result.href} onClick={onClose}>
+                  <span className="admin-global-search-marker grid size-8 place-items-center rounded-lg bg-admin-soft text-admin-accent"><SearchResultIcon kind={result.kind} /></span>
+                  <span className="admin-global-search-result-copy min-w-0"><strong className="block text-sm font-semibold [overflow-wrap:anywhere]">{result.title}</strong><small className="block text-sm text-admin-muted [overflow-wrap:anywhere]">{result.id} · {translateText(result.detail)}</small></span>
+                  <span className="admin-global-search-result-meta grid min-w-24 justify-items-end gap-0.5 text-right max-[600px]:col-start-2 max-[600px]:min-w-0 max-[600px]:justify-items-start max-[600px]:text-left">
+                    <small className="text-xs font-bold uppercase tracking-[.04em] text-admin-muted">{translateText("Status")}</small>
+                    <strong className="admin-global-search-status max-w-36 rounded-full border border-admin-border-strong bg-admin-soft px-2 py-1 text-[13px] font-bold leading-[1.2] [overflow-wrap:anywhere]">{translateText(result.status)}</strong>
                   </span>
                 </Link>
               ))}

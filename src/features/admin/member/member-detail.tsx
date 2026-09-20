@@ -262,30 +262,30 @@ function WalletStatementTab({ model, translateText }: { model: MemberModel; tran
         </div>
       </CardHeader>
       {model.walletBalances ? (
-        <div className="wallet-statement-balance-grid">
-          <div className="wallet-statement-balance"><span>{translateText("Spending Balance")}</span><strong>{formatMoneySatang(model.walletBalances.spendingBalanceSatang)}</strong></div>
-          <div className="wallet-statement-balance"><span>{translateText("Earnings Balance")}</span><strong>{formatMoneySatang(model.walletBalances.earningsBalanceSatang)}</strong></div>
-          <div className="wallet-statement-balance"><span>{translateText("Funding Reserved")}</span><strong>{formatMoneySatang(model.walletBalances.fundingReservedSatang)}</strong></div>
-          <div className="wallet-statement-balance"><span>{translateText("Reserved For Payouts")}</span><strong>{formatMoneySatang(model.walletBalances.reservedForPayoutsSatang)}</strong></div>
+        <div className="wallet-statement-balance-grid mb-3.5 grid grid-cols-4 gap-2.5 max-[720px]:grid-cols-2 max-[420px]:grid-cols-1">
+          <div className="wallet-statement-balance grid min-w-0 gap-[3px] rounded-admin-sm border border-admin-border bg-admin-soft p-2.5"><span className="overflow-hidden text-ellipsis whitespace-nowrap text-[15px] font-semibold leading-[1.4] text-admin-muted">{translateText("Spending Balance")}</span><strong className="text-[17px] leading-[1.4] [font-variant-numeric:tabular-nums]">{formatMoneySatang(model.walletBalances.spendingBalanceSatang)}</strong></div>
+          <div className="wallet-statement-balance grid min-w-0 gap-[3px] rounded-admin-sm border border-admin-border bg-admin-soft p-2.5"><span className="overflow-hidden text-ellipsis whitespace-nowrap text-[15px] font-semibold leading-[1.4] text-admin-muted">{translateText("Earnings Balance")}</span><strong className="text-[17px] leading-[1.4] [font-variant-numeric:tabular-nums]">{formatMoneySatang(model.walletBalances.earningsBalanceSatang)}</strong></div>
+          <div className="wallet-statement-balance grid min-w-0 gap-[3px] rounded-admin-sm border border-admin-border bg-admin-soft p-2.5"><span className="overflow-hidden text-ellipsis whitespace-nowrap text-[15px] font-semibold leading-[1.4] text-admin-muted">{translateText("Funding Reserved")}</span><strong className="text-[17px] leading-[1.4] [font-variant-numeric:tabular-nums]">{formatMoneySatang(model.walletBalances.fundingReservedSatang)}</strong></div>
+          <div className="wallet-statement-balance grid min-w-0 gap-[3px] rounded-admin-sm border border-admin-border bg-admin-soft p-2.5"><span className="overflow-hidden text-ellipsis whitespace-nowrap text-[15px] font-semibold leading-[1.4] text-admin-muted">{translateText("Reserved For Payouts")}</span><strong className="text-[17px] leading-[1.4] [font-variant-numeric:tabular-nums]">{formatMoneySatang(model.walletBalances.reservedForPayoutsSatang)}</strong></div>
         </div>
       ) : <p className="audit-note">{translateText("No Wallet is linked to this Member.")}</p>}
-      <form className="wallet-statement-filters" onSubmit={submit}>
-        <label>{translateText("Event type")}<select name="eventType" aria-label={translateText("Event type")} defaultValue=""><option value="">{translateText("All event types")}</option>{ADMIN_LEDGER_EVENT_TYPES.map((eventType) => <option key={eventType} value={eventType}>{translateText(eventType)}</option>)}</select></label>
-        <label>{translateText("From ICT date")}<input name="from" type="date" aria-label={translateText("From ICT date")} /></label>
-        <label>{translateText("To ICT date")}<input name="to" type="date" aria-label={translateText("To ICT date")} /></label>
-        <Button variant="primary" type="submit">{translateText("Apply filters")}</Button>
-        <Button variant="outline" type="button" onClick={() => { setFilters({ eventType: "", from: "", to: "" }); setVisibleCount(25); }}>{translateText("Clear")}</Button>
+      <form className="wallet-statement-filters mb-3.5 grid grid-cols-[minmax(0,1.3fr)_repeat(2,minmax(130px,1fr))_auto] items-end gap-[9px] max-[720px]:grid-cols-2 max-[420px]:grid-cols-1" onSubmit={submit}>
+        <label className="grid gap-1 text-[15px] font-semibold leading-[1.4] text-admin-muted max-[720px]:col-span-full max-[420px]:col-span-1">{translateText("Event type")}<select className="min-h-[35px] w-full rounded-[7px] border border-admin-border-strong bg-admin-surface px-2 text-admin-text" name="eventType" aria-label={translateText("Event type")} defaultValue=""><option value="">{translateText("All event types")}</option>{ADMIN_LEDGER_EVENT_TYPES.map((eventType) => <option key={eventType} value={eventType}>{translateText(eventType)}</option>)}</select></label>
+        <label className="grid gap-1 text-[15px] font-semibold leading-[1.4] text-admin-muted">{translateText("From ICT date")}<input className="min-h-[35px] w-full rounded-[7px] border border-admin-border-strong bg-admin-surface px-2 text-admin-text" name="from" type="date" aria-label={translateText("From ICT date")} /></label>
+        <label className="grid gap-1 text-[15px] font-semibold leading-[1.4] text-admin-muted">{translateText("To ICT date")}<input className="min-h-[35px] w-full rounded-[7px] border border-admin-border-strong bg-admin-surface px-2 text-admin-text" name="to" type="date" aria-label={translateText("To ICT date")} /></label>
+        <Button className="min-h-[35px]" variant="primary" type="submit">{translateText("Apply filters")}</Button>
+        <Button className="min-h-[35px]" variant="outline" type="button" onClick={() => { setFilters({ eventType: "", from: "", to: "" }); setVisibleCount(25); }}>{translateText("Clear")}</Button>
       </form>
       {rows.length ? (
-        <div className="wallet-statement-table-block">
-          <p className="wallet-statement-scroll-hint">{translateText("On narrow screens, scroll horizontally to view all Wallet Statement columns.")}</p>
-          <div className="overflow-x-auto wallet-statement-table-wrap" role="region" aria-label={translateText("Wallet Statement table")}>
-            <Table className="wallet-statement-table [&_tbody>tr]:cursor-default [&_tbody>tr>td>strong]:text-xs">
+        <div className="wallet-statement-table-block min-w-0">
+          <p className="wallet-statement-scroll-hint mb-2 hidden rounded-[7px] border border-admin-border bg-admin-soft px-2.5 py-2 text-[15px] leading-[1.4] text-admin-muted max-[600px]:block">{translateText("On narrow screens, scroll horizontally to view all Wallet Statement columns.")}</p>
+          <div className="wallet-statement-table-wrap min-w-0 overflow-x-auto [scrollbar-gutter:stable] max-[600px]:[overscroll-behavior-inline:contain]" role="region" aria-label={translateText("Wallet Statement table")}>
+            <Table className="wallet-statement-table min-w-[760px] [&_tbody>tr]:cursor-default [&_tbody>tr>td>strong]:text-xs [&_td.money]:whitespace-nowrap [&_td.wallet-statement-movement]:min-w-[220px] [&_td_small]:mt-[3px]">
               <caption>{translateText("Wallet Statement")}</caption>
               <thead><tr><th>{translateText("Date")}</th><th>{translateText("Event type")}</th><th>{translateText("Signed amount")}</th><th>{translateText("Compartment movement")}</th><th>{translateText("Resulting Wallet balance")}</th></tr></thead>
               <tbody>{rows.map((row) => <tr key={row.transaction.id}>
-                <td><time dateTime={row.transaction.createdAt}>{formatWalletDate(row.transaction.createdAt)}</time><small>{row.transaction.description}</small></td>
-                <td><strong>{translateText(row.transaction.eventType)}</strong><small>{row.transaction.businessReference}</small></td>
+                <td><time dateTime={row.transaction.createdAt}>{formatWalletDate(row.transaction.createdAt)}</time><small className="mt-[3px] block text-admin-muted">{row.transaction.description}</small></td>
+                <td><strong>{translateText(row.transaction.eventType)}</strong><small className="mt-[3px] block text-admin-muted">{row.transaction.businessReference}</small></td>
                 <td className="money">{formatMoneySatang(row.signedAmountSatang, true)}</td>
                 <td className="wallet-statement-movement">{row.movement.map((movement) => <span key={movement.accountType}>{translateText(movement.accountType)}: {formatMoneySatang(movement.amountSatang, true)}</span>)}</td>
                 <td className="money">{formatMoneySatang(row.resultingWalletBalanceSatang)}</td>

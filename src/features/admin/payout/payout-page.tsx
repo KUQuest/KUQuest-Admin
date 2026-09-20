@@ -225,12 +225,12 @@ function PayoutDetailContent({
   </Section>;
 
   const payoutAmountsSection = <Section title={translateText("Payout amounts")} className={`payout-amounts-section ${fullSectionClass}`}>
-    <div className="payout-summary-grid">
-      <div><span>{translateText("Principal")}</span><strong>{formatPayoutMoney(detail.amounts.principalSatang)}</strong></div>
-      <div><span>{translateText("Recipient receipt")}</span><strong>{formatPayoutMoney(detail.amounts.receiptSatang)}</strong></div>
-      <div><span>{translateText("Actual fee")}</span><strong>{formatPayoutMoney(detail.amounts.actualFeeSatang)}</strong></div>
-      <div><span>{translateText("Actual tax")}</span><strong>{formatPayoutMoney(detail.amounts.actualTaxSatang)}</strong></div>
-      <div><span>{translateText("Actual debit")}</span><strong>{formatPayoutMoney(detail.amounts.actualDebitSatang)}</strong></div>
+    <div className="grid grid-cols-2 gap-x-3.5 gap-y-2.5 max-[420px]:grid-cols-1">
+      <div className="grid min-w-0 gap-0.5"><span className="text-[13px] leading-[1.4] text-admin-muted">{translateText("Principal")}</span><strong className="block text-[15px] leading-[1.4] tabular-nums text-admin-text">{formatPayoutMoney(detail.amounts.principalSatang)}</strong></div>
+      <div className="grid min-w-0 gap-0.5"><span className="text-[13px] leading-[1.4] text-admin-muted">{translateText("Recipient receipt")}</span><strong className="block text-[15px] leading-[1.4] tabular-nums text-admin-text">{formatPayoutMoney(detail.amounts.receiptSatang)}</strong></div>
+      <div className="grid min-w-0 gap-0.5"><span className="text-[13px] leading-[1.4] text-admin-muted">{translateText("Actual fee")}</span><strong className="block text-[15px] leading-[1.4] tabular-nums text-admin-text">{formatPayoutMoney(detail.amounts.actualFeeSatang)}</strong></div>
+      <div className="grid min-w-0 gap-0.5"><span className="text-[13px] leading-[1.4] text-admin-muted">{translateText("Actual tax")}</span><strong className="block text-[15px] leading-[1.4] tabular-nums text-admin-text">{formatPayoutMoney(detail.amounts.actualTaxSatang)}</strong></div>
+      <div className="grid min-w-0 gap-0.5"><span className="text-[13px] leading-[1.4] text-admin-muted">{translateText("Actual debit")}</span><strong className="block text-[15px] leading-[1.4] tabular-nums text-admin-text">{formatPayoutMoney(detail.amounts.actualDebitSatang)}</strong></div>
     </div>
     <p className="audit-note">{translateText("Actual fee, tax, and debit values are read from the Payout record.")}</p>
   </Section>;
@@ -247,14 +247,14 @@ function PayoutDetailContent({
   </Section>;
 
   const payoutTimingSection = !fullDetail ? <Section title={translateText("Payout timing")} className="payout-timing-section">
-    <div className="payout-audit-list">
+    <div className="grid gap-2">
       {detail.history.length ? detail.history.map((entry) => (
-        <div className="payout-audit-event" key={entry.id}>
-          <div><span>{translateText("Status")}</span><strong>{translateText(payoutStatusLabel(entry.toStatus))}</strong></div>
-          <div><span>{translateText("Occurred at")}</span><strong>{formatPayoutDate(entry.occurredAt)}</strong></div>
-          {entry.fromStatus ? <div><span>{translateText("Previous status")}</span><strong>{translateText(payoutStatusLabel(entry.fromStatus))}</strong></div> : null}
-          {entry.reason ? <div><span>{translateText("Reason")}</span><strong>{translateText(payoutReasonLabel(entry.reason))}</strong></div> : null}
-          {entry.actorAdminId ? <div><span>{translateText("Admin")}</span><strong>{entry.actorAdminId}</strong></div> : null}
+        <div className="grid gap-2 rounded-lg border border-admin-border bg-admin-soft p-2.5" key={entry.id}>
+          <div className="flex items-start justify-between gap-3"><span className="text-[13px] leading-[1.4] text-admin-muted">{translateText("Status")}</span><strong className="min-w-0 flex-1 text-right text-sm leading-[1.4] tabular-nums [overflow-wrap:anywhere]">{translateText(payoutStatusLabel(entry.toStatus))}</strong></div>
+          <div className="flex items-start justify-between gap-3"><span className="text-[13px] leading-[1.4] text-admin-muted">{translateText("Occurred at")}</span><strong className="min-w-0 flex-1 text-right text-sm leading-[1.4] tabular-nums [overflow-wrap:anywhere]">{formatPayoutDate(entry.occurredAt)}</strong></div>
+          {entry.fromStatus ? <div className="flex items-start justify-between gap-3"><span className="text-[13px] leading-[1.4] text-admin-muted">{translateText("Previous status")}</span><strong className="min-w-0 flex-1 text-right text-sm leading-[1.4] tabular-nums [overflow-wrap:anywhere]">{translateText(payoutStatusLabel(entry.fromStatus))}</strong></div> : null}
+          {entry.reason ? <div className="flex items-start justify-between gap-3"><span className="text-[13px] leading-[1.4] text-admin-muted">{translateText("Reason")}</span><strong className="min-w-0 flex-1 text-right text-sm leading-[1.4] tabular-nums [overflow-wrap:anywhere]">{translateText(payoutReasonLabel(entry.reason))}</strong></div> : null}
+          {entry.actorAdminId ? <div className="flex items-start justify-between gap-3"><span className="text-[13px] leading-[1.4] text-admin-muted">{translateText("Admin")}</span><strong className="min-w-0 flex-1 text-right text-sm leading-[1.4] tabular-nums [overflow-wrap:anywhere]">{entry.actorAdminId}</strong></div> : null}
         </div>
       )) : <p className="audit-note">{translateText("No Payout history is available.")}</p>}
     </div>
@@ -266,20 +266,20 @@ function PayoutDetailContent({
   </Section> : null;
 
   const payoutHistorySection = <Section title={translateText("Payout history")} className={`payout-history-section ${fullSectionClass}`}>
-    {detail.previousPayouts.length ? <div className="payout-previous-list">
+    {detail.previousPayouts.length ? <div className="grid overflow-hidden rounded-lg border border-admin-border">
       {detail.previousPayouts.map((payout) => (
-        <div className="payout-previous-row" key={payout.id}>
-          <span><strong>{payout.id}</strong><small>{formatPayoutDate(payout.createdAt)}</small></span>
-          <span><strong>{formatPayoutMoney(payout.principalSatang)}</strong><Badge status={payout.status} /></span>
+        <div className="flex min-h-12 items-center justify-between gap-3 border-b border-admin-border p-2.5 last:border-b-0 max-[420px]:items-end max-[420px]:flex-col max-[420px]:gap-1" key={payout.id}>
+          <span><strong className="block text-sm leading-[1.4]">{payout.id}</strong><small className="mt-0.5 block text-[13px] leading-[1.4] text-admin-muted">{formatPayoutDate(payout.createdAt)}</small></span>
+          <span className="flex shrink-0 items-center gap-2 max-[420px]:items-end max-[420px]:flex-col max-[420px]:gap-1"><strong className="block text-sm leading-[1.4] tabular-nums">{formatPayoutMoney(payout.principalSatang)}</strong><Badge status={payout.status} /></span>
         </div>
       ))}
     </div> : <p className="audit-note">{translateText("No previous Payouts are connected to this Student.")}</p>}
   </Section>;
 
   const payoutOutcomeSection = outcomeReason && (detail.status === "CANCELLED" || detail.status === "FAILED") ? (
-    <Card as="section" className={`${adminRecordSection} payout-outcome payout-outcome-section ${fullSectionClass}`}>
-      <CardHeader flush className={adminRecordHeader}><h3 className={adminRecordHeading}>{translateText(detail.status === "FAILED" ? "Transfer failure reason" : "Rejection reason")}</h3></CardHeader>
-      <p>{translateText(payoutReasonLabel(outcomeReason))}</p>
+    <Card as="section" className={`${adminRecordSection} payout-outcome-section border-admin-danger bg-admin-danger-soft ${fullSectionClass}`}>
+      <CardHeader flush className={adminRecordHeader}><h3 className={`${adminRecordHeading} text-admin-danger`}>{translateText(detail.status === "FAILED" ? "Transfer failure reason" : "Rejection reason")}</h3></CardHeader>
+      <p className="m-0 text-sm leading-[1.45] text-admin-danger">{translateText(payoutReasonLabel(outcomeReason))}</p>
     </Card>
   ) : null;
 
@@ -726,7 +726,7 @@ export function AdminPayoutPage({
           </TabsList>
         </Tabs>
         <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2">
-          <label className="admin-filter-label flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text" htmlFor="payout-search"><span className="visually-hidden">{translateText("Search Payouts")}</span><Input className="admin-filter-input h-9 min-h-9 px-3 py-1.5 text-sm" id="payout-search" type="search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={translateText("Search Payouts…")} autoComplete="off" /></label>
+          <label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text max-[600px]:basis-full max-[600px]:max-w-none" htmlFor="payout-search"><span className="visually-hidden">{translateText("Search Payouts")}</span><Input className="h-9 min-h-9 px-3 py-1.5 text-sm" id="payout-search" type="search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={translateText("Search Payouts…")} autoComplete="off" /></label>
           <span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span>
           <PageSizeControls value={pageSize} translateText={translateText} onChange={choosePageSize} />
           <span className="ml-auto text-sm text-admin-muted max-[600px]:hidden" aria-live="polite">{translateText("Showing")} {pageStart}–{pageEnd} {translateText("of")} {sortedRows.length} {translateText("results")}</span>

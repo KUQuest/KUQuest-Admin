@@ -151,38 +151,38 @@ function WalletStatusCommandDialog({
     onSubmit(trimmedReason, fixture);
   }
 
-  return <AdminModalPortal open onClose={onCancel}><dialog ref={dialogRef} open className="wallet-status-command-dialog" aria-labelledby="wallet-status-command-title" aria-modal="true">
-    <form className="wallet-status-command-form" onSubmit={submit}>
-      <div className="wallet-command-head">
+  return <AdminModalPortal open onClose={onCancel}><dialog ref={dialogRef} open className="wallet-status-command-dialog m-0 w-[min(560px,calc(100vw-28px))] max-h-[min(760px,calc(100dvh-32px))] overflow-hidden rounded-[14px] border border-admin-border bg-admin-surface p-0 text-admin-text" aria-labelledby="wallet-status-command-title" aria-modal="true">
+    <form className="wallet-status-command-form flex max-h-[min(760px,calc(100dvh-32px))] flex-col" onSubmit={submit}>
+      <div className="wallet-command-head flex items-start justify-between gap-3 border-b border-admin-border px-4 py-3.5">
         <div>
-          <strong id="wallet-status-command-title">{translateText(walletStatusActionLabel(targetStatus))}</strong>
-          <small>{row.memberName} · {row.id}</small>
+          <strong className="block text-[17px] leading-[1.4]" id="wallet-status-command-title">{translateText(walletStatusActionLabel(targetStatus))}</strong>
+          <small className="mt-[3px] block text-[15px] leading-[1.4] text-admin-muted">{row.memberName} · {row.id}</small>
         </div>
         <button className="icon" type="button" aria-label={translateText("Close Wallet status command")} onClick={onCancel} disabled={pending}><span className="close-lines" /></button>
       </div>
-      <div className="wallet-command-body">
-        <p className="wallet-command-intro">{translateText("Review the status change before saving. Every Wallet status change requires a reason.")}</p>
-        <Card as="section" className="wallet-status-preview" aria-label={translateText("Wallet status change preview")}>
-          <div><span>{translateText("Wallet")}</span><strong>{row.id}</strong></div>
-          <div><span>{translateText("Member")}</span><strong>{row.memberName}</strong></div>
-          <div className="wallet-status-preview-transition"><span>{translateText("Wallet Status")}</span><strong><Badge status={row.status} /><span aria-hidden="true"> → </span><Badge status={targetStatus} /></strong></div>
+      <div className="wallet-command-body flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-[18px]">
+        <p className="wallet-command-intro m-0 text-[18px] leading-[1.5] text-admin-muted">{translateText("Review the status change before saving. Every Wallet status change requires a reason.")}</p>
+        <Card as="section" className="wallet-status-preview grid gap-2 rounded-[10px] border border-admin-border bg-admin-soft p-3 text-[17px] leading-[1.4]" aria-label={translateText("Wallet status change preview")}>
+          <div className="flex items-start justify-between gap-3"><span className="text-admin-muted">{translateText("Wallet")}</span><strong className="max-w-[70%] break-words text-right font-semibold">{row.id}</strong></div>
+          <div className="flex items-start justify-between gap-3"><span className="text-admin-muted">{translateText("Member")}</span><strong className="max-w-[70%] break-words text-right font-semibold">{row.memberName}</strong></div>
+          <div className="wallet-status-preview-transition flex items-start justify-between gap-3"><span className="text-admin-muted">{translateText("Wallet Status")}</span><strong className="flex max-w-[70%] items-center justify-end gap-1 text-right font-semibold max-[420px]:max-w-none max-[420px]:justify-start"><Badge status={row.status} /><span className="text-admin-muted" aria-hidden="true"> → </span><Badge status={targetStatus} /></strong></div>
         </Card>
-        <Card as="section" className={`wallet-status-consequences wallet-status-consequences-${targetStatus.toLocaleLowerCase()}`} aria-label={translateText("Wallet status consequences")}>
-          <strong>{translateText(targetStatus === "ACTIVE" ? "Restore effect" : targetStatus === "FROZEN" ? "Temporary hold effect" : "Review hold effect")}</strong>
-          <ul>{transitionCopy.map((copy) => <li key={copy}>{translateText(copy)}</li>)}</ul>
+        <Card as="section" className={`wallet-status-consequences rounded-[10px] border p-3 text-admin-text ${targetStatus === "ACTIVE" ? "border-admin-success bg-admin-success-soft" : targetStatus === "SUSPENDED" ? "border-admin-danger bg-admin-danger-soft" : "border-admin-accent bg-admin-accent-soft"}`} aria-label={translateText("Wallet status consequences")}>
+          <strong className="block text-[17px] leading-[1.4]">{translateText(targetStatus === "ACTIVE" ? "Restore effect" : targetStatus === "FROZEN" ? "Temporary hold effect" : "Review hold effect")}</strong>
+          <ul className="mt-2 grid gap-1.5 pl-[18px] text-[15px] leading-[1.45]">{transitionCopy.map((copy) => <li key={copy}>{translateText(copy)}</li>)}</ul>
         </Card>
-        <label htmlFor="wallet-status-reason">{translateText("Reason")} <span aria-hidden="true">*</span>
-          <textarea id="wallet-status-reason" rows={4} minLength={1} maxLength={500} required value={reason} aria-invalid={validationError ? "true" : undefined} aria-describedby={validationError ? "wallet-status-reason-error" : undefined} onChange={(event) => { setReason(event.target.value); setValidationError(null); }} autoFocus />
+        <label className="grid gap-1.5 text-[15px] font-bold leading-[1.4]" htmlFor="wallet-status-reason">{translateText("Reason")} <span aria-hidden="true">*</span>
+          <textarea className="min-h-[92px] w-full resize-y rounded-admin-sm border border-admin-border-strong bg-admin-surface px-2.5 py-[9px] text-[18px] leading-[1.45] text-admin-text outline-none focus-visible:ring-2 focus-visible:ring-admin-accent/20 aria-[invalid=true]:border-admin-danger aria-[invalid=true]:outline-2 aria-[invalid=true]:outline-admin-danger-soft" id="wallet-status-reason" rows={4} minLength={1} maxLength={500} required value={reason} aria-invalid={validationError ? "true" : undefined} aria-describedby={validationError ? "wallet-status-reason-error" : undefined} onChange={(event) => { setReason(event.target.value); setValidationError(null); }} autoFocus />
         </label>
-        <p className="wallet-command-help">{translateText("This reason is part of the Wallet status history. It does not change the Member Ban ladder.")}</p>
-        <label className="wallet-fixture-field" htmlFor="wallet-status-fixture">{translateText("Mock response fixture")} <span>{translateText("Development only")}</span>
-          <select id="wallet-status-fixture" value={fixture} onChange={(event) => setFixture(event.target.value as WalletStatusFixture)}>
+        <p className="wallet-command-help m-0 text-[15px] leading-[1.45] text-admin-muted">{translateText("This reason is part of the Wallet status history. It does not change the Member Ban ladder.")}</p>
+        <label className="wallet-fixture-field grid gap-1.5 text-[15px] font-bold leading-[1.4] text-admin-muted" htmlFor="wallet-status-fixture">{translateText("Mock response fixture")} <span className="text-xs font-medium">{translateText("Development only")}</span>
+          <select className="min-h-9 w-full rounded-admin-sm border border-admin-border-strong bg-admin-surface px-[9px] text-[15px] leading-[1.4] text-admin-text" id="wallet-status-fixture" value={fixture} onChange={(event) => setFixture(event.target.value as WalletStatusFixture)}>
             {WALLET_STATUS_FIXTURE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{translateText(option.label)}</option>)}
           </select>
         </label>
         {validationError || error ? <p id="wallet-status-reason-error" className="field-error" role="alert">{translateText(validationError ?? error ?? "")}</p> : null}
       </div>
-      <div className="dialog-actions">
+      <div className="dialog-actions flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-admin-border bg-admin-surface px-[18px] py-3.5">
         <UiButton variant="outline" type="button" onClick={onCancel} disabled={pending}>{translateText("Cancel")}</UiButton>
         <UiButton variant={targetStatus === "ACTIVE" ? "primary" : "danger"} type="submit" disabled={pending}>{pending ? translateText("Saving…") : translateText(walletStatusActionLabel(targetStatus))}</UiButton>
       </div>
@@ -202,7 +202,7 @@ function Badge({ status, track = true }: { status: WalletStatus; track?: boolean
 }
 
 function SummaryMetric({ label, value }: { label: string; value: number }) {
-  return <div className="wallet-finance-summary-metric"><span>{label}</span><strong>{formatWalletMoney(value)}</strong></div>;
+  return <div className="grid min-w-0 gap-[3px] rounded-lg border border-admin-border bg-admin-surface p-2.5"><span className="overflow-hidden text-[13px] font-semibold leading-[1.4] text-admin-muted text-ellipsis whitespace-nowrap">{label}</span><strong className="text-[17px] leading-[1.4] tabular-nums text-admin-text">{formatWalletMoney(value)}</strong></div>;
 }
 
 function WalletSummary({
@@ -220,7 +220,7 @@ function WalletSummary({
   const content = error
     ? <EmptyState role="alert" title={translateText("Wallet summary unavailable")} description={translateText(error)} action={<UiButton variant="outline" type="button" onClick={onRetry}>{translateText("Try again")}</UiButton>} />
     : summary
-    ? <div className="wallet-finance-summary-grid">
+    ? <div className="grid grid-cols-5 gap-2.5 max-[900px]:grid-cols-3 max-[600px]:grid-cols-2">
       <SummaryMetric label={translateText("Spending balance")} value={summary.totalSpendingSatang} />
       <SummaryMetric label={translateText("Earnings balance")} value={summary.totalEarningsSatang} />
       <SummaryMetric label={translateText("Funding reserved")} value={summary.totalFundingReservedSatang} />
@@ -229,7 +229,7 @@ function WalletSummary({
     </div>
     : null;
 
-  return <Card as="section" className="wallet-funds-summary wallet-finance-summary" aria-labelledby="wallet-summary-heading"><div className="wallet-finance-summary-heading"><div><strong id="wallet-summary-heading">{translateText("Member Wallet Summary")}</strong><small>{translateText(dataSource === "api" ? "Aggregate values from the Admin API" : "All Wallets · all statuses")}</small></div></div>{content}</Card>;
+  return <Card as="section" className="my-[18px] grid gap-3 bg-admin-soft p-[15px_17px]" aria-labelledby="wallet-summary-heading"><div className="flex items-center justify-between gap-3"><div className="grid gap-[3px]"><strong id="wallet-summary-heading" className="text-lg leading-[1.4] text-admin-text">{translateText("Member Wallet Summary")}</strong><small className="text-[13px] font-medium leading-[1.4] text-admin-muted">{translateText(dataSource === "api" ? "Aggregate values from the Admin API" : "All Wallets · all statuses")}</small></div></div>{content}</Card>;
 }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -385,7 +385,7 @@ function WalletDrawer({
     <>
       {dataSource === "mock" ? <>
         <p>{translateText("Change Wallet Status without changing the Member Ban status. A non-active Wallet blocks new commitments while existing obligations continue.")}</p>
-        {walletStatusTargets(detail?.status ?? row.status).length ? <div className="wallet-status-actions" aria-label={translateText("Wallet status actions")}>
+        {walletStatusTargets(detail?.status ?? row.status).length ? <div className="wallet-status-actions mt-3 flex flex-wrap gap-2 [&_[data-slot=button]]:min-w-[170px] [&_[data-slot=button]]:flex-1" aria-label={translateText("Wallet status actions")}>
           {walletStatusTargets(detail?.status ?? row.status).map((targetStatus) => <UiButton variant={walletStatusActionClass(targetStatus) === "danger" ? "danger" : "outline"} type="button" key={targetStatus} data-wallet-status-action={targetStatus} onClick={() => openStatusCommand(targetStatus)} disabled={statusCommandPending}>{translateText(walletStatusActionLabel(targetStatus))}</UiButton>)}
         </div> : <p className="audit-note">{translateText("Closed is terminal. No Wallet status change is available.")}</p>}
       </> : <p>{translateText("Status commands will be connected to the Admin API in the API integration step.")}</p>}
@@ -397,7 +397,7 @@ function WalletDrawer({
     title={row.id}
     titleId="wallet-drawer-title"
     subtitle={translateText("Wallet detail drawer")}
-    className="wallet-drawer"
+    className="wallet-drawer [&>.drawer-body]:!min-w-0 [&>.drawer-body]:!grid-cols-[minmax(0,1fr)]"
     opener={opener}
     onClose={onClose}
     actions={!loading && !error && detail ? <>
@@ -419,7 +419,7 @@ function WalletDrawer({
             {history.length ? <ol className="timeline">{history.map((entry) => <li key={entry.id}><strong>{entry.fromStatus ? `${translateText(walletStatusLabel(entry.fromStatus))} → ` : ""}{translateText(walletStatusLabel(entry.toStatus))}</strong><time dateTime={entry.createdAt}>{formatWalletDate(entry.createdAt)}</time><span>{entry.reason}</span>{entry.actorAdminId ? <small>{translateText("Admin")} {entry.actorAdminId}</small> : null}</li>)}</ol> : <p>{translateText("No Wallet status changes are recorded.")}</p>}
           </Section>
           <Section title={translateText("Wallet status action")}>{statusActionContent}</Section>
-          {statusReceipt ? <Card as="section" className="wallet-action-receipt" aria-label={translateText("Wallet status action receipt")}><CardHeader flush><h3>{translateText("Action receipt")}</h3></CardHeader><div className="wallet-status-preview"><div><span>{translateText("Action ID")}</span><strong>{statusReceipt.id}</strong></div><div><span>{translateText("Wallet Status")}</span><strong>{translateText(walletStatusLabel(statusReceipt.fromStatus))} → {translateText(walletStatusLabel(statusReceipt.toStatus))}</strong></div><div><span>{translateText("Reason")}</span><strong>{statusReceipt.reason}</strong></div><div><span>{translateText("Recorded")}</span><strong>{formatWalletDate(statusReceipt.createdAt)}</strong></div></div><p className="audit-note">{translateText("This mock receipt represents the Activity Log event that the API integration will return.")}</p></Card> : null}
+          {statusReceipt ? <Card as="section" className="wallet-action-receipt my-[18px] rounded-[10px] border border-admin-success bg-admin-success-soft p-3" aria-label={translateText("Wallet status action receipt")}><CardHeader flush><h3 className="mb-2.5 text-[18px] leading-[1.4]">{translateText("Action receipt")}</h3></CardHeader><div className="wallet-status-preview grid gap-2 rounded-[10px] border border-admin-border bg-admin-surface p-3 text-[17px] leading-[1.4]"><div className="flex items-start justify-between gap-3"><span className="text-admin-muted">{translateText("Action ID")}</span><strong className="max-w-[70%] break-words text-right font-semibold">{statusReceipt.id}</strong></div><div className="flex items-start justify-between gap-3"><span className="text-admin-muted">{translateText("Wallet Status")}</span><strong className="max-w-[70%] break-words text-right font-semibold">{translateText(walletStatusLabel(statusReceipt.fromStatus))} → {translateText(walletStatusLabel(statusReceipt.toStatus))}</strong></div><div className="flex items-start justify-between gap-3"><span className="text-admin-muted">{translateText("Reason")}</span><strong className="max-w-[70%] break-words text-right font-semibold">{statusReceipt.reason}</strong></div><div className="flex items-start justify-between gap-3"><span className="text-admin-muted">{translateText("Recorded")}</span><strong className="max-w-[70%] break-words text-right font-semibold">{formatWalletDate(statusReceipt.createdAt)}</strong></div></div><p className="audit-note mb-0">{translateText("This mock receipt represents the Activity Log event that the API integration will return.")}</p></Card> : null}
           {actionError || notice ? <p className={actionError ? "field-error" : "audit-note"} role={actionError ? "alert" : "status"}>{translateText(actionError ?? notice ?? "")}</p> : null}
         </> : null}
     {statusCommand && detail ? <WalletStatusCommandDialog row={{ ...row, status: detail.status, statusLabel: walletStatusLabel(detail.status) }} targetStatus={statusCommand} onCancel={cancelStatusCommand} onSubmit={(reason, fixture) => { void submitStatusCommand(reason, fixture); }} error={statusCommandError} pending={statusCommandPending} /> : null}
@@ -587,7 +587,7 @@ export function AdminWalletPage({ initialData }: { initialData: WalletBoardPageD
         </TabsList>
       </Tabs>
       <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2">
-        <label className="admin-filter-label flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text" htmlFor="wallet-search"><span className="visually-hidden">{translateText("Search Wallets")}</span><Input className="admin-filter-input h-9 min-h-9 px-3 py-1.5 text-sm" id="wallet-search" type="search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={translateText("Search Wallets…")} autoComplete="off" /></label>
+        <label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text max-[600px]:basis-full max-[600px]:max-w-none" htmlFor="wallet-search"><span className="visually-hidden">{translateText("Search Wallets")}</span><Input className="h-9 min-h-9 px-3 py-1.5 text-sm" id="wallet-search" type="search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={translateText("Search Wallets…")} autoComplete="off" /></label>
         <span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span>
         <PageSizeControls value={pageSize} translateText={translateText} onChange={choosePageSize} />
         <span className="ml-auto text-sm text-admin-muted max-[600px]:hidden" aria-live="polite">{translateText(resultLabelWithLoading)}</span>

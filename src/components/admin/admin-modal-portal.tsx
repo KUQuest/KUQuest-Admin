@@ -82,7 +82,7 @@ export function AdminModalPortal({ open, onClose, children }: AdminModalPortalPr
   if (!mounted || !open) return null;
 
   return createPortal(
-    <div ref={layerRef} className="admin-modal-layer" role="presentation" tabIndex={-1}>
+    <div ref={layerRef} className="admin-modal-layer fixed inset-0 z-[100] grid place-items-center bg-[var(--scrim-dialog)] p-4 max-[600px]:p-3" role="presentation" tabIndex={-1}>
       {children}
     </div>,
     document.body,

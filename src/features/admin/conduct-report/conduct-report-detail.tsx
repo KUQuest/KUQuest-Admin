@@ -443,10 +443,11 @@ function DecisionControls({
       <p className="audit-note">
         {translateText("Decide whether the Quest record confirms an actual conduct violation. The Conduct Report reason is required.")}
       </p>
-      <fieldset className="report-decision-options">
+      <fieldset className="report-decision-options mt-3.5 grid gap-2 border-0 p-0">
         <legend className="visually-hidden">{translateText("Conduct Report decision")}</legend>
-        <div className={`report-decision-option ${selectedChoice === "no-violation" ? "selected" : ""}`}>
+        <div className={`report-decision-option grid w-full grid-cols-[18px_1fr] items-start gap-x-2 gap-y-0.5 rounded-[9px] border border-admin-border bg-admin-surface px-3 py-[11px] text-left transition-colors hover:bg-admin-hover ${selectedChoice === "no-violation" ? "border-admin-accent bg-admin-accent-soft shadow-[0_0_0_1px_var(--accent)]" : ""}`}>
           <input
+            className="mt-0.5"
             id={`conduct-report-decision-${model.id}-no-violation`}
             type="radio"
             name={`conduct-report-decision-${model.id}`}
@@ -455,13 +456,14 @@ function DecisionControls({
             checked={selectedChoice === "no-violation"}
             onChange={() => onSelect("no-violation")}
           />
-          <label htmlFor={`conduct-report-decision-${model.id}-no-violation`}>
-            <strong>{translateText("No violation")}</strong>
-            <small>{translateText("Dismiss the Conduct Report without changing the reported Member status.")}</small>
+          <label className="grid cursor-pointer gap-0.5" htmlFor={`conduct-report-decision-${model.id}-no-violation`}>
+            <strong className="text-sm leading-[1.35]">{translateText("No violation")}</strong>
+            <small className="text-[13px] leading-[1.45] text-admin-muted">{translateText("Dismiss the Conduct Report without changing the reported Member status.")}</small>
           </label>
         </div>
-        <div className={`report-decision-option ${selectedChoice === "confirmed-violation" ? "selected" : ""}`}>
+        <div className={`report-decision-option grid w-full grid-cols-[18px_1fr] items-start gap-x-2 gap-y-0.5 rounded-[9px] border border-admin-border bg-admin-surface px-3 py-[11px] text-left transition-colors hover:bg-admin-hover ${selectedChoice === "confirmed-violation" ? "border-admin-accent bg-admin-accent-soft shadow-[0_0_0_1px_var(--accent)]" : ""}`}>
           <input
+            className="mt-0.5"
             id={`conduct-report-decision-${model.id}-confirmed-violation`}
             type="radio"
             name={`conduct-report-decision-${model.id}`}
@@ -470,9 +472,9 @@ function DecisionControls({
             checked={selectedChoice === "confirmed-violation"}
             onChange={() => onSelect("confirmed-violation")}
           />
-          <label htmlFor={`conduct-report-decision-${model.id}-confirmed-violation`}>
-            <strong>{translateText("Confirm violation")}</strong>
-            <small>{translateText("Uphold the Conduct Report and apply the Member Misconduct ladder.")}</small>
+          <label className="grid cursor-pointer gap-0.5" htmlFor={`conduct-report-decision-${model.id}-confirmed-violation`}>
+            <strong className="text-sm leading-[1.35]">{translateText("Confirm violation")}</strong>
+            <small className="text-[13px] leading-[1.45] text-admin-muted">{translateText("Uphold the Conduct Report and apply the Member Misconduct ladder.")}</small>
           </label>
         </div>
       </fieldset>

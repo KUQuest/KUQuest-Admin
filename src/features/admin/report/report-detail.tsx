@@ -460,15 +460,15 @@ function DecisionControls({
   return (
     <>
       <p className="audit-note">{translateText("Decide whether the submitted Evidence confirms an actual policy violation. The Report Case reason is required.")}</p>
-      <fieldset className="report-decision-options">
+      <fieldset className="report-decision-options mt-3.5 grid gap-2 border-0 p-0">
         <legend className="visually-hidden">{translateText("Report decision")}</legend>
-        <div className={`report-decision-option ${selectedChoice === "no-violation" ? "selected" : ""}`}>
-          <input id={`report-decision-${model.id}-no-violation`} type="radio" name={`report-decision-${model.id}`} value="no-violation" data-report-decision="no-violation" checked={selectedChoice === "no-violation"} onChange={() => onSelect("no-violation")} />
-          <label htmlFor={`report-decision-${model.id}-no-violation`}><strong>{translateText("No violation")}</strong><small>{translateText("Dismiss the Report Case without changing the reported Member status.")}</small></label>
+        <div className={`report-decision-option grid w-full grid-cols-[18px_1fr] items-start gap-x-2 gap-y-0.5 rounded-[9px] border border-admin-border bg-admin-surface px-3 py-[11px] text-left transition-colors hover:bg-admin-hover ${selectedChoice === "no-violation" ? "border-admin-accent bg-admin-accent-soft shadow-[0_0_0_1px_var(--accent)]" : ""}`}>
+          <input className="mt-0.5" id={`report-decision-${model.id}-no-violation`} type="radio" name={`report-decision-${model.id}`} value="no-violation" data-report-decision="no-violation" checked={selectedChoice === "no-violation"} onChange={() => onSelect("no-violation")} />
+          <label className="grid cursor-pointer gap-0.5" htmlFor={`report-decision-${model.id}-no-violation`}><strong className="text-sm leading-[1.35]">{translateText("No violation")}</strong><small className="text-[13px] leading-[1.45] text-admin-muted">{translateText("Dismiss the Report Case without changing the reported Member status.")}</small></label>
         </div>
-        <div className={`report-decision-option ${selectedChoice === "confirmed-violation" ? "selected" : ""}`}>
-          <input id={`report-decision-${model.id}-confirmed-violation`} type="radio" name={`report-decision-${model.id}`} value="confirmed-violation" data-report-decision="confirmed-violation" checked={selectedChoice === "confirmed-violation"} onChange={() => onSelect("confirmed-violation")} />
-          <label htmlFor={`report-decision-${model.id}-confirmed-violation`}><strong>{translateText("Confirm violation")}</strong><small>{translateText("Hide the Message and record the confirmed Report Case decision.")}</small></label>
+        <div className={`report-decision-option grid w-full grid-cols-[18px_1fr] items-start gap-x-2 gap-y-0.5 rounded-[9px] border border-admin-border bg-admin-surface px-3 py-[11px] text-left transition-colors hover:bg-admin-hover ${selectedChoice === "confirmed-violation" ? "border-admin-accent bg-admin-accent-soft shadow-[0_0_0_1px_var(--accent)]" : ""}`}>
+          <input className="mt-0.5" id={`report-decision-${model.id}-confirmed-violation`} type="radio" name={`report-decision-${model.id}`} value="confirmed-violation" data-report-decision="confirmed-violation" checked={selectedChoice === "confirmed-violation"} onChange={() => onSelect("confirmed-violation")} />
+          <label className="grid cursor-pointer gap-0.5" htmlFor={`report-decision-${model.id}-confirmed-violation`}><strong className="text-sm leading-[1.35]">{translateText("Confirm violation")}</strong><small className="text-[13px] leading-[1.45] text-admin-muted">{translateText("Hide the Message and record the confirmed Report Case decision.")}</small></label>
         </div>
       </fieldset>
       {commandError && <p className="field-error" role="alert">{translateText(commandError)}</p>}

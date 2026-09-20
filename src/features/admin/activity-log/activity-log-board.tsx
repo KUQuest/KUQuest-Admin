@@ -6,7 +6,7 @@ import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminPageHeader } from "../../../components/admin/admin-page-header";
 import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table } from "../../../components/ui";
-import { adminBoardCount, adminBoardPagination, adminBoardTable, adminRecordFact, adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
+import { adminBoardCount, adminBoardPagination, adminBoardTable, adminRecordFact, adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSection, adminSortIndicator, adminTableSort } from "../../../components/admin/admin-record-styles";
 import { isAdminMockEnabled } from "../../../lib/auth/admin-auth-mode";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import {
@@ -26,6 +26,7 @@ import {
   type ActivityLogEntry,
 } from "./activity-log-model";
 import { pageCount, pageRange, pageRows, type AdminBoardPageSize } from "../data/board-pagination";
+import { sortBoardRows, toggleBoardSort, type BoardSortDirection } from "../data/board-sorting";
 import {
   loadActivityLogPageData,
   type ActivityLogFilters,
@@ -43,6 +44,7 @@ type ActivityLogDetailProps = {
   onClose: () => void;
   onOpenTarget: (entry: ActivityLogEntry) => void;
 };
+type ActivityLogSortKey = "timestamp" | "actor" | "activity" | "target" | "reason";
 const EMPTY_ACTIVITY_LOG_ENTRIES: ActivityLogEntry[] = [];
 
 function loadAllActivityLogFromMock(filters: ActivityLogFilters): ActivityLogPageData {
@@ -64,6 +66,21 @@ function displayValue(value: string | number | null | undefined): string {
   return value === null || value === undefined || value === "" ? "Not provided" : String(value);
 }
 
+function activityLogSortValue(entry: ActivityLogEntry, key: ActivityLogSortKey): string | number | null {
+  switch (key) {
+    case "timestamp":
+      return entry.createdAtTimestamp;
+    case "actor":
+      return entry.adminName;
+    case "activity":
+      return activityLogActionLabel(entry.action);
+    case "target":
+      return activityLogTargetLabel(entry);
+    case "reason":
+      return activityLogReasonLabel(entry.reasonCode);
+  }
+}
+
 function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailProps) {
   const { translateText } = useAdminShell();
   const targetHref = activityTargetHref(entry.resourceType, entry.resourceId);
@@ -78,12 +95,12 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
       className="activity-log-dialog"
       onClose={onClose}
     >
-        <div className="activity-log-detail drawer-content-flow">
-          <div className="drawer-title">
+        <div className="activity-log-detail drawer-content-flow grid min-w-0 content-start gap-3.5">
+          <div className="drawer-title m-0 pb-1">
             <span className="att-icon neutral" aria-hidden="true">↺</span>
             <div>
-              <h2 id="activity-log-detail-title">{translateText(activityLogActionLabel(entry.action))}</h2>
-              <p><span className="activity-log-target">{translateText(displayValue(target))}</span></p>
+              <h2 id="activity-log-detail-title" className="text-lg font-semibold leading-[1.4]">{translateText(activityLogActionLabel(entry.action))}</h2>
+              <p><span className="activity-log-target block min-w-0 break-words text-admin-text no-underline">{translateText(displayValue(target))}</span></p>
             </div>
           </div>
           <Card as="section" className={`${adminRecordSection} activity-log-record-section`} aria-labelledby="activity-log-record-heading">
@@ -118,13 +135,13 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
           <Card as="section" className={`${adminRecordSection} activity-log-state-section`} aria-labelledby="activity-log-state-heading">
             <CardHeader flush className={adminRecordHeader}><h3 id="activity-log-state-heading" className={adminRecordHeading}>{translateText("State change")}</h3></CardHeader>
             {entry.previousState || entry.newState ? (
-              <div className="activity-log-state-change">
-                <div><span>{translateText("Previous state")}</span><strong>{translateText(activityLogStateLabel(entry.previousState))}</strong></div>
-                <span className="activity-log-state-arrow" aria-hidden="true">→</span>
-                <div><span>{translateText("New state")}</span><strong>{translateText(activityLogStateLabel(entry.newState))}</strong></div>
+              <div className="activity-log-state-change grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2.5 max-[600px]:grid-cols-1">
+                <div className="min-w-0 rounded-admin-sm border border-admin-border bg-admin-soft p-2.5"><span className="block text-sm text-admin-muted">{translateText("Previous state")}</span><strong className="mt-1 block break-words text-base font-semibold">{translateText(activityLogStateLabel(entry.previousState))}</strong></div>
+                <span className="activity-log-state-arrow text-xl font-extrabold text-admin-accent max-[600px]:justify-self-center max-[600px]:rotate-90" aria-hidden="true">→</span>
+                <div className="min-w-0 rounded-admin-sm border border-admin-border bg-admin-soft p-2.5"><span className="block text-sm text-admin-muted">{translateText("New state")}</span><strong className="mt-1 block break-words text-base font-semibold">{translateText(activityLogStateLabel(entry.newState))}</strong></div>
               </div>
-            ) : <p className="activity-log-missing-context">{translateText("Before and after state are not included in this record.")}</p>}
-            {entry.note ? <p className="activity-log-note"><strong>{translateText("Admin note")}</strong>{entry.note}</p> : null}
+            ) : <p className="activity-log-missing-context m-0 text-[15px] leading-[1.45] text-admin-muted">{translateText("Before and after state are not included in this record.")}</p>}
+            {entry.note ? <p className="activity-log-note m-0 mt-3 grid gap-1 rounded-admin-sm bg-admin-soft p-2.5 text-[15px] leading-[1.45] text-admin-muted"><strong className="text-[17px] leading-[1.4] text-admin-text">{translateText("Admin note")}</strong>{entry.note}</p> : null}
           </Card>
           <div className="drawer-actions">
             {targetHref ? <Button variant="primary" className="activity-log-linked-detail-button" type="button" onClick={() => onOpenTarget(entry)}>{translateText("View linked detail")}</Button> : null}
@@ -150,6 +167,8 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
   const [selectedEntry, setSelectedEntry] = useState<ActivityLogEntry | null>(null);
   const [pageSize, setPageSize] = useState<AdminBoardPageSize>(10);
   const [pageNumber, setPageNumber] = useState(1);
+  const [sortKey, setSortKey] = useState<ActivityLogSortKey | null>(null);
+  const [sortDirection, setSortDirection] = useState<BoardSortDirection>("ascending");
   const requestId = useRef(0);
   const closeDetails = useCallback(() => setSelectedEntry(null), []);
   const openLinkedDetail = useCallback((entry: ActivityLogEntry) => {
@@ -166,13 +185,23 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
       .filter((entry) => activityLogMatchesSearch(entry, search)),
     [appliedFilters, entries, search],
   );
-  const totalPages = pageCount(filteredEntries.length, pageSize);
+  const sortedEntries = useMemo(
+    () => sortKey ? sortBoardRows(filteredEntries, (entry) => activityLogSortValue(entry, sortKey), sortDirection) : filteredEntries,
+    [filteredEntries, sortDirection, sortKey],
+  );
+  const totalPages = pageCount(sortedEntries.length, pageSize);
   const currentPage = Math.min(pageNumber, Math.max(totalPages, 1));
   const visibleEntries = useMemo(
-    () => pageRows(filteredEntries, currentPage, pageSize),
-    [currentPage, filteredEntries, pageSize],
+    () => pageRows(sortedEntries, currentPage, pageSize),
+    [currentPage, pageSize, sortedEntries],
   );
-  const { start: pageStart, end: pageEnd } = pageRange(filteredEntries.length, currentPage, pageSize);
+  const { start: pageStart, end: pageEnd } = pageRange(sortedEntries.length, currentPage, pageSize);
+
+  function sortBy(nextKey: ActivityLogSortKey) {
+    setPageNumber(1);
+    setSortDirection((direction) => toggleBoardSort(sortKey, nextKey, direction));
+    setSortKey(nextKey);
+  }
 
   const loadPage = useCallback(async (filters: ActivityLogFilters, cursor?: string, append = false) => {
     const currentRequestId = ++requestId.current;
@@ -293,13 +322,13 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
           </div>
           <div className="flex justify-end gap-2 max-[700px]:justify-start"><Button variant="primary" type="submit" disabled={loading}>{translateText("Apply filters")}</Button><Button variant="outline" type="button" onClick={clearFilters} disabled={loading}>{translateText("Clear filters")}</Button></div>
         </form>
-        <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2"><label className="admin-filter-label flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text" htmlFor="activity-search"><span className="visually-hidden">{translateText("Search loaded activity")}</span><Input className="admin-filter-input h-9 min-h-9 px-3 py-1.5 text-sm" id="activity-search" type="search" value={search} onChange={(event) => { setSearch(event.target.value); setPageNumber(1); }} placeholder={translateText("Search loaded activity")}/></label><PageSizeControls value={pageSize} translateText={translateText} onChange={(size) => { setPageSize(size); setPageNumber(1); }} /><span className={`${adminBoardCount} max-[720px]:block max-[720px]:w-full max-[720px]:ms-0`} aria-live="polite">{filteredEntries.length ? pageSize === "all" ? `${translateText("Showing all")} ${filteredEntries.length} ${translateText(filteredEntries.length === 1 ? "result" : "results")}` : `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${filteredEntries.length} ${translateText(filteredEntries.length === 1 ? "result" : "results")}` : translateText("Showing 0 of 0 results")}</span></div>
+        <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2"><label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text max-[600px]:basis-full max-[600px]:max-w-none" htmlFor="activity-search"><span className="visually-hidden">{translateText("Search loaded activity")}</span><Input className="h-9 min-h-9 px-3 py-1.5 text-sm" id="activity-search" type="search" value={search} onChange={(event) => { setSearch(event.target.value); setPageNumber(1); }} placeholder={translateText("Search loaded activity")}/></label><span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span><PageSizeControls value={pageSize} translateText={translateText} onChange={(size) => { setPageSize(size); setPageNumber(1); }} /><span className={`${adminBoardCount} max-[720px]:block max-[720px]:w-full max-[720px]:ms-0`} aria-live="polite">{sortedEntries.length ? pageSize === "all" ? `${translateText("Showing all")} ${sortedEntries.length} ${translateText(sortedEntries.length === 1 ? "result" : "results")}` : `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${sortedEntries.length} ${translateText(sortedEntries.length === 1 ? "result" : "results")}` : translateText("Showing 0 of 0 results")}</span></div>
         <output id="activity-status" className="mb-2 block min-h-5 text-sm text-admin-muted" aria-live="polite">{loading ? translateText("Loading activity") : `${filteredEntries.length} ${translateText("loaded entries")}`}</output>
         {mockEnabled ? <p className="api-data-notice activity-log-fixture-notice">{translateText("Fixture data is active. Some records do not include before and after state.")}</p> : null}
         {loadError ? <div className="mb-3 flex items-center gap-2.5 rounded-admin-sm border border-admin-danger bg-admin-danger-soft px-3 py-2.5 text-sm text-admin-danger" role="alert"><strong>{translateText("Activity log is not available")}</strong><p className="m-0 flex-1">{translateText(loadError)}</p><Button variant="outline" type="button" onClick={retry}>{translateText("Try again")}</Button></div> : null}
         {!loadError && loading && !entries.length ? <EmptyState className="border-0 rounded-none p-[60px_24px]" title={translateText("Loading activity")} description={translateText("Loading activity records.")} /> : null}
         {!loadError && !loading && !visibleEntries.length ? <EmptyState className="border-0 rounded-none p-[60px_24px]" title={translateText("No activity recorded")} description={translateText("Administrative activity will appear here as actions are taken.")} /> : null}
-        {!loadError && visibleEntries.length ? <div className="overflow-x-auto"><Table className={`${adminBoardTable} min-w-[980px]`}><caption>{translateText("Activity Log records")}</caption><thead><tr><th className="align-top" scope="col">{translateText("Timestamp")}</th><th className="align-top" scope="col">{translateText("Actor")}</th><th className="align-top" scope="col">{translateText("Activity")}</th><th className="align-top" scope="col">{translateText("Target")}</th><th className="align-top" scope="col">{translateText("Reason")}</th><th className="align-top" scope="col">{translateText("Details")}</th></tr></thead><tbody>{visibleEntries.map((entry) => {
+        {!loadError && visibleEntries.length ? <div className="overflow-x-auto"><Table className={`${adminBoardTable} min-w-[980px]`}><caption>{translateText("Activity Log records")}</caption><thead><tr><SortableHeader label={translateText("Timestamp")} sortKey="timestamp" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Actor")} sortKey="actor" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Activity")} sortKey="activity" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Target")} sortKey="target" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Reason")} sortKey="reason" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><th className="align-top" scope="col">{translateText("Details")}</th></tr></thead><tbody>{visibleEntries.map((entry) => {
           const target = activityLogTargetLabel(entry);
           return <tr key={entry.id} tabIndex={0} aria-label={`${translateText("View activity details")}: ${translateText(activityLogActionLabel(entry.action))}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; setSelectedEntry(entry); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedEntry(entry); } }}><td>{entry.createdAt ? <time className="grid gap-0.5 whitespace-nowrap tabular-nums" dateTime={entry.createdAt}>{formatActivityLogTimestamp(entry.createdAt)}<small className="text-xs font-normal text-admin-muted">{formatActivityLogRelativeTime(entry.createdAt)}</small></time> : translateText("Not provided")}</td><td aria-label={`${entry.adminName || translateText("Not provided")} · ${entry.adminId || translateText("Not provided")}`}><span className="grid min-w-[150px] grid-cols-[auto_minmax(0,1fr)] items-center gap-2"><span className="avatar" aria-hidden="true">{entry.adminInitials}</span><span className="grid gap-0.5"><strong>{entry.adminName || translateText("Not provided")}</strong><small className="text-xs font-normal text-admin-muted">{entry.adminId || translateText("Not provided")}</small></span></span></td><td><strong className="break-words">{translateText(activityLogActionLabel(entry.action))}</strong></td><td><span className="block min-w-0 break-words text-admin-text">{translateText(displayValue(target))}</span></td><td>{translateText(activityLogReasonLabel(entry.reasonCode))}</td><td><Button variant="outline" size="xs" className="whitespace-nowrap" type="button" onClick={() => setSelectedEntry(entry)} aria-label={translateText("View activity details")}>{translateText("View")}</Button></td></tr>;
         })}</tbody></Table></div> : null}
@@ -310,4 +339,9 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
       {selectedEntry ? <ActivityLogDetail entry={selectedEntry} onClose={closeDetails} onOpenTarget={openLinkedDetail} /> : null}
     </main>
   );
+}
+
+function SortableHeader({ label, sortKey, activeKey, direction, onSort }: { label: string; sortKey: ActivityLogSortKey; activeKey: ActivityLogSortKey | null; direction: BoardSortDirection; onSort: (key: ActivityLogSortKey) => void }) {
+  const active = activeKey === sortKey;
+  return <th className="align-top" scope="col" aria-sort={active ? direction : "none"}><button className={adminTableSort(active)} type="button" onClick={() => onSort(sortKey)}>{label}<span className={adminSortIndicator(active)} aria-hidden="true">{active ? (direction === "ascending" ? "↑" : "↓") : "↕"}</span></button></th>;
 }

@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { AdminPageHeader } from "../../../components/admin/admin-page-header";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
+import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, TableHead, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { memberRoutes } from "../admin-routes";
 import { loadAllMembersFromMock as loadAllMembersFromMockData, loadMembersFromMock } from "./member-adapter";
@@ -22,7 +22,8 @@ import {
   walletStatusText,
 } from "./member-model";
 import { loadMemberPageData } from "./member-service";
-import { adminBoardCount, adminBoardPagination, adminBoardTable } from "../../../components/admin/admin-record-styles";
+import { adminBoardCount, adminBoardPagination, adminBoardTable, adminSortIndicator, adminTableSort } from "../../../components/admin/admin-record-styles";
+import { sortBoardRows, toggleBoardSort, type BoardSortDirection } from "../data/board-sorting";
 
 const tabs = [
   { id: "all", label: "All" },
@@ -33,6 +34,7 @@ const tabs = [
 ] as const;
 
 type MemberTab = (typeof tabs)[number]["id"];
+type MemberSortKey = "id" | "member" | "studentId" | "academicProfile" | "status" | "walletStatus";
 
 export const MEMBER_UPDATED_EVENT = "kuquest:member-updated";
 
@@ -56,6 +58,23 @@ function matchesQuery(model: MemberModel, query: string): boolean {
   ].some((field) => field?.toLowerCase().includes(value));
 }
 
+function memberSortValue(model: MemberModel, key: MemberSortKey): string | number | null {
+  switch (key) {
+    case "id":
+      return model.id;
+    case "member":
+      return model.title;
+    case "studentId":
+      return model.studentId;
+    case "academicProfile":
+      return [model.faculty, model.department, model.occupation].filter(Boolean).join(" · ") || null;
+    case "status":
+      return model.memberStatus ? memberStatusText(model) : null;
+    case "walletStatus":
+      return model.walletStatus ? walletStatusText(model) : null;
+  }
+}
+
 function loadAllMembersFromMock(storage: Storage): MemberPageData {
   return loadAllMembersFromMockData(storage);
 }
@@ -71,6 +90,8 @@ export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [pageSize, setPageSize] = useState<AdminBoardPageSize>(10);
   const [pageNumber, setPageNumber] = useState(1);
+  const [sortKey, setSortKey] = useState<MemberSortKey | null>(null);
+  const [sortDirection, setSortDirection] = useState<BoardSortDirection>("ascending");
 
   useEffect(() => {
     if (initialData || isAdminApiEnabled()) return;
@@ -154,7 +175,8 @@ export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
     return <main className="admin-feedback"><Card as="section" className="overflow-hidden"><CardHeader><h1 className="text-lg font-semibold">{translateText("Members unavailable")}</h1></CardHeader><p className="p-5">{translateText(loadError)}</p></Card></main>;
   }
 
-  const models = page.items.filter((model) => matchesTab(model, activeTab) && matchesQuery(model, query));
+  const filteredModels = page.items.filter((model) => matchesTab(model, activeTab) && matchesQuery(model, query));
+  const models = sortKey ? sortBoardRows(filteredModels, (model) => memberSortValue(model, sortKey), sortDirection) : filteredModels;
   const totalPages = pageCount(models.length, pageSize);
   const currentPage = Math.min(pageNumber, Math.max(totalPages, 1));
   const visibleModels = pageRows(models, currentPage, pageSize);
@@ -162,6 +184,12 @@ export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
   const visibleTabs = page.source === "api" && page.items.every((model) => model.memberStatus === null)
     ? tabs.slice(0, 1)
     : tabs;
+
+  function sortBy(nextKey: MemberSortKey) {
+    setPageNumber(1);
+    setSortDirection((direction) => toggleBoardSort(sortKey, nextKey, direction));
+    setSortKey(nextKey);
+  }
 
   return (
     <main id="member-main" className="admin-route-page member-board" tabIndex={-1}>
@@ -180,10 +208,10 @@ export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
           </TabsList>
         </Tabs>
         <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2">
-          <label className="admin-filter-label flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text" htmlFor="member-search">
+          <label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text max-[600px]:basis-full max-[600px]:max-w-none" htmlFor="member-search">
             <span className="visually-hidden">{translateText("Search Members")}</span>
             <Input
-              className="admin-filter-input h-9 min-h-9 px-3 py-1.5 text-sm"
+              className="h-9 min-h-9 px-3 py-1.5 text-sm"
               id="member-search"
               type="search"
               aria-label={translateText("Search Members")}
@@ -193,6 +221,7 @@ export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
             />
           </label>
           <PageSizeControls value={pageSize} disabled={loadingMore} translateText={translateText} onChange={(size) => { setPageSize(size); setPageNumber(1); if (size === "all") void loadAllPages(); }} />
+          <span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span>
           <span className={adminBoardCount} aria-live="polite">
             {loadingMore ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}
           </span>
@@ -200,7 +229,7 @@ export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
         <div className="overflow-x-auto" role="region" aria-label={translateText("Members table")}>
           <Table className={`${adminBoardTable} member-table`}>
             <caption>{translateText("Members")}</caption>
-            <thead><tr><th>{translateText("Member ID")}</th><th>{translateText("Member")}</th><th>{translateText("Student ID")}</th><th>{translateText("Academic profile")}</th><th>{translateText("Status")}</th><th>{translateText("Wallet status")}</th></tr></thead>
+            <thead><tr><SortableHeader label={translateText("Member ID")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Member")} sortKey="member" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Student ID")} sortKey="studentId" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Academic profile")} sortKey="academicProfile" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Wallet status")} sortKey="walletStatus" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead>
             <tbody>
               {visibleModels.map((model) => (
                 <tr
@@ -234,4 +263,9 @@ export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
       </Card>
     </main>
   );
+}
+
+function SortableHeader({ label, sortKey, activeKey, direction, onSort }: { label: string; sortKey: MemberSortKey; activeKey: MemberSortKey | null; direction: BoardSortDirection; onSort: (key: MemberSortKey) => void }) {
+  const active = activeKey === sortKey;
+  return <TableHead aria-sort={active ? direction : "none"}><button className={adminTableSort(active)} type="button" onClick={() => onSort(sortKey)}>{label}<span className={adminSortIndicator(active)} aria-hidden="true">{active ? (direction === "ascending" ? "↑" : "↓") : "↕"}</span></button></TableHead>;
 }

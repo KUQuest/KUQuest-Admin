@@ -898,24 +898,6 @@ svg.ui-icon {
 .file-row > span:nth-child(2) {
   flex: 1;
 }
-.financial-line {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 0;
-  color: var(--muted);
-  font-size: 14px;
-}
-.financial-line strong {
-  color: var(--text);
-  font-variant-numeric: tabular-nums;
-}
-.financial-line.total {
-  margin-top: 4px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-  font-weight: 700;
-}
 .audit-note {
   margin-top: 10px !important;
   padding: 10px;

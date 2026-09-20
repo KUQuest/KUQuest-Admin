@@ -60,6 +60,21 @@ test.describe("Member route family", () => {
     await page.goto("/member");
   });
 
+  test("sorts Member records by column in both directions", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/member");
+
+    const board = page.locator("#member-main");
+    const memberIdSort = board.getByRole("button", { name: /^Member ID/ });
+    await expect(memberIdSort).toBeVisible();
+    await memberIdSort.click();
+    await expect(board.locator("tbody tr[data-member-id]").first()).toHaveAttribute("data-member-id", "68000000");
+    await expect(board.locator("thead th").first()).toHaveAttribute("aria-sort", "ascending");
+    await memberIdSort.click();
+    await expect(board.locator("tbody tr[data-member-id]").first()).toHaveAttribute("data-member-id", "68000299");
+    await expect(board.locator("thead th").first()).toHaveAttribute("aria-sort", "descending");
+  });
+
   test("renders a full Member detail page on refresh and keeps tabs canonical", async ({ page }) => {
     await signIn(page);
     await page.goto("/member/68000000");

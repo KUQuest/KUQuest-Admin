@@ -233,14 +233,14 @@ function QuestFinancialSection({
   const { translateText } = useAdminShell();
   return (
     <Section title={translateText("Financial record")} variant={variant}>
-      <div className="financial-line"><span>{translateText("Quest Funding Total")}</span><strong>{formatQuestMoney(fundingTotal)}</strong></div>
-      <div className="financial-line"><span>{translateText("Quest Reward")}</span><strong>{formatQuestMoney(reward)}</strong></div>
-      <div className="financial-line"><span>{translateText("Platform Fee per Worker")}</span><strong>{formatQuestMoney(platformFee)}</strong></div>
-      <div className="financial-line"><span>{translateText("Platform Fee policy")}</span><strong>{platformFeeBps === null ? translateText("Not provided") : `${platformFeeBps / 100}%`}</strong></div>
+      <div className="flex items-center justify-between py-2 text-[17px] leading-[1.4] text-admin-muted"><span>{translateText("Quest Funding Total")}</span><strong className="text-admin-text [font-variant-numeric:tabular-nums]">{formatQuestMoney(fundingTotal)}</strong></div>
+      <div className="flex items-center justify-between py-2 text-[17px] leading-[1.4] text-admin-muted"><span>{translateText("Quest Reward")}</span><strong className="text-admin-text [font-variant-numeric:tabular-nums]">{formatQuestMoney(reward)}</strong></div>
+      <div className="flex items-center justify-between py-2 text-[17px] leading-[1.4] text-admin-muted"><span>{translateText("Platform Fee per Worker")}</span><strong className="text-admin-text [font-variant-numeric:tabular-nums]">{formatQuestMoney(platformFee)}</strong></div>
+      <div className="flex items-center justify-between py-2 text-[17px] leading-[1.4] text-admin-muted"><span>{translateText("Platform Fee policy")}</span><strong className="text-admin-text [font-variant-numeric:tabular-nums]">{platformFeeBps === null ? translateText("Not provided") : `${platformFeeBps / 100}%`}</strong></div>
       {finance?.transfers.length ? (
-        <div className="quest-finance-list">
-          <h3>{translateText("Money movements")}</h3>
-          {finance.transfers.map((transfer) => <div className="financial-line" key={transfer.id}><span>{translateText(readableValue(transfer.type))}<small>{formatQuestDate(transfer.occurredAt)}</small></span><strong>{formatQuestMoney(transfer.amountSatang)}</strong></div>)}
+        <div className="mt-3 border-t border-admin-border pt-2">
+          <h3 className="m-0 mb-1 text-[15px] leading-[1.4]">{translateText("Money movements")}</h3>
+          {finance.transfers.map((transfer) => <div className="flex items-center justify-between py-2 text-[17px] leading-[1.4] text-admin-muted" key={transfer.id}><span>{translateText(readableValue(transfer.type))}<small className="mt-0.5 block text-[15px] leading-[1.4] text-admin-muted">{formatQuestDate(transfer.occurredAt)}</small></span><strong className="text-admin-text [font-variant-numeric:tabular-nums]">{formatQuestMoney(transfer.amountSatang)}</strong></div>)}
         </div>
       ) : null}
       {!finance ? <p className="audit-note">{translateText("Quest finance data is not available.")}</p> : null}
@@ -367,8 +367,8 @@ function QuestDetailContent({
     <div className={`drawer-content-flow ${recordLayout ? "grid items-start gap-[18px] !grid-cols-[minmax(0,1.65fr)_minmax(290px,0.72fr)] max-[1000px]:!grid-cols-1" : "grid !grid-cols-1 gap-[18px]"}`}>
       <div className={recordLayout ? "grid min-w-0 !grid-cols-1 gap-[18px]" : "contents"}>
       <Section title="Quest summary" variant={sectionVariant}>
-        <div className={`${adminRecordFacts} quest-detail-facts`}>
-          <Fact label="Status"><Badge state={state} />{hidden ? <span className="badge neutral quest-hidden-overlay">{translateText("Hidden")}</span> : null}</Fact>
+        <div className={`${adminRecordFacts} !grid-cols-3 max-[700px]:!grid-cols-1`}>
+          <Fact label="Status"><Badge state={state} />{hidden ? <span className="badge neutral ms-1 mt-[3px]">{translateText("Hidden")}</span> : null}</Fact>
           <Fact label="Quest Funding Total">{formatQuestMoney(fundingTotal)}</Fact>
           <Fact label="Participant mode">{translateText(detail.participation === "GROUP" ? "Team" : "Solo")}</Fact>
           <Fact label="Candidate mode">{translateText(detail.mode === "FIRST_COME_FIRST_SERVED" ? "First come, first served" : "Candidate")}</Fact>
@@ -402,9 +402,9 @@ function QuestDetailContent({
               <Fact label="Starts">{formatQuestDate(detail.startTime)}</Fact>
               <Fact label="Due">{formatQuestDate(detail.dueAt)}</Fact>
             </div>
-            <div className="quest-detail-list-block">
+            <div className="mt-4 grid gap-1">
               <span className="block text-xs font-semibold leading-[1.4] text-admin-muted">{translateText("Location")}</span>
-              <strong className="quest-detail-list-value">
+              <strong className="text-sm font-medium leading-[1.4]">
                 {detail.locations.length
                   ? detail.locations.map((location) => location.label || translateText("Location label not provided.")).join(" · ")
                   : translateText("Location not provided.")}
@@ -502,7 +502,7 @@ function QuestDetailContent({
           </div>
         ) : null}
         {candidateTeams.length ? (
-          <div className="related-list quest-detail-list-gap">
+          <div className="related-list mt-3">
             {candidateTeams.map((team) => (
               <div className="related-row" key={team.id}>
                 <span><strong>{team.name}</strong><small>{translateText("Candidate Team")} · {translateText(readableValue(team.teamStatus))} · {team.members.length} {translateText(team.members.length === 1 ? "member" : "members")}</small></span>
@@ -512,7 +512,7 @@ function QuestDetailContent({
           </div>
         ) : null}
         {detail.assignments.length ? (
-          <div className="related-list quest-detail-list-gap">
+          <div className="related-list mt-3">
             {detail.assignments.map((assignment) => (
               <div className="related-row" key={assignment.id}>
                 <span><strong>{questMemberName(assignment.worker)}</strong><small>{translateText("Assignment")} · {translateText(readableValue(assignment.assignmentStatus))}</small></span>
@@ -587,9 +587,9 @@ function QuestDetailContent({
               <Fact label="Starts">{formatQuestDate(detail.startTime)}</Fact>
               <Fact label="Due">{formatQuestDate(detail.dueAt)}</Fact>
             </div>
-            <div className="quest-detail-list-block">
+            <div className="mt-4 grid gap-1">
               <span className="block text-xs font-semibold leading-[1.4] text-admin-muted">{translateText("Location")}</span>
-              <strong className="quest-detail-list-value">
+              <strong className="text-sm font-medium leading-[1.4]">
                 {detail.locations.length
                   ? detail.locations.map((location) => location.label || translateText("Location label not provided.")).join(" · ")
                   : translateText("Location not provided.")}
@@ -611,8 +611,8 @@ function QuestDetailContent({
         </>
       ) : null}
 
-      <div className="quest-command-actions">
-        {showFullDetailLink ? <UiButton asChild variant="outline" className="quest-full-detail-link"><a href={questRoutes.detail(detail.id)}>{translateText("Full Quest detail")}</a></UiButton> : null}
+      <div className="sticky bottom-[-28px] z-[4] grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-2 -mx-6 -mb-7 mt-[18px] border-t border-admin-border bg-[color-mix(in_srgb,var(--surface)_96%,transparent)] px-6 py-3.5 shadow-[0_-6px_18px_color-mix(in_srgb,var(--text)_9%,transparent)] max-[720px]:bottom-[-24px] max-[720px]:-mx-4 max-[720px]:-mb-6 max-[720px]:px-4 [&_[data-slot=button]]:m-0 [&_[data-slot=button]]:min-h-11 [&_[data-slot=button]]:w-full [&_[data-slot=button]]:text-center">
+        {showFullDetailLink ? <UiButton asChild variant="outline"><a href={questRoutes.detail(detail.id)}>{translateText("Full Quest detail")}</a></UiButton> : null}
         {!hidden && canHideQuest(state) ? <UiButton variant="outline" type="button" onClick={() => onCommand("hide")}>{translateText("Hide Quest")}</UiButton> : null}
         {hidden ? <UiButton variant="outline" type="button" onClick={() => onCommand("restore")}>{translateText("Restore Quest")}</UiButton> : null}
         {!isQuestTerminal(state) ? <UiButton variant="danger" type="button" onClick={() => onCommand("terminate")}>{translateText("Terminate Quest")}</UiButton> : null}
@@ -663,12 +663,12 @@ function QuestCommandDialog({
 
   return (
     <AdminModalPortal open onClose={onCancel}>
-      <div className="quest-command-layer" role="presentation">
-      <button className="quest-command-backdrop" type="button" aria-label={translateText("Close command dialog")} onClick={onCancel} />
-      <dialog open className="quest-command-dialog" aria-labelledby="quest-command-title">
-        <form onSubmit={submit}>
-          <h2 id="quest-command-title">{translateText(command === "hide" ? "Hide Quest" : command === "restore" ? "Restore Quest" : "Terminate Quest")}</h2>
-          <p>{translateText(command === "terminate" ? "This changes the Quest to Cancelled and preserves the Admin Action." : "The API Server remains the authority for this Quest action.")}</p>
+      <div className="quest-command-layer fixed inset-0 z-[90] grid place-items-center p-4 [background:var(--scrim-command)]" role="presentation">
+      <button className="quest-command-backdrop absolute inset-0 size-full cursor-default border-0 bg-transparent" type="button" aria-label={translateText("Close command dialog")} onClick={onCancel} />
+      <dialog open className="quest-command-dialog relative z-[1] m-auto max-h-[calc(100dvh-32px)] w-[min(470px,calc(100vw-32px))] overflow-y-auto rounded-[14px] border-0 bg-admin-surface p-5 text-admin-text shadow-admin" aria-labelledby="quest-command-title">
+        <form className="grid gap-3" onSubmit={submit}>
+          <h2 className="m-0 text-[22px] leading-[1.35]" id="quest-command-title">{translateText(command === "hide" ? "Hide Quest" : command === "restore" ? "Restore Quest" : "Terminate Quest")}</h2>
+          <p className="m-0 text-[15px] leading-[1.45] text-admin-muted">{translateText(command === "terminate" ? "This changes the Quest to Cancelled and preserves the Admin Action." : "The API Server remains the authority for this Quest action.")}</p>
           <AdminActionSummary
             title={translateText("Before you confirm")}
             affected={`${translateText("Quest")} ${detail.displayId || detail.id}`}
@@ -682,10 +682,10 @@ function QuestCommandDialog({
             reversibility={translateText(command === "terminate" ? "This is a terminal Quest State. It has no restore path." : "An Admin can reverse this discovery visibility change with the opposite command.")}
             warning={translateText(command === "restore" && !reasonRequired ? "Restore reason is optional in mock mode. The visibility change is still recorded as an Admin Action." : "The API Server remains the authority for the final Quest result.")}
           />
-          <label htmlFor="quest-command-reason-code">{translateText("Reason code")}{reasonRequired ? <span aria-hidden="true"> *</span> : null}<select id="quest-command-reason-code" required={reasonRequired} value={reasonCode} onChange={(event) => setReasonCode(event.target.value as AdminQuestReasonCode | "")} autoFocus><option value="">{translateText(reasonRequired ? "Select a reason code" : "No reason code")}</option>{reasonCodes.map((item) => <option key={item.value} value={item.value}>{translateText(item.label)}</option>)}</select></label>
-          <label htmlFor="quest-command-reason">{translateText("Reason")}{reasonRequired ? <span aria-hidden="true"> *</span> : null}<textarea id="quest-command-reason" required={reasonRequired} minLength={reasonRequired ? 8 : undefined} maxLength={500} value={reason} onChange={(event) => { setReason(event.target.value); setValidationError(null); }} rows={4} /></label>
+          <label className="grid gap-1 text-[15px] leading-[1.4] font-semibold" htmlFor="quest-command-reason-code">{translateText("Reason code")}{reasonRequired ? <span aria-hidden="true"> *</span> : null}<select className="w-full rounded-lg border border-admin-border-strong bg-admin-surface px-2.5 py-2 text-lg leading-[1.45] text-admin-text" id="quest-command-reason-code" required={reasonRequired} value={reasonCode} onChange={(event) => setReasonCode(event.target.value as AdminQuestReasonCode | "")} autoFocus><option value="">{translateText(reasonRequired ? "Select a reason code" : "No reason code")}</option>{reasonCodes.map((item) => <option key={item.value} value={item.value}>{translateText(item.label)}</option>)}</select></label>
+          <label className="grid gap-1 text-[15px] leading-[1.4] font-semibold" htmlFor="quest-command-reason">{translateText("Reason")}{reasonRequired ? <span aria-hidden="true"> *</span> : null}<textarea className="w-full resize-y rounded-lg border border-admin-border-strong bg-admin-surface px-2.5 py-2 text-lg leading-[1.45] text-admin-text" id="quest-command-reason" required={reasonRequired} minLength={reasonRequired ? 8 : undefined} maxLength={500} value={reason} onChange={(event) => { setReason(event.target.value); setValidationError(null); }} rows={4} /></label>
           {validationError || error ? <p className="field-error" role="alert">{translateText(validationError || error || "")}</p> : null}
-          <div className="dialog-actions"><UiButton variant="outline" type="button" onClick={onCancel} disabled={pending}>{translateText("Cancel")}</UiButton><UiButton variant={command === "terminate" ? "danger" : "primary"} type="submit" disabled={pending}>{pending ? translateText("Saving…") : translateText("Confirm")}</UiButton></div>
+          <div className="dialog-actions mt-1"><UiButton variant="outline" type="button" onClick={onCancel} disabled={pending}>{translateText("Cancel")}</UiButton><UiButton variant={command === "terminate" ? "danger" : "primary"} type="submit" disabled={pending}>{pending ? translateText("Saving…") : translateText("Confirm")}</UiButton></div>
         </form>
       </dialog>
       </div>
@@ -856,7 +856,7 @@ export function AdminQuestPage({ initialData }: { initialData: QuestBoardPageDat
   return (
     <main className="admin-route-page quest-route-page" tabIndex={-1}>
       <AdminPageHeader title={translateText("Quests")} description={translateText("Review Quests through every Quest State.")} />
-      <Card as="section" className="overflow-hidden quest-board" aria-label={translateText("Quest board")}>
+      <Card as="section" className="min-w-0 overflow-hidden" aria-label={translateText("Quest board")}>
         <CardHeader className="flex min-h-[60px] items-center justify-between gap-4">
           <div><CardTitle>{translateText("Quests")}</CardTitle><CardDescription>{translateText("Review Quests through every Quest State.")}</CardDescription></div>
           <span className={adminBoardCount}>{sortedRows.length} {translateText("shown")}</span>
@@ -866,8 +866,8 @@ export function AdminQuestPage({ initialData }: { initialData: QuestBoardPageDat
             {QUEST_BOARD_TABS.map((item) => <TabsTrigger key={item.id} value={item.id}>{translateText(item.label)}{item.id === "all" ? ` (${rows.length})` : ""}</TabsTrigger>)}
           </TabsList>
         </Tabs>
-        <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2"><label className="admin-filter-label flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text" htmlFor="quest-search"><span className="visually-hidden">{translateText("Search Quests")}</span><Input className="admin-filter-input h-9 min-h-9 px-3 py-1.5 text-sm" id="quest-search" type="search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={translateText("Search Quests…")} autoComplete="off" /></label><span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span><PageSizeControls value={pageSize} translateText={translateText} onChange={choosePageSize} /><span className="ml-auto text-sm text-admin-muted max-[600px]:hidden" aria-live="polite">{translateText("Showing")} {pageStart}–{pageEnd} {translateText("of")} {sortedRows.length} {translateText("results")}</span></div>
-        {!sortedRows.length ? <EmptyState title={translateText("No matching records")} description={translateText("There are no Quests in this view.")} action={<UiButton variant="outline" type="button" onClick={() => { setQuery(""); setTab("all"); }}>{translateText("Reset view")}</UiButton>} /> : <div className="overflow-x-auto" aria-label={translateText("Quests table")}><Table className={adminBoardTable}><caption>{translateText("Quests")}</caption><thead><tr><SortableHeader label={translateText("Quest")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Title")} sortKey="title" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Hirer")} sortKey="hirer" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Created At")} sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Quest Reward")} sortKey="reward" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr className="quest-row" data-quest-id={row.id} data-quest-drawer-trigger={row.id} key={row.id} tabIndex={0} aria-label={`${translateText("Open Quest")} ${row.title}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; router.push(questRoutes.detail(row.id)); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); router.push(questRoutes.detail(row.id)); } }}><td><Link className="row-record-button" data-quest-drawer-trigger={row.id} href={questRoutes.detail(row.id)} aria-label={`${translateText("Open Quest")} ${row.displayId}`}>{row.displayId}</Link></td><td><Link className="row-record-button quest-title-link" data-quest-drawer-trigger={row.id} href={questRoutes.detail(row.id)} aria-label={`${translateText("Open Quest")} ${row.title}`}><strong>{row.title}</strong><small>{translateText(row.participationLabel)} · {translateText(row.modeLabel)}</small></Link></td><td><strong>{row.hirerName}</strong><small>{row.hirerEmail}</small></td><td>{formatQuestDate(row.createdAt)}</td><td className="money">{formatQuestMoney(row.rewardSatang)}</td><td><span className={`badge ${questStatusClass(row.state)}`}>{translateText(row.stateLabel)}</span>{row.hiddenAt ? <span className="badge neutral quest-hidden-overlay">{translateText("Hidden")}</span> : null}</td></tr>)}</tbody></Table></div>}
+        <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2"><label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text max-[600px]:basis-full max-[600px]:max-w-none" htmlFor="quest-search"><span className="visually-hidden">{translateText("Search Quests")}</span><Input className="h-9 min-h-9 px-3 py-1.5 text-sm" id="quest-search" type="search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={translateText("Search Quests…")} autoComplete="off" /></label><span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span><PageSizeControls value={pageSize} translateText={translateText} onChange={choosePageSize} /><span className="ml-auto text-sm text-admin-muted max-[600px]:hidden" aria-live="polite">{translateText("Showing")} {pageStart}–{pageEnd} {translateText("of")} {sortedRows.length} {translateText("results")}</span></div>
+        {!sortedRows.length ? <EmptyState title={translateText("No matching records")} description={translateText("There are no Quests in this view.")} action={<UiButton variant="outline" type="button" onClick={() => { setQuery(""); setTab("all"); }}>{translateText("Reset view")}</UiButton>} /> : <div className="overflow-x-auto" aria-label={translateText("Quests table")}><Table className={adminBoardTable}><caption>{translateText("Quests")}</caption><thead><tr><SortableHeader label={translateText("Quest")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Title")} sortKey="title" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Hirer")} sortKey="hirer" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Created At")} sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Quest Reward")} sortKey="reward" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr className="focus-visible:relative focus-visible:outline-3 focus-visible:outline-admin-accent focus-visible:outline-offset-[-3px]" data-quest-id={row.id} data-quest-drawer-trigger={row.id} key={row.id} tabIndex={0} aria-label={`${translateText("Open Quest")} ${row.title}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; router.push(questRoutes.detail(row.id)); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); router.push(questRoutes.detail(row.id)); } }}><td><Link className="row-record-button" data-quest-drawer-trigger={row.id} href={questRoutes.detail(row.id)} aria-label={`${translateText("Open Quest")} ${row.displayId}`}>{row.displayId}</Link></td><td><Link className="row-record-button block text-inherit no-underline visited:text-inherit hover:text-admin-accent" data-quest-drawer-trigger={row.id} href={questRoutes.detail(row.id)} aria-label={`${translateText("Open Quest")} ${row.title}`}><strong>{row.title}</strong><small>{translateText(row.participationLabel)} · {translateText(row.modeLabel)}</small></Link></td><td><strong>{row.hirerName}</strong><small>{row.hirerEmail}</small></td><td>{formatQuestDate(row.createdAt)}</td><td className="money">{formatQuestMoney(row.rewardSatang)}</td><td><span className={`badge ${questStatusClass(row.state)}`}>{translateText(row.stateLabel)}</span>{row.hiddenAt ? <span className="badge neutral ms-1 mt-[3px]">{translateText("Hidden")}</span> : null}</td></tr>)}</tbody></Table></div>}
         {sortedRows.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPage} ariaLabel={translateText("Quests pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className={adminBoardPagination} /> : null}
       </Card>
     </main>

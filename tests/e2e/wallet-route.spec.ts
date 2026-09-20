@@ -78,6 +78,9 @@ test.describe("Wallet App Router board", () => {
     await opener.click();
     await expect(page.locator("dialog.wallet-drawer")).toBeVisible();
     await expect(page.getByText("Wallet balances", { exact: true })).toBeVisible();
+    const drawerContent = page.locator("dialog.wallet-drawer .admin-drawer-content");
+    const horizontalOverflow = await drawerContent.evaluate((element) => element.scrollWidth - element.clientWidth);
+    expect(horizontalOverflow).toBeLessThanOrEqual(1);
     await expect(page.getByRole("link", { name: "See Wallet Statement" })).toHaveAttribute("href", "/member/68000000?tab=wallet-statement");
     await page.locator("button.scrim").click({ position: { x: 8, y: 8 } });
     await expect(page.locator("dialog.wallet-drawer")).toHaveCount(0);

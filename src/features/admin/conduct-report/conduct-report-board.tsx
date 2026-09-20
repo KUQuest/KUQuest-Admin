@@ -223,10 +223,10 @@ export function ConductReportBoard({
             </TabsList>
           </Tabs>
           <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2">
-            <label className="admin-filter-label flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text" htmlFor="conduct-report-search">
+            <label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text max-[600px]:basis-full max-[600px]:max-w-none" htmlFor="conduct-report-search">
               <span className="visually-hidden">{translateText("Search Conduct Reports")}</span>
               <Input
-                className="admin-filter-input h-9 min-h-9 px-3 py-1.5 text-sm"
+                className="h-9 min-h-9 px-3 py-1.5 text-sm"
                 id="conduct-report-search"
                 type="search"
                 aria-label={translateText("Search Conduct Reports")}

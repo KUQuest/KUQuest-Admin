@@ -37,16 +37,6 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
 
 /* Decision and evidence forms must not inherit the drawer's transformed
    scroll area. Keep one centered surface for every moderation confirmation. */
-.admin-modal-layer {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: grid;
-  place-items: center;
-  padding: 16px;
-  background: var(--scrim-dialog);
-}
-
 .admin-modal-layer > dialog.report-decision-dialog,
 .admin-modal-layer > dialog.dispute-decision-dialog,
 .admin-modal-layer > dialog.report-evidence-dialog,
@@ -189,10 +179,6 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
 }
 
 @media (max-width: 600px) {
-  .admin-modal-layer {
-    padding: 12px;
-  }
-
   .admin-modal-layer > dialog.report-decision-dialog,
   .admin-modal-layer > dialog.dispute-decision-dialog,
   .admin-modal-layer > dialog.report-evidence-dialog,
@@ -233,26 +219,6 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
 .activity-log-dialog .drawer-top {
   background: var(--surface);
 }
-.activity-log-detail .drawer-actions {
-  margin-top: 22px;
-}
-
-/* Keep Activity Log detail readable as separate record, Admin, result, and
-   state blocks. This follows the Report Case drawer rhythm. */
-.activity-log-detail {
-  display: grid;
-  align-content: start;
-  gap: 14px;
-  padding-block: 20px 28px;
-}
-.activity-log-detail > .drawer-title {
-  margin: 0;
-  padding: 0 0 4px;
-}
-.activity-log-detail > .drawer-actions {
-  margin-top: 0;
-}
-
 /* Member detail already has the right information groups. Give those groups
    the same clear block treatment as the Report Case drawer. */
 .admin-shell dialog.drawer .user-drawer-detail {
@@ -452,153 +418,8 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
   color: var(--muted);
   font-size: 13px;
 }
-.report-decision-options {
-  display: grid;
-  gap: 8px;
-  margin-top: 14px;
-  padding: 0;
-  border: 0;
-}
-.report-decision-option {
-  display: grid;
-  grid-template-columns: 18px 1fr;
-  align-items: start;
-  row-gap: 3px;
-  column-gap: 8px;
-  width: 100%;
-  padding: 11px 12px;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  background: var(--surface);
-  text-align: left;
-  cursor: pointer;
-}
-.report-decision-option input { margin: 2px 0 0; }
-.report-decision-option > span { display: grid; gap: 3px; }
-.report-decision-option:hover {
-  background: var(--hover);
-}
-.report-decision-option.selected {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  box-shadow: 0 0 0 1px var(--accent);
-}
-.report-decision-option strong {
-  font-size: 14px;
-}
-.report-decision-option small {
-  color: var(--muted);
-  font-size: 13px;
-}
-
 .payout-detail-page .payout-record-status-bar strong {
   overflow-wrap: anywhere;
-}
-.payout-detail-page .payout-outcome {
-  border-color: var(--danger);
-  background: var(--danger-soft);
-}
-
-.payout-previous-list {
-  display: grid;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  overflow: hidden;
-}
-.payout-previous-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 48px;
-  padding: 8px 11px;
-  border-bottom: 1px solid var(--border);
-}
-.payout-previous-row:last-child {
-  border-bottom: 0;
-}
-.payout-previous-row span,
-.payout-previous-row strong,
-.payout-previous-row small {
-  display: block;
-}
-.payout-previous-row small {
-  margin-top: 2px;
-  color: var(--muted);
-  font-size: 13px;
-}
-.payout-previous-row > span:last-child {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  flex: 0 0 auto;
-}
-.payout-previous-row > span:last-child strong {
-  font-variant-numeric: tabular-nums;
-}
-.payout-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px 14px;
-}
-.payout-summary-grid span,
-.payout-audit-list span {
-  display: block;
-  color: var(--muted);
-  font-size: 13px;
-}
-.payout-summary-grid strong {
-  display: block;
-  margin-top: 2px;
-  font-size: 15px;
-  font-variant-numeric: tabular-nums;
-}
-.payout-audit-list {
-  display: grid;
-  gap: 8px;
-}
-.payout-audit-list > div {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-}
-.payout-timing .payout-audit-list > .payout-audit-event {
-  display: grid;
-  justify-content: initial;
-  gap: 8px;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--soft);
-}
-.payout-timing .payout-audit-event > div {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-.payout-timing .payout-audit-event > div > strong {
-  min-width: 0;
-  flex: 1;
-  overflow-wrap: anywhere;
-}
-.payout-audit-list strong {
-  font-size: 14px;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-}
-.payout-outcome {
-  border: 1px solid var(--danger);
-  border-radius: 10px;
-  background: var(--danger-soft);
-}
-.payout-outcome h3 {
-  color: var(--danger);
-}
-.payout-outcome p {
-  margin: 0;
-  color: var(--danger);
-  font-size: 14px;
 }
 dialog.drawer.payout-drawer {
   display: flex;
@@ -640,515 +461,13 @@ dialog.drawer.payout-drawer .payout-detail-stack > .admin-action-receipt {
 dialog.drawer.payout-drawer .payout-detail-stack > .payout-full-detail-link {
   justify-self: start;
 }
-@media (max-width: 420px) {
-  .payout-summary-grid {
-    grid-template-columns: 1fr;
-  }
-  .payout-previous-row > span:last-child {
-    align-items: flex-end;
-    flex-direction: column;
-    gap: 4px;
-  }
-}
-
-/* Overview command center: a dense operating view for the static admin preview. */
-.overview-command-center {
-  --overview-ink: var(--text);
-  --overview-line: color-mix(in srgb, var(--border) 82%, var(--text));
-  max-width: 1400px;
-  padding: 30px 34px 44px;
-}
-.admin-shell-layout > main.overview-command-center {
-  grid-column: 2;
-  min-width: 0;
-  width: 100%;
-  margin: 0 auto;
-}
-.overview-command-center-header,
-.overview-command-center-section-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px;
-}
-.overview-command-center-header {
-  margin-bottom: 24px;
-}
-/* The global shell header rule must not make this inner heading sticky. */
-.overview-command-center > .overview-command-center-header {
-  position: static;
-  z-index: auto;
-  padding: 0;
-  background: transparent;
-  border-bottom: 0;
-  backdrop-filter: none;
-}
-dialog.command {
-  width: 100%;
-  max-width: none;
-  height: 100%;
-  max-height: none;
-  margin: 0;
-  border: 0;
-  border-radius: 0;
-}
-dialog.command::backdrop { background: transparent; }
-.overview-command-center-hero-stats a,
-.overview-command-center-queue a,
-.overview-command-center-activity h2 a {
-  color: inherit;
-  text-decoration: none;
-}
-.overview-command-center-hero-stats a:hover,
-.overview-command-center-queue a:hover,
-.overview-command-center-activity h2 a:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-.overview-command-center-hero-stats a {
-  grid-column: 1;
-  overflow-wrap: anywhere;
-  font-size: 14px;
-  font-weight: 800;
-}
-.overview-command-center-queue-oldest a {
-  color: var(--muted);
-}
-.overview-command-center-kicker {
-  display: block;
-  margin-bottom: 8px;
-  color: var(--accent);
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: .13em;
-  text-transform: uppercase;
-}
-.overview-command-center h1 {
-  margin: 0;
-  color: var(--overview-ink);
-  font-size: calc(clamp(30px, 4vw, 44px) + 2px);
-  letter-spacing: -.045em;
-  line-height: 1;
-}
-.overview-command-center-header p,
-.overview-command-center-section-head p {
-  margin: 8px 0 0;
-  color: var(--muted);
-  font-size: 15px;
-}
-.overview-command-center-command {
-  margin-bottom: 34px;
-  padding: 26px 30px 28px;
-  overflow: hidden;
-  border-radius: 16px;
-  background: var(--accent2);
-  color: var(--ink-inverse);
-  box-shadow: 0 16px 30px color-mix(in srgb, var(--accent2) 22%, transparent);
-}
-.overview-command-center-hero {
-  display: grid;
-  grid-template-columns: minmax(230px, .85fr) minmax(0, 1.7fr);
-  gap: 30px;
-  min-height: 220px;
-  margin-bottom: 24px;
-  padding: 0;
-  overflow: hidden;
-  border-radius: 0;
-  background: transparent;
-  color: inherit;
-  box-shadow: none;
-}
-.overview-command-center-hero-copy {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  border-right: 1px solid color-mix(in srgb, var(--ink-inverse) 25%, transparent);
-}
-.overview-command-center-hero-copy small,
-.overview-command-center-hero-copy > span:not(.overview-command-center-hero-note) {
-  color: color-mix(in srgb, var(--ink-inverse) 72%, transparent);
-  font-size: 14px;
-  font-weight: 800;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
-.overview-command-center-hero-copy strong {
-  margin-top: 9px;
-  font-size: 70px;
-  letter-spacing: -.08em;
-  line-height: .9;
-}
-.overview-command-center-hero-copy p {
-  max-width: 28ch;
-  margin: 16px 0 0;
-  color: color-mix(in srgb, var(--ink-inverse) 82%, transparent);
-  font-size: 15px;
-  line-height: 1.5;
-}
-.overview-command-center-hero-note {
-  margin-top: 20px;
-  padding: 7px 10px;
-  border: 1px solid color-mix(in srgb, var(--ink-inverse) 23%, transparent);
-  border-radius: 999px;
-  color: var(--ink-inverse);
-  font-size: 13px;
-  font-weight: 700;
-}
-.overview-command-center-hero-stats {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-content: center;
-  gap: 10px;
-}
-.overview-command-center-hero-stats > div {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: baseline;
-  gap: 8px 16px;
-  padding: 14px 16px;
-  border: 1px solid color-mix(in srgb, var(--ink-inverse) 24%, transparent);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--ink-inverse) 8%, transparent);
-}
-.overview-command-center-hero-stats > div > span,
-.overview-command-center-hero-stats > div > small {
-  color: color-mix(in srgb, var(--ink-inverse) 84%, transparent);
-}
-.overview-command-center-hero-stats > div > span {
-  font-size: 14px;
-  font-weight: 800;
-}
-.overview-command-center-hero-stats strong {
-  color: var(--ink-inverse);
-  font-size: 34px;
-  letter-spacing: -.05em;
-  line-height: 1;
-}
-.overview-command-center-hero-stats small {
-  grid-column: 1 / -1;
-  font-size: 13px;
-}
-.overview-command-center-section-head {
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--overview-line);
-}
-.overview-command-center-section-head h2 {
-  margin: 0;
-  color: var(--overview-ink);
-  font-size: 19px;
-  letter-spacing: -.02em;
-}
-.overview-command-center-section-head > span {
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-.overview-command-center-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(320px, .75fr);
-  align-items: start;
-  gap: 18px;
-  margin-top: 10px;
-}
-.overview-command-center-table,
-.overview-command-center-activity,
-.overview-command-center-snapshot-card {
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
-}
-.overview-command-center-table .overview-command-center-section-head,
-.overview-command-center-activity .overview-command-center-section-head,
-.overview-command-center-snapshot-card .overview-command-center-section-head {
-  padding: 17px 18px 13px;
-}
-.overview-command-center-table-head,
-.overview-command-center-queue li {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(150px, 1fr) minmax(105px, .7fr) minmax(70px, .45fr);
-  align-items: center;
-  gap: 16px;
-}
-.overview-command-center-table-head {
-  padding: 10px 18px;
-  color: var(--faint);
-  background: var(--soft);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
-.overview-command-center-queue,
-.overview-command-center-timeline {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.overview-command-center-queue li {
-  min-height: 64px;
-  padding: 11px 18px;
-  border-top: 1px solid var(--border-subtle);
-}
-.overview-command-center-queue-title,
-.overview-command-center-timeline li > span:last-child {
-  display: grid;
-  gap: 3px;
-}
-.overview-command-center-queue-title strong,
-.overview-command-center-timeline strong {
-  color: var(--overview-ink);
-  font-size: 14px;
-}
-.overview-command-center-queue-title small,
-.overview-command-center-timeline small {
-  color: var(--muted);
-  font-size: 13px;
-}
-.overview-command-center-queue-oldest {
-  min-width: 0;
-  overflow-wrap: anywhere;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.35;
-}
-.overview-command-center-queue-status {
-  justify-self: start;
-  padding: 5px 8px;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 800;
-}
-.overview-command-center-queue-status.overview-queue-status-overdue { background: var(--danger-soft); color: var(--danger); }
-.overview-command-center-queue-status.overview-queue-status-review { background: var(--warn-soft); color: var(--warn); }
-.overview-command-center-queue-waiting {
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 700;
-}
-.overview-command-center-timeline {
-  padding: 7px 18px 10px;
-}
-.overview-command-center-timeline-scrollable {
-  max-block-size: 360px;
-  overflow-y: auto;
-  scrollbar-gutter: stable;
-  overscroll-behavior: contain;
-}
-.overview-command-center-timeline li {
-  display: grid;
-  grid-template-columns: 20px 32px minmax(0, 1fr);
-  align-items: center;
-  gap: 9px;
-  min-height: 62px;
-  border-bottom: 1px solid var(--border-subtle);
-}
-.overview-command-center-timeline li:last-child { border-bottom: 0; }
-.overview-command-center-timeline-marker {
-  display: grid;
-  width: 20px;
-  height: 20px;
-  place-items: center;
-  border: 1px solid var(--border);
-  border-radius: 50%;
-  color: var(--faint);
-  font-size: 11px;
-  font-weight: 800;
-}
-.overview-command-center-timeline-avatar {
-  display: grid;
-  width: 30px;
-  height: 30px;
-  place-items: center;
-  border-radius: 8px;
-  background: var(--surface-avatar);
-  color: var(--accent2);
-  font-size: 12px;
-  font-weight: 800;
-}
-.overview-command-center-snapshot {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr 1fr;
-  gap: 18px;
-  margin-top: 18px;
-}
-.overview-command-center-finance {
-  overflow: hidden;
-  margin-top: 18px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
-}
-.overview-command-center-finance > .overview-command-center-section-head { padding: 17px 18px 13px; }
-.overview-command-center-finance-groups {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  border-top: 1px solid var(--border);
-}
-.overview-command-center-finance-member-focused .overview-command-center-finance-groups {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-.overview-command-center-finance-group {
-  min-width: 0;
-  padding: 15px 18px 17px;
-  border-right: 1px solid var(--border);
-}
-.overview-command-center-finance-group:last-child { border-right: 0; }
-.overview-command-center-finance-group h3 { margin: 0 0 12px; color: var(--overview-ink); font-size: 15px; }
-.overview-command-center-finance-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
-.overview-command-center-finance-metric { display: grid; gap: 4px; min-width: 0; }
-.overview-command-center-finance-metric span { color: var(--muted); font-size: 13px; line-height: 1.3; }
-.overview-command-center-finance-metric strong { color: var(--overview-ink); font-size: 18px; font-variant-numeric: tabular-nums; }
-.overview-command-center-note {
-  margin: 13px 18px 17px;
-  color: var(--faint);
-  font-size: 12px;
-  line-height: 1.45;
-}
-.overview-command-center-status-list {
-  list-style: none;
-  margin: 0;
-  padding: 5px 18px 0;
-}
-.overview-command-center-status-row {
-  display: grid;
-  grid-template-columns: 8px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  min-height: 53px;
-  border-bottom: 1px solid var(--border-subtle);
-}
-.overview-command-center-status-row:last-child { border-bottom: 0; }
-.overview-command-center-status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--accent);
-}
-.overview-command-center-status-row > span:nth-child(2) {
-  display: grid;
-  gap: 2px;
-}
-.overview-command-center-status-row small {
-  color: var(--muted);
-  font-size: 12px;
-}
-.overview-command-center-status-row > strong:last-child {
-  font-size: 20px;
-  font-variant-numeric: tabular-nums;
-}
-.overview-member-normal .overview-command-center-status-dot { background: var(--status-member-normal); }
-.overview-member-normal > strong:last-child { color: var(--status-member-normal); }
-.overview-member-flag .overview-command-center-status-dot { background: var(--status-member-flag); }
-.overview-member-flag > strong:last-child { color: var(--status-member-flag); }
-.overview-member-temp-ban .overview-command-center-status-dot { background: var(--status-member-temp-ban); }
-.overview-member-temp-ban > strong:last-child { color: var(--status-member-temp-ban); }
-.overview-member-perm-ban .overview-command-center-status-dot { background: var(--status-member-perm-ban); }
-.overview-member-perm-ban > strong:last-child { color: var(--status-member-perm-ban); }
-.overview-quest-draft .overview-command-center-status-dot { background: var(--status-quest-draft); }
-.overview-quest-draft > strong:last-child { color: var(--status-quest-draft); }
-.overview-quest-open .overview-command-center-status-dot { background: var(--status-quest-open); }
-.overview-quest-open > strong:last-child { color: var(--status-quest-open); }
-.overview-quest-assigned .overview-command-center-status-dot { background: var(--status-quest-assigned); }
-.overview-quest-assigned > strong:last-child { color: var(--status-quest-assigned); }
-.overview-quest-in-progress .overview-command-center-status-dot { background: var(--status-quest-in-progress); }
-.overview-quest-in-progress > strong:last-child { color: var(--status-quest-in-progress); }
-.overview-quest-completed .overview-command-center-status-dot { background: var(--status-quest-completed); }
-.overview-quest-completed > strong:last-child { color: var(--status-quest-completed); }
-.overview-quest-cancelled .overview-command-center-status-dot { background: var(--status-quest-cancelled); }
-.overview-quest-cancelled > strong:last-child { color: var(--status-quest-cancelled); }
-.overview-quest-failed .overview-command-center-status-dot { background: var(--status-quest-failed); }
-.overview-quest-failed > strong:last-child { color: var(--status-quest-failed); }
-.overview-wallet-active .overview-command-center-status-dot { background: var(--status-wallet-active); }
-.overview-wallet-active > strong:last-child { color: var(--status-wallet-active); }
-.overview-wallet-frozen .overview-command-center-status-dot { background: var(--status-wallet-frozen); }
-.overview-wallet-frozen > strong:last-child { color: var(--status-wallet-frozen); }
-.overview-wallet-suspended .overview-command-center-status-dot { background: var(--status-wallet-suspended); }
-.overview-wallet-suspended > strong:last-child { color: var(--status-wallet-suspended); }
-.overview-wallet-closed .overview-command-center-status-dot { background: var(--status-wallet-closed); }
-.overview-wallet-closed > strong:last-child { color: var(--status-wallet-closed); }
-@media (max-width: 1120px) {
-  .overview-command-center-snapshot { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .overview-command-center-finance-groups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .overview-command-center-finance-member-focused .overview-command-center-finance-groups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .overview-command-center-finance-group:nth-child(2) { border-right: 0; }
-  .overview-command-center-finance-group:nth-child(-n + 2) { border-bottom: 1px solid var(--border); }
-}
-@media (max-width: 820px) {
-  .overview-command-center { padding: 24px 20px 32px; }
-  .overview-command-center-command { padding: 22px 20px 24px; }
-  .overview-command-center-hero { grid-template-columns: 1fr; gap: 20px; }
-  .overview-command-center-hero-copy { padding-bottom: 20px; border-right: 0; border-bottom: 1px solid color-mix(in srgb, var(--ink-inverse) 25%, transparent); }
-  .overview-command-center-grid { grid-template-columns: 1fr; }
-  .overview-command-center-timeline-scrollable { max-block-size: min(520px, 60vh); }
-}
-@media (max-width: 900px) {
-  .admin-shell-layout > main.overview-command-center { grid-column: 1; }
-}
-@media (max-width: 560px) {
-  .overview-command-center-header,
-  .overview-command-center-section-head { align-items: flex-start; flex-direction: column; gap: 10px; }
-  .overview-command-center-hero { padding: 22px 20px; }
-  .overview-command-center-hero-stats { grid-template-columns: 1fr; }
-  .overview-command-center-snapshot { grid-template-columns: 1fr; }
-  .overview-command-center-finance-groups { grid-template-columns: 1fr; }
-  .overview-command-center-finance-member-focused .overview-command-center-finance-groups { grid-template-columns: 1fr; }
-  .overview-command-center-finance-group,
-  .overview-command-center-finance-group:nth-child(2) { border-right: 0; border-bottom: 1px solid var(--border); }
-  .overview-command-center-finance-group:last-child { border-bottom: 0; }
-  .overview-command-center-table-head,
-  .overview-command-center-queue li { grid-template-columns: minmax(0, 1fr) auto; }
-  .overview-command-center-table-head span:nth-child(2),
-  .overview-command-center-table-head span:nth-child(3) { display: none; }
-  .overview-command-center-queue-oldest { grid-column: 1 / -1; grid-row: 2; }
-  .overview-command-center-queue-waiting { grid-column: 2; grid-row: 1; }
-  .overview-command-center-queue-status { grid-column: 1 / -1; grid-row: 3; }
-}
-
-.wallet-funds-summary {
-  display: grid;
-  gap: 4px;
-  margin: 18px 0;
-  padding: 15px 17px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--soft);
-}
-.wallet-funds-summary span,
-.wallet-funds-summary small { color: var(--muted); }
-.wallet-funds-summary span { font-size: 14px; font-weight: 700; }
-.wallet-funds-summary strong { font-size: 28px; font-variant-numeric: tabular-nums; }
-.wallet-funds-summary small { font-size: 13px; }
-.wallet-finance-summary { gap: 12px; }
-.wallet-finance-summary-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.wallet-finance-summary-heading > div { display: grid; gap: 3px; }
-.wallet-finance-summary-heading strong { font-size: 18px; }
-.wallet-finance-summary-heading small { font-size: 13px; font-weight: 500; }
-.wallet-finance-summary-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
-.wallet-finance-summary-metric { display: grid; gap: 3px; min-width: 0; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
-.wallet-finance-summary-metric span { overflow: hidden; font-size: 13px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-.wallet-finance-summary-metric strong { font-size: 17px; }
-.wallet-status-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
-}
-.wallet-status-actions .btn {
-  flex: 1 1 170px;
-}
 dialog.drawer.wallet-drawer > .drawer-body {
   display: grid;
   align-content: start;
   gap: 14px;
   padding-block: 20px 28px;
 }
-dialog.drawer.wallet-drawer > .drawer-body > .wallet-record,
-dialog.drawer.wallet-drawer > .drawer-body > .wallet-action-receipt {
+dialog.drawer.wallet-drawer > .drawer-body > .wallet-record {
   min-width: 0;
   max-width: 100%;
   margin: 0;
@@ -1158,178 +477,8 @@ dialog.drawer.wallet-drawer > .drawer-body > .wallet-action-receipt {
   background: var(--surface);
   box-shadow: var(--shadow-card);
 }
-dialog.drawer.wallet-drawer .wallet-statement-table-block,
-dialog.drawer.wallet-drawer .wallet-statement-table-wrap {
-  min-width: 0;
-  max-width: 100%;
-}
-.wallet-status-command-dialog {
-  width: min(560px, calc(100vw - 28px));
-  max-height: min(760px, calc(100vh - 32px));
-  padding: 0;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--surface);
-  color: var(--text);
-}
 .wallet-status-command-dialog::backdrop {
   background: var(--scrim-dialog);
-}
-.wallet-status-command-form {
-  display: flex;
-  max-height: min(760px, calc(100vh - 32px));
-  flex-direction: column;
-}
-.wallet-command-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--border);
-}
-.wallet-command-head strong,
-.wallet-command-head small {
-  display: block;
-}
-.wallet-command-head strong {
-  font-size: 17px;
-}
-.wallet-command-head small {
-  margin-top: 3px;
-  color: var(--muted);
-  font-size: 13px;
-}
-.wallet-command-body {
-  display: grid;
-  gap: 12px;
-  min-height: 0;
-  padding: 18px;
-  overflow-y: auto;
-}
-.wallet-command-intro,
-.wallet-command-help {
-  margin: 0;
-  color: var(--muted);
-  font-size: 14px;
-  line-height: 1.5;
-}
-.wallet-status-preview {
-  display: grid;
-  gap: 8px;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--soft);
-}
-.wallet-status-preview > div {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 14px;
-}
-.wallet-status-preview span {
-  color: var(--muted);
-}
-.wallet-status-preview strong {
-  max-width: 70%;
-  overflow-wrap: anywhere;
-  text-align: right;
-}
-.wallet-status-preview-transition strong {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 5px;
-}
-.wallet-status-preview-transition strong span[aria-hidden="true"] {
-  color: var(--muted);
-}
-.wallet-status-consequences {
-  padding: 12px;
-  border: 1px solid var(--info);
-  border-radius: 10px;
-  background: var(--info-soft);
-  color: var(--text);
-}
-.wallet-status-consequences-active {
-  border-color: var(--success);
-  background: var(--success-soft);
-}
-.wallet-status-consequences-suspended {
-  border-color: var(--danger);
-  background: var(--danger-soft);
-}
-.wallet-status-consequences strong {
-  display: block;
-  font-size: 14px;
-}
-.wallet-status-consequences ul {
-  display: grid;
-  gap: 5px;
-  margin: 7px 0 0;
-  padding-left: 18px;
-  font-size: 13px;
-  line-height: 1.45;
-}
-.wallet-status-command-form label {
-  display: grid;
-  gap: 5px;
-  font-size: 14px;
-  font-weight: 700;
-}
-.wallet-status-command-form textarea,
-.wallet-status-command-form select {
-  width: 100%;
-  border: 1px solid var(--strong);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
-}
-.wallet-status-command-form textarea {
-  min-height: 92px;
-  padding: 9px 10px;
-  resize: vertical;
-}
-.wallet-status-command-form select {
-  min-height: 36px;
-  padding: 0 9px;
-  font-size: 14px;
-}
-.wallet-status-command-form textarea[aria-invalid="true"] {
-  border-color: var(--danger);
-  outline: 3px solid var(--danger-soft);
-}
-.wallet-fixture-field {
-  color: var(--muted);
-}
-.wallet-fixture-field span {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 500;
-}
-.wallet-status-command-form .dialog-actions {
-  flex: 0 0 auto;
-}
-.wallet-action-receipt {
-  margin: 18px 0;
-  padding: 14px;
-  border: 1px solid var(--success);
-  border-radius: 10px;
-  background: var(--success-soft);
-}
-.wallet-action-receipt h3 {
-  margin: 0 0 10px;
-  font-size: 15px;
-}
-.wallet-action-receipt .wallet-status-preview {
-  background: var(--surface);
-}
-.wallet-action-receipt .audit-note {
-  margin-bottom: 0;
 }
 .wallet-drawer .timeline li small {
   display: block;
@@ -1338,85 +487,6 @@ dialog.drawer.wallet-drawer .wallet-statement-table-wrap {
 }
 .wallet-mobile-key-facts {
   display: none;
-}
-@media (max-width: 900px) {
-  .wallet-finance-summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-@media (max-width: 600px) {
-  .wallet-finance-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-.wallet-statement-filters {
-  display: grid;
-  grid-template-columns: minmax(0, 1.3fr) repeat(2, minmax(130px, 1fr)) auto;
-  align-items: end;
-  gap: 9px;
-  margin-bottom: 14px;
-}
-.wallet-statement-balance-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 14px;
-}
-.wallet-statement-balance {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-  padding: 10px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--soft);
-}
-.wallet-statement-balance span {
-  overflow: hidden;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.wallet-statement-balance strong {
-  font-size: 17px;
-  font-variant-numeric: tabular-nums;
-}
-.wallet-statement-filters label { display: grid; gap: 4px; color: var(--muted); font-size: 13px; font-weight: 700; }
-.wallet-statement-filters select,
-.wallet-statement-filters input { width: 100%; min-height: 35px; padding: 0 8px; border: 1px solid var(--strong); border-radius: 7px; background: var(--surface); color: var(--text); }
-.wallet-statement-filters .btn { min-height: 35px; }
-.wallet-statement-table-block { min-width: 0; }
-.wallet-statement-scroll-hint {
-  display: none;
-  margin: 0 0 8px;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  background: var(--soft);
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.4;
-}
-.wallet-statement-table-block > .wallet-statement-scroll-hint {
-  margin: 0 0 8px;
-}
-.wallet-statement-table-wrap {
-  scrollbar-gutter: stable;
-}
-.wallet-statement-table { min-width: 760px; }
-.wallet-statement-table .money { white-space: nowrap; }
-.wallet-statement-table .wallet-statement-movement { min-width: 220px; }
-.wallet-statement-table small { display: block; margin-top: 3px; color: var(--muted); }
-@media (max-width: 720px) {
-  .wallet-statement-balance-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .wallet-statement-filters { grid-template-columns: 1fr 1fr; }
-  .wallet-statement-filters label:first-child { grid-column: 1 / -1; }
-}
-@media (max-width: 420px) {
-  .wallet-statement-balance-grid { grid-template-columns: 1fr; }
-  .wallet-statement-filters { grid-template-columns: 1fr; }
-  .wallet-statement-filters label:first-child { grid-column: auto; }
-  .wallet-status-preview > div { display: grid; gap: 3px; }
-  .wallet-status-preview strong { max-width: none; text-align: left; }
-  .wallet-status-preview-transition strong { justify-content: flex-start; }
 }
 @media (max-width: 600px) {
   .wallet-board-table td:first-child {
@@ -1447,59 +517,8 @@ dialog.drawer.wallet-drawer .wallet-statement-table-wrap {
   .wallet-mobile-key-facts .badge {
     width: max-content;
   }
-  .wallet-statement-scroll-hint {
-    display: block;
-  }
-  .wallet-statement-table-wrap {
-    overscroll-behavior-inline: contain;
-  }
 }
 
-.quest-board {
-  min-width: 0;
-}
-.quest-row:focus-visible {
-  position: relative;
-  outline: 3px solid var(--accent);
-  outline-offset: -3px;
-}
-.quest-title-link {
-  display: block;
-  color: inherit;
-  text-decoration: none;
-}
-.quest-title-link:visited {
-  color: inherit;
-}
-.quest-title-link strong,
-.quest-title-link small {
-  display: block;
-}
-.quest-title-link:hover {
-  color: var(--accent);
-}
-.quest-hidden-overlay {
-  margin: 3px 0 0 4px;
-}
-.quest-detail-facts {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-.quest-detail-list-block {
-  display: grid;
-  gap: 4px;
-  margin-top: 16px;
-}
-.quest-detail-list-value {
-  font-size: 14px;
-  font-weight: 500;
-}
-.quest-detail-list-gap {
-  margin-top: 12px;
-}
-.record-description {
-  margin: 0;
-  white-space: pre-wrap;
-}
 .hirer-profile-summary {
   display: grid;
   gap: 3px;
@@ -1507,88 +526,6 @@ dialog.drawer.wallet-drawer .wallet-statement-table-wrap {
 .hirer-profile-summary span {
   color: var(--muted);
   font-size: 14px;
-}
-.quest-finance-list {
-  margin-top: 12px;
-  padding-top: 8px;
-  border-top: 1px solid var(--border);
-}
-.quest-finance-list h3 {
-  margin: 0 0 4px;
-  font-size: 15px;
-}
-.quest-command-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 18px;
-}
-.quest-command-actions .quest-full-detail-link {
-  margin-right: auto;
-}
-.quest-command-layer {
-  position: fixed;
-  z-index: 90;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 16px;
-  background: var(--scrim-command);
-}
-.quest-command-backdrop {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  border: 0;
-  background: transparent;
-  cursor: default;
-}
-.quest-command-dialog {
-  position: relative;
-  z-index: 1;
-  width: min(470px, calc(100vw - 32px));
-  margin: auto;
-  padding: 20px;
-  border: 0;
-  border-radius: 14px;
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: var(--shadow);
-}
-.quest-command-dialog form {
-  display: grid;
-  gap: 12px;
-}
-.quest-command-dialog h2 {
-  margin: 0;
-  font-size: 20px;
-}
-.quest-command-dialog p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 14px;
-}
-.quest-command-dialog label {
-  display: grid;
-  gap: 5px;
-  font-size: 14px;
-  font-weight: 600;
-}
-.quest-command-dialog textarea,
-.quest-command-dialog select {
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid var(--strong);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--text);
-}
-.quest-command-dialog textarea {
-  resize: vertical;
-}
-.quest-command-dialog .dialog-actions {
-  margin-top: 4px;
 }
 
 /* Moderation drawers keep the case record readable while the footer stays in
@@ -1705,298 +642,12 @@ dialog.drawer.dispute-case-drawer .timeline strong {
   }
 }
 
-@media (max-width: 600px) {
-  .quest-detail-facts {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Mock-first operating controls for the Admin queue, Activity Log, and global search. */
-.overview-command-center-queue-title {
-  min-width: 0;
-}
-.overview-command-center-queue-title .overview-queue-process {
-  justify-self: start;
-  margin-top: 2px;
-  padding: 0;
-  font-size: 13px;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-.overview-command-center-queue-status {
-  display: grid;
-  gap: 3px;
-}
-.overview-command-center-queue-status strong {
-  color: inherit;
-  font-size: 12px;
-}
-.overview-command-center-queue-status small,
-.overview-command-center-queue-waiting small {
-  color: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.25;
-}
-.overview-command-center-queue-waiting {
-  display: grid;
-  gap: 3px;
-}
-.overview-command-center-queue-waiting strong {
-  color: var(--overview-ink);
-  font-size: 13px;
-}
-.overview-command-center-queue-waiting small {
-  color: var(--muted);
-}
 .activity-log-fixture-notice {
   margin: 0 0 12px;
   padding: 10px 12px;
   border-radius: 8px;
   font-size: 13px;
 }
-.activity-log-state-change {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center;
-  gap: 10px;
-}
-.activity-log-state-change > div {
-  min-width: 0;
-  padding: 10px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--soft);
-}
-.activity-log-state-change span,
-.activity-log-state-change strong {
-  display: block;
-}
-.activity-log-state-change span {
-  color: var(--muted);
-  font-size: 12px;
-}
-.activity-log-state-change strong {
-  margin-top: 4px;
-  overflow-wrap: anywhere;
-  font-size: 14px;
-}
-.activity-log-state-arrow {
-  color: var(--accent);
-  font-size: 20px;
-  font-weight: 800;
-}
-.activity-log-missing-context,
-.activity-log-note {
-  margin: 0;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.45;
-}
-.activity-log-note {
-  display: grid;
-  gap: 4px;
-  margin-top: 12px;
-  padding: 10px;
-  border-radius: 8px;
-  background: var(--soft);
-}
-.admin-global-search-trigger {
-  flex: 0 1 360px;
-  width: min(360px, 40vw);
-}
-.admin-global-search-box {
-  width: min(760px, calc(100vw - 28px));
-  max-height: min(78vh, 760px);
-}
-.admin-global-search-controls {
-  display: grid;
-  grid-template-columns: minmax(160px, .7fr) minmax(0, 1.3fr);
-  align-items: end;
-  gap: 12px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-  background: var(--soft);
-}
-.admin-global-search-controls label,
-.admin-global-search-save label {
-  display: grid;
-  gap: 5px;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 700;
-}
-.admin-global-search-controls select,
-.admin-global-search-controls input {
-  min-height: 36px;
-  width: 100%;
-  padding: 0 9px;
-  border: 1px solid var(--strong);
-  border-radius: 7px;
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
-  font-size: 14px;
-}
-.admin-global-search-save {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 8px;
-}
-.admin-global-search-save .btn {
-  min-height: 36px;
-}
-.admin-global-search-saved {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  overflow-x: auto;
-  border-bottom: 1px solid var(--border);
-  white-space: nowrap;
-}
-.admin-global-search-saved > span {
-  margin-right: 4px;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 700;
-}
-.admin-global-search-saved .link {
-  min-height: 28px;
-  padding: 4px 9px;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  font-size: 13px;
-  white-space: nowrap;
-}
-.admin-global-search-message {
-  display: block;
-  margin: 10px 16px 0;
-  color: var(--success);
-  font-size: 13px;
-}
-.admin-global-search-notice {
-  margin: 12px 16px 4px;
-  padding: 9px 10px;
-  border-radius: 8px;
-  font-size: 13px;
-}
-.admin-global-search-group h3 {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 0;
-  padding: 10px 16px 7px;
-  border-bottom: 1px solid var(--border);
-  color: var(--muted);
-  font-size: 12px;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
-.admin-global-search-group h3 span {
-  min-width: 19px;
-  padding: 2px 5px;
-  border-radius: 999px;
-  background: var(--soft);
-  color: var(--text);
-  font-size: 12px;
-  letter-spacing: 0;
-  text-align: center;
-}
-.admin-global-search-group .result {
-  grid-template-columns: 35px minmax(0, 1fr) auto;
-}
-.admin-global-search-group .result,
-.admin-global-search-group .result:visited {
-  color: var(--text);
-  text-decoration: none;
-}
-.admin-global-search-group .result:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
-.admin-global-search-marker {
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  color: var(--accent);
-}
-.admin-global-search-icon {
-  width: 17px;
-  height: 17px;
-  display: block;
-}
-.admin-global-search-result-copy {
-  min-width: 0;
-}
-.admin-global-search-result-copy strong,
-.admin-global-search-result-copy small {
-  overflow-wrap: anywhere;
-}
-.admin-global-search-result-meta {
-  min-width: 96px;
-  display: grid;
-  justify-items: end;
-  gap: 3px;
-  text-align: right;
-}
-.admin-global-search-result-meta > small {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-}
-.admin-global-search-status {
-  max-width: 150px;
-  padding: 3px 7px;
-  border: 1px solid var(--strong);
-  border-radius: 999px;
-  background: var(--soft);
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.2;
-  overflow-wrap: anywhere;
-}
-@media (max-width: 600px) {
-  .activity-log-state-change {
-    grid-template-columns: 1fr;
-  }
-  .activity-log-state-arrow {
-    justify-self: center;
-    transform: rotate(90deg);
-  }
-  .admin-global-search-controls {
-    grid-template-columns: 1fr;
-  }
-  .admin-global-search-trigger {
-    width: 44px;
-  }
-  .admin-global-search-group .result {
-    grid-template-columns: 35px minmax(0, 1fr);
-  }
-  .admin-global-search-result-meta {
-    grid-column: 2;
-    justify-items: start;
-    min-width: 0;
-    text-align: left;
-  }
-}
-
-/* Keep the shell search compact on phones so the page title stays readable. */
-@media (max-width: 600px) {
-  .admin-global-search-trigger {
-    flex: 0 0 44px;
-  }
-  .admin-shell-title {
-    white-space: nowrap;
-  }
-}
-
 /* Keep every Admin drawer readable at the requested larger type size. The
    board tables keep their compact density so an Admin can scan many records. */
 .admin-shell {
@@ -2020,21 +671,15 @@ dialog.drawer.dispute-case-drawer .timeline strong {
 .admin-shell dialog.drawer .related-row small,
 .admin-shell dialog.drawer .file-row small,
 .admin-shell dialog.drawer .timeline time,
-.admin-shell dialog.drawer .timeline span,
-.admin-shell dialog.drawer .payout-summary-grid span,
-.admin-shell dialog.drawer .payout-audit-list span,
-.admin-shell dialog.drawer .payout-previous-row small {
+.admin-shell dialog.drawer .timeline span {
   font-size: 15px;
 }
-.admin-shell dialog.drawer .timeline strong,
-.admin-shell dialog.drawer .payout-summary-grid strong,
-.admin-shell dialog.drawer .payout-audit-list strong {
+.admin-shell dialog.drawer .timeline strong {
   font-size: 17px;
   line-height: 1.4;
 }
 .admin-shell dialog.drawer .badge,
 .admin-shell dialog.drawer .evidence-item > span:last-child,
-.admin-shell dialog.drawer .financial-line,
 .admin-shell dialog.drawer .requirement-box strong,
 .admin-shell dialog.drawer .requirement-box ul {
   font-size: 16px;
@@ -2052,42 +697,12 @@ dialog.drawer.dispute-case-drawer .timeline strong {
 
 /* Activity Log uses one explicit action for navigation. Keep the target as
    readable record text instead of showing a second hyperlink control. */
-.activity-log-target {
-  display: block;
-  min-width: 0;
-  color: var(--text);
-  overflow-wrap: anywhere;
-  text-decoration: none;
-}
-a.activity-log-target,
-a.activity-log-target:hover {
-  color: var(--text);
-  text-decoration: none;
-}
 .activity-log-linked-detail-button {
   flex: 1.35;
   min-width: 0;
 }
 .activity-log-dialog .drawer-actions {
   align-items: stretch;
-}
-
-/* Keep related case information readable at a glance. Long IDs and policy
-   text get their own line instead of competing with adjacent facts. */
-.overview-command-center-queue-oldest {
-  display: grid;
-  gap: 0.25rem;
-  min-width: 0;
-}
-.overview-command-center-queue-oldest a {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-.overview-command-center-queue-oldest small {
-  color: var(--faint);
-  font-size: calc(0.8rem + 2px);
-  font-variant-numeric: tabular-nums;
-  line-height: 1.3;
 }
 
 /* Reflow moderation drawers into two readable fact columns and full-width
@@ -2167,20 +782,6 @@ dialog.drawer.dispute-case-drawer .moderation-case-related-record p {
   .admin-shell .activity-log-dialog .drawer-body {
     padding-inline: 16px;
   }
-}
-
-/* Keep each moderation choice readable: the label and its explanation are
-   separate lines instead of one joined text run. */
-.report-decision-option > label,
-.admin-modal-layer .report-decision-option > label {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-  margin: 0;
-}
-.report-decision-option > label small,
-.admin-modal-layer .report-decision-option > label small {
-  display: block;
 }
 
 dialog.drawer.report-case-drawer .field-error,
@@ -2267,32 +868,15 @@ dialog.drawer.dispute-case-drawer .field-error {
   font-size: var(--admin-font-body);
 }
 
-/* Filter controls use the same readable scale on every board. The legacy
-   boards and the Tailwind boards must not produce different text sizes for
-   the same task. */
+/* Filter controls use the same readable scale on legacy search fields. Board
+   filters use Tailwind utilities directly. */
 .admin-shell {
   --admin-font-control: 16px;
 }
 
-.admin-shell .admin-filter-input,
 .admin-shell .inline-search input {
   font-size: var(--admin-font-control);
   line-height: 1.45;
-}
-
-.admin-shell .admin-filter-label {
-  font-size: var(--admin-font-meta);
-  line-height: 1.4;
-}
-
-/* Board filters use the same compact row on desktop. On a narrow viewport the
-   search field gets a full row, so its label cannot collapse to a 20px sliver
-   beside the page-size controls. */
-@media (max-width: 600px) {
-  .admin-shell .admin-filter-label {
-    flex: 1 1 100%;
-    max-width: none;
-  }
 }
 
 /* Final Admin type-scale audit.
@@ -2374,7 +958,6 @@ dialog.drawer.dispute-case-drawer .field-error {
   line-height: 1.35;
 }
 
-.admin-shell dialog.drawer .record-description,
 .admin-shell dialog.drawer .requirement-box,
 .admin-shell dialog.drawer .requirement-box p,
 .admin-shell dialog.drawer .requirement-box li {
@@ -2386,169 +969,52 @@ dialog.drawer.dispute-case-drawer .field-error {
 .admin-shell dialog.drawer .timeline time,
 .admin-shell dialog.drawer .timeline span,
 .admin-shell dialog.drawer .related-row small,
-.admin-shell dialog.drawer .file-row small,
-.admin-shell dialog.drawer .payout-previous-row small {
+.admin-shell dialog.drawer .file-row small {
   font-size: var(--admin-font-meta);
   line-height: 1.45;
-}
-
-.admin-shell dialog.drawer .financial-line,
-.admin-shell dialog.drawer .financial-line span,
-.admin-shell dialog.drawer .financial-line strong {
-  font-size: var(--admin-font-value);
-  line-height: 1.4;
-}
-
-.admin-shell dialog.drawer .financial-line small {
-  font-size: var(--admin-font-meta);
-  line-height: 1.4;
-}
-
-/* Overview is an operational dashboard, but it follows the same text steps.
-   The large work count and finance amounts remain KPI values by design. */
-.admin-shell .overview-command-center h1 {
-  font-size: var(--admin-font-page-title);
-  line-height: 1.25;
-  letter-spacing: -0.025em;
-}
-
-.admin-shell .overview-command-center-kicker,
-.admin-shell .overview-command-center-header p,
-.admin-shell .overview-command-center-section-head p {
-  font-size: var(--admin-font-meta);
-  line-height: 1.45;
-}
-
-.admin-shell .overview-command-center-section-head h2,
-.admin-shell .overview-command-center-section-head h2 {
-  font-size: var(--admin-font-section);
-  line-height: 1.4;
-}
-
-.admin-shell .overview-command-center-section-head > span,
-.admin-shell .overview-command-center-section-head > span {
-  font-size: var(--admin-font-meta);
-  line-height: 1.4;
-}
-
-.admin-shell .overview-command-center-hero-copy small,
-.admin-shell .overview-command-center-hero-copy > span:not(.overview-command-center-hero-note),
-.admin-shell .overview-command-center-hero-stats > div > span,
-.admin-shell .overview-command-center-hero-stats small,
-.admin-shell .overview-command-center-hero-note {
-  font-size: var(--admin-font-meta);
-  line-height: 1.45;
-}
-
-.admin-shell .overview-command-center-hero-copy p,
-.admin-shell .overview-command-center-hero-copy p {
-  font-size: var(--admin-font-body);
-  line-height: 1.5;
-}
-
-.admin-shell .overview-command-center-table-head,
-.admin-shell .overview-command-center-queue-title strong,
-.admin-shell .overview-command-center-timeline strong,
-.admin-shell .overview-command-center-queue-waiting strong {
-  font-size: var(--admin-font-table);
-  line-height: 1.4;
-}
-
-.admin-shell .overview-command-center-queue-title small,
-.admin-shell .overview-command-center-timeline small,
-.admin-shell .overview-command-center-queue-oldest,
-.admin-shell .overview-command-center-queue-waiting small,
-.admin-shell .overview-command-center-note,
-.admin-shell .overview-command-center-finance-metric span,
-.admin-shell .overview-command-center-status-row small {
-  font-size: var(--admin-font-meta);
-  line-height: 1.45;
-}
-
-.admin-shell .overview-command-center-queue-status {
-  font-size: var(--admin-font-caption);
-  line-height: 1.35;
-}
-
-.admin-shell .overview-command-center-finance-group h3 {
-  font-size: var(--admin-font-section);
-  line-height: 1.4;
-}
-
-.admin-shell .overview-command-center-finance-metric strong,
-.admin-shell .overview-command-center-finance-metric strong {
-  font-size: var(--admin-font-value);
-  line-height: 1.4;
-}
-
-.admin-shell .overview-command-center-status-row > strong:last-child {
-  font-size: var(--admin-font-value);
-  line-height: 1.4;
 }
 
 /* Centered forms use the same body, label, value, and helper steps. */
 .admin-shell .admin-modal-layer > dialog,
-.admin-shell .party-chat-overlay .party-chat-modal,
-.admin-shell .wallet-status-command-dialog,
-.admin-shell .quest-command-dialog {
+.admin-shell .party-chat-overlay .party-chat-modal {
   font-size: var(--admin-font-body);
 }
 
-.admin-shell .admin-modal-layer > dialog h2,
-.admin-shell .quest-command-dialog h2 {
+.admin-shell .admin-modal-layer > dialog h2 {
   font-size: 22px;
   line-height: 1.35;
 }
 
-.admin-shell .chat-modal-head strong,
-.admin-shell .wallet-command-head strong {
+.admin-shell .chat-modal-head strong {
   font-size: 20px;
   line-height: 1.35;
 }
 
 .admin-shell .chat-modal-head small,
-.admin-shell .wallet-command-head small,
-.admin-shell .penalty-policy-note span,
-.admin-shell .wallet-command-help,
-.admin-shell .wallet-status-consequences li,
-.admin-shell .quest-command-dialog p {
+.admin-shell .penalty-policy-note span {
   font-size: var(--admin-font-meta);
   line-height: 1.45;
 }
 
 .admin-shell .admin-modal-layer > dialog p,
-.admin-shell .chat-intro,
-.admin-shell .wallet-command-intro {
+.admin-shell .chat-intro {
   font-size: var(--admin-font-body);
   line-height: 1.5;
 }
 
-.admin-shell .admin-modal-layer > dialog label,
-.admin-shell .wallet-status-command-form label,
-.admin-shell .quest-command-dialog label {
+.admin-shell .admin-modal-layer > dialog label {
   font-size: var(--admin-font-meta);
   line-height: 1.4;
 }
 
-.admin-shell .penalty-policy-note strong,
-.admin-shell .wallet-status-consequences strong {
-  font-size: var(--admin-font-value);
-  line-height: 1.4;
-}
-
-.admin-shell .wallet-status-preview,
-.admin-shell .wallet-status-preview strong {
+.admin-shell .penalty-policy-note strong {
   font-size: var(--admin-font-value);
   line-height: 1.4;
 }
 
 .admin-shell .admin-modal-layer > dialog input,
 .admin-shell .admin-modal-layer > dialog select,
-.admin-shell .admin-modal-layer > dialog textarea,
-.admin-shell .wallet-status-command-form textarea,
-.admin-shell .wallet-status-command-form select,
-.admin-shell .quest-command-dialog textarea,
-.admin-shell .quest-command-dialog select {
+.admin-shell .admin-modal-layer > dialog textarea {
   font-size: var(--admin-font-body);
   line-height: 1.45;
 }
@@ -2576,71 +1042,9 @@ dialog.drawer.dispute-case-drawer .field-error {
   line-height: 1.35;
 }
 
-.admin-shell dialog.drawer .wallet-statement-scroll-hint {
-  font-size: var(--admin-font-meta);
-  line-height: 1.45;
-}
-
-.admin-shell .overview-command-center-header p {
-  font-size: var(--admin-font-body);
-  line-height: 1.5;
-}
-
 .admin-shell .api-data-notice {
   font-size: var(--admin-font-meta);
   line-height: 1.45;
-}
-
-.admin-shell .overview-command-center-queue-title .overview-queue-process {
-  font-size: var(--admin-font-meta);
-  line-height: 1.35;
-}
-
-.admin-shell .overview-command-center-queue-title > strong > a {
-  font-size: var(--admin-font-table);
-  line-height: 1.4;
-}
-
-.admin-shell .overview-command-center-queue-status,
-.admin-shell .overview-command-center-queue-waiting {
-  font-size: var(--admin-font-meta);
-  line-height: 1.4;
-}
-
-.admin-shell .overview-command-center-queue-status strong {
-  font-size: var(--admin-font-meta);
-  line-height: 1.35;
-}
-
-.admin-shell .overview-command-center-queue-waiting strong {
-  font-size: var(--admin-font-value);
-  line-height: 1.35;
-}
-
-.admin-shell .overview-command-center-queue-waiting small,
-.admin-shell .overview-command-center-queue-oldest small {
-  font-size: var(--admin-font-meta);
-  line-height: 1.4;
-}
-
-.admin-shell .overview-command-center-timeline-marker,
-.admin-shell .overview-command-center-timeline-avatar {
-  font-size: var(--admin-font-caption);
-  line-height: 1;
-}
-
-.admin-shell .wallet-finance-summary-metric span,
-.admin-shell .wallet-finance-summary-heading small,
-.admin-shell .wallet-statement-balance span,
-.admin-shell .wallet-statement-filters label {
-  font-size: var(--admin-font-meta);
-  line-height: 1.4;
-}
-
-.admin-shell .wallet-statement-filters input,
-.admin-shell .wallet-statement-filters select {
-  font-size: var(--admin-font-table);
-  line-height: 1.4;
 }
 
 .admin-shell .evidence-state {
@@ -2648,17 +1052,8 @@ dialog.drawer.dispute-case-drawer .field-error {
   line-height: 1.35;
 }
 
-.admin-shell dialog.drawer .wallet-finance-summary-metric span,
-.admin-shell dialog.drawer .wallet-statement-balance span,
 .admin-shell dialog.drawer .hirer-profile-summary span {
   font-size: var(--admin-font-meta);
-  line-height: 1.4;
-}
-
-.admin-shell dialog.drawer .wallet-finance-summary-metric strong,
-.admin-shell dialog.drawer .wallet-statement-balance strong,
-.admin-shell dialog.drawer .quest-detail-list-value {
-  font-size: var(--admin-font-value);
   line-height: 1.4;
 }
 
@@ -2684,11 +1079,6 @@ dialog.drawer.dispute-case-drawer .field-error {
 .admin-shell .activity-log-dialog .drawer-top > div > strong {
   font-size: var(--admin-font-drawer-title);
   line-height: 1.3;
-}
-
-.admin-shell dialog.drawer .quest-finance-list h3 {
-  font-size: var(--admin-font-section);
-  line-height: 1.4;
 }
 
 .admin-shell .quest-description-block h3,
@@ -2727,39 +1117,6 @@ dialog.drawer.dispute-case-drawer .field-error {
 .admin-shell .admin-action-receipt-heading small {
   font-size: var(--admin-font-meta);
   line-height: 1.45;
-}
-
-.admin-shell .activity-log-dialog .activity-log-target,
-.admin-shell .activity-log-dialog .activity-log-state-change span {
-  font-size: var(--admin-font-meta);
-  line-height: 1.4;
-}
-
-.admin-shell .activity-log-dialog .activity-log-state-change strong {
-  font-size: var(--admin-font-value);
-  line-height: 1.4;
-}
-
-.admin-shell .activity-log-dialog .activity-log-state-arrow {
-  font-size: var(--admin-font-section);
-  line-height: 1;
-}
-
-.admin-shell .payout-detail-page .payout-outcome p {
-  font-size: var(--admin-font-body);
-  line-height: 1.5;
-}
-
-.admin-shell .payout-detail-page .payout-summary-grid span,
-.admin-shell .payout-detail-page .payout-audit-list span {
-  font-size: var(--admin-font-meta);
-  line-height: 1.4;
-}
-
-.admin-shell .payout-detail-page .payout-summary-grid strong,
-.admin-shell .payout-detail-page .payout-audit-list strong {
-  font-size: var(--admin-font-value);
-  line-height: 1.4;
 }
 
 /* Admin record text should read as part of the current surface, not as a
@@ -2868,31 +1225,6 @@ dialog.drawer.dispute-case-drawer .field-error {
   inline-size: 100%;
 }
 
-.admin-shell dialog.drawer .quest-command-actions {
-  position: sticky;
-  bottom: -28px;
-  z-index: 4;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 8px;
-  margin: 18px -24px -28px;
-  padding: 14px 24px;
-  border-top: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface) 96%, transparent);
-  box-shadow: 0 -6px 18px color-mix(in srgb, var(--text) 9%, transparent);
-}
-
-.admin-shell dialog.drawer .quest-command-actions :where(.btn, [data-slot="button"]) {
-  inline-size: 100%;
-  min-block-size: 44px;
-  margin: 0;
-  text-align: center;
-}
-
-.admin-shell dialog.drawer .quest-command-actions .quest-full-detail-link {
-  margin-inline-end: 0;
-}
-
 /* The shared shell owns the outer padding. Do not create a second inset in
    the content-specific layouts. */
 .admin-shell dialog.drawer .activity-log-detail,
@@ -2911,13 +1243,6 @@ dialog.drawer.dispute-case-drawer .field-error {
   }
 
   .admin-shell dialog.drawer .drawer-content-flow > .drawer-actions,
-  .admin-shell dialog.drawer .quest-command-actions {
-    bottom: -24px;
-    margin-inline: -16px;
-    margin-block-end: -24px;
-    padding-inline: 16px;
-  }
-
   .admin-shell dialog.drawer.quest-style-drawer > .drawer-body .drawer-content-flow > .drawer-actions {
     bottom: -24px;
     margin-inline: -16px;
@@ -2981,20 +1306,11 @@ dialog.drawer.dispute-case-drawer .field-error {
   line-height: 1.4;
 }
 
-.admin-shell .wallet-action-receipt h3 {
-  font-size: var(--admin-font-section);
-  line-height: 1.4;
-}
-
-.admin-shell .payout-summary-grid span,
-.admin-shell .payout-audit-list span,
 .admin-shell .payout-destination-facts > div > span {
   font-size: var(--admin-font-meta);
   line-height: 1.4;
 }
 
-.admin-shell .payout-summary-grid strong,
-.admin-shell .payout-audit-list strong,
 .admin-shell .payout-destination-facts > div > strong {
   font-size: var(--admin-font-value);
   line-height: 1.4;
@@ -3044,19 +1360,9 @@ dialog.drawer.dispute-case-drawer .field-error {
   line-height: 1.4;
 }
 
-.admin-shell dialog.drawer .payout-previous-row strong {
-  font-size: var(--admin-font-value);
-  line-height: 1.4;
-}
-
 .admin-shell dialog.drawer .requirement-box ul {
   font-size: var(--admin-font-body);
   line-height: 1.5;
-}
-
-.admin-shell dialog.drawer .quest-command-actions :where(.btn, [data-slot="button"]) {
-  font-size: var(--admin-font-body);
-  line-height: 1.4;
 }
 
 .admin-shell dialog.drawer.wallet-drawer .wallet-record .drawer-title h2 {
@@ -3067,22 +1373,5 @@ dialog.drawer.dispute-case-drawer .field-error {
 
 .admin-shell dialog.drawer.wallet-drawer .wallet-record .drawer-title p {
   font-size: var(--admin-font-meta);
-  line-height: 1.4;
-}
-
-.admin-shell .activity-log-dialog .activity-log-detail > .drawer-title h2 {
-  font-size: var(--admin-font-section);
-  line-height: 1.4;
-  font-weight: 600;
-}
-
-.admin-shell .activity-log-dialog .activity-log-missing-context,
-.admin-shell .activity-log-dialog .activity-log-note {
-  font-size: var(--admin-font-meta);
-  line-height: 1.45;
-}
-
-.admin-shell .activity-log-dialog .activity-log-note strong {
-  font-size: var(--admin-font-value);
   line-height: 1.4;
 }
