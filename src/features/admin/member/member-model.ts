@@ -740,7 +740,7 @@ export function memberModelFromMockRecord(
   const userCount = Math.max(1, data.collections.users.length);
   const linkedQuests = data.collections.quests.filter((quest) => {
     const questRecord = asRecord(quest);
-    return [questRecord?.memberId, questRecord?.userId, questRecord?.hirerId, questRecord?.workerId].some((value) => value === id);
+    return [questRecord?.memberId, questRecord?.userId, questRecord?.hirerId, questRecord?.workerId].some((candidateId) => candidateId === id);
   });
   const questValues = linkedQuests.length
     ? linkedQuests

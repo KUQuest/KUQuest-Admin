@@ -485,6 +485,7 @@ export function AdminWalletPage({ initialData }: { initialData: WalletBoardPageD
         return [...currentRows, ...loadedRows.filter((row) => !existingIds.has(row.id))];
       });
       setIsLoadingMore(false);
+      return undefined;
     }).catch(() => {
       if (!cancelled) {
         setBackgroundLoadError("Some Wallet records could not be loaded.");

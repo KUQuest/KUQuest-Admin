@@ -542,6 +542,7 @@ export function MemberDetail({ memberId, initialModel = null, initialTab = "over
       if (cancelled) return;
       if (!nextModel) setLoadError("The requested Member was not found.");
       setModel(nextModel);
+      return undefined;
     }).catch((error: unknown) => {
       if (!cancelled) setLoadError(error instanceof Error ? error.message : "The Member could not load.");
     }).finally(() => {

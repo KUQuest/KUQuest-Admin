@@ -799,6 +799,7 @@ export function ConductReportDetail({
       } else {
         setReportModel(nextModel);
       }
+      return undefined;
     }).catch((error: unknown) => {
       if (!cancelled) setLoadError(error instanceof Error ? error.message : "The Conduct Report could not load.");
     }).finally(() => {

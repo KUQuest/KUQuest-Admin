@@ -420,6 +420,7 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
         setDisputeModel(null);
         setLoadError("The Dispute Case was not found.");
       } else setDisputeModel(nextModel);
+      return undefined;
     }).catch((error: unknown) => {
       if (!cancelled) setLoadError(error instanceof Error ? error.message : "The Dispute Case could not load.");
     }).finally(() => {

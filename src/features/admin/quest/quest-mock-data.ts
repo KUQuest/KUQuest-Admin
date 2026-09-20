@@ -252,7 +252,7 @@ export const mockAllQuests: AdminQuest[] = [
   ...mockDisputeQuestAliases,
 ];
 
-const teamRosterStates: readonly AdminApiQuestStatus[] = [
+const teamRosterStates = new Set<AdminApiQuestStatus>([
   "QUEST_ASSIGNED",
   "QUEST_IN_PROGRESS",
   "QUEST_SUBMITTED",
@@ -261,16 +261,16 @@ const teamRosterStates: readonly AdminApiQuestStatus[] = [
   "QUEST_COMPLETED",
   "QUEST_FAILED",
   "QUEST_DISPUTED",
-];
+]);
 
-const teamProofStates: readonly AdminApiQuestStatus[] = [
+const teamProofStates = new Set<AdminApiQuestStatus>([
   "QUEST_SUBMITTED",
   "QUEST_APPROVED",
   "QUEST_REWORK",
   "QUEST_COMPLETED",
   "QUEST_FAILED",
   "QUEST_DISPUTED",
-];
+]);
 
 function teamMembersFor(quest: AdminQuest): AdminQuestMember[] {
   const memberCount = Math.max(2, Math.min(quest.headcount, 20));
@@ -338,7 +338,7 @@ function teamAssignmentsFor(
   quest: AdminQuest,
   members: readonly AdminQuestMember[],
 ): AdminQuestDetail["assignments"] {
-  if (quest.participation !== "GROUP" || !teamRosterStates.includes(quest.questStatus)) return [];
+  if (quest.participation !== "GROUP" || !teamRosterStates.has(quest.questStatus)) return [];
 
   const completed = quest.questStatus === "QUEST_COMPLETED" || quest.questStatus === "QUEST_APPROVED";
   const incomplete = quest.questStatus === "QUEST_FAILED" || quest.questStatus === "QUEST_DISPUTED";
@@ -358,7 +358,7 @@ function teamProofSubmissionsFor(
   quest: AdminQuest,
   members: readonly AdminQuestMember[],
 ): AdminQuestDetail["proofSubmissions"] {
-  if (quest.participation !== "GROUP" || !teamProofStates.includes(quest.questStatus)) return [];
+  if (quest.participation !== "GROUP" || !teamProofStates.has(quest.questStatus)) return [];
 
   const approved = quest.questStatus === "QUEST_APPROVED" || quest.questStatus === "QUEST_COMPLETED";
   const rejected = quest.questStatus === "QUEST_FAILED" || quest.questStatus === "QUEST_DISPUTED";
