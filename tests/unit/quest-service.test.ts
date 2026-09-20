@@ -64,6 +64,36 @@ describe("Quest route service", () => {
     expect(requests.every((request) => request.headers.get("cookie") === "kuquest-admin=session")).toBe(true);
   });
 
+  it("resolves a Quest display ID before reading API detail data", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    const requests: Request[] = [];
+
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = new Request(input, init);
+      requests.push(request);
+      const url = new URL(request.url);
+      if (url.pathname === "/api/v1/admin/quests") {
+        return new Response(JSON.stringify({
+          success: true,
+          data: {
+            items: [mockQuestSummary({ id: "quest-1", displayId: "QST-1", title: "Campus survey" })],
+            nextCursor: null,
+          },
+        }), { status: 200 });
+      }
+      const apiDetail = mockQuestDetail(mockQuestSummary({ id: "quest-1", displayId: "QST-1", title: "Campus survey" }));
+      const data = url.pathname.includes("/finance/quests/") ? mockQuestFinance(apiDetail) : apiDetail;
+      return new Response(JSON.stringify({ success: true, data }), { status: 200 });
+    }) as unknown as typeof globalThis.fetch;
+
+    const result = await loadQuestDetailPageData("QST-1", "kuquest-admin=session");
+
+    expect(result?.detail.id).toBe("quest-1");
+    expect(requests.some((request) => request.url.endsWith("/api/v1/admin/quests/QST-1"))).toBe(false);
+    expect(requests.some((request) => request.url.endsWith("/api/v1/admin/quests/quest-1"))).toBe(true);
+    expect(requests.some((request) => request.url.endsWith("/api/v1/admin/finance/quests/quest-1"))).toBe(true);
+  });
+
   it("loads and maps all Quest board pages through the Admin API", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     const requests: Request[] = [];

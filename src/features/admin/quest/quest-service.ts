@@ -37,6 +37,25 @@ function apiRequestOptions(cookieHeader: string): AdminApiRequestOptions {
   return { headers: { Cookie: cookieHeader } };
 }
 
+async function resolveApiQuestId(questId: string, options: AdminApiRequestOptions): Promise<string> {
+  if (!/^QST-/i.test(questId)) return questId;
+
+  let cursor: string | undefined;
+  do {
+    const page = await adminApi.listQuests({
+      limit: 50,
+      sort: "newest",
+      ...(cursor ? { cursor } : {}),
+    }, options);
+    const match = page.items.find((item) => item.displayId === questId || item.id === questId);
+    if (match) return match.id;
+    if (!page.nextCursor || page.nextCursor === cursor) break;
+    cursor = page.nextCursor;
+  } while (cursor);
+
+  return questId;
+}
+
 export async function loadQuestBoardPageData(
   cookieHeader: string,
   dataSource: QuestDataSource = "api",
@@ -78,9 +97,10 @@ export async function loadQuestDetailPageData(
   }
 
   const options = apiRequestOptions(cookieHeader);
+  const apiQuestId = await resolveApiQuestId(questId, options);
   const [detailResult, financeResult] = await Promise.allSettled([
-    adminApi.getQuest(questId, options),
-    adminApi.getQuestFinance(questId, options),
+    adminApi.getQuest(apiQuestId, options),
+    adminApi.getQuestFinance(apiQuestId, options),
   ]);
 
   if (detailResult.status === "rejected") {

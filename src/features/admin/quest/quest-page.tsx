@@ -42,10 +42,12 @@ import {
   type QuestSortDirection,
   type QuestSortKey,
 } from "./quest-model";
-import type { QuestBoardPageData, QuestDetailPageData } from "./quest-service";
+import type { QuestBoardPageData, QuestDataSource, QuestDetailPageData } from "./quest-service";
 import {
   applyMockQuestCommand,
   applyMockQuestOverride,
+  notifyMockQuestStateChange,
+  QUEST_MOCK_STATE_EVENT,
   questMockOverrideFromDetail,
   readMockQuestOverride,
   saveMockQuestOverride,
@@ -612,7 +614,7 @@ function QuestDetailContent({
       ) : null}
 
       <div className={`quest-command-actions grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-2 [&_[data-slot=button]]:m-0 [&_[data-slot=button]]:min-h-11 [&_[data-slot=button]]:w-full [&_[data-slot=button]]:text-center ${recordLayout ? "mt-[18px] border-t border-admin-border pt-[18px]" : "sticky bottom-[-28px] z-[4] -mx-6 -mb-7 mt-[18px] border-t border-admin-border bg-[color-mix(in_srgb,var(--surface)_96%,transparent)] px-6 py-3.5 shadow-[0_-6px_18px_color-mix(in_srgb,var(--text)_9%,transparent)] max-[720px]:bottom-[-24px] max-[720px]:-mx-4 max-[720px]:-mb-6 max-[720px]:px-4"}`}>
-        {showFullDetailLink ? <UiButton asChild variant="outline"><a href={questRoutes.detail(detail.id)}>{translateText("Full Quest detail")}</a></UiButton> : null}
+        {showFullDetailLink ? <UiButton asChild variant="outline"><a href={questRoutes.detail(detail.displayId)}>{translateText("Full Quest detail")}</a></UiButton> : null}
         {!hidden && canHideQuest(state) ? <UiButton variant="outline" type="button" onClick={() => onCommand("hide")}>{translateText("Hide Quest")}</UiButton> : null}
         {hidden ? <UiButton variant="outline" type="button" onClick={() => onCommand("restore")}>{translateText("Restore Quest")}</UiButton> : null}
         {!isQuestTerminal(state) ? <UiButton variant="danger" type="button" onClick={() => onCommand("terminate")}>{translateText("Terminate Quest")}</UiButton> : null}
@@ -774,6 +776,7 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
         setDetail(nextDetail);
         if (typeof window !== "undefined") {
           saveMockQuestOverride(window.localStorage, nextDetail.id, questMockOverrideFromDetail(nextDetail));
+          notifyMockQuestStateChange();
         }
         setActionReceipt({
           action: submission.command === "hide" ? "Hide Quest" : submission.command === "restore" ? "Restore Quest" : "Terminate Quest",
@@ -823,7 +826,7 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
   );
 }
 
-export function AdminQuestPage({ initialData }: { initialData: QuestBoardPageData }) {
+export function AdminQuestPage({ initialData, dataSource = "api" }: { initialData: QuestBoardPageData; dataSource?: QuestDataSource }) {
   const router = useRouter();
   const { translateText } = useAdminShell();
   const [rows, setRows] = useState<QuestBoardRow[]>(initialData.rows);
@@ -833,9 +836,30 @@ export function AdminQuestPage({ initialData }: { initialData: QuestBoardPageDat
   const [page, setPage] = useState(1);
   const [sortKey, setSortKey] = useState<QuestSortKey>("createdAt");
   const [sortDirection, setSortDirection] = useState<QuestSortDirection>("descending");
+
+  function applyMockStateOverrides(rows: QuestBoardRow[]): QuestBoardRow[] {
+    if (dataSource !== "mock" || typeof window === "undefined") return rows;
+    return rows.map((row) => {
+      const override = readMockQuestOverride(window.localStorage, row.id)
+        ?? readMockQuestOverride(window.localStorage, row.displayId);
+      if (!override) return row;
+      return {
+        ...row,
+        state: override.state,
+        stateLabel: questStateLabel(override.state),
+        hiddenAt: override.hiddenAt,
+        version: override.version,
+      };
+    });
+  }
+
   useEffect(() => {
-    setRows(initialData.rows);
-  }, [initialData]);
+    const syncRows = () => setRows(applyMockStateOverrides(initialData.rows));
+    syncRows();
+    if (dataSource !== "mock") return;
+    window.addEventListener(QUEST_MOCK_STATE_EVENT, syncRows);
+    return () => window.removeEventListener(QUEST_MOCK_STATE_EVENT, syncRows);
+  }, [initialData, dataSource]);
 
   const filteredRows = searchQuestRows(rows, query).filter((row) => questMatchesTab(row, tab));
   const sortedRows = sortQuestRows(filteredRows, sortKey, sortDirection);
@@ -867,7 +891,7 @@ export function AdminQuestPage({ initialData }: { initialData: QuestBoardPageDat
           </TabsList>
         </Tabs>
         <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2"><label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text max-[600px]:basis-full max-[600px]:max-w-none" htmlFor="quest-search"><span className="visually-hidden">{translateText("Search Quests")}</span><Input className="h-9 min-h-9 px-3 py-1.5 text-sm" id="quest-search" type="search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={translateText("Search Quests…")} autoComplete="off" /></label><span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span><PageSizeControls value={pageSize} translateText={translateText} onChange={choosePageSize} /><span className="ml-auto text-sm text-admin-muted max-[600px]:hidden" aria-live="polite">{translateText("Showing")} {pageStart}–{pageEnd} {translateText("of")} {sortedRows.length} {translateText("results")}</span></div>
-        {!sortedRows.length ? <EmptyState title={translateText("No matching records")} description={translateText("There are no Quests in this view.")} action={<UiButton variant="outline" type="button" onClick={() => { setQuery(""); setTab("all"); }}>{translateText("Reset view")}</UiButton>} /> : <div className="overflow-x-auto" aria-label={translateText("Quests table")}><Table className={adminBoardTable}><caption>{translateText("Quests")}</caption><thead><tr><SortableHeader label={translateText("Quest")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Title")} sortKey="title" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Hirer")} sortKey="hirer" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Created At")} sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Quest Reward")} sortKey="reward" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr className="focus-visible:relative focus-visible:outline-3 focus-visible:outline-admin-accent focus-visible:outline-offset-[-3px]" data-quest-id={row.id} data-quest-drawer-trigger={row.id} key={row.id} tabIndex={0} aria-label={`${translateText("Open Quest")} ${row.title}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; router.push(questRoutes.detail(row.id)); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); router.push(questRoutes.detail(row.id)); } }}><td><Link className="row-record-button" data-quest-drawer-trigger={row.id} href={questRoutes.detail(row.id)} aria-label={`${translateText("Open Quest")} ${row.displayId}`}>{row.displayId}</Link></td><td><Link className="row-record-button block text-inherit no-underline visited:text-inherit hover:text-admin-accent" data-quest-drawer-trigger={row.id} href={questRoutes.detail(row.id)} aria-label={`${translateText("Open Quest")} ${row.title}`}><strong>{row.title}</strong><small>{translateText(row.participationLabel)} · {translateText(row.modeLabel)}</small></Link></td><td><strong>{row.hirerName}</strong><small>{row.hirerEmail}</small></td><td>{formatQuestDate(row.createdAt)}</td><td className="money">{formatQuestMoney(row.rewardSatang)}</td><td><span className={`badge ${questStatusClass(row.state)}`}>{translateText(row.stateLabel)}</span>{row.hiddenAt ? <span className="badge neutral ms-1 mt-[3px]">{translateText("Hidden")}</span> : null}</td></tr>)}</tbody></Table></div>}
+        {!sortedRows.length ? <EmptyState title={translateText("No matching records")} description={translateText("There are no Quests in this view.")} action={<UiButton variant="outline" type="button" onClick={() => { setQuery(""); setTab("all"); }}>{translateText("Reset view")}</UiButton>} /> : <div className="overflow-x-auto" aria-label={translateText("Quests table")}><Table className={adminBoardTable}><caption>{translateText("Quests")}</caption><thead><tr><SortableHeader label={translateText("Quest")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Title")} sortKey="title" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Hirer")} sortKey="hirer" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Created At")} sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Quest Reward")} sortKey="reward" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr className="focus-visible:relative focus-visible:outline-3 focus-visible:outline-admin-accent focus-visible:outline-offset-[-3px]" data-quest-id={row.id} data-quest-drawer-trigger={row.displayId} key={row.id} tabIndex={0} aria-label={`${translateText("Open Quest")} ${row.title}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; router.push(questRoutes.detail(row.displayId)); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); router.push(questRoutes.detail(row.displayId)); } }}><td><Link className="row-record-button" data-quest-drawer-trigger={row.displayId} href={questRoutes.detail(row.displayId)} aria-label={`${translateText("Open Quest")} ${row.displayId}`}>{row.displayId}</Link></td><td><Link className="row-record-button block text-inherit no-underline visited:text-inherit hover:text-admin-accent" data-quest-drawer-trigger={row.displayId} href={questRoutes.detail(row.displayId)} aria-label={`${translateText("Open Quest")} ${row.title}`}><strong>{row.title}</strong><small>{translateText(row.participationLabel)} · {translateText(row.modeLabel)}</small></Link></td><td><strong>{row.hirerName}</strong><small>{row.hirerEmail}</small></td><td>{formatQuestDate(row.createdAt)}</td><td className="money">{formatQuestMoney(row.rewardSatang)}</td><td><span className={`badge ${questStatusClass(row.state)}`}>{translateText(row.stateLabel)}</span>{row.hiddenAt ? <span className="badge neutral ms-1 mt-[3px]">{translateText("Hidden")}</span> : null}</td></tr>)}</tbody></Table></div>}
         {sortedRows.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPage} ariaLabel={translateText("Quests pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className={adminBoardPagination} /> : null}
       </Card>
     </main>

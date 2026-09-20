@@ -169,6 +169,29 @@ test.describe("Quest route family", () => {
     await expect(page.locator("tbody tr").first()).toContainText("Verify dorm fire exits");
   });
 
+  test("uses the Quest display ID route and keeps Mock state aligned with the board", async ({ page }) => {
+    await page.goto("/quest");
+    await page.evaluate(() => localStorage.removeItem("kuquest-admin-quest-mock-state-v1"));
+
+    const row = page.locator('tr[data-quest-id="00000000-0000-0000-0000-000000000600"]');
+    const questLink = row.getByRole("link", { name: "Open Quest QST-12011" });
+    await expect(questLink).toHaveAttribute("href", "/quest/QST-12011");
+    await questLink.click();
+
+    const drawer = page.locator(".quest-drawer");
+    await expect(drawer).toContainText("Demo Quest 01");
+    await drawer.getByRole("button", { name: "Terminate Quest", exact: true }).click();
+    const dialog = page.locator(".quest-command-dialog");
+    await dialog.getByRole("textbox", { name: "Reason", exact: true }).fill("The Quest was terminated during Admin review.");
+    await dialog.getByRole("combobox", { name: /Reason code/ }).selectOption("POLICY_REVIEW");
+    await dialog.getByRole("button", { name: "Confirm", exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+
+    await drawer.getByRole("button", { name: "Close Quest detail" }).click();
+    await expect(page).toHaveURL(/\/quest$/);
+    await expect(row.locator(".badge").first()).toHaveText("Cancelled");
+  });
+
   test("does not fetch Quest data from the Client Component", async ({ page }) => {
     const clientQuestReads: string[] = [];
     page.on("request", (request) => {

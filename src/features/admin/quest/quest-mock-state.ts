@@ -3,6 +3,7 @@ import { QUEST_STATES, type QuestState } from "../domain/rulebook";
 import type { QuestDetailView, QuestTimelineView } from "./quest-model";
 
 const QUEST_MOCK_STATE_KEY = "kuquest-admin-quest-mock-state-v1";
+export const QUEST_MOCK_STATE_EVENT = "kuquest-admin-quest-mock-state-change";
 
 export type QuestMockStorage = Pick<Storage, "getItem" | "setItem">;
 export type QuestMockOverride = Pick<
@@ -91,6 +92,12 @@ export function saveMockQuestOverride(
     }));
   } catch {
     // The in-memory detail remains useful when browser storage is unavailable.
+  }
+}
+
+export function notifyMockQuestStateChange(): void {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(QUEST_MOCK_STATE_EVENT));
   }
 }
 
