@@ -69,7 +69,7 @@ export async function loadOverviewSearchData(cookieHeader?: string): Promise<Ove
   };
 }
 
-export async function loadOverviewPageData(cookieHeader: string): Promise<OverviewPageData> {
+export async function loadOverviewPageData(cookieHeader?: string): Promise<OverviewPageData> {
   const [model, finance, search] = await Promise.allSettled([
     loadOverviewFromApi(cookieHeader),
     loadFinanceOverview(cookieHeader),

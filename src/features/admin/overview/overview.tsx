@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { Card, CardHeader } from "../../../components/ui/card";
@@ -12,19 +11,12 @@ import { isAdminApiEnabled } from "../api/admin-provider";
 import { activityRoutes } from "../admin-routes";
 import { memberStatusLabel, walletStatusLabel } from "../domain/rulebook";
 import { dashboardActivityKey } from "../dashboard/dashboard-model";
-import { CONDUCT_REPORT_UPDATED_EVENT } from "../conduct-report/conduct-report-model";
-import { DISPUTE_CASE_UPDATED_EVENT } from "../dispute/dispute-model";
-import { REPORT_CASE_UPDATED_EVENT } from "../report/report-model";
-import { PAYOUT_MOCK_UPDATED_EVENT } from "../payout/payout-mock-state";
-import {
-  loadOverviewModelFromMock,
-} from "./overview-adapter";
-import { mockFinanceOverview } from "./overview-finance-mock-data";
 import {
   questStateTones,
   type OverviewModel,
   type OverviewQueue,
 } from "./overview-model";
+import { useOverviewQuery } from "./overview-query";
 import type { OverviewPageData } from "./overview-service";
 
 const overviewSectionHead = "flex items-end justify-between gap-6 border-b border-admin-border px-[18px] pb-3 pt-[17px] max-[560px]:items-start max-[560px]:flex-col max-[560px]:gap-2.5";
@@ -139,82 +131,12 @@ export function AdminOverview({
   initialData?: OverviewPageData;
 } = {}) {
   const { translateText } = useAdminShell();
-  const router = useRouter();
-  const [model, setModel] = useState<OverviewModel | null>(initialData?.model ?? null);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [financeOverview, setFinanceOverview] = useState<AdminFinanceOverview | null>(
-    initialData?.financeOverview ?? (isAdminMockEnabled() ? mockFinanceOverview : null),
-  );
-  const financeOverviewLoading = false;
-  const [financeOverviewError, setFinanceOverviewError] = useState<string | null>(initialData?.financeOverviewError ?? null);
-  useEffect(() => {
-    let cancelled = false;
-    const updateEvents = [
-      CONDUCT_REPORT_UPDATED_EVENT,
-      DISPUTE_CASE_UPDATED_EVENT,
-      PAYOUT_MOCK_UPDATED_EVENT,
-      REPORT_CASE_UPDATED_EVENT,
-    ];
+  const { data, error, isPending } = useOverviewQuery(initialData);
+  const model: OverviewModel | null = data?.model ?? null;
+  const financeOverview: AdminFinanceOverview | null = data?.financeOverview ?? null;
+  const financeOverviewError = data?.financeOverviewError ?? null;
 
-    if (isAdminApiEnabled()) {
-      if (initialData) {
-        setModel(initialData.model);
-        setLoadError(null);
-        setFinanceOverview(initialData.financeOverview);
-        setFinanceOverviewError(initialData.financeOverviewError);
-      }
-      const refreshApi = () => {
-        if (!cancelled) router.refresh();
-      };
-      const refreshApiWhenVisible = () => {
-        if (document.visibilityState === "visible") refreshApi();
-      };
-
-      updateEvents.forEach((eventName) => window.addEventListener(eventName, refreshApi));
-      window.addEventListener("focus", refreshApi);
-      document.addEventListener("visibilitychange", refreshApiWhenVisible);
-
-      return () => {
-        cancelled = true;
-        updateEvents.forEach((eventName) => window.removeEventListener(eventName, refreshApi));
-        window.removeEventListener("focus", refreshApi);
-        document.removeEventListener("visibilitychange", refreshApiWhenVisible);
-      };
-    }
-
-    const refreshModel = () => {
-      try {
-        const nextModel = loadOverviewModelFromMock(localStorage);
-        if (!cancelled) {
-          setModel(nextModel);
-          setLoadError(null);
-        }
-      } catch (error: unknown) {
-        console.error("Overview failed to load", error);
-        if (!cancelled) setLoadError(error instanceof Error ? error.message : "The Overview could not load.");
-      }
-    };
-    const refreshWhenVisible = () => {
-      if (document.visibilityState === "visible") refreshModel();
-    };
-
-    refreshModel();
-    updateEvents.forEach((eventName) => window.addEventListener(eventName, refreshModel));
-    window.addEventListener("focus", refreshModel);
-    window.addEventListener("storage", refreshModel);
-    document.addEventListener("visibilitychange", refreshWhenVisible);
-
-    return () => {
-      cancelled = true;
-      updateEvents.forEach((eventName) => window.removeEventListener(eventName, refreshModel));
-      window.removeEventListener("focus", refreshModel);
-      window.removeEventListener("storage", refreshModel);
-      document.removeEventListener("visibilitychange", refreshWhenVisible);
-    };
-  }, [initialData, router]);
-
-  if (!model) return <OverviewLoading message={translateText(loadError ?? "Loading marketplace overview…")} />;
-  if (loadError) return <OverviewLoading message={translateText(loadError)} />;
+  if (!model) return <OverviewLoading message={translateText(error instanceof Error ? error.message : isPending ? "Loading marketplace overview…" : "The Overview could not load.")} />;
 
   return (
     <main id="dashboard-main" className="overview-command-center col-start-2 min-w-0 mx-auto w-full max-w-[1400px] px-[34px] pb-11 pt-[30px] max-[900px]:col-start-1 max-[820px]:px-5 max-[820px]:py-6 max-[560px]:px-5" tabIndex={-1}>
@@ -247,7 +169,7 @@ export function AdminOverview({
           </div>
         </Card>
 
-        <FinanceOverviewSection overview={financeOverview} loading={financeOverviewLoading} error={financeOverviewError} translateText={translateText} />
+        <FinanceOverviewSection overview={financeOverview} loading={isPending && !data} error={financeOverviewError} translateText={translateText} />
 
         <div className="overview-command-center-grid mt-[10px] grid grid-cols-[minmax(0,1.25fr)_minmax(320px,.75fr)] items-start gap-[18px] max-[820px]:grid-cols-1">
           <Card as="section" className="overview-command-center-table overflow-hidden" aria-labelledby="overview-command-queue-heading">
