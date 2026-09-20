@@ -1,9 +1,6 @@
 import { redirect } from "next/navigation";
 
 import "../admin-extensions.css";
-import "../dispute-page.css";
-import "../quest-page.css";
-import "../report-page.css";
 import "../user-page.css";
 
 import { AdminShell } from "../../components/admin/admin-shell";
