@@ -45,7 +45,7 @@ import {
 } from "./dispute-model";
 import { disputeCaseStatusLabel, questStateLabel } from "../domain/rulebook";
 import { questStatusClass } from "../quest/quest-model";
-import { useDisputeDetailQuery } from "./dispute-query";
+import { useDisputeDetailQuery, useDisputeEvidenceQuery } from "./dispute-query";
 
 type DisputeCaseDetailProps = {
   disputeId: string;
@@ -395,7 +395,7 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
   const [dialogOpen, setDialogOpen] = useState(false);
   const [commandBusy, setCommandBusy] = useState(false);
   const [commandError, setCommandError] = useState<string | null>(null);
-  const [evidenceState, setEvidenceState] = useState<EvidenceState | null>(null);
+  const [evidenceReference, setEvidenceReference] = useState<string | null>(null);
   const [actionReceipt, setActionReceipt] = useState<{
     action: string;
     status: string;
@@ -404,20 +404,11 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
   } | null>(null);
 
   const model = disputeModel;
+  const evidenceQuery = useDisputeEvidenceQuery(model?.id ?? disputeId, evidenceReference);
   if (isPending && !model) return <AdminLoading message={translateText("Loading Dispute Case…")} />;
   if (!model) return <main className={drawer ? "drawer-body" : "admin-feedback"}><Card as="section" className="overflow-hidden"><CardHeader><h1 className="text-lg font-semibold">{translateText("Dispute Case not found")}</h1></CardHeader><CardContent className="space-y-4"><p>{translateText(error instanceof Error ? error.message : "The requested Dispute Case was not found.")}</p>{!drawer && <Button asChild variant="primary"><Link href={disputeRoutes.list()}>{translateText("Return to Dispute Cases")}</Link></Button>}</CardContent></Card></main>;
 
-  const openEvidence = async (reference: string) => {
-    setEvidenceState({ reference, value: null, error: null, loading: true });
-    try {
-      const value = isAdminApiEnabled()
-        ? await adminApi.getDisputeEvidence(model.id, { idempotencyKey: newDisputeCaseIdempotencyKey(model.id) })
-        : { evidenceRef: reference };
-      setEvidenceState({ reference, value, error: null, loading: false });
-    } catch (error: unknown) {
-      setEvidenceState({ reference, value: null, error: error instanceof Error ? error.message : "Evidence Reference could not load.", loading: false });
-    }
-  };
+  const openEvidence = (reference: string) => setEvidenceReference(reference);
 
   const startDecision = () => {
     if (!model.isActionable) return;
@@ -496,7 +487,13 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
   };
 
   const receipt = actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Dispute Case" resourceId={model.id} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {actionReceipt.reason}</p>} /> : null;
-  const overlays = <><DecisionDialog model={model} open={dialogOpen} choice={selectedChoice} busy={commandBusy} error={commandError} translateText={translateText} onCancel={() => { if (!commandBusy) { setDialogOpen(false); setCommandError(null); } }} onConfirm={confirmDecision} />{evidenceState && <EvidencePreview state={evidenceState} translateText={translateText} onClose={() => setEvidenceState(null)} />}</>;
+  const evidenceState: EvidenceState | null = evidenceReference ? {
+    reference: evidenceReference,
+    value: evidenceQuery.data ?? null,
+    error: evidenceQuery.error instanceof Error ? evidenceQuery.error.message : evidenceQuery.error ? "Evidence Reference could not load." : null,
+    loading: evidenceQuery.isPending,
+  } : null;
+  const overlays = <><DecisionDialog model={model} open={dialogOpen} choice={selectedChoice} busy={commandBusy} error={commandError} translateText={translateText} onCancel={() => { if (!commandBusy) { setDialogOpen(false); setCommandError(null); } }} onConfirm={confirmDecision} />{evidenceState && <EvidencePreview state={evidenceState} translateText={translateText} onClose={() => setEvidenceReference(null)} />}</>;
   const content = <><DisputeAlert model={model} translateText={translateText} /><RecordStatusBar items={[{ id: "status", label: translateText("Status"), value: <span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span> }, { id: "category", label: translateText("Category"), value: translateText(model.category) }, { id: "opened", label: translateText("Opened"), value: model.submittedAt }, { id: "amount-at-risk", label: translateText("Amount at risk"), value: model.amountAtRiskLabel }, { id: "evidence", label: translateText("Evidence"), value: model.evidence.length || translateText("None") }]} /><FullSections model={model} translateText={translateText} onOpenEvidence={openEvidence} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} actionReceipt={receipt} /></>;
 
   if (drawer) return <><DrawerSections model={model} translateText={translateText} onOpenEvidence={openEvidence} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} actionReceipt={receipt} />{overlays}</>;

@@ -45,7 +45,7 @@ import {
   type ReportCaseDecisionChoice,
   type ReportCaseModel,
 } from "./report-model";
-import { useReportDetailQuery } from "./report-query";
+import { useReportDetailQuery, useReportEvidenceQuery } from "./report-query";
 
 type ReportCaseDetailProps = {
   reportId: string;
@@ -600,7 +600,7 @@ export function ReportCaseDetail({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [commandBusy, setCommandBusy] = useState(false);
   const [commandError, setCommandError] = useState<string | null>(null);
-  const [evidenceState, setEvidenceState] = useState<EvidenceState | null>(null);
+  const [evidenceReference, setEvidenceReference] = useState<string | null>(null);
   const [actionReceipt, setActionReceipt] = useState<{
     action: string;
     status: string;
@@ -609,6 +609,7 @@ export function ReportCaseDetail({
   } | null>(null);
 
   const model = reportModel;
+  const evidenceQuery = useReportEvidenceQuery(evidenceReference);
 
   if (isPending && !model) return <AdminLoading message={translateText("Loading Report Case…")} />;
   if (!model) {
@@ -619,17 +620,7 @@ export function ReportCaseDetail({
     );
   }
 
-  const openEvidence = async (reference: string) => {
-    setEvidenceState({ reference, evidence: null, error: null, loading: true });
-    try {
-      const evidence = isAdminApiEnabled()
-        ? await adminApi.getEvidence(reference)
-        : { evidenceRef: reference };
-      setEvidenceState({ reference, evidence, error: null, loading: false });
-    } catch (error: unknown) {
-      setEvidenceState({ reference, evidence: null, error: error instanceof Error ? error.message : "Evidence Reference could not load.", loading: false });
-    }
-  };
+  const openEvidence = (reference: string) => setEvidenceReference(reference);
 
   const startDecision = () => {
     if (!model.isActionable) return;
@@ -683,10 +674,16 @@ export function ReportCaseDetail({
     }
   };
 
+  const evidenceState: EvidenceState | null = evidenceReference ? {
+    reference: evidenceReference,
+    evidence: evidenceQuery.data ?? null,
+    error: evidenceQuery.error instanceof Error ? evidenceQuery.error.message : evidenceQuery.error ? "Evidence Reference could not load." : null,
+    loading: evidenceQuery.isPending,
+  } : null;
   const overlays = (
     <>
       <ReportDecisionDialog model={model} open={dialogOpen} choice={selectedChoice} busy={commandBusy} error={commandError} translateText={translateText} onCancel={() => { if (!commandBusy) { setDialogOpen(false); setCommandError(null); } }} onConfirm={confirmDecision} />
-      {evidenceState && <EvidencePreview state={evidenceState} translateText={translateText} onClose={() => setEvidenceState(null)} />}
+      {evidenceState && <EvidencePreview state={evidenceState} translateText={translateText} onClose={() => setEvidenceReference(null)} />}
     </>
   );
 

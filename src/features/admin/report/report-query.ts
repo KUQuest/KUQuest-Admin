@@ -8,13 +8,17 @@ import {
   loadReportCasesFromMock,
 } from "./report-adapter";
 import { loadReportCasePageData, type ReportCasePageData } from "./report-service";
-import { adminApi } from "../api/admin-api";
+import { adminApi, type AdminEvidence } from "../api/admin-api";
 import { REPORT_CASE_UPDATED_EVENT, reportCaseModelFromRecord, type ReportCaseModel } from "./report-model";
 
 export const reportBoardQueryKey = ["admin", "report-cases", "board"] as const;
 
 export function reportDetailQueryKey(reportId: string) {
   return ["admin", "report-cases", "detail", reportId] as const;
+}
+
+export function reportEvidenceQueryKey(reference: string | null) {
+  return ["admin", "report-cases", "evidence", reference] as const;
 }
 
 function pageFromQueryData(pages: ReportCasePageData[]): ReportCasePageData {
@@ -106,4 +110,20 @@ export function useReportDetailQuery(reportId: string, initialModel?: ReportCase
   }, [queryClient, queryKey, reportId]);
 
   return { ...query, data: query.data ?? null, queryKey };
+}
+
+export function useReportEvidenceQuery(reference: string | null) {
+  const apiEnabled = isAdminApiEnabled();
+  return useQuery<AdminEvidence>({
+    queryKey: reportEvidenceQueryKey(reference),
+    queryFn: async () => {
+      if (!reference) throw new Error("Evidence Reference was not provided.");
+      return apiEnabled ? adminApi.getEvidence(reference) : { evidenceRef: reference };
+    },
+    enabled: Boolean(reference),
+    staleTime: Infinity,
+    gcTime: Infinity,
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
 }

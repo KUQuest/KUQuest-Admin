@@ -8,13 +8,17 @@ import {
   loadDisputeCasesFromMock,
 } from "./dispute-adapter";
 import { loadDisputeCasePageData, type DisputeCasePageData } from "./dispute-service";
-import { adminApi } from "../api/admin-api";
+import { adminApi, type AdminDisputeEvidence } from "../api/admin-api";
 import { DISPUTE_CASE_UPDATED_EVENT, disputeCaseModelFromRecord, type DisputeCaseModel } from "./dispute-model";
 
 export const disputeBoardQueryKey = ["admin", "dispute-cases", "board"] as const;
 
 export function disputeDetailQueryKey(disputeId: string) {
   return ["admin", "dispute-cases", "detail", disputeId] as const;
+}
+
+export function disputeEvidenceQueryKey(disputeId: string, reference: string | null) {
+  return ["admin", "dispute-cases", "evidence", disputeId, reference] as const;
 }
 
 function pageFromQueryData(
@@ -108,4 +112,22 @@ export function useDisputeDetailQuery(disputeId: string, initialModel?: DisputeC
   }, [disputeId, queryClient, queryKey]);
 
   return { ...query, data: query.data ?? null, queryKey };
+}
+
+export function useDisputeEvidenceQuery(disputeId: string, reference: string | null) {
+  const apiEnabled = isAdminApiEnabled();
+  return useQuery<AdminDisputeEvidence | { evidenceRef: string }>({
+    queryKey: disputeEvidenceQueryKey(disputeId, reference),
+    queryFn: async () => {
+      if (!reference) throw new Error("Evidence Reference was not provided.");
+      return apiEnabled
+        ? adminApi.getDisputeEvidence(disputeId, { idempotencyKey: `admin-read-dispute-evidence-${disputeId}-${reference}` })
+        : { evidenceRef: reference };
+    },
+    enabled: Boolean(reference),
+    staleTime: Infinity,
+    gcTime: Infinity,
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
 }
