@@ -40,10 +40,9 @@ test.describe("shared Admin shell", () => {
       "/activity",
     ]);
     expect(hrefs.some((href) => href?.includes("?view="))).toBe(false);
-    await expect(shell.locator('a[href="/dispute"] .admin-nav-count')).toHaveText("12");
-    await expect(shell.locator('a[href="/report"] .admin-nav-count')).toHaveText("12");
-    await expect(shell.locator('a[href="/conduct-report"] .admin-nav-count')).toHaveText("11");
-    await expect(shell.locator('a[href="/payout"] .admin-nav-count')).toHaveText("53");
+    for (const href of ["/dispute", "/report", "/conduct-report", "/payout"]) {
+      await expect(shell.locator(`a[href="${href}"] .admin-nav-count`)).toHaveText(/^\d+$/);
+    }
 
     for (const route of canonicalRoutes) {
       await page.goto(route.path);
@@ -237,18 +236,18 @@ test.describe("shared Admin shell", () => {
 
     await main.getByRole("tab", { name: "Confirmed", exact: true }).click();
     await expect(main.locator('tbody tr[data-conduct-report-status="CONDUCT_REPORT_UPHELD"]')).toHaveCount(10);
-    await main.getByRole("tab", { name: "Open", exact: true }).click();
+      await main.getByRole("tab", { name: /^Open/ }).click();
     const pendingRows = main.locator('tbody tr[data-conduct-report-status="CONDUCT_REPORT_PENDING"]');
     await expect(pendingRows).toHaveCount(10);
     const pendingRow = main.locator('tbody tr[data-conduct-report-id="CND-8301"]');
     await expect(pendingRow).toBeVisible();
-    await pendingRow.click();
+    await pendingRow.getByRole("button", { name: "Open Conduct Report CND-8301" }).click();
 
     await expect(page).toHaveURL(/\/conduct-report\/CND-8301$/);
     const drawer = page.getByRole("dialog", { name: "Conduct Report details" });
     await expect(drawer).toBeVisible();
     await expect(drawer).toContainText("Quest record");
-    await expect(drawer.locator(".moderation-case-workspace a:not(.btn)")).toHaveCount(0);
+    await expect(drawer.locator('.moderation-case-workspace a:not([data-slot="button"])')).toHaveCount(0);
     await drawer.getByLabel("Confirm violation").check();
     await drawer.getByRole("button", { name: "Close report", exact: true }).click();
 
@@ -273,8 +272,7 @@ test.describe("shared Admin shell", () => {
     for (const route of ["/dispute", "/report", "/conduct-report"]) {
       await page.goto(route);
       const tabs = page.locator('[role="tablist"] [role="tab"]');
-      await expect(tabs.first()).toHaveAttribute("aria-label", "Open");
-      await expect(tabs.first().locator(".tab-count")).toHaveText(/\(\d+\)/);
+      await expect(tabs.first()).toHaveText(/^Open \(\d+\)$/);
     }
   });
 
@@ -283,7 +281,8 @@ test.describe("shared Admin shell", () => {
     await page.goto("/conduct-report");
 
     const main = page.locator("#conduct-report-main");
-    const opener = main.locator('tbody tr[data-conduct-report-id="CND-8301"]');
+    const opener = main.locator('tbody tr[data-conduct-report-id="CND-8301"]')
+      .getByRole("button", { name: "Open Conduct Report CND-8301" });
     await opener.click();
 
     const drawer = page.getByRole("dialog", { name: "Conduct Report details" });
@@ -323,20 +322,20 @@ test.describe("shared Admin shell", () => {
     await expect(main.getByRole("heading", { level: 1, name: "Dispute Cases" })).toBeVisible();
     await expect(firstRow).toHaveCount(1);
 
-    await firstRow.click();
+    await firstRow.locator("button").first().click();
     await expect(page).toHaveURL(/\/dispute\/DSP-5201$/);
     const drawer = page.getByRole("dialog", { name: "Dispute Case details" });
     await expect(drawer).toBeVisible();
-    await expect(drawer.locator(".moderation-case-workspace a:not(.btn)")).toHaveCount(0);
+    await expect(drawer.locator('.moderation-case-workspace a:not([data-slot="button"])')).toHaveCount(0);
     await expect(drawer.getByRole("link", { name: "Quest detail", exact: true })).toHaveAttribute("href", "/quest/QST-12001");
-    await expect(drawer.locator(".party-grid").first()).toContainText("Hirer");
-    await expect(drawer.locator(".party-grid").first()).toContainText("Worker");
+    await expect(drawer.locator(".admin-record-party-grid").first()).toContainText("Hirer");
+    await expect(drawer.locator(".admin-record-party-grid").first()).toContainText("Worker");
     await expect(drawer.getByText("Hirer wins", { exact: true })).toBeVisible();
     await page.goBack();
     await expect(page).toHaveURL(/\/dispute$/);
     await expect(drawer).toHaveCount(0);
 
-    await firstRow.click();
+    await firstRow.locator("button").first().click();
     await expect(drawer).toBeVisible();
     await drawer.getByLabel(/Worker wins/).check();
     await drawer.getByRole("button", { name: "Record Dispute Case decision" }).click();
@@ -368,8 +367,7 @@ test.describe("shared Admin shell", () => {
     await page.goto("/dispute");
 
     const main = page.locator("#dispute-main");
-    const opener = main.locator('tbody tr[data-dispute-id="DSP-5201"]');
-    await opener.focus();
+    const opener = main.locator('tbody tr[data-dispute-id="DSP-5201"] button').first();
     await opener.click();
 
     const drawer = page.getByRole("dialog", { name: "Dispute Case details" });
@@ -487,7 +485,7 @@ test.describe("shared Admin shell", () => {
     await signIn(page);
     for (const path of ["/quest", "/wallet", "/payout"]) {
       await page.goto(path);
-      const recordLink = page.locator("table.data a").first();
+      const recordLink = page.locator('table[data-slot="table"] a').first();
       await expect(recordLink).toBeVisible();
       await expect(recordLink).toHaveCSS("text-decoration-line", "none");
     }

@@ -19,10 +19,10 @@ test.describe("Wallet App Router board", () => {
     }
     await expect(page.getByText("฿8,430.00", { exact: true })).toBeVisible();
     await expect(page.getByText("฿12,840.00", { exact: true })).toBeVisible();
-    await expect(page.locator('[aria-label="Wallet status filters"] button')).toHaveText(["All (200)", "Active", "Frozen", "Suspended", "Closed"]);
+    await expect(page.locator('[aria-label="Wallet status filters"] [role="tab"]')).toHaveText(["All (200)", "Active", "Frozen", "Suspended", "Closed"]);
     await expect(page.getByRole("button", { name: "Normal", exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Temp Ban", exact: true })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: /All/ })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("tab", { name: /All/ })).toHaveAttribute("aria-selected", "true");
     await expect(page.locator("[data-wallet-row]")).toHaveCount(10);
     await expect(page.locator('a[href*="/wallet/"]')).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Open Member Akarin Ariyawat" })).toHaveAttribute("href", "/member/68000000");
@@ -36,13 +36,13 @@ test.describe("Wallet App Router board", () => {
     await signIn(page);
     await page.goto("/wallet");
 
-    await page.getByRole("button", { name: "Frozen" }).click();
+    await page.getByRole("tab", { name: "Frozen", exact: true }).click();
     await expect(page.locator("[data-wallet-row]")).toHaveCount(10);
     await expect(page.getByText("WAL-1001", { exact: true })).toBeVisible();
     await expect(page.getByText("WAL-1002", { exact: true })).toHaveCount(0);
 
     await page.getByLabel("Search Wallets").fill("68000040");
-    await expect(page.getByRole("heading", { level: 2, name: "No matching records" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 3, name: "No matching records" })).toBeVisible();
     await expect(page.getByText("Clear your search to see more results.", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Reset view" }).click();
     await expect(page.locator("[data-wallet-row]")).toHaveCount(10);
@@ -55,7 +55,7 @@ test.describe("Wallet App Router board", () => {
     await signIn(page);
     await page.goto("/wallet");
 
-    await page.getByRole("button", { name: "Closed" }).click();
+    await page.getByRole("tab", { name: "Closed", exact: true }).click();
     const closedRow = page.locator('[data-wallet-row="WAL-1004"]');
     await expect(closedRow).toBeVisible();
     await expect(closedRow.locator('[data-wallet-status="CLOSED"]')).toHaveText("Closed");

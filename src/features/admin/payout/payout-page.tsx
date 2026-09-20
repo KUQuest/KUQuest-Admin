@@ -302,7 +302,7 @@ function PayoutDetailContent({
       <p>{canDecide
         ? translateText("Review the masked destination and API-provided amounts before deciding this Payout.")
         : translateText("The Payout needs a Provider status check before the next Admin action.")}</p>
-      {renderDecisionActions ? <div className="payout-decision-actions mt-4 flex flex-wrap items-center gap-2">
+      {renderDecisionActions ? <div className="payout-decision-actions mt-4 grid grid-cols-2 items-center gap-2 [&>*]:w-full max-[720px]:grid-cols-1">
         <PayoutDecisionActions
           detail={detail}
           onCommand={onCommand}
@@ -318,7 +318,7 @@ function PayoutDetailContent({
   ) : null;
 
   return (
-    <div className={`payout-detail-stack drawer-content-flow grid !grid-cols-1 gap-[18px]${fullDetail ? " !grid-cols-[minmax(0,1.65fr)_minmax(290px,0.72fr)] max-[1000px]:!grid-cols-1" : ""}`}>
+    <div className={`payout-detail-stack admin-drawer-content-flow grid !grid-cols-1 gap-[18px]${fullDetail ? " !grid-cols-[minmax(0,1.65fr)_minmax(290px,0.72fr)] max-[1000px]:!grid-cols-1" : ""}`}>
       {payoutSummarySection}
       {fullDetail ? <>
         <div className="payout-detail-column payout-detail-primary-column grid min-w-0 !grid-cols-1 gap-[18px] [grid-column:1] max-[1000px]:[grid-column:1]">
@@ -342,7 +342,7 @@ function PayoutDetailContent({
         {actionReceiptView}
         {payoutDecisionSection}
       </>}
-      {showFullDetailLink ? <UiButton asChild variant="outline" className="payout-full-detail-link"><a href={payoutRoutes.detail(detail.id)}>{translateText("Full Payout detail")}</a></UiButton> : null}
+      {showFullDetailLink ? <UiButton asChild variant="outline" className="payout-full-detail-link justify-self-start"><a href={payoutRoutes.detail(detail.id)}>{translateText("Full Payout detail")}</a></UiButton> : null}
     </div>
   );
 }
@@ -424,10 +424,10 @@ function PayoutCommandDialog({
 
   return (
     <AdminModalPortal open onClose={onCancel}>
-      <div className="command payout-command-layer" role="presentation">
-      <button className="command-backdrop" type="button" aria-label={translateText("Close Payout command dialog")} onClick={onCancel} />
-      <dialog ref={dialogRef} open className="command-box" aria-labelledby="payout-command-title" aria-modal="true">
-        <form className="dialog-body" onSubmit={submit}>
+      <div className="command payout-command-layer fixed inset-0 z-[70] grid place-items-start bg-[var(--scrim-command)] pt-[12vh]" role="presentation">
+      <button className="command-backdrop absolute inset-0 size-full cursor-default border-0 bg-transparent" type="button" aria-label={translateText("Close Payout command dialog")} onClick={onCancel} />
+      <dialog ref={dialogRef} open className="command-box relative z-[1] m-auto max-h-[70vh] w-[min(620px,calc(100vw-28px))] overflow-auto rounded-[14px] border-0 bg-admin-surface shadow-admin" aria-labelledby="payout-command-title" aria-modal="true">
+        <form className="dialog-body p-5" onSubmit={submit}>
           <h2 id="payout-command-title">{translateText(command === "approve" ? "Approve Payout" : "Reject Payout")}</h2>
           <p>{translateText(command === "approve" ? "Review the destination and balance before approving this Payout." : "Choose a reason for rejecting this Payout.")}</p>
           <AdminActionSummary
@@ -454,7 +454,7 @@ function PayoutCommandDialog({
             </>
           ) : null}
           {validationError || error ? <p className="field-error" role="alert">{translateText(validationError ?? error ?? "")}</p> : null}
-          <div className="dialog-actions">
+          <div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5">
             <UiButton variant="outline" type="button" onClick={onCancel} disabled={pending}>{translateText("Cancel")}</UiButton>
             <UiButton variant={command === "approve" ? "primary" : "danger"} type="submit" disabled={submitDisabled}>{pending ? translateText("Saving…") : translateText(command === "approve" ? "Approve Payout" : "Reject Payout")}</UiButton>
           </div>
@@ -599,7 +599,7 @@ export function AdminPayoutDetailPage({
           title={detail.id}
           titleId="payout-drawer-title"
           subtitle={translateText("Payout detail drawer")}
-          className="payout-drawer"
+          className="payout-drawer [&>.drawer-body]:grid [&>.drawer-body]:content-start [&>.drawer-body]:gap-3.5 [&>.drawer-body]:!pb-7"
           openerAttribute="data-payout-drawer-trigger"
           openerValue={detail.id}
           outsideClassName="payout-command-layer"

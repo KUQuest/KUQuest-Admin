@@ -189,7 +189,7 @@ function questCandidateCount(detail: QuestDetailView): number {
 
 function ListEmpty({ children }: { children: ReactNode }) {
   const { translateText } = useAdminShell();
-  return <div className="submission-empty"><strong>{typeof children === "string" ? translateText(children) : children}</strong></div>;
+  return <div className="rounded-[10px] bg-admin-soft p-3.5"><strong>{typeof children === "string" ? translateText(children) : children}</strong></div>;
 }
 
 function QuestRecordAlert({ detail }: { detail: QuestDetailView }) {
@@ -364,7 +364,7 @@ function QuestDetailContent({
   ) : <p className="audit-note">{translateText("No linked Dispute Case was returned.")}</p>;
 
   return (
-    <div className={`drawer-content-flow ${recordLayout ? "grid items-start gap-[18px] !grid-cols-[minmax(0,1.65fr)_minmax(290px,0.72fr)] max-[1000px]:!grid-cols-1" : "grid !grid-cols-1 gap-[18px]"}`}>
+    <div className={`admin-drawer-content-flow ${recordLayout ? "grid items-start gap-[18px] !grid-cols-[minmax(0,1.65fr)_minmax(290px,0.72fr)] max-[1000px]:!grid-cols-1" : "grid !grid-cols-1 gap-[18px]"}`}>
       <div className={recordLayout ? "grid min-w-0 !grid-cols-1 gap-[18px]" : "contents"}>
       <Section title="Quest summary" variant={sectionVariant}>
         <div className={`${adminRecordFacts} !grid-cols-3 max-[700px]:!grid-cols-1`}>
@@ -388,15 +388,15 @@ function QuestDetailContent({
           </div>
         </div>
         {!recordLayout ? <div className="quest-summary-context mt-[18px] grid !grid-cols-2 gap-x-6 gap-y-[18px] border-t border-admin-border pt-[18px] max-[600px]:!grid-cols-1">
-          <div className="quest-summary-context-section min-w-0">
+          <div className="quest-summary-context-section min-w-0 [&>p:not(.audit-note):not(.field-error)]:m-0 [&>p:not(.audit-note):not(.field-error)]:text-admin-muted">
             <h3 className={`${adminRecordHeading} mb-[10px]`}>{translateText("Hirer")}</h3>
-            <div className="hirer-profile-summary">
+            <div className="grid gap-[3px] [&>strong]:text-[15px] [&>span]:text-[14px] [&>span]:text-admin-muted">
               <strong>{questMemberName(detail.hirer)}</strong>
               <span>{detail.hirer.email}</span>
             </div>
           </div>
 
-          <div className="quest-summary-context-section min-w-0">
+          <div className="quest-summary-context-section min-w-0 [&>p:not(.audit-note):not(.field-error)]:m-0 [&>p:not(.audit-note):not(.field-error)]:text-admin-muted">
             <h3 className={`${adminRecordHeading} mb-[10px]`}>{translateText("Schedule and location")}</h3>
             <div className={adminRecordFacts}>
               <Fact label="Starts">{formatQuestDate(detail.startTime)}</Fact>
@@ -422,13 +422,13 @@ function QuestDetailContent({
           <div className="related-list">
             {detail.images.map((image) => (
               <a
-                className="file-row quest-attachment-link"
+                className="file-row text-inherit no-underline"
                 href={image.url}
                 key={image.imageId}
                 rel="noreferrer"
                 target="_blank"
               >
-                <Image className="attachment-thumbnail" src={image.url} alt={`${translateText("Hirer attachment")} ${image.position + 1}`} height={54} loading="lazy" unoptimized width={72} />
+                <Image className="h-[54px] w-[72px] shrink-0 rounded-lg object-cover max-[500px]:h-12 max-[500px]:w-[60px]" src={image.url} alt={`${translateText("Hirer attachment")} ${image.position + 1}`} height={54} loading="lazy" unoptimized width={72} />
                 <span>
                   <strong>{translateText("Hirer attachment")} {image.position + 1}</strong>
                   <small>{image.fileId} · {translateText("Link expires")} {formatQuestDate(image.urlExpiresAt)}</small>
@@ -569,14 +569,14 @@ function QuestDetailContent({
         </Section>
       ) : null}
 
-      {!recordLayout ? <Section title="Dispute and risk" variant={sectionVariant}><div className="quest-summary-context-section">{disputeRiskContent}</div></Section> : null}
+      {!recordLayout ? <Section title="Dispute and risk" variant={sectionVariant}><div className="quest-summary-context-section [&>p:not(.audit-note):not(.field-error)]:m-0 [&>p:not(.audit-note):not(.field-error)]:text-admin-muted">{disputeRiskContent}</div></Section> : null}
       </div>
 
       <aside className={recordLayout ? "grid min-w-0 !grid-cols-1 gap-[18px]" : "contents"}>
       {recordLayout ? (
         <>
           <Section title="Hirer" variant={sectionVariant}>
-            <div className="hirer-profile-summary">
+            <div className="grid gap-[3px] [&>strong]:text-[15px] [&>span]:text-[14px] [&>span]:text-admin-muted">
               <strong>{questMemberName(detail.hirer)}</strong>
               <span>{detail.hirer.email}</span>
             </div>
@@ -606,12 +606,12 @@ function QuestDetailContent({
           </Section>
 
           <Section title="Dispute and risk" variant={sectionVariant}>
-            <div className="quest-summary-context-section">{disputeRiskContent}</div>
+            <div className="quest-summary-context-section [&>p:not(.audit-note):not(.field-error)]:m-0 [&>p:not(.audit-note):not(.field-error)]:text-admin-muted">{disputeRiskContent}</div>
           </Section>
         </>
       ) : null}
 
-      <div className="sticky bottom-[-28px] z-[4] grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-2 -mx-6 -mb-7 mt-[18px] border-t border-admin-border bg-[color-mix(in_srgb,var(--surface)_96%,transparent)] px-6 py-3.5 shadow-[0_-6px_18px_color-mix(in_srgb,var(--text)_9%,transparent)] max-[720px]:bottom-[-24px] max-[720px]:-mx-4 max-[720px]:-mb-6 max-[720px]:px-4 [&_[data-slot=button]]:m-0 [&_[data-slot=button]]:min-h-11 [&_[data-slot=button]]:w-full [&_[data-slot=button]]:text-center">
+      <div className="quest-command-actions sticky bottom-[-28px] z-[4] grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-2 -mx-6 -mb-7 mt-[18px] border-t border-admin-border bg-[color-mix(in_srgb,var(--surface)_96%,transparent)] px-6 py-3.5 shadow-[0_-6px_18px_color-mix(in_srgb,var(--text)_9%,transparent)] max-[720px]:bottom-[-24px] max-[720px]:-mx-4 max-[720px]:-mb-6 max-[720px]:px-4 [&_[data-slot=button]]:m-0 [&_[data-slot=button]]:min-h-11 [&_[data-slot=button]]:w-full [&_[data-slot=button]]:text-center">
         {showFullDetailLink ? <UiButton asChild variant="outline"><a href={questRoutes.detail(detail.id)}>{translateText("Full Quest detail")}</a></UiButton> : null}
         {!hidden && canHideQuest(state) ? <UiButton variant="outline" type="button" onClick={() => onCommand("hide")}>{translateText("Hide Quest")}</UiButton> : null}
         {hidden ? <UiButton variant="outline" type="button" onClick={() => onCommand("restore")}>{translateText("Restore Quest")}</UiButton> : null}
@@ -685,7 +685,7 @@ function QuestCommandDialog({
           <label className="grid gap-1 text-[15px] leading-[1.4] font-semibold" htmlFor="quest-command-reason-code">{translateText("Reason code")}{reasonRequired ? <span aria-hidden="true"> *</span> : null}<select className="w-full rounded-lg border border-admin-border-strong bg-admin-surface px-2.5 py-2 text-lg leading-[1.45] text-admin-text" id="quest-command-reason-code" required={reasonRequired} value={reasonCode} onChange={(event) => setReasonCode(event.target.value as AdminQuestReasonCode | "")} autoFocus><option value="">{translateText(reasonRequired ? "Select a reason code" : "No reason code")}</option>{reasonCodes.map((item) => <option key={item.value} value={item.value}>{translateText(item.label)}</option>)}</select></label>
           <label className="grid gap-1 text-[15px] leading-[1.4] font-semibold" htmlFor="quest-command-reason">{translateText("Reason")}{reasonRequired ? <span aria-hidden="true"> *</span> : null}<textarea className="w-full resize-y rounded-lg border border-admin-border-strong bg-admin-surface px-2.5 py-2 text-lg leading-[1.45] text-admin-text" id="quest-command-reason" required={reasonRequired} minLength={reasonRequired ? 8 : undefined} maxLength={500} value={reason} onChange={(event) => { setReason(event.target.value); setValidationError(null); }} rows={4} /></label>
           {validationError || error ? <p className="field-error" role="alert">{translateText(validationError || error || "")}</p> : null}
-          <div className="dialog-actions mt-1"><UiButton variant="outline" type="button" onClick={onCancel} disabled={pending}>{translateText("Cancel")}</UiButton><UiButton variant={command === "terminate" ? "danger" : "primary"} type="submit" disabled={pending}>{pending ? translateText("Saving…") : translateText("Confirm")}</UiButton></div>
+          <div className="dialog-actions mt-1 flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5"><UiButton variant="outline" type="button" onClick={onCancel} disabled={pending}>{translateText("Cancel")}</UiButton><UiButton variant={command === "terminate" ? "danger" : "primary"} type="submit" disabled={pending}>{pending ? translateText("Saving…") : translateText("Confirm")}</UiButton></div>
         </form>
       </dialog>
       </div>

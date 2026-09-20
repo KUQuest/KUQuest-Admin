@@ -131,8 +131,8 @@ function ReportDecisionDialog({
           onConfirm(value);
         }}
       >
-        <div className="dialog-body">
-          <div className="warning-icon" aria-hidden="true">!</div>
+        <div className="dialog-body p-5">
+          <div className="warning-icon grid size-[38px] place-items-center rounded-[10px] bg-admin-danger-soft font-bold text-admin-danger" aria-hidden="true">!</div>
           <h2 id="report-decision-title">{title}</h2>
           <p>{description}</p>
           {choice ? (
@@ -159,10 +159,10 @@ function ReportDecisionDialog({
             onChange={(event) => setReason(event.target.value)}
             placeholder={translateText("Enter the reason for the Report Case decision")}
           />
-          <div className="field-help"><span>{translateText("Minimum 8 characters")}</span><span>{reason.length}/500</span></div>
+          <div className="mt-1.5 flex justify-between gap-3 text-[15px] leading-[1.4] text-admin-muted"><span>{translateText("Minimum 8 characters")}</span><span>{reason.length}/500</span></div>
           {error && <p className="field-error" role="alert">{translateText(error)}</p>}
         </div>
-        <div className="dialog-actions">
+        <div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5">
           <Button variant="outline" type="button" onClick={onCancel} disabled={busy}>{translateText("Cancel")}</Button>
           <Button variant="danger" type="submit" disabled={busy || reason.trim().length < 8}>
             {busy ? translateText("Saving…") : translateText("Confirm decision")}
@@ -198,17 +198,17 @@ function EvidencePreview({
   return (
     <AdminModalPortal open onClose={onClose}>
       <dialog open className="report-evidence-dialog" aria-modal="true" aria-labelledby="report-evidence-title" tabIndex={-1}>
-      <div className="dialog-body">
-        <div className="evidence-preview-head">
-          <div><strong id="report-evidence-title">{translateText("Evidence Reference")}</strong><small>{state.reference}</small></div>
+      <div className="dialog-body p-5">
+        <div className="sticky top-0 z-[2] flex items-center justify-between border-b border-admin-border bg-admin-surface/95 px-4 py-3 backdrop-blur-sm">
+          <div><strong id="report-evidence-title" className="block">{translateText("Evidence Reference")}</strong><small className="block text-[13px] text-admin-muted">{state.reference}</small></div>
           <button className="icon" type="button" aria-label={translateText("Close evidence")} onClick={onClose}><span className="close-lines" /></button>
         </div>
         {state.loading && <p>{translateText("Loading Evidence Reference…")}</p>}
         {state.error && <p className="field-error" role="alert">{translateText(state.error)}</p>}
         {!state.loading && !state.error && (
-          <pre className="report-evidence-context">{evidenceContext(state.evidence?.context, translateText)}</pre>
+          <pre className="report-evidence-context max-h-[50vh] overflow-auto rounded-lg bg-admin-soft p-3 text-sm [overflow-wrap:anywhere]">{evidenceContext(state.evidence?.context, translateText)}</pre>
         )}
-        <div className="dialog-actions"><Button variant="outline" type="button" onClick={onClose}>{translateText("Close")}</Button></div>
+        <div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5"><Button variant="outline" type="button" onClick={onClose}>{translateText("Close")}</Button></div>
       </div>
       </dialog>
     </AdminModalPortal>
@@ -519,7 +519,7 @@ function ReportCaseSections({
         side={<>
           <MemberSummaryPanel heading="Reported Member" id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} translateText={translateText} />
           <MemberSummaryPanel heading="Submitted by" id={model.reporterId} name={model.reporterName} href={model.reporterHref} translateText={translateText} />
-          <Card as="section" className={`${adminRecordSection} report-decision-panel`}>
+          <Card as="section" className={`${adminRecordSection} report-decision-panel pb-[18px]`}>
             <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{model.isActionable ? translateText("Report decision") : translateText("Recorded outcome")}</h2></CardHeader>
             {decisionPanel}
           </Card>
@@ -550,7 +550,7 @@ function DrawerSections({
   actionReceipt?: ReactNode;
 }) {
   return (
-    <div className="report-case-drawer-detail drawer-content-flow">
+    <div className="report-case-drawer-detail admin-drawer-content-flow grid min-w-0 content-start gap-[18px]">
       <ReportAlert model={model} translateText={translateText} />
       <ModerationCaseWorkspace
         kind="Report Case"
@@ -582,10 +582,10 @@ function DrawerSections({
           compact
           member={{ id: model.reportedMemberId, name: model.reportedMemberName, href: model.reportedMemberHref }}
         />
-        <Card as="section" className={`${adminRecordSection} report-decision-panel`}><CardHeader flush className={adminRecordHeader}><h3 className={adminRecordHeading}>{model.isActionable ? translateText("Report decision") : translateText("Resolution")}</h3></CardHeader><DecisionControls model={model} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelect={onSelectChoice} onStart={onStartDecision} /></Card>
+        <Card as="section" className={`${adminRecordSection} report-decision-panel pb-[18px]`}><CardHeader flush className={adminRecordHeader}><h3 className={adminRecordHeading}>{model.isActionable ? translateText("Report decision") : translateText("Resolution")}</h3></CardHeader><DecisionControls model={model} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelect={onSelectChoice} onStart={onStartDecision} /></Card>
       </ModerationCaseWorkspace>
       {actionReceipt}
-      <div className="drawer-actions">{model.reportedMemberHref && <Button asChild size="lg" variant="outline"><Link href={model.reportedMemberHref}>{translateText("Member profile")}</Link></Button>}<Button asChild size="lg" variant="primary"><a href={reportRoutes.detail(model.id)}>{translateText("Open full Report Case")}</a></Button></div>
+      <div className="admin-drawer-actions sticky bottom-[-28px] z-[4] m-[18px_-24px_-28px] flex flex-wrap gap-2 border-t border-admin-border bg-admin-surface/95 px-6 py-3.5 shadow-[0_-6px_18px_rgba(0,0,0,0.09)] [&>*]:min-h-11 [&>*]:flex-[1_1_180px] [&>*]:text-center max-[720px]:bottom-[-24px] max-[720px]:m-[18px_-16px_-24px] max-[720px]:px-4 max-[720px]:[&>*]:basis-full">{model.reportedMemberHref && <Button asChild size="lg" variant="outline"><Link href={model.reportedMemberHref}>{translateText("Member profile")}</Link></Button>}<Button asChild size="lg" variant="primary"><a href={reportRoutes.detail(model.id)}>{translateText("Open full Report Case")}</a></Button></div>
     </div>
   );
 }

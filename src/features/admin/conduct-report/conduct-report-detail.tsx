@@ -113,7 +113,7 @@ function ConductReportDecisionDialog({
     <AdminModalPortal open={open} onClose={onCancel}>
       <dialog
         open
-        className="report-decision-dialog conduct-report-decision-dialog"
+        className="report-decision-dialog conduct-report-decision-dialog z-[60]"
         aria-modal="true"
         aria-labelledby="conduct-report-decision-title"
         tabIndex={-1}
@@ -127,8 +127,8 @@ function ConductReportDecisionDialog({
           onConfirm(value);
         }}
       >
-        <div className="dialog-body">
-          <div className="warning-icon" aria-hidden="true">!</div>
+        <div className="dialog-body p-5">
+          <div className="warning-icon grid size-[38px] place-items-center rounded-[10px] bg-admin-danger-soft font-bold text-admin-danger" aria-hidden="true">!</div>
           <h2 id="conduct-report-decision-title">{title}</h2>
           <p>{description}</p>
           {choice ? (
@@ -157,13 +157,13 @@ function ConductReportDecisionDialog({
             onChange={(event) => setReason(event.target.value)}
             placeholder={translateText("Enter the reason for the Conduct Report decision")}
           />
-          <div className="field-help">
+          <div className="mt-1.5 flex justify-between gap-3 text-[15px] leading-[1.4] text-admin-muted">
             <span>{translateText("Minimum 8 characters")}</span>
             <span>{reason.length}/500</span>
           </div>
           {error && <p className="field-error" role="alert">{translateText(error)}</p>}
         </div>
-        <div className="dialog-actions">
+        <div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5">
           <Button variant="outline" type="button" onClick={onCancel} disabled={busy}>
             {translateText("Cancel")}
           </Button>
@@ -546,7 +546,7 @@ function ConductReportDrawerBody({
   }
 
   return (
-    <div className="conduct-report-drawer-detail drawer-content-flow">
+    <div className="conduct-report-drawer-detail admin-drawer-content-flow grid min-w-0 content-start gap-[18px]">
       <ConductReportAlert model={model} translateText={translateText} />
       <ModerationCaseWorkspace
         kind="Conduct Report"
@@ -592,7 +592,7 @@ function ConductReportDrawerBody({
       </ModerationCaseWorkspace>
       {actionReceipt}
       {compact && (
-        <div className="drawer-actions">
+        <div className="admin-drawer-actions sticky bottom-[-28px] z-[4] m-[18px_-24px_-28px] flex flex-wrap gap-2 border-t border-admin-border bg-admin-surface/95 px-6 py-3.5 shadow-[0_-6px_18px_rgba(0,0,0,0.09)] [&>*]:min-h-11 [&>*]:flex-[1_1_180px] [&>*]:text-center max-[720px]:bottom-[-24px] max-[720px]:m-[18px_-16px_-24px] max-[720px]:px-4 max-[720px]:[&>*]:basis-full">
           {model.reportedMemberHref && (
             <Button asChild size="lg" variant="outline">
               <Link href={model.reportedMemberHref}>

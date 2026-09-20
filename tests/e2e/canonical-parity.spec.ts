@@ -332,13 +332,13 @@ test.describe("legacy parity for board controls and moderation", () => {
     await page.goto("/quest");
 
     const filters = page.getByLabel("Quest filters");
-    const draft = filters.getByRole("button", { name: "Draft", exact: true });
+    const draft = filters.getByRole("tab", { name: "Draft", exact: true });
     await draft.click();
-    await expect(draft).toHaveAttribute("aria-pressed", "true");
-    const all = filters.getByRole("button", { name: /^All/ });
+    await expect(draft).toHaveAttribute("aria-selected", "true");
+    const all = filters.getByRole("tab", { name: /^All/ });
     await all.click();
-    await expect(all).toHaveAttribute("aria-pressed", "true");
-    await expect(draft).toHaveAttribute("aria-pressed", "false");
+    await expect(all).toHaveAttribute("aria-selected", "true");
+    await expect(draft).toHaveAttribute("aria-selected", "false");
 
     await page.getByRole("button", { name: "Show 25", exact: true }).click();
     await expect(page.getByText(/^Page 1 of \d+$/)).toBeVisible();
@@ -368,7 +368,7 @@ test.describe("legacy parity for board controls and moderation", () => {
     await switchToThai(page);
     await page.goto("/report");
 
-    await page.locator("#report-main tbody tr[data-report-id]").first().click();
+    await page.locator("#report-main tbody tr[data-report-id]").first().getByRole("button", { name: /เปิดคดีรายงาน/ }).click();
     const drawer = page.locator("dialog.drawer.open");
     await expect(drawer).toBeVisible();
     await expect(drawer.getByText("เปิดคดีรายงานฉบับเต็ม", { exact: true })).toBeVisible();

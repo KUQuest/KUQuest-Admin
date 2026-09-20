@@ -17,12 +17,12 @@ test.describe("Member route family", () => {
 
     const headers = await board.locator("thead th").allTextContents();
     expect(headers).toEqual([
-      "Member ID",
-      "Member",
-      "Student ID",
-      "Academic profile",
-      "Status",
-      "Wallet status",
+      "Member ID↕",
+      "Member↕",
+      "Student ID↕",
+      "Academic profile↕",
+      "Status↕",
+      "Wallet status↕",
     ]);
     const demoSearch = board.getByRole("searchbox", { name: "Search Members" });
     await demoSearch.fill("Demo Member 01");

@@ -200,7 +200,7 @@ export function ModerationCaseWorkspace({
   ...props
 }: ModerationCaseWorkspaceProps) {
   return (
-    <div className="grid gap-[18px]" data-moderation-case-workspace={props.kind}>
+    <div className="moderation-case-workspace grid gap-[18px]" data-moderation-case-workspace={props.kind}>
       {showDecisionContext && <CaseContextPanel {...props} />}
       {children}
     </div>

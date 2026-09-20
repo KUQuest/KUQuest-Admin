@@ -21,6 +21,8 @@ import { AdminShellProvider } from "./admin-shell-context";
 import { ADMIN_SESSION_KEY } from "../../features/admin/admin-auth";
 import { ADMIN_MOCK_SESSION_COOKIE } from "../../lib/auth/admin-session-policy";
 
+const ADMIN_LANGUAGE_KEY = "kuquest-admin-language";
+
 type AdminShellProps = {
   identity: AdminIdentity;
   children: ReactNode;
@@ -51,6 +53,7 @@ export function AdminShell({ identity, children }: AdminShellProps) {
   );
   const changeLanguage = useCallback((nextLanguage: AdminLanguage) => {
     setLanguage(nextLanguage);
+    window.localStorage.setItem(ADMIN_LANGUAGE_KEY, nextLanguage);
   }, []);
   const openGlobalSearch = useCallback(() => setGlobalSearchOpen(true), []);
   const closeGlobalSearch = useCallback(() => setGlobalSearchOpen(false), []);
@@ -74,6 +77,11 @@ export function AdminShell({ identity, children }: AdminShellProps) {
     (value: string) => translateAdminText(language, value),
     [language],
   );
+
+  useEffect(() => {
+    const storedLanguage = window.localStorage.getItem(ADMIN_LANGUAGE_KEY);
+    if (storedLanguage === "en" || storedLanguage === "th") setLanguage(storedLanguage);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

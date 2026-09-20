@@ -160,11 +160,11 @@ test.describe("Quest route family", () => {
     await expect(page.locator("tbody tr").first()).toContainText("Demo Quest 07");
 
     await page.getByPlaceholder("Search Quests…").fill("");
-    await page.getByRole("button", { name: "Team", exact: true }).click();
+    await page.getByRole("tab", { name: "Team", exact: true }).click();
     await expect(page.locator("tbody tr")).not.toHaveCount(0);
     await expect(page.locator("tbody tr").first()).toContainText("Team Quest");
 
-    await page.getByRole("button", { name: "Failed", exact: true }).click();
+    await page.getByRole("tab", { name: "Failed", exact: true }).click();
     await expect(page.locator("tbody tr")).toHaveCount(7);
     await expect(page.locator("tbody tr").first()).toContainText("Verify dorm fire exits");
   });
@@ -200,7 +200,7 @@ test.describe("Quest route family", () => {
     await expect(page.getByText("Reserved", { exact: true })).toHaveCount(0);
     await expect(page.getByText("Remaining", { exact: true })).toHaveCount(0);
     await expect(page.getByText("API version", { exact: true })).toHaveCount(0);
-    const summary = page.locator("section.record-panel").filter({ hasText: "Quest summary" }).first();
+    const summary = page.getByRole("heading", { name: "Quest summary", exact: true }).locator("xpath=ancestor::section[1]");
     await expect(summary).toBeVisible();
     await expect(summary.getByRole("heading", { name: "Hirer", exact: true })).toHaveCount(0);
     await expect(summary.getByRole("heading", { name: "Schedule and location", exact: true })).toHaveCount(0);
@@ -210,13 +210,13 @@ test.describe("Quest route family", () => {
     await expect(side.getByRole("heading", { name: "Hirer", exact: true })).toBeVisible();
     await expect(side.getByRole("heading", { name: "Schedule and location", exact: true })).toBeVisible();
     await expect(side.getByRole("heading", { name: "Dispute and risk", exact: true })).toBeVisible();
-    await expect(side.locator("section.record-panel").filter({ hasText: "Financial record" })).toBeVisible();
-    const timeline = page.locator("section.record-panel").filter({ has: page.getByRole("heading", { name: "Overall Quest timeline" }) });
-    await expect(timeline.locator(".section-count")).toHaveText("2");
+    await expect(side.locator('section[data-slot="card"]').filter({ hasText: "Financial record" })).toBeVisible();
+    const timeline = page.locator('section[data-slot="card"]').filter({ has: page.getByRole("heading", { name: "Overall Quest timeline" }) });
+    await expect(timeline.locator('[data-slot="card-header"] > span')).toHaveText("2");
     await expect(timeline).toContainText("Draft → Open");
-    const editHistory = page.locator("section.record-panel").filter({ hasText: "Quest edit history" });
+    const editHistory = page.locator('section[data-slot="card"]').filter({ hasText: "Quest edit history" });
     await expect(editHistory).toContainText("No Quest edits returned.");
-    const sidePanelTitles = await side.locator(":scope > section.record-panel").evaluateAll((panels) => panels.map((panel) => panel.querySelector(".record-panel-head h2")?.textContent?.trim()));
+    const sidePanelTitles = await side.locator(':scope > section[data-slot="card"]').evaluateAll((panels) => panels.map((panel) => panel.querySelector('[data-slot="card-title"]')?.textContent?.trim()));
     expect(sidePanelTitles.slice(0, 5)).toEqual(["Hirer", "Schedule and location", "Financial record", "Overall Quest timeline", "Dispute and risk"]);
     await expect(page.getByRole("link", { name: "Full Quest detail" })).toHaveCount(0);
 
@@ -247,7 +247,7 @@ test.describe("Quest route family", () => {
     await expect(drawer.getByRole("link", { name: "Full Quest detail" })).toBeVisible();
     const commandActions = drawer.locator(".quest-command-actions");
     await expect(commandActions).toHaveCSS("position", "sticky");
-    await expect(commandActions.locator(".btn")).toHaveCount(3);
+    await expect(commandActions.locator('[data-slot="button"]')).toHaveCount(3);
 
     const drawerBox = await drawer.boundingBox();
     const viewport = page.viewportSize();

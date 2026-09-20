@@ -13,7 +13,7 @@ test.describe("Payout App Router route family", () => {
     await page.goto("/payout");
 
     await expect(page.getByRole("heading", { level: 1, name: "Payouts" })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Needs review/ })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("tab", { name: /Needs review/ })).toHaveAttribute("aria-selected", "true");
     await expect(page.getByRole("link", { name: "Open Payout PAY-9637" })).toBeVisible();
     await expect(page.getByText("PAY-9638", { exact: true })).toHaveCount(0);
     await page.reload();
@@ -38,7 +38,7 @@ test.describe("Payout App Router route family", () => {
     await expect(page.getByRole("heading", { level: 1, name: "PAY-9637" })).toBeVisible();
     await expect(page.locator(".payout-page-alert")).toContainText("Payout approval is required");
     await expect(page.locator(".payout-record-status-bar")).toBeVisible();
-    await expect(page.locator(".payout-detail-page .payout-detail-stack .section")).toHaveCount(5);
+    await expect(page.locator('.payout-detail-page .payout-detail-stack section[data-slot="card"]')).toHaveCount(5);
     for (const section of ["Payout summary", "Payout amounts", "Payout Destination", "Payout history"]) {
       await expect(page.getByRole("heading", { name: section })).toBeVisible();
     }
@@ -199,9 +199,9 @@ test.describe("Payout App Router route family", () => {
 
     await drawer.getByRole("button", { name: "Close Payout detail" }).click();
     await expect(page).toHaveURL(/\/payout$/);
-    await page.getByRole("button", { name: /Sent/ }).click();
+    await page.getByRole("tab", { name: /Sent/ }).click();
     await page.getByPlaceholder("Search Payouts…").fill("PAY-9700");
-    await expect(page.locator(".table-wrap").getByText("Sent", { exact: true })).toBeVisible();
+    await expect(page.locator('[data-slot="table"]').getByText("Sent", { exact: true })).toBeVisible();
   });
 
   test("keeps Payout rejection requirements in the command dialog", async ({ page }) => {
@@ -251,7 +251,7 @@ test.describe("Payout App Router route family", () => {
     }
 
     await page.goto("/payout");
-    await page.locator("button.tab").filter({ hasText: "All" }).click();
+    await page.getByRole("tab", { name: /^All/ }).click();
     await page.getByPlaceholder("Search Payouts…").fill("PAY-9703");
     await page.getByRole("link", { name: "Open Payout PAY-9703" }).click();
     const payoutTiming = page.getByRole("dialog", { name: "PAY-9703" }).getByRole("heading", { name: "Payout timing" }).locator("xpath=ancestor::section[1]");

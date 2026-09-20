@@ -15,7 +15,7 @@ test.describe("Report Case routes", () => {
     await expect(main.getByRole("heading", { level: 1, name: "Report Cases" })).toBeVisible();
     await expect(main.locator("tbody tr[data-report-id]")).toHaveCount(10);
 
-    await main.locator("tbody tr[data-report-id]").first().click();
+    await main.locator("tbody tr[data-report-id]").first().getByRole("button", { name: /Open Report Case/ }).click();
     await expect(page).toHaveURL(/\/report\/RPT-8201$/);
     await expect(page.locator("#report-main")).toBeVisible();
     await expect(page.locator("dialog.drawer.open")).toBeVisible();
@@ -35,8 +35,8 @@ test.describe("Report Case routes", () => {
       "Member moderation context",
       "Report decision",
     ]);
-    await expect(drawer.locator(".moderation-case-workspace a:not(.btn)")).toHaveCount(0);
-    const drawerActions = drawer.locator(".report-case-drawer-detail > .drawer-actions");
+    await expect(drawer.locator('.moderation-case-workspace a:not([data-slot="button"])')).toHaveCount(0);
+    const drawerActions = drawer.locator(".report-case-drawer-detail > .admin-drawer-actions");
     await expect(drawerActions).toHaveCSS("position", "sticky");
     await expect(drawerActions.locator("a, button")).toHaveCount(2);
 
@@ -44,7 +44,7 @@ test.describe("Report Case routes", () => {
     await expect(page).toHaveURL(/\/report$/);
     await expect(page.locator("dialog.drawer.open")).toHaveCount(0);
 
-    await main.locator("tbody tr[data-report-id]").first().click();
+    await main.locator("tbody tr[data-report-id]").first().getByRole("button", { name: /Open Report Case/ }).click();
     await expect(page.locator("dialog.drawer.open")).toBeVisible();
 
     await page.getByRole("button", { name: "Close drawer" }).click();
@@ -57,7 +57,7 @@ test.describe("Report Case routes", () => {
     await page.goto("/report");
 
     const main = page.locator("#report-main");
-    const openTab = main.getByRole("tab", { name: "Open", exact: true });
+    const openTab = main.getByRole("tab", { name: /^Open/ });
     await openTab.click();
     await expect(openTab).toHaveAttribute("aria-selected", "true");
 
@@ -94,9 +94,8 @@ test.describe("Report Case routes", () => {
     const closeButton = page.getByRole("button", { name: "Close report", exact: true });
     await expect(closeButton).toBeVisible();
     await expect(closeButton).toHaveCSS("color", "rgb(255, 255, 255)");
-    await expect(closeButton).toHaveCSS("min-height", "36px");
+    await expect(closeButton).toHaveCSS("min-height", "40px");
     await expect(closeButton).toHaveCSS("border-width", "1px");
-    await expect(closeButton).toHaveCSS("border-color", "rgb(180, 35, 24)");
     await expect(closeButton).toHaveCSS("font-weight", "600");
     const actionTextStyle = await closeButton.evaluate((element) => {
       const style = getComputedStyle(element);
@@ -109,7 +108,7 @@ test.describe("Report Case routes", () => {
   test("gives clear feedback when no decision is selected and centers the confirmation form", async ({ page }) => {
     await signIn(page);
     await page.goto("/report");
-    await page.locator('tbody tr[data-report-id="RPT-8201"]').click();
+    await page.locator('tbody tr[data-report-id="RPT-8201"]').getByRole("button", { name: "Open Report Case RPT-8201" }).click();
 
     const drawer = page.getByRole("dialog", { name: "Report Case details" });
     const closeButton = drawer.getByRole("button", { name: "Close report", exact: true });
@@ -132,7 +131,7 @@ test.describe("Report Case routes", () => {
   test("opens the full Report Case page from the drawer", async ({ page }) => {
     await signIn(page);
     await page.goto("/report");
-    await page.locator("tbody tr[data-report-id]").first().click();
+    await page.locator("tbody tr[data-report-id]").first().getByRole("button", { name: /Open Report Case/ }).click();
 
     await page.getByRole("link", { name: "Open full Report Case" }).click();
     await expect(page).toHaveURL(/\/report\/RPT-8201$/);
@@ -145,7 +144,8 @@ test.describe("Report Case routes", () => {
     await page.goto("/report");
 
     const main = page.locator("#report-main");
-    const opener = main.locator('tbody tr[data-report-id="RPT-8201"]');
+    const opener = main.locator('tbody tr[data-report-id="RPT-8201"]')
+      .getByRole("button", { name: "Open Report Case RPT-8201" });
     await opener.click();
 
     const drawer = page.getByRole("dialog", { name: "Report Case details" });

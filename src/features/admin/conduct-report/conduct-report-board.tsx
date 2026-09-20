@@ -261,7 +261,10 @@ export function ConductReportBoard({
                     data-conduct-report-status={model.status}
                     tabIndex={0}
                     aria-label={`${translateText("Open Conduct Report")} ${model.id}`}
-                    onClick={() => openDrawer(model.id)}
+                    onClick={(event) => {
+                      if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return;
+                      openDrawer(model.id);
+                    }}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();

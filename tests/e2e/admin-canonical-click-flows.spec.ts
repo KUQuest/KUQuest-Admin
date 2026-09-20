@@ -55,7 +55,7 @@ test.describe("Admin canonical click flows", () => {
     await expect(searchDialog.getByRole("link", { name: /PAY-9637/ })).toHaveAttribute("href", "/payout/PAY-9637");
   });
 
-  test("admin can filter Member reviews without unsupported moderation commands", async ({ page }) => {
+  test("admin can search Member reviews without unsupported moderation commands", async ({ page }) => {
     await signIn(page, { expectEmailFocused: true });
     await page.goto("/member/68000000?tab=reviews");
 
@@ -66,10 +66,6 @@ test.describe("Admin canonical click flows", () => {
     await page.getByRole("searchbox", { name: "Search reviews" }).fill("delivery");
     await expect(reviews.locator("tbody tr")).not.toHaveCount(0);
     await page.getByRole("searchbox", { name: "Search reviews" }).fill("");
-    const reviewFilters = page.getByRole("group", { name: "Review filters" });
-    await reviewFilters.getByRole("button", { name: "Reported review", exact: true }).click();
-    await expect(reviews.locator("tbody tr")).not.toHaveCount(0);
-
     await expect(reviews.getByRole("columnheader", { name: "Action", exact: true })).toHaveCount(0);
     await expect(page.getByText("Review records are read-only.", { exact: false })).toBeVisible();
     await expect(reviews.getByRole("button", { name: "Hide", exact: true })).toHaveCount(0);

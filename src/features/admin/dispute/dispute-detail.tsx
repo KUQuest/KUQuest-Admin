@@ -171,7 +171,7 @@ function Overview({ model, translateText, compact = false }: { model: DisputeCas
   return (
     <Card as="section" className={`${adminRecordSection} dispute-overview grid !grid-cols-1 gap-[18px]`}>
       <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Dispute detail")}</h2><span className="badge">{translateText(model.category)}</span></CardHeader>
-      <p className="m-0 whitespace-pre-wrap dispute-description">{model.detail}</p>
+      <p className="m-0 whitespace-pre-wrap text-base text-admin-text">{model.detail}</p>
       <AdminOverviewMeta>
         <div><dt>{translateText("Quest")}</dt><dd><Link href={model.questHref ?? questRoutes.list()}>{model.questTitle}</Link></dd></div>
           <div><dt>{translateText("Quest State")}</dt><dd>{translateText(questStateLabel(model.questState))}</dd></div>
@@ -286,9 +286,9 @@ function DecisionDialog({
     : translateText("Keep the full held amount with the Hirer. No money moves and the Quest remains Failed.");
   return (
     <AdminModalPortal open onClose={onCancel}>
-      <dialog ref={dialogRef} open className="dispute-decision-dialog" aria-modal="true" aria-labelledby="dispute-decision-title" tabIndex={-1}>
+      <dialog ref={dialogRef} open className="dispute-decision-dialog z-[60]" aria-modal="true" aria-labelledby="dispute-decision-title" tabIndex={-1}>
       <form method="dialog" onSubmit={(event) => { event.preventDefault(); const value = reason.trim(); const fullAmountUnavailable = choice === "resolve" && (!model.workerId || model.sharedCapSatang === null || model.sharedCapSatang <= 0); if (value.length < 8 || fullAmountUnavailable) return; onConfirm(value); }}>
-        <div className="dialog-body"><div className="warning-icon" aria-hidden="true">!</div><h2 id="dispute-decision-title">{title}</h2><p>{description}</p>
+        <div className="dialog-body p-5"><div className="warning-icon grid size-[38px] place-items-center rounded-[10px] bg-admin-danger-soft font-bold text-admin-danger" aria-hidden="true">!</div><h2 id="dispute-decision-title">{title}</h2><p>{description}</p>
           {choice ? <AdminActionSummary
             title={translateText("Before you confirm")}
             affected={`${translateText("Dispute Case")} ${model.displayId} · ${translateText("Quest")} ${model.questId}`}
@@ -302,9 +302,9 @@ function DecisionDialog({
                 : "Worker wins transfers the full remaining amount. A partial amount cannot be entered."
               : "Hirer wins keeps the full held amount with the Hirer. No money moves.")}
           /> : null}
-          {choice === "resolve" && <div className="decision-amount-summary"><span>{translateText("Worker outcome")}</span><strong>{translateText("Full remaining amount")} · {model.sharedCapLabel}</strong></div>}
-          <label htmlFor="dispute-decision-reason">{translateText("Reason for this decision")}</label><textarea id="dispute-decision-reason" name="reason" rows={4} minLength={8} maxLength={500} required value={reason} aria-invalid={Boolean(error)} onChange={(event) => setReason(event.target.value)} placeholder={translateText("Enter the reason for the Dispute Case decision")} /><div className="field-help"><span>{translateText("Minimum 8 characters")}</span><span>{reason.length}/500</span></div>{error && <p className="field-error" role="alert">{translateText(error)}</p>}
-        </div><div className="dialog-actions"><Button variant="outline" type="button" onClick={onCancel} disabled={busy}>{translateText("Cancel")}</Button><Button variant="danger" type="submit" disabled={busy || reason.trim().length < 8 || choice === "resolve" && (!model.workerId || model.sharedCapSatang === null || model.sharedCapSatang <= 0)}>{busy ? translateText("Saving…") : translateText("Confirm decision")}</Button></div>
+          {choice === "resolve" && <div className="decision-amount-summary mt-4 flex items-baseline justify-between gap-3 rounded-lg border border-admin-border bg-admin-soft px-3 py-2.5"><span className="text-sm text-admin-muted">{translateText("Worker outcome")}</span><strong className="text-right text-base">{translateText("Full remaining amount")} · {model.sharedCapLabel}</strong></div>}
+          <label htmlFor="dispute-decision-reason">{translateText("Reason for this decision")}</label><textarea id="dispute-decision-reason" name="reason" rows={4} minLength={8} maxLength={500} required value={reason} aria-invalid={Boolean(error)} onChange={(event) => setReason(event.target.value)} placeholder={translateText("Enter the reason for the Dispute Case decision")} /><div className="mt-1.5 flex justify-between gap-3 text-[15px] leading-[1.4] text-admin-muted"><span>{translateText("Minimum 8 characters")}</span><span>{reason.length}/500</span></div>{error && <p className="field-error" role="alert">{translateText(error)}</p>}
+        </div><div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5"><Button variant="outline" type="button" onClick={onCancel} disabled={busy}>{translateText("Cancel")}</Button><Button variant="danger" type="submit" disabled={busy || reason.trim().length < 8 || choice === "resolve" && (!model.workerId || model.sharedCapSatang === null || model.sharedCapSatang <= 0)}>{busy ? translateText("Saving…") : translateText("Confirm decision")}</Button></div>
       </form>
       </dialog>
     </AdminModalPortal>
@@ -318,7 +318,7 @@ function EvidencePreview({ state, translateText, onClose }: { state: EvidenceSta
     display = typeof state.value === "string" ? state.value : JSON.stringify(state.value, null, 2);
   }
   useDisputeModalFocus(dialogRef, true, onClose);
-  return <AdminModalPortal open onClose={onClose}><dialog ref={dialogRef} open className="dispute-evidence-dialog" aria-modal="true" aria-labelledby="dispute-evidence-title" tabIndex={-1}><div className="dialog-body"><div className="evidence-preview-head"><div><strong id="dispute-evidence-title">{translateText("Evidence Reference")}</strong><small>{state.reference}</small></div><button className="icon" type="button" aria-label={translateText("Close evidence")} onClick={onClose}><span className="close-lines" /></button></div>{state.loading && <p>{translateText("Loading Evidence Reference…")}</p>}{state.error && <p className="field-error" role="alert">{translateText(state.error)}</p>}{!state.loading && !state.error && <pre className="report-evidence-context">{display}</pre>}<div className="dialog-actions"><Button variant="outline" type="button" onClick={onClose}>{translateText("Close")}</Button></div></div></dialog></AdminModalPortal>;
+  return <AdminModalPortal open onClose={onClose}><dialog ref={dialogRef} open className="dispute-evidence-dialog z-[60] w-[min(620px,calc(100vw-32px))]" aria-modal="true" aria-labelledby="dispute-evidence-title" tabIndex={-1}><div className="dialog-body p-5"><div className="sticky top-0 z-[2] flex items-center justify-between border-b border-admin-border bg-admin-surface/95 px-4 py-3 backdrop-blur-sm"><div><strong id="dispute-evidence-title" className="block">{translateText("Evidence Reference")}</strong><small className="block text-[13px] text-admin-muted">{state.reference}</small></div><button className="icon" type="button" aria-label={translateText("Close evidence")} onClick={onClose}><span className="close-lines" /></button></div>{state.loading && <p>{translateText("Loading Evidence Reference…")}</p>}{state.error && <p className="field-error" role="alert">{translateText(state.error)}</p>}{!state.loading && !state.error && <pre className="report-evidence-context max-h-[50vh] overflow-auto rounded-lg bg-admin-soft p-3 text-sm [overflow-wrap:anywhere]">{display}</pre>}<div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5"><Button variant="outline" type="button" onClick={onClose}>{translateText("Close")}</Button></div></div></dialog></AdminModalPortal>;
 }
 
 function DecisionControls({ model, translateText, selectedChoice, commandError, onSelect, onStart }: { model: DisputeCaseModel; translateText: (value: string) => string; selectedChoice: DisputeCaseDecisionChoice | null; commandError: string | null; onSelect: (choice: DisputeCaseDecisionChoice) => void; onStart: () => void }) {
@@ -353,7 +353,7 @@ function FullSections({ model, translateText, onOpenEvidence, selectedChoice, co
 }
 
 function DrawerSections({ model, translateText, onOpenEvidence, selectedChoice, commandError, onSelectChoice, onStartDecision, actionReceipt }: { model: DisputeCaseModel; translateText: (value: string) => string; onOpenEvidence: (reference: string) => void; selectedChoice: DisputeCaseDecisionChoice | null; commandError: string | null; onSelectChoice: (choice: DisputeCaseDecisionChoice) => void; onStartDecision: () => void; actionReceipt?: ReactNode }) {
-  return <div className="dispute-case-drawer-detail drawer-content-flow"><DisputeAlert model={model} translateText={translateText} /><ModerationCaseWorkspace
+  return <div className="dispute-case-drawer-detail admin-drawer-content-flow grid min-w-0 content-start gap-[18px]"><DisputeAlert model={model} translateText={translateText} /><ModerationCaseWorkspace
     kind="Dispute Case"
     caseId={model.displayId}
     statusLabel={model.statusLabel}
@@ -387,7 +387,7 @@ function DrawerSections({ model, translateText, onOpenEvidence, selectedChoice, 
       memberLabel={model.respondentRole}
     />
     <Card as="section" className={`${adminRecordSection} dispute-decision-panel`}><CardHeader flush className={adminRecordHeader}><h3 className={adminRecordHeading}>{model.isActionable ? translateText("Dispute decision") : translateText("Resolution")}</h3></CardHeader><DecisionControls model={model} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelect={onSelectChoice} onStart={onStartDecision} /></Card>
-  </ModerationCaseWorkspace>{actionReceipt}<div className="drawer-actions">{model.questHref && <Button asChild size="lg" variant="outline"><Link href={model.questHref}>{translateText("Quest detail")}</Link></Button>}<Button asChild size="lg" variant="primary"><a href={disputeRoutes.detail(model.id)}>{translateText("Open full Dispute Case")}</a></Button></div></div>;
+  </ModerationCaseWorkspace>{actionReceipt}<div className="admin-drawer-actions sticky bottom-[-28px] z-[4] m-[18px_-24px_-28px] flex flex-wrap gap-2 border-t border-admin-border bg-admin-surface/95 px-6 py-3.5 shadow-[0_-6px_18px_rgba(0,0,0,0.09)] [&>*]:min-h-11 [&>*]:flex-[1_1_180px] [&>*]:text-center max-[720px]:bottom-[-24px] max-[720px]:m-[18px_-16px_-24px] max-[720px]:px-4 max-[720px]:[&>*]:basis-full">{model.questHref && <Button asChild size="lg" variant="outline"><Link href={model.questHref}>{translateText("Quest detail")}</Link></Button>}<Button asChild size="lg" variant="primary"><a href={disputeRoutes.detail(model.id)}>{translateText("Open full Dispute Case")}</a></Button></div></div>;
 }
 
 export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = false, onUpdated }: DisputeCaseDetailProps) {

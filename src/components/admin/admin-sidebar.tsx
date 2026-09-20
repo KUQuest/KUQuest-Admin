@@ -79,7 +79,7 @@ function AdminNavigationLink({
     >
       <span className="flex size-5 shrink-0 items-center justify-center text-admin-accent" aria-hidden="true"><NavigationIcon name={item.icon} /></span>
       {translateText(item.label)}
-      {typeof count === "number" && <b className="ml-auto min-w-5 rounded-full bg-admin-soft px-1.5 py-0.5 text-center text-xs font-semibold leading-tight text-admin-muted">{count}</b>}
+      {typeof count === "number" && <b className="admin-nav-count ml-auto min-w-5 rounded-full bg-admin-soft px-1.5 py-0.5 text-center text-xs font-semibold leading-tight text-admin-muted">{count}</b>}
     </Link>
   );
 }

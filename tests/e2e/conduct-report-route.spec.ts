@@ -7,8 +7,8 @@ test.describe("Conduct Report routes", () => {
     await signIn(page);
     await page.goto("/conduct-report");
 
-    await page.locator('tbody tr[data-conduct-report-id="CND-8301"]').click();
-    await expect(page.getByRole("dialog", { name: "Conduct Report details" })).toBeVisible();
+    await page.locator('tbody tr[data-conduct-report-id="CND-8301"]').getByRole("button", { name: "Open Conduct Report CND-8301" }).click();
+    await expect(page.locator("dialog.drawer.open")).toBeVisible();
 
     const drawer = page.locator("dialog.drawer.open");
     await expect(drawer.getByRole("heading", { name: "Decision context", exact: true })).toHaveCount(0);
