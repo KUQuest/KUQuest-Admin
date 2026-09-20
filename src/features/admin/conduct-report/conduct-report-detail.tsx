@@ -36,7 +36,6 @@ import { RecordStatusBar } from "../../../components/admin/record-status-bar";
 import { ModerationCaseWorkspace, ModerationHistoryPanel } from "../moderation-case/moderation-case-workspace";
 import { hasModerationHistory } from "../moderation-case/moderation-case-context";
 import {
-  findConductReportFromMock,
   newConductReportIdempotencyKey,
   saveMockConductReportDecision,
 } from "./conduct-report-adapter";
@@ -49,6 +48,7 @@ import {
   type ConductReportDecisionChoice,
   type ConductReportModel,
 } from "./conduct-report-model";
+import { useConductReportDetailQuery } from "./conduct-report-query";
 
 type DecisionDialogProps = {
   open: boolean;
@@ -780,37 +780,11 @@ export function ConductReportDetail({
   onUpdated?: (model: ConductReportModel) => void;
 }) {
   const { translateText } = useAdminShell();
-  const [reportModel, setReportModel] = useState<ConductReportModel | null>(initialModel);
-  const [loading, setLoading] = useState(!initialModel);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const { data: reportModel, isPending, error } = useConductReportDetailQuery(reportId, initialModel);
 
-  useEffect(() => {
-    if (initialModel) return;
-    let cancelled = false;
-    const request = isAdminApiEnabled()
-      ? adminApi.getReport(reportId)
-      : Promise.resolve(findConductReportFromMock(localStorage, reportId));
-    void request.then((record) => {
-      if (cancelled) return;
-      const nextModel = conductReportModelFromRecord(record);
-      if (!nextModel || nextModel.id !== reportId) {
-        setLoadError("The Conduct Report was not found.");
-        setReportModel(null);
-      } else {
-        setReportModel(nextModel);
-      }
-      return undefined;
-    }).catch((error: unknown) => {
-      if (!cancelled) setLoadError(error instanceof Error ? error.message : "The Conduct Report could not load.");
-    }).finally(() => {
-      if (!cancelled) setLoading(false);
-    });
-    return () => { cancelled = true; };
-  }, [initialModel, reportId]);
-
-  if (loading && !reportModel) return <AdminLoading message={translateText("Loading Conduct Report…")} />;
+  if (isPending && !reportModel) return <AdminLoading message={translateText("Loading Conduct Report…")} />;
   if (!reportModel) {
-    return <main className="admin-feedback"><Card as="section" className="overflow-hidden"><CardHeader><h1 className="text-lg font-semibold">{translateText("Conduct Report not found")}</h1></CardHeader><CardContent className="space-y-4"><p>{translateText(loadError ?? "The requested Conduct Report was not found.")}</p>{presentation === "page" && <Button asChild variant="primary"><Link href={conductReportRoutes.list()}>{translateText("Return to Conduct Reports")}</Link></Button>}</CardContent></Card></main>;
+    return <main className="admin-feedback"><Card as="section" className="overflow-hidden"><CardHeader><h1 className="text-lg font-semibold">{translateText("Conduct Report not found")}</h1></CardHeader><CardContent className="space-y-4"><p>{translateText(error instanceof Error ? error.message : "The requested Conduct Report was not found.")}</p>{presentation === "page" && <Button asChild variant="primary"><Link href={conductReportRoutes.list()}>{translateText("Return to Conduct Reports")}</Link></Button>}</CardContent></Card></main>;
   }
 
   return <ConductReportDrawer model={reportModel} presentation={presentation} onClose={onClose ?? (() => undefined)} onUpdated={onUpdated} />;

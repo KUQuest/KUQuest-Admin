@@ -1,15 +1,21 @@
 import { useEffect, useMemo } from "react";
-import { useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
 import { isAdminApiEnabled } from "../api/admin-provider";
 import {
+  findConductReportFromMock,
   loadAllConductReportsFromMock,
   loadConductReportsFromMock,
 } from "./conduct-report-adapter";
 import { loadConductReportPageData, type ConductReportPageData } from "./conduct-report-service";
-import { CONDUCT_REPORT_UPDATED_EVENT, type ConductReportModel } from "./conduct-report-model";
+import { adminApi } from "../api/admin-api";
+import { CONDUCT_REPORT_UPDATED_EVENT, conductReportModelFromRecord, type ConductReportModel } from "./conduct-report-model";
 
 export const conductReportBoardQueryKey = ["admin", "conduct-reports", "board"] as const;
+
+export function conductReportDetailQueryKey(reportId: string) {
+  return ["admin", "conduct-reports", "detail", reportId] as const;
+}
 
 function pageFromQueryData(pages: ConductReportPageData[]): ConductReportPageData {
   const lastPage = pages.at(-1);
@@ -62,4 +68,42 @@ export function useConductReportBoardQuery(initialData?: ConductReportPageData) 
   }, [queryClient]);
 
   return { ...query, data };
+}
+
+export function useConductReportDetailQuery(reportId: string, initialModel?: ConductReportModel | null) {
+  const queryClient = useQueryClient();
+  const apiEnabled = isAdminApiEnabled();
+  const queryKey = conductReportDetailQueryKey(reportId);
+  const query = useQuery({
+    queryKey,
+    queryFn: async () => {
+      const record = apiEnabled
+        ? await adminApi.getReport(reportId)
+        : findConductReportFromMock(localStorage, reportId);
+      const model = conductReportModelFromRecord(record);
+      if (!model || model.id !== reportId) throw new Error("The Conduct Report was not found.");
+      return model;
+    },
+    initialData: initialModel ?? undefined,
+    staleTime: initialModel ? Infinity : 0,
+    gcTime: Infinity,
+    refetchOnMount: !initialModel,
+    refetchOnWindowFocus: false,
+  });
+
+  useEffect(() => {
+    if (initialModel) queryClient.setQueryData(queryKey, initialModel);
+  }, [initialModel, queryClient, queryKey]);
+
+  useEffect(() => {
+    const updateRecord = (event: Event) => {
+      const model = (event as CustomEvent<ConductReportModel>).detail;
+      if (!model || model.id !== reportId) return;
+      queryClient.setQueryData(queryKey, model);
+    };
+    window.addEventListener(CONDUCT_REPORT_UPDATED_EVENT, updateRecord);
+    return () => window.removeEventListener(CONDUCT_REPORT_UPDATED_EVENT, updateRecord);
+  }, [queryClient, queryKey, reportId]);
+
+  return { ...query, data: query.data ?? null, queryKey };
 }
