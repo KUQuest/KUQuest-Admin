@@ -5,10 +5,6 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { Button } from "../../../components/ui";
-import { isAdminMockEnabled } from "../../../lib/auth/admin-auth-mode";
-import {
-  loadOverviewMockData,
-} from "../overview/overview-adapter";
 import {
   overviewSearchResultLabel,
   overviewSearchResultsFromApi,
@@ -17,6 +13,7 @@ import {
   type OverviewApiSearchData,
   type OverviewSearchResult,
 } from "../overview/overview-model";
+import { useOverviewSearchQuery } from "../overview/overview-search-query";
 
 type AdminGlobalSearchProps = {
   open: boolean;
@@ -137,9 +134,9 @@ export function AdminGlobalSearch({ open, onClose, initialData, initialError }: 
   const [savedFilters, setSavedFilters] = useState<SavedSearchFilter[]>([]);
   const [saveName, setSaveName] = useState("");
   const [saveMessage, setSaveMessage] = useState("");
-  const [data, setData] = useState<{ source: "mock"; data: ReturnType<typeof loadOverviewMockData> } | { source: "api"; data: OverviewApiSearchData } | null>(
-    initialData ? { source: "api", data: initialData } : null,
-  );
+  const searchQuery = useOverviewSearchQuery(open, initialData);
+  const data = searchQuery.data ?? null;
+  const searchError = initialError ?? (searchQuery.error instanceof Error ? searchQuery.error.message : null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -149,11 +146,6 @@ export function AdminGlobalSearch({ open, onClose, initialData, initialError }: 
     setKind(isSearchFilter(params.get(SEARCH_KIND_PARAM)) ? params.get(SEARCH_KIND_PARAM) as SearchFilter : "all");
     setSavedFilters(readSavedSearchFilters());
     setSaveMessage("");
-    setData(initialData
-      ? { source: "api", data: initialData }
-      : isAdminMockEnabled()
-        ? { source: "mock", data: loadOverviewMockData(localStorage) }
-        : null);
     window.setTimeout(() => inputRef.current?.focus(), 0);
 
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -161,7 +153,7 @@ export function AdminGlobalSearch({ open, onClose, initialData, initialError }: 
     };
     document.addEventListener("keydown", closeOnEscape);
     return () => document.removeEventListener("keydown", closeOnEscape);
-  }, [initialData, onClose, open]);
+  }, [onClose, open]);
 
   const allResults = useMemo(() => {
     if (data?.source === "mock") return overviewSearchResultsFromMockData(data.data, query);
@@ -245,7 +237,8 @@ export function AdminGlobalSearch({ open, onClose, initialData, initialError }: 
         </div> : null}
         {saveMessage ? <output className="admin-global-search-message mx-4 mt-2.5 block text-[13px] text-admin-success">{translateText(saveMessage)}</output> : null}
         <div id="admin-global-search-results" aria-live="polite">
-          {initialError && !data ? <p className="p-[60px_24px] text-center text-sm text-admin-muted">{translateText(initialError)}</p> : null}
+          {searchError && !data ? <p className="p-[60px_24px] text-center text-sm text-admin-muted">{translateText(searchError)}</p> : null}
+          {searchQuery.isPending && !data ? <p className="p-[60px_24px] text-center text-sm text-admin-muted">{translateText("Loading search records…")}</p> : null}
           {data?.source === "mock" ? <p className="api-data-notice admin-global-search-notice mx-4 my-3 mb-1 rounded-lg p-[9px_10px] text-[13px]">{translateText("Fixture search is active. Results use local demo records.")}</p> : null}
           {groups.map((group) => (
             <section key={group.kind} className="admin-global-search-group" aria-labelledby={`admin-global-search-group-${group.kind}`}>
@@ -262,8 +255,8 @@ export function AdminGlobalSearch({ open, onClose, initialData, initialError }: 
               ))}
             </section>
           ))}
-          {!initialError && query && !results.length ? <p className="p-[60px_24px] text-center text-sm text-admin-muted">{translateText("No matching records")}</p> : null}
-          {!initialError && !query ? <p className="p-[60px_24px] text-center text-sm text-admin-muted">{translateText("Type an ID, name, or status to search all Admin records.")}</p> : null}
+          {!searchError && !searchQuery.isPending && query && !results.length ? <p className="p-[60px_24px] text-center text-sm text-admin-muted">{translateText("No matching records")}</p> : null}
+          {!searchError && !searchQuery.isPending && !query ? <p className="p-[60px_24px] text-center text-sm text-admin-muted">{translateText("Type an ID, name, or status to search all Admin records.")}</p> : null}
         </div>
       </div>
     </dialog>
