@@ -2,13 +2,8 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 
-import {
-  adminNavigationCountsFromMockData,
-  adminNavigationCountsFromOverview,
-  type AdminNavigationCounts,
-} from "../../features/admin/admin-navigation";
 import { adminApi, type AdminIdentity } from "../../features/admin/api/admin-api";
-import { loadDashboardData } from "../../features/admin/dashboard/dashboard-bootstrap";
+import { useAdminNavigationCountsQuery } from "../../features/admin/admin-navigation-query";
 import { AdminGlobalSearch } from "../../features/admin/search/admin-global-search";
 import {
   translateAdminText,
@@ -41,11 +36,15 @@ function hasBrowserMockSession(): boolean {
 }
 
 export function AdminShell({ identity, children }: AdminShellProps) {
+  return <AdminQueryProvider><AdminShellContent identity={identity}>{children}</AdminShellContent></AdminQueryProvider>;
+}
+
+function AdminShellContent({ identity, children }: AdminShellProps) {
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [language, setLanguage] = useState<AdminLanguage>("en");
-  const [navigationCounts, setNavigationCounts] = useState<AdminNavigationCounts | null>(null);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const adminName = identityName(identity);
+  const { data: navigationCounts } = useAdminNavigationCountsQuery();
 
   const closeMobileNavigation = useCallback(() => setMobileNavigationOpen(false), []);
   const toggleMobileNavigation = useCallback(
@@ -82,30 +81,6 @@ export function AdminShell({ identity, children }: AdminShellProps) {
   useEffect(() => {
     const storedLanguage = window.localStorage.getItem(ADMIN_LANGUAGE_KEY);
     if (storedLanguage === "en" || storedLanguage === "th") setLanguage(storedLanguage);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadNavigationCounts = async () => {
-      if (isAdminMockEnabled()) {
-        const counts = adminNavigationCountsFromMockData(loadDashboardData(localStorage).collections);
-        if (!cancelled) setNavigationCounts(counts);
-        return;
-      }
-
-      try {
-        const overview = await adminApi.getOverview();
-        if (!cancelled) setNavigationCounts(adminNavigationCountsFromOverview(overview));
-      } catch {
-        if (!cancelled) setNavigationCounts(null);
-      }
-    };
-
-    void loadNavigationCounts();
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   useEffect(() => {
@@ -161,14 +136,13 @@ export function AdminShell({ identity, children }: AdminShellProps) {
   }, [mobileNavigationOpen]);
 
   return (
-    <AdminQueryProvider>
       <AdminShellProvider language={language} translateText={translateText} openGlobalSearch={openGlobalSearch}>
         <div className="admin-shell-layout admin-shell min-h-screen grid !grid-cols-[240px_minmax(0,1fr)] grid-rows-[56px_1fr] max-[900px]:!grid-cols-1">
           <AdminSidebar
             open={mobileNavigationOpen}
             onNavigate={closeMobileNavigation}
             adminName={adminName}
-            counts={navigationCounts}
+            counts={navigationCounts ?? null}
             language={language}
             onLanguageChange={changeLanguage}
             onLogout={handleLogout}
@@ -184,6 +158,5 @@ export function AdminShell({ identity, children }: AdminShellProps) {
           <AdminGlobalSearch open={globalSearchOpen} onClose={closeGlobalSearch} />
         </div>
       </AdminShellProvider>
-    </AdminQueryProvider>
   );
 }
