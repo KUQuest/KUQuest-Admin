@@ -8,21 +8,15 @@ import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { AdminPageHeader } from "../../../components/admin/admin-page-header";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, TableCell, TableHead, TableRow, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
-import { isAdminApiEnabled } from "../api/admin-provider";
 import { conductReportRoutes } from "../admin-routes";
 import { formatAdminTimestamp } from "../date-format";
-import { loadAllConductReportsFromMock as loadAllConductReportsFromMockData, loadConductReportsFromMock } from "./conduct-report-adapter";
-import { pageCount, pageRange, pageRows, type AdminBoardPageSize } from "../data/board-pagination";
-import { dateSortValue, sortBoardRows, toggleBoardSort, type BoardSortDirection } from "../data/board-sorting";
-import {
-  CONDUCT_REPORT_UPDATED_EVENT,
-  type ConductReportModel,
-} from "./conduct-report-model";
-import { loadConductReportPageData, type ConductReportPageData } from "./conduct-report-service";
+import { pageCount, pageRange, pageRows } from "../data/board-pagination";
+import { dateSortValue, sortBoardRows, type BoardSortDirection } from "../data/board-sorting";
+import type { ConductReportModel } from "./conduct-report-model";
+import type { ConductReportPageData } from "./conduct-report-service";
+import { useConductReportBoardStore, type ConductReportSortKey, type ConductReportTab } from "./conduct-report-board-store";
+import { useConductReportBoardQuery } from "./conduct-report-query";
 import { adminBoardCount, adminBoardPagination, adminBoardTable, adminSortIndicator, adminTableSort } from "../../../components/admin/admin-record-styles";
-
-type ConductReportTab = "all" | "open" | "confirmed" | "dismissed";
-type ConductReportSortKey = "id" | "quest" | "reportedMember" | "reporter" | "reason" | "status" | "reported";
 
 const tabs: Array<{ id: ConductReportTab; label: string }> = [
   { id: "open", label: "Open" },
@@ -79,104 +73,64 @@ function conductSortValue(model: ConductReportModel, key: ConductReportSortKey):
   }
 }
 
-function loadAllConductReportsFromMock(storage: Storage): ConductReportPageData {
-  return loadAllConductReportsFromMockData(storage);
-}
-
 export function ConductReportBoard({
   initialData,
 }: {
   initialData?: ConductReportPageData;
 }) {
   const { translateText } = useAdminShell();
-  const [page, setPage] = useState<ConductReportPageData | null>(initialData ?? null);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const {
+    data: page,
+    isPending,
+    error: queryError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useConductReportBoardQuery(initialData);
+  const {
+    activeTab,
+    query,
+    pageSize,
+    pageNumber,
+    sortKey,
+    sortDirection,
+    setActiveTab,
+    setQuery,
+    setPageSize,
+    setPageNumber,
+    sortBy,
+    reset,
+  } = useConductReportBoardStore();
   const [paginationError, setPaginationError] = useState<string | null>(null);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [activeTab, setActiveTab] = useState<ConductReportTab>("all");
-  const [query, setQuery] = useState("");
-  const [pageSize, setPageSize] = useState<AdminBoardPageSize>(10);
-  const [pageNumber, setPageNumber] = useState(1);
-  const [sortKey, setSortKey] = useState<ConductReportSortKey | null>(null);
-  const [sortDirection, setSortDirection] = useState<BoardSortDirection>("ascending");
   const router = useRouter();
 
   useEffect(() => {
-    if (initialData || isAdminApiEnabled()) return;
-    let cancelled = false;
-    try {
-      const nextPage = loadAllConductReportsFromMock(localStorage);
-      if (!cancelled) setPage(nextPage);
-    } catch (error: unknown) {
-      if (!cancelled) {
-        setLoadError(error instanceof Error ? error.message : "Conduct Reports could not load.");
-      }
-    }
-    return () => {
-      cancelled = true;
-    };
-  }, [initialData]);
-
-  useEffect(() => {
-    if (initialData) setPage(initialData);
-  }, [initialData]);
-
-  useEffect(() => {
-    const updateRecord = (event: Event) => {
-      const model = (event as CustomEvent<ConductReportModel>).detail;
-      if (!model) return;
-      setPage((current) => current
-        ? { ...current, items: current.items.map((item) => item.id === model.id ? model : item) }
-        : current);
-    };
-    window.addEventListener(CONDUCT_REPORT_UPDATED_EVENT, updateRecord);
-    return () => window.removeEventListener(CONDUCT_REPORT_UPDATED_EVENT, updateRecord);
-  }, []);
+    reset();
+  }, [reset]);
 
   const loadMore = async () => {
-    if (!page?.nextCursor || loadingMore) return;
-    setLoadingMore(true);
+    if (!hasNextPage || isFetchingNextPage) return;
     setPaginationError(null);
     try {
-      const nextPage = page.source === "mock"
-        ? loadConductReportsFromMock(localStorage, page.nextCursor)
-        : await loadConductReportPageData(undefined, page.nextCursor);
-      setPage((current) => current
-        ? { ...current, items: [...current.items, ...nextPage.items], nextCursor: nextPage.nextCursor }
-        : current);
+      await fetchNextPage();
     } catch (error: unknown) {
       setPaginationError(error instanceof Error ? error.message : "More Conduct Reports could not load.");
-    } finally {
-      setLoadingMore(false);
     }
   };
 
   const loadAllPages = async () => {
-    if (!page?.nextCursor || loadingMore) return;
-    setLoadingMore(true);
+    if (!hasNextPage || isFetchingNextPage) return;
     setPaginationError(null);
     try {
-      if (page.source === "mock") {
-        setPage(loadAllConductReportsFromMockData(localStorage));
-        return;
-      }
-      const items = [...page.items];
-      let cursor: string | undefined = page.nextCursor ?? undefined;
-      while (cursor) {
-        const nextPage: Pick<ConductReportPageData, "items" | "nextCursor"> = await loadConductReportPageData(undefined, cursor);
-        items.push(...nextPage.items);
-        if (nextPage.nextCursor === cursor) break;
-        cursor = nextPage.nextCursor ?? undefined;
-      }
-      setPage((current) => current ? { ...current, items, nextCursor: cursor ?? null } : current);
+      let result = await fetchNextPage();
+      while (result.hasNextPage) result = await fetchNextPage();
     } catch (error: unknown) {
       setPaginationError(error instanceof Error ? error.message : "More Conduct Reports could not load.");
-    } finally {
-      setLoadingMore(false);
     }
   };
 
-  if (loadError) {
+  if (queryError) {
+    const loadError = queryError instanceof Error ? queryError.message : "Conduct Reports could not load.";
     return (
       <main className="admin-feedback">
         <Card as="section" className="overflow-hidden">
@@ -186,7 +140,7 @@ export function ConductReportBoard({
       </main>
     );
   }
-  if (!page) return <AdminLoading message={translateText("Loading Conduct Reports…")} />;
+  if (isPending) return <AdminLoading message={translateText("Loading Conduct Reports…")} />;
 
   const filteredModels = page.items.filter((model) => tabMatches(model, activeTab) && modelMatchesQuery(model, query));
   const models = sortKey ? sortBoardRows(filteredModels, (model) => conductSortValue(model, sortKey), sortDirection) : filteredModels;
@@ -199,12 +153,6 @@ export function ConductReportBoard({
     router.push(conductReportRoutes.detail(id), { scroll: false });
   };
 
-  function sortBy(nextKey: ConductReportSortKey) {
-    setPageNumber(1);
-    setSortDirection((direction) => toggleBoardSort(sortKey, nextKey, direction));
-    setSortKey(nextKey);
-  }
-
   return (
     <main id="conduct-report-main" className="admin-route-page conduct-report-board" tabIndex={-1}>
         <AdminPageHeader title={translateText("Conduct Reports")} description={translateText("Review Member behavior on Quests.")} />
@@ -216,7 +164,7 @@ export function ConductReportBoard({
             </div>
             <span className={adminBoardCount}>{visibleModels.length} {translateText("shown")}</span>
           </CardHeader>
-          <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value as ConductReportTab); setPageNumber(1); }}>
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ConductReportTab)}>
             <TabsList className="px-3" aria-label={translateText("Conduct Report status filters")}>
               {tabs.map((tab) => <TabsTrigger key={tab.id} value={tab.id}>{translateText(tab.label)}{tab.id === "open" ? ` (${openCount})` : null}</TabsTrigger>)}
             </TabsList>
@@ -231,11 +179,11 @@ export function ConductReportBoard({
                 aria-label={translateText("Search Conduct Reports")}
                 placeholder={translateText("Search by Conduct Report, Member, Quest, or reason")}
                 value={query}
-                onChange={(event) => { setQuery(event.target.value); setPageNumber(1); }}
+                onChange={(event) => setQuery(event.target.value)}
               />
             </label>
-            <PageSizeControls value={pageSize} disabled={loadingMore} translateText={translateText} onChange={(size) => { setPageSize(size); setPageNumber(1); if (size === "all") void loadAllPages(); }} />
-            <span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span><span className={adminBoardCount} aria-live="polite">{loadingMore ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}</span>
+            <PageSizeControls value={pageSize} disabled={isFetchingNextPage} translateText={translateText} onChange={(size) => { setPageSize(size); if (size === "all") void loadAllPages(); }} />
+            <span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span><span className={adminBoardCount} aria-live="polite">{isFetchingNextPage ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}</span>
           </div>
           <div className="overflow-x-auto" aria-label={translateText("Conduct Reports table")}>
             <Table className={`${adminBoardTable} !min-w-[760px]`}>
@@ -308,16 +256,16 @@ export function ConductReportBoard({
             </Table>
             {!models.length && <EmptyState title={translateText("No matching Conduct Reports")} description={translateText("Change the status filter or search text.")} />}
           </div>
-          {page.nextCursor && (
+          {hasNextPage && (
             <div className="border-t border-admin-border px-3 py-3 text-sm text-admin-muted">
               {models.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Conduct Reports pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className={adminBoardPagination} /> : null}
-              <Button variant="outline" size="sm" type="button" data-conduct-report-load-more onClick={loadMore} disabled={loadingMore}>
-                {translateText(loadingMore ? "Loading more Conduct Reports…" : "Load more Conduct Reports")}
+              <Button variant="outline" size="sm" type="button" data-conduct-report-load-more onClick={loadMore} disabled={isFetchingNextPage}>
+                {translateText(isFetchingNextPage ? "Loading more Conduct Reports…" : "Load more Conduct Reports")}
               </Button>
               {paginationError && <p className="field-error" role="alert">{translateText(paginationError)}</p>}
             </div>
           )}
-          {!page.nextCursor && models.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Conduct Reports pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className={adminBoardPagination} /> : null}
+          {!hasNextPage && models.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Conduct Reports pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className={adminBoardPagination} /> : null}
         </Card>
     </main>
   );
