@@ -33,8 +33,8 @@ export type QuestDetailPageData = {
   disputeLookupError: string | null;
 };
 
-function apiRequestOptions(cookieHeader: string): AdminApiRequestOptions {
-  return { headers: { Cookie: cookieHeader } };
+function apiRequestOptions(cookieHeader?: string): AdminApiRequestOptions {
+  return cookieHeader ? { headers: { Cookie: cookieHeader } } : {};
 }
 
 async function resolveApiQuestId(questId: string, options: AdminApiRequestOptions): Promise<string> {
@@ -57,7 +57,7 @@ async function resolveApiQuestId(questId: string, options: AdminApiRequestOption
 }
 
 export async function loadQuestBoardPageData(
-  cookieHeader: string,
+  cookieHeader?: string,
   dataSource: QuestDataSource = "api",
 ): Promise<QuestBoardPageData> {
   if (dataSource === "mock") return { rows: questRowsFromApi(mockAllQuests) };
