@@ -1,15 +1,21 @@
 import { useEffect, useMemo } from "react";
-import { useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
 import { isAdminApiEnabled } from "../api/admin-provider";
 import {
+  findDisputeCaseFromMock,
   loadAllDisputeCasesFromMock,
   loadDisputeCasesFromMock,
 } from "./dispute-adapter";
 import { loadDisputeCasePageData, type DisputeCasePageData } from "./dispute-service";
-import { DISPUTE_CASE_UPDATED_EVENT, type DisputeCaseModel } from "./dispute-model";
+import { adminApi } from "../api/admin-api";
+import { DISPUTE_CASE_UPDATED_EVENT, disputeCaseModelFromRecord, type DisputeCaseModel } from "./dispute-model";
 
 export const disputeBoardQueryKey = ["admin", "dispute-cases", "board"] as const;
+
+export function disputeDetailQueryKey(disputeId: string) {
+  return ["admin", "dispute-cases", "detail", disputeId] as const;
+}
 
 function pageFromQueryData(
   pages: DisputeCasePageData[],
@@ -64,4 +70,42 @@ export function useDisputeBoardQuery(initialData?: DisputeCasePageData) {
   }, [query.data, queryClient]);
 
   return { ...query, data };
+}
+
+export function useDisputeDetailQuery(disputeId: string, initialModel?: DisputeCaseModel | null) {
+  const queryClient = useQueryClient();
+  const apiEnabled = isAdminApiEnabled();
+  const queryKey = disputeDetailQueryKey(disputeId);
+  const query = useQuery({
+    queryKey,
+    queryFn: async () => {
+      const record = apiEnabled
+        ? await adminApi.getDispute(disputeId)
+        : findDisputeCaseFromMock(localStorage, disputeId);
+      const model = disputeCaseModelFromRecord(record, apiEnabled ? "api" : "mock");
+      if (!model || model.id !== disputeId) throw new Error("The Dispute Case was not found.");
+      return model;
+    },
+    initialData: initialModel ?? undefined,
+    staleTime: initialModel ? Infinity : 0,
+    gcTime: Infinity,
+    refetchOnMount: !initialModel,
+    refetchOnWindowFocus: false,
+  });
+
+  useEffect(() => {
+    if (initialModel) queryClient.setQueryData(queryKey, initialModel);
+  }, [initialModel, queryClient, queryKey]);
+
+  useEffect(() => {
+    const updateRecord = (event: Event) => {
+      const model = (event as CustomEvent<DisputeCaseModel>).detail;
+      if (!model || model.id !== disputeId) return;
+      queryClient.setQueryData(queryKey, model);
+    };
+    window.addEventListener(DISPUTE_CASE_UPDATED_EVENT, updateRecord);
+    return () => window.removeEventListener(DISPUTE_CASE_UPDATED_EVENT, updateRecord);
+  }, [disputeId, queryClient, queryKey]);
+
+  return { ...query, data: query.data ?? null, queryKey };
 }

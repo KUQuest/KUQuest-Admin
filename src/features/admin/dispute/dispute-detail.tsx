@@ -33,7 +33,6 @@ import { isAdminApiEnabled } from "../api/admin-provider";
 import { disputeRoutes, questRoutes } from "../admin-routes";
 import { ModerationCaseWorkspace, ModerationHistoryPanel } from "../moderation-case/moderation-case-workspace";
 import {
-  findDisputeCaseFromMock,
   newDisputeCaseIdempotencyKey,
   saveMockDisputeDecision,
 } from "./dispute-adapter";
@@ -46,6 +45,7 @@ import {
 } from "./dispute-model";
 import { disputeCaseStatusLabel, questStateLabel } from "../domain/rulebook";
 import { questStatusClass } from "../quest/quest-model";
+import { useDisputeDetailQuery } from "./dispute-query";
 
 type DisputeCaseDetailProps = {
   disputeId: string;
@@ -390,9 +390,7 @@ function DrawerSections({ model, translateText, onOpenEvidence, selectedChoice, 
 
 export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = false, onUpdated }: DisputeCaseDetailProps) {
   const { translateText } = useAdminShell();
-  const [disputeModel, setDisputeModel] = useState<DisputeCaseModel | null>(initialModel);
-  const [loading, setLoading] = useState(!initialModel);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const { data: disputeModel, isPending, error } = useDisputeDetailQuery(disputeId, initialModel);
   const [selectedChoice, setSelectedChoice] = useState<DisputeCaseDecisionChoice | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [commandBusy, setCommandBusy] = useState(false);
@@ -405,31 +403,9 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
     occurredAt: string;
   } | null>(null);
 
-  useEffect(() => {
-    if (initialModel && !drawer) return;
-    let cancelled = false;
-    setLoading(true);
-    setLoadError(null);
-    const request = isAdminApiEnabled() ? adminApi.getDispute(disputeId) : Promise.resolve(findDisputeCaseFromMock(localStorage, disputeId));
-    void request.then((record) => {
-      if (cancelled) return;
-      const nextModel = disputeCaseModelFromRecord(record, isAdminApiEnabled() ? "api" : "mock");
-      if (!nextModel || nextModel.id !== disputeId) {
-        setDisputeModel(null);
-        setLoadError("The Dispute Case was not found.");
-      } else setDisputeModel(nextModel);
-      return undefined;
-    }).catch((error: unknown) => {
-      if (!cancelled) setLoadError(error instanceof Error ? error.message : "The Dispute Case could not load.");
-    }).finally(() => {
-      if (!cancelled) setLoading(false);
-    });
-    return () => { cancelled = true; };
-  }, [disputeId, drawer, initialModel]);
-
   const model = disputeModel;
-  if (loading && !model) return <AdminLoading message={translateText("Loading Dispute Case…")} />;
-  if (!model) return <main className={drawer ? "drawer-body" : "admin-feedback"}><Card as="section" className="overflow-hidden"><CardHeader><h1 className="text-lg font-semibold">{translateText("Dispute Case not found")}</h1></CardHeader><CardContent className="space-y-4"><p>{translateText(loadError ?? "The requested Dispute Case was not found.")}</p>{!drawer && <Button asChild variant="primary"><Link href={disputeRoutes.list()}>{translateText("Return to Dispute Cases")}</Link></Button>}</CardContent></Card></main>;
+  if (isPending && !model) return <AdminLoading message={translateText("Loading Dispute Case…")} />;
+  if (!model) return <main className={drawer ? "drawer-body" : "admin-feedback"}><Card as="section" className="overflow-hidden"><CardHeader><h1 className="text-lg font-semibold">{translateText("Dispute Case not found")}</h1></CardHeader><CardContent className="space-y-4"><p>{translateText(error instanceof Error ? error.message : "The requested Dispute Case was not found.")}</p>{!drawer && <Button asChild variant="primary"><Link href={disputeRoutes.list()}>{translateText("Return to Dispute Cases")}</Link></Button>}</CardContent></Card></main>;
 
   const openEvidence = async (reference: string) => {
     setEvidenceState({ reference, value: null, error: null, loading: true });
@@ -500,7 +476,6 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
         ...(resourceVersion !== undefined && { version: resourceVersion }),
       }, isAdminApiEnabled() ? "api" : "mock");
       if (!updatedModel || updatedModel.id !== model.id) throw new Error(isAdminApiEnabled() ? "The Admin API returned an invalid Dispute Case." : "The Dispute Case record is invalid.");
-      setDisputeModel(updatedModel);
       window.dispatchEvent(new CustomEvent(DISPUTE_CASE_UPDATED_EVENT, { detail: updatedModel }));
       onUpdated?.(updatedModel);
       setDialogOpen(false);
