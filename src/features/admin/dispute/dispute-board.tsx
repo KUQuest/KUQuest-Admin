@@ -8,20 +8,16 @@ import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { AdminPageHeader } from "../../../components/admin/admin-page-header";
 import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, TableCell, TableHead, TableRow, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
-import { isAdminApiEnabled } from "../api/admin-provider";
 import { disputeRoutes, questRoutes } from "../admin-routes";
-import { loadAllDisputeCasesFromMock as loadAllDisputeCasesFromMockData, loadDisputeCasesFromMock } from "./dispute-adapter";
-import { pageCount, pageRange, pageRows, type AdminBoardPageSize } from "../data/board-pagination";
-import { dateSortValue, sortBoardRows, toggleBoardSort, type BoardSortDirection } from "../data/board-sorting";
-import {
-  DISPUTE_CASE_UPDATED_EVENT,
-  type DisputeCaseModel,
-} from "./dispute-model";
-import { loadDisputeCasePageData, type DisputeCasePageData } from "./dispute-service";
+import { pageCount, pageRange, pageRows } from "../data/board-pagination";
+import { dateSortValue, sortBoardRows } from "../data/board-sorting";
+import type { DisputeCaseModel } from "./dispute-model";
+import type { DisputeCasePageData } from "./dispute-service";
+import { useDisputeBoardStore, type DisputeCaseSortKey, type DisputeCaseTab } from "./dispute-board-store";
+import { useDisputeBoardQuery } from "./dispute-query";
 import { adminBoardCount, adminBoardPagination, adminBoardTable, adminSortIndicator, adminTableSort } from "../../../components/admin/admin-record-styles";
 
-type DisputeCaseTab = "all" | "open" | "dismissed" | "resolved";
-type DisputeCaseSortKey = "id" | "quest" | "hirer" | "worker" | "category" | "amount" | "status" | "opened";
+import type { BoardSortDirection } from "../data/board-sorting";
 
 const tabs: Array<{ id: DisputeCaseTab; label: string }> = [
   { id: "open", label: "Open" },
@@ -81,103 +77,65 @@ function disputeSortValue(model: DisputeCaseModel, key: DisputeCaseSortKey): str
   }
 }
 
-function loadAllDisputeCasesFromMock(storage: Storage): DisputeCasePageData {
-  return loadAllDisputeCasesFromMockData(storage);
-}
-
 export function DisputeCaseBoard({ initialData }: { initialData?: DisputeCasePageData }) {
   const { translateText } = useAdminShell();
   const router = useRouter();
-  const [page, setPage] = useState<DisputeCasePageData | null>(initialData ?? null);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const {
+    data: page,
+    isPending,
+    error: queryError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useDisputeBoardQuery(initialData);
+  const {
+    activeTab,
+    query,
+    pageSize,
+    pageNumber,
+    sortKey,
+    sortDirection,
+    setActiveTab,
+    setQuery,
+    setPageSize,
+    setPageNumber,
+    sortBy,
+    reset,
+  } = useDisputeBoardStore();
   const [paginationError, setPaginationError] = useState<string | null>(null);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [activeTab, setActiveTab] = useState<DisputeCaseTab>("all");
-  const [query, setQuery] = useState("");
-  const [pageSize, setPageSize] = useState<AdminBoardPageSize>(10);
-  const [pageNumber, setPageNumber] = useState(1);
-  const [sortKey, setSortKey] = useState<DisputeCaseSortKey | null>(null);
-  const [sortDirection, setSortDirection] = useState<BoardSortDirection>("ascending");
 
   useEffect(() => {
-    if (initialData || isAdminApiEnabled()) return;
-    let cancelled = false;
-    try {
-      const nextPage = loadAllDisputeCasesFromMock(localStorage);
-      if (!cancelled) setPage(nextPage);
-    } catch (error: unknown) {
-      if (!cancelled) setLoadError(error instanceof Error ? error.message : "Dispute Cases could not load.");
-    }
-    return () => {
-      cancelled = true;
-    };
-  }, [initialData]);
-
-  useEffect(() => {
-    if (initialData) setPage(initialData);
-  }, [initialData]);
-
-  useEffect(() => {
-    const updateRecord = (event: Event) => {
-      const model = (event as CustomEvent<DisputeCaseModel>).detail;
-      if (!model) return;
-      setPage((current) => current
-        ? { ...current, items: current.items.map((item) => item.id === model.id ? model : item) }
-        : current);
-    };
-    window.addEventListener(DISPUTE_CASE_UPDATED_EVENT, updateRecord);
-    return () => window.removeEventListener(DISPUTE_CASE_UPDATED_EVENT, updateRecord);
-  }, []);
+    reset();
+  }, [reset]);
 
   const openDrawer = (id: string) => {
     router.push(disputeRoutes.detail(id), { scroll: false });
   };
 
   const loadMore = async () => {
-    if (!page?.nextCursor || loadingMore) return;
-    setLoadingMore(true);
+    if (!hasNextPage || isFetchingNextPage) return;
     setPaginationError(null);
     try {
-      const nextPage = page.source === "mock"
-        ? loadDisputeCasesFromMock(localStorage, page.nextCursor)
-        : await loadDisputeCasePageData(undefined, page.nextCursor);
-      setPage((current) => current
-        ? { ...current, items: [...current.items, ...nextPage.items], nextCursor: nextPage.nextCursor }
-        : current);
+      await fetchNextPage();
     } catch (error: unknown) {
       setPaginationError(error instanceof Error ? error.message : "More Dispute Cases could not load.");
-    } finally {
-      setLoadingMore(false);
     }
   };
 
   const loadAllPages = async () => {
-    if (!page?.nextCursor || loadingMore) return;
-    setLoadingMore(true);
+    if (!hasNextPage || isFetchingNextPage) return;
     setPaginationError(null);
     try {
-      if (page.source === "mock") {
-        setPage(loadAllDisputeCasesFromMockData(localStorage));
-        return;
-      }
-      const items = [...page.items];
-      let cursor: string | undefined = page.nextCursor ?? undefined;
-      while (cursor) {
-        const nextPage: Pick<DisputeCasePageData, "items" | "nextCursor"> = await loadDisputeCasePageData(undefined, cursor);
-        items.push(...nextPage.items);
-        if (nextPage.nextCursor === cursor) break;
-        cursor = nextPage.nextCursor ?? undefined;
-      }
-      setPage((current) => current ? { ...current, items, nextCursor: cursor ?? null } : current);
+      let result = await fetchNextPage();
+      while (result.hasNextPage) result = await fetchNextPage();
     } catch (error: unknown) {
       setPaginationError(error instanceof Error ? error.message : "More Dispute Cases could not load.");
-    } finally {
-      setLoadingMore(false);
     }
   };
 
-  if (!page) return <AdminLoading message={translateText(loadError ?? "Loading Dispute Cases…")} />;
-  if (loadError) {
+  if (isPending) return <AdminLoading message={translateText("Loading Dispute Cases…")} />;
+  if (queryError) {
+    const loadError = queryError instanceof Error ? queryError.message : "Dispute Cases could not load.";
     return <main className="admin-feedback"><Card as="section" className="overflow-hidden"><CardHeader><h1 className="text-lg font-semibold">{translateText("Dispute Cases unavailable")}</h1></CardHeader><p className="p-5">{translateText(loadError)}</p></Card></main>;
   }
 
@@ -189,12 +147,6 @@ export function DisputeCaseBoard({ initialData }: { initialData?: DisputeCasePag
   const { start: pageStart, end: pageEnd } = pageRange(models.length, currentPage, pageSize);
   const openCount = page.items.filter((model) => model.status === "DISPUTE_CASE_PENDING").length;
 
-  function sortBy(nextKey: DisputeCaseSortKey) {
-    setPageNumber(1);
-    setSortDirection((direction) => toggleBoardSort(sortKey, nextKey, direction));
-    setSortKey(nextKey);
-  }
-
   return (
     <main id="dispute-main" className="admin-route-page dispute-case-board" tabIndex={-1}>
       <AdminPageHeader title={translateText("Dispute Cases")} description={translateText("Review failed Quest settlement decisions.")} />
@@ -202,12 +154,12 @@ export function DisputeCaseBoard({ initialData }: { initialData?: DisputeCasePag
         <CardHeader className="flex min-h-[60px] items-center justify-between gap-4">
           <div><CardTitle id="dispute-case-board-heading">{translateText("Dispute Cases")}</CardTitle><CardDescription>{translateText("A Dispute Case can redirect settlement from the Hirer to the Worker or dismiss the case.")}</CardDescription></div><span className={adminBoardCount}>{visibleModels.length} {translateText("shown")}</span>
         </CardHeader>
-        <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value as DisputeCaseTab); setPageNumber(1); }}>
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as DisputeCaseTab)}>
           <TabsList className="px-3" aria-label={translateText("Dispute Case status filters")}>
             {tabs.map((tab) => <TabsTrigger key={tab.id} value={tab.id}>{translateText(tab.label)}{tab.id === "open" ? ` (${openCount})` : null}</TabsTrigger>)}
           </TabsList>
         </Tabs>
-        <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2"><label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text max-[600px]:basis-full max-[600px]:max-w-none" htmlFor="dispute-case-search"><span className="visually-hidden">{translateText("Search Dispute Cases")}</span><Input className="h-9 min-h-9 px-3 py-1.5 text-sm" id="dispute-case-search" type="search" aria-label={translateText("Search Dispute Cases")} placeholder={translateText("Search by case, Quest, Member, or category")} value={query} onChange={(event) => { setQuery(event.target.value); setPageNumber(1); }} /></label><span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span><PageSizeControls value={pageSize} disabled={loadingMore} translateText={translateText} onChange={(size) => { setPageSize(size); setPageNumber(1); if (size === "all") void loadAllPages(); }} /><span className={adminBoardCount} aria-live="polite">{loadingMore ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}</span></div>
+        <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2"><label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text max-[600px]:basis-full max-[600px]:max-w-none" htmlFor="dispute-case-search"><span className="visually-hidden">{translateText("Search Dispute Cases")}</span><Input className="h-9 min-h-9 px-3 py-1.5 text-sm" id="dispute-case-search" type="search" aria-label={translateText("Search Dispute Cases")} placeholder={translateText("Search by case, Quest, Member, or category")} value={query} onChange={(event) => setQuery(event.target.value)} /></label><span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span><PageSizeControls value={pageSize} disabled={isFetchingNextPage} translateText={translateText} onChange={(size) => { setPageSize(size); if (size === "all") void loadAllPages(); }} /><span className={adminBoardCount} aria-live="polite">{isFetchingNextPage ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}</span></div>
         <div className="overflow-x-auto" aria-label={translateText("Dispute Cases table")}>
           <Table className={`${adminBoardTable} !min-w-[980px]`}>
             <caption>{translateText("Dispute Cases")}</caption>
@@ -233,7 +185,7 @@ export function DisputeCaseBoard({ initialData }: { initialData?: DisputeCasePag
         </div>
         {paginationError && <p className="field-error" role="alert">{translateText(paginationError)}</p>}
         {models.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Dispute Cases pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className={adminBoardPagination} /> : null}
-        {page.nextCursor && <Button variant="outline" size="sm" className="m-3" type="button" onClick={loadMore} disabled={loadingMore}>{loadingMore ? translateText("Loading…") : translateText("Load more Dispute Cases")}</Button>}
+        {hasNextPage && <Button variant="outline" size="sm" className="m-3" type="button" onClick={loadMore} disabled={isFetchingNextPage}>{isFetchingNextPage ? translateText("Loading…") : translateText("Load more Dispute Cases")}</Button>}
       </Card>
     </main>
   );
