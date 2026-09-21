@@ -3,10 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { isAdminMockEnabled } from "../../lib/auth/admin-auth-mode";
 import { adminApiProvider } from "./api/admin-provider";
-import { CONDUCT_REPORT_UPDATED_EVENT } from "./conduct-report/conduct-report-model";
-import { DISPUTE_CASE_UPDATED_EVENT } from "./dispute/dispute-model";
-import { PAYOUT_MOCK_UPDATED_EVENT } from "./payout/payout-mock-state";
-import { REPORT_CASE_UPDATED_EVENT } from "./report/report-model";
+import { subscribeToAdminDataUpdates, subscribeToStorageUpdates } from "./data/admin-query-events";
 import {
   adminNavigationCountsFromMockData,
   adminNavigationCountsFromOverview,
@@ -40,18 +37,11 @@ export function useAdminNavigationCountsQuery() {
     const refreshCounts = () => {
       void queryClient.invalidateQueries({ queryKey });
     };
-    const updateEvents = [
-      CONDUCT_REPORT_UPDATED_EVENT,
-      DISPUTE_CASE_UPDATED_EVENT,
-      PAYOUT_MOCK_UPDATED_EVENT,
-      REPORT_CASE_UPDATED_EVENT,
-    ];
-
-    updateEvents.forEach((eventName) => window.addEventListener(eventName, refreshCounts));
-    window.addEventListener("storage", refreshCounts);
+    const unsubscribeFromDataUpdates = subscribeToAdminDataUpdates(refreshCounts);
+    const unsubscribeFromStorageUpdates = subscribeToStorageUpdates(refreshCounts);
     return () => {
-      updateEvents.forEach((eventName) => window.removeEventListener(eventName, refreshCounts));
-      window.removeEventListener("storage", refreshCounts);
+      unsubscribeFromDataUpdates();
+      unsubscribeFromStorageUpdates();
     };
   }, [queryClient, queryKey]);
 

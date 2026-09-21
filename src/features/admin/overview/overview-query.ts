@@ -2,10 +2,7 @@ import { useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { isAdminApiEnabled } from "../api/admin-provider";
-import { CONDUCT_REPORT_UPDATED_EVENT } from "../conduct-report/conduct-report-model";
-import { DISPUTE_CASE_UPDATED_EVENT } from "../dispute/dispute-model";
-import { PAYOUT_MOCK_UPDATED_EVENT } from "../payout/payout-mock-state";
-import { REPORT_CASE_UPDATED_EVENT } from "../report/report-model";
+import { subscribeToAdminDataUpdates, subscribeToStorageUpdates } from "../data/admin-query-events";
 import { loadOverviewModelFromMock } from "./overview-adapter";
 import { mockFinanceOverview } from "./overview-finance-mock-data";
 import { loadOverviewPageData, type OverviewPageData } from "./overview-service";
@@ -50,21 +47,14 @@ export function useOverviewQuery(initialData?: OverviewPageData) {
     const refreshWhenVisible = () => {
       if (document.visibilityState === "visible") updateOverview();
     };
-    const updateEvents = [
-      CONDUCT_REPORT_UPDATED_EVENT,
-      DISPUTE_CASE_UPDATED_EVENT,
-      PAYOUT_MOCK_UPDATED_EVENT,
-      REPORT_CASE_UPDATED_EVENT,
-    ];
-
-    updateEvents.forEach((eventName) => window.addEventListener(eventName, updateOverview));
+    const unsubscribeFromDataUpdates = subscribeToAdminDataUpdates(updateOverview);
+    const unsubscribeFromStorageUpdates = subscribeToStorageUpdates(updateOverview);
     window.addEventListener("focus", updateOverview);
-    window.addEventListener("storage", updateOverview);
     document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
-      updateEvents.forEach((eventName) => window.removeEventListener(eventName, updateOverview));
+      unsubscribeFromDataUpdates();
+      unsubscribeFromStorageUpdates();
       window.removeEventListener("focus", updateOverview);
-      window.removeEventListener("storage", updateOverview);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [apiEnabled, queryClient, queryKey]);
