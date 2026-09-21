@@ -481,6 +481,23 @@ test.describe("shared Admin shell", () => {
     await expect(dialog.getByRole("link", { name: /PAY-9637/ })).toHaveAttribute("href", "/payout/PAY-9637");
   });
 
+  test("centers the global search surface over the Admin shell", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/overview");
+    await page.getByRole("button", { name: "Search marketplace records" }).click();
+
+    const dialog = page.getByRole("dialog", { name: "Search marketplace records" });
+    const surface = dialog.locator(".admin-global-search-box");
+    const dialogBox = await dialog.boundingBox();
+    const surfaceBox = await surface.boundingBox();
+    expect(dialogBox).not.toBeNull();
+    expect(surfaceBox).not.toBeNull();
+    expect(surfaceBox?.x).toBeGreaterThan((dialogBox?.x ?? 0) + 10);
+    expect(surfaceBox?.y).toBeGreaterThan((dialogBox?.y ?? 0) + 10);
+    await expect(dialog).toHaveCSS("display", "grid");
+    await expect(dialog).toHaveCSS("background-color", "rgba(25, 27, 28, 0.38)");
+  });
+
   test("keeps table record links visually neutral", async ({ page }) => {
     await signIn(page);
     for (const path of ["/quest", "/wallet", "/payout"]) {

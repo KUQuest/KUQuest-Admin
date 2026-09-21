@@ -193,7 +193,7 @@ export function AdminGlobalSearch({ open, onClose, initialData, initialError }: 
   if (!open) return null;
 
   return (
-    <dialog open id="overview-command" className="command fixed inset-0 z-[70] m-0 h-full max-h-none w-full max-w-none rounded-none border-0 p-0 [background:transparent]" aria-modal="true" aria-labelledby="admin-global-search-title" data-global-search="true">
+    <dialog open id="overview-command" className="command fixed inset-0 z-[70] m-0 grid h-full max-h-none !w-full max-w-none place-items-start justify-items-center rounded-none border-0 bg-[var(--scrim-command)] p-0 !pt-[12vh]" aria-modal="true" aria-labelledby="admin-global-search-title" data-global-search="true">
       <button className="command-backdrop absolute inset-0 size-full cursor-default border-0 bg-transparent" type="button" aria-label={translateText("Close search")} onClick={onClose} />
       <div className="command-box admin-global-search-box relative z-[1] w-[min(760px,calc(100vw-28px))] max-h-[min(78dvh,760px)]">
         <div className="command-input flex h-[58px] items-center gap-2.5 border-b border-admin-border px-4 [&_input]:h-full [&_input]:min-w-0 [&_input]:flex-1 [&_input]:border-0 [&_input]:bg-transparent [&_input]:text-[17px] [&_input]:outline-none">
