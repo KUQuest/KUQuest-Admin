@@ -428,14 +428,14 @@ function PayoutCommandDialog({
 
   return (
     <AdminModalPortal open onClose={onCancel}>
-      <div className="command payout-command-layer fixed inset-0 z-[70] grid place-items-start bg-[var(--scrim-command)] pt-[12vh]" role="presentation">
-      <button className="command-backdrop absolute inset-0 size-full cursor-default border-0 bg-transparent" type="button" aria-label={translateText("Close Payout command dialog")} onClick={onCancel} />
-      <dialog ref={dialogRef} open className="command-box relative z-[1] m-auto max-h-[70vh] w-[min(620px,calc(100vw-28px))] overflow-auto rounded-[14px] border-0 bg-admin-surface shadow-admin" aria-labelledby="payout-command-title" aria-modal="true">
-        <form className="dialog-body p-5" onSubmit={submit}>
-          <h2 id="payout-command-title">{translateText(command === "approve" ? "Approve Payout" : "Reject Payout")}</h2>
-          <p>{translateText(command === "approve" ? "Review the destination and balance before approving this Payout." : "Choose a reason for rejecting this Payout.")}</p>
+      <dialog ref={dialogRef} open className="dispute-decision-dialog payout-command-layer" aria-labelledby="payout-command-title" aria-modal="true" tabIndex={-1}>
+        <form method="dialog" onSubmit={submit}>
+          <div className="dialog-body min-h-0 flex-1 overflow-y-auto p-5">
+            <div className="warning-icon grid size-[38px] place-items-center rounded-[10px] bg-admin-danger-soft font-bold text-admin-danger" aria-hidden="true">!</div>
+            <h2 id="payout-command-title">{translateText(command === "approve" ? "Approve Payout" : "Reject Payout")}</h2>
+            <p>{translateText(command === "approve" ? "Review the destination and balance before approving this Payout." : "Choose a reason for rejecting this Payout.")}</p>
           <AdminActionSummary
-            title={translateText(command === "approve" ? "Approval effect" : "Rejection effect")}
+            title={translateText("Before you confirm")}
             affected={`${translateText("Payout")} ${detail.id} · ${detail.student.name}`}
             currentState={payoutStatusLabel(detail.status)}
             nextState={command === "approve" ? "Submitted to Provider" : "Cancelled"}
@@ -443,11 +443,12 @@ function PayoutCommandDialog({
               ? translateText("The Payout worker may start provider processing after approval.")
               : translateText("The full Payout Reserve returns to the Member's Earnings Balance. No provider transfer starts.")}
             reversibility={translateText("The Admin decision is final. Provider status changes are separate.")}
+            warning={translateText("The API Server remains the authority for the final Payout result.")}
           />
           {command === "reject" ? (
             <>
               <label className="grid gap-1 text-[16px] leading-[1.4] font-semibold" htmlFor="payout-reason-code"><span>{translateText("Reason code")} <span aria-hidden="true">*</span></span>
-                <select id="payout-reason-code" required value={reasonCode} onChange={(event) => setReasonCode(event.target.value)} autoFocus>
+                <select className="w-full rounded-lg border border-admin-border-strong bg-admin-surface px-2.5 py-2 text-lg leading-[1.45] text-admin-text" id="payout-reason-code" required value={reasonCode} onChange={(event) => setReasonCode(event.target.value)} autoFocus>
                   <option value="">{translateText("Choose a reason")}</option>
                   {rejectionReasonCodes.map((item) => <option key={item.value} value={item.value}>{translateText(item.label)}</option>)}
                 </select>
@@ -458,13 +459,13 @@ function PayoutCommandDialog({
             </>
           ) : null}
           {validationError || error ? <p className="field-error" role="alert">{translateText(validationError ?? error ?? "")}</p> : null}
+          </div>
           <div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5">
             <UiButton variant="outline" type="button" onClick={onCancel} disabled={pending}>{translateText("Cancel")}</UiButton>
             <UiButton variant={command === "approve" ? "primary" : "danger"} type="submit" disabled={submitDisabled}>{pending ? translateText("Saving…") : translateText(command === "approve" ? "Approve Payout" : "Reject Payout")}</UiButton>
           </div>
         </form>
       </dialog>
-      </div>
     </AdminModalPortal>
   );
 }

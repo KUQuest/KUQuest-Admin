@@ -678,12 +678,12 @@ function QuestCommandDialog({
 
   return (
     <AdminModalPortal open onClose={onCancel}>
-      <div className="quest-command-layer fixed inset-0 z-[90] grid place-items-center p-4 [background:var(--scrim-command)]" role="presentation">
-      <button className="quest-command-backdrop absolute inset-0 size-full cursor-default border-0 bg-transparent" type="button" aria-label={translateText("Close command dialog")} onClick={onCancel} />
-      <dialog open className="quest-command-dialog relative z-[1] m-auto max-h-[calc(100dvh-32px)] w-[min(470px,calc(100vw-32px))] overflow-y-auto rounded-[14px] border-0 bg-admin-surface p-5 text-admin-text shadow-admin" aria-labelledby="quest-command-title">
-        <form className="grid gap-3" onSubmit={submit}>
-          <h2 className="m-0 text-[22px] leading-[1.35]" id="quest-command-title">{translateText(command === "hide" ? "Hide Quest" : command === "restore" ? "Restore Quest" : "Terminate Quest")}</h2>
-          <p className="m-0 text-[15px] leading-[1.45] text-admin-muted">{translateText(command === "terminate" ? "This changes the Quest to Cancelled and preserves the Admin Action." : "The API Server remains the authority for this Quest action.")}</p>
+      <dialog open className="dispute-decision-dialog quest-command-dialog" aria-labelledby="quest-command-title" aria-modal="true" tabIndex={-1}>
+        <form method="dialog" onSubmit={submit}>
+          <div className="dialog-body min-h-0 flex-1 overflow-y-auto p-5">
+            <div className="warning-icon grid size-[38px] place-items-center rounded-[10px] bg-admin-danger-soft font-bold text-admin-danger" aria-hidden="true">!</div>
+            <h2 id="quest-command-title">{translateText(command === "hide" ? "Hide Quest" : command === "restore" ? "Restore Quest" : "Terminate Quest")}</h2>
+            <p>{translateText(command === "terminate" ? "This changes the Quest to Cancelled and preserves the Admin Action." : "The API Server remains the authority for this Quest action.")}</p>
           <AdminActionSummary
             title={translateText("Before you confirm")}
             affected={`${translateText("Quest")} ${detail.displayId || detail.id}`}
@@ -700,10 +700,10 @@ function QuestCommandDialog({
           <label className="grid gap-1 text-[16px] leading-[1.4] font-semibold" htmlFor="quest-command-reason-code"><span>{translateText("Reason code")}{reasonRequired ? <span aria-hidden="true"> *</span> : null}</span><select className="w-full rounded-lg border border-admin-border-strong bg-admin-surface px-2.5 py-2 text-lg leading-[1.45] text-admin-text" id="quest-command-reason-code" required={reasonRequired} value={reasonCode} onChange={(event) => setReasonCode(event.target.value as AdminQuestReasonCode | "")} autoFocus><option value="">{translateText(reasonRequired ? "Select a reason code" : "No reason code")}</option>{reasonCodes.map((item) => <option key={item.value} value={item.value}>{translateText(item.label)}</option>)}</select></label>
           <label className="grid gap-1 text-[16px] leading-[1.4] font-semibold" htmlFor="quest-command-reason"><span>{translateText("Reason")}{reasonRequired ? <span aria-hidden="true"> *</span> : null}</span><textarea className="w-full resize-y rounded-lg border border-admin-border-strong bg-admin-surface px-2.5 py-2 text-lg leading-[1.45] text-admin-text" id="quest-command-reason" required={reasonRequired} minLength={reasonRequired ? 8 : undefined} maxLength={500} value={reason} onChange={(event) => { setReason(event.target.value); setValidationError(null); }} rows={4} /></label>
           {validationError || error ? <p className="field-error" role="alert">{translateText(validationError || error || "")}</p> : null}
-          <div className="dialog-actions mt-1 flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5"><UiButton variant="outline" type="button" onClick={onCancel} disabled={pending}>{translateText("Cancel")}</UiButton><UiButton variant={command === "terminate" ? "danger" : "primary"} type="submit" disabled={pending}>{pending ? translateText("Saving…") : translateText("Confirm")}</UiButton></div>
+          </div>
+          <div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5"><UiButton variant="outline" type="button" onClick={onCancel} disabled={pending}>{translateText("Cancel")}</UiButton><UiButton variant={command === "terminate" ? "danger" : "primary"} type="submit" disabled={pending}>{pending ? translateText("Saving…") : translateText("Confirm")}</UiButton></div>
         </form>
       </dialog>
-      </div>
     </AdminModalPortal>
   );
 }
