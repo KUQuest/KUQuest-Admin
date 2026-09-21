@@ -13,6 +13,7 @@ import {
 } from "react";
 
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
+import { AdminActionSummary } from "../../../components/admin/admin-action-feedback";
 import { AdminPageHeader } from "../../../components/admin/admin-page-header";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
@@ -123,6 +124,7 @@ function WalletStatusCommandDialog({
   const [fixture, setFixture] = useState<WalletStatusFixture>("success");
   const [validationError, setValidationError] = useState<string | null>(null);
   const transitionCopy = walletStatusTransitionCopy(targetStatus);
+  const actionLabel = walletStatusActionLabel(targetStatus);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -150,34 +152,34 @@ function WalletStatusCommandDialog({
     onSubmit(trimmedReason, fixture);
   }
 
-  return <AdminModalPortal open onClose={onCancel}><dialog ref={dialogRef} open className="wallet-status-command-dialog relative z-[1] m-auto flex max-h-[min(760px,calc(100dvh-32px))] w-[min(560px,calc(100vw-28px))] flex-col overflow-hidden rounded-[14px] border border-admin-border bg-admin-surface p-0 text-admin-text" aria-labelledby="wallet-status-command-title" aria-modal="true">
-    <form className="wallet-status-command-form flex min-h-0 max-h-[inherit] flex-col" onSubmit={submit}>
-      <div className="dialog-body flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-5">
-        <h2 className="m-0 text-[22px] leading-[1.35]" id="wallet-status-command-title">{translateText(walletStatusActionLabel(targetStatus))}</h2>
-        <p className="m-0 text-[17px] leading-[1.5] text-admin-muted">{translateText("Review the status change before saving. Every Wallet status change requires a reason.")}</p>
-        <Card as="section" className="wallet-status-preview grid gap-2 rounded-[10px] border border-admin-border bg-admin-soft p-3 text-[17px] leading-[1.4]" aria-label={translateText("Wallet status change preview")}>
-          <div className="flex items-start justify-between gap-3"><span className="text-admin-muted">{translateText("Wallet")}</span><strong className="max-w-[70%] break-words text-right font-semibold">{row.id}</strong></div>
-          <div className="flex items-start justify-between gap-3"><span className="text-admin-muted">{translateText("Member")}</span><strong className="max-w-[70%] break-words text-right font-semibold">{row.memberName}</strong></div>
-          <div className="wallet-status-preview-transition flex items-start justify-between gap-3"><span className="text-admin-muted">{translateText("Wallet Status")}</span><strong className="flex max-w-[70%] items-center justify-end gap-1 text-right font-semibold max-[420px]:max-w-none max-[420px]:justify-start"><Badge status={row.status} /><span className="text-admin-muted" aria-hidden="true"> → </span><Badge status={targetStatus} /></strong></div>
-        </Card>
-        <Card as="section" className={`wallet-status-consequences rounded-[10px] border p-3 text-admin-text ${targetStatus === "ACTIVE" ? "border-admin-success bg-admin-success-soft" : targetStatus === "SUSPENDED" ? "border-admin-danger bg-admin-danger-soft" : "border-admin-accent bg-admin-accent-soft"}`} aria-label={translateText("Wallet status consequences")}>
-          <strong className="block text-[17px] leading-[1.4]">{translateText(targetStatus === "ACTIVE" ? "Restore effect" : targetStatus === "FROZEN" ? "Temporary hold effect" : "Review hold effect")}</strong>
-          <ul className="mt-2 grid gap-1.5 pl-[18px] text-[15px] leading-[1.45]">{transitionCopy.map((copy) => <li key={copy}>{translateText(copy)}</li>)}</ul>
-        </Card>
-        <label className="grid gap-1.5 text-[16px] font-semibold leading-[1.4]" htmlFor="wallet-status-reason"><span>{translateText("Reason")} <span aria-hidden="true">*</span></span>
-          <textarea className="min-h-[92px] w-full resize-y rounded-admin-sm border border-admin-border-strong bg-admin-surface px-2.5 py-[9px] text-[18px] leading-[1.45] text-admin-text outline-none focus-visible:ring-2 focus-visible:ring-admin-accent/20 aria-[invalid=true]:border-admin-danger aria-[invalid=true]:outline-2 aria-[invalid=true]:outline-admin-danger-soft" id="wallet-status-reason" rows={4} minLength={1} maxLength={500} required value={reason} aria-invalid={validationError ? "true" : undefined} aria-describedby={validationError ? "wallet-status-reason-error" : undefined} onChange={(event) => { setReason(event.target.value); setValidationError(null); }} autoFocus />
-        </label>
-        <p className="wallet-command-help m-0 text-[15px] leading-[1.45] text-admin-muted">{translateText("This reason is part of the Wallet status history. It does not change the Member Ban ladder.")}</p>
-        <label className="wallet-fixture-field grid gap-1.5 text-[16px] font-semibold leading-[1.4] text-admin-muted" htmlFor="wallet-status-fixture"><span>{translateText("Mock response fixture")} <span className="text-xs font-medium">{translateText("Development only")}</span></span>
-          <select className="min-h-9 w-full rounded-admin-sm border border-admin-border-strong bg-admin-surface px-[9px] text-[15px] leading-[1.4] text-admin-text" id="wallet-status-fixture" value={fixture} onChange={(event) => setFixture(event.target.value as WalletStatusFixture)}>
+  return <AdminModalPortal open onClose={onCancel}><dialog ref={dialogRef} open className="dispute-decision-dialog wallet-status-command-dialog" aria-labelledby="wallet-status-command-title" aria-modal="true" tabIndex={-1}>
+    <form method="dialog" className="wallet-status-command-form" onSubmit={submit}>
+      <div className="dialog-body min-h-0 flex-1 overflow-y-auto p-5">
+        <div className="warning-icon grid size-[38px] place-items-center rounded-[10px] bg-admin-danger-soft font-bold text-admin-danger" aria-hidden="true">!</div>
+        <h2 id="wallet-status-command-title">{translateText(actionLabel)}</h2>
+        <p>{translateText("Review the Wallet status change before saving. Every Wallet status change requires a reason.")}</p>
+        <AdminActionSummary
+          title={translateText("Before you confirm")}
+          affected={`${translateText("Wallet")} ${row.id} · ${row.memberName}`}
+          currentState={walletStatusLabel(row.status)}
+          nextState={walletStatusLabel(targetStatus)}
+          effect={translateText(transitionCopy.join(" "))}
+          reversibility={translateText("This changes Wallet Status only. It does not create or remove a Member Ban. The status history is retained.")}
+          warning={translateText("The API Server remains the authority for the final Wallet result.")}
+        />
+        <label htmlFor="wallet-status-reason">{translateText("Reason for this decision")}</label>
+        <textarea id="wallet-status-reason" name="reason" rows={4} minLength={1} maxLength={500} required value={reason} aria-invalid={validationError ? "true" : undefined} aria-describedby={validationError ? "wallet-status-reason-error" : undefined} onChange={(event) => { setReason(event.target.value); setValidationError(null); }} autoFocus />
+        <div className="mt-1.5 flex justify-between gap-3 text-[15px] leading-[1.4] text-admin-muted"><span>{translateText("This reason is part of the Wallet status history. It does not change the Member Ban ladder.")}</span><span>{reason.length}/500</span></div>
+        <label className="wallet-fixture-field" htmlFor="wallet-status-fixture">{translateText("Mock response fixture")} <span className="text-xs font-medium">{translateText("Development only")}</span>
+          <select id="wallet-status-fixture" value={fixture} onChange={(event) => setFixture(event.target.value as WalletStatusFixture)}>
             {WALLET_STATUS_FIXTURE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{translateText(option.label)}</option>)}
           </select>
         </label>
         {validationError || error ? <p id="wallet-status-reason-error" className="field-error" role="alert">{translateText(validationError ?? error ?? "")}</p> : null}
       </div>
-      <div className="dialog-actions flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5">
+      <div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5">
         <UiButton variant="outline" type="button" onClick={onCancel} disabled={pending}>{translateText("Cancel")}</UiButton>
-        <UiButton variant={targetStatus === "ACTIVE" ? "primary" : "danger"} type="submit" disabled={pending}>{pending ? translateText("Saving…") : translateText(walletStatusActionLabel(targetStatus))}</UiButton>
+        <UiButton variant={targetStatus === "ACTIVE" ? "primary" : "danger"} type="submit" disabled={pending}>{pending ? translateText("Saving…") : translateText(actionLabel)}</UiButton>
       </div>
     </form>
   </dialog></AdminModalPortal>;

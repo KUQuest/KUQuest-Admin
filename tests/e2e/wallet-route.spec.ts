@@ -124,7 +124,7 @@ test.describe("Wallet App Router board", () => {
     }
     await expect(freezeDialog).toContainText("Existing Escrow, Assignments, and in-progress Payouts continue");
     await expect(freezeDialog).toContainText("does not change the Member Ban");
-    await freezeDialog.getByLabel("Reason").fill("Temporary hold pending Member review.");
+    await freezeDialog.getByLabel("Reason for this decision").fill("Temporary hold pending Member review.");
     await freezeDialog.getByRole("button", { name: "Freeze Wallet", exact: true }).click();
 
     await expect(freezeDialog).toHaveCount(0);
@@ -133,7 +133,7 @@ test.describe("Wallet App Router board", () => {
 
     await drawer.getByRole("button", { name: "Suspend Wallet" }).click();
     const suspendDialog = page.getByRole("dialog", { name: "Suspend Wallet" });
-    await suspendDialog.getByLabel("Reason").fill("Escalate to an administrative review.");
+    await suspendDialog.getByLabel("Reason for this decision").fill("Escalate to an administrative review.");
     await suspendDialog.getByRole("button", { name: "Suspend Wallet", exact: true }).click();
     await expect(suspendDialog).toHaveCount(0);
     await expect(drawer.getByText("Suspended", { exact: true })).toBeVisible();
@@ -141,7 +141,7 @@ test.describe("Wallet App Router board", () => {
     await drawer.getByRole("button", { name: "Restore Wallet to ACTIVE" }).click();
     const restoreDialog = page.getByRole("dialog", { name: "Restore Wallet to ACTIVE" });
     await expect(restoreDialog).toContainText("Student-initiated Wallet operations are permitted again.");
-    await restoreDialog.getByLabel("Reason").fill("Review complete; restore normal Wallet access.");
+    await restoreDialog.getByLabel("Reason for this decision").fill("Review complete; restore normal Wallet access.");
     await restoreDialog.getByRole("button", { name: "Restore Wallet to ACTIVE", exact: true }).click();
     await expect(restoreDialog).toHaveCount(0);
     await expect(drawer.locator(".wallet-record").getByText("Active", { exact: true })).toBeVisible();
@@ -158,7 +158,7 @@ test.describe("Wallet App Router board", () => {
     await drawer.getByRole("button", { name: "Freeze Wallet" }).click();
 
     const commandDialog = page.getByRole("dialog", { name: "Freeze Wallet" });
-    await commandDialog.getByLabel("Reason").fill("Test the command error state.");
+    await commandDialog.getByLabel("Reason for this decision").fill("Test the command error state.");
     await commandDialog.getByLabel("Mock response fixture").selectOption("error");
     await commandDialog.getByRole("button", { name: "Freeze Wallet", exact: true }).click();
     await expect(commandDialog).toBeVisible();
