@@ -120,7 +120,7 @@ export function AdminSidebar({
 
   const navigationHidden = isMobile && !open;
   const sidebarClassName = [
-    "admin-sidebar row-span-full sticky top-0 z-20 flex h-screen min-h-full w-auto flex-col border-r border-admin-border bg-admin-sidebar px-2.5 py-3 text-admin-text transition-transform duration-200 ease-out",
+    "admin-sidebar row-span-full sticky top-0 z-20 flex h-screen min-h-0 w-auto flex-col border-r border-admin-border bg-admin-sidebar px-2.5 py-3 text-admin-text transition-transform duration-200 ease-out",
     "max-[900px]:fixed max-[900px]:left-0 max-[900px]:w-[260px] max-[900px]:shadow-admin",
     open ? "max-[900px]:translate-x-0" : "max-[900px]:-translate-x-[102%]",
   ].join(" ");
