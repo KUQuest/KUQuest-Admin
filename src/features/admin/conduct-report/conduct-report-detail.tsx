@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
-import { AdminActionReceipt, AdminActionSummary } from "../../../components/admin/admin-action-feedback";
+import { AdminActionReceipt } from "../../../components/admin/admin-action-feedback";
 import { formatAdminTimestamp } from "../date-format";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminRecordHeader } from "../../../components/admin/admin-record-header";
@@ -31,7 +31,6 @@ import { conductReportRoutes } from "../admin-routes";
 import { questStateLabel } from "../domain/rulebook";
 import { questStatusClass } from "../quest/quest-model";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
-import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { RecordStatusBar } from "../../../components/admin/record-status-bar";
 import { ModerationCaseWorkspace, ModerationHistoryPanel } from "../moderation-case/moderation-case-workspace";
 import { hasModerationHistory } from "../moderation-case/moderation-case-context";
@@ -39,10 +38,10 @@ import {
   newConductReportIdempotencyKey,
   saveMockConductReportDecision,
 } from "./conduct-report-adapter";
+import { ConductReportDecisionDialog } from "./conduct-report-decision-dialog";
 import {
   CONDUCT_REPORT_UPDATED_EVENT,
   conductReportReasonLabel,
-  conductReportStatusLabel,
   conductReportDecisionFor,
   conductReportModelFromRecord,
   type ConductReportDecisionChoice,
@@ -50,132 +49,7 @@ import {
 } from "./conduct-report-model";
 import { useConductReportDetailQuery } from "./conduct-report-query";
 
-type DecisionDialogProps = {
-  open: boolean;
-  choice: ConductReportDecisionChoice | null;
-  busy: boolean;
-  error: string | null;
-  model: ConductReportModel;
-  translateText: (value: string) => string;
-  onCancel: () => void;
-  onConfirm: (reason: string) => void;
-};
-
 type ConductReportPresentation = "drawer" | "page";
-
-function decisionDialogTitle(
-  choice: ConductReportDecisionChoice | null,
-  translateText: (value: string) => string,
-): string {
-  return choice === "confirmed-violation"
-    ? translateText("Confirm violation")
-    : translateText("Close report");
-}
-
-function decisionDialogDescription(
-  choice: ConductReportDecisionChoice | null,
-  modelId: string,
-  translateText: (value: string) => string,
-): string {
-  if (choice === "confirmed-violation") {
-    return `${translateText("This will uphold the Conduct Report and record a confirmed violation for")} ${modelId}.`;
-  }
-  return `${translateText("This will dismiss the Conduct Report without changing the reported Member status for")} ${modelId}.`;
-}
-
-function ConductReportDecisionDialog({
-  open,
-  choice,
-  busy,
-  error,
-  model,
-  translateText,
-  onCancel,
-  onConfirm,
-}: DecisionDialogProps) {
-  const [reason, setReason] = useState("");
-
-  useEffect(() => {
-    if (open) setReason("");
-  }, [choice, open]);
-
-  if (!open) return null;
-  const title = decisionDialogTitle(choice, translateText);
-  const description = decisionDialogDescription(choice, model.id, translateText);
-  const nextState = choice === "confirmed-violation"
-    ? "CONDUCT_REPORT_UPHELD"
-    : "CONDUCT_REPORT_DISMISSED";
-  const effect = choice === "confirmed-violation"
-    ? "The Conduct Report is upheld and a permanent Misconduct strike is recorded. There is no restore path."
-    : "The Conduct Report closes. No Misconduct strike or Member status change is made.";
-
-  return (
-    <AdminModalPortal open={open} onClose={onCancel}>
-      <dialog
-        open
-        className="report-decision-dialog conduct-report-decision-dialog z-[60]"
-        aria-modal="true"
-        aria-labelledby="conduct-report-decision-title"
-        tabIndex={-1}
-      >
-      <form
-        method="dialog"
-        onSubmit={(event) => {
-          event.preventDefault();
-          const value = reason.trim();
-          if (value.length < 8) return;
-          onConfirm(value);
-        }}
-      >
-        <div className="dialog-body p-5">
-          <div className="warning-icon grid size-[38px] place-items-center rounded-[10px] bg-admin-danger-soft font-bold text-admin-danger" aria-hidden="true">!</div>
-          <h2 id="conduct-report-decision-title">{title}</h2>
-          <p>{description}</p>
-          {choice ? (
-            <AdminActionSummary
-              title={translateText("Before you confirm")}
-              affected={`${translateText("Conduct Report")} ${model.id} · ${translateText("Quest")} ${model.questId ?? "—"}`}
-              currentState={model.statusLabel}
-              nextState={conductReportStatusLabel(nextState)}
-              effect={translateText(effect)}
-              reversibility={translateText(choice === "confirmed-violation" ? "This decision is final. Review the Quest record before confirming." : "The decision is retained as an immutable audit record.")}
-              warning={translateText("Use the Quest, Assignment, and Proof Submission record as the decision evidence.")}
-            />
-          ) : null}
-          <label htmlFor="conduct-report-decision-reason">
-            {translateText("Reason for this decision")}
-          </label>
-          <textarea
-            id="conduct-report-decision-reason"
-            name="reason"
-            rows={4}
-            minLength={8}
-            maxLength={500}
-            required
-            value={reason}
-            aria-invalid={Boolean(error)}
-            onChange={(event) => setReason(event.target.value)}
-            placeholder={translateText("Enter the reason for the Conduct Report decision")}
-          />
-          <div className="mt-1.5 flex justify-between gap-3 text-[15px] leading-[1.4] text-admin-muted">
-            <span>{translateText("Minimum 8 characters")}</span>
-            <span>{reason.length}/500</span>
-          </div>
-          {error && <p className="field-error" role="alert">{translateText(error)}</p>}
-        </div>
-        <div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5">
-          <Button variant="outline" type="button" onClick={onCancel} disabled={busy}>
-            {translateText("Cancel")}
-          </Button>
-          <Button variant="danger" type="submit" disabled={busy || reason.trim().length < 8}>
-            {busy ? translateText("Saving…") : translateText("Confirm decision")}
-          </Button>
-        </div>
-      </form>
-      </dialog>
-    </AdminModalPortal>
-  );
-}
 
 function MemberLink({
   id,
