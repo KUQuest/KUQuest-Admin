@@ -1,7 +1,7 @@
 import { create } from "zustand";
 
 import type { AdminBoardPageSize } from "../data/board-pagination";
-import type { BoardSortDirection } from "../data/board-sorting";
+import { toggleBoardSort, type BoardSortDirection } from "../data/board-sorting";
 
 export type ReportCaseTab = "all" | "open" | "dismissed" | "confirmed" | "restored";
 export type ReportCaseSortKey = "id" | "source" | "reportedMember" | "reporter" | "type" | "status" | "reported";
@@ -39,9 +39,7 @@ export const useReportBoardStore = create<ReportBoardState>((set) => ({
   sortBy: (sortKey) => set((state) => ({
     pageNumber: 1,
     sortKey,
-    sortDirection: state.sortKey === sortKey
-      ? state.sortDirection === "ascending" ? "descending" : "ascending"
-      : "ascending",
+    sortDirection: toggleBoardSort(state.sortKey, sortKey, state.sortDirection),
   })),
   reset: () => set(initialReportBoardState),
 }));

@@ -6,6 +6,7 @@ import type {
   PayoutSortDirection,
   PayoutSortKey,
 } from "./payout-model";
+import { toggleBoardSort } from "../data/board-sorting";
 
 type PayoutBoardState = {
   query: string;
@@ -40,9 +41,7 @@ export const usePayoutBoardStore = create<PayoutBoardState>((set) => ({
   sortBy: (sortKey) => set((state) => ({
     page: 1,
     sortKey,
-    sortDirection: state.sortKey === sortKey
-      ? state.sortDirection === "ascending" ? "descending" : "ascending"
-      : "ascending",
+    sortDirection: toggleBoardSort(state.sortKey, sortKey, state.sortDirection),
   })),
   reset: () => set(initialPayoutBoardState),
 }));

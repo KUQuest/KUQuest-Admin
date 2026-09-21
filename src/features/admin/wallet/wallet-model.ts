@@ -6,6 +6,7 @@ import type {
   AdminWalletStatusHistoryEntry,
   AdminWalletVerification,
 } from "../api/admin-api";
+import { pageCount, pageRows, type BoardPageSize } from "@/lib/board-pagination";
 import { formatAdminTimestamp } from "../date-format";
 import {
   walletStatusFor,
@@ -22,7 +23,7 @@ export const WALLET_BOARD_TABS = [
 ] as const;
 
 export type WalletBoardTab = (typeof WALLET_BOARD_TABS)[number]["id"];
-export type WalletBoardPageSize = number | "all";
+export type WalletBoardPageSize = BoardPageSize;
 export type WalletSortKey = "id" | "member" | "balance" | "latestTransactionAt" | "status" | "createdAt";
 export type WalletSortSelection = WalletSortKey | null;
 export type WalletSortDirection = "ascending" | "descending";
@@ -295,13 +296,11 @@ export function pageWalletRows(
   page: number,
   pageSize: WalletBoardPageSize,
 ): WalletBoardRow[] {
-  if (pageSize === "all") return rows;
-  const start = Math.max(0, page - 1) * pageSize;
-  return rows.slice(start, start + pageSize);
+  return pageRows(rows, page, pageSize);
 }
 
 export function walletPageCount(rowCount: number, pageSize: WalletBoardPageSize): number {
-  return pageSize === "all" ? (rowCount ? 1 : 0) : Math.ceil(rowCount / pageSize);
+  return pageCount(rowCount, pageSize);
 }
 
 export function formatWalletDate(value: string | null | undefined): string {

@@ -5,6 +5,7 @@ import type {
   AdminQuestFinance,
   AdminQuestMember,
 } from "../api/admin-api";
+import { pageCount, pageRows, type BoardPageSize } from "@/lib/board-pagination";
 import { formatAdminTimestamp } from "../date-format";
 import { questStateFor, questStateLabel, type QuestState } from "../domain/rulebook";
 
@@ -209,7 +210,7 @@ export const QUEST_BOARD_TABS = [
 ] as const;
 
 export type QuestBoardTab = (typeof QUEST_BOARD_TABS)[number]["id"];
-export type QuestBoardPageSize = number | "all";
+export type QuestBoardPageSize = BoardPageSize;
 export type QuestSortKey = "id" | "title" | "hirer" | "createdAt" | "reward" | "status";
 export type QuestSortDirection = "ascending" | "descending";
 
@@ -533,13 +534,11 @@ export function pageQuestRows(
   page: number,
   pageSize: QuestBoardPageSize,
 ): QuestBoardRow[] {
-  if (pageSize === "all") return rows;
-  const start = Math.max(0, page - 1) * pageSize;
-  return rows.slice(start, start + pageSize);
+  return pageRows(rows, page, pageSize);
 }
 
 export function questPageCount(rowCount: number, pageSize: QuestBoardPageSize): number {
-  return pageSize === "all" ? (rowCount ? 1 : 0) : Math.ceil(rowCount / pageSize);
+  return pageCount(rowCount, pageSize);
 }
 
 export function formatQuestDate(value: string | null | undefined): string {

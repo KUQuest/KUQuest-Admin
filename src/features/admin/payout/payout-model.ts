@@ -2,6 +2,7 @@ import type {
   AdminPayout,
   AdminPayoutDetail,
 } from "../api/admin-api";
+import { pageCount, pageRows, type BoardPageSize } from "@/lib/board-pagination";
 import { formatAdminTimestamp } from "../date-format";
 import {
   payoutStatusFor,
@@ -20,7 +21,7 @@ export const PAYOUT_BOARD_TABS = [
 ] as const;
 
 export type PayoutBoardTab = (typeof PAYOUT_BOARD_TABS)[number]["id"];
-export type PayoutBoardPageSize = number | "all";
+export type PayoutBoardPageSize = BoardPageSize;
 export type PayoutSortKey = "id" | "student" | "createdAt" | "amount" | "status";
 export type PayoutSortDirection = "ascending" | "descending";
 
@@ -279,13 +280,11 @@ export function pagePayoutRows(
   page: number,
   pageSize: PayoutBoardPageSize,
 ): PayoutBoardRow[] {
-  if (pageSize === "all") return rows;
-  const start = Math.max(0, page - 1) * pageSize;
-  return rows.slice(start, start + pageSize);
+  return pageRows(rows, page, pageSize);
 }
 
 export function payoutPageCount(rowCount: number, pageSize: PayoutBoardPageSize): number {
-  return pageSize === "all" ? (rowCount ? 1 : 0) : Math.ceil(rowCount / pageSize);
+  return pageCount(rowCount, pageSize);
 }
 
 export function formatPayoutDate(value: string | null | undefined): string {

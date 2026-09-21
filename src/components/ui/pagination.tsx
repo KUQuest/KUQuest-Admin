@@ -1,9 +1,9 @@
 import { Button } from "./button";
 import { cn } from "./utils";
+import { BOARD_PAGE_SIZE_OPTIONS, type BoardPageOption } from "@/lib/board-pagination";
 
-export type BoardPageSize = 10 | 25 | 50 | "all";
+export type BoardPageSize = BoardPageOption;
 
-const boardPageSizes = [10, 25, 50, "all"] as const satisfies readonly BoardPageSize[];
 const identityText = (text: string) => text;
 
 export type PageSizeControlsProps = {
@@ -23,7 +23,7 @@ export function PageSizeControls({
 }: PageSizeControlsProps) {
   return (
     <div className={cn("flex flex-wrap gap-1", className)} aria-label={translateText("Rows per page")}>
-      {boardPageSizes.map((size) => (
+      {BOARD_PAGE_SIZE_OPTIONS.map((size) => (
         <Button
           key={size}
           variant="outline"

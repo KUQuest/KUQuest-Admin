@@ -1,7 +1,7 @@
 import { create } from "zustand";
 
 import type { AdminBoardPageSize } from "../data/board-pagination";
-import type { BoardSortDirection } from "../data/board-sorting";
+import { toggleBoardSort, type BoardSortDirection } from "../data/board-sorting";
 import type { QuestBoardTab, QuestSortKey } from "./quest-model";
 
 type QuestBoardState = {
@@ -37,9 +37,7 @@ export const useQuestBoardStore = create<QuestBoardState>((set) => ({
   sortBy: (sortKey) => set((state) => ({
     pageNumber: 1,
     sortKey,
-    sortDirection: state.sortKey === sortKey
-      ? state.sortDirection === "ascending" ? "descending" : "ascending"
-      : "ascending",
+    sortDirection: toggleBoardSort(state.sortKey, sortKey, state.sortDirection),
   })),
   reset: () => set(initialQuestBoardState),
 }));

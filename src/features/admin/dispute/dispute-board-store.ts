@@ -1,7 +1,7 @@
 import { create } from "zustand";
 
 import type { AdminBoardPageSize } from "../data/board-pagination";
-import type { BoardSortDirection } from "../data/board-sorting";
+import { toggleBoardSort, type BoardSortDirection } from "../data/board-sorting";
 
 export type DisputeCaseTab = "all" | "open" | "dismissed" | "resolved";
 export type DisputeCaseSortKey = "id" | "quest" | "hirer" | "worker" | "category" | "amount" | "status" | "opened";
@@ -39,9 +39,7 @@ export const useDisputeBoardStore = create<DisputeBoardState>((set) => ({
   sortBy: (sortKey) => set((state) => ({
     pageNumber: 1,
     sortKey,
-    sortDirection: state.sortKey === sortKey
-      ? state.sortDirection === "ascending" ? "descending" : "ascending"
-      : "ascending",
+    sortDirection: toggleBoardSort(state.sortKey, sortKey, state.sortDirection),
   })),
   reset: () => set(initialDisputeBoardState),
 }));
