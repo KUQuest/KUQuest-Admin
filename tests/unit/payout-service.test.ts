@@ -56,6 +56,12 @@ describe("Payout service boundary", () => {
     expect(result.rows.map((row) => row.id)).toEqual(["PAY-9637", "PAY-9636", "PAY-9638", "PAY-9639"]);
   });
 
+  it("loads the Payout linked from the Overview queue", async () => {
+    const result = await loadPayoutDetailPageData("PAY-9631", undefined, "mock");
+
+    expect(result?.detail.id).toBe("PAY-9631");
+  });
+
   it("reads the Payout board through the Admin API and forwards the server cookie", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     const requests: Request[] = [];

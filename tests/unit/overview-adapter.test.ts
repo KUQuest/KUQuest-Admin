@@ -64,7 +64,7 @@ describe("Overview mock adapter", () => {
     const model = loadOverviewModelFromMock(storage);
     const payoutQueue = model.queues.find((queue) => queue.id === "payouts");
 
-    expect(payoutQueue?.count).toBe(52);
+    expect(payoutQueue?.count).toBe(53);
     expect(payoutQueue?.oldestId).not.toBe("PAY-9637");
   });
 });

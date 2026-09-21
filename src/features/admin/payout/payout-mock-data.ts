@@ -402,6 +402,21 @@ const mockCorePayoutDetails: AdminPayoutDetail[] = [
       },
     ],
   }),
+  makePayoutDetail({
+    id: "PAY-9631",
+    firstName: "Fah",
+    lastName: "Lertwiroj",
+    email: "fah.lertwiroj@ku.th",
+    status: "PENDING_ADMIN_APPROVAL",
+    amount: 171100,
+    bankCode: "KBANK",
+    bankName: "Kasikornbank",
+    destination: "•••• 9631",
+    routing: "••••",
+    createdAt: "2026-09-09T04:00:00.000Z",
+    updatedAt: "2026-09-09T04:00:00.000Z",
+    version: 1,
+  }),
   ...mockDemoPayoutDetails,
 ];
 

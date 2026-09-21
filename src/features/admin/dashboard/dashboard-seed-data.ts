@@ -344,7 +344,7 @@ export const dashboardSeedData: PersistedAdminData = {
     ],
     payouts: [
       { id: "PAY-9637", title: "Darin Intharawong", amount: 283, status: "PENDING_ADMIN_APPROVAL", payoutStatus: "PENDING_ADMIN_APPROVAL", tone: "warning" },
-      { id: "PAY-9631", title: "Fah Lertwiroj", amount: 1711, status: "SUCCEEDED", payoutStatus: "SUCCEEDED", tone: "success" },
+      { id: "PAY-9631", title: "Fah Lertwiroj", amount: 1711, status: "PENDING_ADMIN_APPROVAL", payoutStatus: "PENDING_ADMIN_APPROVAL", tone: "warning" },
       { id: "PAY-9628", title: "Gunn Maneewan", amount: 850, status: "FAILED", payoutStatus: "FAILED", tone: "danger" },
       ...dashboardDemoPayoutSeedData,
     ],
