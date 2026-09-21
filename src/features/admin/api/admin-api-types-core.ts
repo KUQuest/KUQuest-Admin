@@ -1,5 +1,3 @@
-import type { ConductReportStatus, DisputeCaseStatus, ReportCaseStatus, WalletStatus } from "../domain/rulebook";
-
 export type AdminIdentity = {
   id: string;
   email: string;
@@ -131,4 +129,3 @@ export type AdminActivityListQuery = {
   cursor?: string;
   sort?: "newest" | "oldest";
 };
-
