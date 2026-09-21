@@ -1,6 +1,6 @@
 import { mockWalletFinanceSummary, mockWallets } from "../../src/features/admin/wallet/wallet-mock-data";
 
-const apiOrigin = "http://localhost:3004";
+const apiOrigin = process.env.WALLET_ADMIN_ORIGIN ?? "http://localhost:3004";
 const initialWalletFailure = process.env.WALLET_FIXTURE_INITIAL_ERROR === "1";
 
 function json(body: unknown, status = 200): Response {

@@ -12,7 +12,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: "node scripts/run-with-env.mjs WALLET_FIXTURE_INITIAL_ERROR=1 -- bun tests/e2e/wallet-api-fixture.ts",
+      command: "node scripts/run-with-env.mjs WALLET_FIXTURE_INITIAL_ERROR=1 WALLET_ADMIN_ORIGIN=http://localhost:3005 -- bun tests/e2e/wallet-api-fixture.ts",
       url: "http://localhost:5001/health",
       reuseExistingServer: false,
       timeout: 120_000,
