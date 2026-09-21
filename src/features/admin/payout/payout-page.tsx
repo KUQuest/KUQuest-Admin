@@ -24,9 +24,9 @@ import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { Button as UiButton, Card, CardHeader, type ButtonSize } from "../../../components/ui";
 import { payoutRoutes } from "../admin-routes";
 import {
-  adminApi,
   type PayoutRejection,
 } from "../api/admin-api";
+import { adminApiProvider } from "../api/admin-provider";
 import { payoutStatusLabel } from "../domain/rulebook";
 import {
   formatPayoutDate,
@@ -498,11 +498,11 @@ export function AdminPayoutDetailPage({
     try {
       if (dataSource === "api") {
         if (submission.command === "approve") {
-          await adminApi.approvePayout(detail.id, {
+          await adminApiProvider.commands.approvePayout(detail.id, {
             ...options,
           });
         } else {
-          await adminApi.rejectPayout(detail.id, {
+          await adminApiProvider.commands.rejectPayout(detail.id, {
             ...options,
             reasonCode: submission.reasonCode,
             reason: submission.reason,
@@ -545,7 +545,7 @@ export function AdminPayoutDetailPage({
     setReconcilePending(true);
     try {
       if (dataSource === "api") {
-        await adminApi.reconcilePayout(detail.id);
+        await adminApiProvider.commands.reconcilePayout(detail.id);
         router.refresh();
       }
       setReconcileNotice(`${translateText("Payout")} ${detail.id} ${translateText("was reconciled with the Provider.")}`);

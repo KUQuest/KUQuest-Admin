@@ -1,5 +1,5 @@
 import type { AdminFinanceOverview } from "../api/admin-api";
-import { adminApi } from "../api/admin-api";
+import { adminApiProvider } from "../api/admin-provider";
 import { adminApiRequestOptions } from "../api/admin-api-request-options";
 import { dashboardActivityFromApi } from "../dashboard/dashboard-model";
 import {
@@ -20,8 +20,8 @@ export type OverviewPageData = {
 export async function loadOverviewFromApi(cookieHeader?: string): Promise<OverviewModel> {
   const options = adminApiRequestOptions(cookieHeader);
   const [overview, activityPage] = await Promise.all([
-    adminApi.getOverview(options),
-    adminApi.listActivityLogs({ limit: 10, sort: "newest" }, options).catch(() => ({ items: [], nextCursor: null })),
+    adminApiProvider.read.getOverview(options),
+    adminApiProvider.read.listActivityLogs({ limit: 10, sort: "newest" }, options).catch(() => ({ items: [], nextCursor: null })),
   ]);
   return overviewModelFromApi(
     overview,
@@ -31,15 +31,15 @@ export async function loadOverviewFromApi(cookieHeader?: string): Promise<Overvi
 }
 
 export function loadFinanceOverview(cookieHeader?: string): Promise<AdminFinanceOverview> {
-  return adminApi.getFinanceOverview(adminApiRequestOptions(cookieHeader));
+  return adminApiProvider.read.getFinanceOverview(adminApiRequestOptions(cookieHeader));
 }
 
 export async function loadOverviewSearchData(cookieHeader?: string): Promise<OverviewApiSearchData> {
   const options = adminApiRequestOptions(cookieHeader);
   const [quests, members, payouts] = await Promise.all([
-    adminApi.listQuests({ limit: 100, sort: "newest" }, options),
-    adminApi.listMembers({ limit: 100 }, options),
-    adminApi.listPayouts({ limit: 100, sort: "newest" }, options),
+    adminApiProvider.read.listQuests({ limit: 100, sort: "newest" }, options),
+    adminApiProvider.read.listMembers({ limit: 100 }, options),
+    adminApiProvider.read.listPayouts({ limit: 100, sort: "newest" }, options),
   ]);
   return {
     quests: quests.items.map(({ id, displayId, title, questStatus, hiddenAt, createdAt, updatedAt }) => ({

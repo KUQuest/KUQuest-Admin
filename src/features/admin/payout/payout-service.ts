@@ -7,11 +7,10 @@ import type {
   AdminPayoutDetail,
 } from "../api/admin-api";
 import {
-  adminApi,
   ADMIN_API_PAYOUT_STATUSES,
 } from "../api/admin-api";
 import { adminApiRequestOptions } from "../api/admin-api-request-options";
-import { isAdminApiEnabled } from "../api/admin-provider";
+import { adminApiProvider, isAdminApiEnabled } from "../api/admin-provider";
 import { mockAllPayoutDetails, mockPayoutDetail } from "./payout-mock-data";
 import {
   payoutDetailViewFromApi,
@@ -50,11 +49,11 @@ async function listAllPayoutsForStatus(
   cookieHeader?: string,
 ) {
   const options = adminApiRequestOptions(cookieHeader);
-  const items = [] as Awaited<ReturnType<typeof adminApi.listPayouts>>["items"];
+  const items = [] as Awaited<ReturnType<typeof adminApiProvider.read.listPayouts>>["items"];
   let cursor: string | undefined;
 
   do {
-    const page = await adminApi.listPayouts(
+    const page = await adminApiProvider.read.listPayouts(
       { status, limit: 50, cursor, sort: "newest" },
       options,
     );
@@ -95,7 +94,7 @@ export async function loadPayoutDetailPageData(
     detail = mockPayoutDetail(payoutId);
   } else {
     try {
-      detail = await adminApi.getPayout(payoutId, adminApiRequestOptions(cookieHeader));
+      detail = await adminApiProvider.read.getPayout(payoutId, adminApiRequestOptions(cookieHeader));
     } catch (error) {
       if (error instanceof ApiError && error.status === 404) return null;
       throw error;

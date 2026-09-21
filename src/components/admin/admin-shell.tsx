@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 
-import { adminApi, type AdminIdentity } from "../../features/admin/api/admin-api";
+import { type AdminIdentity } from "../../features/admin/api/admin-api";
+import { adminApiProvider } from "../../features/admin/api/admin-provider";
 import { useAdminNavigationCountsQuery } from "../../features/admin/admin-navigation-query";
 import { AdminGlobalSearch } from "../../features/admin/search/admin-global-search";
 import {
@@ -69,7 +70,7 @@ function AdminShellContent({ identity, children }: AdminShellProps) {
       return;
     }
 
-    void adminApi.signOut()
+    void adminApiProvider.auth.signOut()
       .catch((error: unknown) => console.error("Admin sign-out failed", error))
       .finally(finishLogout);
   }, []);
@@ -96,7 +97,7 @@ function AdminShellContent({ identity, children }: AdminShellProps) {
           return;
         }
 
-        const session = await adminApi.getSession();
+        const session = await adminApiProvider.auth.getSession();
         if (!session && !cancelled) window.location.replace("/login");
       } catch {
         if (!cancelled) window.location.replace("/login");

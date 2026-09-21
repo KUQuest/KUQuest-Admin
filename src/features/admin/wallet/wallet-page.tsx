@@ -21,7 +21,7 @@ import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { adminBoardCount, adminBoardPagination, adminBoardTable, adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
 import { Badge as UiBadge, Button as UiButton, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
-import { adminApi } from "../api/admin-api";
+import { adminApiProvider } from "../api/admin-provider";
 import { walletStatusLabel, type WalletStatus } from "../domain/rulebook";
 import { useAdminBoardReset } from "../data/use-admin-board-reset";
 import { memberTabHref } from "../member/member-model";
@@ -284,7 +284,7 @@ function WalletDrawer({
     setNotice(null);
     try {
       if (dataSource === "api") {
-        await adminApi.rebuildWalletProjection(row.id);
+        await adminApiProvider.commands.rebuildWalletProjection(row.id);
         await refetch();
       }
       setNotice(`Wallet projection rebuilt for ${row.id}.`);

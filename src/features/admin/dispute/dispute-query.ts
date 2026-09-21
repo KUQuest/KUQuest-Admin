@@ -1,14 +1,14 @@
 import { useEffect, useMemo } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
-import { isAdminApiEnabled } from "../api/admin-provider";
+import { adminApiProvider, isAdminApiEnabled } from "../api/admin-provider";
 import {
   findDisputeCaseFromMock,
   loadAllDisputeCasesFromMock,
   loadDisputeCasesFromMock,
 } from "./dispute-adapter";
 import { loadDisputeCasePageData, type DisputeCasePageData } from "./dispute-service";
-import { adminApi, type AdminDisputeEvidence } from "../api/admin-api";
+import type { AdminDisputeEvidence } from "../api/admin-api";
 import { DISPUTE_CASE_UPDATED_EVENT, disputeCaseModelFromRecord, type DisputeCaseModel } from "./dispute-model";
 
 export const disputeBoardQueryKey = ["admin", "dispute-cases", "board"] as const;
@@ -84,7 +84,7 @@ export function useDisputeDetailQuery(disputeId: string, initialModel?: DisputeC
     queryKey,
     queryFn: async () => {
       const record = apiEnabled
-        ? await adminApi.getDispute(disputeId)
+        ? await adminApiProvider.read.getDispute(disputeId)
         : findDisputeCaseFromMock(localStorage, disputeId);
       const model = disputeCaseModelFromRecord(record, apiEnabled ? "api" : "mock");
       if (!model || model.id !== disputeId) throw new Error("The Dispute Case was not found.");
@@ -121,7 +121,7 @@ export function useDisputeEvidenceQuery(disputeId: string, reference: string | n
     queryFn: async () => {
       if (!reference) throw new Error("Evidence Reference was not provided.");
       return apiEnabled
-        ? adminApi.getDisputeEvidence(disputeId, { idempotencyKey: `admin-read-dispute-evidence-${disputeId}-${reference}` })
+        ? adminApiProvider.read.getDisputeEvidence(disputeId, { idempotencyKey: `admin-read-dispute-evidence-${disputeId}-${reference}` })
         : { evidenceRef: reference };
     },
     enabled: Boolean(reference),

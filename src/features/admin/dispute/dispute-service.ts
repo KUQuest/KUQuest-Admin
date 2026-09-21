@@ -1,5 +1,5 @@
 import type { AdminDisputeListQuery } from "../api/admin-api";
-import { adminApi } from "../api/admin-api";
+import { adminApiProvider } from "../api/admin-provider";
 import { adminApiRequestOptions } from "../api/admin-api-request-options";
 import {
   disputeCaseModelFromRecord,
@@ -24,7 +24,7 @@ export async function loadDisputeCasePageData(
   cursor?: string,
 ): Promise<DisputeCasePageData> {
   const query: AdminDisputeListQuery = { limit: 50, ...(cursor ? { cursor } : {}) };
-  const page = await adminApi.listDisputes(
+  const page = await adminApiProvider.read.listDisputes(
     query,
     adminApiRequestOptions(cookieHeader),
   );
@@ -39,7 +39,7 @@ export async function loadDisputeCaseDetailFromApi(
   disputeId: string,
   cookieHeader?: string,
 ): Promise<DisputeCaseModel | null> {
-  const dispute = await adminApi.getDispute(
+  const dispute = await adminApiProvider.read.getDispute(
     disputeId,
     adminApiRequestOptions(cookieHeader),
   );

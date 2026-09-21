@@ -29,8 +29,8 @@ import {
   adminRecordSection,
   adminRecordSideFacts,
 } from "../../../components/admin/admin-record-styles";
-import { adminApi, type AdminEvidence, type ReportDecision } from "../api/admin-api";
-import { isAdminApiEnabled } from "../api/admin-provider";
+import { type AdminEvidence, type ReportDecision } from "../api/admin-api";
+import { adminApiProvider, isAdminApiEnabled } from "../api/admin-provider";
 import { reportRoutes } from "../admin-routes";
 import { reportCaseStatusLabel } from "../domain/rulebook";
 import { ModerationCaseWorkspace, ModerationHistoryPanel } from "../moderation-case/moderation-case-workspace";
@@ -649,7 +649,7 @@ export function ReportCaseDetail({
 
     try {
       const updated = isAdminApiEnabled()
-        ? await adminApi.decideReport(model.id, options)
+        ? await adminApiProvider.commands.decideReport(model.id, options)
         : saveMockReportDecision(localStorage, model.id, decision, reason);
       const updatedModel = reportCaseModelFromRecord(updated);
       if (!updatedModel || updatedModel.id !== model.id) {

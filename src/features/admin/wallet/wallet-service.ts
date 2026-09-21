@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 
 import type { AdminApiRequestOptions } from "../api/admin-api";
-import { adminApi } from "../api/admin-api";
+import { adminApiProvider } from "../api/admin-provider";
 import { adminApiRequestOptions } from "../api/admin-api-request-options";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { adminSessionCookieHeader } from "../../../lib/auth/admin-session-policy";
@@ -93,9 +93,9 @@ export async function loadWalletDrawerData(
 
   const options = adminApiRequestOptions(cookieHeader);
   const [walletResult, historyResult, ledgerResult] = await Promise.all([
-    adminApi.getWallet(walletId, options),
-    adminApi.getWalletStatusHistory(walletId, options),
-    adminApi.listLedgerTransactions({ walletId, limit: 5 }, options),
+    adminApiProvider.read.getWallet(walletId, options),
+    adminApiProvider.read.getWalletStatusHistory(walletId, options),
+    adminApiProvider.read.listLedgerTransactions({ walletId, limit: 5 }, options),
   ]);
   return {
     detail: walletDetailFromApi(walletResult.wallet),
@@ -124,7 +124,7 @@ export async function loadWalletStatementPageData(
   }
 
   const options = adminApiRequestOptions(cookieHeader);
-  const walletsResult = await adminApi.listWallets({ userId: memberId, limit: 1 }, options);
+  const walletsResult = await adminApiProvider.read.listWallets({ userId: memberId, limit: 1 }, options);
   const wallet = walletsResult.items[0];
   if (!wallet) throw new Error("Wallet Statement is not available for this Member.");
   const transactions = await loadAllWalletLedgerTransactions(wallet.id, options);
@@ -152,7 +152,7 @@ export async function verifyWalletProjection(
     };
   }
 
-  const result = await adminApi.verifyWalletProjection(walletId, adminApiRequestOptions(cookieHeader));
+  const result = await adminApiProvider.read.verifyWalletProjection(walletId, adminApiRequestOptions(cookieHeader));
   return walletVerificationFromApi(result);
 }
 
@@ -160,12 +160,12 @@ async function listRemainingWallets(
   initialCursor: string,
   options: AdminApiRequestOptions,
 ): Promise<RemainingWalletRows> {
-  const items = [] as Awaited<ReturnType<typeof adminApi.listWallets>>["items"];
+  const items = [] as Awaited<ReturnType<typeof adminApiProvider.read.listWallets>>["items"];
   let cursor: string | undefined = initialCursor;
 
   try {
     while (cursor) {
-      const page = await adminApi.listWallets({ limit: 50, cursor }, options);
+      const page = await adminApiProvider.read.listWallets({ limit: 50, cursor }, options);
       items.push(...page.items);
       const nextCursor = page.nextCursor ?? undefined;
       if (nextCursor === cursor) break;
@@ -195,8 +195,8 @@ export async function loadWalletBoardPageData(
 
   const options = adminApiRequestOptions(cookieHeader);
   const [walletsResult, summaryResult] = await Promise.allSettled([
-    adminApi.listWallets({ limit: 50 }, options),
-    adminApi.getFinanceOverview(options),
+    adminApiProvider.read.listWallets({ limit: 50 }, options),
+    adminApiProvider.read.getFinanceOverview(options),
   ]);
   if (walletsResult.status === "rejected") {
     return {

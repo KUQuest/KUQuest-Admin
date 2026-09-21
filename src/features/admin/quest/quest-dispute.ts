@@ -1,5 +1,5 @@
 import type { AdminApiRequestOptions } from "../api/admin-api";
-import { adminApi } from "../api/admin-api";
+import { adminApiProvider } from "../api/admin-provider";
 import { DISPUTE_CASE_STATUSES } from "../domain/rulebook";
 
 export const DISPUTE_LOOKUP_UNAVAILABLE_MESSAGE =
@@ -12,7 +12,7 @@ export async function findDisputeForQuest(
   for (const status of DISPUTE_CASE_STATUSES) {
     let cursor: string | undefined;
     do {
-      const page = await adminApi.listDisputes({
+      const page = await adminApiProvider.read.listDisputes({
         status,
         limit: 50,
         ...(cursor ? { cursor } : {}),

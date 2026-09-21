@@ -1,14 +1,13 @@
 import { useEffect, useMemo } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
-import { isAdminApiEnabled } from "../api/admin-provider";
+import { adminApiProvider, isAdminApiEnabled } from "../api/admin-provider";
 import {
   findConductReportFromMock,
   loadAllConductReportsFromMock,
   loadConductReportsFromMock,
 } from "./conduct-report-adapter";
 import { loadConductReportPageData, type ConductReportPageData } from "./conduct-report-service";
-import { adminApi } from "../api/admin-api";
 import { CONDUCT_REPORT_UPDATED_EVENT, conductReportModelFromRecord, type ConductReportModel } from "./conduct-report-model";
 
 export const conductReportBoardQueryKey = ["admin", "conduct-reports", "board"] as const;
@@ -78,7 +77,7 @@ export function useConductReportDetailQuery(reportId: string, initialModel?: Con
     queryKey,
     queryFn: async () => {
       const record = apiEnabled
-        ? await adminApi.getReport(reportId)
+        ? await adminApiProvider.read.getReport(reportId)
         : findConductReportFromMock(localStorage, reportId);
       const model = conductReportModelFromRecord(record);
       if (!model || model.id !== reportId) throw new Error("The Conduct Report was not found.");

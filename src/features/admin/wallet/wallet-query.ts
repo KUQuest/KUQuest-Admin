@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
-import { adminApi } from "../api/admin-api";
+import { adminApiProvider } from "../api/admin-provider";
 import { loadWalletDrawerDataAction } from "./wallet-actions";
 import type { WalletBoardPageData, WalletDataSource, WalletDrawerData } from "./wallet-service";
 import { mockAllWallets } from "./wallet-mock-data";
@@ -19,10 +19,10 @@ export function walletDrawerQueryKey(walletId: string, dataSource: WalletDataSou
 
 async function loadAllWalletRowsFromApi(): Promise<WalletBoardQueryData> {
   try {
-    const wallets = [] as Awaited<ReturnType<typeof adminApi.listWallets>>["items"];
+    const wallets = [] as Awaited<ReturnType<typeof adminApiProvider.read.listWallets>>["items"];
     let cursor: string | undefined;
     do {
-      const page = await adminApi.listWallets({ limit: 50, ...(cursor ? { cursor } : {}) });
+      const page = await adminApiProvider.read.listWallets({ limit: 50, ...(cursor ? { cursor } : {}) });
       wallets.push(...page.items);
       if (!page.nextCursor || page.nextCursor === cursor) break;
       cursor = page.nextCursor;

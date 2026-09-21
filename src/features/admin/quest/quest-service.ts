@@ -3,7 +3,7 @@ import type {
   AdminApiRequestOptions,
   AdminQuest,
 } from "../api/admin-api";
-import { adminApi } from "../api/admin-api";
+import { adminApiProvider } from "../api/admin-provider";
 import {
   questDetailViewFromApi,
   questFinanceViewFromApi,
@@ -42,7 +42,7 @@ async function resolveApiQuestId(questId: string, options: AdminApiRequestOption
 
   let cursor: string | undefined;
   do {
-    const page = await adminApi.listQuests({
+    const page = await adminApiProvider.read.listQuests({
       limit: 50,
       sort: "newest",
       ...(cursor ? { cursor } : {}),
@@ -67,7 +67,7 @@ export async function loadQuestBoardPageData(
   let cursor: string | undefined;
 
   do {
-    const page = await adminApi.listQuests({
+    const page = await adminApiProvider.read.listQuests({
       limit: 50,
       sort: "newest",
       ...(cursor ? { cursor } : {}),
@@ -99,8 +99,8 @@ export async function loadQuestDetailPageData(
   const options = apiRequestOptions(cookieHeader);
   const apiQuestId = await resolveApiQuestId(questId, options);
   const [detailResult, financeResult] = await Promise.allSettled([
-    adminApi.getQuest(apiQuestId, options),
-    adminApi.getQuestFinance(apiQuestId, options),
+    adminApiProvider.read.getQuest(apiQuestId, options),
+    adminApiProvider.read.getQuestFinance(apiQuestId, options),
   ]);
 
   if (detailResult.status === "rejected") {

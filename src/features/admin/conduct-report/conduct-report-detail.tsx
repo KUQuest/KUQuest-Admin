@@ -11,8 +11,8 @@ import { AdminRecordHeader } from "../../../components/admin/admin-record-header
 import { AdminRecordGrid } from "../../../components/admin/admin-record-grid";
 import { AdminStatusAlert } from "../../../components/admin/admin-status-alert";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import { adminApi, type ReportDecision } from "../api/admin-api";
-import { isAdminApiEnabled } from "../api/admin-provider";
+import type { ReportDecision } from "../api/admin-api";
+import { adminApiProvider, isAdminApiEnabled } from "../api/admin-provider";
 import { Button } from "../../../components/ui/button";
 import { Card, CardContent, CardHeader } from "../../../components/ui/card";
 import { AdminOverviewMeta } from "../../../components/admin/admin-overview-meta";
@@ -667,7 +667,7 @@ export function ConductReportDrawer({
 
     try {
       const updated = isAdminApiEnabled()
-        ? await adminApi.decideReport(reportModel.id, options)
+        ? await adminApiProvider.commands.decideReport(reportModel.id, options)
         : saveMockConductReportDecision(localStorage, reportModel.id, decision, reason);
       const updatedModel = conductReportModelFromRecord(updated);
       if (!updatedModel || updatedModel.id !== reportModel.id) {

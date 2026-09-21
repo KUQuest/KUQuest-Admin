@@ -1,5 +1,5 @@
 import type { AdminReportListQuery } from "../api/admin-api";
-import { adminApi } from "../api/admin-api";
+import { adminApiProvider } from "../api/admin-provider";
 import { adminApiRequestOptions } from "../api/admin-api-request-options";
 import { conductReportModelFromRecord, type ConductReportModel } from "./conduct-report-model";
 
@@ -21,7 +21,7 @@ export async function loadConductReportPageData(
   cursor?: string,
 ): Promise<ConductReportPageData> {
   const query: AdminReportListQuery = { limit: 50, ...(cursor ? { cursor } : {}) };
-  const page = await adminApi.listReports(
+  const page = await adminApiProvider.read.listReports(
     query,
     adminApiRequestOptions(cookieHeader),
   );
@@ -36,7 +36,7 @@ export async function loadConductReportDetailFromApi(
   reportId: string,
   cookieHeader?: string,
 ): Promise<ConductReportModel | null> {
-  const report = await adminApi.getReport(
+  const report = await adminApiProvider.read.getReport(
     reportId,
     adminApiRequestOptions(cookieHeader),
   );

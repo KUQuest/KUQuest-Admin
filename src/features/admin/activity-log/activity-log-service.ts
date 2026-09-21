@@ -1,5 +1,5 @@
 import type { AdminActivityListQuery } from "../api/admin-api";
-import { adminApi } from "../api/admin-api";
+import { adminApiProvider } from "../api/admin-provider";
 import { adminApiRequestOptions } from "../api/admin-api-request-options";
 import {
   activityLogEntryFromApi,
@@ -35,7 +35,7 @@ export async function loadActivityLogPageData(
     ...(filters.adminId ? { adminId: filters.adminId } : {}),
     ...(cursor ? { cursor } : {}),
   };
-  const page = await adminApi.listActivityLogs(query, adminApiRequestOptions(cookieHeader));
+  const page = await adminApiProvider.read.listActivityLogs(query, adminApiRequestOptions(cookieHeader));
   return {
     source: "api",
     items: page.items.map(activityLogEntryFromApi),

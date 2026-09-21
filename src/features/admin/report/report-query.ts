@@ -1,14 +1,14 @@
 import { useEffect, useMemo } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
-import { isAdminApiEnabled } from "../api/admin-provider";
+import { adminApiProvider, isAdminApiEnabled } from "../api/admin-provider";
 import {
   findReportCaseFromMock,
   loadAllReportCasesFromMock,
   loadReportCasesFromMock,
 } from "./report-adapter";
 import { loadReportCasePageData, type ReportCasePageData } from "./report-service";
-import { adminApi, type AdminEvidence } from "../api/admin-api";
+import type { AdminEvidence } from "../api/admin-api";
 import { REPORT_CASE_UPDATED_EVENT, reportCaseModelFromRecord, type ReportCaseModel } from "./report-model";
 
 export const reportBoardQueryKey = ["admin", "report-cases", "board"] as const;
@@ -82,7 +82,7 @@ export function useReportDetailQuery(reportId: string, initialModel?: ReportCase
     queryKey,
     queryFn: async () => {
       const record = apiEnabled
-        ? await adminApi.getReport(reportId)
+        ? await adminApiProvider.read.getReport(reportId)
         : findReportCaseFromMock(localStorage, reportId);
       const model = reportCaseModelFromRecord(record);
       if (!model || model.id !== reportId) throw new Error("The Report Case was not found.");
@@ -118,7 +118,7 @@ export function useReportEvidenceQuery(reference: string | null) {
     queryKey: reportEvidenceQueryKey(reference),
     queryFn: async () => {
       if (!reference) throw new Error("Evidence Reference was not provided.");
-      return apiEnabled ? adminApi.getEvidence(reference) : { evidenceRef: reference };
+      return apiEnabled ? adminApiProvider.read.getEvidence(reference) : { evidenceRef: reference };
     },
     enabled: Boolean(reference),
     staleTime: Infinity,

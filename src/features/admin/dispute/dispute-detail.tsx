@@ -28,8 +28,8 @@ import {
   adminRecordSection,
   adminRecordSideFacts,
 } from "../../../components/admin/admin-record-styles";
-import { adminApi, type AdminDisputeReasonCode, type DisputeResolution } from "../api/admin-api";
-import { isAdminApiEnabled } from "../api/admin-provider";
+import { type AdminDisputeReasonCode, type DisputeResolution } from "../api/admin-api";
+import { adminApiProvider, isAdminApiEnabled } from "../api/admin-provider";
 import { disputeRoutes, questRoutes } from "../admin-routes";
 import { ModerationCaseWorkspace, ModerationHistoryPanel } from "../moderation-case/moderation-case-workspace";
 import {
@@ -448,7 +448,7 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
       let updatedRecord: Record<string, unknown> | null;
       let resourceVersion: number | undefined;
       if (isAdminApiEnabled()) {
-        const result = await adminApi.resolveDispute(model.id, options);
+        const result = await adminApiProvider.commands.resolveDispute(model.id, options);
         updatedRecord = result.resourceSummary;
         resourceVersion = result.resourceVersion;
       } else {

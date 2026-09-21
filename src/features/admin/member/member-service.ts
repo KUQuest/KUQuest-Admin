@@ -2,7 +2,7 @@ import type {
   AdminMemberListQuery,
   AdminReportListQuery,
 } from "../api/admin-api";
-import { adminApi } from "../api/admin-api";
+import { adminApiProvider } from "../api/admin-provider";
 import { adminApiRequestOptions } from "../api/admin-api-request-options";
 import { loadAllWalletLedgerTransactions } from "../wallet/wallet-ledger-pages";
 import {
@@ -27,7 +27,7 @@ export async function loadMemberPageData(
     limit: 50,
     ...(cursor ? { cursor } : {}),
   };
-  const page = await adminApi.listMembers(query, adminApiRequestOptions(cookieHeader));
+  const page = await adminApiProvider.read.listMembers(query, adminApiRequestOptions(cookieHeader));
   return {
     source: "api",
     items: page.items.map(memberListModelFromApi),
@@ -40,10 +40,10 @@ export async function loadMemberDetailFromApi(
   cookieHeader?: string,
 ): Promise<MemberModel | null> {
   const options = adminApiRequestOptions(cookieHeader);
-  const detail = await adminApi.getMember(memberId, options);
+  const detail = await adminApiProvider.read.getMember(memberId, options);
   const [financeResult, reportsResult] = await Promise.allSettled([
-    adminApi.getMemberFinance(memberId, options),
-    adminApi.listReports(reportQuery(memberId), options),
+    adminApiProvider.read.getMemberFinance(memberId, options),
+    adminApiProvider.read.listReports(reportQuery(memberId), options),
   ]);
   const finance = financeResult.status === "fulfilled" ? financeResult.value : null;
   const reports = reportsResult.status === "fulfilled" ? reportsResult.value.items : [];

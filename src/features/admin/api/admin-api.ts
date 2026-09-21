@@ -41,6 +41,7 @@ export type AdminReadPort = Pick<
   | "getMember"
   | "getMemberFinance"
   | "listWallets"
+  | "listLedgerTransactions"
   | "getWallet"
   | "getWalletStatusHistory"
   | "verifyWalletProjection"

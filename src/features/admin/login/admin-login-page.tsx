@@ -11,7 +11,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 
-import { adminApi } from "../api/admin-api";
+import { adminApiProvider } from "../api/admin-provider";
 import { ADMIN_SESSION_KEY } from "../admin-auth";
 import { isAdminMockEnabled } from "../../../lib/auth/admin-auth-mode";
 import { ADMIN_MOCK_SESSION_COOKIE } from "../../../lib/auth/admin-session-policy";
@@ -137,7 +137,7 @@ export function AdminLoginPage() {
 
     setIsSubmitting(true);
     try {
-      const session = await adminApi.signInEmail(normalizedEmail, password);
+      const session = await adminApiProvider.auth.signInEmail(normalizedEmail, password);
       localStorage.setItem(
         ADMIN_SESSION_KEY,
         JSON.stringify({ email: session.user.email, signedInAt: new Date().toISOString() }),

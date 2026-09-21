@@ -18,9 +18,9 @@ import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { Badge as UiBadge, Button as UiButton, Card, CardContent, CardHeader, CardTitle } from "../../../components/ui";
 import { disputeRoutes, questRoutes } from "../admin-routes";
 import {
-  adminApi,
   type AdminQuestReasonCode,
 } from "../api/admin-api";
+import { adminApiProvider } from "../api/admin-provider";
 import { canHideQuest, isQuestTerminal, questStateLabel, type QuestState } from "../domain/rulebook";
 import {
   formatQuestDate,
@@ -740,7 +740,7 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
     setDisputeError(null);
     setDisputePending(true);
     try {
-      const result = await adminApi.openDispute(detail.id, { workerId });
+      const result = await adminApiProvider.commands.openDispute(detail.id, { workerId });
       setLinkedDisputeId(result.id);
       if (presentation === "drawer") closeDrawer();
     } catch (openError: unknown) {
@@ -761,11 +761,11 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
     try {
       if (dataSource === "api") {
         if (submission.command === "hide") {
-          await adminApi.hideQuest(detail.id, { ...options, reason: submission.reason, reasonCode: submission.reasonCode });
+          await adminApiProvider.commands.hideQuest(detail.id, { ...options, reason: submission.reason, reasonCode: submission.reasonCode });
         } else if (submission.command === "restore") {
-          await adminApi.restoreQuest(detail.id, { ...options, reason: submission.reason, reasonCode: submission.reasonCode });
+          await adminApiProvider.commands.restoreQuest(detail.id, { ...options, reason: submission.reason, reasonCode: submission.reasonCode });
         } else {
-          await adminApi.terminateQuest(detail.id, { ...options, reason: submission.reason, reasonCode: submission.reasonCode });
+          await adminApiProvider.commands.terminateQuest(detail.id, { ...options, reason: submission.reason, reasonCode: submission.reasonCode });
         }
       } else {
         const occurredAt = new Date().toISOString();

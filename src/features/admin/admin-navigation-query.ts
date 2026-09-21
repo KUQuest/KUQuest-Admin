@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { isAdminMockEnabled } from "../../lib/auth/admin-auth-mode";
-import { adminApi } from "./api/admin-api";
+import { adminApiProvider } from "./api/admin-provider";
 import { CONDUCT_REPORT_UPDATED_EVENT } from "./conduct-report/conduct-report-model";
 import { DISPUTE_CASE_UPDATED_EVENT } from "./dispute/dispute-model";
 import { PAYOUT_MOCK_UPDATED_EVENT } from "./payout/payout-mock-state";
@@ -29,7 +29,7 @@ export function useAdminNavigationCountsQuery() {
       if (mockEnabled) {
         return adminNavigationCountsFromMockData(loadDashboardData(localStorage).collections);
       }
-      return adminNavigationCountsFromOverview(await adminApi.getOverview());
+      return adminNavigationCountsFromOverview(await adminApiProvider.read.getOverview());
     },
     staleTime: 30_000,
     gcTime: Infinity,
