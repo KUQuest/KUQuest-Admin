@@ -2,22 +2,22 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { AdminPageHeader } from "../../../components/admin/admin-page-header";
-import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, TableCell, TableHead, TableRow, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
+import { AdminSortableHeader } from "../../../components/admin/admin-sortable-header";
+import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, TableCell, TableRow, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
 import { disputeRoutes, questRoutes } from "../admin-routes";
 import { pageCount, pageRange, pageRows } from "../data/board-pagination";
+import { useAdminBoardReset } from "../data/use-admin-board-reset";
 import { dateSortValue, sortBoardRows } from "../data/board-sorting";
 import type { DisputeCaseModel } from "./dispute-model";
 import type { DisputeCasePageData } from "./dispute-service";
 import { useDisputeBoardStore, type DisputeCaseSortKey, type DisputeCaseTab } from "./dispute-board-store";
 import { useDisputeBoardQuery } from "./dispute-query";
-import { adminBoardCount, adminBoardPagination, adminBoardTable, adminSortIndicator, adminTableSort } from "../../../components/admin/admin-record-styles";
-
-import type { BoardSortDirection } from "../data/board-sorting";
+import { adminBoardCount, adminBoardPagination, adminBoardTable } from "../../../components/admin/admin-record-styles";
 
 const tabs: Array<{ id: DisputeCaseTab; label: string }> = [
   { id: "open", label: "Open" },
@@ -104,9 +104,7 @@ export function DisputeCaseBoard({ initialData }: { initialData?: DisputeCasePag
   } = useDisputeBoardStore();
   const [paginationError, setPaginationError] = useState<string | null>(null);
 
-  useEffect(() => {
-    reset();
-  }, [reset]);
+  useAdminBoardReset(reset);
 
   const openDrawer = (id: string) => {
     router.push(disputeRoutes.detail(id), { scroll: false });
@@ -163,7 +161,7 @@ export function DisputeCaseBoard({ initialData }: { initialData?: DisputeCasePag
         <div className="overflow-x-auto" aria-label={translateText("Dispute Cases table")}>
           <Table className={`${adminBoardTable} !min-w-[980px]`}>
             <caption>{translateText("Dispute Cases")}</caption>
-            <thead><TableRow><SortableHeader label={translateText("Dispute Case")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Quest")} sortKey="quest" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Hirer")} sortKey="hirer" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Worker")} sortKey="worker" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Category")} sortKey="category" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Amount at risk")} sortKey="amount" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Opened")} sortKey="opened" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></TableRow></thead>
+            <thead><TableRow><AdminSortableHeader label={translateText("Dispute Case")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Quest")} sortKey="quest" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Hirer")} sortKey="hirer" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Worker")} sortKey="worker" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Category")} sortKey="category" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Amount at risk")} sortKey="amount" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Opened")} sortKey="opened" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></TableRow></thead>
             <tbody>
               {visibleModels.map((model) => {
                 const hirer = partyMemberForRole(model, "Hirer");
@@ -212,21 +210,4 @@ function MemberCell({
   href: string | null;
 }) {
   return <div>{href && id ? <Link className="text-admin-accent no-underline hover:underline hover:underline-offset-4" href={href} onClick={(event) => event.stopPropagation()}>{name}</Link> : <span>{name}</span>}<small>{id ?? "—"}</small></div>;
-}
-
-function SortableHeader({
-  label,
-  sortKey,
-  activeKey,
-  direction,
-  onSort,
-}: {
-  label: string;
-  sortKey: DisputeCaseSortKey;
-  activeKey: DisputeCaseSortKey | null;
-  direction: BoardSortDirection;
-  onSort: (key: DisputeCaseSortKey) => void;
-}) {
-  const active = activeKey === sortKey;
-  return <TableHead aria-sort={active ? direction : "none"}><button className={adminTableSort(active)} type="button" onClick={() => onSort(sortKey)}>{label}<span className={adminSortIndicator(active)} aria-hidden="true">{active ? (direction === "ascending" ? "↑" : "↓") : "↕"}</span></button></TableHead>;
 }

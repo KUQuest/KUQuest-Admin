@@ -2,14 +2,15 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { AdminPageHeader } from "../../../components/admin/admin-page-header";
-import { adminBoardCount, adminBoardPagination, adminBoardTable, adminSortIndicator, adminTableSort } from "../../../components/admin/admin-record-styles";
+import { AdminSortableHeader } from "../../../components/admin/admin-sortable-header";
+import { adminBoardCount, adminBoardPagination, adminBoardTable } from "../../../components/admin/admin-record-styles";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { Button as UiButton, Card, CardContent, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
 import { questRoutes } from "../admin-routes";
+import { useAdminBoardReset } from "../data/use-admin-board-reset";
 import {
   formatQuestDate,
   formatQuestMoney,
@@ -21,8 +22,6 @@ import {
   searchQuestRows,
   sortQuestRows,
   type QuestBoardTab,
-  type QuestSortDirection,
-  type QuestSortKey,
 } from "./quest-model";
 import { useQuestBoardStore } from "./quest-board-store";
 import { useQuestBoardQuery } from "./quest-query";
@@ -47,9 +46,7 @@ export function AdminQuestPage({ initialData, dataSource = "api" }: { initialDat
     reset,
   } = useQuestBoardStore();
 
-  useEffect(() => {
-    reset();
-  }, [reset]);
+  useAdminBoardReset(reset);
 
   if (isPending) return <AdminLoading message={translateText("Loading Quests…")} />;
   if (error || !data) {
@@ -79,13 +76,9 @@ export function AdminQuestPage({ initialData, dataSource = "api" }: { initialDat
           </TabsList>
         </Tabs>
         <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2"><label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text max-[600px]:basis-full max-[600px]:max-w-none" htmlFor="quest-search"><span className="visually-hidden">{translateText("Search Quests")}</span><Input className="h-9 min-h-9 px-3 py-1.5 text-sm" id="quest-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={translateText("Search Quests…")} autoComplete="off" /></label><span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span><PageSizeControls value={pageSize} translateText={translateText} onChange={setPageSize} /><span className="ml-auto text-sm text-admin-muted max-[600px]:hidden" aria-live="polite">{translateText("Showing")} {pageStart}–{pageEnd} {translateText("of")} {sortedRows.length} {translateText("results")}</span></div>
-        {!sortedRows.length ? <EmptyState title={translateText("No matching records")} description={translateText("There are no Quests in this view.")} action={<UiButton variant="outline" type="button" onClick={() => { setSearch(""); setTab("all"); }}>{translateText("Reset view")}</UiButton>} /> : <div className="overflow-x-auto" aria-label={translateText("Quests table")}><Table className={adminBoardTable}><caption>{translateText("Quests")}</caption><thead><tr><SortableHeader label={translateText("Quest")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Title")} sortKey="title" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Hirer")} sortKey="hirer" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Created At")} sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Quest Reward")} sortKey="reward" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr className="focus-visible:relative focus-visible:outline-3 focus-visible:outline-admin-accent focus-visible:outline-offset-[-3px]" data-quest-id={row.id} data-quest-drawer-trigger={row.displayId} key={row.id} tabIndex={0} aria-label={`${translateText("Open Quest")} ${row.title}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; router.push(questRoutes.detail(row.displayId)); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); router.push(questRoutes.detail(row.displayId)); } }}><td><Link className="row-record-button" data-quest-drawer-trigger={row.displayId} href={questRoutes.detail(row.displayId)} aria-label={`${translateText("Open Quest")} ${row.displayId}`}>{row.displayId}</Link></td><td><Link className="row-record-button block text-inherit no-underline visited:text-inherit hover:text-admin-accent" data-quest-drawer-trigger={row.displayId} href={questRoutes.detail(row.displayId)} aria-label={`${translateText("Open Quest")} ${row.title}`}><strong>{row.title}</strong><small>{translateText(row.participationLabel)} · {translateText(row.modeLabel)}</small></Link></td><td><strong>{row.hirerName}</strong><small>{row.hirerEmail}</small></td><td>{formatQuestDate(row.createdAt)}</td><td className="money">{formatQuestMoney(row.rewardSatang)}</td><td><span className={`badge ${questStatusClass(row.state)}`}>{translateText(row.stateLabel)}</span>{row.hiddenAt ? <span className="badge neutral ms-1 mt-[3px]">{translateText("Hidden")}</span> : null}</td></tr>)}</tbody></Table></div>}
+        {!sortedRows.length ? <EmptyState title={translateText("No matching records")} description={translateText("There are no Quests in this view.")} action={<UiButton variant="outline" type="button" onClick={() => { setSearch(""); setTab("all"); }}>{translateText("Reset view")}</UiButton>} /> : <div className="overflow-x-auto" aria-label={translateText("Quests table")}><Table className={adminBoardTable}><caption>{translateText("Quests")}</caption><thead><tr><AdminSortableHeader label={translateText("Quest")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Title")} sortKey="title" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Hirer")} sortKey="hirer" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Created At")} sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Quest Reward")} sortKey="reward" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr className="focus-visible:relative focus-visible:outline-3 focus-visible:outline-admin-accent focus-visible:outline-offset-[-3px]" data-quest-id={row.id} data-quest-drawer-trigger={row.displayId} key={row.id} tabIndex={0} aria-label={`${translateText("Open Quest")} ${row.title}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; router.push(questRoutes.detail(row.displayId)); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); router.push(questRoutes.detail(row.displayId)); } }}><td><Link className="row-record-button" data-quest-drawer-trigger={row.displayId} href={questRoutes.detail(row.displayId)} aria-label={`${translateText("Open Quest")} ${row.displayId}`}>{row.displayId}</Link></td><td><Link className="row-record-button block text-inherit no-underline visited:text-inherit hover:text-admin-accent" data-quest-drawer-trigger={row.displayId} href={questRoutes.detail(row.displayId)} aria-label={`${translateText("Open Quest")} ${row.title}`}><strong>{row.title}</strong><small>{translateText(row.participationLabel)} · {translateText(row.modeLabel)}</small></Link></td><td><strong>{row.hirerName}</strong><small>{row.hirerEmail}</small></td><td>{formatQuestDate(row.createdAt)}</td><td className="money">{formatQuestMoney(row.rewardSatang)}</td><td><span className={`badge ${questStatusClass(row.state)}`}>{translateText(row.stateLabel)}</span>{row.hiddenAt ? <span className="badge neutral ms-1 mt-[3px]">{translateText("Hidden")}</span> : null}</td></tr>)}</tbody></Table></div>}
         {sortedRows.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Quests pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className={adminBoardPagination} /> : null}
       </Card>
     </main>
   );
-}
-function SortableHeader({ label, sortKey, activeKey, direction, onSort }: { label: string; sortKey: QuestSortKey; activeKey: QuestSortKey; direction: QuestSortDirection; onSort: (key: QuestSortKey) => void }) {
-  const active = activeKey === sortKey;
-  return <th aria-sort={active ? direction : "none"}><button className={adminTableSort(active)} type="button" onClick={() => onSort(sortKey)}>{label}<span className={adminSortIndicator(active)} aria-hidden="true">{active && direction === "ascending" ? "↑" : "↓"}</span></button></th>;
 }

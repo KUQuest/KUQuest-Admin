@@ -3,14 +3,16 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { AdminPageHeader } from "../../../components/admin/admin-page-header";
+import { AdminSortableHeader } from "../../../components/admin/admin-sortable-header";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, TableHead, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
+import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
 import { memberRoutes } from "../admin-routes";
 import { pageCount, pageRange, pageRows } from "../data/board-pagination";
+import { useAdminBoardReset } from "../data/use-admin-board-reset";
 import {
   memberStatusClass,
   memberStatusText,
@@ -21,8 +23,8 @@ import {
 } from "./member-model";
 import { useMemberBoardStore, type MemberSortKey, type MemberTab } from "./member-board-store";
 import { useMemberBoardQuery } from "./member-query";
-import { adminBoardCount, adminBoardPagination, adminBoardTable, adminSortIndicator, adminTableSort } from "../../../components/admin/admin-record-styles";
-import { sortBoardRows, type BoardSortDirection } from "../data/board-sorting";
+import { adminBoardCount, adminBoardPagination, adminBoardTable } from "../../../components/admin/admin-record-styles";
+import { sortBoardRows } from "../data/board-sorting";
 
 const tabs = [
   { id: "all", label: "All" },
@@ -98,9 +100,7 @@ export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
   } = useMemberBoardStore();
   const [paginationError, setPaginationError] = useState<string | null>(null);
 
-  useEffect(() => {
-    reset();
-  }, [reset]);
+  useAdminBoardReset(reset);
 
   const openDrawer = (id: string) => {
     router.push(memberRoutes.detail(id), { scroll: false });
@@ -181,7 +181,7 @@ export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
         <div className="overflow-x-auto" role="region" aria-label={translateText("Members table")}>
           <Table className={`${adminBoardTable} member-table`}>
             <caption>{translateText("Members")}</caption>
-            <thead><tr><SortableHeader label={translateText("Member ID")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Member")} sortKey="member" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Student ID")} sortKey="studentId" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Academic profile")} sortKey="academicProfile" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Wallet status")} sortKey="walletStatus" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead>
+            <thead><tr><AdminSortableHeader label={translateText("Member ID")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Member")} sortKey="member" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Student ID")} sortKey="studentId" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Academic profile")} sortKey="academicProfile" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Wallet status")} sortKey="walletStatus" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead>
             <tbody>
               {visibleModels.map((model) => (
                 <tr
@@ -215,9 +215,4 @@ export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
       </Card>
     </main>
   );
-}
-
-function SortableHeader({ label, sortKey, activeKey, direction, onSort }: { label: string; sortKey: MemberSortKey; activeKey: MemberSortKey | null; direction: BoardSortDirection; onSort: (key: MemberSortKey) => void }) {
-  const active = activeKey === sortKey;
-  return <TableHead aria-sort={active ? direction : "none"}><button className={adminTableSort(active)} type="button" onClick={() => onSort(sortKey)}>{label}<span className={adminSortIndicator(active)} aria-hidden="true">{active ? (direction === "ascending" ? "↑" : "↓") : "↕"}</span></button></TableHead>;
 }

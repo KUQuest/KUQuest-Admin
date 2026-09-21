@@ -2,21 +2,23 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { AdminPageHeader } from "../../../components/admin/admin-page-header";
+import { AdminSortableHeader } from "../../../components/admin/admin-sortable-header";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, TableCell, TableHead, TableRow, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
+import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, TableCell, TableRow, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
 import { conductReportRoutes } from "../admin-routes";
 import { formatAdminTimestamp } from "../date-format";
 import { pageCount, pageRange, pageRows } from "../data/board-pagination";
-import { dateSortValue, sortBoardRows, type BoardSortDirection } from "../data/board-sorting";
+import { useAdminBoardReset } from "../data/use-admin-board-reset";
+import { dateSortValue, sortBoardRows } from "../data/board-sorting";
 import type { ConductReportModel } from "./conduct-report-model";
 import type { ConductReportPageData } from "./conduct-report-service";
 import { useConductReportBoardStore, type ConductReportSortKey, type ConductReportTab } from "./conduct-report-board-store";
 import { useConductReportBoardQuery } from "./conduct-report-query";
-import { adminBoardCount, adminBoardPagination, adminBoardTable, adminSortIndicator, adminTableSort } from "../../../components/admin/admin-record-styles";
+import { adminBoardCount, adminBoardPagination, adminBoardTable } from "../../../components/admin/admin-record-styles";
 
 const tabs: Array<{ id: ConductReportTab; label: string }> = [
   { id: "open", label: "Open" },
@@ -104,9 +106,7 @@ export function ConductReportBoard({
   const [paginationError, setPaginationError] = useState<string | null>(null);
   const router = useRouter();
 
-  useEffect(() => {
-    reset();
-  }, [reset]);
+  useAdminBoardReset(reset);
 
   const loadMore = async () => {
     if (!hasNextPage || isFetchingNextPage) return;
@@ -190,13 +190,13 @@ export function ConductReportBoard({
               <caption>{translateText("Conduct Reports")}</caption>
               <thead>
                 <TableRow>
-                  <SortableHeader label={translateText("Conduct Report")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} />
-                  <SortableHeader label={translateText("Quest")} sortKey="quest" activeKey={sortKey} direction={sortDirection} onSort={sortBy} />
-                  <SortableHeader label={translateText("Reported Member")} sortKey="reportedMember" activeKey={sortKey} direction={sortDirection} onSort={sortBy} />
-                  <SortableHeader label={translateText("Reported by")} sortKey="reporter" activeKey={sortKey} direction={sortDirection} onSort={sortBy} />
-                  <SortableHeader label={translateText("Reason")} sortKey="reason" activeKey={sortKey} direction={sortDirection} onSort={sortBy} />
-                  <SortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} />
-                  <SortableHeader label={translateText("Reported")} sortKey="reported" activeKey={sortKey} direction={sortDirection} onSort={sortBy} />
+                  <AdminSortableHeader label={translateText("Conduct Report")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} />
+                  <AdminSortableHeader label={translateText("Quest")} sortKey="quest" activeKey={sortKey} direction={sortDirection} onSort={sortBy} />
+                  <AdminSortableHeader label={translateText("Reported Member")} sortKey="reportedMember" activeKey={sortKey} direction={sortDirection} onSort={sortBy} />
+                  <AdminSortableHeader label={translateText("Reported by")} sortKey="reporter" activeKey={sortKey} direction={sortDirection} onSort={sortBy} />
+                  <AdminSortableHeader label={translateText("Reason")} sortKey="reason" activeKey={sortKey} direction={sortDirection} onSort={sortBy} />
+                  <AdminSortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} />
+                  <AdminSortableHeader label={translateText("Reported")} sortKey="reported" activeKey={sortKey} direction={sortDirection} onSort={sortBy} />
                 </TableRow>
               </thead>
               <tbody>
@@ -269,21 +269,4 @@ export function ConductReportBoard({
         </Card>
     </main>
   );
-}
-
-function SortableHeader({
-  label,
-  sortKey,
-  activeKey,
-  direction,
-  onSort,
-}: {
-  label: string;
-  sortKey: ConductReportSortKey;
-  activeKey: ConductReportSortKey | null;
-  direction: BoardSortDirection;
-  onSort: (key: ConductReportSortKey) => void;
-}) {
-  const active = activeKey === sortKey;
-  return <TableHead aria-sort={active ? direction : "none"}><button className={adminTableSort(active)} type="button" onClick={() => onSort(sortKey)}>{label}<span className={adminSortIndicator(active)} aria-hidden="true">{active ? (direction === "ascending" ? "↑" : "↓") : "↕"}</span></button></TableHead>;
 }

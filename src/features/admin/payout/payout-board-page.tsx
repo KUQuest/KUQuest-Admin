@@ -6,33 +6,18 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 
 import { AdminPageHeader } from "../../../components/admin/admin-page-header";
-import { adminBoardCount, adminBoardPagination, adminBoardTable, adminSortIndicator, adminTableSort } from "../../../components/admin/admin-record-styles";
+import { AdminSortableHeader } from "../../../components/admin/admin-sortable-header";
+import { adminBoardCount, adminBoardPagination, adminBoardTable } from "../../../components/admin/admin-record-styles";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { Button as UiButton, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
 import { payoutRoutes } from "../admin-routes";
-import { formatPayoutDate, formatPayoutMoney, pagePayoutRows, PAYOUT_BOARD_TABS, payoutMatchesTab, payoutPageCount, searchPayoutRows, sortPayoutRows, type PayoutBoardPageSize, type PayoutBoardRow, type PayoutBoardTab, type PayoutDetailView, type PayoutSortDirection, type PayoutSortKey } from "./payout-model";
+import { useAdminBoardReset } from "../data/use-admin-board-reset";
+import { formatPayoutDate, formatPayoutMoney, pagePayoutRows, PAYOUT_BOARD_TABS, payoutMatchesTab, payoutPageCount, searchPayoutRows, sortPayoutRows, type PayoutBoardPageSize, type PayoutBoardRow, type PayoutBoardTab, type PayoutDetailView } from "./payout-model";
 import type { PayoutBoardPageData, PayoutDataSource } from "./payout-service";
 import { applyMockPayoutOverrideToRow, PAYOUT_MOCK_UPDATED_EVENT, payoutMockOverrideFromDetail, readMockPayoutOverrides } from "./payout-mock-state";
 import { usePayoutBoardStore } from "./payout-board-store";
 import { usePayoutBoardQuery } from "./payout-query";
 import { PayoutStatusBadge as Badge } from "./payout-status-badge";
-
-function SortableHeader({
-  label,
-  sortKey,
-  activeKey,
-  direction,
-  onSort,
-}: {
-  label: string;
-  sortKey: PayoutSortKey;
-  activeKey: PayoutSortKey;
-  direction: PayoutSortDirection;
-  onSort: (key: PayoutSortKey) => void;
-}) {
-  const active = activeKey === sortKey;
-  return <th aria-sort={active ? direction : "none"}><button className={adminTableSort(active)} type="button" onClick={() => onSort(sortKey)}>{label}<span className={adminSortIndicator(active)} aria-hidden="true">{active && direction === "ascending" ? "↑" : "↓"}</span></button></th>;
-}
 
 export function AdminPayoutPage({
   initialData,
@@ -60,9 +45,7 @@ export function AdminPayoutPage({
     reset,
   } = usePayoutBoardStore();
 
-  useEffect(() => {
-    reset();
-  }, [reset]);
+  useAdminBoardReset(reset);
 
   const rows = useMemo(() => {
     const nextRows = boardData.allRows ?? boardData.rows;
@@ -125,7 +108,7 @@ export function AdminPayoutPage({
           <PageSizeControls value={pageSize} translateText={translateText} onChange={choosePageSize} />
           <span className="ml-auto text-sm text-admin-muted max-[600px]:hidden" aria-live="polite">{translateText("Showing")} {pageStart}–{pageEnd} {translateText("of")} {sortedRows.length} {translateText("results")}</span>
         </div>
-        {!sortedRows.length ? <EmptyState title={translateText("No matching Payouts")} description={translateText("There are no Payouts in this view.")} action={<UiButton variant="outline" type="button" onClick={() => { setQuery(""); setTab("all"); }}>{translateText("Reset view")}</UiButton>} /> : <div className="overflow-x-auto" aria-label={translateText("Payouts table")}><Table className={adminBoardTable}><caption>{translateText("Payouts")}</caption><thead><tr><SortableHeader label={translateText("Payout")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Student")} sortKey="student" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Created At")} sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Principal")} sortKey="amount" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr className="payout-row" data-payout-id={row.id} data-payout-drawer-trigger={row.id} key={row.id} tabIndex={0} aria-label={`${translateText("Open Payout")} ${row.id}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; void router.push(payoutRoutes.detail(row.id)); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); void router.push(payoutRoutes.detail(row.id)); } }}><td><Link className="row-record-button" data-payout-drawer-trigger={row.id} href={payoutRoutes.detail(row.id)} aria-label={`${translateText("Open Payout")} ${row.id}`}>{row.id}</Link></td><td><strong>{row.studentName}</strong><small>{row.studentEmail}</small></td><td>{formatPayoutDate(row.createdAt)}</td><td className="money">{formatPayoutMoney(row.principalSatang)}</td><td><Badge status={row.status} /></td></tr>)}</tbody></Table></div>}
+        {!sortedRows.length ? <EmptyState title={translateText("No matching Payouts")} description={translateText("There are no Payouts in this view.")} action={<UiButton variant="outline" type="button" onClick={() => { setQuery(""); setTab("all"); }}>{translateText("Reset view")}</UiButton>} /> : <div className="overflow-x-auto" aria-label={translateText("Payouts table")}><Table className={adminBoardTable}><caption>{translateText("Payouts")}</caption><thead><tr><AdminSortableHeader label={translateText("Payout")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Student")} sortKey="student" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Created At")} sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Principal")} sortKey="amount" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr className="payout-row" data-payout-id={row.id} data-payout-drawer-trigger={row.id} key={row.id} tabIndex={0} aria-label={`${translateText("Open Payout")} ${row.id}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; void router.push(payoutRoutes.detail(row.id)); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); void router.push(payoutRoutes.detail(row.id)); } }}><td><Link className="row-record-button" data-payout-drawer-trigger={row.id} href={payoutRoutes.detail(row.id)} aria-label={`${translateText("Open Payout")} ${row.id}`}>{row.id}</Link></td><td><strong>{row.studentName}</strong><small>{row.studentEmail}</small></td><td>{formatPayoutDate(row.createdAt)}</td><td className="money">{formatPayoutMoney(row.principalSatang)}</td><td><Badge status={row.status} /></td></tr>)}</tbody></Table></div>}
         {sortedRows.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPage} ariaLabel={translateText("Payouts pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className={adminBoardPagination} /> : null}
       </Card>
     </main>

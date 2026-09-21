@@ -11,8 +11,9 @@ import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminRecordHeader } from "../../../components/admin/admin-record-header";
 import { AdminStatusAlert } from "../../../components/admin/admin-status-alert";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
+import { AdminRecordFact as Fact } from "../../../components/admin/admin-record-fields";
 import { RecordStatusBar } from "../../../components/admin/record-status-bar";
-import { adminRecordCount, adminRecordDescription, adminRecordFact, adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
+import { adminRecordCount, adminRecordDescription, adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { Badge as UiBadge, Button as UiButton, Card, CardContent, CardHeader, CardTitle } from "../../../components/ui";
 import { disputeRoutes, questRoutes } from "../admin-routes";
@@ -163,11 +164,6 @@ function Section({ title, count, children, variant = "panel" }: { title: string;
       <CardContent flush className={isRecord ? "p-0" : "p-[18px]"}>{children}</CardContent>
     </Card>
   );
-}
-
-function Fact({ label, children }: { label: string; children: ReactNode }) {
-  const { translateText } = useAdminShell();
-  return <div className={adminRecordFact}><span>{translateText(label)}</span><strong>{children}</strong></div>;
 }
 
 function questCandidateCount(detail: QuestDetailView): number {
@@ -375,11 +371,11 @@ function QuestDetailContent({
       <div className={recordLayout ? "grid min-w-0 !grid-cols-1 gap-[18px]" : "contents"}>
       <Section title="Quest summary" variant={sectionVariant}>
         <div className={`${adminRecordFacts} !grid-cols-3 max-[700px]:!grid-cols-1`}>
-          <Fact label="Status"><Badge state={state} />{hidden ? <span className="badge neutral ms-1 mt-[3px]">{translateText("Hidden")}</span> : null}</Fact>
-          <Fact label="Quest Funding Total">{formatQuestMoney(fundingTotal)}</Fact>
-          <Fact label="Participant mode">{translateText(detail.participation === "GROUP" ? "Team" : "Solo")}</Fact>
-          <Fact label="Candidate mode">{translateText(detail.mode === "FIRST_COME_FIRST_SERVED" ? "First come, first served" : "Candidate")}</Fact>
-          <Fact label="Quest ID">{questDisplayIdFor(detail.id, detail.displayId)}</Fact>
+          <Fact label={translateText("Status")}><Badge state={state} />{hidden ? <span className="badge neutral ms-1 mt-[3px]">{translateText("Hidden")}</span> : null}</Fact>
+          <Fact label={translateText("Quest Funding Total")}>{formatQuestMoney(fundingTotal)}</Fact>
+          <Fact label={translateText("Participant mode")}>{translateText(detail.participation === "GROUP" ? "Team" : "Solo")}</Fact>
+          <Fact label={translateText("Candidate mode")}>{translateText(detail.mode === "FIRST_COME_FIRST_SERVED" ? "First come, first served" : "Candidate")}</Fact>
+          <Fact label={translateText("Quest ID")}>{questDisplayIdFor(detail.id, detail.displayId)}</Fact>
         </div>
         <div className="quest-description-block mt-[18px] border-t border-admin-border pt-[18px]">
           <h3 className={`${adminRecordHeading} mb-[10px]`}>{translateText("Quest description")}</h3>
@@ -406,8 +402,8 @@ function QuestDetailContent({
           <div className="quest-summary-context-section min-w-0 [&>p:not(.audit-note):not(.field-error)]:m-0 [&>p:not(.audit-note):not(.field-error)]:text-admin-muted">
             <h3 className={`${adminRecordHeading} mb-[10px]`}>{translateText("Schedule and location")}</h3>
             <div className={adminRecordFacts}>
-              <Fact label="Starts">{formatQuestDate(detail.startTime)}</Fact>
-              <Fact label="Due">{formatQuestDate(detail.dueAt)}</Fact>
+              <Fact label={translateText("Starts")}>{formatQuestDate(detail.startTime)}</Fact>
+              <Fact label={translateText("Due")}>{formatQuestDate(detail.dueAt)}</Fact>
             </div>
             <div className="mt-4 grid gap-1">
               <span className="block text-xs font-semibold leading-[1.4] text-admin-muted">{translateText("Location")}</span>
@@ -591,8 +587,8 @@ function QuestDetailContent({
 
           <Section title="Schedule and location" variant={sectionVariant}>
             <div className={adminRecordFacts}>
-              <Fact label="Starts">{formatQuestDate(detail.startTime)}</Fact>
-              <Fact label="Due">{formatQuestDate(detail.dueAt)}</Fact>
+              <Fact label={translateText("Starts")}>{formatQuestDate(detail.startTime)}</Fact>
+              <Fact label={translateText("Due")}>{formatQuestDate(detail.dueAt)}</Fact>
             </div>
             <div className="mt-4 grid gap-1">
               <span className="block text-xs font-semibold leading-[1.4] text-admin-muted">{translateText("Location")}</span>

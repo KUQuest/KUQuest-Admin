@@ -1,12 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useMemo, useState, type FormEvent } from "react";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminPageHeader } from "../../../components/admin/admin-page-header";
+import { AdminSortableHeader } from "../../../components/admin/admin-sortable-header";
 import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table } from "../../../components/ui";
-import { adminBoardCount, adminBoardPagination, adminBoardTable, adminRecordFact, adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSection, adminSortIndicator, adminTableSort } from "../../../components/admin/admin-record-styles";
+import { adminBoardCount, adminBoardPagination, adminBoardTable, adminRecordFact, adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
 import { isAdminMockEnabled } from "../../../lib/auth/admin-auth-mode";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import {
@@ -23,7 +24,8 @@ import {
   type ActivityLogEntry,
 } from "./activity-log-model";
 import { pageCount, pageRange, pageRows } from "../data/board-pagination";
-import { sortBoardRows, type BoardSortDirection } from "../data/board-sorting";
+import { useAdminBoardReset } from "../data/use-admin-board-reset";
+import { sortBoardRows } from "../data/board-sorting";
 import type { ActivityLogPageData } from "./activity-log-service";
 import { useActivityLogBoardStore, type ActivityLogSortKey } from "./activity-log-board-store";
 import { useActivityLogQuery } from "./activity-log-query";
@@ -163,9 +165,7 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
   const [paginationError, setPaginationError] = useState<string | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<ActivityLogEntry | null>(null);
   const loading = query.isPending || query.isFetching;
-  useEffect(() => {
-    reset();
-  }, [reset]);
+  useAdminBoardReset(reset);
   const closeDetails = useCallback(() => setSelectedEntry(null), []);
   const openLinkedDetail = useCallback((entry: ActivityLogEntry) => {
     const href = activityTargetHref(entry.resourceType, entry.resourceId);
@@ -259,7 +259,7 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
         {loadError ? <div className="mb-3 flex items-center gap-2.5 rounded-admin-sm border border-admin-danger bg-admin-danger-soft px-3 py-2.5 text-sm text-admin-danger" role="alert"><strong>{translateText("Activity log is not available")}</strong><p className="m-0 flex-1">{translateText(loadError)}</p><Button variant="outline" type="button" onClick={retry}>{translateText("Try again")}</Button></div> : null}
         {!loadError && loading && !entries.length ? <EmptyState className="border-0 rounded-none p-[60px_24px]" title={translateText("Loading activity")} description={translateText("Loading activity records.")} /> : null}
         {!loadError && !loading && !visibleEntries.length ? <EmptyState className="border-0 rounded-none p-[60px_24px]" title={translateText("No activity recorded")} description={translateText("Administrative activity will appear here as actions are taken.")} /> : null}
-        {!loadError && visibleEntries.length ? <div className="overflow-x-auto"><Table className={`${adminBoardTable} min-w-[980px]`}><caption>{translateText("Activity Log records")}</caption><thead><tr><SortableHeader label={translateText("Timestamp")} sortKey="timestamp" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Actor")} sortKey="actor" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Activity")} sortKey="activity" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Target")} sortKey="target" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Reason")} sortKey="reason" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><th className="align-top" scope="col">{translateText("Details")}</th></tr></thead><tbody>{visibleEntries.map((entry) => {
+        {!loadError && visibleEntries.length ? <div className="overflow-x-auto"><Table className={`${adminBoardTable} min-w-[980px]`}><caption>{translateText("Activity Log records")}</caption><thead><tr><AdminSortableHeader label={translateText("Timestamp")} sortKey="timestamp" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Actor")} sortKey="actor" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Activity")} sortKey="activity" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Target")} sortKey="target" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Reason")} sortKey="reason" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><th className="align-top" scope="col">{translateText("Details")}</th></tr></thead><tbody>{visibleEntries.map((entry) => {
           const target = activityLogTargetLabel(entry);
           return <tr key={entry.id} tabIndex={0} aria-label={`${translateText("View activity details")}: ${translateText(activityLogActionLabel(entry.action))}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; setSelectedEntry(entry); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedEntry(entry); } }}><td>{entry.createdAt ? <time className="grid gap-0.5 whitespace-nowrap tabular-nums" dateTime={entry.createdAt}>{formatActivityLogTimestamp(entry.createdAt)}<small className="text-xs font-normal text-admin-muted">{formatActivityLogRelativeTime(entry.createdAt)}</small></time> : translateText("Not provided")}</td><td aria-label={`${entry.adminName || translateText("Not provided")} · ${entry.adminId || translateText("Not provided")}`}><span className="grid min-w-[150px] grid-cols-[auto_minmax(0,1fr)] items-center gap-2"><span className="avatar" aria-hidden="true">{entry.adminInitials}</span><span className="grid gap-0.5"><strong>{entry.adminName || translateText("Not provided")}</strong><small className="text-xs font-normal text-admin-muted">{entry.adminId || translateText("Not provided")}</small></span></span></td><td><strong className="break-words">{translateText(activityLogActionLabel(entry.action))}</strong></td><td><span className="block min-w-0 break-words text-admin-text">{translateText(displayValue(target))}</span></td><td>{translateText(activityLogReasonLabel(entry.reasonCode))}</td><td><Button variant="outline" size="xs" className="whitespace-nowrap" type="button" onClick={() => setSelectedEntry(entry)} aria-label={translateText("View activity details")}>{translateText("View")}</Button></td></tr>;
         })}</tbody></Table></div> : null}
@@ -270,9 +270,4 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
       {selectedEntry ? <ActivityLogDetail entry={selectedEntry} onClose={closeDetails} onOpenTarget={openLinkedDetail} /> : null}
     </main>
   );
-}
-
-function SortableHeader({ label, sortKey, activeKey, direction, onSort }: { label: string; sortKey: ActivityLogSortKey; activeKey: ActivityLogSortKey | null; direction: BoardSortDirection; onSort: (key: ActivityLogSortKey) => void }) {
-  const active = activeKey === sortKey;
-  return <th className="align-top" scope="col" aria-sort={active ? direction : "none"}><button className={adminTableSort(active)} type="button" onClick={() => onSort(sortKey)}>{label}<span className={adminSortIndicator(active)} aria-hidden="true">{active ? (direction === "ascending" ? "↑" : "↓") : "↕"}</span></button></th>;
 }

@@ -17,8 +17,9 @@ import { AdminActionReceipt, AdminActionSummary } from "../../../components/admi
 import { AdminRecordHeader } from "../../../components/admin/admin-record-header";
 import { AdminStatusAlert } from "../../../components/admin/admin-status-alert";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
+import { AdminRecordFact as Fact } from "../../../components/admin/admin-record-fields";
 import { RecordStatusBar } from "../../../components/admin/record-status-bar";
-import { adminRecordFact, adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
+import { adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { Button as UiButton, Card, CardHeader, type ButtonSize } from "../../../components/ui";
 import { payoutRoutes } from "../admin-routes";
@@ -91,10 +92,6 @@ function Section({ title, children, className }: { title: string; children: Reac
       {children}
     </Card>
   );
-}
-
-function Fact({ label, children }: { label: string; children: ReactNode }) {
-  return <div className={adminRecordFact}><span>{label}</span><strong>{children}</strong></div>;
 }
 
 function PayoutDecisionActions({

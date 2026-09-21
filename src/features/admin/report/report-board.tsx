@@ -1,22 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { AdminPageHeader } from "../../../components/admin/admin-page-header";
-import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, TableCell, TableHead, TableRow, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
+import { AdminSortableHeader } from "../../../components/admin/admin-sortable-header";
+import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, TableCell, TableRow, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
 import { reportRoutes } from "../admin-routes";
 import { formatAdminTimestamp } from "../date-format";
 import { pageCount, pageRange, pageRows } from "../data/board-pagination";
-import { dateSortValue, sortBoardRows, type BoardSortDirection } from "../data/board-sorting";
+import { useAdminBoardReset } from "../data/use-admin-board-reset";
+import { dateSortValue, sortBoardRows } from "../data/board-sorting";
 import type { ReportCaseModel } from "./report-model";
 import type { ReportCasePageData } from "./report-service";
 import { useReportBoardStore, type ReportCaseSortKey, type ReportCaseTab } from "./report-board-store";
 import { useReportBoardQuery } from "./report-query";
-import { adminBoardCount, adminBoardPagination, adminBoardTable, adminSortIndicator, adminTableSort } from "../../../components/admin/admin-record-styles";
+import { adminBoardCount, adminBoardPagination, adminBoardTable } from "../../../components/admin/admin-record-styles";
 
 const tabs: Array<{ id: ReportCaseTab; label: string }> = [
   { id: "open", label: "Open" },
@@ -101,9 +103,7 @@ export function ReportCaseBoard({ initialData }: { initialData?: ReportCasePageD
   } = useReportBoardStore();
   const [paginationError, setPaginationError] = useState<string | null>(null);
 
-  useEffect(() => {
-    reset();
-  }, [reset]);
+  useAdminBoardReset(reset);
 
   const openDrawer = (id: string) => {
     router.push(reportRoutes.detail(id), { scroll: false });
@@ -160,7 +160,7 @@ export function ReportCaseBoard({ initialData }: { initialData?: ReportCasePageD
           <div className="overflow-x-auto" aria-label={translateText("Report Cases table")}>
             <Table className={`${adminBoardTable} !min-w-[760px]`}>
               <caption>{translateText("Report Cases")}</caption>
-            <thead><TableRow><SortableHeader label={translateText("Report Case")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Source")} sortKey="source" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Reported Member")} sortKey="reportedMember" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Reported by")} sortKey="reporter" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Report type")} sortKey="type" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><SortableHeader label={translateText("Reported")} sortKey="reported" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></TableRow></thead>
+            <thead><TableRow><AdminSortableHeader label={translateText("Report Case")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Source")} sortKey="source" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Reported Member")} sortKey="reportedMember" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Reported by")} sortKey="reporter" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Report type")} sortKey="type" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Reported")} sortKey="reported" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></TableRow></thead>
             <tbody>
               {visibleModels.map((model) => {
                   return <TableRow className="focus-visible:outline-2 focus-visible:outline-admin-accent focus-visible:outline-offset-[-2px]" key={model.id} data-report-id={model.id} tabIndex={0} aria-label={`${translateText("Open Report Case")} ${model.id}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; openDrawer(model.id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openDrawer(model.id); } }}>
@@ -190,21 +190,4 @@ export function ReportCaseBoard({ initialData }: { initialData?: ReportCasePageD
         </Card>
       </main>
   );
-}
-
-function SortableHeader({
-  label,
-  sortKey,
-  activeKey,
-  direction,
-  onSort,
-}: {
-  label: string;
-  sortKey: ReportCaseSortKey;
-  activeKey: ReportCaseSortKey | null;
-  direction: BoardSortDirection;
-  onSort: (key: ReportCaseSortKey) => void;
-}) {
-  const active = activeKey === sortKey;
-  return <TableHead aria-sort={active ? direction : "none"}><button className={adminTableSort(active)} type="button" onClick={() => onSort(sortKey)}>{label}<span className={adminSortIndicator(active)} aria-hidden="true">{active ? (direction === "ascending" ? "↑" : "↓") : "↕"}</span></button></TableHead>;
 }
