@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
 import { isAdminApiEnabled } from "../api/admin-provider";
+import { replaceInfiniteItem } from "../data/query-data";
 import { loadAllMembersFromMock, loadMembersFromMock } from "./member-adapter";
 import { MEMBER_UPDATED_EVENT } from "./member-events";
 import { findMemberFromMock } from "./member-adapter";
@@ -50,15 +51,7 @@ export function useMemberBoardQuery(initialData?: MemberPageData) {
     const updateMember = (event: Event) => {
       const model = (event as CustomEvent<MemberModel>).detail;
       if (!model) return;
-      queryClient.setQueryData<InfiniteData<MemberPageData, string | null>>(memberBoardQueryKey, (current) => current
-        ? {
-            ...current,
-            pages: current.pages.map((page) => ({
-              ...page,
-              items: page.items.map((item) => item.id === model.id ? model : item),
-            })),
-          }
-        : current);
+      queryClient.setQueryData<InfiniteData<MemberPageData, string | null>>(memberBoardQueryKey, (current) => replaceInfiniteItem(current, model));
     };
     window.addEventListener(MEMBER_UPDATED_EVENT, updateMember);
     return () => window.removeEventListener(MEMBER_UPDATED_EVENT, updateMember);

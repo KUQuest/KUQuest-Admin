@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
 import { adminApiProvider, isAdminApiEnabled } from "../api/admin-provider";
+import { replaceInfiniteItem } from "../data/query-data";
 import {
   findReportCaseFromMock,
   loadAllReportCasesFromMock,
@@ -57,15 +58,7 @@ export function useReportBoardQuery(initialData?: ReportCasePageData) {
     const updateRecord = (event: Event) => {
       const model = (event as CustomEvent<ReportCaseModel>).detail;
       if (!model) return;
-      queryClient.setQueryData<InfiniteData<ReportCasePageData, string | null>>(reportBoardQueryKey, (current) => current
-        ? {
-            ...current,
-            pages: current.pages.map((page) => ({
-              ...page,
-              items: page.items.map((item) => item.id === model.id ? model : item),
-            })),
-          }
-        : current);
+      queryClient.setQueryData<InfiniteData<ReportCasePageData, string | null>>(reportBoardQueryKey, (current) => replaceInfiniteItem(current, model));
     };
     window.addEventListener(REPORT_CASE_UPDATED_EVENT, updateRecord);
     return () => window.removeEventListener(REPORT_CASE_UPDATED_EVENT, updateRecord);

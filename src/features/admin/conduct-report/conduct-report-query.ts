@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
 import { adminApiProvider, isAdminApiEnabled } from "../api/admin-provider";
+import { replaceInfiniteItem } from "../data/query-data";
 import {
   findConductReportFromMock,
   loadAllConductReportsFromMock,
@@ -52,15 +53,7 @@ export function useConductReportBoardQuery(initialData?: ConductReportPageData) 
     const updateRecord = (event: Event) => {
       const model = (event as CustomEvent<ConductReportModel>).detail;
       if (!model) return;
-      queryClient.setQueryData<InfiniteData<ConductReportPageData, string | null>>(conductReportBoardQueryKey, (current) => current
-        ? {
-            ...current,
-            pages: current.pages.map((page) => ({
-              ...page,
-              items: page.items.map((item) => item.id === model.id ? model : item),
-            })),
-          }
-        : current);
+      queryClient.setQueryData<InfiniteData<ConductReportPageData, string | null>>(conductReportBoardQueryKey, (current) => replaceInfiniteItem(current, model));
     };
     window.addEventListener(CONDUCT_REPORT_UPDATED_EVENT, updateRecord);
     return () => window.removeEventListener(CONDUCT_REPORT_UPDATED_EVENT, updateRecord);

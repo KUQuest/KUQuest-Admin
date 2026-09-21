@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
 import { adminApiProvider, isAdminApiEnabled } from "../api/admin-provider";
+import { replaceInfiniteItem } from "../data/query-data";
 import {
   findDisputeCaseFromMock,
   loadAllDisputeCasesFromMock,
@@ -59,15 +60,7 @@ export function useDisputeBoardQuery(initialData?: DisputeCasePageData) {
     const updateRecord = (event: Event) => {
       const model = (event as CustomEvent<DisputeCaseModel>).detail;
       if (!model) return;
-      queryClient.setQueryData<InfiniteData<DisputeCasePageData, string | null>>(disputeBoardQueryKey, (current) => current
-        ? {
-            ...current,
-            pages: current.pages.map((page) => ({
-              ...page,
-              items: page.items.map((item) => item.id === model.id ? model : item),
-            })),
-          }
-        : current);
+      queryClient.setQueryData<InfiniteData<DisputeCasePageData, string | null>>(disputeBoardQueryKey, (current) => replaceInfiniteItem(current, model));
     };
     window.addEventListener(DISPUTE_CASE_UPDATED_EVENT, updateRecord);
     return () => window.removeEventListener(DISPUTE_CASE_UPDATED_EVENT, updateRecord);
