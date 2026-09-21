@@ -17,7 +17,9 @@ export function isAdminSearchResultKind(value: string | null): value is AdminSea
 }
 
 export function searchResultDescriptor(kind: AdminSearchResultKind) {
-  return ADMIN_SEARCH_RESULT_DESCRIPTORS.find((descriptor) => descriptor.kind === kind)!;
+  const descriptor = ADMIN_SEARCH_RESULT_DESCRIPTORS.find((item) => item.kind === kind);
+  if (!descriptor) throw new Error(`Unknown admin search result kind: ${kind}`);
+  return descriptor;
 }
 
 export function searchResultLabel(kind: AdminSearchResultKind): string {
