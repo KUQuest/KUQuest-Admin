@@ -27,7 +27,6 @@ function decisionDialogTitle(
     ? translateText("Confirm violation")
     : translateText("Close report");
 }
-
 function decisionDialogDescription(
   choice: ConductReportDecisionChoice | null,
   modelId: string,
@@ -132,4 +131,3 @@ export function ConductReportDecisionDialog({
     </AdminModalPortal>
   );
 }
-
