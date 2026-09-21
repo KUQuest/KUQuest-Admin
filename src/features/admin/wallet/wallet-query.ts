@@ -18,15 +18,19 @@ export function walletDrawerQueryKey(walletId: string, dataSource: WalletDataSou
 }
 
 async function loadAllWalletRowsFromApi(): Promise<WalletBoardQueryData> {
-  const wallets = [] as Awaited<ReturnType<typeof adminApi.listWallets>>["items"];
-  let cursor: string | undefined;
-  do {
-    const page = await adminApi.listWallets({ limit: 50, ...(cursor ? { cursor } : {}) });
-    wallets.push(...page.items);
-    if (!page.nextCursor || page.nextCursor === cursor) break;
-    cursor = page.nextCursor;
-  } while (cursor);
-  return { rows: walletRowsFromApi(wallets) };
+  try {
+    const wallets = [] as Awaited<ReturnType<typeof adminApi.listWallets>>["items"];
+    let cursor: string | undefined;
+    do {
+      const page = await adminApi.listWallets({ limit: 50, ...(cursor ? { cursor } : {}) });
+      wallets.push(...page.items);
+      if (!page.nextCursor || page.nextCursor === cursor) break;
+      cursor = page.nextCursor;
+    } while (cursor);
+    return { rows: walletRowsFromApi(wallets) };
+  } catch {
+    throw new Error("Some Wallet records could not be loaded.");
+  }
 }
 
 export function useWalletBoardQuery(initialData: WalletBoardPageData) {
@@ -46,6 +50,7 @@ export function useWalletBoardQuery(initialData: WalletBoardPageData) {
     gcTime: Infinity,
     refetchOnMount: dataSource === "api",
     refetchOnWindowFocus: false,
+    retry: false,
   });
 }
 
