@@ -7,7 +7,6 @@ export type AdminTopUpListQuery = {
   limit?: number;
   cursor?: string;
 };
-
 export type AdminPayoutListQuery = {
   status?: AdminApiPayoutStatus;
   limit?: number;
@@ -104,4 +103,3 @@ export type AdminLedgerTransactionsQuery = {
   limit?: number;
   cursor?: string;
 };
-

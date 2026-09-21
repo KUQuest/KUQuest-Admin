@@ -28,7 +28,6 @@ export type AdminPayout = {
   updatedAt: string;
   version: number;
 };
-
 export type AdminPayoutHistoryEntry = {
   id: string;
   fromStatus: AdminApiPayoutStatus | null;
@@ -222,4 +221,3 @@ export type AdminTopUpProviderEvent = {
 export type AdminTopUpProviderEventResult = {
   event: AdminTopUpProviderEvent;
 };
-

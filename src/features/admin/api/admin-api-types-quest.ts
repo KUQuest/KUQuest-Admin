@@ -22,7 +22,6 @@ export type AdminQuestMember = {
   lastName: string;
   email: string;
 };
-
 export type AdminQuest = {
   id: string;
   displayId?: string;
@@ -203,4 +202,3 @@ export type AdminQuestFinance = {
     }>;
   }>;
 };
-

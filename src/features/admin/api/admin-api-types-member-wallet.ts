@@ -6,7 +6,6 @@ export type AdminMemberWalletSummary = {
   earningsBalanceSatang: number;
   totalBalanceSatang: number;
 };
-
 export type AdminMemberListItem = {
   id: string;
   email: string;
@@ -147,4 +146,3 @@ export type AdminWalletVerification = {
   ledger: AdminWalletBalanceSnapshot;
   activityCountMatches: boolean;
 };
-
