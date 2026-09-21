@@ -496,6 +496,8 @@ test.describe("shared Admin shell", () => {
     expect(surfaceBox?.y).toBeGreaterThan((dialogBox?.y ?? 0) + 10);
     await expect(dialog).toHaveCSS("display", "grid");
     await expect(dialog).toHaveCSS("background-color", "rgba(25, 27, 28, 0.38)");
+    await expect(surface).toHaveCSS("background-color", "rgb(255, 255, 255)");
+    await expect(surface).toHaveCSS("border-radius", "14px");
   });
 
   test("keeps table record links visually neutral", async ({ page }) => {
