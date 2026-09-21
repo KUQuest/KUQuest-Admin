@@ -1,9 +1,9 @@
 import { useEffect, useMemo } from "react";
-import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { replaceInfiniteItem } from "../data/query-data";
-import { loadAllMembersFromMock, loadMembersFromMock } from "./member-adapter";
+import { loadAllMembersFromMock, loadMembersFromMock, recordMemberViolation, removeMemberPenalty, saveMemberNote } from "./member-adapter";
 import { MEMBER_UPDATED_EVENT } from "./member-events";
 import { findMemberFromMock } from "./member-adapter";
 import type { MemberModel, MemberPageData } from "./member-model";
@@ -99,4 +99,40 @@ export function useMemberDetailQuery(memberId: string, initialModel?: MemberMode
     data: query.data ?? null,
     queryKey,
   };
+}
+
+export type MemberActionMutationInput =
+  | { type: "record-violation"; memberId: string; reason: string; note: string }
+  | { type: "remove-penalty"; memberId: string; reason: string }
+  | { type: "save-note"; memberId: string; note: string };
+
+export function useMemberActionMutation() {
+  const queryClient = useQueryClient();
+  const apiEnabled = isAdminApiEnabled();
+  return useMutation({
+    mutationKey: ["admin", "members", "action"],
+    mutationFn: async (input: MemberActionMutationInput): Promise<MemberModel> => {
+      if (apiEnabled) throw new Error(input.type === "save-note"
+        ? "Admin notes are not available from the Admin API."
+        : "Member penalty commands are not available from the Admin API.");
+
+      if (input.type === "record-violation") {
+        const result = recordMemberViolation(localStorage, input.memberId, input.reason, input.note);
+        if (!result) throw new Error("The Member penalty could not be saved.");
+        return result.model;
+      }
+      if (input.type === "remove-penalty") {
+        const result = removeMemberPenalty(localStorage, input.memberId, input.reason);
+        if (!result) throw new Error("The Member penalty could not be removed.");
+        return result.model;
+      }
+      const model = saveMemberNote(localStorage, input.memberId, input.note);
+      if (!model) throw new Error("The Admin note could not be saved.");
+      return model;
+    },
+    onSuccess: (model) => {
+      queryClient.setQueryData(memberDetailQueryKey(model.id), model);
+      queryClient.setQueryData<InfiniteData<MemberPageData, string | null>>(memberBoardQueryKey, (current) => replaceInfiniteItem(current, model));
+    },
+  });
 }

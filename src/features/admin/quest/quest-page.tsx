@@ -16,7 +16,6 @@ import { adminRecordCount, adminRecordDescription, adminRecordFacts, adminRecord
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { Badge as UiBadge, Button as UiButton, Card, CardContent, CardHeader, CardTitle } from "../../../components/ui";
 import { disputeRoutes, questRoutes } from "../admin-routes";
-import { adminApiProvider } from "../api/admin-provider";
 import { canHideQuest, isQuestTerminal, type QuestState } from "../domain/rulebook";
 import {
   formatQuestDate,
@@ -29,14 +28,11 @@ import {
 } from "./quest-model";
 import type { QuestDetailPageData } from "./quest-service";
 import {
-  applyMockQuestCommand,
   applyMockQuestOverride,
-  notifyMockQuestStateChange,
-  questMockOverrideFromDetail,
   readMockQuestOverride,
-  saveMockQuestOverride,
 } from "./quest-mock-state";
 import { QuestCommandDialog, type QuestCommand, type QuestCommandSubmission } from "./quest-command-dialog";
+import { useQuestCommandMutation, useQuestOpenDisputeMutation } from "./quest-query";
 
 type QuestPresentation = "page" | "drawer";
 
@@ -616,15 +612,15 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
   const [disputeLookupError, setDisputeLookupError] = useState<string | null>(initialData.disputeLookupError);
   const [command, setCommand] = useState<QuestCommand | null>(null);
   const [commandError, setCommandError] = useState<string | null>(null);
-  const [commandPending, setCommandPending] = useState(false);
   const [disputeError, setDisputeError] = useState<string | null>(null);
-  const [disputePending, setDisputePending] = useState(false);
   const [actionReceipt, setActionReceipt] = useState<{
     action: string;
     status: string;
     reason: string;
     occurredAt: string;
   } | null>(null);
+  const commandMutation = useQuestCommandMutation();
+  const openDisputeMutation = useQuestOpenDisputeMutation();
 
   useEffect(() => {
     const persistedDetail = dataSource === "mock" && typeof window !== "undefined"
@@ -647,67 +643,49 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
   }
 
   async function openDispute(workerId: string) {
-    if (linkedDisputeId || disputeLookupError || disputePending || detail.state !== "QUEST_FAILED") return;
+    if (linkedDisputeId || disputeLookupError || openDisputeMutation.isPending || detail.state !== "QUEST_FAILED") return;
     if (!detail.assignments.some((assignment) => assignment.worker.id === workerId)) return;
     const worker = detail.assignments.find((assignment) => assignment.worker.id === workerId)?.worker;
     if (!worker || !window.confirm(`Open a Dispute Case for ${questMemberName(worker)}?`)) return;
 
     setDisputeError(null);
-    setDisputePending(true);
     try {
-      const result = await adminApiProvider.commands.openDispute(detail.id, { workerId });
+      const result = await openDisputeMutation.mutateAsync({ questId: detail.id, workerId });
       setLinkedDisputeId(result.id);
       if (presentation === "drawer") closeDrawer();
     } catch (openError: unknown) {
       setDisputeError(errorMessage(openError, "Dispute Case could not be opened."));
-    } finally {
-      setDisputePending(false);
     }
   }
 
   async function submitCommand(submission: QuestCommandSubmission) {
     if (!detail || !command || command !== submission.command) return;
     setCommandError(null);
-    setCommandPending(true);
-    const options = {
-      idempotencyKey: newIdempotencyKey(submission.command, detail.id),
-      expectedVersion: detail.version,
-    };
     try {
-      if (dataSource === "api") {
-        if (submission.command === "hide") {
-          await adminApiProvider.commands.hideQuest(detail.id, { ...options, reason: submission.reason, reasonCode: submission.reasonCode });
-        } else if (submission.command === "restore") {
-          await adminApiProvider.commands.restoreQuest(detail.id, { ...options, reason: submission.reason, reasonCode: submission.reasonCode });
-        } else {
-          await adminApiProvider.commands.terminateQuest(detail.id, { ...options, reason: submission.reason, reasonCode: submission.reasonCode });
-        }
-      } else {
-        const occurredAt = new Date().toISOString();
-        const nextDetail = applyMockQuestCommand(detail, submission.command, submission.reason, submission.reasonCode, occurredAt);
-        setDetail(nextDetail);
-        if (typeof window !== "undefined") {
-          saveMockQuestOverride(window.localStorage, nextDetail.id, questMockOverrideFromDetail(nextDetail));
-          notifyMockQuestStateChange();
-        }
+      const result = await commandMutation.mutateAsync({
+        detail,
+        dataSource,
+        submission,
+        idempotencyKey: newIdempotencyKey(submission.command, detail.id),
+      });
+      if (result.detail && result.occurredAt) {
+        setDetail(result.detail);
         setActionReceipt({
           action: submission.command === "hide" ? "Hide Quest" : submission.command === "restore" ? "Restore Quest" : "Terminate Quest",
           status: submission.command === "hide" ? "HIDDEN" : submission.command === "restore" ? "DISCOVERABLE" : "QUEST_CANCELLED",
-          reason: submission.reason || "No reason required for Quest Restore in mock mode.",
-          occurredAt,
+          reason: result.reason,
+          occurredAt: result.occurredAt,
         });
       }
       setCommand(null);
       if (dataSource === "api") router.refresh();
     } catch (commandErrorValue: unknown) {
       setCommandError(errorMessage(commandErrorValue, "Quest command failed."));
-    } finally {
-      setCommandPending(false);
     }
   }
 
   const receipt = actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Quest" resourceId={detail.displayId || detail.id} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {translateText(actionReceipt.reason)}</p>} /> : null;
-  const content = <><QuestDetailContent detail={detail} finance={finance} linkedDisputeId={linkedDisputeId} disputeLookupError={disputeLookupError} onCommand={openCommand} onOpenDispute={openDispute} disputePending={disputePending} disputeError={disputeError} showFullDetailLink={presentation === "drawer"} recordLayout={presentation === "page"} />{receipt}</>;
+  const content = <><QuestDetailContent detail={detail} finance={finance} linkedDisputeId={linkedDisputeId} disputeLookupError={disputeLookupError} onCommand={openCommand} onOpenDispute={openDispute} disputePending={openDisputeMutation.isPending} disputeError={disputeError} showFullDetailLink={presentation === "drawer"} recordLayout={presentation === "page"} />{receipt}</>;
 
   if (presentation === "drawer") {
     return (
@@ -715,7 +693,7 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
         <AdminDrawer ariaLabel={translateText("Close Quest detail")} title={detail.title} titleId="quest-drawer-title" subtitle={`${translateText("Quest")} ${questDisplayIdFor(detail.id, detail.displayId)} · ${translateText("Quest detail drawer")}`} className="quest-drawer" openerAttribute="data-quest-drawer-trigger" openerValue={questId} escapeDisabled={Boolean(command)} onClose={closeDrawer}>
           {content}
         </AdminDrawer>
-        {command ? <QuestCommandDialog detail={detail} command={command} dataSource={dataSource} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandPending} /> : null}
+        {command ? <QuestCommandDialog detail={detail} command={command} dataSource={dataSource} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandMutation.isPending} /> : null}
       </>
     );
   }
@@ -733,7 +711,7 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
       <QuestRecordAlert detail={detail} />
       <RecordStatusBar className="quest-record-status-bar" items={[{ id: "status", label: translateText("Status"), value: <Badge state={detail.state} /> }, { id: "participant-mode", label: translateText("Participant mode"), value: translateText(detail.participation === "GROUP" ? "Team" : "Solo") }, { id: "created", label: translateText("Created"), value: formatQuestDate(detail.createdAt) }, { id: "funding-total", label: translateText("Quest Funding Total"), value: formatQuestMoney(finance?.quest.questFundingTotalSatang ?? detail.questFundingTotalSatang) }, { id: "candidates", label: translateText("Candidates"), value: questCandidateCount(detail) }]} />
       <div className="min-w-0">{content}</div>
-      {command ? <QuestCommandDialog detail={detail} command={command} dataSource={dataSource} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandPending} /> : null}
+      {command ? <QuestCommandDialog detail={detail} command={command} dataSource={dataSource} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandMutation.isPending} /> : null}
     </main>
   );
 }

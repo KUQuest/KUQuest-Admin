@@ -1,11 +1,13 @@
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { adminApiProvider } from "../api/admin-provider";
-import { loadWalletDrawerDataAction } from "./wallet-actions";
+import { walletStatusLabel, type WalletStatus } from "../domain/rulebook";
+import { loadWalletDrawerDataAction, rebuildWalletProjectionAction, verifyWalletProjectionAction } from "./wallet-actions";
+import { walletStatusFixtureError, type WalletStatusFixture, type WalletStatusTarget } from "./wallet-status-command-dialog";
 import type { WalletBoardPageData, WalletDataSource, WalletDrawerData } from "./wallet-service";
 import { mockAllWallets } from "./wallet-mock-data";
-import { walletRowsFromApi, type WalletBoardRow } from "./wallet-model";
+import { walletRowsFromApi, type WalletBoardRow, type WalletHistoryView } from "./wallet-model";
 
 export type WalletBoardQueryData = {
   rows: WalletBoardRow[];
@@ -63,5 +65,89 @@ export function useWalletDrawerQuery(walletId: string, dataSource: WalletDataSou
     gcTime: Infinity,
     refetchOnMount: dataSource === "api",
     refetchOnWindowFocus: false,
+  });
+}
+
+export function useWalletProjectionVerificationMutation() {
+  return useMutation({
+    mutationKey: ["admin", "wallets", "verify-projection"],
+    mutationFn: ({ walletId }: { walletId: string }) => verifyWalletProjectionAction(walletId),
+  });
+}
+
+export function useWalletProjectionRebuildMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ["admin", "wallets", "rebuild-projection"],
+    mutationFn: ({ walletId }: { walletId: string }) => rebuildWalletProjectionAction(walletId),
+    onSuccess: (_result, { walletId }) => {
+      void queryClient.invalidateQueries({ queryKey: [...walletBoardQueryKey] });
+      void queryClient.invalidateQueries({ queryKey: walletDrawerQueryKey(walletId, "api") });
+    },
+  });
+}
+
+export type WalletStatusMutationInput = {
+  walletId: string;
+  currentStatus: WalletStatus;
+  targetStatus: WalletStatusTarget;
+  reason: string;
+  fixture: WalletStatusFixture;
+  dataSource: WalletDataSource;
+};
+
+export type WalletStatusMutationResult = {
+  historyEntry: WalletHistoryView;
+  receipt: {
+    id: string;
+    fromStatus: WalletStatus;
+    toStatus: WalletStatus;
+    reason: string;
+    createdAt: string;
+  };
+};
+
+export function useWalletStatusMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ["admin", "wallets", "status"],
+    mutationFn: async (input: WalletStatusMutationInput): Promise<WalletStatusMutationResult> => {
+      if (input.dataSource !== "mock") throw new Error("Wallet status commands are not available from the Admin API.");
+      const fixtureError = walletStatusFixtureError(input.fixture);
+      if (fixtureError) throw new Error(fixtureError);
+
+      const createdAt = new Date().toISOString();
+      const suffix = `${input.walletId}-${Date.now()}`;
+      return {
+        historyEntry: {
+          id: `mock-wallet-status-${suffix}`,
+          fromStatus: input.currentStatus,
+          toStatus: input.targetStatus,
+          reason: input.reason,
+          actorAdminId: "admin-mock",
+          createdAt,
+        },
+        receipt: {
+          id: `mock-action-${suffix}`,
+          fromStatus: input.currentStatus,
+          toStatus: input.targetStatus,
+          reason: input.reason,
+          createdAt,
+        },
+      };
+    },
+    onSuccess: ({ historyEntry }, input) => {
+      queryClient.setQueryData<WalletDrawerData>(walletDrawerQueryKey(input.walletId, input.dataSource), (current) => current
+        ? { ...current, history: [historyEntry, ...current.history] }
+        : current);
+      queryClient.setQueryData<WalletBoardQueryData>([...walletBoardQueryKey, input.dataSource], (current) => current
+        ? {
+            ...current,
+            rows: current.rows.map((row) => row.id === input.walletId
+              ? { ...row, status: input.targetStatus, statusLabel: walletStatusLabel(input.targetStatus) }
+              : row),
+          }
+        : current);
+    },
   });
 }

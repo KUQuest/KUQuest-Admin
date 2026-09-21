@@ -1,20 +1,48 @@
 import { useEffect, useMemo } from "react";
-import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
 import { adminApiProvider, isAdminApiEnabled } from "../api/admin-provider";
+import type { ReportDecision } from "../api/admin-api";
 import { replaceInfiniteItem } from "../data/query-data";
 import {
   findConductReportFromMock,
   loadAllConductReportsFromMock,
   loadConductReportsFromMock,
+  saveMockConductReportDecision,
 } from "./conduct-report-adapter";
 import { loadConductReportPageData, type ConductReportPageData } from "./conduct-report-service";
-import { CONDUCT_REPORT_UPDATED_EVENT, conductReportModelFromRecord, type ConductReportModel } from "./conduct-report-model";
+import { CONDUCT_REPORT_UPDATED_EVENT, conductReportModelFromRecord, type ConductReportCommand, type ConductReportModel } from "./conduct-report-model";
 
 export const conductReportBoardQueryKey = ["admin", "conduct-reports", "board"] as const;
 
 export function conductReportDetailQueryKey(reportId: string) {
   return ["admin", "conduct-reports", "detail", reportId] as const;
+}
+
+export type ConductReportDecisionMutationInput = {
+  reportId: string;
+  decision: ConductReportCommand;
+  reason: string;
+  options: ReportDecision;
+  apiEnabled: boolean;
+};
+
+export function useConductReportDecisionMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ["admin", "conduct-reports", "decision"],
+    mutationFn: async ({ reportId, decision, reason, options, apiEnabled }: ConductReportDecisionMutationInput) => (
+      apiEnabled
+        ? adminApiProvider.commands.decideReport(reportId, options)
+        : saveMockConductReportDecision(localStorage, reportId, decision, reason)
+    ),
+    onSuccess: (record, { reportId }) => {
+      const model = conductReportModelFromRecord(record);
+      if (!model || model.id !== reportId) return;
+      queryClient.setQueryData(conductReportDetailQueryKey(reportId), model);
+      queryClient.setQueryData<InfiniteData<ConductReportPageData, string | null>>(conductReportBoardQueryKey, (current) => replaceInfiniteItem(current, model));
+    },
+  });
 }
 
 function pageFromQueryData(pages: ConductReportPageData[]): ConductReportPageData {

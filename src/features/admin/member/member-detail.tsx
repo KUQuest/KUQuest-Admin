@@ -12,16 +12,10 @@ import { Button, Card, CardContent, CardHeader, Table } from "../../../component
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { adminRecordCount, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
 import { ADMIN_LEDGER_EVENT_TYPES } from "../api/admin-api";
-import { isAdminApiEnabled } from "../api/admin-provider";
 import { memberRoutes } from "../admin-routes";
 import { formatAdminTimestamp } from "../date-format";
 import { payoutStatusLabel, questStateLabel, reportCaseStatusLabel } from "../domain/rulebook";
 import { filterReviews } from "../user-reviews/review-model";
-import {
-  recordMemberViolation,
-  removeMemberPenalty,
-  saveMemberNote,
-} from "./member-adapter";
 import { MEMBER_UPDATED_EVENT } from "./member-board";
 import { NoteDialog, PenaltyDialog, RemovePenaltyDialog } from "./member-action-dialogs";
 import {
@@ -38,7 +32,7 @@ import {
   type MemberModel,
   type MemberTab,
 } from "./member-model";
-import { useMemberDetailQuery } from "./member-query";
+import { useMemberActionMutation, useMemberDetailQuery } from "./member-query";
 
 function initials(model: MemberModel): string {
   return `${model.firstName.charAt(0)}${model.lastName.charAt(0)}`.toUpperCase() || "M";
@@ -468,12 +462,13 @@ export function MemberDetail({ memberId, initialModel = null, initialTab = "over
   const { translateText } = useAdminShell();
   const router = useRouter();
   const { data: model, isPending, error } = useMemberDetailQuery(memberId, initialModel);
+  const actionMutation = useMemberActionMutation();
   const [activeTab, setActiveTab] = useState<MemberTab>(initialTab);
   const [penaltyOpen, setPenaltyOpen] = useState(false);
   const [removePenaltyOpen, setRemovePenaltyOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
-  const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const actionBusy = actionMutation.isPending;
 
   useEffect(() => setActiveTab(initialTab), [initialTab]);
 
@@ -482,54 +477,40 @@ export function MemberDetail({ memberId, initialModel = null, initialTab = "over
     window.dispatchEvent(new CustomEvent(MEMBER_UPDATED_EVENT, { detail: nextModel }));
   };
 
-  const confirmPenalty = (reason: string, note: string) => {
+  const confirmPenalty = async (reason: string, note: string) => {
     if (!model) return;
-    if (isAdminApiEnabled()) {
-      setActionError("Member penalty commands are not available from the Admin API.");
-      return;
-    }
-    setActionBusy(true);
     setActionError(null);
-    const result = recordMemberViolation(localStorage, model.id, reason, note);
-    if (!result) setActionError("The Member penalty could not be saved.");
-    else {
-      updateModel(result.model);
+    try {
+      const nextModel = await actionMutation.mutateAsync({ type: "record-violation", memberId: model.id, reason, note });
+      updateModel(nextModel);
       setPenaltyOpen(false);
+    } catch (commandError) {
+      setActionError(commandError instanceof Error ? commandError.message : "The Member penalty could not be saved.");
     }
-    setActionBusy(false);
   };
 
-  const removePenalty = (reason: string) => {
+  const removePenalty = async (reason: string) => {
     if (!model) return;
-    if (isAdminApiEnabled()) {
-      setActionError("Member penalty commands are not available from the Admin API.");
-      return;
-    }
-    setActionBusy(true);
     setActionError(null);
-    const result = removeMemberPenalty(localStorage, model.id, reason);
-    if (!result) setActionError("The Member penalty could not be removed.");
-    else {
-      updateModel(result.model);
+    try {
+      const nextModel = await actionMutation.mutateAsync({ type: "remove-penalty", memberId: model.id, reason });
+      updateModel(nextModel);
       setRemovePenaltyOpen(false);
+    } catch (commandError) {
+      setActionError(commandError instanceof Error ? commandError.message : "The Member penalty could not be removed.");
     }
-    setActionBusy(false);
   };
 
-  const saveNote = (note: string) => {
+  const saveNote = async (note: string) => {
     if (!model) return;
-    if (isAdminApiEnabled()) {
-      setActionError("Admin notes are not available from the Admin API.");
-      return;
-    }
-    setActionBusy(true);
-    const nextModel = saveMemberNote(localStorage, model.id, note);
-    if (!nextModel) setActionError("The Admin note could not be saved.");
-    else {
+    setActionError(null);
+    try {
+      const nextModel = await actionMutation.mutateAsync({ type: "save-note", memberId: model.id, note });
       updateModel(nextModel);
       setNoteOpen(false);
+    } catch (commandError) {
+      setActionError(commandError instanceof Error ? commandError.message : "The Admin note could not be saved.");
     }
-    setActionBusy(false);
   };
 
   if (isPending && !model) return <AdminLoading message={translateText("Loading Member…")} />;

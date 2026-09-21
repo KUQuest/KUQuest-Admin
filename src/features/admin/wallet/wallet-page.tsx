@@ -17,16 +17,13 @@ import { AdminRecordFact as Fact } from "../../../components/admin/admin-record-
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { adminBoardCount, adminBoardPagination, adminBoardTable, adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
 import { Badge as UiBadge, Button as UiButton, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
-import { adminApiProvider } from "../api/admin-provider";
 import { walletStatusLabel, type WalletStatus } from "../domain/rulebook";
 import { useAdminBoardReset } from "../data/use-admin-board-reset";
 import { memberTabHref } from "../member/member-model";
-import { verifyWalletProjectionAction } from "./wallet-actions";
 import {
   WalletStatusCommandDialog,
   walletStatusActionClass,
   walletStatusActionLabel,
-  walletStatusFixtureError,
   walletStatusTargets,
   type WalletStatusFixture,
   type WalletStatusTarget,
@@ -45,11 +42,10 @@ import {
   type WalletBoardRow,
   type WalletBoardTab,
   type WalletFinanceSummary,
-  type WalletHistoryView,
   type WalletVerificationView,
 } from "./wallet-model";
 import { useWalletBoardStore } from "./wallet-board-store";
-import { useWalletBoardQuery, useWalletDrawerQuery, walletBoardQueryKey, walletDrawerQueryKey, type WalletBoardQueryData } from "./wallet-query";
+import { useWalletBoardQuery, useWalletDrawerQuery, useWalletProjectionRebuildMutation, useWalletProjectionVerificationMutation, useWalletStatusMutation, walletBoardQueryKey, type WalletBoardQueryData } from "./wallet-query";
 import type { WalletDataSource, WalletBoardPageData } from "./wallet-service";
 
 type WalletStatusReceipt = {
@@ -120,27 +116,28 @@ function WalletDrawer({
   onStatusChanged: (walletId: string, nextStatus: WalletStatus) => void;
 }) {
   const { translateText } = useAdminShell();
-  const queryClient = useQueryClient();
   const { data: drawerData, isPending: loading, error, refetch } = useWalletDrawerQuery(row.id, dataSource);
+  const verifyMutation = useWalletProjectionVerificationMutation();
+  const rebuildMutation = useWalletProjectionRebuildMutation();
+  const statusMutation = useWalletStatusMutation();
   const detail = drawerData?.detail ? { ...drawerData.detail, status: row.status, statusLabel: walletStatusLabel(row.status) } : null;
   const history = drawerData?.history ?? [];
   const ledger = drawerData?.ledger ?? [];
   const [verification, setVerification] = useState<WalletVerificationView | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [actionPending, setActionPending] = useState<"verify" | "rebuild" | null>(null);
   const [statusCommand, setStatusCommand] = useState<WalletStatusTarget | null>(null);
   const [statusCommandError, setStatusCommandError] = useState<string | null>(null);
-  const [statusCommandPending, setStatusCommandPending] = useState(false);
   const [statusReceipt, setStatusReceipt] = useState<WalletStatusReceipt | null>(null);
+  const actionPending = verifyMutation.isPending ? "verify" : rebuildMutation.isPending ? "rebuild" : null;
+  const statusCommandPending = statusMutation.isPending;
 
   async function verifyLedger() {
-    setActionPending("verify");
     setActionError(null);
     setNotice(null);
     try {
       if (dataSource === "api") {
-        const result = await verifyWalletProjectionAction(row.id);
+        const result = await verifyMutation.mutateAsync({ walletId: row.id });
         setVerification(result);
       } else if (detail) {
         setVerification({ matches: detail.projectionMatchesLedger, activityCountMatches: true, projectedTotal: detail.currentBalanceSatang, ledgerTotal: detail.currentBalanceSatang });
@@ -148,25 +145,20 @@ function WalletDrawer({
       setNotice(`Ledger verification completed for ${row.id}.`);
     } catch (verifyError) {
       setActionError(verifyError instanceof Error ? verifyError.message : "Ledger verification failed.");
-    } finally {
-      setActionPending(null);
     }
   }
 
   async function rebuildProjection() {
-    setActionPending("rebuild");
     setActionError(null);
     setNotice(null);
     try {
       if (dataSource === "api") {
-        await adminApiProvider.commands.rebuildWalletProjection(row.id);
+        await rebuildMutation.mutateAsync({ walletId: row.id });
         await refetch();
       }
       setNotice(`Wallet projection rebuilt for ${row.id}.`);
     } catch (rebuildError) {
       setActionError(rebuildError instanceof Error ? rebuildError.message : "Wallet projection rebuild failed.");
-    } finally {
-      setActionPending(null);
     }
   }
 
@@ -184,43 +176,23 @@ function WalletDrawer({
 
   async function submitStatusCommand(reason: string, fixture: WalletStatusFixture) {
     if (!detail || dataSource !== "mock" || !statusCommand) return;
-    setStatusCommandPending(true);
     setStatusCommandError(null);
     setNotice(null);
     try {
-      const fixtureError = walletStatusFixtureError(fixture);
-      if (fixtureError) throw new Error(fixtureError);
-
-      const createdAt = new Date().toISOString();
-      const historyEntry: WalletHistoryView = {
-        id: `mock-wallet-status-${row.id}-${Date.now()}`,
-        fromStatus: detail.status,
-        toStatus: statusCommand,
+      const result = await statusMutation.mutateAsync({
+        walletId: row.id,
+        currentStatus: detail.status,
+        targetStatus: statusCommand,
         reason,
-        actorAdminId: "admin-mock",
-        createdAt,
-      };
-      const receipt: WalletStatusReceipt = {
-        id: `mock-action-${row.id}-${Date.now()}`,
-        fromStatus: detail.status,
-        toStatus: statusCommand,
-        reason,
-        createdAt,
-      };
-      queryClient.setQueryData(walletDrawerQueryKey(row.id, dataSource), (current: typeof drawerData) => current
-        ? {
-            ...current,
-            history: [historyEntry, ...current.history],
-          }
-        : current);
-      setStatusReceipt(receipt);
+        fixture,
+        dataSource,
+      });
+      setStatusReceipt(result.receipt);
       setNotice(`Wallet status changed to ${walletStatusLabel(statusCommand)}.`);
       onStatusChanged(row.id, statusCommand);
       setStatusCommand(null);
     } catch (commandError) {
       setStatusCommandError(commandError instanceof Error ? commandError.message : "Wallet status command failed.");
-    } finally {
-      setStatusCommandPending(false);
     }
   }
 

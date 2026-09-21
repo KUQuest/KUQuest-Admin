@@ -1,16 +1,18 @@
 import { useEffect, useMemo } from "react";
-import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
 import { adminApiProvider, isAdminApiEnabled } from "../api/admin-provider";
+import type { DisputeResolution } from "../api/admin-api";
 import { replaceInfiniteItem } from "../data/query-data";
 import {
   findDisputeCaseFromMock,
   loadAllDisputeCasesFromMock,
   loadDisputeCasesFromMock,
+  saveMockDisputeDecision,
 } from "./dispute-adapter";
 import { loadDisputeCasePageData, type DisputeCasePageData } from "./dispute-service";
 import type { AdminDisputeEvidence } from "../api/admin-api";
-import { DISPUTE_CASE_UPDATED_EVENT, disputeCaseModelFromRecord, type DisputeCaseModel } from "./dispute-model";
+import { DISPUTE_CASE_UPDATED_EVENT, disputeCaseModelFromRecord, type DisputeCaseCommand, type DisputeCaseModel } from "./dispute-model";
 
 export const disputeBoardQueryKey = ["admin", "dispute-cases", "board"] as const;
 
@@ -20,6 +22,50 @@ export function disputeDetailQueryKey(disputeId: string) {
 
 export function disputeEvidenceQueryKey(disputeId: string, reference: string | null) {
   return ["admin", "dispute-cases", "evidence", disputeId, reference] as const;
+}
+
+export type DisputeDecisionMutationInput = {
+  model: DisputeCaseModel;
+  command: DisputeCaseCommand;
+  reason: string;
+  options: DisputeResolution;
+  apiEnabled: boolean;
+};
+
+export function useDisputeDecisionMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ["admin", "dispute-cases", "decision"],
+    mutationFn: async ({ model, command, reason, options, apiEnabled }: DisputeDecisionMutationInput) => {
+      let updatedRecord: Record<string, unknown> | null;
+      let resourceVersion: number | undefined;
+      if (apiEnabled) {
+        const result = await adminApiProvider.commands.resolveDispute(model.id, options);
+        updatedRecord = result.resourceSummary;
+        resourceVersion = result.resourceVersion;
+      } else {
+        updatedRecord = saveMockDisputeDecision(localStorage, model.id, command, reason, options);
+        resourceVersion = typeof updatedRecord?.version === "number" ? updatedRecord.version : undefined;
+      }
+      const updatedModel = disputeCaseModelFromRecord({
+        ...model,
+        ...updatedRecord,
+        status: command,
+        disputeCaseStatus: command,
+        decisionReason: reason,
+        ...(command === "DISPUTE_CASE_RESOLVED"
+          ? { resolvedWorkerId: model.workerId, resolvedAmountSatang: options.amountSatang }
+          : { resolvedWorkerId: null, resolvedAmountSatang: null }),
+        ...(resourceVersion !== undefined && { version: resourceVersion }),
+      }, apiEnabled ? "api" : "mock");
+      if (!updatedModel || updatedModel.id !== model.id) throw new Error(apiEnabled ? "The Admin API returned an invalid Dispute Case." : "The Dispute Case record is invalid.");
+      return updatedModel;
+    },
+    onSuccess: (model) => {
+      queryClient.setQueryData(disputeDetailQueryKey(model.id), model);
+      queryClient.setQueryData<InfiniteData<DisputeCasePageData, string | null>>(disputeBoardQueryKey, (current) => replaceInfiniteItem(current, model));
+    },
+  });
 }
 
 function pageFromQueryData(

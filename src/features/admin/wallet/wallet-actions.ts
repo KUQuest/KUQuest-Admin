@@ -1,6 +1,7 @@
 "use server";
 
 import { getAdminSession } from "../../../lib/auth/admin-session";
+import { adminApiProvider } from "../api/admin-provider";
 import {
   loadWalletDrawerData,
   loadWalletRouteContext,
@@ -27,4 +28,12 @@ export async function verifyWalletProjectionAction(walletId: string): Promise<Wa
 
   const { dataSource, cookieHeader } = await loadAuthenticatedWalletContext();
   return verifyWalletProjection(walletId, cookieHeader, dataSource);
+}
+
+export async function rebuildWalletProjectionAction(walletId: string): Promise<void> {
+  if (!walletId.trim()) throw new Error("Wallet ID is required.");
+
+  const { dataSource } = await loadAuthenticatedWalletContext();
+  if (dataSource !== "api") throw new Error("Wallet projection rebuild is available only in API mode.");
+  await adminApiProvider.commands.rebuildWalletProjection(walletId);
 }

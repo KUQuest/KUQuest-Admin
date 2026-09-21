@@ -29,16 +29,14 @@ import {
   adminRecordSideFacts,
 } from "../../../components/admin/admin-record-styles";
 import { type AdminDisputeReasonCode, type DisputeResolution } from "../api/admin-api";
-import { adminApiProvider, isAdminApiEnabled } from "../api/admin-provider";
+import { isAdminApiEnabled } from "../api/admin-provider";
 import { disputeRoutes, questRoutes } from "../admin-routes";
 import { ModerationCaseWorkspace, ModerationHistoryPanel } from "../moderation-case/moderation-case-workspace";
 import {
   newDisputeCaseIdempotencyKey,
-  saveMockDisputeDecision,
 } from "./dispute-adapter";
 import {
   disputeCaseDecisionFor,
-  disputeCaseModelFromRecord,
   DISPUTE_CASE_UPDATED_EVENT,
   type DisputeCaseDecisionChoice,
   type DisputeCaseModel,
@@ -46,7 +44,7 @@ import {
 import { questStateLabel } from "../domain/rulebook";
 import { questStatusClass } from "../quest/quest-model";
 import { DisputeDecisionDialog, useDisputeModalFocus } from "./dispute-decision-dialog";
-import { useDisputeDetailQuery, useDisputeEvidenceQuery } from "./dispute-query";
+import { useDisputeDecisionMutation, useDisputeDetailQuery, useDisputeEvidenceQuery } from "./dispute-query";
 
 type DisputeCaseDetailProps = {
   disputeId: string;
@@ -265,7 +263,6 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
   const { data: disputeModel, isPending, error } = useDisputeDetailQuery(disputeId, initialModel);
   const [selectedChoice, setSelectedChoice] = useState<DisputeCaseDecisionChoice | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [commandBusy, setCommandBusy] = useState(false);
   const [commandError, setCommandError] = useState<string | null>(null);
   const [evidenceReference, setEvidenceReference] = useState<string | null>(null);
   const [actionReceipt, setActionReceipt] = useState<{
@@ -274,6 +271,7 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
     reason: string;
     occurredAt: string;
   } | null>(null);
+  const decisionMutation = useDisputeDecisionMutation();
 
   const model = disputeModel;
   const evidenceQuery = useDisputeEvidenceQuery(model?.id ?? disputeId, evidenceReference);
@@ -305,7 +303,6 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
       setCommandError("Worker wins requires a Worker and a full available Dispute Case amount.");
       return;
     }
-    setCommandBusy(true);
     setCommandError(null);
     const options: DisputeResolution = {
       outcome: command,
@@ -317,28 +314,13 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
         : {}),
     };
     try {
-      let updatedRecord: Record<string, unknown> | null;
-      let resourceVersion: number | undefined;
-      if (isAdminApiEnabled()) {
-        const result = await adminApiProvider.commands.resolveDispute(model.id, options);
-        updatedRecord = result.resourceSummary;
-        resourceVersion = result.resourceVersion;
-      } else {
-        updatedRecord = saveMockDisputeDecision(localStorage, model.id, command, reason, options);
-        resourceVersion = typeof updatedRecord?.version === "number" ? updatedRecord.version : undefined;
-      }
-      const updatedModel = disputeCaseModelFromRecord({
-        ...model,
-        ...updatedRecord,
-        status: command,
-        disputeCaseStatus: command,
-        decisionReason: reason,
-        ...(command === "DISPUTE_CASE_RESOLVED"
-          ? { resolvedWorkerId: model.workerId, resolvedAmountSatang: amountSatang }
-          : { resolvedWorkerId: null, resolvedAmountSatang: null }),
-        ...(resourceVersion !== undefined && { version: resourceVersion }),
-      }, isAdminApiEnabled() ? "api" : "mock");
-      if (!updatedModel || updatedModel.id !== model.id) throw new Error(isAdminApiEnabled() ? "The Admin API returned an invalid Dispute Case." : "The Dispute Case record is invalid.");
+      const updatedModel = await decisionMutation.mutateAsync({
+        model,
+        command,
+        reason,
+        options,
+        apiEnabled: isAdminApiEnabled(),
+      });
       window.dispatchEvent(new CustomEvent(DISPUTE_CASE_UPDATED_EVENT, { detail: updatedModel }));
       onUpdated?.(updatedModel);
       setDialogOpen(false);
@@ -353,8 +335,6 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
       }
     } catch (error: unknown) {
       setCommandError(error instanceof Error ? error.message : "The Dispute Case decision could not be saved.");
-    } finally {
-      setCommandBusy(false);
     }
   };
 
@@ -365,7 +345,7 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
     error: evidenceQuery.error instanceof Error ? evidenceQuery.error.message : evidenceQuery.error ? "Evidence Reference could not load." : null,
     loading: evidenceQuery.isPending,
   } : null;
-  const overlays = <><DisputeDecisionDialog model={model} open={dialogOpen} choice={selectedChoice} busy={commandBusy} error={commandError} translateText={translateText} onCancel={() => { if (!commandBusy) { setDialogOpen(false); setCommandError(null); } }} onConfirm={confirmDecision} />{evidenceState && <EvidencePreview state={evidenceState} translateText={translateText} onClose={() => setEvidenceReference(null)} />}</>;
+  const overlays = <><DisputeDecisionDialog model={model} open={dialogOpen} choice={selectedChoice} busy={decisionMutation.isPending} error={commandError} translateText={translateText} onCancel={() => { if (!decisionMutation.isPending) { setDialogOpen(false); setCommandError(null); } }} onConfirm={confirmDecision} />{evidenceState && <EvidencePreview state={evidenceState} translateText={translateText} onClose={() => setEvidenceReference(null)} />}</>;
   const content = <><DisputeAlert model={model} translateText={translateText} /><RecordStatusBar items={[{ id: "status", label: translateText("Status"), value: <span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span> }, { id: "category", label: translateText("Category"), value: translateText(model.category) }, { id: "opened", label: translateText("Opened"), value: model.submittedAt }, { id: "amount-at-risk", label: translateText("Amount at risk"), value: model.amountAtRiskLabel }, { id: "evidence", label: translateText("Evidence"), value: model.evidence.length || translateText("None") }]} /><FullSections model={model} translateText={translateText} onOpenEvidence={openEvidence} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} actionReceipt={receipt} /></>;
 
   if (drawer) return <><DrawerSections model={model} translateText={translateText} onOpenEvidence={openEvidence} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} actionReceipt={receipt} />{overlays}</>;

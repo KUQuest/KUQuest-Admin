@@ -20,7 +20,6 @@ import { adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSec
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { Button as UiButton, Card, CardHeader, type ButtonSize } from "../../../components/ui";
 import { payoutRoutes } from "../admin-routes";
-import { adminApiProvider } from "../api/admin-provider";
 import { payoutStatusLabel } from "../domain/rulebook";
 import {
   formatPayoutDate,
@@ -34,15 +33,12 @@ import type {
   PayoutDetailPageData,
 } from "./payout-service";
 import {
-  applyMockPayoutDecision,
   applyMockPayoutOverride,
-  PAYOUT_MOCK_UPDATED_EVENT,
-  payoutMockOverrideFromDetail,
   readMockPayoutOverride,
-  saveMockPayoutOverride,
 } from "./payout-mock-state";
 import { PayoutStatusBadge as Badge } from "./payout-status-badge";
 import { PayoutCommandDialog, type PayoutCommand, type PayoutCommandSubmission } from "./payout-command-dialog";
+import { usePayoutCommandMutation, usePayoutReconcileMutation } from "./payout-query";
 
 type PayoutPresentation = "page" | "drawer";
 
@@ -324,7 +320,6 @@ export function AdminPayoutDetailPage({
   const [command, setCommand] = useState<PayoutCommand | null>(null);
   const [commandIdempotencyKey, setCommandIdempotencyKey] = useState<string | null>(null);
   const [commandError, setCommandError] = useState<string | null>(null);
-  const [commandPending, setCommandPending] = useState(false);
   const [actionReceipt, setActionReceipt] = useState<{
     action: string;
     status: string;
@@ -333,7 +328,8 @@ export function AdminPayoutDetailPage({
   } | null>(null);
   const [reconcileError, setReconcileError] = useState<string | null>(null);
   const [reconcileNotice, setReconcileNotice] = useState<string | null>(null);
-  const [reconcilePending, setReconcilePending] = useState(false);
+  const commandMutation = usePayoutCommandMutation();
+  const reconcileMutation = usePayoutReconcileMutation();
 
   const closeDrawer = useCallback(() => {
     router.back();
@@ -350,44 +346,24 @@ export function AdminPayoutDetailPage({
     setActionReceipt(null);
     setReconcileError(null);
     setReconcileNotice(null);
-    setReconcilePending(false);
   }, [data, dataSource]);
 
   async function submitCommand(submission: PayoutCommandSubmission) {
     setCommandError(null);
-    setCommandPending(true);
-    const options = {
-      idempotencyKey: commandIdempotencyKey ?? newIdempotencyKey(submission.command, detail.id),
-      expectedVersion: detail.version,
-    };
     try {
-      if (dataSource === "api") {
-        if (submission.command === "approve") {
-          await adminApiProvider.commands.approvePayout(detail.id, {
-            ...options,
-          });
-        } else {
-          await adminApiProvider.commands.rejectPayout(detail.id, {
-            ...options,
-            reasonCode: submission.reasonCode,
-            reason: submission.reason,
-          });
-        }
-      } else {
-        const decisionReason = submission.command === "reject" ? submission.reason : null;
-        const decisionReasonCode = submission.command === "reject" ? submission.reasonCode : null;
-        const occurredAt = new Date().toISOString();
-        const nextDetail = applyMockPayoutDecision(detail, submission.command, decisionReason, occurredAt, decisionReasonCode);
-        setDetail(nextDetail);
-        if (typeof window !== "undefined") {
-          saveMockPayoutOverride(window.localStorage, { id: nextDetail.id, ...payoutMockOverrideFromDetail(nextDetail) });
-          window.dispatchEvent(new CustomEvent(PAYOUT_MOCK_UPDATED_EVENT, { detail: nextDetail }));
-        }
+      const result = await commandMutation.mutateAsync({
+        detail,
+        dataSource,
+        submission,
+        idempotencyKey: commandIdempotencyKey ?? newIdempotencyKey(submission.command, detail.id),
+      });
+      if (result.detail && result.occurredAt) {
+        setDetail(result.detail);
         setActionReceipt({
           action: submission.command === "approve" ? "Approve Payout" : "Reject Payout",
-          status: payoutStatusLabel(nextDetail.status),
-          reason: decisionReason,
-          occurredAt,
+          status: payoutStatusLabel(result.detail.status),
+          reason: result.reason,
+          occurredAt: result.occurredAt,
         });
       }
       setCommand(null);
@@ -399,25 +375,18 @@ export function AdminPayoutDetailPage({
       else if (dataSource === "api") router.refresh();
     } catch (error) {
       setCommandError(errorMessage(error));
-    } finally {
-      setCommandPending(false);
     }
   }
 
   async function reconcilePayout() {
     setReconcileError(null);
     setReconcileNotice(null);
-    setReconcilePending(true);
     try {
-      if (dataSource === "api") {
-        await adminApiProvider.commands.reconcilePayout(detail.id);
-        router.refresh();
-      }
+      await reconcileMutation.mutateAsync({ payoutId: detail.id, dataSource });
+      if (dataSource === "api") router.refresh();
       setReconcileNotice(`${translateText("Payout")} ${detail.id} ${translateText("was reconciled with the Provider.")}`);
     } catch (error) {
       setReconcileError(errorMessage(error));
-    } finally {
-      setReconcilePending(false);
     }
   }
 
@@ -427,7 +396,7 @@ export function AdminPayoutDetailPage({
     onReconcile={() => { void reconcilePayout(); }}
     reconcileError={reconcileError}
     reconcileNotice={reconcileNotice}
-    reconcilePending={reconcilePending}
+    reconcilePending={reconcileMutation.isPending}
     showReconcileAction={dataSource === "api"}
     showFullDetailLink={false}
     fullDetail={presentation === "page"}
@@ -453,7 +422,7 @@ export function AdminPayoutDetailPage({
         >
           {content}
         </AdminDrawer>
-        {command ? <PayoutCommandDialog detail={detail} command={command} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandPending} /> : null}
+        {command ? <PayoutCommandDialog detail={detail} command={command} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandMutation.isPending} /> : null}
       </>
     );
   }
@@ -471,7 +440,7 @@ export function AdminPayoutDetailPage({
       <PayoutStatusAlert detail={detail} />
       <RecordStatusBar className="payout-record-status-bar" items={[{ id: "status", label: translateText("Status"), value: <Badge status={detail.status} /> }, { id: "student", label: translateText("Student"), value: detail.student.name }, { id: "principal", label: translateText("Principal"), value: formatPayoutMoney(detail.amounts.principalSatang) }, { id: "created", label: translateText("Created"), value: formatPayoutDate(detail.createdAt) }, { id: "destination-type", label: translateText("Destination type"), value: translateText(readableValue(detail.destination.type)) }]} />
       <div className="min-w-0">{content}</div>
-      {command ? <PayoutCommandDialog detail={detail} command={command} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandPending} /> : null}
+      {command ? <PayoutCommandDialog detail={detail} command={command} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandMutation.isPending} /> : null}
     </main>
   );
 }

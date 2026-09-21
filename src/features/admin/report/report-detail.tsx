@@ -30,12 +30,11 @@ import {
   adminRecordSideFacts,
 } from "../../../components/admin/admin-record-styles";
 import { type AdminEvidence, type ReportDecision } from "../api/admin-api";
-import { adminApiProvider, isAdminApiEnabled } from "../api/admin-provider";
+import { isAdminApiEnabled } from "../api/admin-provider";
 import { reportRoutes } from "../admin-routes";
 import { ModerationCaseWorkspace, ModerationHistoryPanel } from "../moderation-case/moderation-case-workspace";
 import {
   newReportCaseIdempotencyKey,
-  saveMockReportDecision,
 } from "./report-adapter";
 import { ReportDecisionDialog } from "./report-decision-dialog";
 import {
@@ -45,7 +44,7 @@ import {
   type ReportCaseDecisionChoice,
   type ReportCaseModel,
 } from "./report-model";
-import { useReportDetailQuery, useReportEvidenceQuery } from "./report-query";
+import { useReportDecisionMutation, useReportDetailQuery, useReportEvidenceQuery } from "./report-query";
 
 type ReportCaseDetailProps = {
   reportId: string;
@@ -485,7 +484,6 @@ export function ReportCaseDetail({
   const { data: reportModel, isPending, error } = useReportDetailQuery(reportId, initialModel);
   const [selectedChoice, setSelectedChoice] = useState<ReportCaseDecisionChoice | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [commandBusy, setCommandBusy] = useState(false);
   const [commandError, setCommandError] = useState<string | null>(null);
   const [evidenceReference, setEvidenceReference] = useState<string | null>(null);
   const [actionReceipt, setActionReceipt] = useState<{
@@ -494,6 +492,7 @@ export function ReportCaseDetail({
     reason: string;
     occurredAt: string;
   } | null>(null);
+  const decisionMutation = useReportDecisionMutation();
 
   const model = reportModel;
   const evidenceQuery = useReportEvidenceQuery(evidenceReference);
@@ -519,12 +518,12 @@ export function ReportCaseDetail({
       return;
     }
     setCommandError(null);
+    decisionMutation.reset();
     setDialogOpen(true);
   };
 
   const confirmDecision = async (reason: string) => {
     if (!selectedChoice) return;
-    setCommandBusy(true);
     setCommandError(null);
     const decision = reportCaseDecisionFor(selectedChoice);
     const options: ReportDecision = {
@@ -535,9 +534,13 @@ export function ReportCaseDetail({
     };
 
     try {
-      const updated = isAdminApiEnabled()
-        ? await adminApiProvider.commands.decideReport(model.id, options)
-        : saveMockReportDecision(localStorage, model.id, decision, reason);
+      const updated = await decisionMutation.mutateAsync({
+        reportId: model.id,
+        decision,
+        reason,
+        options,
+        apiEnabled: isAdminApiEnabled(),
+      });
       const updatedModel = reportCaseModelFromRecord(updated);
       if (!updatedModel || updatedModel.id !== model.id) {
         throw new Error(isAdminApiEnabled() ? "The Admin API returned an invalid Report Case." : "The Report Case record is invalid.");
@@ -556,8 +559,6 @@ export function ReportCaseDetail({
       }
     } catch (error: unknown) {
       setCommandError(error instanceof Error ? error.message : "The Report Case decision could not be saved.");
-    } finally {
-      setCommandBusy(false);
     }
   };
 
@@ -569,7 +570,7 @@ export function ReportCaseDetail({
   } : null;
   const overlays = (
     <>
-      <ReportDecisionDialog model={model} open={dialogOpen} choice={selectedChoice} busy={commandBusy} error={commandError} translateText={translateText} onCancel={() => { if (!commandBusy) { setDialogOpen(false); setCommandError(null); } }} onConfirm={confirmDecision} />
+      <ReportDecisionDialog model={model} open={dialogOpen} choice={selectedChoice} busy={decisionMutation.isPending} error={commandError} translateText={translateText} onCancel={() => { if (!decisionMutation.isPending) { setDialogOpen(false); setCommandError(null); } }} onConfirm={confirmDecision} />
       {evidenceState && <EvidencePreview state={evidenceState} translateText={translateText} onClose={() => setEvidenceReference(null)} />}
     </>
   );

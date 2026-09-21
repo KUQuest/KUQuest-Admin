@@ -12,7 +12,7 @@ import { AdminRecordGrid } from "../../../components/admin/admin-record-grid";
 import { AdminStatusAlert } from "../../../components/admin/admin-status-alert";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import type { ReportDecision } from "../api/admin-api";
-import { adminApiProvider, isAdminApiEnabled } from "../api/admin-provider";
+import { isAdminApiEnabled } from "../api/admin-provider";
 import { Button } from "../../../components/ui/button";
 import { Card, CardContent, CardHeader } from "../../../components/ui/card";
 import { AdminOverviewMeta } from "../../../components/admin/admin-overview-meta";
@@ -36,7 +36,6 @@ import { ModerationCaseWorkspace, ModerationHistoryPanel } from "../moderation-c
 import { hasModerationHistory } from "../moderation-case/moderation-case-context";
 import {
   newConductReportIdempotencyKey,
-  saveMockConductReportDecision,
 } from "./conduct-report-adapter";
 import { ConductReportDecisionDialog } from "./conduct-report-decision-dialog";
 import {
@@ -47,7 +46,7 @@ import {
   type ConductReportDecisionChoice,
   type ConductReportModel,
 } from "./conduct-report-model";
-import { useConductReportDetailQuery } from "./conduct-report-query";
+import { useConductReportDecisionMutation, useConductReportDetailQuery } from "./conduct-report-query";
 
 type ConductReportPresentation = "drawer" | "page";
 
@@ -501,7 +500,6 @@ export function ConductReportDrawer({
   const [reportModel, setReportModel] = useState(model);
   const [selectedChoice, setSelectedChoice] = useState<ConductReportDecisionChoice | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [commandBusy, setCommandBusy] = useState(false);
   const [commandError, setCommandError] = useState<string | null>(null);
   const [actionReceipt, setActionReceipt] = useState<{
     action: string;
@@ -509,6 +507,7 @@ export function ConductReportDrawer({
     reason: string;
     occurredAt: string;
   } | null>(null);
+  const decisionMutation = useConductReportDecisionMutation();
 
   useEffect(() => {
     setReportModel(model);
@@ -524,12 +523,12 @@ export function ConductReportDrawer({
       return;
     }
     setCommandError(null);
+    decisionMutation.reset();
     setDialogOpen(true);
   };
 
   const confirmDecision = async (reason: string) => {
     if (!selectedChoice) return;
-    setCommandBusy(true);
     setCommandError(null);
     const decision = conductReportDecisionFor(selectedChoice);
     const options: ReportDecision = {
@@ -540,9 +539,13 @@ export function ConductReportDrawer({
     };
 
     try {
-      const updated = isAdminApiEnabled()
-        ? await adminApiProvider.commands.decideReport(reportModel.id, options)
-        : saveMockConductReportDecision(localStorage, reportModel.id, decision, reason);
+      const updated = await decisionMutation.mutateAsync({
+        reportId: reportModel.id,
+        decision,
+        reason,
+        options,
+        apiEnabled: isAdminApiEnabled(),
+      });
       const updatedModel = conductReportModelFromRecord(updated);
       if (!updatedModel || updatedModel.id !== reportModel.id) {
         throw new Error(isAdminApiEnabled() ? "The Admin API returned an invalid Conduct Report." : "The Conduct Report record is invalid.");
@@ -562,8 +565,6 @@ export function ConductReportDrawer({
       }
     } catch (error: unknown) {
       setCommandError(error instanceof Error ? error.message : "The Conduct Report decision could not be saved.");
-    } finally {
-      setCommandBusy(false);
     }
   };
 
@@ -588,11 +589,11 @@ export function ConductReportDrawer({
       model={reportModel}
       open={dialogOpen}
       choice={selectedChoice}
-      busy={commandBusy}
+      busy={decisionMutation.isPending}
       error={commandError}
       translateText={translateText}
       onCancel={() => {
-        if (!commandBusy) {
+        if (!decisionMutation.isPending) {
           setDialogOpen(false);
           setCommandError(null);
         }

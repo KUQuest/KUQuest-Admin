@@ -1,16 +1,18 @@
 import { useEffect, useMemo } from "react";
-import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
 import { adminApiProvider, isAdminApiEnabled } from "../api/admin-provider";
+import type { ReportDecision } from "../api/admin-api";
 import { replaceInfiniteItem } from "../data/query-data";
 import {
   findReportCaseFromMock,
   loadAllReportCasesFromMock,
   loadReportCasesFromMock,
+  saveMockReportDecision,
 } from "./report-adapter";
 import { loadReportCasePageData, type ReportCasePageData } from "./report-service";
 import type { AdminEvidence } from "../api/admin-api";
-import { REPORT_CASE_UPDATED_EVENT, reportCaseModelFromRecord, type ReportCaseModel } from "./report-model";
+import { REPORT_CASE_UPDATED_EVENT, reportCaseModelFromRecord, type ReportCaseCommand, type ReportCaseModel } from "./report-model";
 
 export const reportBoardQueryKey = ["admin", "report-cases", "board"] as const;
 
@@ -20,6 +22,32 @@ export function reportDetailQueryKey(reportId: string) {
 
 export function reportEvidenceQueryKey(reference: string | null) {
   return ["admin", "report-cases", "evidence", reference] as const;
+}
+
+export type ReportDecisionMutationInput = {
+  reportId: string;
+  decision: ReportCaseCommand;
+  reason: string;
+  options: ReportDecision;
+  apiEnabled: boolean;
+};
+
+export function useReportDecisionMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ["admin", "report-cases", "decision"],
+    mutationFn: async ({ reportId, decision, reason, options, apiEnabled }: ReportDecisionMutationInput) => (
+      apiEnabled
+        ? adminApiProvider.commands.decideReport(reportId, options)
+        : saveMockReportDecision(localStorage, reportId, decision, reason)
+    ),
+    onSuccess: (record, { reportId }) => {
+      const model = reportCaseModelFromRecord(record);
+      if (!model || model.id !== reportId) return;
+      queryClient.setQueryData(reportDetailQueryKey(reportId), model);
+      queryClient.setQueryData<InfiniteData<ReportCasePageData, string | null>>(reportBoardQueryKey, (current) => replaceInfiniteItem(current, model));
+    },
+  });
 }
 
 function pageFromQueryData(pages: ReportCasePageData[]): ReportCasePageData {
