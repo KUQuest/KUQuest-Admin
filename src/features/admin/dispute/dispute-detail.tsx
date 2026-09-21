@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useRef, useState, type ReactNode } from "react";
 
-import { AdminActionReceipt, AdminActionSummary } from "../../../components/admin/admin-action-feedback";
+import { AdminActionReceipt } from "../../../components/admin/admin-action-feedback";
 import { formatAdminTimestamp } from "../date-format";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminRecordHeader } from "../../../components/admin/admin-record-header";
@@ -43,8 +43,9 @@ import {
   type DisputeCaseDecisionChoice,
   type DisputeCaseModel,
 } from "./dispute-model";
-import { disputeCaseStatusLabel, questStateLabel } from "../domain/rulebook";
+import { questStateLabel } from "../domain/rulebook";
 import { questStatusClass } from "../quest/quest-model";
+import { DisputeDecisionDialog, useDisputeModalFocus } from "./dispute-decision-dialog";
 import { useDisputeDetailQuery, useDisputeEvidenceQuery } from "./dispute-query";
 
 type DisputeCaseDetailProps = {
@@ -60,69 +61,6 @@ type EvidenceState = {
   error: string | null;
   loading: boolean;
 };
-
-const dialogFocusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
-function useDisputeModalFocus(
-  dialogRef: RefObject<HTMLDialogElement | null>,
-  open: boolean,
-  onCancel: () => void,
-) {
-  const onCancelRef = useRef(onCancel);
-  onCancelRef.current = onCancel;
-
-  useEffect(() => {
-    if (!open) return;
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const focusableElements = () => Array.from(dialog.querySelectorAll<HTMLElement>(dialogFocusableSelector)).filter((element) => element.getClientRects().length > 0);
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
-        onCancelRef.current();
-        return;
-      }
-      if (event.key !== "Tab") return;
-      event.stopPropagation();
-      const focusable = focusableElements();
-      if (!focusable.length) {
-        event.preventDefault();
-        dialog.focus({ preventScroll: true });
-        return;
-      }
-      const current = document.activeElement;
-      const first = focusable[0];
-      const last = focusable.at(-1);
-      if (event.shiftKey && (current === dialog || current === first || !dialog.contains(current))) {
-        event.preventDefault();
-        last?.focus({ preventScroll: true });
-      } else if (!event.shiftKey && (current === last || !dialog.contains(current))) {
-        event.preventDefault();
-        first.focus({ preventScroll: true });
-      }
-    };
-
-    const handleCancel = (event: Event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      onCancelRef.current();
-    };
-
-    dialog.addEventListener("keydown", handleKeyDown);
-    dialog.addEventListener("cancel", handleCancel);
-    (focusableElements()[0] ?? dialog).focus({ preventScroll: true });
-
-    return () => {
-      dialog.removeEventListener("keydown", handleKeyDown);
-      dialog.removeEventListener("cancel", handleCancel);
-      if (opener?.isConnected) opener.focus({ preventScroll: true });
-    };
-  }, [dialogRef, open]);
-}
 
 function MemberLink({
   id,
@@ -240,72 +178,6 @@ function RelatedQuestPanel({ model, translateText }: { model: DisputeCaseModel; 
       </div>
       <Button asChild variant="outline" className="mt-3 w-full"><Link href={model.questHref ?? questRoutes.list()}>{translateText("Open Quest detail")}</Link></Button>
     </Card>
-  );
-}
-
-function DecisionDialog({
-  open,
-  choice,
-  busy,
-  error,
-  model,
-  translateText,
-  onCancel,
-  onConfirm,
-}: {
-  open: boolean;
-  choice: DisputeCaseDecisionChoice | null;
-  busy: boolean;
-  error: string | null;
-  model: DisputeCaseModel;
-  translateText: (value: string) => string;
-  onCancel: () => void;
-  onConfirm: (reason: string) => void;
-}) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const [reason, setReason] = useState("");
-
-  useEffect(() => {
-    if (open) {
-      setReason("");
-    }
-  }, [choice, open]);
-
-  useDisputeModalFocus(dialogRef, open, onCancel);
-
-  if (!open) return null;
-  const title = choice === "resolve" ? translateText("Confirm Worker wins") : translateText("Confirm Hirer wins");
-  const description = choice === "resolve"
-    ? `${translateText("This will transfer the full remaining Dispute Case amount to the Worker Earnings Balance for")} ${model.id}.`
-    : `${translateText("This will keep the full held amount with the Hirer and close the Dispute Case for")} ${model.id}.`;
-  const nextState = choice === "resolve" ? "DISPUTE_CASE_RESOLVED" : "DISPUTE_CASE_DISMISSED";
-  const effect = choice === "resolve"
-    ? `${translateText("Transfer the full remaining amount from the Hirer side of the held Funding Reservation to")} ${model.workerName} ${translateText("Earnings Balance")} (${model.sharedCapLabel}).`
-    : translateText("Keep the full held amount with the Hirer. No money moves and the Quest remains Failed.");
-  return (
-    <AdminModalPortal open onClose={onCancel}>
-      <dialog ref={dialogRef} open className="dispute-decision-dialog z-[60]" aria-modal="true" aria-labelledby="dispute-decision-title" tabIndex={-1}>
-      <form method="dialog" onSubmit={(event) => { event.preventDefault(); const value = reason.trim(); const fullAmountUnavailable = choice === "resolve" && (!model.workerId || model.sharedCapSatang === null || model.sharedCapSatang <= 0); if (value.length < 8 || fullAmountUnavailable) return; onConfirm(value); }}>
-        <div className="dialog-body p-5"><div className="warning-icon grid size-[38px] place-items-center rounded-[10px] bg-admin-danger-soft font-bold text-admin-danger" aria-hidden="true">!</div><h2 id="dispute-decision-title">{title}</h2><p>{description}</p>
-          {choice ? <AdminActionSummary
-            title={translateText("Before you confirm")}
-            affected={`${translateText("Dispute Case")} ${model.displayId} · ${translateText("Quest")} ${model.questId}`}
-            currentState={model.statusLabel}
-            nextState={disputeCaseStatusLabel(nextState)}
-            effect={translateText(effect)}
-            reversibility={translateText(choice === "resolve" ? "The first confirmed decision is final. The money movement cannot be reversed by another Dispute Case decision." : "The decision is retained as an immutable audit record.")}
-            warning={translateText(choice === "resolve"
-              ? model.sharedCapSatang === null
-                ? "The full remaining amount is not provided. Verify the Funding Reservation before resolving."
-                : "Worker wins transfers the full remaining amount. A partial amount cannot be entered."
-              : "Hirer wins keeps the full held amount with the Hirer. No money moves.")}
-          /> : null}
-          {choice === "resolve" && <div className="decision-amount-summary mt-4 flex items-baseline justify-between gap-3 rounded-lg border border-admin-border bg-admin-soft px-3 py-2.5"><span className="text-sm text-admin-muted">{translateText("Worker outcome")}</span><strong className="text-right text-base">{translateText("Full remaining amount")} · {model.sharedCapLabel}</strong></div>}
-          <label htmlFor="dispute-decision-reason">{translateText("Reason for this decision")}</label><textarea id="dispute-decision-reason" name="reason" rows={4} minLength={8} maxLength={500} required value={reason} aria-invalid={Boolean(error)} onChange={(event) => setReason(event.target.value)} placeholder={translateText("Enter the reason for the Dispute Case decision")} /><div className="mt-1.5 flex justify-between gap-3 text-[15px] leading-[1.4] text-admin-muted"><span>{translateText("Minimum 8 characters")}</span><span>{reason.length}/500</span></div>{error && <p className="field-error" role="alert">{translateText(error)}</p>}
-        </div><div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5"><Button variant="outline" type="button" onClick={onCancel} disabled={busy}>{translateText("Cancel")}</Button><Button variant="danger" type="submit" disabled={busy || reason.trim().length < 8 || choice === "resolve" && (!model.workerId || model.sharedCapSatang === null || model.sharedCapSatang <= 0)}>{busy ? translateText("Saving…") : translateText("Confirm decision")}</Button></div>
-      </form>
-      </dialog>
-    </AdminModalPortal>
   );
 }
 
@@ -493,7 +365,7 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
     error: evidenceQuery.error instanceof Error ? evidenceQuery.error.message : evidenceQuery.error ? "Evidence Reference could not load." : null,
     loading: evidenceQuery.isPending,
   } : null;
-  const overlays = <><DecisionDialog model={model} open={dialogOpen} choice={selectedChoice} busy={commandBusy} error={commandError} translateText={translateText} onCancel={() => { if (!commandBusy) { setDialogOpen(false); setCommandError(null); } }} onConfirm={confirmDecision} />{evidenceState && <EvidencePreview state={evidenceState} translateText={translateText} onClose={() => setEvidenceReference(null)} />}</>;
+  const overlays = <><DisputeDecisionDialog model={model} open={dialogOpen} choice={selectedChoice} busy={commandBusy} error={commandError} translateText={translateText} onCancel={() => { if (!commandBusy) { setDialogOpen(false); setCommandError(null); } }} onConfirm={confirmDecision} />{evidenceState && <EvidencePreview state={evidenceState} translateText={translateText} onClose={() => setEvidenceReference(null)} />}</>;
   const content = <><DisputeAlert model={model} translateText={translateText} /><RecordStatusBar items={[{ id: "status", label: translateText("Status"), value: <span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span> }, { id: "category", label: translateText("Category"), value: translateText(model.category) }, { id: "opened", label: translateText("Opened"), value: model.submittedAt }, { id: "amount-at-risk", label: translateText("Amount at risk"), value: model.amountAtRiskLabel }, { id: "evidence", label: translateText("Evidence"), value: model.evidence.length || translateText("None") }]} /><FullSections model={model} translateText={translateText} onOpenEvidence={openEvidence} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} actionReceipt={receipt} /></>;
 
   if (drawer) return <><DrawerSections model={model} translateText={translateText} onOpenEvidence={openEvidence} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} actionReceipt={receipt} />{overlays}</>;
