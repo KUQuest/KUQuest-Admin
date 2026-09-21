@@ -6,7 +6,6 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { Button } from "../../../components/ui";
 import {
-  overviewSearchResultLabel,
   overviewSearchResultsFromApi,
   overviewSearchResultsFromMockData,
   sortOverviewSearchResults,
@@ -14,6 +13,11 @@ import {
   type OverviewSearchResult,
 } from "../overview/overview-model";
 import { useOverviewSearchQuery } from "../overview/overview-search-query";
+import {
+  ADMIN_SEARCH_RESULT_DESCRIPTORS,
+  isAdminSearchResultKind,
+  searchResultDescriptor,
+} from "./search-descriptors";
 
 type AdminGlobalSearchProps = {
   open: boolean;
@@ -37,18 +41,11 @@ const SEARCH_KIND_PARAM = "adminSearchType";
 
 const searchFilterOptions: Array<{ value: SearchFilter; label: string }> = [
   { value: "all", label: "All records" },
-  { value: "member", label: "Member" },
-  { value: "quest", label: "Quest" },
-  { value: "payout", label: "Payout" },
-  { value: "dispute", label: "Dispute Case" },
-  { value: "report", label: "Report Case" },
-  { value: "conduct-report", label: "Conduct Report" },
-  { value: "wallet", label: "Wallet" },
-  { value: "activity", label: "Activity Log" },
+  ...ADMIN_SEARCH_RESULT_DESCRIPTORS.map(({ kind, label }) => ({ value: kind, label })),
 ];
 
 function isSearchFilter(value: string | null): value is SearchFilter {
-  return value === "all" || searchFilterOptions.some((option) => option.value === value);
+  return value === "all" || isAdminSearchResultKind(value);
 }
 
 function SearchResultIcon({ kind }: { kind: OverviewSearchResult["kind"] }) {
@@ -63,12 +60,11 @@ function SearchResultIcon({ kind }: { kind: OverviewSearchResult["kind"] }) {
     "aria-hidden": true,
   };
 
-  switch (kind) {
+  switch (searchResultDescriptor(kind).icon) {
     case "member":
       return <svg {...iconProps}><circle cx="9" cy="8" r="3.5" /><path d="M3 20a6 6 0 0 1 12 0M16 11a3 3 0 1 1 3-3M17 15a5 5 0 0 1 4 5" /></svg>;
     case "quest":
       return <svg {...iconProps}><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M9 3V2h6v1M8 9h8M8 13h8M8 17h5" /></svg>;
-    case "payout":
     case "wallet":
       return <svg {...iconProps}><path d="M3 6h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Zm0 0 12-3v3" /><path d="M16 12h5v4h-5a2 2 0 0 1 0-4Z" /></svg>;
     case "dispute":
@@ -243,7 +239,7 @@ export function AdminGlobalSearch({ open, onClose, initialData, initialError }: 
           {data?.source === "mock" ? <p className="api-data-notice admin-global-search-notice mx-4 my-3 mb-1 rounded-lg p-[9px_10px] text-[13px]">{translateText("Fixture search is active. Results use local demo records.")}</p> : null}
           {groups.map((group) => (
             <section key={group.kind} className="admin-global-search-group" aria-labelledby={`admin-global-search-group-${group.kind}`}>
-              <h3 className="m-0 flex items-center justify-between gap-2 border-b border-admin-border px-4 pb-2 pt-2.5 text-xs font-bold uppercase tracking-[.08em] text-admin-muted" id={`admin-global-search-group-${group.kind}`}>{translateText(overviewSearchResultLabel(group.kind))}<span className="min-w-5 rounded-full bg-admin-soft px-1.5 py-0.5 text-center text-xs tracking-normal text-admin-text">{group.items.length}</span></h3>
+              <h3 className="m-0 flex items-center justify-between gap-2 border-b border-admin-border px-4 pb-2 pt-2.5 text-xs font-bold uppercase tracking-[.08em] text-admin-muted" id={`admin-global-search-group-${group.kind}`}>{translateText(searchResultDescriptor(group.kind).label)}<span className="min-w-5 rounded-full bg-admin-soft px-1.5 py-0.5 text-center text-xs tracking-normal text-admin-text">{group.items.length}</span></h3>
               {group.items.map((result) => (
                 <Link key={`${result.kind}-${result.id}`} className="result grid w-full grid-cols-[35px_minmax(0,1fr)_auto] items-center gap-2.5 border-0 border-b border-admin-border-subtle bg-admin-surface px-4 py-2.5 text-left !text-admin-text no-underline hover:bg-admin-hover focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-admin-accent max-[600px]:grid-cols-[35px_minmax(0,1fr)]" href={result.href} onClick={onClose}>
                   <span className="admin-global-search-marker grid size-8 place-items-center rounded-lg bg-admin-soft text-admin-accent"><SearchResultIcon kind={result.kind} /></span>

@@ -37,6 +37,11 @@ import {
 } from "../domain/rulebook";
 import type { PersistedAdminData } from "../data/admin-records";
 import type { DashboardActivity } from "../dashboard/dashboard-model";
+import {
+  searchResultLabel,
+  searchResultOrder,
+  type AdminSearchResultKind,
+} from "../search/search-descriptors";
 
 type OverviewCount = number | null;
 export type OverviewQueueId = "payouts" | "disputes" | "reports" | "conductReports";
@@ -145,7 +150,7 @@ export type OverviewFallback = {
 };
 
 export type OverviewSearchResult = {
-  kind: "quest" | "member" | "payout" | "dispute" | "report" | "conduct-report" | "wallet" | "activity";
+  kind: AdminSearchResultKind;
   id: string;
   title: string;
   detail: string;
@@ -852,19 +857,8 @@ function mockMemberSearchStatus(member: unknown): string {
   return storedStatus ? memberStatusLabel(storedStatus) : mockMemberStatusById[recordText(member, "id")] ?? "Not provided";
 }
 
-const searchResultCategoryOrder: Record<OverviewSearchResult["kind"], number> = {
-  member: 0,
-  quest: 1,
-  payout: 2,
-  dispute: 3,
-  report: 4,
-  "conduct-report": 5,
-  wallet: 6,
-  activity: 7,
-};
-
 export function compareOverviewSearchResults(left: OverviewSearchResult, right: OverviewSearchResult): number {
-  const categoryDifference = searchResultCategoryOrder[left.kind] - searchResultCategoryOrder[right.kind];
+  const categoryDifference = searchResultOrder(left.kind) - searchResultOrder(right.kind);
   if (categoryDifference) return categoryDifference;
   return right.newestAt - left.newestAt || right.id.localeCompare(left.id);
 }
@@ -1056,14 +1050,5 @@ export function overviewSearchResultsFromApi(
 }
 
 export function overviewSearchResultLabel(kind: OverviewSearchResult["kind"]): string {
-  switch (kind) {
-    case "member": return "Member";
-    case "quest": return "Quest";
-    case "payout": return "Payout";
-    case "dispute": return "Dispute Case";
-    case "report": return "Report Case";
-    case "conduct-report": return "Conduct Report";
-    case "wallet": return "Wallet";
-    case "activity": return "Activity Log";
-  }
+  return searchResultLabel(kind);
 }
