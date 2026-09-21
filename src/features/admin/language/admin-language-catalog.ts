@@ -714,6 +714,7 @@ export const thaiTranslations: Record<string, string> = {
   "Saved filters": "ตัวกรองที่บันทึกไว้",
   "Saved filter removed.": "ลบตัวกรองที่บันทึกไว้แล้ว",
   "Search Dispute Cases": "ค้นหา Dispute Cases",
+  "Search all records": "ค้นหารายการทั้งหมด",
   "Search Member, Quest, Report Case, Wallet, or Payout…": "ค้นหา Member, Quest, Report Case, Wallet หรือ Payout…",
   "Search type": "ประเภทการค้นหา",
   "Select a reason code": "เลือกเหตุผล",

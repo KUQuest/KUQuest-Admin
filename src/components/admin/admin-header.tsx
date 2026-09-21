@@ -58,12 +58,12 @@ export function AdminHeader({
         </svg>
       </Button>
       <span className="admin-shell-title whitespace-nowrap text-base text-admin-text">{translateText("KUQuest Admin")}</span>
-      <Button variant="outline" size="sm" className="admin-global-search-trigger h-9 w-[min(520px,54vw)] justify-start gap-2 overflow-hidden border-admin-border-strong px-3 text-admin-muted max-[600px]:size-11 max-[600px]:w-11 max-[600px]:justify-center max-[600px]:px-0" type="button" aria-label={translateText("Search marketplace records")} onClick={onOpenSearch}>
+      <Button variant="outline" size="sm" className="admin-global-search-trigger h-9 w-[min(520px,54vw)] justify-start gap-2 overflow-hidden border-admin-border-strong px-3 text-admin-muted max-[600px]:size-11 max-[600px]:w-11 max-[600px]:justify-center max-[600px]:px-0" type="button" aria-label={translateText("Search all records")} onClick={onOpenSearch}>
         <svg className="size-[17px] shrink-0 fill-none stroke-current stroke-[1.8]" viewBox="0 0 24 24" aria-hidden="true">
           <circle cx="11" cy="11" r="7" />
           <path d="m20 20-4-4" />
         </svg>
-        <span className="truncate max-[600px]:hidden">{translateText("Search marketplace records")}</span>
+        <span className="truncate max-[600px]:hidden">{translateText("Search all records")}</span>
       </Button>
       <span className="ml-auto flex items-center gap-1.5 text-xs text-admin-muted max-[600px]:hidden"><i className="size-1.5 rounded-full bg-admin-success" />{pathname}</span>
     </header>
