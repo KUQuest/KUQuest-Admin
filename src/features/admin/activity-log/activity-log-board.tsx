@@ -238,7 +238,7 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
 
   return (
     <main id="activity-main" className="admin-route-page activity-log-board" tabIndex={-1}>
-        <AdminPageHeader title={translateText("Activity Log")} description={translateText("An audit trail of administrative decisions.")} actions={<Button variant="outline" type="button" onClick={exportCsv} disabled={!visibleEntries.length}>{translateText("Export CSV")}</Button>} />
+        <AdminPageHeader title={translateText("Activity Log")} description={translateText("An audit trail of administrative decisions.")} actions={<Button variant="outline" type="button" onClick={exportCsv} disabled={!visibleEntries.length}>{translateText("Export CSV")}</Button>} showActionsOnMobile />
       <Card as="section" className="overflow-hidden" aria-labelledby="activity-log-heading">
         <CardHeader className="flex min-h-[60px] items-center justify-between gap-4"><div><CardTitle id="activity-log-heading">{translateText("Activity Log")}</CardTitle><CardDescription>{translateText("Review the administrative audit trail.")}</CardDescription></div><span className={adminBoardCount} aria-live="polite">{filteredEntries.length} {translateText("loaded entries")}</span></CardHeader>
         <form className="mb-4 grid gap-3.5 rounded-admin-sm border border-admin-border bg-admin-soft p-3.5" onSubmit={applyFilters}>

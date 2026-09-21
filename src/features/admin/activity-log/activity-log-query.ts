@@ -45,6 +45,7 @@ export function useActivityLogQuery(filters: ActivityLogFilters, initialData?: A
     staleTime: seedQuery ? Infinity : 0,
     refetchOnMount: !seedQuery,
     refetchOnWindowFocus: false,
+    retry: false,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
 }
