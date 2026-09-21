@@ -186,6 +186,13 @@ export function AdminGlobalSearch({ open, onClose, initialData, initialError }: 
     setSaveMessage(translateText(`Saved filter: ${name}`));
   };
 
+  const removeSavedFilter = (filter: SavedSearchFilter) => {
+    const nextFilters = savedFilters.filter((savedFilter) => savedFilter.id !== filter.id);
+    setSavedFilters(nextFilters);
+    saveSearchFilters(nextFilters);
+    setSaveMessage(translateText("Saved filter removed."));
+  };
+
   if (!open) return null;
 
   return (
@@ -230,7 +237,22 @@ export function AdminGlobalSearch({ open, onClose, initialData, initialError }: 
         </div>
         {savedFilters.length ? <div className="admin-global-search-saved flex items-center gap-1.5 overflow-x-auto border-b border-admin-border px-4 py-2 whitespace-nowrap" aria-label={translateText("Saved filters")}>
           <span className="mr-1 text-[13px] font-bold text-admin-muted">{translateText("Saved filters")}</span>
-          {savedFilters.map((filter) => <Button className="min-h-7 rounded-full bg-admin-accent-soft px-2.5 py-1 text-[13px] whitespace-nowrap" key={filter.id} variant="link" size="sm" type="button" onClick={() => applySavedFilter(filter)}>{filter.name}</Button>)}
+          {savedFilters.map((filter) => (
+            <span className="inline-flex items-center rounded-full bg-admin-accent-soft" key={filter.id}>
+              <Button className="min-h-7 rounded-full bg-transparent px-2.5 py-1 text-[13px] whitespace-nowrap" variant="link" size="sm" type="button" onClick={() => applySavedFilter(filter)}>{filter.name}</Button>
+              <Button
+                className="!size-7 !min-h-7 !rounded-full !p-0 text-admin-muted hover:text-admin-text"
+                variant="ghost"
+                size="icon"
+                type="button"
+                aria-label={`${translateText("Remove saved filter")}: ${filter.name}`}
+                title={`${translateText("Remove saved filter")}: ${filter.name}`}
+                onClick={() => removeSavedFilter(filter)}
+              >
+                <span className="close-lines scale-[0.7]" aria-hidden="true" />
+              </Button>
+            </span>
+          ))}
         </div> : null}
         {saveMessage ? <output className="admin-global-search-message mx-4 mt-2.5 block text-[13px] text-admin-success">{translateText(saveMessage)}</output> : null}
         <div id="admin-global-search-results" aria-live="polite">
