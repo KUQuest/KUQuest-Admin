@@ -115,6 +115,13 @@ test.describe("Wallet App Router board", () => {
     await drawer.getByRole("button", { name: "Freeze Wallet" }).click();
     const freezeDialog = page.getByRole("dialog", { name: "Freeze Wallet" });
     await expect(freezeDialog).toBeVisible();
+    const freezeBounds = await freezeDialog.boundingBox();
+    const viewport = page.viewportSize();
+    expect(freezeBounds).not.toBeNull();
+    expect(viewport).not.toBeNull();
+    if (freezeBounds && viewport) {
+      expect(Math.abs(freezeBounds.x + freezeBounds.width / 2 - viewport.width / 2)).toBeLessThanOrEqual(1);
+    }
     await expect(freezeDialog).toContainText("Existing Escrow, Assignments, and in-progress Payouts continue");
     await expect(freezeDialog).toContainText("does not change the Member Ban");
     await freezeDialog.getByLabel("Reason").fill("Temporary hold pending Member review.");

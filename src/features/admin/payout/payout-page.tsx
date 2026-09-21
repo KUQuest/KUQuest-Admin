@@ -446,13 +446,13 @@ function PayoutCommandDialog({
           />
           {command === "reject" ? (
             <>
-              <label htmlFor="payout-reason-code">{translateText("Reason code")} <span aria-hidden="true">*</span>
+              <label className="grid gap-1 text-[16px] leading-[1.4] font-semibold" htmlFor="payout-reason-code"><span>{translateText("Reason code")} <span aria-hidden="true">*</span></span>
                 <select id="payout-reason-code" required value={reasonCode} onChange={(event) => setReasonCode(event.target.value)} autoFocus>
                   <option value="">{translateText("Choose a reason")}</option>
                   {rejectionReasonCodes.map((item) => <option key={item.value} value={item.value}>{translateText(item.label)}</option>)}
                 </select>
               </label>
-              <label htmlFor="payout-reason">{translateText("Reason")} <span aria-hidden="true">*</span>
+              <label className="grid gap-1 text-[16px] leading-[1.4] font-semibold" htmlFor="payout-reason"><span>{translateText("Reason")} <span aria-hidden="true">*</span></span>
                 <textarea id="payout-reason" name="reason" rows={4} minLength={8} maxLength={500} required value={reason} onChange={(event) => { setReason(event.target.value); setValidationError(null); }} />
               </label>
             </>
