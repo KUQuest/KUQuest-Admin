@@ -196,12 +196,13 @@ export function AdminGlobalSearch({ open, onClose, initialData, initialError }: 
     <dialog open id="overview-command" className="command fixed inset-0 z-[70] m-0 grid h-full max-h-none !w-full max-w-none place-items-start justify-items-center rounded-none border-0 bg-[var(--scrim-command)] p-0 !pt-[12vh]" aria-modal="true" aria-labelledby="admin-global-search-title" data-global-search="true">
       <button className="command-backdrop absolute inset-0 size-full cursor-default border-0 bg-transparent" type="button" aria-label={translateText("Close search")} onClick={onClose} />
       <div className="command-box admin-global-search-box relative z-[1] max-h-[min(78dvh,760px)] w-[min(760px,calc(100vw-28px))] overflow-auto rounded-[14px] border border-admin-border bg-admin-surface shadow-admin">
-        <div className="command-input flex h-[58px] items-center gap-2.5 border-b border-admin-border px-4 [&_input]:h-full [&_input]:min-w-0 [&_input]:flex-1 [&_input]:border-0 [&_input]:bg-transparent [&_input]:text-[17px] [&_input]:outline-none">
+        <div className="command-input flex h-[58px] items-center gap-2.5 border-b border-admin-border px-4 focus-within:border-admin-accent [&_input]:h-full [&_input]:min-w-0 [&_input]:flex-1 [&_input]:border-0 [&_input]:bg-transparent [&_input]:text-[17px]">
           <span aria-hidden="true">⌕</span>
           <h2 id="admin-global-search-title" className="visually-hidden">{translateText("Search marketplace records")}</h2>
           <input
             ref={inputRef}
             type="search"
+            className="outline-none focus-visible:!outline-none"
             aria-label={translateText("Search marketplace records")}
             placeholder={translateText("Search Member, Quest, Report Case, Wallet, or Payout…")}
             value={query}

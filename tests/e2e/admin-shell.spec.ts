@@ -498,6 +498,7 @@ test.describe("shared Admin shell", () => {
     await expect(dialog).toHaveCSS("background-color", "rgba(25, 27, 28, 0.38)");
     await expect(surface).toHaveCSS("background-color", "rgb(255, 255, 255)");
     await expect(surface).toHaveCSS("border-radius", "14px");
+    await expect(dialog.getByRole("searchbox", { name: "Search marketplace records" })).toHaveCSS("outline-style", "none");
   });
 
   test("keeps table record links visually neutral", async ({ page }) => {
