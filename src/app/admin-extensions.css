@@ -378,50 +378,6 @@ dialog.drawer.dispute-case-drawer .timeline strong {
 
 }
 
-/* Keep every Admin drawer readable at the requested larger type size. The
-   board tables keep their compact density so an Admin can scan many records. */
-.admin-shell {
-  font-size: 18px;
-}
-.admin-shell dialog.drawer {
-  font-size: 18px;
-}
-.admin-shell dialog.drawer .drawer-title h2 {
-  font-size: 23px;
-}
-.admin-shell dialog.drawer .drawer-title p {
-  font-size: 18px;
-  line-height: 1.5;
-}
-.admin-shell dialog.drawer .audit-note,
-.admin-shell dialog.drawer .evidence-item small,
-.admin-shell dialog.drawer .related-row small,
-.admin-shell dialog.drawer .file-row small,
-.admin-shell dialog.drawer .timeline time,
-.admin-shell dialog.drawer .timeline span {
-  font-size: 15px;
-}
-.admin-shell dialog.drawer .timeline strong {
-  font-size: 17px;
-  line-height: 1.4;
-}
-.admin-shell dialog.drawer .badge,
-.admin-shell dialog.drawer .evidence-item > span:last-child,
-.admin-shell dialog.drawer .requirement-box strong,
-.admin-shell dialog.drawer .requirement-box ul {
-  font-size: 16px;
-}
-.admin-shell .activity-log-dialog {
-  font-size: 18px;
-}
-.admin-shell .activity-log-dialog .drawer-title h2 {
-  font-size: 23px;
-}
-.admin-shell .activity-log-dialog .drawer-title p {
-  font-size: 18px;
-  line-height: 1.5;
-}
-
 /* Reflow moderation drawers into two readable fact columns and full-width
    narrative rows. This prevents names, timestamps, and policy notes from
    being squeezed into a three-column strip. */
@@ -546,29 +502,6 @@ dialog.drawer.dispute-case-drawer .field-error {
    intentional: headings and status badges stay stronger than record text,
    while labels and metadata use predictable smaller steps. */
 .admin-shell {
-  --admin-font-body: 18px;
-  --admin-font-table: 16px;
-  --admin-font-meta: 15px;
-  --admin-font-caption: 14px;
-  font-size: var(--admin-font-body);
-}
-
-/* Filter controls use the same readable scale on legacy search fields. Board
-   filters use Tailwind utilities directly. */
-.admin-shell {
-  --admin-font-control: 16px;
-}
-
-.admin-shell .inline-search input {
-  font-size: var(--admin-font-control);
-  line-height: 1.45;
-}
-
-/* Final Admin type-scale audit.
-   Record pages, drawers, and command surfaces share the same semantic sizes.
-   A value can still be stronger than its label, but the route must not change
-   the meaning of a size by using browser defaults or legacy 10–12px rules. */
-.admin-shell {
   --admin-font-page-title: 26px;
   --admin-font-drawer-title: 23px;
   --admin-font-section: 18px;
@@ -577,6 +510,13 @@ dialog.drawer.dispute-case-drawer .field-error {
   --admin-font-table: 16px;
   --admin-font-meta: 15px;
   --admin-font-caption: 14px;
+  --admin-font-control: 16px;
+  font-size: var(--admin-font-body);
+}
+
+.admin-shell .inline-search input {
+  font-size: var(--admin-font-control);
+  line-height: 1.45;
 }
 
 /* Board and full-record headings. */
@@ -607,11 +547,6 @@ dialog.drawer.dispute-case-drawer .field-error {
   line-height: 1.4;
 }
 
-.admin-shell .record-status-bar .badge {
-  font-size: var(--admin-font-meta);
-  line-height: 1.35;
-}
-
 .admin-shell .record-breadcrumb {
   font-size: var(--admin-font-meta);
   line-height: 1.4;
@@ -624,17 +559,18 @@ dialog.drawer.dispute-case-drawer .field-error {
   line-height: 1.4;
 }
 
-.admin-shell dialog.drawer .timeline strong,
-.admin-shell dialog.drawer .related-row strong,
-.admin-shell dialog.drawer .file-row strong,
+.admin-shell dialog.drawer .drawer-title p {
+  font-size: var(--admin-font-body);
+  line-height: 1.5;
+}
+
 .admin-shell dialog.drawer .hirer-profile-summary strong {
   font-size: var(--admin-font-value);
   line-height: 1.4;
 }
 
 .admin-shell dialog.drawer .badge {
-  font-size: var(--admin-font-meta);
-  line-height: 1.35;
+  font-size: 16px;
 }
 
 .admin-shell dialog.drawer .requirement-box,
@@ -644,7 +580,12 @@ dialog.drawer.dispute-case-drawer .field-error {
   line-height: 1.5;
 }
 
+.admin-shell dialog.drawer .requirement-box strong {
+  font-size: 16px;
+}
+
 .admin-shell dialog.drawer .audit-note,
+.admin-shell dialog.drawer .evidence-item small,
 .admin-shell dialog.drawer .timeline time,
 .admin-shell dialog.drawer .timeline span,
 .admin-shell dialog.drawer .related-row small,
@@ -735,20 +676,9 @@ dialog.drawer.dispute-case-drawer .field-error {
   line-height: 1.4;
 }
 
-.admin-shell dialog.drawer .file-row > span:last-child,
-.admin-shell dialog.drawer .related-row > span:last-child {
-  font-size: var(--admin-font-meta);
-  line-height: 1.4;
-}
-
 .admin-shell .file-row > span:last-child,
 .admin-shell .related-row > span:last-child,
 .admin-shell .timeline small {
-  font-size: var(--admin-font-meta);
-  line-height: 1.4;
-}
-
-.admin-shell dialog.drawer .timeline small {
   font-size: var(--admin-font-meta);
   line-height: 1.4;
 }
