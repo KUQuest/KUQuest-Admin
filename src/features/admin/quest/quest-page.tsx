@@ -378,12 +378,12 @@ function QuestDetailContent({
             ) : null}
           </div>
         </div>
-        {!recordLayout ? <div className="quest-summary-context mt-[18px] grid !grid-cols-2 gap-x-6 gap-y-[18px] border-t border-admin-border pt-[18px] max-[600px]:!grid-cols-1">
+        {!recordLayout ? <div className="quest-summary-context mt-[18px] grid !grid-cols-1 gap-y-[18px] border-t border-admin-border pt-[18px]">
           <div className="quest-summary-context-section min-w-0 [&>p:not(.audit-note):not(.field-error)]:m-0 [&>p:not(.audit-note):not(.field-error)]:text-admin-muted">
             <h3 className={`${adminRecordHeading} mb-[10px]`}>{translateText("Schedule and location")}</h3>
-            <div className={adminRecordFacts}>
-              <Fact label={translateText("Starts")}>{formatQuestDate(detail.startTime)}</Fact>
-              <Fact label={translateText("Due")}>{formatQuestDate(detail.dueAt)}</Fact>
+            <div className={`${adminRecordFacts} !gap-x-8`}>
+              <Fact label={translateText("Starts")}><span className="whitespace-nowrap">{formatQuestDate(detail.startTime)}</span></Fact>
+              <Fact label={translateText("Due")}><span className="whitespace-nowrap">{formatQuestDate(detail.dueAt)}</span></Fact>
             </div>
             <div className="mt-4 grid gap-1">
               <span className="block text-xs font-semibold leading-[1.4] text-admin-muted">{translateText("Location")}</span>

@@ -266,6 +266,10 @@ test.describe("Quest route family", () => {
     await expect(summary.getByRole("heading", { name: "Dispute and risk", exact: true })).toHaveCount(0);
     const summaryFactLabels = await summary.locator('.admin-record-facts').first().locator('.admin-record-fact > span').allTextContents();
     expect(summaryFactLabels).toEqual(["Status", "Quest Funding Total", "Participant mode", "Candidate mode", "Quest ID", "Hirer"]);
+    const scheduleFacts = summary.locator(".quest-summary-context .admin-record-facts");
+    await expect(scheduleFacts).toHaveCSS("column-gap", "32px");
+    await expect(scheduleFacts.locator(".admin-record-fact").first().locator("strong > span")).toHaveCSS("white-space", "nowrap");
+    await expect(scheduleFacts.locator(".admin-record-fact").nth(1).locator("strong > span")).toHaveCSS("white-space", "nowrap");
     const disputeRisk = drawer.getByRole("heading", { name: "Dispute and risk", exact: true });
     await expect(disputeRisk).toBeVisible();
     const panelTitles = await drawer.locator("h2").allTextContents();
