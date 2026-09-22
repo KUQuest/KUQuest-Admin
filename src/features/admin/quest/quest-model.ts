@@ -11,6 +11,7 @@ import { questStateFor, questStateLabel, type QuestState } from "../domain/ruleb
 
 export type QuestMemberView = {
   id: string;
+  memberId: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -246,6 +247,7 @@ export function questDisplayIdFor(id: string, displayId?: string | null): string
 function questMemberViewFromApi(member: AdminQuestMember): QuestMemberView {
   return {
     id: member.id,
+    memberId: member.memberId ?? member.id,
     firstName: member.firstName,
     lastName: member.lastName,
     email: member.email,

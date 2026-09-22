@@ -18,6 +18,7 @@ export type AdminQuestParticipation = "SINGLE" | "GROUP";
 
 export type AdminQuestMember = {
   id: string;
+  memberId?: string;
   firstName: string;
   lastName: string;
   email: string;

@@ -261,6 +261,11 @@ test.describe("Quest route family", () => {
 
     const candidates = page.getByRole("heading", { name: "Candidates", exact: true }).locator("xpath=ancestor::section[1]");
     await expect(candidates.getByRole("link", { name: "See Member profile", exact: true })).toHaveAttribute("href", /\/member\//);
+
+    await page.goto(`/quest/${FAILED_QUEST_ID}`);
+    const hirer = page.locator(".quest-detail-page > div > div > aside").getByRole("heading", { name: "Hirer", exact: true }).locator("xpath=ancestor::section[1]");
+    await expect(hirer.getByText("68000000", { exact: true })).toBeVisible();
+    await expect(hirer.getByRole("link", { name: "See Member profile", exact: true })).toHaveAttribute("href", "/member/68000000");
   });
 
   test("opens the detail drawer, returns with Back, and follows Full Quest detail", async ({ page }) => {

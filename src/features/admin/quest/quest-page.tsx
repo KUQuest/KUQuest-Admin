@@ -478,13 +478,16 @@ function QuestDetailContent({
           <div className="related-list">
             {candidateApplications.map((application) => (
               <div className="related-row" key={application.id}>
-                <span><strong>{questMemberName(application.worker)}</strong><small>{translateText("Candidate")} · {translateText(readableValue(application.applicationStatus))}</small></span>
-                <span className="flex shrink-0 flex-col items-end gap-2 text-right">
-                  <span>{formatQuestDate(application.appliedAt)}</span>
-                  <UiButton asChild variant="outline" size="xs">
-                    <Link href={memberRoutes.detail(application.worker.id)}>{translateText("See Member profile")}</Link>
-                  </UiButton>
+                <span>
+                  <span className="flex flex-wrap items-baseline gap-x-2">
+                    <strong>{questMemberName(application.worker)}</strong>
+                    <span className="text-[13px] text-admin-muted">{formatQuestDate(application.appliedAt)}</span>
+                  </span>
+                  <small>{translateText("Candidate")} · {translateText(readableValue(application.applicationStatus))}</small>
                 </span>
+                <UiButton asChild variant="outline" size="xs" className="shrink-0">
+                  <Link href={memberRoutes.detail(application.worker.memberId)}>{translateText("See Member profile")}</Link>
+                </UiButton>
               </div>
             ))}
           </div>
@@ -567,15 +570,15 @@ function QuestDetailContent({
             <div className={adminRecordSideFacts}>
               <div>
                 <span>{translateText("Name")}</span>
-                <strong><Link href={memberRoutes.detail(detail.hirer.id)}>{questMemberName(detail.hirer)}</Link></strong>
+                <strong><Link href={memberRoutes.detail(detail.hirer.memberId)}>{questMemberName(detail.hirer)}</Link></strong>
               </div>
               <div>
                 <span>{translateText("Member ID")}</span>
-                <strong>{detail.hirer.id}</strong>
+                <strong>{detail.hirer.memberId}</strong>
               </div>
             </div>
             <UiButton asChild variant="outline" className="mt-3 w-full">
-              <Link href={memberRoutes.detail(detail.hirer.id)}>{translateText("See Member profile")}</Link>
+              <Link href={memberRoutes.detail(detail.hirer.memberId)}>{translateText("See Member profile")}</Link>
             </UiButton>
           </Section>
 

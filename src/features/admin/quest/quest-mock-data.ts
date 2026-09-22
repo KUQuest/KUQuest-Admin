@@ -18,6 +18,7 @@ export const MOCK_ASSIGNED_WORKER_ID = "00000000-0000-0000-0000-000000000020";
 
 export const mockHirer = {
   id: "00000000-0000-0000-0000-000000000010",
+  memberId: "68000000",
   firstName: "Kamonwan",
   lastName: "Lertwiroj",
   email: "hirer@ku.th",
