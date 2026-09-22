@@ -12,7 +12,7 @@ import { AdminRecordHeader } from "../../../components/admin/admin-record-header
 import { AdminStatusAlert } from "../../../components/admin/admin-status-alert";
 import { AdminRecordFact as Fact } from "../../../components/admin/admin-record-fields";
 import { RecordStatusBar } from "../../../components/admin/record-status-bar";
-import { adminRecordCount, adminRecordDescription, adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
+import { adminRecordCount, adminRecordDescription, adminRecordFact, adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { Badge as UiBadge, Button as UiButton, Card, CardContent, CardHeader, CardTitle } from "../../../components/ui";
 import { disputeRoutes, questRoutes } from "../admin-routes";
@@ -359,14 +359,12 @@ function QuestDetailContent({
           <Fact label={translateText("Participant mode")}>{translateText(detail.participation === "GROUP" ? "Team" : "Solo")}</Fact>
           <Fact label={translateText("Candidate mode")}>{translateText(detail.mode === "FIRST_COME_FIRST_SERVED" ? "First come, first served" : "Candidate")}</Fact>
           <Fact label={translateText("Quest ID")}>{questDisplayIdFor(detail.id, detail.displayId)}</Fact>
-        </div>
-        {!recordLayout ? <div className="quest-summary-context-section mt-[18px] min-w-0">
-          <h3 className={`${adminRecordHeading} mb-[10px]`}>{translateText("Hirer")}</h3>
-          <div className="grid gap-[3px] [&>strong]:text-[15px] [&>span]:text-[14px] [&>span]:text-admin-muted">
+          {!recordLayout ? <div className={adminRecordFact}>
+            <span>{translateText("Hirer")}</span>
             <strong>{questMemberName(detail.hirer)}</strong>
-            <span>{detail.hirer.email}</span>
-          </div>
-        </div> : null}
+            <small>{detail.hirer.email}</small>
+          </div> : null}
+        </div>
         <div className="quest-description-block mt-[18px] border-t border-admin-border pt-[18px]">
           <h3 className={`${adminRecordHeading} mb-[10px]`}>{translateText("Quest description")}</h3>
           <p className={adminRecordDescription}>{detail.description || translateText("No Quest description recorded.")}</p>

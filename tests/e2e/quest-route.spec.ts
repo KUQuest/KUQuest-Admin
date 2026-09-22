@@ -261,12 +261,11 @@ test.describe("Quest route family", () => {
     await expect(drawer.getByText("Quest summary", { exact: true })).toBeVisible();
     const summary = drawer.getByRole("heading", { name: "Quest summary", exact: true }).locator("xpath=ancestor::section[1]");
     await expect(summary).toBeVisible();
-    await expect(summary.getByRole("heading", { name: "Hirer", exact: true })).toBeVisible();
+    await expect(summary.locator('.admin-record-fact > span').filter({ hasText: "Hirer" })).toBeVisible();
     await expect(summary.getByRole("heading", { name: "Schedule and location", exact: true })).toBeVisible();
     await expect(summary.getByRole("heading", { name: "Dispute and risk", exact: true })).toHaveCount(0);
-    const summaryHeadings = await summary.locator("h3").allTextContents();
-    expect(summaryHeadings.indexOf("Hirer")).toBeLessThan(summaryHeadings.indexOf("Quest description"));
-    expect(summaryHeadings.indexOf("Quest description")).toBeLessThan(summaryHeadings.indexOf("Schedule and location"));
+    const summaryFactLabels = await summary.locator('.admin-record-facts').first().locator('.admin-record-fact > span').allTextContents();
+    expect(summaryFactLabels).toEqual(["Status", "Quest Funding Total", "Participant mode", "Candidate mode", "Quest ID", "Hirer"]);
     const disputeRisk = drawer.getByRole("heading", { name: "Dispute and risk", exact: true });
     await expect(disputeRisk).toBeVisible();
     const panelTitles = await drawer.locator("h2").allTextContents();
