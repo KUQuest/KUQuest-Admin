@@ -70,8 +70,8 @@ test.describe("canonical parity coverage", () => {
       "ADJUSTMENT",
       "EARNINGS_CONVERSION",
     ]);
-    await expect(statement.getByLabel("From ICT date")).toBeVisible();
-    await expect(statement.getByLabel("To ICT date")).toBeVisible();
+    await expect(statement.getByLabel("From")).toBeVisible();
+    await expect(statement.getByLabel("To")).toBeVisible();
 
     const rows = statement.locator(".wallet-statement-table tbody tr");
     await expect(rows).toHaveCount(25);
