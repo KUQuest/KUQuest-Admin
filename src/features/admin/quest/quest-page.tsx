@@ -360,6 +360,13 @@ function QuestDetailContent({
           <Fact label={translateText("Candidate mode")}>{translateText(detail.mode === "FIRST_COME_FIRST_SERVED" ? "First come, first served" : "Candidate")}</Fact>
           <Fact label={translateText("Quest ID")}>{questDisplayIdFor(detail.id, detail.displayId)}</Fact>
         </div>
+        {!recordLayout ? <div className="quest-summary-context-section mt-[18px] min-w-0">
+          <h3 className={`${adminRecordHeading} mb-[10px]`}>{translateText("Hirer")}</h3>
+          <div className="grid gap-[3px] [&>strong]:text-[15px] [&>span]:text-[14px] [&>span]:text-admin-muted">
+            <strong>{questMemberName(detail.hirer)}</strong>
+            <span>{detail.hirer.email}</span>
+          </div>
+        </div> : null}
         <div className="quest-description-block mt-[18px] border-t border-admin-border pt-[18px]">
           <h3 className={`${adminRecordHeading} mb-[10px]`}>{translateText("Quest description")}</h3>
           <p className={adminRecordDescription}>{detail.description || translateText("No Quest description recorded.")}</p>
@@ -374,14 +381,6 @@ function QuestDetailContent({
           </div>
         </div>
         {!recordLayout ? <div className="quest-summary-context mt-[18px] grid !grid-cols-2 gap-x-6 gap-y-[18px] border-t border-admin-border pt-[18px] max-[600px]:!grid-cols-1">
-          <div className="quest-summary-context-section min-w-0 [&>p:not(.audit-note):not(.field-error)]:m-0 [&>p:not(.audit-note):not(.field-error)]:text-admin-muted">
-            <h3 className={`${adminRecordHeading} mb-[10px]`}>{translateText("Hirer")}</h3>
-            <div className="grid gap-[3px] [&>strong]:text-[15px] [&>span]:text-[14px] [&>span]:text-admin-muted">
-              <strong>{questMemberName(detail.hirer)}</strong>
-              <span>{detail.hirer.email}</span>
-            </div>
-          </div>
-
           <div className="quest-summary-context-section min-w-0 [&>p:not(.audit-note):not(.field-error)]:m-0 [&>p:not(.audit-note):not(.field-error)]:text-admin-muted">
             <h3 className={`${adminRecordHeading} mb-[10px]`}>{translateText("Schedule and location")}</h3>
             <div className={adminRecordFacts}>
