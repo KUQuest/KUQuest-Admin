@@ -96,6 +96,42 @@ function isMissingSeedValue(value: unknown): boolean {
   return value === undefined || value === null || (typeof value === "string" && value.trim() === "");
 }
 
+function text(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed || null;
+}
+
+function firstText(...values: unknown[]): string | null {
+  for (const value of values) {
+    const result = text(value);
+    if (result) return result;
+  }
+  return null;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function partyId(value: unknown): string | null {
+  const record = asRecord(value);
+  if (!record) return text(value);
+  return firstText(record.id, record.userId, record.memberId);
+}
+
+function partyName(value: unknown): string | null {
+  const record = asRecord(value);
+  if (!record) return text(value);
+  return firstText(record.name, record.displayName, record.title);
+}
+
+function roleIs(value: unknown, role: "Hirer" | "Worker"): boolean {
+  return text(value)?.toLowerCase() === role.toLowerCase();
+}
+
 function repairMissingSeedFields(
   existing: unknown[],
   seeded: readonly unknown[],
@@ -132,6 +168,62 @@ function repairMissingSeedFields(
   return { records, changed };
 }
 
+function repairLegacyDisputeParties(existing: unknown[]): { records: unknown[]; changed: boolean } {
+  let changed = false;
+  const records = existing.map((value) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+    const record = value as Record<string, unknown>;
+    if (!isDisputeCaseStatus(record.status) && !isDisputeCaseStatus(record.disputeCaseStatus)) return value;
+
+    const quest = asRecord(record.quest);
+    const hirerId = firstText(record.hirerId, quest?.hirerId, partyId(record.hirer));
+    const workerId = firstText(record.workerId, record.resolvedWorkerId, partyId(record.worker));
+    const filerRole = roleIs(record.filerRole, "Worker") ? "Worker" : "Hirer";
+    const respondentRole = roleIs(record.respondentRole, "Hirer") ? "Hirer" : "Worker";
+    const filerId = firstText(
+      record.filerUserId,
+      record.filerId,
+      roleIs(filerRole, "Hirer") ? hirerId : workerId,
+    );
+    const respondentId = firstText(
+      record.respondentUserId,
+      record.respondentId,
+      roleIs(respondentRole, "Hirer") ? hirerId : workerId,
+      roleIs(filerRole, "Hirer") ? workerId : hirerId,
+    );
+    const hirerName = firstText(record.hirerName, partyName(record.hirer));
+    const workerName = firstText(record.workerName, partyName(record.worker));
+    const filerName = firstText(
+      record.filerName,
+      partyName(record.filer),
+      roleIs(filerRole, "Hirer") ? hirerName : workerName,
+      record.reporterName,
+    );
+    const respondentName = firstText(
+      record.respondentName,
+      partyName(record.respondent),
+      roleIs(respondentRole, "Hirer") ? hirerName : workerName,
+    );
+
+    const repaired = { ...record };
+    let recordChanged = false;
+    const fill = (field: string, fieldValue: string | null) => {
+      if (!isMissingSeedValue(repaired[field]) || !fieldValue) return;
+      repaired[field] = fieldValue;
+      recordChanged = true;
+    };
+    fill("filerUserId", filerId);
+    fill("respondentUserId", respondentId);
+    fill("filerName", filerName);
+    fill("respondentName", respondentName);
+    if (!recordChanged) return value;
+    changed = true;
+    return repaired;
+  });
+
+  return { records, changed };
+}
+
 function migrateExpandedMockSeed(
   storage: BrowserStorage,
   data: PersistedAdminData,
@@ -155,6 +247,7 @@ function migrateExpandedMockSeed(
     ["questId", "title", "filerUserId", "filerName", "respondentUserId", "respondentName", "respondentStatement"],
     (record) => isDisputeCaseStatus(record.status) || isDisputeCaseStatus(record.disputeCaseStatus),
   );
+  const repairedLegacyDisputes = repairLegacyDisputeParties(repairedDisputes.records);
   const repairedConductReports = repairMissingSeedFields(
     reports.records,
     seeded.reports,
@@ -168,7 +261,7 @@ function migrateExpandedMockSeed(
     (record) => isReportCaseStatus(record.status) || isReportCaseStatus(record.reportCaseStatus),
   );
   const repairedReportsChanged = reports.changed || repairedConductReports.changed || repairedReportCases.changed;
-  const repairedDisputesChanged = disputes.changed || repairedDisputes.changed;
+  const repairedDisputesChanged = disputes.changed || repairedDisputes.changed || repairedLegacyDisputes.changed;
   const repairedUsersChanged = users.changed || repairedUsers.changed;
   if (!repairedUsersChanged && !quests.changed && !payouts.changed && !repairedDisputesChanged && !repairedReportsChanged && data.version === config.dashboardSeedVersion) {
     return data;
@@ -181,7 +274,7 @@ function migrateExpandedMockSeed(
       users: repairedUsers.records as PersistedAdminData["collections"]["users"],
       quests: quests.records,
       payouts: payouts.records,
-      disputes: repairedDisputes.records,
+      disputes: repairedLegacyDisputes.records,
       reports: repairedReportCases.records,
     },
   };
