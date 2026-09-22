@@ -157,6 +157,8 @@ function ReportOverview({
       <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Report detail")}</h2></CardHeader>
       <p className={adminRecordDescription}>{model.detail}</p>
       <AdminOverviewMeta className="mt-[18px]">
+        <div><dt>{translateText("Status")}</dt><dd><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></dd></div>
+        <div><dt>{translateText("Submitted")}</dt><dd>{formatAdminTimestamp(model.submittedAt)}</dd></div>
         <div><dt>{translateText("Report type")}</dt><dd>{translateText(model.reportType)}</dd></div>
         <div><dt>{translateText("Submitted by")}</dt><dd><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} /></dd></div>
         <div><dt>{translateText("Reported Member")}</dt><dd><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} /></dd></div>
@@ -578,7 +580,7 @@ export function ReportCaseDetail({
   const content = (
     <>
       <ReportAlert model={model} translateText={translateText} />
-      <RecordStatusBar items={[{ id: "status", label: translateText("Status"), value: <span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span> }, { id: "report-type", label: translateText("Report type"), value: translateText(model.reportType) }, { id: "submitted", label: translateText("Submitted"), value: formatAdminTimestamp(model.submittedAt) }, { id: "reported-member", label: translateText("Reported Member"), value: <MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} /> }, { id: "evidence", label: translateText("Evidence"), value: model.evidence.length || translateText("None") }]} />
+      <RecordStatusBar className="report-record-status-bar !grid-cols-3 max-[700px]:!grid-cols-2 max-[500px]:!grid-cols-1" items={[{ id: "report-type", label: translateText("Report type"), value: translateText(model.reportType) }, { id: "reported-member", label: translateText("Reported Member"), value: <MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} /> }, { id: "evidence", label: translateText("Evidence"), value: model.evidence.length || translateText("None") }]} />
       <ReportCaseSections model={model} translateText={translateText} onOpenEvidence={openEvidence} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} actionReceipt={actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Report Case" resourceId={model.id} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {actionReceipt.reason}</p>} /> : null} />
     </>
   );
