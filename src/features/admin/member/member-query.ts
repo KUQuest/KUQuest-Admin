@@ -64,6 +64,16 @@ export function useMemberDetailQuery(memberId: string, initialModel?: MemberMode
   const queryClient = useQueryClient();
   const apiEnabled = isAdminApiEnabled();
   const queryKey = memberDetailQueryKey(memberId);
+  const mockInitialModel = useMemo(() => {
+    if (apiEnabled || initialModel || typeof window === "undefined") return undefined;
+    try {
+      return findMemberFromMock(window.localStorage, memberId) ?? undefined;
+    } catch {
+      return undefined;
+    }
+  }, [apiEnabled, initialModel, memberId]);
+  const resolvedInitialModel = initialModel ?? mockInitialModel;
+  const initialModelIsAuthoritative = initialModel?.source === "api";
   const query = useQuery({
     queryKey,
     queryFn: async () => {
@@ -73,15 +83,15 @@ export function useMemberDetailQuery(memberId: string, initialModel?: MemberMode
       if (!model) throw new Error("The requested Member was not found.");
       return model;
     },
-    initialData: initialModel ?? undefined,
-    staleTime: initialModel ? Infinity : 0,
+    initialData: resolvedInitialModel,
+    staleTime: initialModelIsAuthoritative ? Infinity : 0,
     gcTime: Infinity,
-    refetchOnMount: !initialModel,
+    refetchOnMount: !initialModelIsAuthoritative,
     refetchOnWindowFocus: false,
   });
 
   useEffect(() => {
-    if (initialModel) queryClient.setQueryData(queryKey, initialModel);
+    if (initialModel?.source === "api") queryClient.setQueryData(queryKey, initialModel);
   }, [initialModel, queryClient, queryKey]);
 
   useEffect(() => {

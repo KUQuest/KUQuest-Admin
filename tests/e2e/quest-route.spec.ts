@@ -278,7 +278,10 @@ test.describe("Quest route family", () => {
     const candidates = drawer.getByRole("heading", { name: "Candidates", exact: true }).locator("xpath=ancestor::section[1]");
     await expect(candidates).toContainText("Demo Member 02");
     await expect(candidates.getByText(/Member ID:/).first()).toBeVisible();
-    await expect(candidates.getByRole("link", { name: "See Member profile", exact: true })).toBeVisible();
+    await candidates.getByRole("link", { name: "See Member profile", exact: true }).click();
+    const memberDrawer = page.locator('[data-slot="admin-drawer"]').last();
+    await expect(memberDrawer.getByText("Loading Member…", { exact: true })).toHaveCount(0, { timeout: 10_000 });
+    await expect(memberDrawer).toContainText("Demo Member 02");
   });
 
   test("opens the detail drawer, returns with Back, and follows Full Quest detail", async ({ page }) => {

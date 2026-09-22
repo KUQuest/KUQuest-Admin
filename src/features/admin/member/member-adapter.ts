@@ -34,6 +34,11 @@ function memberRecord(data: PersistedAdminData, memberId: string): Record<string
   return record ? record as Record<string, unknown> : null;
 }
 
+export function findMemberFromMockData(data: PersistedAdminData, memberId: string): MemberModel | null {
+  const record = memberRecord(data, memberId);
+  return record ? memberModelFromMockRecord(record, data) : null;
+}
+
 export function loadMembersFromMock(storage: BrowserStorage, cursor?: string): MemberMockPage {
   const data = loadDashboardData(storage);
   // Page the raw records before building detail-heavy Member models. Building
@@ -63,9 +68,7 @@ export function loadAllMembersFromMock(storage: BrowserStorage): MemberMockPage 
 }
 
 export function findMemberFromMock(storage: BrowserStorage, memberId: string): MemberModel | null {
-  const data = loadDashboardData(storage);
-  const record = memberRecord(data, memberId);
-  return record ? memberModelFromMockRecord(record, data) : null;
+  return findMemberFromMockData(loadDashboardData(storage), memberId);
 }
 
 export function saveMemberNote(
