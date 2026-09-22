@@ -22,8 +22,8 @@ import { adminBoardCount, adminBoardPagination, adminBoardTable } from "../../..
 const tabs: Array<{ id: DisputeCaseTab; label: string }> = [
   { id: "open", label: "Open" },
   { id: "all", label: "All" },
-  { id: "dismissed", label: "Retained" },
-  { id: "resolved", label: "Redirected" },
+  { id: "dismissed", label: "Dismissed" },
+  { id: "resolved", label: "Resolved" },
 ];
 
 function tabMatches(model: DisputeCaseModel, tab: DisputeCaseTab): boolean {

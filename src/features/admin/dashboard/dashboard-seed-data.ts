@@ -214,8 +214,8 @@ const dashboardDemoDisputeSeedData = Array.from({ length: MOCK_DEMO_RECORD_COUNT
     tone: "neutral",
     disputeDate: demoIsoDate(index + 3, 12),
     evidenceRefs: index % 5 === 0 ? [] : [`evidence-dsp-${5210 + index}`],
-    ...(status === "DISPUTE_CASE_RESOLVED" ? { resolvedAmountSatang: amountAtRiskSatang, resolvedWorkerId: respondent?.id, resolvedBy: "admin-demo", resolutionAt: demoIsoDate(index + 3, 16), closedAt: demoIsoDate(index + 3, 16), decision: "resolve", decisionLabel: "Redirected", decisionReason: "Demo Worker outcome recorded." } : {}),
-    ...(status === "DISPUTE_CASE_DISMISSED" ? { resolvedAmountSatang: null, resolvedBy: "admin-demo", resolutionAt: demoIsoDate(index + 3, 16), closedAt: demoIsoDate(index + 3, 16), decision: "dismiss", decisionLabel: "Retained", decisionReason: "Demo Dispute Case dismissed." } : {}),
+    ...(status === "DISPUTE_CASE_RESOLVED" ? { resolvedAmountSatang: amountAtRiskSatang, resolvedWorkerId: respondent?.id, resolvedBy: "admin-demo", resolutionAt: demoIsoDate(index + 3, 16), closedAt: demoIsoDate(index + 3, 16), decision: "resolve", decisionLabel: "Resolved", decisionReason: "Demo Worker outcome recorded." } : {}),
+    ...(status === "DISPUTE_CASE_DISMISSED" ? { resolvedAmountSatang: null, resolvedBy: "admin-demo", resolutionAt: demoIsoDate(index + 3, 16), closedAt: demoIsoDate(index + 3, 16), decision: "dismiss", decisionLabel: "Dismissed", decisionReason: "Demo Dispute Case dismissed." } : {}),
     version: 1,
   };
 });

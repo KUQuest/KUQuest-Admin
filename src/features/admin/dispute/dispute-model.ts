@@ -30,11 +30,11 @@ export type DisputeCaseCommand =
 export const disputeCaseDecisionMetadata = {
   dismiss: {
     command: "DISPUTE_CASE_DISMISSED",
-    label: "Retained",
+    label: "Dismissed",
   },
   resolve: {
     command: "DISPUTE_CASE_RESOLVED",
-    label: "Redirected",
+    label: "Resolved",
   },
 } as const satisfies Record<DisputeCaseDecisionChoice, { command: DisputeCaseCommand; label: string }>;
 
@@ -125,10 +125,12 @@ function disputeDecisionLabel(value: unknown): string | null {
   switch (text(value)) {
     case "Hirer wins":
     case "Hirer retains funds":
-      return "Retained";
+    case "Retained":
+      return "Dismissed";
     case "Worker wins":
     case "Worker receives funds":
-      return "Redirected";
+    case "Redirected":
+      return "Resolved";
     default:
       return text(value);
   }
@@ -300,8 +302,8 @@ export function disputeCaseModelFromRecord(
       : [];
   const decisionLabel = firstText(
     disputeDecisionLabel(record.decisionLabel),
-    status === "DISPUTE_CASE_DISMISSED" ? "Retained" : null,
-    status === "DISPUTE_CASE_RESOLVED" ? "Redirected" : null,
+    status === "DISPUTE_CASE_DISMISSED" ? "Dismissed" : null,
+    status === "DISPUTE_CASE_RESOLVED" ? "Resolved" : null,
   );
   const submittedAt = formatDate(
     record.createdAt ?? record.disputeDate,
