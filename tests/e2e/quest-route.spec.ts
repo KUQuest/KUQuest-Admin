@@ -13,6 +13,7 @@ const HIDDEN_QUEST_ID = "00000000-0000-0000-0000-000000000600";
 const FAILED_QUEST_ID = "QST-12001";
 const OPEN_BOARD_DISPLAY_ID = "QST-12017";
 const TEAM_BOARD_DISPLAY_ID = "QST-12042";
+const CANDIDATE_QUEST_DISPLAY_ID = "QST-12012";
 
 function success(data: unknown): { success: true; data: unknown } {
   return { success: true, data };
@@ -231,6 +232,10 @@ test.describe("Quest route family", () => {
     const side = page.locator(".quest-detail-page > div > div > aside");
     await expect(side).toBeVisible();
     await expect(side.getByRole("heading", { name: "Hirer", exact: true })).toBeVisible();
+    const hirer = side.getByRole("heading", { name: "Hirer", exact: true }).locator("xpath=ancestor::section[1]");
+    await expect(hirer.getByText("Name", { exact: true })).toBeVisible();
+    await expect(hirer.getByText("Member ID", { exact: true })).toBeVisible();
+    await expect(hirer.getByRole("link", { name: "See Member profile", exact: true })).toHaveAttribute("href", /\/member\//);
     await expect(side.getByRole("heading", { name: "Schedule and location", exact: true })).toBeVisible();
     await expect(side.getByRole("heading", { name: "Dispute and risk", exact: true })).toBeVisible();
     await expect(side.getByRole("heading", { name: "Quest actions", exact: true })).toBeVisible();
@@ -249,6 +254,13 @@ test.describe("Quest route family", () => {
 
     await page.reload();
     await expect(page.locator(".quest-detail-page h1")).toHaveText("Demo Quest 07");
+  });
+
+  test("links Candidate applications to Member profiles", async ({ page }) => {
+    await page.goto(`/quest/${CANDIDATE_QUEST_DISPLAY_ID}`);
+
+    const candidates = page.getByRole("heading", { name: "Candidates", exact: true }).locator("xpath=ancestor::section[1]");
+    await expect(candidates.getByRole("link", { name: "See Member profile", exact: true })).toHaveAttribute("href", /\/member\//);
   });
 
   test("opens the detail drawer, returns with Back, and follows Full Quest detail", async ({ page }) => {

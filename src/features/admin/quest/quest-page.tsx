@@ -12,10 +12,10 @@ import { AdminRecordHeader } from "../../../components/admin/admin-record-header
 import { AdminStatusAlert } from "../../../components/admin/admin-status-alert";
 import { AdminRecordFact as Fact } from "../../../components/admin/admin-record-fields";
 import { RecordStatusBar } from "../../../components/admin/record-status-bar";
-import { adminRecordCount, adminRecordDescription, adminRecordFact, adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
+import { adminRecordCount, adminRecordDescription, adminRecordFact, adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSection, adminRecordSideFacts } from "../../../components/admin/admin-record-styles";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { Badge as UiBadge, Button as UiButton, Card, CardContent, CardHeader, CardTitle } from "../../../components/ui";
-import { disputeRoutes, questRoutes } from "../admin-routes";
+import { disputeRoutes, memberRoutes, questRoutes } from "../admin-routes";
 import { canHideQuest, isQuestTerminal, type QuestState } from "../domain/rulebook";
 import {
   formatQuestDate,
@@ -479,7 +479,12 @@ function QuestDetailContent({
             {candidateApplications.map((application) => (
               <div className="related-row" key={application.id}>
                 <span><strong>{questMemberName(application.worker)}</strong><small>{translateText("Candidate")} · {translateText(readableValue(application.applicationStatus))}</small></span>
-                <span>{formatQuestDate(application.appliedAt)}</span>
+                <span className="flex shrink-0 flex-col items-end gap-2 text-right">
+                  <span>{formatQuestDate(application.appliedAt)}</span>
+                  <UiButton asChild variant="outline" size="xs">
+                    <Link href={memberRoutes.detail(application.worker.id)}>{translateText("See Member profile")}</Link>
+                  </UiButton>
+                </span>
               </div>
             ))}
           </div>
@@ -559,10 +564,19 @@ function QuestDetailContent({
       {recordLayout ? (
         <>
           <Section title="Hirer" variant={sectionVariant}>
-            <div className="grid gap-[3px] [&>strong]:text-[15px] [&>span]:text-[14px] [&>span]:text-admin-muted">
-              <strong>{questMemberName(detail.hirer)}</strong>
-              <span>{detail.hirer.email}</span>
+            <div className={adminRecordSideFacts}>
+              <div>
+                <span>{translateText("Name")}</span>
+                <strong><Link href={memberRoutes.detail(detail.hirer.id)}>{questMemberName(detail.hirer)}</Link></strong>
+              </div>
+              <div>
+                <span>{translateText("Member ID")}</span>
+                <strong>{detail.hirer.id}</strong>
+              </div>
             </div>
+            <UiButton asChild variant="outline" className="mt-3 w-full">
+              <Link href={memberRoutes.detail(detail.hirer.id)}>{translateText("See Member profile")}</Link>
+            </UiButton>
           </Section>
 
           <Section title="Schedule and location" variant={sectionVariant}>
