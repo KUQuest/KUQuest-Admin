@@ -13,7 +13,6 @@ import { AdminStatusAlert } from "../../../components/admin/admin-status-alert";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
-import { RecordStatusBar } from "../../../components/admin/record-status-bar";
 import { Button } from "../../../components/ui/button";
 import { Card, CardContent, CardHeader } from "../../../components/ui/card";
 import { AdminOverviewMeta } from "../../../components/admin/admin-overview-meta";
@@ -580,7 +579,6 @@ export function ReportCaseDetail({
   const content = (
     <>
       <ReportAlert model={model} translateText={translateText} />
-      <RecordStatusBar className="report-record-status-bar !grid-cols-3 max-[700px]:!grid-cols-2 max-[500px]:!grid-cols-1" items={[{ id: "report-type", label: translateText("Report type"), value: translateText(model.reportType) }, { id: "reported-member", label: translateText("Reported Member"), value: <MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} /> }, { id: "evidence", label: translateText("Evidence"), value: model.evidence.length || translateText("None") }]} />
       <ReportCaseSections model={model} translateText={translateText} onOpenEvidence={openEvidence} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} actionReceipt={actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Report Case" resourceId={model.id} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {actionReceipt.reason}</p>} /> : null} />
     </>
   );
