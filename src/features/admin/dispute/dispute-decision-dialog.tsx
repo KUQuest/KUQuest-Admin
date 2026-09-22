@@ -100,7 +100,7 @@ export function DisputeDecisionDialog({
   useDisputeModalFocus(dialogRef, open, onCancel);
 
   if (!open) return null;
-  const title = choice === "resolve" ? translateText("Confirm Worker receives funds") : translateText("Confirm Hirer retains funds");
+  const title = choice === "resolve" ? translateText("Confirm redirect") : translateText("Confirm retention");
   const description = choice === "resolve"
     ? `${translateText("This will transfer the full remaining Dispute Case amount to the Worker Earnings Balance for")} ${model.id}.`
     : `${translateText("This will keep the full held amount with the Hirer and close the Dispute Case for")} ${model.id}.`;
@@ -128,8 +128,8 @@ export function DisputeDecisionDialog({
               warning={translateText(choice === "resolve"
                 ? model.sharedCapSatang === null
                   ? "The full remaining amount is not provided. Verify the Funding Reservation before resolving."
-                  : "Worker receives funds transfers the full remaining amount. A partial amount cannot be entered."
-                : "Hirer retains funds keeps the full held amount with the Hirer. No money moves.")}
+                  : "Redirect the full remaining amount. A partial amount cannot be entered."
+                : "Retain the full held amount with the Hirer. No money moves.")}
             /> : null}
             {choice === "resolve" && <div className="decision-amount-summary mt-4 flex items-baseline justify-between gap-3 rounded-lg border border-admin-border bg-admin-soft px-3 py-2.5"><span className="text-sm text-admin-muted">{translateText("Worker outcome")}</span><strong className="text-right text-base">{translateText("Full remaining amount")} · {model.sharedCapLabel}</strong></div>}
             <label htmlFor="dispute-decision-reason">{translateText("Reason for this decision")}</label>

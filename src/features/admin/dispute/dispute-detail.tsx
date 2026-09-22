@@ -198,11 +198,11 @@ function DecisionControls({ model, translateText, selectedChoice, commandError, 
       <legend className="visually-hidden">{translateText("Dispute Case decision")}</legend>
       <div className={`report-decision-option grid w-full grid-cols-[18px_1fr] items-start gap-x-2 gap-y-0.5 rounded-[9px] border border-admin-border bg-admin-surface px-3 py-[11px] text-left transition-colors hover:bg-admin-hover ${selectedChoice === "dismiss" ? "border-admin-accent bg-admin-accent-soft shadow-[0_0_0_1px_var(--accent)]" : ""}`}>
         <input className="mt-0.5" id={`dispute-decision-${model.id}-dismiss`} type="radio" name={`dispute-decision-${model.id}`} value="dismiss" data-dispute-decision="dismiss" checked={selectedChoice === "dismiss"} onChange={() => onSelect("dismiss")} />
-        <label className="grid cursor-pointer gap-0.5" htmlFor={`dispute-decision-${model.id}-dismiss`}><strong className="text-sm leading-[1.35]">{translateText("Hirer retains funds")}</strong><small className="text-[13px] leading-[1.45] text-admin-muted">{translateText("Keep the full held amount with the Hirer. No money movement.")}</small></label>
+        <label className="grid cursor-pointer gap-0.5" htmlFor={`dispute-decision-${model.id}-dismiss`}><strong className="text-sm leading-[1.35]">{translateText("Retain funds")}</strong><small className="text-[13px] leading-[1.45] text-admin-muted">{translateText("Keep the full held amount with the Hirer. No money movement.")}</small></label>
       </div>
       <div className={`report-decision-option grid w-full grid-cols-[18px_1fr] items-start gap-x-2 gap-y-0.5 rounded-[9px] border border-admin-border bg-admin-surface px-3 py-[11px] text-left transition-colors hover:bg-admin-hover ${selectedChoice === "resolve" ? "border-admin-accent bg-admin-accent-soft shadow-[0_0_0_1px_var(--accent)]" : ""}`}>
         <input className="mt-0.5" id={`dispute-decision-${model.id}-resolve`} type="radio" name={`dispute-decision-${model.id}`} value="resolve" data-dispute-decision="resolve" checked={selectedChoice === "resolve"} onChange={() => onSelect("resolve")} disabled={!workerAvailable} />
-        <label className="grid cursor-pointer gap-0.5" htmlFor={`dispute-decision-${model.id}-resolve`}><strong className="text-sm leading-[1.35]">{translateText("Worker receives funds")}</strong><small className="text-[13px] leading-[1.45] text-admin-muted">{workerAvailable ? translateText("Transfer the full remaining Dispute Case amount to the Worker.") : translateText("Worker ID was not provided.")}</small></label>
+        <label className="grid cursor-pointer gap-0.5" htmlFor={`dispute-decision-${model.id}-resolve`}><strong className="text-sm leading-[1.35]">{translateText("Redirect funds")}</strong><small className="text-[13px] leading-[1.45] text-admin-muted">{workerAvailable ? translateText("Transfer the full remaining Dispute Case amount to the Worker.") : translateText("Worker ID was not provided.")}</small></label>
       </div>
     </fieldset>
     {commandError && <p className="field-error" role="alert">{translateText(commandError)}</p>}
@@ -283,7 +283,7 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
   const startDecision = () => {
     if (!model.isActionable) return;
     if (!selectedChoice) {
-      setCommandError("Choose Hirer retains funds or Worker receives funds before recording the decision.");
+      setCommandError("Choose Retain funds or Redirect funds before recording the decision.");
       return;
     }
     setCommandError(null);
@@ -300,7 +300,7 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
     const reasonCode: AdminDisputeReasonCode = command === "DISPUTE_CASE_RESOLVED" ? "DISPUTE_EVIDENCE_REVIEW" : "DISPUTE_POLICY_REVIEW";
     const amountSatang = command === "DISPUTE_CASE_RESOLVED" ? model.sharedCapSatang : null;
     if (command === "DISPUTE_CASE_RESOLVED" && (!model.workerId || amountSatang === null || amountSatang <= 0)) {
-      setCommandError("Worker receives funds requires a Worker and a full available Dispute Case amount.");
+      setCommandError("Redirect funds requires a Worker and a full available Dispute Case amount.");
       return;
     }
     setCommandError(null);

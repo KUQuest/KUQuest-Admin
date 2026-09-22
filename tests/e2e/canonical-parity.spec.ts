@@ -142,8 +142,8 @@ test.describe("canonical parity coverage", () => {
     await signIn(page);
     await page.goto("/dispute/DSP-5201");
 
-    await expect(page.getByText("Hirer retains funds", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText("Worker receives funds", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Retain funds", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Redirect funds", { exact: true }).first()).toBeVisible();
     await expect(page.getByText(/Require rework/i)).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Record decision", exact: true })).toHaveCount(0);
 
@@ -314,7 +314,7 @@ test.describe("legacy parity for inputs on mobile", () => {
   test("Dispute Case decision reason accepts input on mobile", async ({ page }) => {
     await signIn(page);
     await page.goto("/dispute/DSP-5201");
-    await page.getByRole("radio", { name: /Hirer retains funds/ }).check();
+    await page.getByRole("radio", { name: /Retain funds/ }).check();
     await page.getByRole("button", { name: "Record Dispute Case decision", exact: true }).click();
 
     const dialog = page.locator("dialog.dispute-decision-dialog");
