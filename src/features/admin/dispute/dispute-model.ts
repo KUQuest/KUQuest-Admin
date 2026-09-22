@@ -149,6 +149,19 @@ function personName(value: unknown): string | null {
   );
 }
 
+function personId(value: unknown): string | null {
+  const record = asRecord(value);
+  if (!record) return text(value);
+  return firstText(record.id, record.userId, record.memberId);
+}
+
+function partyRole(value: unknown, fallback: "Hirer" | "Worker"): "Hirer" | "Worker" {
+  const normalized = text(value)?.toLowerCase();
+  if (normalized === "worker") return "Worker";
+  if (normalized === "hirer") return "Hirer";
+  return fallback;
+}
+
 function stringList(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((entry) => {
@@ -255,30 +268,60 @@ export function disputeCaseModelFromRecord(
   const questId = firstText(record.questId, quest?.id) ?? "";
   const questTitle = firstText(record.questTitle, quest?.title, record.title) ?? missingValue;
   const questState = questStateFor(record.questState ?? quest?.questStatus);
-  const filerId = firstText(record.filerUserId, record.filerId);
-  const respondentId = firstText(record.respondentUserId, record.respondentId);
-  const filerRole = firstText(record.filerRole) ?? "Hirer";
-  const respondentRole = firstText(record.respondentRole) ?? "Worker";
-  const workerId = firstText(
-    record.resolvedWorkerId,
+  const explicitFilerId = firstText(record.filerUserId, record.filerId);
+  const hirerId = firstText(
+    record.hirerId,
+    personId(record.hirer),
+    personId(quest?.hirer),
+    quest?.hirerId,
+  );
+  const workerPartyId = firstText(
     record.workerId,
+    personId(record.worker),
+    record.resolvedWorkerId,
+  );
+  const inferredFilerRole = explicitFilerId && workerPartyId && explicitFilerId === workerPartyId
+    ? "Worker"
+    : "Hirer";
+  const filerRole = partyRole(record.filerRole, inferredFilerRole);
+  const respondentRole = partyRole(record.respondentRole, filerRole === "Hirer" ? "Worker" : "Hirer");
+  const filerId = firstText(
+    explicitFilerId,
+    roleIs(filerRole, "Hirer") ? hirerId : workerPartyId,
+  );
+  const respondentId = firstText(
+    record.respondentUserId,
+    record.respondentId,
+    roleIs(respondentRole, "Hirer") ? hirerId : workerPartyId,
+    roleIs(filerRole, "Hirer") ? workerPartyId : hirerId,
+  );
+  const workerId = firstText(
+    workerPartyId,
     roleIs(filerRole, "Worker") ? filerId : null,
     roleIs(respondentRole, "Worker") ? respondentId : null,
+  );
+  const hirerName = firstText(
+    record.hirerName,
+    personName(record.hirer),
+    personName(quest?.hirer),
+    quest?.hirerName,
+  );
+  const workerNameFromRecord = firstText(
+    record.workerName,
+    personName(record.worker),
   );
   const filerName = firstText(
     record.filerName,
     personName(record.filer),
+    roleIs(filerRole, "Hirer") ? hirerName : workerNameFromRecord,
+    record.reporterName,
     filerId ? `Member ${filerId}` : null,
-    source === "mock" ? record.reporterName : null,
-    source === "mock" ? "Hirer not provided" : null,
   ) ?? missingValue;
   const respondentName = firstText(
     record.respondentName,
     personName(record.respondent),
-    personName(record.worker),
+    roleIs(respondentRole, "Hirer") ? hirerName : workerNameFromRecord,
     respondentId ? `Member ${respondentId}` : null,
-    source === "mock" ? record.workerName : null,
-    source === "mock" ? "Worker not provided" : null,
   ) ?? missingValue;
   const workerName = roleIs(filerRole, "Worker") ? filerName : respondentName;
   const amountAtRiskSatang = positiveInteger(record.amountAtRiskSatang)
@@ -332,14 +375,12 @@ export function disputeCaseModelFromRecord(
     filerRole,
     filerName,
     filerHref: filerId ? memberRoutes.detail(filerId) : null,
-    filerStatement: firstText(record.filerStatement, record.claim)
-      ?? (source === "mock" ? "The Hirer submitted this Dispute Case for Admin review." : missingValue),
+    filerStatement: firstText(record.filerStatement, record.claim) ?? missingValue,
     respondentId,
     respondentRole,
     respondentName,
     respondentHref: respondentId ? memberRoutes.detail(respondentId) : null,
-    respondentStatement: firstText(record.respondentStatement, record.response)
-      ?? (source === "mock" ? "The Worker statement was not provided in the demo record." : missingValue),
+    respondentStatement: firstText(record.respondentStatement, record.response) ?? missingValue,
     amountAtRiskSatang,
     amountAtRiskLabel: formatSatang(amountAtRiskSatang, missingValue),
     sharedCapSatang,
