@@ -101,6 +101,10 @@ export function walletEventTypeLabel(eventType: string): string {
   return eventType.replaceAll("_", " ").toLowerCase().replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
 }
 
+export function walletBusinessReferenceLabel(businessReference: string | undefined): string {
+  return businessReference?.replaceAll("_", " ") ?? "";
+}
+
 export const WALLET_COMPARTMENT_ACCOUNT_TYPES = [
   "SPENDING",
   "EARNINGS",

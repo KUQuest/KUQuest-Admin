@@ -95,6 +95,9 @@ test.describe("canonical parity coverage", () => {
     const eventTypes = await rows.locator("td:nth-child(2) strong").allTextContents();
     expect(eventTypes.length).toBeGreaterThan(0);
     expect(eventTypes.every((eventType) => eventType === "Top-up")).toBe(true);
+    const businessReferences = await rows.locator("td:nth-child(2) small").allTextContents();
+    expect(businessReferences.length).toBeGreaterThan(0);
+    expect(businessReferences.every((reference) => !reference.includes("_"))).toBe(true);
     await expect(statement.getByRole("button", { name: "Load more" })).toHaveCount(0);
 
     const tabs = page.getByRole("navigation", { name: "Member detail sections" });

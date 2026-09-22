@@ -18,7 +18,7 @@ import { payoutStatusLabel, questStateLabel, reportCaseStatusLabel } from "../do
 import { filterReviews } from "../user-reviews/review-model";
 import { MEMBER_UPDATED_EVENT } from "./member-board";
 import { NoteDialog, PenaltyDialog, RemovePenaltyDialog } from "./member-action-dialogs";
-import { walletEventTypeLabel } from "../wallet/wallet-model";
+import { walletBusinessReferenceLabel, walletEventTypeLabel } from "../wallet/wallet-model";
 import {
   currentWalletBalance,
   formatMoneySatang,
@@ -261,7 +261,7 @@ function WalletStatementTab({ model, translateText }: { model: MemberModel; tran
               <thead><tr><th>{translateText("Date")}</th><th>{translateText("Event type")}</th><th>{translateText("Signed amount")}</th><th>{translateText("Compartment movement")}</th><th>{translateText("Resulting Wallet balance")}</th></tr></thead>
               <tbody>{rows.map((row) => <tr key={row.transaction.id}>
                 <td><time dateTime={row.transaction.createdAt}>{formatWalletDate(row.transaction.createdAt)}</time><small className="mt-[3px] block text-admin-muted">{row.transaction.description}</small></td>
-                <td><strong>{translateText(walletEventTypeLabel(row.transaction.eventType))}</strong><small className="mt-[3px] block text-admin-muted">{row.transaction.businessReference}</small></td>
+                <td><strong>{translateText(walletEventTypeLabel(row.transaction.eventType))}</strong><small className="mt-[3px] block text-admin-muted">{walletBusinessReferenceLabel(row.transaction.businessReference)}</small></td>
                 <td className="money">{formatMoneySatang(row.signedAmountSatang, true)}</td>
                 <td className="wallet-statement-movement">{row.movement.map((movement) => <span key={movement.accountType}>{translateText(movement.accountType)}: {formatMoneySatang(movement.amountSatang, true)}</span>)}</td>
                 <td className="money">{formatMoneySatang(row.resultingWalletBalanceSatang)}</td>

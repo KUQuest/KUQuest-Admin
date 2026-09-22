@@ -16,6 +16,7 @@ import {
   walletRowFromApi,
   walletSummaryFromApi,
   walletEventTypeLabel,
+  walletBusinessReferenceLabel,
 } from "../../src/features/admin/wallet/wallet-model";
 
 describe("Wallet route model", () => {
@@ -24,6 +25,11 @@ describe("Wallet route model", () => {
     expect(walletEventTypeLabel("FUNDING_RESERVE")).toBe("Funding Reserve");
     expect(walletEventTypeLabel("EARNINGS_CONVERSION")).toBe("Earnings Conversion");
     expect(walletEventTypeLabel("NEW_EVENT_TYPE")).toBe("New Event Type");
+  });
+
+  it("shows Wallet Statement business references without underscores", () => {
+    expect(walletBusinessReferenceLabel("TOP_UP-1")).toBe("TOP UP-1");
+    expect(walletBusinessReferenceLabel("PAYOUT-WAL-1001-01")).toBe("PAYOUT-WAL-1001-01");
   });
 
   it("maps Wallet DTOs to a separate view model and keeps the API balance", () => {
