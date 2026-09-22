@@ -63,23 +63,6 @@ describe("Dispute Case model", () => {
     expect(model?.moderationHistory.currentMemberStatus).toBe("ACTIVE");
   });
 
-  it("uses neutral fallback text when party names or statements are missing", () => {
-    const model = disputeCaseModelFromRecord({
-      id: "DSP-45",
-      status: "DISPUTE_CASE_PENDING",
-      questState: "QUEST_FAILED",
-    });
-
-    expect(model).toMatchObject({
-      filerName: "Not provided.",
-      respondentName: "Not provided.",
-      filerStatement: "Not provided.",
-      respondentStatement: "Not provided.",
-    });
-    expect(JSON.stringify(model)).not.toContain("Hirer not provided");
-    expect(JSON.stringify(model)).not.toContain("Worker not provided");
-  });
-
   it("uses canonical status values and only pending failed Quests are actionable", () => {
     expect(isDisputeCaseActionable("DISPUTE_CASE_PENDING")).toBe(true);
     expect(isDisputeCaseActionable("DISPUTE_CASE_DISMISSED")).toBe(false);

@@ -270,6 +270,7 @@ export function disputeCaseModelFromRecord(
     personName(record.filer),
     filerId ? `Member ${filerId}` : null,
     source === "mock" ? record.reporterName : null,
+    source === "mock" ? "Hirer not provided" : null,
   ) ?? missingValue;
   const respondentName = firstText(
     record.respondentName,
@@ -277,6 +278,7 @@ export function disputeCaseModelFromRecord(
     personName(record.worker),
     respondentId ? `Member ${respondentId}` : null,
     source === "mock" ? record.workerName : null,
+    source === "mock" ? "Worker not provided" : null,
   ) ?? missingValue;
   const workerName = roleIs(filerRole, "Worker") ? filerName : respondentName;
   const amountAtRiskSatang = positiveInteger(record.amountAtRiskSatang)
@@ -330,12 +332,14 @@ export function disputeCaseModelFromRecord(
     filerRole,
     filerName,
     filerHref: filerId ? memberRoutes.detail(filerId) : null,
-    filerStatement: firstText(record.filerStatement, record.claim) ?? missingValue,
+    filerStatement: firstText(record.filerStatement, record.claim)
+      ?? (source === "mock" ? "The Hirer submitted this Dispute Case for Admin review." : missingValue),
     respondentId,
     respondentRole,
     respondentName,
     respondentHref: respondentId ? memberRoutes.detail(respondentId) : null,
-    respondentStatement: firstText(record.respondentStatement, record.response) ?? missingValue,
+    respondentStatement: firstText(record.respondentStatement, record.response)
+      ?? (source === "mock" ? "The Worker statement was not provided in the demo record." : missingValue),
     amountAtRiskSatang,
     amountAtRiskLabel: formatSatang(amountAtRiskSatang, missingValue),
     sharedCapSatang,
