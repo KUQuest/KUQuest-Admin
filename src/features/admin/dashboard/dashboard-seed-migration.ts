@@ -168,16 +168,67 @@ function repairMissingSeedFields(
   return { records, changed };
 }
 
-function repairLegacyDisputeParties(existing: unknown[]): { records: unknown[]; changed: boolean } {
+function repairLegacyDisputeParties(
+  existing: unknown[],
+  quests: unknown[],
+  users: unknown[],
+): { records: unknown[]; changed: boolean } {
+  const questById = new Map<string, Record<string, unknown>>();
+  for (const value of quests) {
+    const quest = asRecord(value);
+    const id = firstText(quest?.id, quest?.displayId);
+    if (quest && id) questById.set(id, quest);
+  }
+  const memberIdByName = new Map<string, string>();
+  const memberNameById = new Map<string, string>();
+  for (const value of users) {
+    const member = asRecord(value);
+    const id = firstText(member?.id, member?.userId, member?.memberId);
+    const name = firstText(member?.title, member?.name, member?.displayName, member?.person);
+    if (id && name) {
+      memberIdByName.set(name.toLocaleLowerCase(), id);
+      memberNameById.set(id, name);
+    }
+  }
+  const memberIdForName = (value: unknown): string | null => {
+    const name = text(value);
+    return name ? memberIdByName.get(name.toLocaleLowerCase()) ?? null : null;
+  };
+  const memberNameForId = (value: unknown): string | null => {
+    const id = text(value);
+    return id ? memberNameById.get(id) ?? null : null;
+  };
+
   let changed = false;
   const records = existing.map((value) => {
     if (!value || typeof value !== "object" || Array.isArray(value)) return value;
     const record = value as Record<string, unknown>;
     if (!isDisputeCaseStatus(record.status) && !isDisputeCaseStatus(record.disputeCaseStatus)) return value;
 
-    const quest = asRecord(record.quest);
-    const hirerId = firstText(record.hirerId, quest?.hirerId, partyId(record.hirer));
-    const workerId = firstText(record.workerId, record.resolvedWorkerId, partyId(record.worker));
+    const recordQuest = asRecord(record.quest);
+    const relatedQuestId = firstText(record.questId, recordQuest?.id, recordQuest?.displayId);
+    const relatedQuest = relatedQuestId ? questById.get(relatedQuestId) : null;
+    const quest = recordQuest && relatedQuest
+      ? { ...relatedQuest, ...recordQuest }
+      : recordQuest ?? relatedQuest;
+    const legacyHirerName = firstText(record.hirerName, record.person, quest?.hirerName, quest?.person);
+    const legacyWorkerName = firstText(record.workerName, record.other, quest?.workerName, quest?.other, quest?.selectedParticipant);
+    const hirerId = firstText(
+      record.hirerId,
+      quest?.hirerId,
+      partyId(record.hirer),
+      partyId(quest?.hirer),
+      quest?.memberId,
+      memberIdForName(legacyHirerName),
+    );
+    const workerId = firstText(
+      record.workerId,
+      record.resolvedWorkerId,
+      quest?.workerId,
+      partyId(record.worker),
+      partyId(quest?.worker),
+      memberIdForName(legacyWorkerName),
+    );
     const filerRole = roleIs(record.filerRole, "Worker") ? "Worker" : "Hirer";
     const respondentRole = roleIs(record.respondentRole, "Hirer") ? "Hirer" : "Worker";
     const filerId = firstText(
@@ -191,8 +242,8 @@ function repairLegacyDisputeParties(existing: unknown[]): { records: unknown[]; 
       roleIs(respondentRole, "Hirer") ? hirerId : workerId,
       roleIs(filerRole, "Hirer") ? workerId : hirerId,
     );
-    const hirerName = firstText(record.hirerName, partyName(record.hirer));
-    const workerName = firstText(record.workerName, partyName(record.worker));
+    const hirerName = firstText(legacyHirerName, partyName(record.hirer), partyName(quest?.hirer), memberNameForId(hirerId));
+    const workerName = firstText(legacyWorkerName, partyName(record.worker), partyName(quest?.worker), memberNameForId(workerId));
     const filerName = firstText(
       record.filerName,
       partyName(record.filer),
@@ -247,7 +298,11 @@ function migrateExpandedMockSeed(
     ["questId", "title", "filerUserId", "filerName", "respondentUserId", "respondentName", "respondentStatement"],
     (record) => isDisputeCaseStatus(record.status) || isDisputeCaseStatus(record.disputeCaseStatus),
   );
-  const repairedLegacyDisputes = repairLegacyDisputeParties(repairedDisputes.records);
+  const repairedLegacyDisputes = repairLegacyDisputeParties(
+    repairedDisputes.records,
+    quests.records,
+    repairedUsers.records,
+  );
   const repairedConductReports = repairMissingSeedFields(
     reports.records,
     seeded.reports,

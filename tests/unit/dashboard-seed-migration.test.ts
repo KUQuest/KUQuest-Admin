@@ -12,12 +12,16 @@ function storage() {
   };
 }
 
-function emptyData(dispute: Record<string, unknown>): PersistedAdminData {
+function emptyData(
+  dispute: Record<string, unknown>,
+  quests: Record<string, unknown>[] = [],
+  users: Array<{ id: string; title: string }> = [],
+): PersistedAdminData {
   return {
     version: "legacy",
     collections: {
-      users: [],
-      quests: [],
+      users,
+      quests,
       payouts: [],
       disputes: [dispute],
       reports: [],
@@ -36,6 +40,40 @@ describe("dashboard mock seed migration", () => {
       hirer: { name: "Demo Member 03" },
       worker: { name: "Demo Member 04" },
     }), {
+      dashboardSeedVersion: "current",
+      previousDashboardSeedVersion: "previous",
+      previousCanonicalDashboardSeedVersion: "older",
+      dashboardConductReportSeedData: [],
+      dashboardDisputeSeedData: [],
+      dashboardSeedData: {
+        version: "current",
+        collections: { users: [], quests: [], payouts: [], disputes: [], reports: [] },
+      },
+    });
+
+    expect(migrated.collections.disputes[0]).toMatchObject({
+      filerUserId: "68000102",
+      filerName: "Demo Member 03",
+      respondentUserId: "68000103",
+      respondentName: "Demo Member 04",
+    });
+  });
+
+  it("repairs legacy party fields from a related Quest and legacy member labels", () => {
+    const browserStorage = storage();
+    const migrated = migrateDashboardData(browserStorage, emptyData({
+      id: "DSP-5203",
+      questId: "QST-12003",
+      status: "DISPUTE_CASE_RESOLVED",
+      person: "Demo Member 03",
+      other: "Demo Member 04",
+      workerId: "68000103",
+    }, [
+      { id: "QST-12003", person: "Demo Member 03", memberId: "68000102" },
+    ], [
+      { id: "68000102", title: "Demo Member 03" },
+      { id: "68000103", title: "Demo Member 04" },
+    ]), {
       dashboardSeedVersion: "current",
       previousDashboardSeedVersion: "previous",
       previousCanonicalDashboardSeedVersion: "older",
