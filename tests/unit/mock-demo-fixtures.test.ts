@@ -82,6 +82,28 @@ describe("expanded mock demo fixtures", () => {
     expect(data.collections.reports.length).toBeGreaterThan(20);
   });
 
+  it("expands an older unknown mock snapshot without replacing stored records", () => {
+    const storage = memoryStorage();
+    storage.setItem(ADMIN_DEMO_DATA_KEY, JSON.stringify({
+      version: "dashboard-bootstrap-v1-legacy",
+      collections: {
+        users: [{ id: "manual-member", title: "Manual Member" }],
+        quests: [],
+        payouts: [],
+        disputes: [],
+        reports: [],
+      },
+    }));
+
+    const data = loadDashboardData(storage);
+
+    expect(data.version).toBe("dashboard-bootstrap-v4-expanded-mock-fixtures");
+    expect(data.collections.users.some((member) => member.id === "manual-member")).toBe(true);
+    expect(data.collections.disputes.length).toBe(212);
+    expect(reportCasesOnly(data.collections.reports)).toHaveLength(212);
+    expect(conductReportsOnly(data.collections.reports)).toHaveLength(213);
+  });
+
   it("keeps required moderation relationships complete in Mock fixtures", () => {
     const data = loadDashboardData(memoryStorage());
     const conductReports = conductReportsOnly(data.collections.reports);

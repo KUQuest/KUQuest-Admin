@@ -199,9 +199,10 @@ export function migrateDashboardData(
   config: DashboardSeedMigrationConfig,
 ): PersistedAdminData {
   const migrated = migrateDisputeSeed(storage, migrateConductReportSeed(storage, stored, config), config);
-  return stored.version === config.previousCanonicalDashboardSeedVersion
-    || stored.version === config.previousDashboardSeedVersion
-    || stored.version === config.dashboardSeedVersion
-    ? migrateExpandedMockSeed(storage, migrated, config)
-    : migrated;
+  // Mock data can remain in browser storage across releases. Always merge the
+  // current fixture set so an older or unknown snapshot does not hide records
+  // from the moderation boards. Existing records and Admin decisions remain
+  // authoritative because the merge only adds missing records and repairs
+  // missing fixture fields.
+  return migrateExpandedMockSeed(storage, migrated, config);
 }
