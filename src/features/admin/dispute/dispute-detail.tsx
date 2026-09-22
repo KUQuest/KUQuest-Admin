@@ -122,10 +122,10 @@ function PartyStatements({ model, translateText, compact = false, interactive = 
         <div><strong><MemberLink id={model.filerId} name={model.filerName} href={model.filerHref} interactive={interactive} /></strong>{model.filerId && <small>{model.filerId}</small>}</div>
         <div><strong><MemberLink id={model.respondentId} name={model.respondentName} href={model.respondentHref} interactive={interactive} /></strong>{model.respondentId && <small>{model.respondentId}</small>}</div>
       </div>
-      <div className="dispute-statements mt-[18px] grid gap-[14px]"><div className={adminRecordGroup}><span>{model.filerName}</span><p>{model.filerStatement}</p></div><div className={adminRecordGroup}><span>{model.respondentName}</span><p>{model.respondentStatement}</p></div></div>
+      <div className="dispute-statements mt-[18px] grid gap-[14px]"><div className={adminRecordGroup}><span>{translateText(model.filerRole === "Worker" ? "Worker statement" : "Hirer statement")}</span><p>{model.filerStatement}</p></div><div className={adminRecordGroup}><span>{translateText(model.respondentRole === "Hirer" ? "Hirer statement" : "Worker statement")}</span><p>{model.respondentStatement}</p></div></div>
     </>
   );
-  return <Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}>{compact ? <h3 className={adminRecordHeading}>{translateText("Parties and statements")}</h3> : <h2 className={adminRecordHeading}>{translateText("Parties and statements")}</h2>}</CardHeader>{content}</Card>;
+  return <Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}>{compact ? <h3 className={adminRecordHeading}>{translateText("Statements")}</h3> : <h2 className={adminRecordHeading}>{translateText("Statements")}</h2>}</CardHeader>{content}</Card>;
 }
 
 function EvidenceSection({ model, translateText, onOpen, compact = false }: { model: DisputeCaseModel; translateText: (value: string) => string; onOpen: (reference: string) => void; compact?: boolean }) {

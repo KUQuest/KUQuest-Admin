@@ -550,6 +550,7 @@ export const thaiTranslations: Record<string, string> = {
   "Violation confirmed": "ยืนยันการละเมิดแล้ว",
   "Message restored": "กู้คืน Message แล้ว",
   Opened: "เปิดเมื่อ",
+  Statements: "คำชี้แจง",
   "Parties and statements": "คู่กรณีและคำชี้แจง",
   "Occurred at": "เกิดขึ้นเมื่อ",
   "Payout amounts": "จำนวนเงิน Payout",
