@@ -15,9 +15,17 @@ import {
   walletLedgerRowsFromApi,
   walletRowFromApi,
   walletSummaryFromApi,
+  walletEventTypeLabel,
 } from "../../src/features/admin/wallet/wallet-model";
 
 describe("Wallet route model", () => {
+  it("shows readable labels for Wallet Statement event types", () => {
+    expect(walletEventTypeLabel("TOP_UP")).toBe("Top-up");
+    expect(walletEventTypeLabel("FUNDING_RESERVE")).toBe("Funding Reserve");
+    expect(walletEventTypeLabel("EARNINGS_CONVERSION")).toBe("Earnings Conversion");
+    expect(walletEventTypeLabel("NEW_EVENT_TYPE")).toBe("New Event Type");
+  });
+
   it("maps Wallet DTOs to a separate view model and keeps the API balance", () => {
     const wallet = {
       ...mockWallets[0],

@@ -60,8 +60,19 @@ test.describe("canonical parity coverage", () => {
       await expect(statement.locator(".wallet-statement-balance-grid")).toContainText(label);
     }
     await expect(statement.getByLabel("Event type")).toBeVisible();
-    await expect(statement.getByLabel("Event type").locator("option")).toHaveText([
+    const eventTypeSelect = statement.getByLabel("Event type");
+    await expect(eventTypeSelect.locator("option")).toHaveText([
       "All event types",
+      "Top-up",
+      "Payout",
+      "Funding Reserve",
+      "Funding Release",
+      "Funding Settlement",
+      "Adjustment",
+      "Earnings Conversion",
+    ]);
+    expect(await Promise.all((await eventTypeSelect.locator("option").all()).map((option) => option.getAttribute("value")))).toEqual([
+      "",
       "TOP_UP",
       "PAYOUT",
       "FUNDING_RESERVE",
@@ -83,7 +94,7 @@ test.describe("canonical parity coverage", () => {
     await expect(rows.first()).toBeVisible();
     const eventTypes = await rows.locator("td:nth-child(2) strong").allTextContents();
     expect(eventTypes.length).toBeGreaterThan(0);
-    expect(eventTypes.every((eventType) => eventType === "TOP_UP")).toBe(true);
+    expect(eventTypes.every((eventType) => eventType === "Top-up")).toBe(true);
     await expect(statement.getByRole("button", { name: "Load more" })).toHaveCount(0);
 
     const tabs = page.getByRole("navigation", { name: "Member detail sections" });

@@ -1,5 +1,6 @@
 import type {
   AdminFinanceOverview,
+  AdminLedgerEventType,
   AdminLedgerTransaction,
   AdminWallet,
   AdminWalletDetail,
@@ -83,6 +84,22 @@ export type WalletLedgerView = {
   movement: Array<{ accountType: WalletCompartmentAccountType; amountSatang: number }>;
   resultingBalanceSatang: number;
 };
+
+const walletEventTypeLabels: Record<AdminLedgerEventType, string> = {
+  TOP_UP: "Top-up",
+  PAYOUT: "Payout",
+  FUNDING_RESERVE: "Funding Reserve",
+  FUNDING_RELEASE: "Funding Release",
+  FUNDING_SETTLEMENT: "Funding Settlement",
+  ADJUSTMENT: "Adjustment",
+  EARNINGS_CONVERSION: "Earnings Conversion",
+};
+
+export function walletEventTypeLabel(eventType: string): string {
+  const label = walletEventTypeLabels[eventType as AdminLedgerEventType];
+  if (label) return label;
+  return eventType.replaceAll("_", " ").toLowerCase().replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
+}
 
 export const WALLET_COMPARTMENT_ACCOUNT_TYPES = [
   "SPENDING",

@@ -18,6 +18,7 @@ import { payoutStatusLabel, questStateLabel, reportCaseStatusLabel } from "../do
 import { filterReviews } from "../user-reviews/review-model";
 import { MEMBER_UPDATED_EVENT } from "./member-board";
 import { NoteDialog, PenaltyDialog, RemovePenaltyDialog } from "./member-action-dialogs";
+import { walletEventTypeLabel } from "../wallet/wallet-model";
 import {
   currentWalletBalance,
   formatMoneySatang,
@@ -245,7 +246,7 @@ function WalletStatementTab({ model, translateText }: { model: MemberModel; tran
         </div>
       ) : <p className="audit-note">{translateText("No Wallet is linked to this Member.")}</p>}
       <form className="wallet-statement-filters mb-3.5 grid grid-cols-[minmax(0,1.3fr)_repeat(2,minmax(130px,1fr))_auto] items-end gap-[9px] max-[720px]:grid-cols-2 max-[420px]:grid-cols-1" onSubmit={submit}>
-        <label className="grid gap-1 text-[15px] font-semibold leading-[1.4] text-admin-muted max-[720px]:col-span-full max-[420px]:col-span-1">{translateText("Event type")}<select className="min-h-[35px] w-full rounded-[7px] border border-admin-border-strong bg-admin-surface px-2 text-admin-text" name="eventType" aria-label={translateText("Event type")} defaultValue=""><option value="">{translateText("All event types")}</option>{ADMIN_LEDGER_EVENT_TYPES.map((eventType) => <option key={eventType} value={eventType}>{translateText(eventType)}</option>)}</select></label>
+        <label className="grid gap-1 text-[15px] font-semibold leading-[1.4] text-admin-muted max-[720px]:col-span-full max-[420px]:col-span-1">{translateText("Event type")}<select className="min-h-[35px] w-full rounded-[7px] border border-admin-border-strong bg-admin-surface px-2 text-admin-text" name="eventType" aria-label={translateText("Event type")} defaultValue=""><option value="">{translateText("All event types")}</option>{ADMIN_LEDGER_EVENT_TYPES.map((eventType) => <option key={eventType} value={eventType}>{translateText(walletEventTypeLabel(eventType))}</option>)}</select></label>
         <label className="grid gap-1 text-[15px] font-semibold leading-[1.4] text-admin-muted">{translateText("From")}<input className="min-h-[35px] w-full rounded-[7px] border border-admin-border-strong bg-admin-surface px-2 text-admin-text" name="from" type="date" aria-label={translateText("From")} /></label>
         <label className="grid gap-1 text-[15px] font-semibold leading-[1.4] text-admin-muted">{translateText("To")}<input className="min-h-[35px] w-full rounded-[7px] border border-admin-border-strong bg-admin-surface px-2 text-admin-text" name="to" type="date" aria-label={translateText("To")} /></label>
         <Button className="min-h-[35px]" variant="primary" type="submit">{translateText("Apply filters")}</Button>
@@ -260,7 +261,7 @@ function WalletStatementTab({ model, translateText }: { model: MemberModel; tran
               <thead><tr><th>{translateText("Date")}</th><th>{translateText("Event type")}</th><th>{translateText("Signed amount")}</th><th>{translateText("Compartment movement")}</th><th>{translateText("Resulting Wallet balance")}</th></tr></thead>
               <tbody>{rows.map((row) => <tr key={row.transaction.id}>
                 <td><time dateTime={row.transaction.createdAt}>{formatWalletDate(row.transaction.createdAt)}</time><small className="mt-[3px] block text-admin-muted">{row.transaction.description}</small></td>
-                <td><strong>{translateText(row.transaction.eventType)}</strong><small className="mt-[3px] block text-admin-muted">{row.transaction.businessReference}</small></td>
+                <td><strong>{translateText(walletEventTypeLabel(row.transaction.eventType))}</strong><small className="mt-[3px] block text-admin-muted">{row.transaction.businessReference}</small></td>
                 <td className="money">{formatMoneySatang(row.signedAmountSatang, true)}</td>
                 <td className="wallet-statement-movement">{row.movement.map((movement) => <span key={movement.accountType}>{translateText(movement.accountType)}: {formatMoneySatang(movement.amountSatang, true)}</span>)}</td>
                 <td className="money">{formatMoneySatang(row.resultingWalletBalanceSatang)}</td>
