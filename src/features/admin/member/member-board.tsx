@@ -12,6 +12,7 @@ import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
 import { memberRoutes } from "../admin-routes";
 import { pageCount, pageRange, pageRows } from "../data/board-pagination";
+import { countBoardTabMatches } from "../data/board-tab-counts";
 import { useAdminBoardReset } from "../data/use-admin-board-reset";
 import {
   memberStatusClass,
@@ -142,6 +143,7 @@ export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
   const visibleTabs = page.source === "api" && page.items.every((model) => model.memberStatus === null)
     ? tabs.slice(0, 1)
     : tabs;
+  const tabCounts = countBoardTabMatches(page.items, tabs, matchesTab);
 
   return (
     <main id="member-main" className="admin-route-page member-board" tabIndex={-1}>
@@ -156,7 +158,7 @@ export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
         </CardHeader>
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as MemberTab)}>
           <TabsList className="px-3" aria-label={translateText("Filter Members")}>
-            {visibleTabs.map((tab) => <TabsTrigger key={tab.id} value={tab.id}>{translateText(tab.label)}</TabsTrigger>)}
+            {visibleTabs.map((tab) => <TabsTrigger key={tab.id} value={tab.id}>{translateText(tab.label)} ({tabCounts.get(tab.id) ?? 0})</TabsTrigger>)}
           </TabsList>
         </Tabs>
         <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2">

@@ -12,6 +12,7 @@ import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input
 import { conductReportRoutes } from "../admin-routes";
 import { formatAdminTimestamp } from "../date-format";
 import { pageCount, pageRange, pageRows } from "../data/board-pagination";
+import { countBoardTabMatches } from "../data/board-tab-counts";
 import { useAdminBoardReset } from "../data/use-admin-board-reset";
 import { dateSortValue, sortBoardRows } from "../data/board-sorting";
 import type { ConductReportModel } from "./conduct-report-model";
@@ -148,7 +149,7 @@ export function ConductReportBoard({
   const currentPage = Math.min(pageNumber, Math.max(totalPages, 1));
   const visibleModels = pageRows(models, currentPage, pageSize);
   const { start: pageStart, end: pageEnd } = pageRange(models.length, currentPage, pageSize);
-  const openCount = page.items.filter((model) => model.status === "CONDUCT_REPORT_PENDING").length;
+  const tabCounts = countBoardTabMatches(page.items, tabs, tabMatches);
   const openDrawer = (id: string) => {
     router.push(conductReportRoutes.detail(id), { scroll: false });
   };
@@ -166,7 +167,7 @@ export function ConductReportBoard({
           </CardHeader>
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ConductReportTab)}>
             <TabsList className="px-3" aria-label={translateText("Conduct Report status filters")}>
-              {tabs.map((tab) => <TabsTrigger key={tab.id} value={tab.id}>{translateText(tab.label)}{tab.id === "open" ? ` (${openCount})` : null}</TabsTrigger>)}
+              {tabs.map((tab) => <TabsTrigger key={tab.id} value={tab.id}>{translateText(tab.label)} ({tabCounts.get(tab.id) ?? 0})</TabsTrigger>)}
             </TabsList>
           </Tabs>
           <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2">

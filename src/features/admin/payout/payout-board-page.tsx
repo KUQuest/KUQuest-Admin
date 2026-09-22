@@ -11,6 +11,7 @@ import { adminBoardCount, adminBoardPagination, adminBoardTable } from "../../..
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { Button as UiButton, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
 import { payoutRoutes } from "../admin-routes";
+import { countBoardTabMatches } from "../data/board-tab-counts";
 import { useAdminBoardReset } from "../data/use-admin-board-reset";
 import { formatPayoutDate, formatPayoutMoney, pagePayoutRows, PAYOUT_BOARD_TABS, payoutMatchesTab, payoutPageCount, searchPayoutRows, sortPayoutRows, type PayoutBoardPageSize, type PayoutBoardRow, type PayoutBoardTab, type PayoutDetailView } from "./payout-model";
 import type { PayoutBoardPageData, PayoutDataSource } from "./payout-service";
@@ -77,6 +78,7 @@ export function AdminPayoutPage({
   }, [dataSource, queryClient, queryKey]);
 
   const filteredRows = searchPayoutRows(rows, query).filter((row) => payoutMatchesTab(row, tab));
+  const tabCounts = countBoardTabMatches(rows, PAYOUT_BOARD_TABS, payoutMatchesTab);
   const sortedRows = sortPayoutRows(filteredRows, sortKey, sortDirection);
   const totalPages = payoutPageCount(sortedRows.length, pageSize);
   const currentPage = Math.min(page, Math.max(totalPages, 1));
@@ -99,7 +101,7 @@ export function AdminPayoutPage({
         </CardHeader>
         <Tabs value={tab} onValueChange={(value) => chooseTab(value as PayoutBoardTab)}>
           <TabsList className="px-3" aria-label={translateText("Payout filters")}>
-            {PAYOUT_BOARD_TABS.map((item) => <TabsTrigger key={item.id} value={item.id}>{translateText(item.label)}{item.id === "PENDING_ADMIN_APPROVAL" ? ` (${rows.filter((row) => row.status === item.id).length})` : item.id === "all" ? ` (${rows.length})` : ""}</TabsTrigger>)}
+            {PAYOUT_BOARD_TABS.map((item) => <TabsTrigger key={item.id} value={item.id}>{translateText(item.label)} ({tabCounts.get(item.id) ?? 0})</TabsTrigger>)}
           </TabsList>
         </Tabs>
         <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2">

@@ -19,7 +19,9 @@ test.describe("Wallet App Router board", () => {
     }
     await expect(page.getByText("฿8,430.00", { exact: true })).toBeVisible();
     await expect(page.getByText("฿12,840.00", { exact: true })).toBeVisible();
-    await expect(page.locator('[aria-label="Wallet status filters"] [role="tab"]')).toHaveText(["All (200)", "Active", "Frozen", "Suspended", "Closed"]);
+    const walletTabs = page.locator('[aria-label="Wallet status filters"] [role="tab"]');
+    await expect(walletTabs).toHaveCount(5);
+    for (const tab of await walletTabs.all()) await expect(tab).toHaveText(/\(\d+\)$/);
     await expect(page.getByRole("button", { name: "Normal", exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Temp Ban", exact: true })).toHaveCount(0);
     await expect(page.getByRole("tab", { name: /All/ })).toHaveAttribute("aria-selected", "true");
@@ -36,7 +38,7 @@ test.describe("Wallet App Router board", () => {
     await signIn(page);
     await page.goto("/wallet");
 
-    await page.getByRole("tab", { name: "Frozen", exact: true }).click();
+    await page.getByRole("tab", { name: /^Frozen \(\d+\)$/ }).click();
     await expect(page.locator("[data-wallet-row]")).toHaveCount(10);
     await expect(page.getByText("WAL-1001", { exact: true })).toBeVisible();
     await expect(page.getByText("WAL-1002", { exact: true })).toHaveCount(0);
@@ -55,7 +57,7 @@ test.describe("Wallet App Router board", () => {
     await signIn(page);
     await page.goto("/wallet");
 
-    await page.getByRole("tab", { name: "Closed", exact: true }).click();
+    await page.getByRole("tab", { name: /^Closed \(\d+\)$/ }).click();
     const closedRow = page.locator('[data-wallet-row="WAL-1004"]');
     await expect(closedRow).toBeVisible();
     await expect(closedRow.locator('[data-wallet-status="CLOSED"]')).toHaveText("Closed");

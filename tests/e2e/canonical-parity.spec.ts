@@ -333,7 +333,7 @@ test.describe("legacy parity for board controls and moderation", () => {
     await page.goto("/quest");
 
     const filters = page.getByLabel("Quest filters");
-    const draft = filters.getByRole("tab", { name: "Draft", exact: true });
+    const draft = filters.getByRole("tab", { name: /^Draft \(\d+\)$/ });
     await draft.click();
     await expect(draft).toHaveAttribute("aria-selected", "true");
     const all = filters.getByRole("tab", { name: /^All/ });

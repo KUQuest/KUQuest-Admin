@@ -161,11 +161,11 @@ test.describe("Quest route family", () => {
     await expect(page.locator("tbody tr").first()).toContainText("Demo Quest 07");
 
     await page.getByPlaceholder("Search Quests…").fill("");
-    await page.getByRole("tab", { name: "Team", exact: true }).click();
+    await page.getByRole("tab", { name: /^Team \(\d+\)$/ }).click();
     await expect(page.locator("tbody tr")).not.toHaveCount(0);
     await expect(page.locator("tbody tr").first()).toContainText("Team Quest");
 
-    await page.getByRole("tab", { name: "Failed", exact: true }).click();
+    await page.getByRole("tab", { name: /^Failed \(\d+\)$/ }).click();
     await expect(page.locator("tbody tr")).toHaveCount(7);
     await expect(page.locator("tbody tr").first()).toContainText("Verify dorm fire exits");
   });

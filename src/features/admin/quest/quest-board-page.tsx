@@ -10,6 +10,7 @@ import { adminBoardCount, adminBoardPagination, adminBoardTable } from "../../..
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { Button as UiButton, Card, CardContent, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
 import { questRoutes } from "../admin-routes";
+import { countBoardTabMatches } from "../data/board-tab-counts";
 import { useAdminBoardReset } from "../data/use-admin-board-reset";
 import {
   formatQuestDate,
@@ -54,6 +55,7 @@ export function AdminQuestPage({ initialData, dataSource = "api" }: { initialDat
   }
 
   const rows = data.rows;
+  const tabCounts = countBoardTabMatches(rows, QUEST_BOARD_TABS, questMatchesTab);
   const filteredRows = searchQuestRows(rows, search).filter((row) => questMatchesTab(row, tab));
   const sortedRows = sortQuestRows(filteredRows, sortKey, sortDirection);
   const totalPages = questPageCount(sortedRows.length, pageSize);
@@ -72,7 +74,7 @@ export function AdminQuestPage({ initialData, dataSource = "api" }: { initialDat
         </CardHeader>
         <Tabs value={tab} onValueChange={(value) => setTab(value as QuestBoardTab)}>
           <TabsList className="px-3" aria-label={translateText("Quest filters")}>
-            {QUEST_BOARD_TABS.map((item) => <TabsTrigger key={item.id} value={item.id}>{translateText(item.label)}{item.id === "all" ? ` (${rows.length})` : ""}</TabsTrigger>)}
+            {QUEST_BOARD_TABS.map((item) => <TabsTrigger key={item.id} value={item.id}>{translateText(item.label)} ({tabCounts.get(item.id) ?? 0})</TabsTrigger>)}
           </TabsList>
         </Tabs>
         <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2"><label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text max-[600px]:basis-full max-[600px]:max-w-none" htmlFor="quest-search"><span className="visually-hidden">{translateText("Search Quests")}</span><Input className="h-9 min-h-9 px-3 py-1.5 text-sm" id="quest-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={translateText("Search Quests…")} autoComplete="off" /></label><span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span><PageSizeControls value={pageSize} translateText={translateText} onChange={setPageSize} /><span className="ml-auto text-sm text-admin-muted max-[600px]:hidden" aria-live="polite">{translateText("Showing")} {pageStart}–{pageEnd} {translateText("of")} {sortedRows.length} {translateText("results")}</span></div>

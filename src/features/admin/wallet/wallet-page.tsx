@@ -18,6 +18,7 @@ import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { adminBoardCount, adminBoardPagination, adminBoardTable, adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
 import { Badge as UiBadge, Button as UiButton, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
 import { walletStatusLabel, type WalletStatus } from "../domain/rulebook";
+import { countBoardTabMatches } from "../data/board-tab-counts";
 import { useAdminBoardReset } from "../data/use-admin-board-reset";
 import { memberTabHref } from "../member/member-model";
 import {
@@ -311,6 +312,7 @@ export function AdminWalletPage({ initialData }: { initialData: WalletBoardPageD
     : pageSize === "all"
     ? `${translateText("Showing all")} ${sortedRows.length} ${translateText(sortedRows.length === 1 ? "result" : "results")}`
     : `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${sortedRows.length} ${translateText(sortedRows.length === 1 ? "result" : "results")}`;
+  const tabCounts = countBoardTabMatches(rows, WALLET_BOARD_TABS, walletMatchesTab);
   return <main className="admin-route-page wallet-route-page" tabIndex={-1}>
     <AdminPageHeader title={translateText("Wallets")} description={translateText("Review Wallet status and balances. Wallet detail is not a route in this migration.")} />
     <Card as="section" className="overflow-hidden wallet-board" aria-label={translateText("Wallet review board")}>
@@ -321,7 +323,7 @@ export function AdminWalletPage({ initialData }: { initialData: WalletBoardPageD
       <WalletSummary summary={initialData.summary} error={initialData.summaryError} dataSource={initialData.dataSource} onRetry={() => router.refresh()} />
       <Tabs value={tab} onValueChange={(value) => setTab(value as WalletBoardTab)}>
         <TabsList className="px-3" aria-label={translateText("Wallet status filters")}>
-          {WALLET_BOARD_TABS.map((item) => <TabsTrigger key={item.id} value={item.id}>{translateText(item.label)}{item.id === "all" ? ` (${rows.length})` : ""}</TabsTrigger>)}
+          {WALLET_BOARD_TABS.map((item) => <TabsTrigger key={item.id} value={item.id}>{translateText(item.label)} ({tabCounts.get(item.id) ?? 0})</TabsTrigger>)}
         </TabsList>
       </Tabs>
       <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2">

@@ -234,7 +234,7 @@ test.describe("shared Admin shell", () => {
     await expect(main.getByText("Report Case", { exact: true })).toHaveCount(0);
     await expect(main.locator('a[href*="/conduct-report/"]')).toHaveCount(0);
 
-    await main.getByRole("tab", { name: "Confirmed", exact: true }).click();
+    await main.getByRole("tab", { name: /^Confirmed \(\d+\)$/ }).click();
     await expect(main.locator('tbody tr[data-conduct-report-status="CONDUCT_REPORT_UPHELD"]')).toHaveCount(10);
       await main.getByRole("tab", { name: /^Open/ }).click();
     const pendingRows = main.locator('tbody tr[data-conduct-report-status="CONDUCT_REPORT_PENDING"]');
@@ -262,17 +262,22 @@ test.describe("shared Admin shell", () => {
     await expect(drawer).toContainText("Violation confirmed");
     await expect(main.locator('tbody tr[data-conduct-report-status="CONDUCT_REPORT_PENDING"]')).toHaveCount(10);
     await drawer.getByRole("button", { name: "Close drawer" }).click();
-    await main.getByRole("tab", { name: "Confirmed", exact: true }).click();
+    await main.getByRole("tab", { name: /^Confirmed \(\d+\)$/ }).click();
     await expect(main.locator('tbody tr[data-conduct-report-status="CONDUCT_REPORT_UPHELD"]')).toHaveCount(10);
   });
 
-  test("places Open first and shows the loaded open count on moderation boards", async ({ page }) => {
+  test("shows a count on every table filter tab", async ({ page }) => {
     await signIn(page);
 
-    for (const route of ["/dispute", "/report", "/conduct-report"]) {
+    for (const route of ["/member", "/quest", "/dispute", "/report", "/conduct-report", "/payout", "/wallet"]) {
       await page.goto(route);
       const tabs = page.locator('[role="tablist"] [role="tab"]');
-      await expect(tabs.first()).toHaveText(/^Open \(\d+\)$/);
+      await expect(tabs.first()).toBeVisible();
+      for (const tab of await tabs.all()) await expect(tab).toHaveText(/\(\d+\)$/);
+
+      if (["/dispute", "/report", "/conduct-report"].includes(route)) {
+        await expect(tabs.first()).toHaveText(/^Open \(\d+\)$/);
+      }
     }
   });
 

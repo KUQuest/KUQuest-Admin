@@ -11,6 +11,7 @@ import { AdminSortableHeader } from "../../../components/admin/admin-sortable-he
 import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, TableCell, TableRow, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
 import { disputeRoutes, questRoutes } from "../admin-routes";
 import { pageCount, pageRange, pageRows } from "../data/board-pagination";
+import { countBoardTabMatches } from "../data/board-tab-counts";
 import { useAdminBoardReset } from "../data/use-admin-board-reset";
 import { dateSortValue, sortBoardRows } from "../data/board-sorting";
 import type { DisputeCaseModel } from "./dispute-model";
@@ -143,12 +144,7 @@ export function DisputeCaseBoard({ initialData }: { initialData?: DisputeCasePag
   const currentPage = Math.min(pageNumber, Math.max(totalPages, 1));
   const visibleModels = pageRows(models, currentPage, pageSize);
   const { start: pageStart, end: pageEnd } = pageRange(models.length, currentPage, pageSize);
-  const tabCounts: Record<DisputeCaseTab, number> = {
-    all: page.items.length,
-    open: page.items.filter((model) => model.status === "DISPUTE_CASE_PENDING").length,
-    dismissed: page.items.filter((model) => model.status === "DISPUTE_CASE_DISMISSED").length,
-    resolved: page.items.filter((model) => model.status === "DISPUTE_CASE_RESOLVED").length,
-  };
+  const tabCounts = countBoardTabMatches(page.items, tabs, tabMatches);
 
   return (
     <main id="dispute-main" className="admin-route-page dispute-case-board" tabIndex={-1}>
@@ -159,7 +155,7 @@ export function DisputeCaseBoard({ initialData }: { initialData?: DisputeCasePag
         </CardHeader>
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as DisputeCaseTab)}>
           <TabsList className="px-3" aria-label={translateText("Dispute Case status filters")}>
-            {tabs.map((tab) => <TabsTrigger key={tab.id} value={tab.id}>{translateText(tab.label)} ({tabCounts[tab.id]})</TabsTrigger>)}
+            {tabs.map((tab) => <TabsTrigger key={tab.id} value={tab.id}>{translateText(tab.label)} ({tabCounts.get(tab.id) ?? 0})</TabsTrigger>)}
           </TabsList>
         </Tabs>
         <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2"><label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text max-[600px]:basis-full max-[600px]:max-w-none" htmlFor="dispute-case-search"><span className="visually-hidden">{translateText("Search Dispute Cases")}</span><Input className="h-9 min-h-9 px-3 py-1.5 text-sm" id="dispute-case-search" type="search" aria-label={translateText("Search Dispute Cases")} placeholder={translateText("Search by case, Quest, Member, or category")} value={query} onChange={(event) => setQuery(event.target.value)} /></label><span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span><PageSizeControls value={pageSize} disabled={isFetchingNextPage} translateText={translateText} onChange={(size) => { setPageSize(size); if (size === "all") void loadAllPages(); }} /><span className={adminBoardCount} aria-live="polite">{isFetchingNextPage ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}</span></div>

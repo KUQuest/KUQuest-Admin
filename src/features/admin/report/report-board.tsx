@@ -12,6 +12,7 @@ import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input
 import { reportRoutes } from "../admin-routes";
 import { formatAdminTimestamp } from "../date-format";
 import { pageCount, pageRange, pageRows } from "../data/board-pagination";
+import { countBoardTabMatches } from "../data/board-tab-counts";
 import { useAdminBoardReset } from "../data/use-admin-board-reset";
 import { dateSortValue, sortBoardRows } from "../data/board-sorting";
 import type { ReportCaseModel } from "./report-model";
@@ -142,7 +143,7 @@ export function ReportCaseBoard({ initialData }: { initialData?: ReportCasePageD
   const currentPage = Math.min(pageNumber, Math.max(totalPages, 1));
   const visibleModels = pageRows(models, currentPage, pageSize);
   const { start: pageStart, end: pageEnd } = pageRange(models.length, currentPage, pageSize);
-  const openCount = page.items.filter((model) => model.status === "REPORT_CASE_PENDING").length;
+  const tabCounts = countBoardTabMatches(page.items, tabs, tabMatches);
 
   return (
       <main id="report-main" className="admin-route-page report-case-board" tabIndex={-1}>
@@ -153,7 +154,7 @@ export function ReportCaseBoard({ initialData }: { initialData?: ReportCasePageD
           </CardHeader>
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ReportCaseTab)}>
             <TabsList className="px-3" aria-label={translateText("Report Case status filters")}>
-              {tabs.map((tab) => <TabsTrigger key={tab.id} value={tab.id}>{translateText(tab.label)}{tab.id === "open" ? ` (${openCount})` : null}</TabsTrigger>)}
+              {tabs.map((tab) => <TabsTrigger key={tab.id} value={tab.id}>{translateText(tab.label)} ({tabCounts.get(tab.id) ?? 0})</TabsTrigger>)}
             </TabsList>
           </Tabs>
           <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2"><label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text max-[600px]:basis-full max-[600px]:max-w-none" htmlFor="report-case-search"><span className="visually-hidden">{translateText("Search Report Cases")}</span><Input className="h-9 min-h-9 px-3 py-1.5 text-sm" id="report-case-search" type="search" aria-label={translateText("Search Report Cases")} placeholder={translateText("Search by Report Case, Member, or Report type")} value={query} onChange={(event) => setQuery(event.target.value)} /></label><span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span><PageSizeControls value={pageSize} disabled={isFetchingNextPage} translateText={translateText} onChange={(size) => { setPageSize(size); if (size === "all") void loadAllPages(); }} /><span className={adminBoardCount} aria-live="polite">{isFetchingNextPage ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}</span></div>
