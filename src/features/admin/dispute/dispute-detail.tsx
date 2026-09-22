@@ -115,13 +115,9 @@ function Overview({ model, translateText, compact = false }: { model: DisputeCas
   );
 }
 
-function PartyStatements({ model, translateText, compact = false, interactive = true }: { model: DisputeCaseModel; translateText: (value: string) => string; compact?: boolean; interactive?: boolean }) {
+function PartyStatements({ model, translateText, compact = false }: { model: DisputeCaseModel; translateText: (value: string) => string; compact?: boolean }) {
   const content = (
     <>
-      <div className={adminRecordPartyGrid}>
-        <div><strong><MemberLink id={model.filerId} name={model.filerName} href={model.filerHref} interactive={interactive} /></strong>{model.filerId && <small>{model.filerId}</small>}</div>
-        <div><strong><MemberLink id={model.respondentId} name={model.respondentName} href={model.respondentHref} interactive={interactive} /></strong>{model.respondentId && <small>{model.respondentId}</small>}</div>
-      </div>
       <div className="dispute-statements mt-[18px] grid gap-[14px]"><div className={adminRecordGroup}><span>{translateText(model.filerRole === "Worker" ? "Worker statement" : "Hirer statement")}</span><p>{model.filerStatement}</p></div><div className={adminRecordGroup}><span>{translateText(model.respondentRole === "Hirer" ? "Hirer statement" : "Worker statement")}</span><p>{model.respondentStatement}</p></div></div>
     </>
   );
@@ -246,7 +242,7 @@ function DrawerSections({ model, translateText, onOpenEvidence, selectedChoice, 
     <Overview model={model} translateText={translateText} compact />
     <EvidenceSection model={model} translateText={translateText} onOpen={onOpenEvidence} compact />
     <RelatedQuestPanel model={model} translateText={translateText} />
-    <PartyStatements model={model} translateText={translateText} compact interactive={false} />
+    <PartyStatements model={model} translateText={translateText} compact />
     <ModerationHistoryPanel
       summary={model.moderationHistory}
       translateText={translateText}
