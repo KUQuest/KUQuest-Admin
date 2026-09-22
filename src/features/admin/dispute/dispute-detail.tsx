@@ -119,10 +119,10 @@ function PartyStatements({ model, translateText, compact = false, interactive = 
   const content = (
     <>
       <div className={adminRecordPartyGrid}>
-        <div><span>{translateText(model.filerRole)}</span><strong><MemberLink id={model.filerId} name={model.filerName} href={model.filerHref} interactive={interactive} /></strong>{model.filerId && <small>{model.filerId}</small>}</div>
-        <div><span>{translateText(model.respondentRole)}</span><strong><MemberLink id={model.respondentId} name={model.respondentName} href={model.respondentHref} interactive={interactive} /></strong>{model.respondentId && <small>{model.respondentId}</small>}</div>
+        <div><strong><MemberLink id={model.filerId} name={model.filerName} href={model.filerHref} interactive={interactive} /></strong>{model.filerId && <small>{model.filerId}</small>}</div>
+        <div><strong><MemberLink id={model.respondentId} name={model.respondentName} href={model.respondentHref} interactive={interactive} /></strong>{model.respondentId && <small>{model.respondentId}</small>}</div>
       </div>
-      <div className="dispute-statements mt-[18px] grid gap-[14px]"><div className={adminRecordGroup}><span>{translateText(model.filerRole === "Hirer" ? "Hirer statement" : "Worker statement")}</span><p>{model.filerStatement}</p></div><div className={adminRecordGroup}><span>{translateText(model.respondentRole === "Hirer" ? "Hirer statement" : "Worker statement")}</span><p>{model.respondentStatement}</p></div></div>
+      <div className="dispute-statements mt-[18px] grid gap-[14px]"><div className={adminRecordGroup}><span>{model.filerName}</span><p>{model.filerStatement}</p></div><div className={adminRecordGroup}><span>{model.respondentName}</span><p>{model.respondentStatement}</p></div></div>
     </>
   );
   return <Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}>{compact ? <h3 className={adminRecordHeading}>{translateText("Parties and statements")}</h3> : <h2 className={adminRecordHeading}>{translateText("Parties and statements")}</h2>}</CardHeader>{content}</Card>;

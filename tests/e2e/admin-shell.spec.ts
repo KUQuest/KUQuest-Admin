@@ -331,8 +331,8 @@ test.describe("shared Admin shell", () => {
     await expect(drawer).toBeVisible();
     await expect(drawer.locator('.moderation-case-workspace a:not([data-slot="button"])')).toHaveCount(0);
     await expect(drawer.getByRole("link", { name: "Quest detail", exact: true })).toHaveAttribute("href", "/quest/QST-12001");
-    await expect(drawer.locator(".admin-record-party-grid").first()).toContainText("Hirer");
-    await expect(drawer.locator(".admin-record-party-grid").first()).toContainText("Worker");
+    await expect(drawer.locator(".admin-record-party-grid").first()).toContainText("Akarin Ariyawat");
+    await expect(drawer.locator(".admin-record-party-grid").first()).toContainText("Amara Ariyawat");
     await expect(drawer.getByText("Dismissed", { exact: true })).toBeVisible();
     await page.goBack();
     await expect(page).toHaveURL(/\/dispute$/);
