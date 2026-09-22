@@ -311,6 +311,9 @@ test.describe("shared Admin shell", () => {
 
     const main = page.locator("#dispute-main");
     await expect(main.getByRole("heading", { level: 1, name: "Dispute Cases" })).toBeVisible();
+    for (const label of ["Open", "All", "Hirer wins", "Worker wins"]) {
+      await expect(main.getByRole("tab", { name: new RegExp(`^${label} \\(\\d+\\)$`) })).toBeVisible();
+    }
     await expect(main.locator("thead")).toContainText("Hirer");
     await expect(main.locator("thead")).toContainText("Worker");
     const firstRow = main.locator('tbody tr[data-dispute-id="DSP-5201"]');
