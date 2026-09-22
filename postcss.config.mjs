@@ -6,10 +6,9 @@ const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const config = {
   plugins: {
     "@tailwindcss/postcss": {
-      // Keep Tailwind's automatic class scan inside application source. The
-      // repository also contains Markdown and agent documentation with CSS
-      // examples that are not runtime UI and can produce invalid candidates.
-      base: path.join(projectRoot, "src"),
+      // The CSS entrypoint disables automatic scanning and explicitly scopes
+      // Tailwind sources to `src`, avoiding non-runtime repository content.
+      base: projectRoot,
     },
   },
 };

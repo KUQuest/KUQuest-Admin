@@ -8,7 +8,7 @@
 @layer theme, utilities;
 
 @import "tailwindcss/theme.css" layer(theme);
-@import "tailwindcss/utilities.css" layer(utilities);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
 
 /* Map the existing Admin semantic tokens to namespaced Tailwind tokens. */
 @theme inline {
@@ -139,6 +139,7 @@
 }
 
 /* Keep the foundation visible to the compiler until the first utility migration. */
+@source "../";
 @source inline("bg-admin-bg text-admin-text shadow-admin-card p-admin-4");
 
 /* Shared App Router board frame. The retired global shell used to provide
