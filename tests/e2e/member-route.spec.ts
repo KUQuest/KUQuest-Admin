@@ -104,6 +104,7 @@ test.describe("Member route family", () => {
     const dialog = page.getByRole("dialog", { name: "Confirm violation for Akarin Ariyawat" });
     await expect(dialog).toBeVisible();
     const reason = dialog.getByRole("textbox", { name: "Reason for confirmed violation" });
+    await expect(dialog.getByRole("textbox", { name: "Internal admin note (optional)" })).toHaveCount(0);
     await reason.fill("The evidence confirms a policy violation.");
     await expect(reason).toHaveValue("The evidence confirms a policy violation.");
     const box = await reason.boundingBox();
