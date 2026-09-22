@@ -260,6 +260,7 @@ test.describe("Quest route family", () => {
     await page.goto(`/quest/${CANDIDATE_QUEST_DISPLAY_ID}`);
 
     const candidates = page.getByRole("heading", { name: "Candidates", exact: true }).locator("xpath=ancestor::section[1]");
+    await expect(candidates.getByText(/Member ID:/).first()).toBeVisible();
     await expect(candidates.getByRole("link", { name: "See Member profile", exact: true })).toHaveAttribute("href", /\/member\//);
 
     await page.goto(`/quest/${FAILED_QUEST_ID}`);

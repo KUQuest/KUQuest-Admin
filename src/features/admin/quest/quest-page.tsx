@@ -483,6 +483,7 @@ function QuestDetailContent({
                     <strong>{questMemberName(application.worker)}</strong>
                     <span className="text-[13px] text-admin-muted">{formatQuestDate(application.appliedAt)}</span>
                   </span>
+                  <small>{translateText("Member ID")}: {application.worker.memberId}</small>
                   <small>{translateText("Candidate")} · {translateText(readableValue(application.applicationStatus))}</small>
                 </span>
                 <UiButton asChild variant="outline" size="xs" className="shrink-0">
