@@ -311,7 +311,7 @@ test.describe("shared Admin shell", () => {
 
     const main = page.locator("#dispute-main");
     await expect(main.getByRole("heading", { level: 1, name: "Dispute Cases" })).toBeVisible();
-    for (const label of ["Open", "All", "Hirer wins", "Worker wins"]) {
+    for (const label of ["Open", "All", "Hirer retains funds", "Worker receives funds"]) {
       await expect(main.getByRole("tab", { name: new RegExp(`^${label} \\(\\d+\\)$`) })).toBeVisible();
     }
     await expect(main.locator("thead")).toContainText("Hirer");
@@ -333,16 +333,16 @@ test.describe("shared Admin shell", () => {
     await expect(drawer.getByRole("link", { name: "Quest detail", exact: true })).toHaveAttribute("href", "/quest/QST-12001");
     await expect(drawer.locator(".admin-record-party-grid").first()).toContainText("Hirer");
     await expect(drawer.locator(".admin-record-party-grid").first()).toContainText("Worker");
-    await expect(drawer.getByText("Hirer wins", { exact: true })).toBeVisible();
+    await expect(drawer.getByText("Hirer retains funds", { exact: true })).toBeVisible();
     await page.goBack();
     await expect(page).toHaveURL(/\/dispute$/);
     await expect(drawer).toHaveCount(0);
 
     await firstRow.locator("button").first().click();
     await expect(drawer).toBeVisible();
-    await drawer.getByLabel(/Worker wins/).check();
+    await drawer.getByLabel(/Worker receives funds/).check();
     await drawer.getByRole("button", { name: "Record Dispute Case decision" }).click();
-    const decisionDialog = page.getByRole("dialog", { name: "Confirm Worker wins" });
+    const decisionDialog = page.getByRole("dialog", { name: "Confirm Worker receives funds" });
     await expect(decisionDialog).toBeVisible();
     await expect(decisionDialog.getByLabel("Worker allocation in Satang")).toHaveCount(0);
     await expect(decisionDialog.getByLabel("Reason code")).toHaveCount(0);
@@ -378,11 +378,11 @@ test.describe("shared Admin shell", () => {
     await expect(main).toHaveAttribute("inert", "");
     await expect(drawer).toBeFocused();
 
-    await drawer.getByLabel(/Worker wins/).check();
+    await drawer.getByLabel(/Worker receives funds/).check();
     const decisionOpener = drawer.getByRole("button", { name: "Record Dispute Case decision" });
     await decisionOpener.click();
 
-    const decision = page.getByRole("dialog", { name: "Confirm Worker wins" });
+    const decision = page.getByRole("dialog", { name: "Confirm Worker receives funds" });
     await expect(decision).toBeVisible();
     await expect(decision).toHaveAttribute("open", "");
     await expect.poll(() => page.evaluate(() => document.activeElement?.id)).toBe("dispute-decision-reason");
