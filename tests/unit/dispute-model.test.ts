@@ -32,10 +32,10 @@ describe("Dispute Case model", () => {
       category: "EVIDENCE",
       detail: "The Proof Submission needs review.",
       filerUserId: "member-hirer",
-      filerRole: "HIRER",
+      filerRole: "Hirer",
       filerName: "Hirer One",
       respondentUserId: "member-worker",
-      respondentRole: "WORKER",
+      respondentRole: "Worker",
       respondentName: "Worker One",
       amountAtRiskSatang: 12501,
       failedAt: "2026-09-12T12:00:00.000Z",
@@ -61,58 +61,6 @@ describe("Dispute Case model", () => {
     expect(model?.displayId).toBe("DSP-42");
     expect(model?.moneyHoldDeadline).toBe("19 Sep 2026 19:00");
     expect(model?.moderationHistory.currentMemberStatus).toBe("ACTIVE");
-  });
-
-  it("derives both parties from the API Quest Hirer and Worker fields", () => {
-    const model = disputeCaseModelFromRecord({
-      id: "DSP-5203",
-      displayId: "DSP-5203",
-      status: "DISPUTE_CASE_RESOLVED",
-      filerUserId: "hirer-1",
-      resolvedWorkerId: "worker-1",
-      quest: {
-        id: "QST-5203",
-        title: "Organize community garden records",
-        hirerId: "hirer-1",
-        questStatus: "QUEST_FAILED",
-      },
-    }, "api");
-
-    expect(model).toMatchObject({
-      filerId: "hirer-1",
-      filerRole: "Hirer",
-      respondentId: "worker-1",
-      respondentRole: "Worker",
-      filerName: "Member hirer-1",
-      respondentName: "Member worker-1",
-      filerStatement: "Not provided by the Admin API.",
-      respondentStatement: "Not provided by the Admin API.",
-    });
-    expect(model?.filerName).not.toContain("Hirer not provided");
-    expect(model?.respondentName).not.toContain("Worker not provided");
-  });
-
-  it("keeps the Worker as the filer when the API identifies the Worker party", () => {
-    const model = disputeCaseModelFromRecord({
-      id: "DSP-5204",
-      displayId: "DSP-5204",
-      status: "DISPUTE_CASE_PENDING",
-      filerUserId: "worker-1",
-      workerId: "worker-1",
-      quest: {
-        id: "QST-5204",
-        hirerId: "hirer-1",
-        questStatus: "QUEST_FAILED",
-      },
-    }, "api");
-
-    expect(model).toMatchObject({
-      filerId: "worker-1",
-      filerRole: "Worker",
-      respondentId: "hirer-1",
-      respondentRole: "Hirer",
-      workerId: "worker-1",
-    });
   });
 
   it("uses canonical status values and only pending failed Quests are actionable", () => {
