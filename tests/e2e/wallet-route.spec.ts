@@ -80,6 +80,7 @@ test.describe("Wallet App Router board", () => {
     await opener.click();
     await expect(page.locator("dialog.wallet-drawer")).toBeVisible();
     await expect(page.getByText("Wallet balances", { exact: true })).toBeVisible();
+    await expect(page.getByText("Ledger check", { exact: true })).toHaveCount(0);
     const drawerContent = page.locator("dialog.wallet-drawer .admin-drawer-content");
     const horizontalOverflow = await drawerContent.evaluate((element) => element.scrollWidth - element.clientWidth);
     expect(horizontalOverflow).toBeLessThanOrEqual(1);
