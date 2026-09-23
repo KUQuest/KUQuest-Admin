@@ -83,6 +83,18 @@ test.describe("canonical parity coverage", () => {
     ]);
     await expect(statement.getByLabel("From")).toBeVisible();
     await expect(statement.getByLabel("To")).toBeVisible();
+    const fromDate = statement.getByLabel("From", { exact: true });
+    const toDate = statement.getByLabel("To", { exact: true });
+    await expect(fromDate).toHaveAttribute("placeholder", "dd/mm/yyyy");
+    await expect(toDate).toHaveAttribute("placeholder", "dd/mm/yyyy");
+    await statement.getByLabel("Open date picker").first().fill("2026-08-20");
+    await expect(fromDate).toHaveValue("20/08/2026");
+    await fromDate.fill("31/02/2026");
+    await statement.getByRole("button", { name: "Apply filters" }).click();
+    await expect(statement.getByRole("alert")).toHaveText("Enter dates as DD/MM/YYYY.");
+    await fromDate.fill("01/01/2026");
+    await toDate.fill("31/12/2026");
+    await expect(statement.getByRole("alert")).toHaveCount(0);
 
     const rows = statement.locator(".wallet-statement-table tbody tr");
     await expect(rows).toHaveCount(25);

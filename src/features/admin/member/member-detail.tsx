@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { CalendarDays } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { AdminLoading } from "../../../components/admin/admin-feedback";
@@ -19,6 +20,7 @@ import { filterReviews } from "../user-reviews/review-model";
 import { MEMBER_UPDATED_EVENT } from "./member-board";
 import { NoteDialog, PenaltyDialog, RemovePenaltyDialog } from "./member-action-dialogs";
 import { walletBusinessReferenceLabel, walletEventTypeLabel } from "../wallet/wallet-model";
+import { formatWalletStatementDateInput, parseWalletStatementDateInput } from "./member-wallet-model";
 import {
   currentWalletBalance,
   formatMoneySatang,
@@ -202,22 +204,98 @@ function PayoutsTab({ model, translateText }: { model: MemberModel; translateTex
   return <Card as="section" className="user-detail-panel user-tab-panel col-span-full min-w-0 p-[16px_18px]"><CardHeader flush><h2>{translateText("Payouts")}</h2></CardHeader><MemberPayoutPreview model={model} translateText={translateText} /></Card>;
 }
 
+function WalletStatementDateField({
+  name,
+  label,
+  value,
+  hasError,
+  onChange,
+  translateText,
+}: {
+  name: "from" | "to";
+  label: string;
+  value: string;
+  hasError: boolean;
+  onChange: (value: string) => void;
+  translateText: (value: string) => string;
+}) {
+  const pickerValue = parseWalletStatementDateInput(value) || "";
+  const handleTextChange = (event: React.ChangeEvent<HTMLInputElement>) => onChange(event.currentTarget.value);
+  const handlePickerChange = (event: React.ChangeEvent<HTMLInputElement>) => onChange(formatWalletStatementDateInput(event.currentTarget.value));
+
+  return (
+    <div className="grid gap-1 text-[15px] font-semibold leading-[1.4] text-admin-muted">
+      <label htmlFor={`wallet-statement-${name}`}>{translateText(label)}</label>
+      <div className="grid grid-cols-[minmax(0,1fr)_35px] gap-1">
+        <input
+          id={`wallet-statement-${name}`}
+          className="min-h-[35px] w-full rounded-[7px] border border-admin-border-strong bg-admin-surface px-2 text-admin-text"
+          name={name}
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          placeholder="dd/mm/yyyy"
+          value={value}
+          aria-invalid={hasError}
+          aria-describedby={hasError ? "wallet-statement-date-error" : undefined}
+          onChange={handleTextChange}
+        />
+        <span className="relative inline-flex h-[35px] w-[35px] items-center justify-center rounded-[7px] border border-admin-border bg-admin-surface text-admin-text hover:bg-admin-hover focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-admin-accent">
+          <CalendarDays aria-hidden="true" size={16} />
+          <input
+            className="absolute inset-0 size-full cursor-pointer opacity-0"
+            type="date"
+            aria-label={translateText("Open date picker")}
+            value={pickerValue}
+            onChange={handlePickerChange}
+          />
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function WalletStatementTab({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
   const [filters, setFilters] = useState({ eventType: "", from: "", to: "" });
+  const [dateInputValues, setDateInputValues] = useState({ from: "", to: "" });
+  const [dateInputError, setDateInputError] = useState("");
   const [visibleCount, setVisibleCount] = useState(25);
   const filteredRows = walletStatementRows(model, filters, model.walletStatement.length);
   const rows = filteredRows.slice(0, visibleCount);
   useEffect(() => {
     setVisibleCount(25);
     setFilters({ eventType: "", from: "", to: "" });
+    setDateInputValues({ from: "", to: "" });
+    setDateInputError("");
   }, [model.id]);
+  const handleFromDateChange = (value: string) => {
+    setDateInputValues((current) => ({ ...current, from: value }));
+    setDateInputError("");
+  };
+  const handleToDateChange = (value: string) => {
+    setDateInputValues((current) => ({ ...current, to: value }));
+    setDateInputError("");
+  };
+  const clearFilters = () => {
+    setFilters({ eventType: "", from: "", to: "" });
+    setDateInputValues({ from: "", to: "" });
+    setDateInputError("");
+    setVisibleCount(25);
+  };
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    const from = parseWalletStatementDateInput(String(form.get("from") || ""));
+    const to = parseWalletStatementDateInput(String(form.get("to") || ""));
+    if (from === null || to === null) {
+      setDateInputError(translateText("Enter dates as DD/MM/YYYY."));
+      return;
+    }
+    setDateInputError("");
     setFilters({
       eventType: String(form.get("eventType") || ""),
-      from: String(form.get("from") || ""),
-      to: String(form.get("to") || ""),
+      from,
+      to,
     });
     setVisibleCount(25);
   };
@@ -247,10 +325,11 @@ function WalletStatementTab({ model, translateText }: { model: MemberModel; tran
       ) : <p className="audit-note">{translateText("No Wallet is linked to this Member.")}</p>}
       <form className="wallet-statement-filters mb-3.5 grid grid-cols-[minmax(0,1.3fr)_repeat(2,minmax(130px,1fr))_auto] items-end gap-[9px] max-[720px]:grid-cols-2 max-[420px]:grid-cols-1" onSubmit={submit}>
         <label className="grid gap-1 text-[15px] font-semibold leading-[1.4] text-admin-muted max-[720px]:col-span-full max-[420px]:col-span-1">{translateText("Event type")}<select className="min-h-[35px] w-full rounded-[7px] border border-admin-border-strong bg-admin-surface px-2 text-admin-text" name="eventType" aria-label={translateText("Event type")} defaultValue=""><option value="">{translateText("All event types")}</option>{ADMIN_LEDGER_EVENT_TYPES.map((eventType) => <option key={eventType} value={eventType}>{translateText(walletEventTypeLabel(eventType))}</option>)}</select></label>
-        <label className="grid gap-1 text-[15px] font-semibold leading-[1.4] text-admin-muted">{translateText("From")}<input className="min-h-[35px] w-full rounded-[7px] border border-admin-border-strong bg-admin-surface px-2 text-admin-text" name="from" type="date" aria-label={translateText("From")} /></label>
-        <label className="grid gap-1 text-[15px] font-semibold leading-[1.4] text-admin-muted">{translateText("To")}<input className="min-h-[35px] w-full rounded-[7px] border border-admin-border-strong bg-admin-surface px-2 text-admin-text" name="to" type="date" aria-label={translateText("To")} /></label>
+        <WalletStatementDateField name="from" label="From" value={dateInputValues.from} hasError={Boolean(dateInputError)} onChange={handleFromDateChange} translateText={translateText} />
+        <WalletStatementDateField name="to" label="To" value={dateInputValues.to} hasError={Boolean(dateInputError)} onChange={handleToDateChange} translateText={translateText} />
         <Button className="min-h-[35px]" variant="primary" type="submit">{translateText("Apply filters")}</Button>
-        <Button className="min-h-[35px]" variant="outline" type="button" onClick={() => { setFilters({ eventType: "", from: "", to: "" }); setVisibleCount(25); }}>{translateText("Clear")}</Button>
+        <Button className="min-h-[35px]" variant="outline" type="button" onClick={clearFilters}>{translateText("Clear")}</Button>
+        {dateInputError ? <p className="col-span-full m-0 text-sm text-admin-danger" id="wallet-statement-date-error" role="alert" aria-live="polite">{dateInputError}</p> : null}
       </form>
       {rows.length ? (
         <div className="wallet-statement-table-block min-w-0">

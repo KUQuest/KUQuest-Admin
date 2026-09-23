@@ -106,6 +106,30 @@ export function currentWalletBalance(balances: MemberWalletBalances | null): num
     + balances.reservedForPayoutsSatang;
 }
 
+export function parseWalletStatementDateInput(value: string): string | null {
+  const trimmedValue = value.trim();
+  if (!trimmedValue) return "";
+
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(trimmedValue);
+  if (!match) return null;
+
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  if (month < 1 || month > 12) return null;
+
+  const isLeapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [31, isLeapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1];
+  if (day < 1 || day > daysInMonth) return null;
+
+  return `${match[3]}-${match[2]}-${match[1]}`;
+}
+
+export function formatWalletStatementDateInput(value: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : "";
+}
+
 function dateBoundary(value: string, endOfDay: boolean): number | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   const timestamp = Date.parse(`${value}${endOfDay ? "T23:59:59.999+07:00" : "T00:00:00.000+07:00"}`);
