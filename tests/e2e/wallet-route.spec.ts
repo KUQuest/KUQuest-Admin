@@ -81,6 +81,9 @@ test.describe("Wallet App Router board", () => {
     await expect(page.locator("dialog.wallet-drawer")).toBeVisible();
     await expect(page.getByText("Wallet balances", { exact: true })).toBeVisible();
     await expect(page.getByText("Ledger check", { exact: true })).toHaveCount(0);
+    const balanceGrid = page.locator(".wallet-balance-grid");
+    const balanceColumnCount = await balanceGrid.evaluate((element) => window.getComputedStyle(element).gridTemplateColumns.split(" ").length);
+    expect(balanceColumnCount).toBe(2);
     const drawerContent = page.locator("dialog.wallet-drawer .admin-drawer-content");
     const horizontalOverflow = await drawerContent.evaluate((element) => element.scrollWidth - element.clientWidth);
     expect(horizontalOverflow).toBeLessThanOrEqual(1);
