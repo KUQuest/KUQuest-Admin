@@ -114,6 +114,17 @@ export const WALLET_COMPARTMENT_ACCOUNT_TYPES = [
 
 export type WalletCompartmentAccountType = (typeof WALLET_COMPARTMENT_ACCOUNT_TYPES)[number];
 
+const walletCompartmentLabels: Record<WalletCompartmentAccountType, string> = {
+  SPENDING: "Spending Balance",
+  EARNINGS: "Earnings Balance",
+  FUNDING_RESERVED: "Funding Reserved",
+  RESERVED_FOR_PAYOUTS: "Reserved For Payouts",
+};
+
+export function walletCompartmentLabel(accountType: WalletCompartmentAccountType): string {
+  return walletCompartmentLabels[accountType];
+}
+
 const walletCompartmentAccountTypes = new Set<string>(WALLET_COMPARTMENT_ACCOUNT_TYPES);
 
 function walletBalancesFromApi(balances: AdminWallet["balances"]): WalletDetailView["balances"] {

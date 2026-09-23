@@ -17,6 +17,7 @@ import {
   walletSummaryFromApi,
   walletEventTypeLabel,
   walletBusinessReferenceLabel,
+  walletCompartmentLabel,
 } from "../../src/features/admin/wallet/wallet-model";
 
 describe("Wallet route model", () => {
@@ -30,6 +31,13 @@ describe("Wallet route model", () => {
   it("shows Wallet Statement business references without underscores", () => {
     expect(walletBusinessReferenceLabel("TOP_UP-1")).toBe("TOP UP-1");
     expect(walletBusinessReferenceLabel("PAYOUT-WAL-1001-01")).toBe("PAYOUT-WAL-1001-01");
+  });
+
+  it("shows Wallet Statement compartments with readable labels", () => {
+    expect(walletCompartmentLabel("SPENDING")).toBe("Spending Balance");
+    expect(walletCompartmentLabel("EARNINGS")).toBe("Earnings Balance");
+    expect(walletCompartmentLabel("FUNDING_RESERVED")).toBe("Funding Reserved");
+    expect(walletCompartmentLabel("RESERVED_FOR_PAYOUTS")).toBe("Reserved For Payouts");
   });
 
   it("maps Wallet DTOs to a separate view model and keeps the API balance", () => {

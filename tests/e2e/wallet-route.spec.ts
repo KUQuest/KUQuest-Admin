@@ -84,6 +84,10 @@ test.describe("Wallet App Router board", () => {
     const balanceGrid = page.locator(".wallet-balance-grid");
     const balanceColumnCount = await balanceGrid.evaluate((element) => window.getComputedStyle(element).gridTemplateColumns.split(" ").length);
     expect(balanceColumnCount).toBe(2);
+    const compartmentMovements = page.locator("dialog.wallet-drawer .wallet-statement-movement");
+    const movementTexts = await compartmentMovements.allTextContents();
+    expect(movementTexts.every((movement) => !movement.includes("_"))).toBe(true);
+    await expect(compartmentMovements.first()).toContainText("Spending Balance");
     const drawerContent = page.locator("dialog.wallet-drawer .admin-drawer-content");
     const horizontalOverflow = await drawerContent.evaluate((element) => element.scrollWidth - element.clientWidth);
     expect(horizontalOverflow).toBeLessThanOrEqual(1);
