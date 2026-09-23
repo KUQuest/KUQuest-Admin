@@ -22,7 +22,7 @@ type DisputeBoardState = {
 };
 
 const initialDisputeBoardState = {
-  activeTab: "all" as DisputeCaseTab,
+  activeTab: "open" as DisputeCaseTab,
   query: "",
   pageSize: 10 as AdminBoardPageSize,
   pageNumber: 1,

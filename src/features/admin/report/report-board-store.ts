@@ -22,7 +22,7 @@ type ReportBoardState = {
 };
 
 const initialReportBoardState = {
-  activeTab: "all" as ReportCaseTab,
+  activeTab: "open" as ReportCaseTab,
   query: "",
   pageSize: 10 as AdminBoardPageSize,
   pageNumber: 1,

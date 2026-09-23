@@ -11,7 +11,7 @@ describe("Report Case board state", () => {
     useReportBoardStore.getState().sortBy("reported");
 
     expect(useReportBoardStore.getState()).toMatchObject({
-      activeTab: "all",
+      activeTab: "open",
       query: "member",
       pageNumber: 1,
       sortKey: "reported",

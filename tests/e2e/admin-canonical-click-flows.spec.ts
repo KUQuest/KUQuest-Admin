@@ -117,6 +117,29 @@ test.describe("Admin canonical click flows", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Akarin Ariyawat" })).toBeVisible();
   });
 
+  test("moderation queues open on pending cases by default", async ({ page }) => {
+    await signIn(page, { expectEmailFocused: true });
+
+    const queues = [
+      { path: "/dispute", main: "#dispute-main", tabName: /^Open/, statusSelector: "tbody tr[data-dispute-status]", statusAttribute: "data-dispute-status", pendingStatus: "DISPUTE_CASE_PENDING" },
+      { path: "/report", main: "#report-main", tabName: /^Open/, statusSelector: "tbody tr[data-report-id] td:nth-child(6) .badge", pendingStatus: "Open" },
+      { path: "/conduct-report", main: "#conduct-report-main", tabName: /^Open/, statusSelector: "tbody tr[data-conduct-report-status]", statusAttribute: "data-conduct-report-status", pendingStatus: "CONDUCT_REPORT_PENDING" },
+    ];
+
+    for (const queue of queues) {
+      await page.goto(queue.path);
+      const main = page.locator(queue.main);
+      await expect(main.getByRole("tab", { name: queue.tabName })).toHaveAttribute("aria-selected", "true");
+
+      const statusItems = main.locator(queue.statusSelector);
+      const statuses = queue.statusAttribute
+        ? await statusItems.evaluateAll((elements, attribute) => elements.map((element) => element.getAttribute(attribute)), queue.statusAttribute)
+        : await statusItems.allTextContents();
+      expect(statuses.length).toBeGreaterThan(0);
+      expect(new Set(statuses.map((status) => status?.trim()))).toEqual(new Set([queue.pendingStatus]));
+    }
+  });
+
   test("admin can open the Wallet Statement from a Wallet drawer", async ({ page }) => {
     await signIn(page, { expectEmailFocused: true });
     await page.goto("/wallet");

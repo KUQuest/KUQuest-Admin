@@ -22,7 +22,7 @@ type ConductReportBoardState = {
 };
 
 const initialConductReportBoardState = {
-  activeTab: "all" as ConductReportTab,
+  activeTab: "open" as ConductReportTab,
   query: "",
   pageSize: 10 as AdminBoardPageSize,
   pageNumber: 1,

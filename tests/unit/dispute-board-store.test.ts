@@ -7,6 +7,10 @@ describe("Dispute Case board state", () => {
     useDisputeBoardStore.getState().reset();
   });
 
+  it("opens on the Open Dispute Cases filter", () => {
+    expect(useDisputeBoardStore.getState().activeTab).toBe("open");
+  });
+
   it("keeps filters, pagination, and sorting in one board state", () => {
     const store = useDisputeBoardStore.getState();
 
