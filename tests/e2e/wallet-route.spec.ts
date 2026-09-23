@@ -88,6 +88,9 @@ test.describe("Wallet App Router board", () => {
     const movementTexts = await compartmentMovements.allTextContents();
     expect(movementTexts.every((movement) => !movement.includes("_"))).toBe(true);
     await expect(compartmentMovements.first()).toContainText("Spending Balance");
+    const movementLines = compartmentMovements.first().locator("span");
+    await expect(movementLines.first()).toHaveCSS("display", "block");
+    await expect(movementLines.first()).toContainText(/[+-]฿\d/);
     const drawerContent = page.locator("dialog.wallet-drawer .admin-drawer-content");
     const horizontalOverflow = await drawerContent.evaluate((element) => element.scrollWidth - element.clientWidth);
     expect(horizontalOverflow).toBeLessThanOrEqual(1);
@@ -188,6 +191,9 @@ test.describe("Wallet App Router board", () => {
     const statement = page.locator("[data-user-wallet-statement]");
     await expect(statement.locator(".wallet-statement-table tbody tr")).toHaveCount(25);
     await expect(statement.getByRole("button", { name: "Load more" })).toBeVisible();
+    const movementLine = statement.locator(".wallet-statement-movement span").first();
+    await expect(movementLine).toHaveCSS("display", "block");
+    await expect(movementLine).toContainText(/[+-]฿\d/);
 
     await statement.getByRole("button", { name: "Load more" }).click();
     await expect(statement.locator(".wallet-statement-table tbody tr")).toHaveCount(50);

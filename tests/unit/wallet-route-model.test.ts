@@ -18,6 +18,7 @@ import {
   walletEventTypeLabel,
   walletBusinessReferenceLabel,
   walletCompartmentLabel,
+  formatWalletMovementAmount,
 } from "../../src/features/admin/wallet/wallet-model";
 
 describe("Wallet route model", () => {
@@ -38,6 +39,12 @@ describe("Wallet route model", () => {
     expect(walletCompartmentLabel("EARNINGS")).toBe("Earnings Balance");
     expect(walletCompartmentLabel("FUNDING_RESERVED")).toBe("Funding Reserved");
     expect(walletCompartmentLabel("RESERVED_FOR_PAYOUTS")).toBe("Reserved For Payouts");
+    expect(walletCompartmentLabel("NEW_COMPARTMENT")).toBe("New Compartment");
+  });
+
+  it("shows a sign before each Wallet Statement compartment movement amount", () => {
+    expect(formatWalletMovementAmount(1125)).toBe("+฿11.25");
+    expect(formatWalletMovementAmount(-1125)).toBe("-฿11.25");
   });
 
   it("maps Wallet DTOs to a separate view model and keeps the API balance", () => {

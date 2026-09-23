@@ -4,6 +4,7 @@ import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { EmptyState, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui";
 import {
   formatWalletDate,
+  formatWalletMovementAmount,
   formatWalletMoney,
   walletBusinessReferenceLabel,
   walletCompartmentLabel,
@@ -27,7 +28,7 @@ export function WalletStatementTable({ transactions }: { transactions: WalletLed
           <TableCell><time dateTime={transaction.createdAt}>{formatWalletDate(transaction.createdAt)}</time>{transaction.description ? <small className="mt-[3px] block text-admin-muted">{transaction.description}</small> : null}</TableCell>
           <TableCell><strong>{translateText(walletEventTypeLabel(transaction.eventType))}</strong><small className="mt-[3px] block text-admin-muted">{walletBusinessReferenceLabel(transaction.businessReference)}</small></TableCell>
           <TableCell className="money">{formatWalletMoney(transaction.amountSatang)}</TableCell>
-          <TableCell className="wallet-statement-movement">{transaction.movement.map((item) => <span key={`${transaction.id}-${item.accountType}`}>{translateText(walletCompartmentLabel(item.accountType))}: {formatWalletMoney(item.amountSatang)}</span>)}</TableCell>
+          <TableCell className="wallet-statement-movement">{transaction.movement.map((item) => <span className="block" key={`${transaction.id}-${item.accountType}`}>{translateText(walletCompartmentLabel(item.accountType))}: {formatWalletMovementAmount(item.amountSatang)}</span>)}</TableCell>
           <TableCell className="money">{formatWalletMoney(transaction.resultingBalanceSatang)}</TableCell>
         </TableRow>)}</TableBody>
       </Table>

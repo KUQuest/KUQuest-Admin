@@ -121,8 +121,11 @@ const walletCompartmentLabels: Record<WalletCompartmentAccountType, string> = {
   RESERVED_FOR_PAYOUTS: "Reserved For Payouts",
 };
 
-export function walletCompartmentLabel(accountType: WalletCompartmentAccountType): string {
-  return walletCompartmentLabels[accountType];
+export function walletCompartmentLabel(accountType: string): string {
+  if (Object.hasOwn(walletCompartmentLabels, accountType)) {
+    return walletCompartmentLabels[accountType as WalletCompartmentAccountType];
+  }
+  return accountType.toLowerCase().replaceAll("_", " ").replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
 }
 
 const walletCompartmentAccountTypes = new Set<string>(WALLET_COMPARTMENT_ACCOUNT_TYPES);
@@ -348,6 +351,10 @@ export function formatWalletMoney(satang: number | null | undefined): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+}
+
+export function formatWalletMovementAmount(satang: number): string {
+  return `${satang < 0 ? "-" : "+"}${formatWalletMoney(Math.abs(satang))}`;
 }
 
 export function walletStatusClass(status: WalletStatus): string {
