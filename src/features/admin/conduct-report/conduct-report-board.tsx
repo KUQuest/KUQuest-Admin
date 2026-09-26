@@ -45,6 +45,7 @@ function modelMatchesQuery(model: ConductReportModel, query: string): boolean {
   const value = query.trim().toLowerCase();
   if (!value) return true;
   return [
+    model.displayId,
     model.id,
     model.questId,
     model.questTitle,
@@ -60,7 +61,7 @@ function modelMatchesQuery(model: ConductReportModel, query: string): boolean {
 function conductSortValue(model: ConductReportModel, key: ConductReportSortKey): string | number | null {
   switch (key) {
     case "id":
-      return model.id;
+      return model.displayId;
     case "quest":
       return model.questTitle;
     case "reportedMember":
@@ -208,7 +209,7 @@ export function ConductReportBoard({
                     data-conduct-report-id={model.id}
                     data-conduct-report-status={model.status}
                     tabIndex={0}
-                    aria-label={`${translateText("Open Conduct Report")} ${model.id}`}
+                    aria-label={`${translateText("Open Conduct Report")} ${model.displayId}`}
                     onClick={(event) => {
                       if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return;
                       openDrawer(model.id);
@@ -225,13 +226,13 @@ export function ConductReportBoard({
                         className="min-h-8 border-0 bg-transparent p-0 text-left text-sm text-admin-text hover:text-admin-accent hover:underline hover:underline-offset-4"
                         type="button"
                         data-conduct-report-id={model.id}
-                        aria-label={`${translateText("Open Conduct Report")} ${model.id}`}
+                        aria-label={`${translateText("Open Conduct Report")} ${model.displayId}`}
                         onClick={(event) => {
                           event.stopPropagation();
                           openDrawer(model.id);
                         }}
                       >
-                        <strong>{model.id}</strong>
+                        <strong>{model.displayId}</strong>
                       </button>
                       <small>{translateText(model.title)}</small>
                     </TableCell>

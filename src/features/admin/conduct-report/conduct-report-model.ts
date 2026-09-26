@@ -54,6 +54,7 @@ export const conductReportDecisionMetadata = {
 
 export type ConductReportModel = {
   id: string;
+  displayId: string;
   status: ConductReportStatus;
   statusLabel: string;
   badgeClass: string;
@@ -250,6 +251,7 @@ export function conductReportModelFromRecord(value: unknown): ConductReportModel
 
   return {
     id,
+    displayId: text(record.displayId) ?? id,
     status,
     statusLabel: conductReportStatusLabel(status),
     badgeClass: statusBadgeClass(status),

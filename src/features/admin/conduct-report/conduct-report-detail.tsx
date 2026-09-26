@@ -117,7 +117,7 @@ function ConductReportOverview({
         </div>
       </div>
       <AdminOverviewMeta className="moderation-case-context-grid !grid-cols-2 max-[600px]:!grid-cols-1">
-        <div><dt>{translateText("Case")}</dt><dd>{model.id}</dd></div>
+        <div><dt>{translateText("Case")}</dt><dd>{model.displayId}</dd></div>
         <div><dt>{translateText("Case type")}</dt><dd>{translateText("Conduct Report")}</dd></div>
         <div><dt>{translateText("Source")}</dt><dd>{translateText("Quest record")}</dd></div>
         <div><dt>{translateText("Submitted")}</dt><dd>{formatAdminTimestamp(model.submittedAt)}</dd></div>
@@ -440,7 +440,7 @@ function ConductReportDrawerBody({
       <ConductReportAlert model={model} translateText={translateText} />
       <ModerationCaseWorkspace
         kind="Conduct Report"
-        caseId={model.id}
+        caseId={model.displayId}
         statusLabel={model.statusLabel}
         badgeClass={model.badgeClass}
         submittedAt={formatAdminTimestamp(model.submittedAt)}
@@ -639,7 +639,7 @@ export function ConductReportDrawer({
         <AdminRecordHeader
           breadcrumbHref={conductReportRoutes.list()}
           breadcrumbLabel={translateText("Conduct Reports")}
-          recordId={reportModel.id}
+          recordId={reportModel.displayId}
           title={translateText(reportModel.title)}
           subtitle={`${translateText(reportModel.reason)} · ${translateText("reported")} ${formatAdminTimestamp(reportModel.submittedAt)}`}
           actions={<Button asChild size="lg" variant="outline"><Link href={conductReportRoutes.list()}>{translateText("Back to Conduct Reports")}</Link></Button>}
@@ -659,7 +659,7 @@ export function ConductReportDrawer({
         closeButtonAriaLabel={translateText("Close drawer")}
         title={<><span aria-hidden="true">{translateText(reportModel.title)}</span><span className="visually-hidden">{translateText("Conduct Report details")}</span></>}
         titleId="conduct-report-drawer-title"
-        subtitle={<>{translateText("Conduct Report")} {reportModel.id} · {translateText("Conduct Report detail drawer")}</>}
+        subtitle={<>{translateText("Conduct Report")} {reportModel.displayId} · {translateText("Conduct Report detail drawer")}</>}
         className="conduct-report-drawer quest-style-drawer"
         openerAttribute="data-conduct-report-id"
         openerValue={reportModel.id}

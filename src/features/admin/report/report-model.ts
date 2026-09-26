@@ -50,6 +50,7 @@ export type ReportCaseEvidence = {
 
 export type ReportCaseModel = {
   id: string;
+  displayId: string;
   status: ReportCaseStatus;
   statusLabel: string;
   badgeClass: string;
@@ -236,6 +237,7 @@ export function reportCaseModelFromRecord(value: unknown): ReportCaseModel | nul
 
   return {
     id,
+    displayId: text(record.displayId) ?? id,
     status,
     statusLabel: reportCaseStatusLabel(status),
     badgeClass: statusBadgeClass(status),

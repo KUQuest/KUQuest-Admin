@@ -48,6 +48,7 @@ function modelMatchesQuery(model: ReportCaseModel, query: string): boolean {
   const value = query.trim().toLowerCase();
   if (!value) return true;
   return [
+    model.displayId,
     model.id,
     model.reportedMemberId,
     model.reportedMemberName,
@@ -61,7 +62,7 @@ function modelMatchesQuery(model: ReportCaseModel, query: string): boolean {
 function reportSortValue(model: ReportCaseModel, key: ReportCaseSortKey): string | number | null {
   switch (key) {
     case "id":
-      return model.id;
+      return model.displayId;
     case "source":
       return model.source;
     case "reportedMember":
@@ -164,8 +165,8 @@ export function ReportCaseBoard({ initialData }: { initialData?: ReportCasePageD
             <thead><TableRow><AdminSortableHeader label={translateText("Report Case")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Source")} sortKey="source" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Reported Member")} sortKey="reportedMember" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Reported by")} sortKey="reporter" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Report type")} sortKey="type" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Reported")} sortKey="reported" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></TableRow></thead>
             <tbody>
               {visibleModels.map((model) => {
-                  return <TableRow className="focus-visible:outline-2 focus-visible:outline-admin-accent focus-visible:outline-offset-[-2px]" key={model.id} data-report-id={model.id} tabIndex={0} aria-label={`${translateText("Open Report Case")} ${model.id}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; openDrawer(model.id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openDrawer(model.id); } }}>
-                    <TableCell><button className="min-h-8 border-0 bg-transparent p-0 text-left text-sm text-admin-text hover:text-admin-accent hover:underline hover:underline-offset-4" type="button" data-report-id={model.id} aria-label={`${translateText("Open Report Case")} ${model.id}`} onClick={(event) => { event.stopPropagation(); openDrawer(model.id); }}><strong>{model.id}</strong></button><small>{translateText(model.title)}</small></TableCell>
+                  return <TableRow className="focus-visible:outline-2 focus-visible:outline-admin-accent focus-visible:outline-offset-[-2px]" key={model.id} data-report-id={model.id} tabIndex={0} aria-label={`${translateText("Open Report Case")} ${model.displayId}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; openDrawer(model.id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openDrawer(model.id); } }}>
+                    <TableCell><button className="min-h-8 border-0 bg-transparent p-0 text-left text-sm text-admin-text hover:text-admin-accent hover:underline hover:underline-offset-4" type="button" data-report-id={model.id} aria-label={`${translateText("Open Report Case")} ${model.displayId}`} onClick={(event) => { event.stopPropagation(); openDrawer(model.id); }}><strong>{model.displayId}</strong></button><small>{translateText(model.title)}</small></TableCell>
                     <TableCell>{translateText(model.source)}</TableCell>
                     <TableCell>{model.reportedMemberHref ? <Link className="text-admin-accent no-underline hover:underline hover:underline-offset-4" href={model.reportedMemberHref} onClick={(event) => event.stopPropagation()}>{model.reportedMemberName}</Link> : model.reportedMemberName}<small>{model.reportedMemberId || "—"}</small></TableCell>
                     <TableCell>{model.reporterHref ? <Link className="text-admin-accent no-underline hover:underline hover:underline-offset-4" href={model.reporterHref} onClick={(event) => event.stopPropagation()}>{model.reporterName}</Link> : model.reporterName}<small>{model.reporterId ?? "—"}</small></TableCell>

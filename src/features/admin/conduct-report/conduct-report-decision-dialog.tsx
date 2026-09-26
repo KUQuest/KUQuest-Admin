@@ -58,7 +58,7 @@ export function ConductReportDecisionDialog({
 
   if (!open) return null;
   const title = decisionDialogTitle(choice, translateText);
-  const description = decisionDialogDescription(choice, model.id, translateText);
+  const description = decisionDialogDescription(choice, model.displayId, translateText);
   const nextState = choice === "confirmed-violation"
     ? "CONDUCT_REPORT_UPHELD"
     : "CONDUCT_REPORT_DISMISSED";
@@ -91,7 +91,7 @@ export function ConductReportDecisionDialog({
           {choice ? (
             <AdminActionSummary
               title={translateText("Before you confirm")}
-              affected={`${translateText("Conduct Report")} ${model.id} · ${translateText("Quest")} ${model.questId ?? "—"}`}
+              affected={`${translateText("Conduct Report")} ${model.displayId} · ${translateText("Quest")} ${model.questId ?? "—"}`}
               currentState={model.statusLabel}
               nextState={conductReportStatusLabel(nextState)}
               effect={translateText(effect)}

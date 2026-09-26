@@ -35,6 +35,7 @@ export type AdminDisputeCaseDetail = AdminDisputeCase & {
 
 export type AdminReportCase = {
   id: string;
+  displayId: string;
   status: ReportCaseStatus | ConductReportStatus;
   reportedMemberId: string;
   evidenceRefs?: EvidenceReference[];

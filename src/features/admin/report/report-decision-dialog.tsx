@@ -49,7 +49,7 @@ export function ReportDecisionDialog({
 
   if (!open) return null;
   const title = decisionDialogTitle(choice, translateText);
-  const description = decisionDialogDescription(choice, model.id, translateText);
+  const description = decisionDialogDescription(choice, model.displayId, translateText);
   const nextState = choice === "confirmed-violation"
     ? "REPORT_CASE_HIDDEN"
     : choice === "restore"
@@ -85,7 +85,7 @@ export function ReportDecisionDialog({
           {choice ? (
             <AdminActionSummary
               title={translateText("Before you confirm")}
-              affected={`${translateText("Report Case")} ${model.id} · ${translateText("Message")}`}
+              affected={`${translateText("Report Case")} ${model.displayId} · ${translateText("Message")}`}
               currentState={model.statusLabel}
               nextState={reportCaseStatusLabel(nextState)}
               effect={translateText(effect)}
