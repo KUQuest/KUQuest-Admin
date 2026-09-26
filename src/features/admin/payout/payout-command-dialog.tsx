@@ -6,20 +6,24 @@ import { AdminActionSummary } from "../../../components/admin/admin-action-feedb
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { Button as UiButton } from "../../../components/ui";
-import type { PayoutRejection } from "../api/admin-api";
 import { payoutStatusLabel } from "../domain/rulebook";
 import type { PayoutDetailView } from "./payout-model";
 
 export type PayoutCommand = "approve" | "reject";
-export type RejectionReasonCode = PayoutRejection["reasonCode"];
+export type RejectionReasonCode = "PAYOUT_POLICY_REVIEW" | "PAYOUT_RISK_REVIEW" | "PAYOUT_INVALID_DESTINATION";
 export type PayoutCommandSubmission =
-  | { command: "approve" }
+  | { command: "approve"; reasonCode: string }
   | { command: "reject"; reasonCode: RejectionReasonCode; reason: string };
 
 const rejectionReasonCodes: Array<{ value: RejectionReasonCode; label: string }> = [
   { value: "PAYOUT_POLICY_REVIEW", label: "Policy review" },
   { value: "PAYOUT_RISK_REVIEW", label: "Risk review" },
   { value: "PAYOUT_INVALID_DESTINATION", label: "Invalid destination" },
+];
+
+const approvalReasonCodes: Array<{ value: string; label: string }> = [
+  { value: "PAYOUT_POLICY_REVIEW", label: "Policy review" },
+  { value: "PAYOUT_RISK_REVIEW", label: "Risk review" },
 ];
 
 export function PayoutCommandDialog({
@@ -42,7 +46,7 @@ export function PayoutCommandDialog({
   const [reasonCode, setReasonCode] = useState("");
   const [reason, setReason] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
-  const submitDisabled = pending || command === "reject" && (!reasonCode || reason.trim().length < 8);
+  const submitDisabled = pending || !reasonCode || (command === "reject" && reason.trim().length < 8);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -81,7 +85,7 @@ export function PayoutCommandDialog({
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (command === "reject" && !reasonCode) {
+    if (!reasonCode) {
       setValidationError("Select a reason code.");
       return;
     }
@@ -91,7 +95,7 @@ export function PayoutCommandDialog({
     }
     setValidationError(null);
     if (command === "approve") {
-      onSubmit({ command });
+      onSubmit({ command, reasonCode });
     } else {
       onSubmit({ command, reasonCode: reasonCode as RejectionReasonCode, reason: reason.trim() });
     }
@@ -116,14 +120,14 @@ export function PayoutCommandDialog({
               reversibility={translateText("The Admin decision is final. Provider status changes are separate.")}
               warning={translateText("The API Server remains the authority for the final Payout result.")}
             />
+            <label className="grid gap-1 text-[16px] leading-[1.4] font-semibold" htmlFor="payout-reason-code"><span>{translateText("Reason code")} <span aria-hidden="true">*</span></span>
+              <select className="w-full rounded-lg border border-admin-border-strong bg-admin-surface px-2.5 py-2 text-lg leading-[1.45] text-admin-text" id="payout-reason-code" required value={reasonCode} onChange={(event) => setReasonCode(event.target.value)} autoFocus>
+                <option value="">{translateText("Choose a reason")}</option>
+                {(command === "reject" ? rejectionReasonCodes : approvalReasonCodes).map((item) => <option key={item.value} value={item.value}>{translateText(item.label)}</option>)}
+              </select>
+            </label>
             {command === "reject" ? (
               <>
-                <label className="grid gap-1 text-[16px] leading-[1.4] font-semibold" htmlFor="payout-reason-code"><span>{translateText("Reason code")} <span aria-hidden="true">*</span></span>
-                  <select className="w-full rounded-lg border border-admin-border-strong bg-admin-surface px-2.5 py-2 text-lg leading-[1.45] text-admin-text" id="payout-reason-code" required value={reasonCode} onChange={(event) => setReasonCode(event.target.value)} autoFocus>
-                    <option value="">{translateText("Choose a reason")}</option>
-                    {rejectionReasonCodes.map((item) => <option key={item.value} value={item.value}>{translateText(item.label)}</option>)}
-                  </select>
-                </label>
                 <label className="grid gap-1 text-[16px] leading-[1.4] font-semibold" htmlFor="payout-reason"><span>{translateText("Reason")} <span aria-hidden="true">*</span></span>
                   <textarea id="payout-reason" name="reason" rows={4} minLength={8} maxLength={500} required value={reason} onChange={(event) => { setReason(event.target.value); setValidationError(null); }} />
                 </label>

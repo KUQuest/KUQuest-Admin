@@ -44,10 +44,13 @@ export function createAdminPayoutApi() {
       );
     },
 
-    getPayoutHistory(payoutId: string): Promise<AdminPayoutHistoryEntry[]> {
+    getPayoutHistory(
+      payoutId: string,
+      options: AdminApiRequestOptions = {},
+    ): Promise<AdminPayoutHistoryEntry[]> {
       return apiRequest<AdminPayoutHistoryEntry[]>(
         `/api/v1/admin/payouts/${encode(payoutId)}/status-history`,
-        { cache: "no-store" },
+        { cache: "no-store", ...options },
       );
     },
 
@@ -57,7 +60,7 @@ export function createAdminPayoutApi() {
         {
           method: "POST",
           headers: payoutCommandHeaders(options),
-          body: options.reasonCode ? { reasonCode: options.reasonCode } : {},
+          body: { reasonCode: options.reasonCode },
         },
       );
     },
@@ -68,10 +71,7 @@ export function createAdminPayoutApi() {
         {
           method: "POST",
           headers: payoutCommandHeaders(options),
-          body: {
-            reasonCode: options.reasonCode,
-            ...(options.reason?.trim() ? { reason: options.reason.trim() } : {}),
-          },
+          body: { reasonCode: options.reasonCode },
         },
       );
     },

@@ -11,7 +11,7 @@ import { AdminRecordHeader } from "../../../components/admin/admin-record-header
 import { AdminRecordGrid } from "../../../components/admin/admin-record-grid";
 import { AdminStatusAlert } from "../../../components/admin/admin-status-alert";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import type { ReportDecision } from "../api/admin-api";
+import type { ConductReportDecision } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { Button } from "../../../components/ui/button";
 import { Card, CardContent, CardHeader } from "../../../components/ui/card";
@@ -42,6 +42,7 @@ import {
   CONDUCT_REPORT_UPDATED_EVENT,
   conductReportReasonLabel,
   conductReportDecisionFor,
+  conductReportDecisionReasonCodeFor,
   conductReportModelFromRecord,
   type ConductReportDecisionChoice,
   type ConductReportModel,
@@ -334,6 +335,22 @@ function DecisionControls({
             <small className="text-[13px] leading-[1.45] text-admin-muted">{translateText("Dismiss the Conduct Report without changing the reported Member status.")}</small>
           </label>
         </div>
+        <div className={`report-decision-option grid w-full grid-cols-[18px_1fr] items-start gap-x-2 gap-y-0.5 rounded-[9px] border border-admin-border bg-admin-surface px-3 py-[11px] text-left transition-colors hover:bg-admin-hover ${selectedChoice === "insufficient-evidence" ? "border-admin-accent bg-admin-accent-soft shadow-[0_0_0_1px_var(--accent)]" : ""}`}>
+          <input
+            className="mt-0.5"
+            id={`conduct-report-decision-${model.id}-insufficient-evidence`}
+            type="radio"
+            name={`conduct-report-decision-${model.id}`}
+            value="insufficient-evidence"
+            data-conduct-report-decision="insufficient-evidence"
+            checked={selectedChoice === "insufficient-evidence"}
+            onChange={() => onSelect("insufficient-evidence")}
+          />
+          <label className="grid cursor-pointer gap-0.5" htmlFor={`conduct-report-decision-${model.id}-insufficient-evidence`}>
+            <strong className="text-sm leading-[1.35]">{translateText("Insufficient evidence")}</strong>
+            <small className="text-[13px] leading-[1.45] text-admin-muted">{translateText("Dismiss the Conduct Report because the evidence does not support a decision.")}</small>
+          </label>
+        </div>
         <div className={`report-decision-option grid w-full grid-cols-[18px_1fr] items-start gap-x-2 gap-y-0.5 rounded-[9px] border border-admin-border bg-admin-surface px-3 py-[11px] text-left transition-colors hover:bg-admin-hover ${selectedChoice === "confirmed-violation" ? "border-admin-accent bg-admin-accent-soft shadow-[0_0_0_1px_var(--accent)]" : ""}`}>
           <input
             className="mt-0.5"
@@ -529,19 +546,32 @@ export function ConductReportDrawer({
 
   const confirmDecision = async (reason: string) => {
     if (!selectedChoice) return;
+    if (isAdminApiEnabled() && reportModel.version === undefined) {
+      setCommandError("The current Conduct Report version is missing. Reload the report before you decide.");
+      return;
+    }
     setCommandError(null);
     const decision = conductReportDecisionFor(selectedChoice);
-    const options: ReportDecision = {
-      decision,
-      reason,
-      idempotencyKey: newConductReportIdempotencyKey(reportModel.id),
-      ...(reportModel.version === undefined ? {} : { expectedVersion: reportModel.version }),
-    };
+    const reasonCode = conductReportDecisionReasonCodeFor(selectedChoice);
+    const options: ConductReportDecision = decision === "CONDUCT_REPORT_DISMISSED"
+      ? {
+          outcome: decision,
+          decisionReasonCode: reasonCode as NonNullable<typeof reasonCode>,
+          expectedVersion: reportModel.version ?? 1,
+          idempotencyKey: newConductReportIdempotencyKey(reportModel.id),
+        }
+      : {
+          outcome: decision,
+          expectedVersion: reportModel.version ?? 1,
+          idempotencyKey: newConductReportIdempotencyKey(reportModel.id),
+        };
 
     try {
       const updated = await decisionMutation.mutateAsync({
         reportId: reportModel.id,
+        currentModel: reportModel,
         decision,
+        choice: selectedChoice,
         reason,
         options,
         apiEnabled: isAdminApiEnabled(),
@@ -586,8 +616,9 @@ export function ConductReportDrawer({
   );
   const decisionDialog = (
     <ConductReportDecisionDialog
-      model={reportModel}
-      open={dialogOpen}
+        model={reportModel}
+        apiEnabled={isAdminApiEnabled()}
+        open={dialogOpen}
       choice={selectedChoice}
       busy={decisionMutation.isPending}
       error={commandError}

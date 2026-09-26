@@ -64,6 +64,7 @@ export function WalletStatusCommandDialog({
   onSubmit,
   error,
   pending,
+  showFixture,
 }: {
   row: WalletBoardRow;
   targetStatus: WalletStatusTarget;
@@ -71,6 +72,7 @@ export function WalletStatusCommandDialog({
   onSubmit: (reason: string, fixture: WalletStatusFixture) => void;
   error: string | null;
   pending: boolean;
+  showFixture: boolean;
 }) {
   const { translateText } = useAdminShell();
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -124,11 +126,11 @@ export function WalletStatusCommandDialog({
         <label htmlFor="wallet-status-reason">{translateText("Reason for this decision")}</label>
         <textarea id="wallet-status-reason" name="reason" rows={4} minLength={1} maxLength={500} required value={reason} aria-invalid={validationError ? "true" : undefined} aria-describedby={validationError ? "wallet-status-reason-error" : undefined} onChange={(event) => { setReason(event.target.value); setValidationError(null); }} autoFocus />
         <div className="mt-1.5 flex justify-between gap-3 text-[15px] leading-[1.4] text-admin-muted"><span>{translateText("This reason is part of the Wallet status history. It does not change the Member Ban ladder.")}</span><span>{reason.length}/500</span></div>
-        <label className="wallet-fixture-field" htmlFor="wallet-status-fixture">{translateText("Mock response fixture")} <span className="text-xs font-medium">{translateText("Development only")}</span>
+        {showFixture ? <label className="wallet-fixture-field" htmlFor="wallet-status-fixture">{translateText("Mock response fixture")} <span className="text-xs font-medium">{translateText("Development only")}</span>
           <select id="wallet-status-fixture" value={fixture} onChange={(event) => setFixture(event.target.value as WalletStatusFixture)}>
             {WALLET_STATUS_FIXTURE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{translateText(option.label)}</option>)}
           </select>
-        </label>
+        </label> : null}
         {validationError || error ? <p id="wallet-status-reason-error" className="field-error" role="alert">{translateText(validationError ?? error ?? "")}</p> : null}
       </div>
       <div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5">

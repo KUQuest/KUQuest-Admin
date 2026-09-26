@@ -41,10 +41,10 @@ export function ReportDecisionDialog({
   onCancel,
   onConfirm,
 }: DecisionDialogProps) {
-  const [reason, setReason] = useState("");
+  const [reason, setReason] = useState("POLICY_REVIEW");
 
   useEffect(() => {
-    if (open) setReason("");
+    if (open) setReason("POLICY_REVIEW");
   }, [open, choice]);
 
   if (!open) return null;
@@ -73,8 +73,8 @@ export function ReportDecisionDialog({
         method="dialog"
         onSubmit={(event) => {
           event.preventDefault();
-          const value = reason.trim();
-          if (value.length < 8) return;
+          const value = reason.trim().toUpperCase();
+          if (!/^[A-Z][A-Z0-9_.-]{0,99}$/.test(value)) return;
           onConfirm(value);
         }}
       >
@@ -94,24 +94,25 @@ export function ReportDecisionDialog({
             />
           ) : null}
           <label htmlFor="report-decision-reason">{translateText("Reason for this decision")}</label>
-          <textarea
+          <input
             id="report-decision-reason"
             name="reason"
-            rows={4}
-            minLength={8}
-            maxLength={500}
+            type="text"
+            minLength={1}
+            maxLength={100}
+            pattern="[A-Z][A-Z0-9_.-]{0,99}"
             required
             value={reason}
             aria-invalid={Boolean(error)}
-            onChange={(event) => setReason(event.target.value)}
-            placeholder={translateText("Enter the reason for the Report Case decision")}
+            onChange={(event) => setReason(event.target.value.toUpperCase())}
+            placeholder="POLICY_REVIEW"
           />
-          <div className="mt-1.5 flex justify-between gap-3 text-[15px] leading-[1.4] text-admin-muted"><span>{translateText("Minimum 8 characters")}</span><span>{reason.length}/500</span></div>
+          <div className="mt-1.5 flex justify-between gap-3 text-[15px] leading-[1.4] text-admin-muted"><span>{translateText("Use an Admin reason code")}</span><span>{reason.length}/100</span></div>
           {error && <p className="field-error" role="alert">{translateText(error)}</p>}
         </div>
         <div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5">
           <Button variant="outline" type="button" onClick={onCancel} disabled={busy}>{translateText("Cancel")}</Button>
-          <Button variant="danger" type="submit" disabled={busy || reason.trim().length < 8}>
+          <Button variant="danger" type="submit" disabled={busy || !/^[A-Z][A-Z0-9_.-]{0,99}$/.test(reason.trim().toUpperCase())}>
             {busy ? translateText("Saving…") : translateText("Confirm decision")}
           </Button>
         </div>

@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
 import { adminApiProvider, isAdminApiEnabled } from "../api/admin-provider";
-import type { ReportDecision } from "../api/admin-api";
+import type { ReportCaseDecision } from "../api/admin-api";
 import { replaceInfiniteItem } from "../data/query-data";
 import {
   findReportCaseFromMock,
@@ -26,9 +26,10 @@ export function reportEvidenceQueryKey(reference: string | null) {
 
 export type ReportDecisionMutationInput = {
   reportId: string;
+  currentModel: ReportCaseModel;
   decision: ReportCaseCommand;
   reason: string;
-  options: ReportDecision;
+  options: ReportCaseDecision;
   apiEnabled: boolean;
 };
 
@@ -36,11 +37,22 @@ export function useReportDecisionMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationKey: ["admin", "report-cases", "decision"],
-    mutationFn: async ({ reportId, decision, reason, options, apiEnabled }: ReportDecisionMutationInput) => (
-      apiEnabled
-        ? adminApiProvider.commands.decideReport(reportId, options)
-        : saveMockReportDecision(localStorage, reportId, decision, reason)
-    ),
+    mutationFn: async ({ reportId, currentModel, decision, reason, options, apiEnabled }: ReportDecisionMutationInput) => {
+      if (!apiEnabled) return saveMockReportDecision(localStorage, reportId, decision, reason);
+
+      const result = await adminApiProvider.commands.decideReportCase(reportId, options);
+      const summary = result.resourceSummary;
+      if (summary.kind !== "REPORT_CASE" || summary.id !== reportId || summary.status !== decision) {
+        throw new Error("The Admin API returned an invalid Report Case decision.");
+      }
+      return {
+        ...currentModel,
+        ...summary,
+        status: summary.status,
+        version: result.resourceVersion,
+        decisionReason: options.reasonCode,
+      };
+    },
     onSuccess: (record, { reportId }) => {
       const model = reportCaseModelFromRecord(record);
       if (!model || model.id !== reportId) return;
@@ -139,7 +151,13 @@ export function useReportEvidenceQuery(reference: string | null) {
     queryKey: reportEvidenceQueryKey(reference),
     queryFn: async () => {
       if (!reference) throw new Error("Evidence Reference was not provided.");
-      return apiEnabled ? adminApiProvider.read.getEvidence(reference) : { evidenceRef: reference };
+      if (!apiEnabled) return { evidenceRef: reference };
+      const id = typeof globalThis.crypto?.randomUUID === "function"
+        ? globalThis.crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      return adminApiProvider.read.getEvidence(reference, {
+        idempotencyKey: `admin-evidence-read-${id}`,
+      });
     },
     enabled: Boolean(reference),
     staleTime: Infinity,

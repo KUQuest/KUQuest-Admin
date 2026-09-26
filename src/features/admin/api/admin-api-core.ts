@@ -10,6 +10,7 @@ import type {
   AdminAuthSession,
   AdminAuthSessionDetails,
   AdminFinanceOverview,
+  AdminMoneyPolicy,
   AdminOverview,
   AdminPage,
 } from "./admin-api";
@@ -42,6 +43,20 @@ export function createAdminCoreApi() {
     getFinanceOverview(options: AdminApiRequestOptions = {}): Promise<AdminFinanceOverview> {
       return apiRequest<AdminFinanceOverview>(
         "/api/v1/admin/finance/overview",
+        { cache: "no-store", ...options },
+      );
+    },
+
+    getCurrentMoneyPolicy(options: AdminApiRequestOptions = {}): Promise<{ policy: AdminMoneyPolicy }> {
+      return apiRequest<{ policy: AdminMoneyPolicy }>(
+        "/api/v1/admin/finance/policies/current",
+        { cache: "no-store", ...options },
+      );
+    },
+
+    listMoneyPolicyRevisions(options: AdminApiRequestOptions = {}): Promise<{ policies: AdminMoneyPolicy[] }> {
+      return apiRequest<{ policies: AdminMoneyPolicy[] }>(
+        "/api/v1/admin/finance/policies",
         { cache: "no-store", ...options },
       );
     },

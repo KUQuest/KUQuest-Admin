@@ -49,7 +49,7 @@ export function createAdminQuestApi() {
         {
           method: "POST",
           headers: questCommandHeaders(options),
-          body: { reason: options.reason, reasonCode: options.reasonCode },
+          body: { reasonCode: options.reasonCode },
         },
       );
     },
@@ -60,7 +60,7 @@ export function createAdminQuestApi() {
         {
           method: "POST",
           headers: questCommandHeaders(options),
-          body: { reason: options.reason, reasonCode: options.reasonCode },
+          body: { reasonCode: options.reasonCode },
         },
       );
     },
@@ -71,7 +71,7 @@ export function createAdminQuestApi() {
         {
           method: "POST",
           headers: questCommandHeaders(options),
-          body: { reason: options.reason, reasonCode: options.reasonCode },
+          body: { reasonCode: options.reasonCode },
         },
       );
     },

@@ -5,13 +5,14 @@ import { loadDashboardData } from "../dashboard/dashboard-bootstrap";
 import { conductReportRoutes } from "../admin-routes";
 import { recordMemberViolationInData } from "../member/member-adapter";
 import {
-  conductReportDecisionDetailsForCommand,
+  conductReportDecisionDetailsForChoice,
   conductReportModelFromRecord,
   conductReportStatusFromRecord,
   conductReportsOnly,
   isConductReportActionable,
   isConductReportRecord,
   type ConductReportCommand,
+  type ConductReportDecisionChoice,
   type ConductReportModel,
   type ConductReportRecord,
 } from "./conduct-report-model";
@@ -81,6 +82,7 @@ export function saveMockConductReportDecision(
   reportId: string,
   decision: ConductReportCommand,
   reason: string,
+  choice?: ConductReportDecisionChoice,
 ): ConductReportRecord | null {
   const data = loadDashboardData(storage);
   const report = conductReportRecords(data).find((candidate) => candidate.id === reportId);
@@ -90,11 +92,14 @@ export function saveMockConductReportDecision(
   }
 
   const now = new Date().toISOString();
-  const metadata = conductReportDecisionDetailsForCommand(decision);
+  const selectedChoice = choice ?? (decision === "CONDUCT_REPORT_UPHELD" ? "confirmed-violation" : "no-violation");
+  const metadata = conductReportDecisionDetailsForChoice(selectedChoice);
+  if (metadata.command !== decision) return null;
   report.status = decision;
   report.conductReportStatus = decision;
   report.decision = metadata.choice;
   report.decisionLabel = metadata.label;
+  report.decisionReasonCode = metadata.reasonCode;
   report.decisionReason = reason;
   report.resolvedBy = "Admin";
   report.resolutionAt = now;
@@ -102,7 +107,9 @@ export function saveMockConductReportDecision(
   report.tone = decision === "CONDUCT_REPORT_UPHELD" ? "danger" : "neutral";
   report.resolution = decision === "CONDUCT_REPORT_UPHELD"
     ? "Violation confirmed; the Member Misconduct ladder was applied."
-    : "Conduct Report dismissed; no policy violation found.";
+    : metadata.choice === "insufficient-evidence"
+      ? "Conduct Report dismissed; the evidence did not establish a policy violation."
+      : "Conduct Report dismissed; no policy violation found.";
   if (typeof report.version === "number") report.version += 1;
 
   if (decision === "CONDUCT_REPORT_UPHELD") {

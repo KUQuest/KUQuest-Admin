@@ -28,7 +28,7 @@ import {
   adminRecordSection,
   adminRecordSideFacts,
 } from "../../../components/admin/admin-record-styles";
-import { type AdminEvidence, type ReportDecision } from "../api/admin-api";
+import { type AdminEvidence, type ReportCaseDecision } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { reportRoutes } from "../admin-routes";
 import { ModerationCaseWorkspace, ModerationHistoryPanel } from "../moderation-case/moderation-case-workspace";
@@ -40,6 +40,7 @@ import {
   REPORT_CASE_UPDATED_EVENT,
   reportCaseDecisionFor,
   reportCaseModelFromRecord,
+  reportCaseReasonCodeFor,
   type ReportCaseDecisionChoice,
   type ReportCaseModel,
 } from "./report-model";
@@ -525,18 +526,23 @@ export function ReportCaseDetail({
 
   const confirmDecision = async (reason: string) => {
     if (!selectedChoice) return;
+    if (isAdminApiEnabled() && model.version === undefined) {
+      setCommandError("The current Report Case version is not available. Reload the Report Case before deciding.");
+      return;
+    }
     setCommandError(null);
     const decision = reportCaseDecisionFor(selectedChoice);
-    const options: ReportDecision = {
-      decision,
-      reason,
+    const options: ReportCaseDecision = {
+      outcome: decision,
+      reasonCode: reportCaseReasonCodeFor(selectedChoice, reason),
       idempotencyKey: newReportCaseIdempotencyKey(model.id),
-      ...(model.version === undefined ? {} : { expectedVersion: model.version }),
+      expectedVersion: model.version ?? 1,
     };
 
     try {
       const updated = await decisionMutation.mutateAsync({
         reportId: model.id,
+        currentModel: model,
         decision,
         reason,
         options,

@@ -103,6 +103,13 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   return <Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}><h3 className={adminRecordHeading}>{title}</h3></CardHeader>{children}</Card>;
 }
 
+function walletStatusIdempotencyKey(walletId: string, status: WalletStatusTarget): string {
+  const id = typeof globalThis.crypto?.randomUUID === "function"
+    ? globalThis.crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `admin-wallet-status-${walletId}-${status}-${id}`;
+}
+
 function WalletDrawer({
   row,
   dataSource,
@@ -176,7 +183,7 @@ function WalletDrawer({
   }
 
   async function submitStatusCommand(reason: string, fixture: WalletStatusFixture) {
-    if (!detail || dataSource !== "mock" || !statusCommand) return;
+    if (!detail || !statusCommand) return;
     setStatusCommandError(null);
     setNotice(null);
     try {
@@ -187,22 +194,24 @@ function WalletDrawer({
         reason,
         fixture,
         dataSource,
+        idempotencyKey: walletStatusIdempotencyKey(row.id, statusCommand),
       });
       setStatusReceipt(result.receipt);
       setNotice(`Wallet status changed to ${walletStatusLabel(statusCommand)}.`);
       onStatusChanged(row.id, statusCommand);
+      if (dataSource === "api") await refetch();
       setStatusCommand(null);
     } catch (commandError) {
       setStatusCommandError(commandError instanceof Error ? commandError.message : "Wallet status command failed.");
     }
   }
 
-  const statusActionContent = dataSource === "mock" ? <>
+  const statusActionContent = <>
         <p>{translateText("Change Wallet Status without changing the Member Ban status. A non-active Wallet blocks new commitments while existing obligations continue.")}</p>
         {walletStatusTargets(detail?.status ?? row.status).length ? <div className="wallet-status-actions mt-3 flex flex-wrap gap-2 [&_[data-slot=button]]:min-w-[170px] [&_[data-slot=button]]:flex-1" aria-label={translateText("Wallet status actions")}>
           {walletStatusTargets(detail?.status ?? row.status).map((targetStatus) => <UiButton variant={walletStatusActionClass(targetStatus) === "danger" ? "danger" : "outline"} type="button" key={targetStatus} data-wallet-status-action={targetStatus} onClick={() => openStatusCommand(targetStatus)} disabled={statusCommandPending}>{translateText(walletStatusActionLabel(targetStatus))}</UiButton>)}
         </div> : <p className="audit-note">{translateText("Closed is terminal. No Wallet status change is available.")}</p>}
-      </> : <p>{translateText("Status commands will be connected to the Admin API in the API integration step.")}</p>;
+      </>;
 
   return <AdminDrawer
     ariaLabel={translateText("Close Wallet detail")}
@@ -233,7 +242,7 @@ function WalletDrawer({
           {statusReceipt ? <Card as="section" className="wallet-action-receipt my-[18px] rounded-[10px] border border-admin-success bg-admin-success-soft p-3" aria-label={translateText("Wallet status action receipt")}><CardHeader flush><h3 className="mb-2.5 text-[18px] leading-[1.4]">{translateText("Action receipt")}</h3></CardHeader><div className="wallet-status-preview grid gap-2 rounded-[10px] border border-admin-border bg-admin-surface p-3 text-[17px] leading-[1.4]"><div className="flex items-start justify-between gap-3"><span className="text-admin-muted">{translateText("Action ID")}</span><strong className="max-w-[70%] break-words text-right font-semibold">{statusReceipt.id}</strong></div><div className="flex items-start justify-between gap-3"><span className="text-admin-muted">{translateText("Wallet Status")}</span><strong className="max-w-[70%] break-words text-right font-semibold">{translateText(walletStatusLabel(statusReceipt.fromStatus))} → {translateText(walletStatusLabel(statusReceipt.toStatus))}</strong></div><div className="flex items-start justify-between gap-3"><span className="text-admin-muted">{translateText("Reason")}</span><strong className="max-w-[70%] break-words text-right font-semibold">{statusReceipt.reason}</strong></div><div className="flex items-start justify-between gap-3"><span className="text-admin-muted">{translateText("Recorded")}</span><strong className="max-w-[70%] break-words text-right font-semibold">{formatWalletDate(statusReceipt.createdAt)}</strong></div></div><p className="audit-note mb-0">{translateText("This mock receipt represents the Activity Log event that the API integration will return.")}</p></Card> : null}
           {actionError || notice ? <p className={actionError ? "field-error" : "audit-note"} role={actionError ? "alert" : "status"}>{translateText(actionError ?? notice ?? "")}</p> : null}
         </> : null}
-    {statusCommand && detail ? <WalletStatusCommandDialog row={{ ...row, status: detail.status, statusLabel: walletStatusLabel(detail.status) }} targetStatus={statusCommand} onCancel={cancelStatusCommand} onSubmit={(reason, fixture) => { void submitStatusCommand(reason, fixture); }} error={statusCommandError} pending={statusCommandPending} /> : null}
+    {statusCommand && detail ? <WalletStatusCommandDialog row={{ ...row, status: detail.status, statusLabel: walletStatusLabel(detail.status) }} targetStatus={statusCommand} onCancel={cancelStatusCommand} onSubmit={(reason, fixture) => { void submitStatusCommand(reason, fixture); }} error={statusCommandError} pending={statusCommandPending} showFixture={dataSource === "mock"} /> : null}
   </AdminDrawer>;
 }
 

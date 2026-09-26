@@ -27,6 +27,10 @@ type ApiRequestOptions = Omit<RequestInit, "body"> & {
 };
 
 function requestUrl(path: string): string {
+  if (typeof window !== "undefined") {
+    return path.startsWith("/") ? path : `/${path}`;
+  }
+
   const baseUrl = getApiUrl().replace(/\/$/, "");
   return `${baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
 }

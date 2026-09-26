@@ -18,7 +18,14 @@ export type ConductReportRecord = {
   [key: string]: unknown;
 };
 
-export type ConductReportDecisionChoice = "no-violation" | "confirmed-violation";
+export type ConductReportDecisionChoice =
+  | "no-violation"
+  | "insufficient-evidence"
+  | "confirmed-violation";
+
+export type ConductReportDecisionReasonCode =
+  | "CONDUCT_REPORT_NO_VIOLATION"
+  | "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE";
 
 export type ConductReportCommand =
   | "CONDUCT_REPORT_DISMISSED"
@@ -28,14 +35,21 @@ export const conductReportDecisionMetadata = {
   "no-violation": {
     command: "CONDUCT_REPORT_DISMISSED",
     label: "No violation",
+    reasonCode: "CONDUCT_REPORT_NO_VIOLATION",
+  },
+  "insufficient-evidence": {
+    command: "CONDUCT_REPORT_DISMISSED",
+    label: "Insufficient evidence",
+    reasonCode: "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE",
   },
   "confirmed-violation": {
     command: "CONDUCT_REPORT_UPHELD",
     label: "Violation confirmed",
+    reasonCode: null,
   },
 } as const satisfies Record<
   ConductReportDecisionChoice,
-  { command: ConductReportCommand; label: string }
+  { command: ConductReportCommand; label: string; reasonCode: ConductReportDecisionReasonCode | null }
 >;
 
 export type ConductReportModel = {
@@ -72,6 +86,12 @@ export type ConductReportModel = {
 };
 
 export const CONDUCT_REPORT_UPDATED_EVENT = "kuquest:conduct-report-updated";
+
+export function conductReportDecisionReasonCodeFor(
+  choice: ConductReportDecisionChoice,
+): ConductReportDecisionReasonCode | null {
+  return conductReportDecisionMetadata[choice].reasonCode;
+}
 
 function asRecord(value: unknown): ConductReportRecord | null {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -170,17 +190,8 @@ export function conductReportDecisionFor(
   return conductReportDecisionMetadata[choice].command;
 }
 
-export function conductReportDecisionDetailsForCommand(command: ConductReportCommand): {
-  choice: ConductReportDecisionChoice;
-  command: ConductReportCommand;
-  label: string;
-} {
-  for (const [choice, metadata] of Object.entries(conductReportDecisionMetadata)) {
-    if (metadata.command === command) {
-      return { choice: choice as ConductReportDecisionChoice, ...metadata };
-    }
-  }
-  throw new Error(`Unsupported Conduct Report command: ${command}`);
+export function conductReportDecisionDetailsForChoice(choice: ConductReportDecisionChoice) {
+  return { choice, ...conductReportDecisionMetadata[choice] };
 }
 
 export function conductReportModelFromRecord(value: unknown): ConductReportModel | null {
@@ -230,6 +241,10 @@ export function conductReportModelFromRecord(value: unknown): ConductReportModel
   const decisionLabel = firstText(
     record.decisionLabel,
     status === "CONDUCT_REPORT_UPHELD" ? "Violation confirmed" : null,
+    status === "CONDUCT_REPORT_DISMISSED"
+      && record.decisionReasonCode === "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE"
+      ? "Insufficient evidence"
+      : null,
     status === "CONDUCT_REPORT_DISMISSED" ? "No violation" : null,
   );
 

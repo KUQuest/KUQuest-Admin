@@ -21,6 +21,8 @@ export type AdminReadPort = Pick<
   typeof adminApi,
   | "getOverview"
   | "getFinanceOverview"
+  | "getCurrentMoneyPolicy"
+  | "listMoneyPolicyRevisions"
   | "listActivityLogs"
   | "listQuests"
   | "getQuest"
@@ -60,7 +62,8 @@ export type AdminCommandPort = Pick<
   | "retryPayoutProviderEvent"
   | "reconcileTopUp"
   | "retryTopUpProviderEvent"
-  | "decideReport"
+  | "decideReportCase"
+  | "decideConductReport"
   | "setWalletStatus"
   | "rebuildWalletProjection"
 >;

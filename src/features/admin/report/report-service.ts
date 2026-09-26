@@ -20,7 +20,12 @@ export async function loadReportCasePageData(
   cookieHeader?: string,
   cursor?: string,
 ): Promise<ReportCasePageData> {
-  const query: AdminReportListQuery = { limit: 50, ...(cursor ? { cursor } : {}) };
+  const query: AdminReportListQuery = {
+    kind: "REPORT_CASE",
+    limit: 50,
+    sort: "newest",
+    ...(cursor ? { cursor } : {}),
+  };
   const page = await adminApiProvider.read.listReports(
     query,
     adminApiRequestOptions(cookieHeader),

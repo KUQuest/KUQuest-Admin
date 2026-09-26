@@ -26,18 +26,19 @@ export type AdminQuestListQuery = {
 
 export type AdminDisputeListQuery = {
   status?: DisputeCaseStatus;
-  questId?: string;
-  query?: string;
   limit?: number;
   cursor?: string;
+  sort?: "newest" | "oldest";
 };
 
 export type AdminReportListQuery = {
+  kind?: "REPORT_CASE" | "CONDUCT_REPORT";
   status?: ReportCaseStatus | ConductReportStatus;
-  reportedMemberId?: string;
-  query?: string;
+  memberId?: string;
+  questId?: string;
   limit?: number;
   cursor?: string;
+  sort?: "newest" | "oldest";
 };
 
 export type AdminMemberListQuery = {

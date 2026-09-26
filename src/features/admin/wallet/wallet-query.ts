@@ -94,17 +94,18 @@ export type WalletStatusMutationInput = {
   reason: string;
   fixture: WalletStatusFixture;
   dataSource: WalletDataSource;
+  idempotencyKey: string;
 };
 
 export type WalletStatusMutationResult = {
-  historyEntry: WalletHistoryView;
+  historyEntry: WalletHistoryView | null;
   receipt: {
     id: string;
     fromStatus: WalletStatus;
     toStatus: WalletStatus;
     reason: string;
     createdAt: string;
-  };
+  } | null;
 };
 
 export function useWalletStatusMutation() {
@@ -112,7 +113,14 @@ export function useWalletStatusMutation() {
   return useMutation({
     mutationKey: ["admin", "wallets", "status"],
     mutationFn: async (input: WalletStatusMutationInput): Promise<WalletStatusMutationResult> => {
-      if (input.dataSource !== "mock") throw new Error("Wallet status commands are not available from the Admin API.");
+      if (input.dataSource === "api") {
+        await adminApiProvider.commands.setWalletStatus(input.walletId, {
+          idempotencyKey: input.idempotencyKey,
+          toStatus: input.targetStatus,
+          reason: input.reason,
+        });
+        return { historyEntry: null, receipt: null };
+      }
       const fixtureError = walletStatusFixtureError(input.fixture);
       if (fixtureError) throw new Error(fixtureError);
 
@@ -137,6 +145,12 @@ export function useWalletStatusMutation() {
       };
     },
     onSuccess: ({ historyEntry }, input) => {
+      if (input.dataSource === "api") {
+        void queryClient.invalidateQueries({ queryKey: [...walletBoardQueryKey, input.dataSource] });
+        void queryClient.invalidateQueries({ queryKey: walletDrawerQueryKey(input.walletId, input.dataSource) });
+        return;
+      }
+      if (!historyEntry) return;
       queryClient.setQueryData<WalletDrawerData>(walletDrawerQueryKey(input.walletId, input.dataSource), (current) => current
         ? { ...current, history: [historyEntry, ...current.history] }
         : current);

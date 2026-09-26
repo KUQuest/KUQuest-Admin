@@ -46,6 +46,10 @@ export const walletRoutes = {
   list: () => "/wallet",
 } as const;
 
+export const financeRoutes = {
+  list: () => "/finance",
+} as const;
+
 export const activityRoutes = {
   list: () => "/activity",
 } as const;

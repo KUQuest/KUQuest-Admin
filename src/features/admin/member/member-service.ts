@@ -19,7 +19,7 @@ export function loadMemberDetailFromMock(memberId: string): MemberModel | null {
 }
 
 function reportQuery(memberId: string): AdminReportListQuery {
-  return { reportedMemberId: memberId, limit: 50 };
+  return { memberId, limit: 50 };
 }
 function errorMessage(reason: unknown, fallback: string): string {
   return reason instanceof Error ? reason.message : fallback;

@@ -103,6 +103,31 @@ export type AdminFinanceOverview = {
   };
 };
 
+export type AdminMoneyPolicy = {
+  id: string;
+  revision: number;
+  minimumTopUpSatang: number;
+  maximumTopUpSatang: number;
+  minimumFundingReservationSatang: number;
+  maximumFundingReservationSatang: number;
+  minimumEarningsConversionSatang: number;
+  maximumEarningsConversionSatang: number;
+  minimumPayoutSatang: number;
+  maximumPayoutSatang: number;
+  platformFeeBps: number;
+  feeRoundingMode: string;
+  topUpProviderFeeSatang: number;
+  topUpProviderFeeBps?: number;
+  topUpProviderTaxBps: number;
+  payoutProviderTaxBps: number;
+  quoteLifetimeSeconds: number;
+  reason: string;
+  effectiveFrom: string;
+  effectiveUntil: string | null;
+  authoredByAdminId: string;
+  createdAt: string;
+};
+
 export type AdminActivityLog = {
   id: string;
   admin: {

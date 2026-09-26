@@ -39,12 +39,14 @@ export function usePayoutCommandMutation() {
       };
       if (dataSource === "api") {
         if (submission.command === "approve") {
-          await adminApiProvider.commands.approvePayout(detail.id, options);
+          await adminApiProvider.commands.approvePayout(detail.id, {
+            ...options,
+            reasonCode: submission.reasonCode,
+          });
         } else {
           await adminApiProvider.commands.rejectPayout(detail.id, {
             ...options,
             reasonCode: submission.reasonCode,
-            reason: submission.reason,
           });
         }
         return { detail: null, command: submission.command, reason: submission.command === "reject" ? submission.reason : null, occurredAt: null };

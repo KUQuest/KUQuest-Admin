@@ -99,6 +99,17 @@ export async function loadPayoutDetailPageData(
       if (error instanceof ApiError && error.status === 404) return null;
       throw error;
     }
+
+    try {
+      const history = await adminApiProvider.read.getPayoutHistory(
+        payoutId,
+        adminApiRequestOptions(cookieHeader),
+      );
+      detail = { ...detail, history };
+    } catch {
+      // The Payout detail response also carries history, so keep that record if
+      // the dedicated history route is temporarily unavailable.
+    }
   }
 
   const relatedPayouts = dataSource === "mock"

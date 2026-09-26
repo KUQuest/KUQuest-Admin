@@ -1,4 +1,10 @@
-import type { DisputeCaseStatus, WalletStatus } from "../domain/rulebook";
+import type {
+  ConductReportStatus,
+  DisputeCaseStatus,
+  ReportCaseStatus,
+  WalletStatus,
+} from "../domain/rulebook";
+import type { AdminApiRequestOptions } from "./admin-api-types-core";
 import type { AdminDisputeCase } from "./admin-api-types-dispute";
 import type { AdminQuest } from "./admin-api-types-quest";
 export type AdminCommandOptions = {
@@ -67,14 +73,67 @@ export type AdminQuestCommandResult = {
   adminActionId: string;
 };
 
-export type ReportDecision = AdminCommandOptions & {
-  decision:
-    | "REPORT_CASE_DISMISSED"
-    | "REPORT_CASE_HIDDEN"
-    | "REPORT_CASE_RESTORED"
-    | "CONDUCT_REPORT_DISMISSED"
-    | "CONDUCT_REPORT_UPHELD";
-  reason: string;
+type VersionedAdminCommand = Omit<AdminCommandOptions, "expectedVersion"> & {
+  expectedVersion: number;
+};
+
+export type ReportCaseDecision = VersionedAdminCommand & {
+  outcome: "REPORT_CASE_DISMISSED" | "REPORT_CASE_HIDDEN" | "REPORT_CASE_RESTORED";
+  reasonCode: string;
+};
+
+export type AdminReportCommandResult = {
+  resourceSummary: {
+    kind: "REPORT_CASE";
+    id: string;
+    displayId: string;
+    status: ReportCaseStatus;
+    version: number;
+    reporterEntryCount: number;
+    referenceCount: number;
+    caseClosedAt: string | null;
+    updatedAt: string;
+  };
+  resourceVersion: number;
+  adminActionId: string;
+};
+
+export type ConductReportDecisionReasonCode =
+  | "CONDUCT_REPORT_NO_VIOLATION"
+  | "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE";
+
+export type ConductReportDecision = VersionedAdminCommand & (
+  | {
+      outcome: "CONDUCT_REPORT_DISMISSED";
+      decisionReasonCode: ConductReportDecisionReasonCode;
+    }
+  | {
+      outcome: "CONDUCT_REPORT_UPHELD";
+    }
+);
+
+export type AdminConductReportCommandResult = {
+  resourceSummary: {
+    kind: "CONDUCT_REPORT";
+    id: string;
+    displayId: string;
+    status: ConductReportStatus;
+    version: number;
+    updatedAt: string;
+    resolvedAt: string | null;
+  };
+  resourceVersion: number;
+  adminActionId: string;
+};
+
+export type AdminReportDecisionResult =
+  | AdminReportCommandResult
+  | AdminConductReportCommandResult;
+
+export type AdminReportEvidenceRequestOptions = AdminApiRequestOptions & {
+  idempotencyKey: string;
+  limit?: number;
+  cursor?: string;
 };
 
 export type WalletStatusCommand = AdminCommandOptions & {
@@ -85,13 +144,11 @@ export type WalletStatusCommand = AdminCommandOptions & {
 
 export type PayoutApproval = Omit<AdminCommandOptions, "expectedVersion"> & {
   expectedVersion: number;
-  reasonCode?: "PAYOUT_POLICY_REVIEW" | "PAYOUT_RISK_REVIEW";
-  note?: string;
+  reasonCode: string;
 };
 export type PayoutRejection = Omit<AdminCommandOptions, "expectedVersion"> & {
   expectedVersion: number;
-  reasonCode: "PAYOUT_POLICY_REVIEW" | "PAYOUT_RISK_REVIEW" | "PAYOUT_INVALID_DESTINATION";
-  reason?: string;
+  reasonCode: string;
 };
 
 export type AdminEvent = {
