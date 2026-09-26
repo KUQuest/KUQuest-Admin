@@ -6,10 +6,9 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { Button } from "../../../components/ui";
 import {
-  overviewSearchResultsFromApi,
+  overviewSearchResultsFromSearchApi,
   overviewSearchResultsFromMockData,
   sortOverviewSearchResults,
-  type OverviewApiSearchData,
   type OverviewSearchResult,
 } from "../overview/overview-model";
 import { useOverviewSearchQuery } from "../overview/overview-search-query";
@@ -22,8 +21,6 @@ import {
 type AdminGlobalSearchProps = {
   open: boolean;
   onClose: () => void;
-  initialData?: OverviewApiSearchData | null;
-  initialError?: string | null;
 };
 
 type SearchFilter = "all" | OverviewSearchResult["kind"];
@@ -123,16 +120,18 @@ function groupResults(results: OverviewSearchResult[]): Array<{ kind: OverviewSe
   return Array.from(groups.entries()).map(([kind, items]) => ({ kind, items }));
 }
 
-export function AdminGlobalSearch({ open, onClose, initialData, initialError }: AdminGlobalSearchProps) {
+export function AdminGlobalSearch({ open, onClose }: AdminGlobalSearchProps) {
   const { translateText } = useAdminShell();
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState<SearchFilter>("all");
   const [savedFilters, setSavedFilters] = useState<SavedSearchFilter[]>([]);
   const [saveName, setSaveName] = useState("");
   const [saveMessage, setSaveMessage] = useState("");
-  const searchQuery = useOverviewSearchQuery(open, initialData);
-  const data = searchQuery.data ?? null;
-  const searchError = initialError ?? (searchQuery.error instanceof Error ? searchQuery.error.message : null);
+  const searchQuery = useOverviewSearchQuery(open, query, kind);
+  const data = searchQuery.isDebouncing ? null : searchQuery.data ?? null;
+  const searchError = searchQuery.isDebouncing
+    ? null
+    : searchQuery.error instanceof Error ? searchQuery.error.message : null;
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -153,7 +152,7 @@ export function AdminGlobalSearch({ open, onClose, initialData, initialError }: 
 
   const allResults = useMemo(() => {
     if (data?.source === "mock") return overviewSearchResultsFromMockData(data.data, query);
-    if (data?.source === "api") return overviewSearchResultsFromApi(data.data, query);
+    if (data?.source === "api") return overviewSearchResultsFromSearchApi(data.data.items);
     return [];
   }, [data, query]);
   const results = useMemo(
@@ -205,6 +204,7 @@ export function AdminGlobalSearch({ open, onClose, initialData, initialError }: 
           <input
             ref={inputRef}
             type="search"
+            maxLength={100}
             className="outline-none focus-visible:!outline-none"
             aria-label={translateText("Search marketplace records")}
             placeholder={translateText("Search Member, Quest, Report Case, Wallet, or Payout…")}
@@ -257,7 +257,7 @@ export function AdminGlobalSearch({ open, onClose, initialData, initialError }: 
         {saveMessage ? <output className="admin-global-search-message mx-4 mt-2.5 block text-[13px] text-admin-success">{translateText(saveMessage)}</output> : null}
         <div id="admin-global-search-results" aria-live="polite">
           {searchError && !data ? <p className="p-[60px_24px] text-center text-sm text-admin-muted">{translateText(searchError)}</p> : null}
-          {searchQuery.isPending && !data ? <p className="p-[60px_24px] text-center text-sm text-admin-muted">{translateText("Loading search records…")}</p> : null}
+          {query.trim() && !searchError && (searchQuery.isDebouncing || searchQuery.isPending) && !data ? <p className="p-[60px_24px] text-center text-sm text-admin-muted">{translateText("Loading search records…")}</p> : null}
           {data?.source === "mock" ? <p className="api-data-notice admin-global-search-notice mx-4 my-3 mb-1 rounded-lg p-[9px_10px] text-[13px]">{translateText("Fixture search is active. Results use local demo records.")}</p> : null}
           {groups.map((group) => (
             <section key={group.kind} className="admin-global-search-group" aria-labelledby={`admin-global-search-group-${group.kind}`}>
@@ -274,8 +274,8 @@ export function AdminGlobalSearch({ open, onClose, initialData, initialError }: 
               ))}
             </section>
           ))}
-          {!searchError && !searchQuery.isPending && query && !results.length ? <p className="p-[60px_24px] text-center text-sm text-admin-muted">{translateText("No matching records")}</p> : null}
-          {!searchError && !searchQuery.isPending && !query ? <p className="p-[60px_24px] text-center text-sm text-admin-muted">{translateText("Type an ID, name, or status to search all Admin records.")}</p> : null}
+          {!searchError && !searchQuery.isDebouncing && !searchQuery.isPending && query.trim() && !results.length ? <p className="p-[60px_24px] text-center text-sm text-admin-muted">{translateText("No matching records")}</p> : null}
+          {!searchError && !query.trim() ? <p className="p-[60px_24px] text-center text-sm text-admin-muted">{translateText("Type an ID, name, or status to search all Admin records.")}</p> : null}
         </div>
       </div>
     </dialog>

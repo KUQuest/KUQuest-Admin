@@ -1,4 +1,5 @@
 import type { PersistedAdminData } from "../data/admin-records";
+import type { AdminSearchResult } from "../api/admin-api";
 import {
   conductReportRoutes,
   activityRoutes,
@@ -43,15 +44,13 @@ export type OverviewSearchResult = {
   searchText?: string;
 };
 
-type OverviewSearchDate = string | number | null;
-
 export type OverviewApiSearchData = {
-  quests: Array<{ id: string; displayId?: string; title: string; hiddenAt?: string | null; status?: string; newestAt?: OverviewSearchDate }>;
-  members: Array<{ id: string; firstName: string; lastName: string; studentId: string | null; status?: string; newestAt?: OverviewSearchDate }>;
-  payouts: Array<{ id: string; student: { firstName: string; lastName: string }; status?: string; newestAt?: OverviewSearchDate }>;
-  disputes?: Array<{ id: string; title: string; questId?: string; status?: string; newestAt?: OverviewSearchDate }>;
-  reports?: Array<{ id: string; title: string; reportedMemberId?: string; conduct?: boolean; status?: string; newestAt?: OverviewSearchDate }>;
-  wallets?: Array<{ id: string; memberId: string; memberName: string; status?: string; newestAt?: OverviewSearchDate }>;
+  quests: Array<{ id: string; displayId?: string; title: string; hiddenAt?: string | null; status?: string; newestAt?: string | number | null }>;
+  members: Array<{ id: string; firstName: string; lastName: string; studentId: string | null; status?: string; newestAt?: string | number | null }>;
+  payouts: Array<{ id: string; student: { firstName: string; lastName: string }; status?: string; newestAt?: string | number | null }>;
+  disputes?: Array<{ id: string; title: string; questId?: string; status?: string; newestAt?: string | number | null }>;
+  reports?: Array<{ id: string; title: string; reportedMemberId?: string; conduct?: boolean; status?: string; newestAt?: string | number | null }>;
+  wallets?: Array<{ id: string; memberId: string; memberName: string; status?: string; newestAt?: string | number | null }>;
 };
 
 const mockMemberStatusById: Record<string, "Normal" | "Flag" | "Perm Ban"> = {
@@ -249,6 +248,45 @@ export function overviewSearchResultsFromApi(
     searchText: `${wallet.memberId} ${wallet.status ?? ""}`,
   }));
   return matchingSearchResults([...members, ...quests, ...payouts, ...disputes, ...reports, ...wallets], query);
+}
+
+export function overviewSearchResultsFromSearchApi(items: AdminSearchResult[]): OverviewSearchResult[] {
+  return items.map((item): OverviewSearchResult => ({
+    kind: item.kind,
+    id: item.id,
+    title: item.title,
+    detail: searchResultLabel(item.kind),
+    status: searchApiStatusLabel(item),
+    newestAt: timestampValue(item.newestAt),
+    href: searchApiResultHref(item),
+  }));
+}
+
+function searchApiResultHref(item: AdminSearchResult): string {
+  switch (item.kind) {
+    case "member": return memberRoutes.detail(item.resourceId);
+    case "quest": return questRoutes.detail(item.resourceId);
+    case "payout": return payoutRoutes.detail(item.resourceId);
+    case "dispute": return disputeRoutes.detail(item.resourceId);
+    case "report": return reportRoutes.detail(item.resourceId);
+    case "conduct-report": return conductReportRoutes.detail(item.resourceId);
+    case "wallet": return walletRoutes.list();
+    case "activity": return activityRoutes.list();
+  }
+}
+
+function searchApiStatusLabel(item: AdminSearchResult): string {
+  const status = item.status ?? undefined;
+  switch (item.kind) {
+    case "member": return apiStatusLabel(status, memberStatusLabel);
+    case "quest": return apiStatusLabel(status, questStateLabel);
+    case "payout": return apiStatusLabel(status, payoutStatusLabel);
+    case "dispute": return apiStatusLabel(status, disputeCaseStatusLabel);
+    case "report":
+    case "conduct-report": return apiStatusLabel(status, reportCaseStatusLabel);
+    case "wallet": return apiStatusLabel(status, walletStatusLabel);
+    case "activity": return status ?? "Recorded";
+  }
 }
 
 export function overviewSearchResultLabel(kind: OverviewSearchResult["kind"]): string {

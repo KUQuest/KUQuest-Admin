@@ -24,6 +24,7 @@ export type AdminReadPort = Pick<
   | "getCurrentMoneyPolicy"
   | "listMoneyPolicyRevisions"
   | "listActivityLogs"
+  | "searchAdminRecords"
   | "listQuests"
   | "getQuest"
   | "getQuestFinance"

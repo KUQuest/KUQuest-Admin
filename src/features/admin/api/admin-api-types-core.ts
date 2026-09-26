@@ -154,3 +154,33 @@ export type AdminActivityListQuery = {
   cursor?: string;
   sort?: "newest" | "oldest";
 };
+
+export type AdminSearchResultKind =
+  | "member"
+  | "quest"
+  | "payout"
+  | "dispute"
+  | "report"
+  | "conduct-report"
+  | "wallet"
+  | "activity";
+
+export type AdminSearchKind = "all" | AdminSearchResultKind;
+
+export type AdminSearchRecordsQuery = {
+  q: string;
+  kind?: AdminSearchKind;
+};
+
+export type AdminSearchResult = {
+  kind: AdminSearchResultKind;
+  id: string;
+  resourceId: string;
+  title: string;
+  status: string | null;
+  newestAt: string | null;
+};
+
+export type AdminSearchRecordsResponse = {
+  items: AdminSearchResult[];
+};

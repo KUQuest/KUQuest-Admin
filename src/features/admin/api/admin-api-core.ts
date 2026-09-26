@@ -13,6 +13,8 @@ import type {
   AdminMoneyPolicy,
   AdminOverview,
   AdminPage,
+  AdminSearchRecordsQuery,
+  AdminSearchRecordsResponse,
 } from "./admin-api";
 
 export function createAdminCoreApi() {
@@ -67,6 +69,16 @@ export function createAdminCoreApi() {
     ): Promise<AdminPage<AdminActivityLog>> {
       return apiRequest<AdminPage<AdminActivityLog>>(
         `/api/v1/admin/activity-log${queryString(query)}`,
+        { cache: "no-store", ...options },
+      );
+    },
+
+    searchAdminRecords(
+      query: AdminSearchRecordsQuery,
+      options: AdminApiRequestOptions = {},
+    ): Promise<AdminSearchRecordsResponse> {
+      return apiRequest<AdminSearchRecordsResponse>(
+        `/api/v1/admin/search${queryString(query)}`,
         { cache: "no-store", ...options },
       );
     },

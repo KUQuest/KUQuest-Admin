@@ -14,8 +14,6 @@ function mockOverviewPageData(): OverviewPageData {
     model: loadOverviewModelFromMock(window.localStorage),
     financeOverview: mockFinanceOverview,
     financeOverviewError: null,
-    searchData: null,
-    searchError: null,
   };
 }
 

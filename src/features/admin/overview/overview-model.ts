@@ -33,6 +33,7 @@ export {
   compareOverviewSearchResults,
   overviewSearchResultLabel,
   overviewSearchResultsFromApi,
+  overviewSearchResultsFromSearchApi,
   overviewSearchResultsFromMockData,
   sortOverviewSearchResults,
 } from "./overview-search-model";
