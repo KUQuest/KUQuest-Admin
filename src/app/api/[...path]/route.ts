@@ -25,7 +25,7 @@ async function proxyAdminApi(request: Request, context: AdminApiRouteContext): P
   }
 
   const encodedPath = path.map((segment) => encodeURIComponent(segment)).join("/");
-  const target = new URL(`${encodedPath}${new URL(request.url).search}`, `${getApiUrl().replace(/\/+$/, "")}/`);
+  const target = new URL(`/api/${encodedPath}${new URL(request.url).search}`, getApiUrl());
   const headers = new Headers(request.headers);
   headers.delete("host");
   headers.delete("content-length");
