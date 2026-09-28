@@ -39,6 +39,7 @@ import {
   REPORT_CASE_UPDATED_EVENT,
   reportCaseDecisionFor,
   reportCaseModelFromRecord,
+  reportCaseModelWithEvidenceSender,
   reportCaseReasonCodeFor,
   type ReportCaseDecisionChoice,
   type ReportCaseModel,
@@ -80,18 +81,67 @@ function EvidencePreview({
   translateText: (value: string) => string;
   onClose: () => void;
 }) {
+  const evidence = state.evidence;
+  const reportEvidence = evidence && "messages" in evidence ? evidence : null;
+
   return (
     <AdminModalPortal open onClose={onClose}>
       <dialog open className="report-evidence-dialog" aria-modal="true" aria-labelledby="report-evidence-title" tabIndex={-1}>
       <div className="dialog-body p-5">
         <div className="sticky top-0 z-[2] flex items-center justify-between border-b border-admin-border bg-admin-surface/95 px-4 py-3 backdrop-blur-sm">
-          <div><strong id="report-evidence-title" className="block">{translateText("Evidence Reference")}</strong><small className="block text-[13px] text-admin-muted">{state.reference}</small></div>
+          <strong id="report-evidence-title">{translateText("Evidence Reference")}</strong>
           <button className="icon" type="button" aria-label={translateText("Close evidence")} onClick={onClose}><span className="close-lines" /></button>
         </div>
         {state.loading && <p>{translateText("Loading Evidence Reference…")}</p>}
         {state.error && <p className="field-error" role="alert">{translateText(state.error)}</p>}
         {!state.loading && !state.error && (
-          <pre className="report-evidence-context max-h-[50vh] overflow-auto rounded-lg bg-admin-soft p-3 text-sm [overflow-wrap:anywhere]">{evidenceContext(state.evidence?.context, translateText)}</pre>
+          reportEvidence ? (
+            <div className="grid gap-3">
+              {reportEvidence.truncated && <p className="audit-note">{translateText("Only nearby Message context is shown.")}</p>}
+              {reportEvidence.messages.length > 0 ? (
+                <ol className="grid gap-3">
+                  {reportEvidence.messages.map((message) => {
+                    const isReportedMessage = message.id === reportEvidence.reportedMessageId;
+                    const senderName = message.sender
+                      ? [message.sender.firstName, message.sender.lastName].filter(Boolean).join(" ") || message.sender.email
+                      : message.kind === "SYSTEM" ? translateText("System") : translateText("Member not provided");
+
+                    return (
+                      <li key={message.id} className="rounded-lg border border-admin-border bg-admin-soft p-3">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div>
+                            <strong className="block">{translateText(isReportedMessage ? "Reported Message" : message.kind === "SYSTEM" ? "System Message" : "Conversation context")}</strong>
+                            <span>{senderName}</span>
+                            {message.sender?.email && <small className="block text-admin-muted">{message.sender.email}</small>}
+                          </div>
+                          <time className="text-sm text-admin-muted" dateTime={message.createdAt}>{formatAdminTimestamp(message.createdAt)}</time>
+                        </div>
+                        {message.contentText
+                          ? <p className="mt-3 whitespace-pre-wrap break-words">{message.contentText}</p>
+                          : message.systemType
+                            ? <p className="mt-3">{translateText(message.systemType)}</p>
+                            : <p className="mt-3 text-admin-muted">{translateText("No text content was provided.")}</p>}
+                        {message.attachments.length > 0 && (
+                          <ul className="mt-3 grid gap-2">
+                            {message.attachments.map((attachment) => (
+                              <li key={attachment.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-admin-border bg-admin-surface px-3 py-2">
+                                <span>
+                                  <strong className="block">{attachment.originalFilename}</strong>
+                                  <small className="text-admin-muted">{attachment.mimeType} · {attachment.sizeBytes} bytes</small>
+                                </span>
+                                {attachment.url && <a className="text-admin-accent hover:underline" href={attachment.url} target="_blank" rel="noreferrer">{translateText("Open attachment")}</a>}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ol>
+              ) : <p className="audit-note">{translateText("No Messages were returned for this Evidence Reference.")}</p>}
+              <p className="audit-note">{translateText("Evidence access is recorded as an Admin Action.")}</p>
+            </div>
+          ) : <pre className="report-evidence-context max-h-[50vh] overflow-auto rounded-lg bg-admin-soft p-3 text-sm [overflow-wrap:anywhere]">{evidenceContext(evidence && !("messages" in evidence) ? evidence.context : undefined, translateText)}</pre>
         )}
         <div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5"><Button variant="outline" type="button" onClick={onClose}>{translateText("Close")}</Button></div>
       </div>
@@ -470,8 +520,10 @@ export function ReportCaseDetail({
   } | null>(null);
   const decisionMutation = useReportDecisionMutation();
 
-  const model = reportModel;
   const evidenceQuery = useReportEvidenceQuery(evidenceReference);
+  const model = reportModel
+    ? reportCaseModelWithEvidenceSender(reportModel, evidenceQuery.data)
+    : null;
 
   if (isPending && !model) return <AdminLoading message={translateText("Loading Report Case…")} />;
   if (!model) {

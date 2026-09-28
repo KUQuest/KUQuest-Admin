@@ -44,7 +44,42 @@ export type AdminReportCase = {
   [key: string]: unknown;
 };
 
-export type AdminEvidence = {
+export type AdminEvidenceMessage = {
+  id: string;
+  conversationId: string;
+  sequence: number;
+  kind: "USER" | "SYSTEM";
+  sender: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+  } | null;
+  contentText: string | null;
+  systemType: string | null;
+  systemPayload: Record<string, unknown> | null;
+  createdAt: string;
+  attachments: Array<{
+    id: string;
+    status: "QUARANTINED" | "VALIDATED" | "REJECTED" | "CONSUMED" | "HIDDEN" | "EXPIRED";
+    originalFilename: string;
+    mimeType: string;
+    sizeBytes: number;
+    url: string | null;
+    urlExpiresAt: string | null;
+  }>;
+};
+
+export type AdminReportCaseEvidence = {
+  caseId: string;
+  evidenceRefId: string;
+  reportedMessageId: string;
+  truncated: boolean;
+  messages: AdminEvidenceMessage[];
+  adminActionId: string;
+};
+
+export type AdminEvidence = AdminReportCaseEvidence | {
   evidenceRef: string;
   context?: unknown;
   expiresAt?: string;

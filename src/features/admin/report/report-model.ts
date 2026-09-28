@@ -322,3 +322,29 @@ export function reportCaseModelFromRecord(value: unknown): ReportCaseModel | nul
     version: typeof record.version === "number" ? record.version : undefined,
   };
 }
+
+export function reportCaseModelWithEvidenceSender(
+  model: ReportCaseModel,
+  value: unknown,
+): ReportCaseModel {
+  const evidence = asRecord(value);
+  if (evidence?.caseId !== model.id || typeof evidence.reportedMessageId !== "string") return model;
+  if (!Array.isArray(evidence.messages)) return model;
+
+  const reportedMessage = evidence.messages
+    .map(asRecord)
+    .find((message) => message?.id === evidence.reportedMessageId);
+  const sender = asRecord(reportedMessage?.sender);
+  const senderId = text(sender?.id);
+  const senderName = firstText(personName(sender), sender?.email);
+  if (!senderId || !senderName) return model;
+
+  return {
+    ...model,
+    title: `Report against ${senderName}`,
+    reportedMemberId: senderId,
+    reportedMemberDisplayId: null,
+    reportedMemberName: senderName,
+    reportedMemberHref: memberRoutes.detail(senderId),
+  };
+}

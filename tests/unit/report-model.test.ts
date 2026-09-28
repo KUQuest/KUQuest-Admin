@@ -5,6 +5,7 @@ import {
   isReportCaseRecord,
   reportCaseDecisionFor,
   reportCaseModelFromRecord,
+  reportCaseModelWithEvidenceSender,
   reportCasesOnly,
 } from "../../src/features/admin/report/report-model";
 
@@ -141,6 +142,40 @@ describe("Report Case model", () => {
 
     expect(model?.reportedMemberName).toBe("Member not provided");
     expect(model?.reporterName).toBe("Reporter not provided");
+  });
+
+  it("uses the reported Message sender only from matching case evidence", () => {
+    const model = reportCaseModelFromRecord({
+      id: "0a000000-0000-4000-8000-000000000001",
+      displayId: "RPT-000044",
+      status: "REPORT_CASE_PENDING",
+    });
+    expect(model).not.toBeNull();
+    if (!model) return;
+
+    const evidence = {
+      caseId: model.id,
+      evidenceRefId: "0b000000-0000-4000-8000-000000000001",
+      reportedMessageId: "0c000000-0000-4000-8000-000000000001",
+      truncated: false,
+      adminActionId: "0d000000-0000-4000-8000-000000000001",
+      messages: [
+        {
+          id: "0e000000-0000-4000-8000-000000000001",
+          sender: { id: "0f000000-0000-4000-8000-000000000001", email: "context@ku.th", firstName: "Context", lastName: "Member" },
+        },
+        {
+          id: "0c000000-0000-4000-8000-000000000001",
+          sender: { id: "10000000-0000-4000-8000-000000000001", email: "reported@ku.th", firstName: "Reported", lastName: "Member" },
+        },
+      ],
+    };
+
+    const enriched = reportCaseModelWithEvidenceSender(model, evidence);
+    expect(enriched.reportedMemberName).toBe("Reported Member");
+    expect(enriched.reportedMemberDisplayId).toBeNull();
+    expect(enriched.reportedMemberHref).toBe("/member/10000000-0000-4000-8000-000000000001");
+    expect(reportCaseModelWithEvidenceSender(model, { ...evidence, caseId: "another-case" })).toBe(model);
   });
 
   it("makes pending and hidden Report Cases actionable, but not closed cases", () => {
