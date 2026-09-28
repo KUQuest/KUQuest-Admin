@@ -175,6 +175,7 @@ describe("Report Case model", () => {
     expect(enriched.reportedMemberName).toBe("Reported Member");
     expect(enriched.reportedMemberDisplayId).toBeNull();
     expect(enriched.reportedMemberHref).toBe("/member/10000000-0000-4000-8000-000000000001");
+    expect(reportCaseModelWithEvidenceSender(enriched, evidence)).toBe(enriched);
     expect(reportCaseModelWithEvidenceSender(model, { ...evidence, caseId: "another-case" })).toBe(model);
   });
 

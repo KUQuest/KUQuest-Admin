@@ -338,6 +338,7 @@ export function reportCaseModelWithEvidenceSender(
   const senderId = text(sender?.id);
   const senderName = firstText(personName(sender), sender?.email);
   if (!senderId || !senderName) return model;
+  if (model.reportedMemberId === senderId && model.reportedMemberName === senderName) return model;
 
   return {
     ...model,

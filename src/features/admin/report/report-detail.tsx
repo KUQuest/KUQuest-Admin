@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { AdminActionReceipt } from "../../../components/admin/admin-action-feedback";
 import { formatAdminTimestamp } from "../date-format";
@@ -524,6 +524,11 @@ export function ReportCaseDetail({
   const model = reportModel
     ? reportCaseModelWithEvidenceSender(reportModel, evidenceQuery.data)
     : null;
+
+  useEffect(() => {
+    if (!reportModel || !model || model === reportModel) return;
+    window.dispatchEvent(new CustomEvent(REPORT_CASE_UPDATED_EVENT, { detail: model }));
+  }, [model, reportModel]);
 
   if (isPending && !model) return <AdminLoading message={translateText("Loading Report Case…")} />;
   if (!model) {
