@@ -208,6 +208,9 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
   font-size: 13px;
 }
 .penalty-modal { max-width: 520px; }
+.admin-modal-layer > dialog.member-action-dialog .dialog-body .member-penalty-reason {
+  min-block-size: 8rem;
+}
 @media (max-width: 600px) {
   .icon {
     min-width: 44px;

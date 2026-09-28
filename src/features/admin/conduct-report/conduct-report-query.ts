@@ -5,7 +5,7 @@ import { adminApiProvider, isAdminApiEnabled } from "../api/admin-provider";
 import type { ConductReportDecision } from "../api/admin-api";
 import { replaceInfiniteItem } from "../data/query-data";
 import {
-  findConductReportFromMock,
+  findConductReportModelFromMock,
   loadAllConductReportsFromMock,
   loadConductReportsFromMock,
   saveMockConductReportDecision,
@@ -59,8 +59,10 @@ export function useConductReportDecisionMutation() {
           : null,
       };
     },
-    onSuccess: (record, { reportId }) => {
-      const model = conductReportModelFromRecord(record);
+    onSuccess: (record, { reportId, apiEnabled }) => {
+      const model = apiEnabled
+        ? conductReportModelFromRecord(record)
+        : record ? findConductReportModelFromMock(localStorage, reportId) : null;
       if (!model || model.id !== reportId) return;
       queryClient.setQueryData(conductReportDetailQueryKey(reportId), model);
       queryClient.setQueryData<InfiniteData<ConductReportPageData, string | null>>(conductReportBoardQueryKey, (current) => replaceInfiniteItem(current, model));
@@ -120,10 +122,9 @@ export function useConductReportDetailQuery(reportId: string, initialModel?: Con
   const query = useQuery({
     queryKey,
     queryFn: async () => {
-      const record = apiEnabled
-        ? await adminApiProvider.read.getReport(reportId)
-        : findConductReportFromMock(localStorage, reportId);
-      const model = conductReportModelFromRecord(record);
+      const model = apiEnabled
+        ? conductReportModelFromRecord(await adminApiProvider.read.getReport(reportId))
+        : findConductReportModelFromMock(localStorage, reportId);
       if (!model || model.id !== reportId) throw new Error("The Conduct Report was not found.");
       return model;
     },

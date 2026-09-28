@@ -24,7 +24,6 @@ import {
   adminRecordGroup,
   adminRecordHeader,
   adminRecordHeading,
-  adminRecordPartyGrid,
   adminRecordSection,
   adminRecordSideFacts,
 } from "../../../components/admin/admin-record-styles";
@@ -155,14 +154,12 @@ function ReportOverview({
   return (
     <Card as="section" className={`${adminRecordSection} report-overview`}>
       <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Report detail")}</h2></CardHeader>
-      <p className={adminRecordDescription}>{model.detail}</p>
       <AdminOverviewMeta className="mt-[18px]">
         <div><dt>{translateText("Status")}</dt><dd><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></dd></div>
         <div><dt>{translateText("Submitted")}</dt><dd>{formatAdminTimestamp(model.submittedAt)}</dd></div>
         <div><dt>{translateText("Report type")}</dt><dd>{translateText(model.reportType)}</dd></div>
-        <div><dt>{translateText("Submitted by")}</dt><dd><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} /></dd></div>
-        <div><dt>{translateText("Reported Member")}</dt><dd><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} /></dd></div>
       </AdminOverviewMeta>
+      <p className={`${adminRecordDescription} mt-4`}>{model.detail}</p>
     </Card>
   );
 }
@@ -177,35 +174,6 @@ function RelatedQuestPanel({ model, translateText }: { model: ReportCaseModel; t
         <div><span>{translateText("Quest ID")}</span><strong>{model.relatedQuestId ?? "—"}</strong></div>
       </div>
       {model.relatedQuestHref && <Button asChild variant="outline" className="mt-3 w-full"><Link href={model.relatedQuestHref}>{translateText("Open Quest detail")}</Link></Button>}
-    </Card>
-  );
-}
-
-function PeopleInvolved({
-  model,
-  translateText,
-  compact = false,
-}: {
-  model: ReportCaseModel;
-  translateText: (value: string) => string;
-  compact?: boolean;
-}) {
-  if (compact) {
-    return (
-      <Card as="section" className={adminRecordSection}>
-        <CardHeader flush className={adminRecordHeader}><h3 className={adminRecordHeading}>{translateText("People involved")}</h3></CardHeader>
-        <div className={adminRecordFacts}><div className={adminRecordFact}><span>{translateText("Reported Member")}</span><strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} interactive={!compact} /></strong><small>{model.reportedMemberId}</small></div><div className={adminRecordFact}><span>{translateText("Reported by")}</span><strong><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} interactive={!compact} /></strong><small>{model.reporterId ?? "—"}</small></div></div>
-      </Card>
-    );
-  }
-
-  return (
-    <Card as="section" className={adminRecordSection}>
-      <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("People involved")}</h2></CardHeader>
-      <div className={`${adminRecordPartyGrid} report-parties`}>
-        <div><span>{translateText("Reporting Member")}</span><strong><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} /></strong>{model.reporterId && <small>{model.reporterId}</small>}</div>
-        <div><span>{translateText("Reported Member")}</span><strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} /></strong>{model.reportedMemberId && <small>{model.reportedMemberId}</small>}</div>
-      </div>
     </Card>
   );
 }
@@ -398,13 +366,18 @@ function ReportCaseSections({
       <AdminRecordGrid
         primary={<>
           <ReportOverview model={model} translateText={translateText} />
-          <PeopleInvolved model={model} translateText={translateText} />
           <EvidenceSection model={model} translateText={translateText} onOpen={onOpenEvidence} />
           <ReportTimeline model={model} translateText={translateText} />
         </>}
         side={<>
           <MemberSummaryPanel heading="Reported Member" id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} translateText={translateText} />
           <MemberSummaryPanel heading="Submitted by" id={model.reporterId} name={model.reporterName} href={model.reporterHref} translateText={translateText} />
+          <ModerationHistoryPanel
+            summary={model.moderationHistory}
+            translateText={translateText}
+            compact={false}
+            member={{ id: model.reportedMemberId, name: model.reportedMemberName, href: model.reportedMemberHref }}
+          />
           <Card as="section" className={`${adminRecordSection} report-decision-panel pb-[18px]`}>
             <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{model.isActionable ? translateText("Report decision") : translateText("Recorded outcome")}</h2></CardHeader>
             {decisionPanel}
@@ -461,7 +434,6 @@ function DrawerSections({
         <ReportOverview model={model} translateText={translateText} compact />
         <EvidenceSection model={model} translateText={translateText} onOpen={onOpenEvidence} compact />
         <RelatedQuestPanel model={model} translateText={translateText} />
-        <PeopleInvolved model={model} translateText={translateText} compact />
         <ModerationHistoryPanel
           summary={model.moderationHistory}
           translateText={translateText}

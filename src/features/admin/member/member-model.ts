@@ -172,6 +172,16 @@ export type MemberActionOutcome = {
   exempted: boolean;
 };
 
+export const MEMBER_PENALTY_CHOICES = ["Red Flag", "Temporary ban", "Permanent ban"] as const;
+export type MemberPenaltyChoice = (typeof MEMBER_PENALTY_CHOICES)[number];
+
+export type MockMemberModerationSummary = {
+  id: string;
+  memberStatus: MemberStatus | null;
+  confirmedViolationCount: number | null;
+  moderationHistory: MemberPenaltyHistoryEntry[];
+};
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>
@@ -794,6 +804,23 @@ export function memberModelFromMockRecord(
   };
 }
 
+export function mockMemberModerationSummaryFromRecord(
+  value: unknown,
+  data: PersistedAdminData,
+): MockMemberModerationSummary | null {
+  const record = asRecord(value);
+  const id = nullableText(record?.id);
+  if (!record || !id) return null;
+  const member = memberModelFromMockRecord(record, data, { summaryOnly: true });
+  if (!member) return null;
+  return {
+    id,
+    memberStatus: member.memberStatus,
+    confirmedViolationCount: member.confirmedViolationCount,
+    moderationHistory: historyFromMock(record, member.createdAt, id),
+  };
+}
+
 export function memberStatusText(model: MemberModel): string {
   return model.memberStatus ? memberStatusLabel(model.memberStatus) : "Not provided by the Admin API";
 }
@@ -835,6 +862,16 @@ export function nextPenaltyFor(model: MemberModel): MemberActionOutcome {
   if (violationNumber === 1) return { label: "Red Flag", walletStatus: "ACTIVE", memberStatus: "Flag", durationDays: 7, expiresAt: null, exempted: false };
   if (violationNumber === 2) return { label: "Temporary ban", walletStatus: "FROZEN", memberStatus: "Temp Ban", durationDays: 7, expiresAt: null, exempted: false };
   return { label: "Permanent ban", walletStatus: "FROZEN", memberStatus: "Perm Ban", durationDays: null, expiresAt: null, exempted: false };
+}
+
+export function memberPenaltyForChoice(model: MemberModel, choice: MemberPenaltyChoice): MemberActionOutcome {
+  if (choice === "Red Flag") {
+    return { label: choice, walletStatus: model.walletStatus ?? "ACTIVE", memberStatus: "Flag", durationDays: 7, expiresAt: null, exempted: false };
+  }
+  if (choice === "Temporary ban") {
+    return { label: choice, walletStatus: "FROZEN", memberStatus: "Temp Ban", durationDays: 7, expiresAt: null, exempted: false };
+  }
+  return { label: choice, walletStatus: "FROZEN", memberStatus: "Perm Ban", durationDays: null, expiresAt: null, exempted: false };
 }
 
 export function reportRouteForMember(memberId: string): string {

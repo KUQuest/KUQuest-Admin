@@ -31,7 +31,6 @@ import { conductReportRoutes } from "../admin-routes";
 import { questStateLabel } from "../domain/rulebook";
 import { questStatusClass } from "../quest/quest-model";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
-import { RecordStatusBar } from "../../../components/admin/record-status-bar";
 import { ModerationCaseWorkspace, ModerationHistoryPanel } from "../moderation-case/moderation-case-workspace";
 import { hasModerationHistory } from "../moderation-case/moderation-case-context";
 import {
@@ -40,7 +39,6 @@ import {
 import { ConductReportDecisionDialog } from "./conduct-report-decision-dialog";
 import {
   CONDUCT_REPORT_UPDATED_EVENT,
-  conductReportReasonLabel,
   conductReportDecisionFor,
   conductReportDecisionReasonCodeFor,
   conductReportModelFromRecord,
@@ -100,7 +98,7 @@ function ConductReportOverview({
       {compact ? (
         <CardHeader flush className={adminRecordHeader}><h3 className={adminRecordHeading}>{translateText("Conduct Report overview")}</h3></CardHeader>
       ) : (
-        <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Conduct Report detail")}</h2><span className="badge">{translateText(model.reason)}</span></CardHeader>
+        <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Conduct Report detail")}</h2></CardHeader>
       )}
       <div className={adminRecordFacts}>
         <div className={adminRecordFact}>
@@ -122,24 +120,25 @@ function ConductReportOverview({
         <div><dt>{translateText("Source")}</dt><dd>{translateText("Quest record")}</dd></div>
         <div><dt>{translateText("Submitted")}</dt><dd>{formatAdminTimestamp(model.submittedAt)}</dd></div>
         <div><dt>{translateText("Evidence")}</dt><dd>{model.questRecord ? translateText("Quest record") : translateText("None")}</dd></div>
-        <div><dt>{translateText("Reason code")}</dt><dd>{model.reasonCode ? translateText(conductReportReasonLabel(model.reasonCode)) : "—"}</dd></div>
       </AdminOverviewMeta>
       <div className={adminRecordGroup}>
         <span>{translateText("Submitted detail")}</span>
         <p>{model.detail}</p>
       </div>
-      <div className={`${adminRecordPartyGrid} moderation-case-parties conduct-report-overview-parties`}>
-        <div>
-          <span>{translateText("Reported Member")}</span>
-          <strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} interactive={!compact} /></strong>
-          <small>{model.reportedMemberId || "—"}</small>
+      {compact && (
+        <div className={`${adminRecordPartyGrid} moderation-case-parties conduct-report-overview-parties`}>
+          <div>
+            <span>{translateText("Reported Member")}</span>
+            <strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} interactive={false} /></strong>
+            <small>{model.reportedMemberId || "—"}</small>
+          </div>
+          <div>
+            <span>{translateText("Reported by")}</span>
+            <strong><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} interactive={false} /></strong>
+            <small>{model.reporterId || "—"}</small>
+          </div>
         </div>
-        <div>
-          <span>{translateText("Reported by")}</span>
-          <strong><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} interactive={!compact} /></strong>
-          <small>{model.reporterId || "—"}</small>
-        </div>
-      </div>
+      )}
     </Card>
   );
 }
@@ -221,20 +220,18 @@ function ConductMemberSummaryPanel({
 function ConductModerationContext({ model, translateText }: { model: ConductReportModel; translateText: (value: string) => string }) {
   const summary = model.moderationHistory;
   const fallback = translateText("Not provided.");
-  const actionText = summary.previousActions.length ? summary.previousActions.map((action) => translateText(action)).join(" · ") : fallback;
-  const noteText = summary.adminNotes.length ? summary.adminNotes.join(" · ") : fallback;
+  const actionFallback = translateText(summary.memberRecordAvailable ? "None recorded." : "Not provided.");
+  const actionText = summary.previousActions.length ? summary.previousActions.map((action) => translateText(action)).join(" · ") : actionFallback;
 
   return (
     <Card as="section" className={adminRecordSection}>
-      <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Member moderation context")}</h2><span className={adminRecordCount}>{hasModerationHistory(summary) ? translateText("Available") : translateText("Partial")}</span></CardHeader>
+      <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Member moderation context")}</h2>{!hasModerationHistory(summary) && <span className={adminRecordCount}>{translateText("Partial")}</span>}</CardHeader>
       <AdminOverviewMeta className="moderation-case-history-grid !grid-cols-2 max-[600px]:!grid-cols-1">
         <div><dt>{translateText("Current Member status")}</dt><dd>{summary.currentMemberStatus ? translateText(summary.currentMemberStatus) : fallback}</dd></div>
         <div><dt>{translateText("Previous reports received")}</dt><dd>{summary.previousReportCount ?? fallback}</dd></div>
         <div><dt>{translateText("Confirmed previous violations")}</dt><dd>{summary.confirmedViolationCount ?? fallback}</dd></div>
       </AdminOverviewMeta>
       <div className={adminRecordGroup}><span>{translateText("Previous moderation actions")}</span><p>{actionText}</p></div>
-      <div className={adminRecordGroup}><span>{translateText("Internal Admin notes")}</span><p>{noteText}</p></div>
-      <div className={adminRecordGroup}><span>{translateText("Policy boundary")}</span><p>{translateText("Conduct Reports use the Quest record. Work Chat or Candidate Inquiry history may be opened only for this case, with an Admin Action log entry.")}</p></div>
     </Card>
   );
 }
@@ -466,6 +463,7 @@ function ConductReportDrawerBody({
           summary={model.moderationHistory}
           translateText={translateText}
           compact
+          showAdminNotes={false}
           member={{ id: model.reportedMemberId, name: model.reportedMemberName, href: model.reportedMemberHref }}
         />
         <Card as="section" className={`${adminRecordSection} report-decision-panel`}>
@@ -645,7 +643,6 @@ export function ConductReportDrawer({
           actions={<Button asChild size="lg" variant="outline"><Link href={conductReportRoutes.list()}>{translateText("Back to Conduct Reports")}</Link></Button>}
         />
         <ConductReportAlert model={reportModel} translateText={translateText} />
-        <RecordStatusBar className="conduct-report-record-status-bar" items={[{ id: "status", label: translateText("Status"), value: <span className={`badge ${reportModel.badgeClass}`}>{translateText(reportModel.statusLabel)}</span> }, { id: "reason", label: translateText("Reason"), value: translateText(reportModel.reason) }, { id: "reported", label: translateText("Reported"), value: formatAdminTimestamp(reportModel.submittedAt) }, { id: "reported-member", label: translateText("Reported Member"), value: <MemberLink id={reportModel.reportedMemberId} name={reportModel.reportedMemberName} href={reportModel.reportedMemberHref} /> }, { id: "quest", label: translateText("Quest"), value: reportModel.questId ?? translateText("Not provided.") }]} />
         {body}
         {decisionDialog}
       </main>

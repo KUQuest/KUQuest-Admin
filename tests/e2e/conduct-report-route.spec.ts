@@ -47,7 +47,7 @@ test.describe("Conduct Report routes", () => {
     await expect(page.getByRole("heading", { name: "Reported Member", exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Conduct Report timeline", exact: true })).toBeVisible();
     await expect(page.locator(".conduct-report-detail .conduct-report-overview")).toContainText("CND-8301");
-    await expect(page.locator(".conduct-report-detail .conduct-report-overview")).toContainText("Akarin Ariyawat");
+    await expect(page.locator(".conduct-report-detail .conduct-report-overview")).not.toContainText("Akarin Ariyawat");
     await expect(page.locator(".conduct-report-detail-body > .grid > div:first-child")).toContainText("Assignment accepted · Proof Submission not provided · dueAt 27 Aug 2026 15:00");
     await expect(relatedQuest).toContainText("QST-12001");
     await expect(page.getByText("Assignment accepted · Proof Submission not provided · dueAt 27 Aug 2026 15:00", { exact: true })).toBeVisible();

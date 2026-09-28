@@ -69,18 +69,21 @@ export function ModerationHistoryPanel({
   compact,
   member,
   memberLabel = "Reported Member",
+  showAdminNotes = true,
 }: {
   summary: ModerationHistorySummary;
   translateText: (value: string) => string;
   compact: boolean;
   member?: { id: string | null; name: string; href: string | null } | null;
   memberLabel?: string;
+  showAdminNotes?: boolean;
 }) {
   const fallback = translateText("Not provided.");
   const panelClass = `${adminRecordSection} moderation-case-history`;
+  const actionFallback = translateText(summary.memberRecordAvailable ? "None recorded." : "Not provided.");
   const actionText = summary.previousActions.length
     ? summary.previousActions.map((action) => translateText(action)).join(" · ")
-    : fallback;
+    : actionFallback;
   const noteText = summary.adminNotes.length
     ? summary.adminNotes.join(" · ")
     : fallback;
@@ -89,7 +92,7 @@ export function ModerationHistoryPanel({
     <Card as="section" className={panelClass}>
       <CardHeader flush className={adminRecordHeader}>
         {compact ? <h3 className={adminRecordHeading}>{translateText("Member moderation context")}</h3> : <h2 className={adminRecordHeading}>{translateText("Member moderation context")}</h2>}
-        <span className={adminRecordCount}>{hasModerationHistory(summary) ? translateText("Available") : translateText("Partial")}</span>
+        {!hasModerationHistory(summary) && <span className={adminRecordCount}>{translateText("Partial")}</span>}
       </CardHeader>
       {member && (
         <div className={`${adminRecordGroup} moderation-case-history-member`}>
@@ -109,10 +112,10 @@ export function ModerationHistoryPanel({
         <span>{translateText("Previous moderation actions")}</span>
         <p>{actionText}</p>
       </div>
-      <div className={adminRecordGroup}>
+      {showAdminNotes && <div className={adminRecordGroup}>
         <span>{translateText("Internal Admin notes")}</span>
         <p>{noteText}</p>
-      </div>
+      </div>}
     </Card>
   );
 }

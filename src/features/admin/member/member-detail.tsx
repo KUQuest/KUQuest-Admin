@@ -32,6 +32,7 @@ import {
   walletStatusClass,
   walletStatusText,
   walletStatementRows,
+  type MemberPenaltyChoice,
   type MemberModel,
   type MemberTab,
 } from "./member-model";
@@ -140,7 +141,7 @@ function MemberModerationSummary({ model, translateText, onRecordViolation }: { 
     <Card as="section" className="user-detail-panel p-[16px_18px]">
       <CardHeader flush><h2>{translateText("Moderation Summary")}</h2></CardHeader>
       <div className="user-counter-list mb-3.5 grid grid-cols-4 border-y border-admin-border max-[600px]:grid-cols-2"><div className="grid gap-[3px] border-r border-admin-border px-2 py-[9px] max-[600px]:odd:border-b max-[600px]:even:border-r-0"><strong className="text-xl">{model.reports.length}</strong><span className="text-xs text-admin-muted">{translateText("Reports received")}</span></div><div className="grid gap-[3px] border-r border-admin-border px-2 py-[9px] max-[600px]:odd:border-b max-[600px]:even:border-r-0"><strong className="text-xl">{model.confirmedViolationCount === null ? translateText("Not provided by the Admin API") : model.confirmedViolationCount}</strong><span className="text-xs text-admin-muted">{translateText("Confirmed violations")}</span></div><div className="grid gap-[3px] border-r border-admin-border px-2 py-[9px] max-[600px]:odd:border-b max-[600px]:even:border-r-0"><strong className="text-xl">{activeWarnings}</strong><span className="text-xs text-admin-muted">{translateText("Active Red Flags")}</span></div><div className="grid gap-[3px] px-2 py-[9px]"><strong className="text-xl">{suspensions}</strong><span className="text-xs text-admin-muted">{translateText("Suspensions")}</span></div></div>
-      <p className="audit-note">{translateText("Next outcome:")} <strong>{nextOutcome ? `${translateText(nextOutcome.label)}${nextOutcome.durationDays ? ` · ${nextOutcome.durationDays} ${translateText("days")}` : ""}` : translateText("Not provided by the Admin API")}</strong>{expiresAt ? ` · ${translateText("Expires")} ${formatAdminTimestamp(expiresAt, "Asia/Bangkok")}` : ""}.</p>
+      <p className="audit-note">{translateText("Automatic next outcome:")} <strong>{nextOutcome ? `${translateText(nextOutcome.label)}${nextOutcome.durationDays ? ` · ${nextOutcome.durationDays} ${translateText("days")}` : ""}` : translateText("Not provided by the Admin API")}</strong>{expiresAt ? ` · ${translateText("Expires")} ${formatAdminTimestamp(expiresAt, "Asia/Bangkok")}` : ""}.</p>
       {model.statusReason && <p className="audit-note">{translateText("Reason")}: {model.statusReason}</p>}
       {canRecord && <Button variant="primary" type="button" onClick={onRecordViolation}>{translateText("Record violation")}</Button>}
     </Card>
@@ -557,11 +558,11 @@ export function MemberDetail({ memberId, initialModel = null, initialTab = "over
     window.dispatchEvent(new CustomEvent(MEMBER_UPDATED_EVENT, { detail: nextModel }));
   };
 
-  const confirmPenalty = async (reason: string, note: string) => {
+  const confirmPenalty = async (reason: string, note: string, penalty: MemberPenaltyChoice | null) => {
     if (!model) return;
     setActionError(null);
     try {
-      const nextModel = await actionMutation.mutateAsync({ type: "record-violation", memberId: model.id, reason, note });
+      const nextModel = await actionMutation.mutateAsync({ type: "record-violation", memberId: model.id, reason, note, penalty });
       updateModel(nextModel);
       setPenaltyOpen(false);
     } catch (commandError) {

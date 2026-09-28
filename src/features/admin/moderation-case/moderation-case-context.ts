@@ -1,4 +1,5 @@
 export type ModerationHistorySummary = {
+  memberRecordAvailable: boolean;
   currentMemberStatus: string | null;
   previousReportCount: number | null;
   confirmedViolationCount: number | null;
@@ -15,6 +16,7 @@ export type ModerationCaseRelatedRecord = {
 
 export function emptyModerationHistory(): ModerationHistorySummary {
   return {
+    memberRecordAvailable: false,
     currentMemberStatus: null,
     previousReportCount: null,
     confirmedViolationCount: null,
@@ -68,6 +70,7 @@ export function moderationHistoryFromRecord(value: unknown): ModerationHistorySu
   const record = asRecord(value);
   const member = asRecord(record?.reportedMember) ?? asRecord(record?.member);
   return {
+    memberRecordAvailable: Boolean(member),
     currentMemberStatus: firstText(
       record?.reportedMemberStatus,
       record?.memberStatus,

@@ -104,14 +104,18 @@ test.describe("Member route family", () => {
     const dialog = page.getByRole("dialog", { name: "Confirm violation for Akarin Ariyawat" });
     await expect(dialog).toBeVisible();
     const reason = dialog.getByRole("textbox", { name: "Reason for confirmed violation" });
-    await expect(dialog.getByRole("textbox", { name: "Internal admin note (optional)" })).toHaveCount(0);
     await reason.fill("The evidence confirms a policy violation.");
     await expect(reason).toHaveValue("The evidence confirms a policy violation.");
     const box = await reason.boundingBox();
     expect(box?.width).toBeLessThanOrEqual(390);
+    expect(box?.height).toBeGreaterThanOrEqual(128);
+    await expect(dialog.getByRole("textbox", { name: "Internal admin note (optional)" })).toHaveCount(0);
+    await dialog.getByRole("button", { name: "Confirm violation" }).click();
+    await expect(dialog.getByRole("alert")).toContainText("Select a penalty to apply.");
+    await dialog.getByRole("radio", { name: /Temporary ban/ }).click();
     await dialog.getByRole("button", { name: "Confirm violation" }).click();
     await expect(page.locator(".user-counter-list")).toContainText("1");
-    await expect(page.locator(".user-summary-name")).toContainText("Flag");
+    await expect(page.locator(".user-summary-name")).toContainText("Temp Ban");
   });
 
   test("shows mock moderation history, related cases, and submitted reports", async ({ page }) => {

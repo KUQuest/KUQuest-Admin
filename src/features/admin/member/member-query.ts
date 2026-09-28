@@ -3,10 +3,10 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteD
 
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { replaceInfiniteItem } from "../data/query-data";
-import { loadAllMembersFromMock, loadMembersFromMock, recordMemberViolation, removeMemberPenalty, saveMemberNote } from "./member-adapter";
+import { loadAllMembersFromMock, loadMembersFromMock, recordMemberViolationFromMember, removeMemberPenalty, saveMemberNote } from "./member-adapter";
 import { MEMBER_UPDATED_EVENT } from "./member-events";
 import { findMemberFromMock } from "./member-adapter";
-import type { MemberModel, MemberPageData } from "./member-model";
+import type { MemberModel, MemberPageData, MemberPenaltyChoice } from "./member-model";
 import { loadMemberDetailFromApi, loadMemberPageData } from "./member-service";
 
 export const memberBoardQueryKey = ["admin", "members", "board"] as const;
@@ -112,7 +112,7 @@ export function useMemberDetailQuery(memberId: string, initialModel?: MemberMode
 }
 
 export type MemberActionMutationInput =
-  | { type: "record-violation"; memberId: string; reason: string; note: string }
+  | { type: "record-violation"; memberId: string; reason: string; note: string; penalty: MemberPenaltyChoice | null }
   | { type: "remove-penalty"; memberId: string; reason: string }
   | { type: "save-note"; memberId: string; note: string };
 
@@ -127,7 +127,7 @@ export function useMemberActionMutation() {
         : "Member penalty commands are not available from the Admin API.");
 
       if (input.type === "record-violation") {
-        const result = recordMemberViolation(localStorage, input.memberId, input.reason, input.note);
+        const result = recordMemberViolationFromMember(localStorage, input.memberId, input.reason, input.note, input.penalty);
         if (!result) throw new Error("The Member penalty could not be saved.");
         return result.model;
       }

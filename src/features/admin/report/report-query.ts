@@ -110,7 +110,7 @@ export function useReportBoardQuery(initialData?: ReportCasePageData) {
 export function useReportDetailQuery(reportId: string, initialModel?: ReportCaseModel | null) {
   const queryClient = useQueryClient();
   const apiEnabled = isAdminApiEnabled();
-  const queryKey = reportDetailQueryKey(reportId);
+  const queryKey = useMemo(() => reportDetailQueryKey(reportId), [reportId]);
   const query = useQuery({
     queryKey,
     queryFn: async () => {
@@ -127,10 +127,6 @@ export function useReportDetailQuery(reportId: string, initialModel?: ReportCase
     refetchOnMount: !initialModel,
     refetchOnWindowFocus: false,
   });
-
-  useEffect(() => {
-    if (initialModel) queryClient.setQueryData(queryKey, initialModel);
-  }, [initialModel, queryClient, queryKey]);
 
   useEffect(() => {
     const updateRecord = (event: Event) => {
