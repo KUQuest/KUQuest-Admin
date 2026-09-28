@@ -87,6 +87,120 @@ describe("Conduct Report model", () => {
     })).toBeNull();
   });
 
+  it("maps nested API Members, readable Quest ID, resolution time, Assignment, and Proof Submission", () => {
+    const model = conductReportModelFromRecord({
+      id: "0a000000-0000-4000-8000-000000000001",
+      displayId: "CND-000042",
+      status: "CONDUCT_REPORT_DISMISSED",
+      filer: {
+        id: "0b000000-0000-4000-8000-000000000001",
+        email: "filer@ku.th",
+        firstName: "Fah",
+        lastName: "Ariyawat",
+      },
+      reportedMember: {
+        id: "0c000000-0000-4000-8000-000000000001",
+        email: "worker@ku.th",
+        firstName: "Chayut",
+        lastName: "Boonprasert",
+      },
+      quest: {
+        id: "0d000000-0000-4000-8000-000000000001",
+        displayId: "QST-120042",
+        title: "Review campus map labels",
+        questStatus: "QUEST_FAILED",
+      },
+      reason: "CONDUCT_NO_SHOW",
+      detail: "The Worker did not attend the agreed session.",
+      version: 2,
+      createdAt: "2026-09-12T12:00:00.000Z",
+      updatedAt: "2026-09-12T12:30:00.000Z",
+      resolvedAt: "2026-09-12T12:30:00.000Z",
+      assignment: {
+        id: "0e000000-0000-4000-8000-000000000001",
+        worker: {
+          id: "0c000000-0000-4000-8000-000000000001",
+          email: "worker@ku.th",
+          firstName: "Chayut",
+          lastName: "Boonprasert",
+        },
+        assignmentStatus: "ASSIGNMENT_INCOMPLETE",
+        startedAt: null,
+        createdAt: "2026-09-10T12:00:00.000Z",
+      },
+      proofSubmission: {
+        id: "0f000000-0000-4000-8000-000000000001",
+        workerId: "0c000000-0000-4000-8000-000000000001",
+        teamId: null,
+        submittedBy: {
+          id: "0c000000-0000-4000-8000-000000000001",
+          email: "worker@ku.th",
+          firstName: "Chayut",
+          lastName: "Boonprasert",
+        },
+        description: "No files were submitted.",
+        workerMessage: "I could not attend.",
+        content: null,
+        submissionStatus: "PROOF_SUBMISSION_MISSING",
+        reviewNote: "Awaited the requested submission.",
+        sentAt: null,
+        submittedAt: null,
+        reviewedAt: null,
+        createdAt: "2026-09-12T11:00:00.000Z",
+        updatedAt: null,
+      },
+      evidenceHandles: [],
+    });
+
+    expect(model).toMatchObject({
+      displayId: "CND-000042",
+      reportedMemberId: "0c000000-0000-4000-8000-000000000001",
+      reportedMemberName: "Chayut Boonprasert",
+      reportedMemberDisplayId: null,
+      reporterId: "0b000000-0000-4000-8000-000000000001",
+      reporterName: "Fah Ariyawat",
+      reporterDisplayId: null,
+      reason: "No show",
+      questId: "0d000000-0000-4000-8000-000000000001",
+      questDisplayId: "QST-120042",
+      questTitle: "Review campus map labels",
+      detail: "The Worker did not attend the agreed session.",
+      resolutionAt: "2026-09-12T12:30:00.000Z",
+      assignment: {
+        workerName: "Chayut Boonprasert",
+        workerEmail: "worker@ku.th",
+        status: "Incomplete",
+        startedAt: null,
+        createdAt: "2026-09-10T12:00:00.000Z",
+      },
+      proofSubmission: {
+        submittedByName: "Chayut Boonprasert",
+        status: "Missing",
+        description: "No files were submitted.",
+        workerMessage: "I could not attend.",
+        content: null,
+        reviewNote: "Awaited the requested submission.",
+        submittedAt: null,
+        sentAt: null,
+        reviewedAt: null,
+      },
+    });
+    expect(model?.questHref).toBe("/quest/0d000000-0000-4000-8000-000000000001");
+  });
+
+  it("does not show UUIDs as Member names when the API omits names", () => {
+    const model = conductReportModelFromRecord({
+      id: "0a000000-0000-4000-8000-000000000001",
+      displayId: "CND-000043",
+      status: "CONDUCT_REPORT_PENDING",
+      reportedMemberId: "0b000000-0000-4000-8000-000000000001",
+      reporterId: "0c000000-0000-4000-8000-000000000001",
+    });
+
+    expect(model?.reportedMemberName).toBe("Member not provided");
+    expect(model?.reporterName).toBe("Reporter not provided");
+  });
+
   it("makes only pending Conduct Reports actionable", () => {
     expect(isConductReportActionable("CONDUCT_REPORT_PENDING")).toBe(true);
     expect(isConductReportActionable("CONDUCT_REPORT_UPHELD")).toBe(false);

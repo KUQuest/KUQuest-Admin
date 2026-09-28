@@ -236,18 +236,18 @@ export function ConductReportBoard({
                       </button>
                       <small>{translateText(model.title)}</small>
                     </TableCell>
-                    <TableCell><strong>{model.questTitle}</strong><small>{model.questId ?? "—"}</small></TableCell>
+                    <TableCell><strong>{model.questTitle}</strong><small>{model.questDisplayId ?? "—"}</small></TableCell>
                     <TableCell>
                       {model.reportedMemberHref
                         ? <Link className="text-admin-accent no-underline hover:underline hover:underline-offset-4" href={model.reportedMemberHref} onClick={(event) => event.stopPropagation()}>{model.reportedMemberName}</Link>
                         : model.reportedMemberName}
-                      <small>{model.reportedMemberId || "—"}</small>
+                      <small>{model.reportedMemberDisplayId ?? "—"}</small>
                     </TableCell>
                     <TableCell>
                       {model.reporterHref
                         ? <Link className="text-admin-accent no-underline hover:underline hover:underline-offset-4" href={model.reporterHref} onClick={(event) => event.stopPropagation()}>{model.reporterName}</Link>
                         : model.reporterName}
-                      <small>{model.reporterId ?? "—"}</small>
+                      <small>{model.reporterDisplayId ?? "—"}</small>
                     </TableCell>
                     <TableCell>{translateText(model.reason)}</TableCell>
                     <TableCell><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></TableCell>

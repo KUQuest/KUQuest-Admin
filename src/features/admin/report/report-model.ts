@@ -59,12 +59,15 @@ export type ReportCaseModel = {
   reportType: string;
   source: "Message";
   reportedMemberId: string;
+  reportedMemberDisplayId: string | null;
   reportedMemberName: string;
   reportedMemberHref: string | null;
   reporterId: string | null;
+  reporterDisplayId: string | null;
   reporterName: string;
   reporterHref: string | null;
   relatedQuestId: string | null;
+  relatedQuestDisplayId: string | null;
   relatedQuestTitle: string | null;
   relatedQuestHref: string | null;
   moderationHistory: ModerationHistorySummary;
@@ -102,6 +105,12 @@ function firstText(...values: unknown[]): string | null {
   return null;
 }
 
+function readableId(value: unknown): string | null {
+  const result = text(value);
+  if (!result || /^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i.test(result)) return null;
+  return result;
+}
+
 function personName(value: unknown): string | null {
   const record = asRecord(value);
   if (!record) return text(value);
@@ -112,12 +121,28 @@ function personName(value: unknown): string | null {
   );
 }
 
-function stringList(value: unknown): string[] {
+function evidenceReferences(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((entry) => {
-    const reference = text(entry);
-    return reference ? [reference] : [];
+    if (typeof entry === "string") {
+      const id = text(entry);
+      return id ? [id] : [];
+    }
+    const record = asRecord(entry);
+    const id = text(record?.id);
+    return id ? [id] : [];
   });
+}
+
+function reportReasonLabel(value: unknown): string | null {
+  switch (value) {
+    case "REPORT_ABUSIVE_OR_HARASSMENT": return "Harassment or abuse";
+    case "REPORT_SPAM": return "Spam";
+    case "REPORT_INAPPROPRIATE_CONTENT": return "Inappropriate content";
+    case "REPORT_DANGER_OR_THREAT": return "Danger or threat";
+    case "REPORT_OTHER": return "Other";
+    default: return text(value);
+  }
 }
 
 export function reportCaseStatusFromRecord(value: unknown): ReportCaseStatus | null {
@@ -195,28 +220,43 @@ export function reportCaseModelFromRecord(value: unknown): ReportCaseModel | nul
   if (!status) return null;
 
   const id = text(record.id) as string;
-  const reportedMemberId = firstText(record.reportedMemberId, record.reportedUserId) ?? "";
+  // The UI shows one Reporting Member. The API orders entries oldest first,
+  // so the first entry is the original submission for this Report Case.
+  const reporterEntry = Array.isArray(record.reporterEntries)
+    ? asRecord(record.reporterEntries[0])
+    : null;
+  const reporter = asRecord(reporterEntry?.reporter) ?? asRecord(record.reporter);
+  const reportedMember = asRecord(record.reportedMember);
+  const reportedMemberId = firstText(record.reportedMemberId, record.reportedUserId, reportedMember?.id) ?? "";
   const reporterId = firstText(
     record.reporterId,
     record.submittedByMemberId,
     record.submittedByUserId,
+    reporterEntry?.reporterMemberId,
+    reporter?.id,
   );
   const reportedMemberName = firstText(
     record.reportedMemberName,
     record.reportedUserName,
-    personName(record.reportedMember),
-    reportedMemberId ? `Member ${reportedMemberId}` : "Member not provided",
+    personName(reportedMember),
+    "Member not provided",
   ) as string;
   const reporterName = firstText(
     record.reporterName,
     record.submittedByMemberName,
-    personName(record.reporter),
-    reporterId ? `Member ${reporterId}` : "Reporter not provided",
+    personName(reporter),
+    "Reporter not provided",
   ) as string;
-  const quest = asRecord(record.quest);
+  const quest = asRecord(record.quest) ?? asRecord(record.relatedQuest);
   const relatedQuestId = firstText(record.questId, record.relatedQuestId, quest?.id);
   const relatedQuestTitle = firstText(record.questTitle, record.relatedQuestTitle, quest?.title);
-  const evidenceRefs = stringList(record.evidenceRefs);
+  const relatedQuestDisplayId = firstText(
+    readableId(record.questDisplayId),
+    readableId(record.relatedQuestDisplayId),
+    readableId(quest?.displayId),
+    readableId(relatedQuestId),
+  );
+  const evidenceRefs = evidenceReferences(record.evidenceReferences ?? record.evidenceRefs);
   const evidenceLabel = text(record.evidence);
   const evidence = evidenceRefs.length
     ? evidenceRefs.map((reference, index) => ({
@@ -237,33 +277,48 @@ export function reportCaseModelFromRecord(value: unknown): ReportCaseModel | nul
 
   return {
     id,
-    displayId: text(record.displayId) ?? id,
+    displayId: readableId(record.displayId) ?? readableId(id) ?? "Report Case",
     status,
     statusLabel: reportCaseStatusLabel(status),
     badgeClass: statusBadgeClass(status),
     isActionable: isReportCaseActionable(status),
     title: `Report against ${reportedMemberName}`,
-    reportType: firstText(record.category, record.reportType, record.reason) ?? "Message content",
+    reportType: reportReasonLabel(firstText(record.category, record.reportType, record.reason, reporterEntry?.reason)) ?? "Message content",
     source: "Message",
     reportedMemberId,
+    reportedMemberDisplayId: firstText(
+      readableId(record.reportedMemberStudentId),
+      readableId(reportedMember?.studentId),
+      readableId(record.reportedMemberId),
+      readableId(record.reportedUserId),
+    ),
     reportedMemberName,
     reportedMemberHref: reportedMemberId ? memberRoutes.detail(reportedMemberId) : null,
     reporterId,
+    reporterDisplayId: firstText(
+      readableId(record.reporterStudentId),
+      readableId(record.submittedByStudentId),
+      readableId(reporter?.studentId),
+      readableId(record.reporterId),
+      readableId(record.submittedByMemberId),
+      readableId(record.submittedByUserId),
+    ),
     reporterName,
     reporterHref: reporterId ? memberRoutes.detail(reporterId) : null,
     relatedQuestId,
+    relatedQuestDisplayId,
     relatedQuestTitle,
     relatedQuestHref: relatedQuestId ? questRoutes.detail(relatedQuestId) : null,
     moderationHistory: moderationHistoryFromRecord(record),
-    detail: firstText(record.details, record.description) ?? "No Report Case detail was provided.",
-    submittedAt: formatAdminTimestamp(firstText(record.reportedAt, record.submittedAt, record.createdAt) ?? "Time not provided"),
+    detail: firstText(record.details, record.detail, record.description, reporterEntry?.detail) ?? "No Report Case detail was provided.",
+    submittedAt: formatAdminTimestamp(firstText(record.reportedAt, record.submittedAt, record.createdAt, reporterEntry?.createdAt) ?? "Time not provided"),
     evidence,
     decisionLabel,
     decisionReason: firstText(record.decisionReason),
     resolution: firstText(record.resolution),
     resolvedBy: firstText(record.resolvedBy, record.resolvedByAdminId),
-    resolutionAt: firstText(record.resolutionAt),
-    closedAt: firstText(record.closedAt),
+    resolutionAt: firstText(record.resolutionAt, record.caseClosedAt),
+    closedAt: firstText(record.closedAt, record.caseClosedAt),
     version: typeof record.version === "number" ? record.version : undefined,
   };
 }

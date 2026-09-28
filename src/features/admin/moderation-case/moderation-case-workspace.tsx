@@ -22,10 +22,16 @@ export type ModerationCaseKind = "Report Case" | "Conduct Report" | "Dispute Cas
 
 type Person = {
   id: string | null;
+  displayId?: string | null;
   name: string;
   href: string | null;
   role: string;
 };
+
+function readableId(value: string | null | undefined): string | null {
+  if (!value || /^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i.test(value)) return null;
+  return value;
+}
 
 export type ModerationCaseWorkspaceProps = {
   kind: ModerationCaseKind;
@@ -74,7 +80,7 @@ export function ModerationHistoryPanel({
   summary: ModerationHistorySummary;
   translateText: (value: string) => string;
   compact: boolean;
-  member?: { id: string | null; name: string; href: string | null } | null;
+  member?: { id: string | null; displayId?: string | null; name: string; href: string | null } | null;
   memberLabel?: string;
   showAdminNotes?: boolean;
 }) {
@@ -99,7 +105,7 @@ export function ModerationHistoryPanel({
           <span>{translateText(memberLabel)}</span>
           <p>
             <strong className="font-semibold">{!compact && member.href && member.id ? <Link href={member.href}>{member.name}</Link> : member.name}</strong>
-            {member.id && <small className="text-xs text-admin-muted"> · {member.id}</small>}
+            {(member.displayId ?? readableId(member.id)) && <small className="text-xs text-admin-muted"> · {member.displayId ?? readableId(member.id)}</small>}
           </p>
         </div>
       )}
@@ -167,8 +173,8 @@ function CaseContextPanel({
       </div>
       {(reportedMember || reporter) && (
         <div className={`${adminRecordPartyGrid} moderation-case-parties`}>
-          {reportedMember && <div><span>{translateText(reportedMember.role)}</span><strong><PersonLink person={reportedMember} interactive={!compact} /></strong><small>{reportedMember.id ?? "—"}</small></div>}
-          {reporter && <div><span>{translateText(reporter.role)}</span><strong><PersonLink person={reporter} interactive={!compact} /></strong><small>{reporter.id ?? "—"}</small></div>}
+          {reportedMember && <div><span>{translateText(reportedMember.role)}</span><strong><PersonLink person={reportedMember} interactive={!compact} /></strong><small>{reportedMember.displayId ?? readableId(reportedMember.id) ?? "—"}</small></div>}
+          {reporter && <div><span>{translateText(reporter.role)}</span><strong><PersonLink person={reporter} interactive={!compact} /></strong><small>{reporter.displayId ?? readableId(reporter.id) ?? "—"}</small></div>}
         </div>
       )}
       {showRelatedRecord && relatedRecord && (
@@ -178,7 +184,7 @@ function CaseContextPanel({
             {relatedRecord.href && relatedRecord.id && !compact
               ? <Link href={relatedRecord.href}>{relatedRecord.title ?? relatedRecord.id}</Link>
               : <strong>{relatedRecord.title ?? relatedRecord.id ?? fallback}</strong>}
-            {relatedRecord.id && <small> · {relatedRecord.id}</small>}
+            {readableId(relatedRecord.id) && <small> · {readableId(relatedRecord.id)}</small>}
           </p>
           {relatedRecord.state && <p>{translateText("Quest State")}: {translateText(questStateLabel(relatedRecord.state))}</p>}
         </div>

@@ -81,6 +81,68 @@ describe("Report Case model", () => {
     expect(model?.reportedMemberHref).not.toContain("/users/");
   });
 
+  it("maps nested API reporter entries and evidence references without showing UUIDs as IDs", () => {
+    const model = reportCaseModelFromRecord({
+      id: "0a000000-0000-4000-8000-000000000001",
+      displayId: "RPT-000042",
+      status: "REPORT_CASE_PENDING",
+      messageId: "0b000000-0000-4000-8000-000000000001",
+      questId: "0c000000-0000-4000-8000-000000000001",
+      createdAt: "2026-09-12T12:00:00.000Z",
+      caseClosedAt: null,
+      version: 1,
+      reporterEntries: [{
+        id: "0d000000-0000-4000-8000-000000000001",
+        reporterMemberId: "0e000000-0000-4000-8000-000000000001",
+        reporter: {
+          id: "0e000000-0000-4000-8000-000000000001",
+          email: "benja@ku.th",
+          firstName: "Benja",
+          lastName: "Ariyawat",
+        },
+        reason: "REPORT_SPAM",
+        detail: "This Message is repeated spam.",
+        createdAt: "2026-09-12T12:00:00.000Z",
+      }],
+      evidenceReferences: [{
+        id: "0f000000-0000-4000-8000-000000000001",
+        messageId: "0b000000-0000-4000-8000-000000000001",
+        attachmentId: null,
+        createdAt: "2026-09-12T12:00:00.000Z",
+      }],
+    });
+
+    expect(model).toMatchObject({
+      displayId: "RPT-000042",
+      reporterId: "0e000000-0000-4000-8000-000000000001",
+      reporterName: "Benja Ariyawat",
+      reporterDisplayId: null,
+      reportType: "Spam",
+      detail: "This Message is repeated spam.",
+      relatedQuestId: "0c000000-0000-4000-8000-000000000001",
+      relatedQuestDisplayId: null,
+      closedAt: null,
+    });
+    expect(model?.evidence).toEqual([{
+      reference: "0f000000-0000-4000-8000-000000000001",
+      label: "Evidence Reference 1",
+    }]);
+    expect(model?.reporterHref).toBe("/member/0e000000-0000-4000-8000-000000000001");
+  });
+
+  it("does not show UUIDs as Member names when the API omits names", () => {
+    const model = reportCaseModelFromRecord({
+      id: "0a000000-0000-4000-8000-000000000001",
+      displayId: "RPT-000043",
+      status: "REPORT_CASE_PENDING",
+      reportedMemberId: "0b000000-0000-4000-8000-000000000001",
+      reporterId: "0c000000-0000-4000-8000-000000000001",
+    });
+
+    expect(model?.reportedMemberName).toBe("Member not provided");
+    expect(model?.reporterName).toBe("Reporter not provided");
+  });
+
   it("makes pending and hidden Report Cases actionable, but not closed cases", () => {
     expect(isReportCaseActionable("REPORT_CASE_PENDING")).toBe(true);
     expect(isReportCaseActionable("REPORT_CASE_HIDDEN")).toBe(true);
