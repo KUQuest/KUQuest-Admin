@@ -3,7 +3,7 @@ import type {
   AdminApiRequestOptions,
   AdminQuest,
 } from "../api/admin-api";
-import { adminApi } from "../api/admin-api";
+import { adminApiProvider } from "../api/admin-provider";
 import {
   questDetailViewFromApi,
   questFinanceViewFromApi,
@@ -17,7 +17,7 @@ import {
   mockDisputeIdForQuest,
   mockQuestDetailForId,
   mockQuestFinance,
-  mockQuests,
+  mockAllQuests,
 } from "./quest-mock-data";
 
 export type QuestDataSource = "api" | "mock";
@@ -33,22 +33,41 @@ export type QuestDetailPageData = {
   disputeLookupError: string | null;
 };
 
-function apiRequestOptions(cookieHeader: string): AdminApiRequestOptions {
-  return { headers: { Cookie: cookieHeader } };
+function apiRequestOptions(cookieHeader?: string): AdminApiRequestOptions {
+  return cookieHeader ? { headers: { Cookie: cookieHeader } } : {};
+}
+
+async function resolveApiQuestId(questId: string, options: AdminApiRequestOptions): Promise<string> {
+  if (!/^QST-/i.test(questId)) return questId;
+
+  let cursor: string | undefined;
+  do {
+    const page = await adminApiProvider.read.listQuests({
+      limit: 50,
+      sort: "newest",
+      ...(cursor ? { cursor } : {}),
+    }, options);
+    const match = page.items.find((item) => item.displayId === questId || item.id === questId);
+    if (match) return match.id;
+    if (!page.nextCursor || page.nextCursor === cursor) break;
+    cursor = page.nextCursor;
+  } while (cursor);
+
+  return questId;
 }
 
 export async function loadQuestBoardPageData(
-  cookieHeader: string,
+  cookieHeader?: string,
   dataSource: QuestDataSource = "api",
 ): Promise<QuestBoardPageData> {
-  if (dataSource === "mock") return { rows: questRowsFromApi(mockQuests) };
+  if (dataSource === "mock") return { rows: questRowsFromApi(mockAllQuests) };
 
   const options = apiRequestOptions(cookieHeader);
   const quests: AdminQuest[] = [];
   let cursor: string | undefined;
 
   do {
-    const page = await adminApi.listQuests({
+    const page = await adminApiProvider.read.listQuests({
       limit: 50,
       sort: "newest",
       ...(cursor ? { cursor } : {}),
@@ -78,9 +97,10 @@ export async function loadQuestDetailPageData(
   }
 
   const options = apiRequestOptions(cookieHeader);
+  const apiQuestId = await resolveApiQuestId(questId, options);
   const [detailResult, financeResult] = await Promise.allSettled([
-    adminApi.getQuest(questId, options),
-    adminApi.getQuestFinance(questId, options),
+    adminApiProvider.read.getQuest(apiQuestId, options),
+    adminApiProvider.read.getQuestFinance(apiQuestId, options),
   ]);
 
   if (detailResult.status === "rejected") {

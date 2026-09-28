@@ -1,5 +1,6 @@
 import type { PersistedAdminData } from "../data/admin-records";
-import { ADMIN_DEMO_DATA_KEY, type BrowserStorage } from "../data/legacy-admin-data-adapter";
+import { ADMIN_DEMO_DATA_KEY, type BrowserStorage } from "../data/admin-demo-data-adapter";
+import { pageMockItems } from "../data/mock-pagination";
 import { loadDashboardData } from "../dashboard/dashboard-bootstrap";
 import type { DisputeResolution } from "../api/admin-api";
 import {
@@ -16,8 +17,12 @@ import {
 export type DisputeCaseMockPage = {
   source: "mock";
   items: DisputeCaseModel[];
-  nextCursor: null;
+  nextCursor: string | null;
 };
+
+// Keep the first page compatible with the original two-case fixture while
+// making additional mock pages available to Admin QA.
+export const DISPUTE_CASE_MOCK_PAGE_SIZE = 2;
 
 export function newDisputeCaseIdempotencyKey(disputeId: string): string {
   const uuid = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -30,15 +35,28 @@ function disputeRecords(data: PersistedAdminData): DisputeCaseRecord[] {
   return disputeCasesOnly(data.collections.disputes);
 }
 
-export function loadDisputeCasesFromMock(storage: BrowserStorage): DisputeCaseMockPage {
+export function loadDisputeCasesFromMock(storage: BrowserStorage, cursor?: string): DisputeCaseMockPage {
+  const records = disputeRecords(loadDashboardData(storage));
+  const models = records.flatMap((record) => {
+    const model = disputeCaseModelFromRecord(record, "mock");
+    return model ? [model] : [];
+  });
+  const page = pageMockItems(models, cursor, DISPUTE_CASE_MOCK_PAGE_SIZE);
   return {
     source: "mock",
-    items: disputeRecords(loadDashboardData(storage)).flatMap((record) => {
-      const model = disputeCaseModelFromRecord(record, "mock");
-      return model ? [model] : [];
-    }),
-    nextCursor: null,
+    items: page.items,
+    nextCursor: page.nextCursor,
   };
+}
+
+/** Load the complete mock Dispute Case collection for local pagination. */
+export function loadAllDisputeCasesFromMock(storage: BrowserStorage): DisputeCaseMockPage {
+  const records = disputeRecords(loadDashboardData(storage));
+  const items = records.flatMap((record) => {
+    const model = disputeCaseModelFromRecord(record, "mock");
+    return model ? [model] : [];
+  });
+  return { source: "mock", items, nextCursor: null };
 }
 
 export function findDisputeCaseFromMock(
@@ -86,7 +104,7 @@ export function saveMockDisputeDecision(
   dispute.closedAt = now;
   dispute.tone = command === "DISPUTE_CASE_RESOLVED" ? "success" : "neutral";
   dispute.resolution = command === "DISPUTE_CASE_RESOLVED"
-    ? `Dispute Case resolved; ${options.amountSatang} Satang allocated to the Worker Earnings Balance.`
+    ? "Dispute Case resolved; the full remaining amount was transferred to the Worker Earnings Balance."
     : "Dispute Case dismissed; no money movement was made.";
   dispute.resolvedWorkerId = command === "DISPUTE_CASE_RESOLVED" ? options.workerId : null;
   dispute.resolvedAmountSatang = command === "DISPUTE_CASE_RESOLVED" ? options.amountSatang : null;

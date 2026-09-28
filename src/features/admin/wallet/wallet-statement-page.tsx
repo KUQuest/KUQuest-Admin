@@ -1,6 +1,13 @@
+"use client";
+
 import Link from "next/link";
 
+import { useAdminShell } from "../../../components/admin/admin-shell-context";
+import { AdminPageHeader } from "../../../components/admin/admin-page-header";
+import { Button, Card, CardHeader } from "../../../components/ui";
 import { memberRoutes } from "../admin-routes";
+import { displayAdminId } from "../display-admin-id";
+import { adminRecordFact, adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
 import { walletStatusLabel, type WalletStatus } from "../domain/rulebook";
 import {
   formatWalletDate,
@@ -11,36 +18,30 @@ import type { WalletStatementPageData } from "./wallet-service";
 import { WalletStatementTable } from "./wallet-statement-table";
 
 function WalletStatusBadge({ status }: { status: WalletStatus }) {
-  return <span className={`badge ${walletStatusClass(status)}`}>{walletStatusLabel(status)}</span>;
+  const { translateText } = useAdminShell();
+  return <span className={`badge ${walletStatusClass(status)}`}>{translateText(walletStatusLabel(status))}</span>;
 }
 
 export function AdminWalletStatementPage({ data }: { data: WalletStatementPageData }) {
+  const { translateText } = useAdminShell();
   const { wallet, ledger } = data;
 
   return <main className="admin-route-page wallet-statement-route-page" tabIndex={-1}>
-    <div className="page-head">
-      <div>
-        <p className="admin-route-kicker">Member Wallet</p>
-        <h1>Wallet Statement</h1>
-        <p>{wallet.memberName} · {wallet.email}</p>
-      </div>
-      <Link className="btn" href={memberRoutes.detail(wallet.memberId)}>Back to Member</Link>
-    </div>
-    <section className="panel" aria-label="Wallet Statement">
-      <section className="wallet-record">
-        <div className="drawer-title"><span className="att-icon neutral">W</span><div><h2>{wallet.memberName}</h2><p>{wallet.email} · {wallet.memberId}</p></div></div>
-        <div className="facts">
-          <div className="fact"><span>Status</span><strong><WalletStatusBadge status={wallet.status} /></strong></div>
-          <div className="fact"><span>Current Wallet Balance</span><strong>{formatWalletMoney(wallet.currentBalanceSatang)}</strong></div>
-          <div className="fact"><span>Wallet record</span><strong>{wallet.id}</strong></div>
-          <div className="fact"><span>Latest Wallet Transaction</span><strong>{formatWalletDate(wallet.latestTransactionAt)}</strong></div>
+    <AdminPageHeader kicker={translateText("Member Wallet")} title={translateText("Wallet Statement")} description={`${wallet.memberName} · ${wallet.email}`} actions={wallet.memberAvailable ? <Button asChild variant="outline"><Link href={memberRoutes.detail(wallet.memberId)}>{translateText("Back to Member")}</Link></Button> : null} />
+    <Card as="section" className="overflow-hidden" aria-label={translateText("Wallet Statement")}>
+      <Card as="section" className="wallet-record">
+        <div className="drawer-title"><span className="att-icon neutral">W</span><div><h2>{wallet.memberName}</h2><p>{wallet.email} · {displayAdminId(wallet.studentId) ?? translateText("Student ID not provided")}</p></div></div>
+        <div className={adminRecordFacts}>
+          <div className={adminRecordFact}><span>{translateText("Wallet Status")}</span><strong><WalletStatusBadge status={wallet.status} /></strong></div>
+          <div className={adminRecordFact}><span>{translateText("Current Wallet Balance")}</span><strong>{formatWalletMoney(wallet.currentBalanceSatang)}</strong></div>
+          <div className={adminRecordFact}><span>{translateText("Latest Wallet Transaction Date")}</span><strong>{formatWalletDate(wallet.latestTransactionAt)}</strong></div>
         </div>
-      </section>
-      <section className="section">
-        <h2>Wallet Statement</h2>
-        <p>Every committed and sealed Ledger Transaction for this Wallet, newest first.</p>
+      </Card>
+      <Card as="section" className={adminRecordSection}>
+        <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Wallet Statement")}</h2></CardHeader>
+        <p>{translateText("Committed and sealed Ledger Transactions affecting this Wallet.")}</p>
         <WalletStatementTable transactions={ledger} />
-      </section>
-    </section>
+      </Card>
+    </Card>
   </main>;
 }

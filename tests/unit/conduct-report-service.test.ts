@@ -40,7 +40,7 @@ describe("Conduct Report service", () => {
 
     const page = await loadConductReportPageData("kuquest-admin=server-session");
 
-    expect(request?.url).toBe("https://api.example.test/api/v1/admin/reports?limit=50");
+    expect(request?.url).toBe("https://api.example.test/api/v1/admin/reports?kind=CONDUCT_REPORT&limit=50&sort=newest");
     expect(request?.headers.get("cookie")).toBe("kuquest-admin=server-session");
     expect(page.items.map((record) => record.id)).toEqual(["CND-1"]);
     expect(page.items[0]).toMatchObject({
@@ -67,7 +67,7 @@ describe("Conduct Report service", () => {
 
     const page = await loadConductReportPageData(undefined, "next-conduct-page");
 
-    expect(request?.url).toBe("https://api.example.test/api/v1/admin/reports?limit=50&cursor=next-conduct-page");
+    expect(request?.url).toBe("https://api.example.test/api/v1/admin/reports?kind=CONDUCT_REPORT&limit=50&sort=newest&cursor=next-conduct-page");
     expect(page.items[0]?.status).toBe("CONDUCT_REPORT_DISMISSED");
   });
 });

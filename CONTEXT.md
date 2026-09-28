@@ -28,6 +28,10 @@ _Avoid_: User, account holder, Student (use Member when the KUQuest identity mat
 A KUQuest Admin web app operator, signed in with credentials (not Google). Represented by the `auth_admin` table — a separate identity space from Member, sharing `auth_account`/`auth_session` via a nullable `userId`/`adminId` pair (exactly one set per row). Schema landed in [[BE-32]]; the second better-auth instance wiring credential login for Admins is a follow-up, not yet built. One undifferentiated permission tier — `auth_admin` has no role/permission column. For Payout Approval, Dispute Case, Quest Hide, Wallet Freeze/Suspend, Trust & Safety moderation, and the Member penalty ladders, read `docs/rulebook/admin/admin-rulebook.md`.
 _Avoid_: User (Admins are never Members and vice versa).
 
+**Display ID**:
+The human-readable `displayId` that the Admin API returns for a resource. The Admin app shows this value in screen text when it is available. The app uses the resource UUID for Admin API queries and commands. It does not show a resource UUID as a visible record identifier. If the API does not return a Display ID, show a safe resource name or no identifier. Student ID is Member data; it is separate from the internal Member UUID.
+_Avoid_: showing a resource UUID as a record identifier; using a Display ID as an Admin API resource key; treating Student ID as an internal key.
+
 **Onboarding**:
 The one-time step after first sign-in where a Member supplies Telephone, Department, and Student ID. A Member is considered onboarded once all three fields are set. The routes under `/api/v1/onboarding/*` are debug scaffolding, not a contract — do not build against them, and do not treat their validation rules as canonical. Superseded by Academic Registration below, which is the canonical contract mobile integrates against ([[BE-95]]).
 _Avoid_: Profile setup, registration.

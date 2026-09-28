@@ -1,11 +1,14 @@
 import type {
   AdminFinanceOverview,
+  AdminLedgerEventType,
   AdminLedgerTransaction,
   AdminWallet,
   AdminWalletDetail,
   AdminWalletStatusHistoryEntry,
   AdminWalletVerification,
 } from "../api/admin-api";
+import { pageCount, pageRows, type BoardPageSize } from "@/lib/board-pagination";
+import { formatAdminTimestamp } from "../date-format";
 import {
   walletStatusFor,
   walletStatusLabel,
@@ -21,7 +24,7 @@ export const WALLET_BOARD_TABS = [
 ] as const;
 
 export type WalletBoardTab = (typeof WALLET_BOARD_TABS)[number]["id"];
-export type WalletBoardPageSize = number | "all";
+export type WalletBoardPageSize = BoardPageSize;
 export type WalletSortKey = "id" | "member" | "balance" | "latestTransactionAt" | "status" | "createdAt";
 export type WalletSortSelection = WalletSortKey | null;
 export type WalletSortDirection = "ascending" | "descending";
@@ -29,6 +32,7 @@ export type WalletSortDirection = "ascending" | "descending";
 export type WalletBoardRow = {
   id: string;
   memberId: string;
+  memberAvailable: boolean;
   memberName: string;
   studentId: string | null;
   email: string;
@@ -66,6 +70,7 @@ export type WalletHistoryView = {
   fromStatus: WalletStatus | null;
   toStatus: WalletStatus;
   reason: string;
+  actorAdminId: string | null;
   createdAt: string;
 };
 
@@ -80,6 +85,26 @@ export type WalletLedgerView = {
   resultingBalanceSatang: number;
 };
 
+const walletEventTypeLabels: Record<AdminLedgerEventType, string> = {
+  TOP_UP: "Top-up",
+  PAYOUT: "Payout",
+  FUNDING_RESERVE: "Funding Reserve",
+  FUNDING_RELEASE: "Funding Release",
+  FUNDING_SETTLEMENT: "Funding Settlement",
+  ADJUSTMENT: "Adjustment",
+  EARNINGS_CONVERSION: "Earnings Conversion",
+};
+
+export function walletEventTypeLabel(eventType: string): string {
+  const label = walletEventTypeLabels[eventType as AdminLedgerEventType];
+  if (label) return label;
+  return eventType.replaceAll("_", " ").toLowerCase().replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
+}
+
+export function walletBusinessReferenceLabel(businessReference: string | undefined): string {
+  return businessReference?.replaceAll("_", " ") ?? "";
+}
+
 export const WALLET_COMPARTMENT_ACCOUNT_TYPES = [
   "SPENDING",
   "EARNINGS",
@@ -88,6 +113,20 @@ export const WALLET_COMPARTMENT_ACCOUNT_TYPES = [
 ] as const;
 
 export type WalletCompartmentAccountType = (typeof WALLET_COMPARTMENT_ACCOUNT_TYPES)[number];
+
+const walletCompartmentLabels: Record<WalletCompartmentAccountType, string> = {
+  SPENDING: "Spending Balance",
+  EARNINGS: "Earnings Balance",
+  FUNDING_RESERVED: "Funding Reserved",
+  RESERVED_FOR_PAYOUTS: "Reserved For Payouts",
+};
+
+export function walletCompartmentLabel(accountType: string): string {
+  if (Object.hasOwn(walletCompartmentLabels, accountType)) {
+    return walletCompartmentLabels[accountType as WalletCompartmentAccountType];
+  }
+  return accountType.toLowerCase().replaceAll("_", " ").replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
+}
 
 const walletCompartmentAccountTypes = new Set<string>(WALLET_COMPARTMENT_ACCOUNT_TYPES);
 
@@ -100,18 +139,24 @@ function walletBalancesFromApi(balances: AdminWallet["balances"]): WalletDetailV
   };
 }
 
+const MEMBER_NOT_PROVIDED = "Member not provided";
+const EMAIL_NOT_PROVIDED = "Email not provided";
+
 function memberName(member: AdminWallet["member"]): string {
-  return `${member.firstName} ${member.lastName}`.trim() || member.email;
+  if (!member) return MEMBER_NOT_PROVIDED;
+  return `${member.firstName} ${member.lastName}`.trim() || member.email || MEMBER_NOT_PROVIDED;
 }
 
 export function walletRowFromApi(wallet: AdminWallet): WalletBoardRow {
   const status = walletStatusFor(wallet.walletStatus);
+  const member = wallet.member;
   return {
     id: wallet.id,
     memberId: wallet.userId,
-    memberName: memberName(wallet.member),
-    studentId: wallet.member.studentId,
-    email: wallet.member.email,
+    memberAvailable: Boolean(member),
+    memberName: memberName(member),
+    studentId: member?.studentId ?? null,
+    email: member?.email || EMAIL_NOT_PROVIDED,
     status,
     statusLabel: walletStatusLabel(status),
     currentBalanceSatang: wallet.balances.totalBalanceSatang,
@@ -147,6 +192,7 @@ export function walletHistoryFromApi(
     fromStatus: entry.fromStatus,
     toStatus: entry.toStatus,
     reason: entry.reason,
+    actorAdminId: entry.actorAdminId,
     createdAt: entry.createdAt,
   }));
 }
@@ -255,7 +301,7 @@ function walletSortValue(row: WalletBoardRow, key: WalletSortKey): string | numb
   if (key === "balance") return row.currentBalanceSatang;
   if (key === "latestTransactionAt") return Date.parse(row.latestTransactionAt ?? "") || 0;
   if (key === "createdAt") return Date.parse(row.createdAt) || 0;
-  if (key === "id") return row.id;
+  if (key === "id") return row.studentId ?? "";
   if (key === "member") return row.memberName;
   return row.statusLabel;
 }
@@ -285,29 +331,18 @@ export function pageWalletRows(
   page: number,
   pageSize: WalletBoardPageSize,
 ): WalletBoardRow[] {
-  if (pageSize === "all") return rows;
-  const start = Math.max(0, page - 1) * pageSize;
-  return rows.slice(start, start + pageSize);
+  return pageRows(rows, page, pageSize);
 }
 
 export function walletPageCount(rowCount: number, pageSize: WalletBoardPageSize): number {
-  return pageSize === "all" ? (rowCount ? 1 : 0) : Math.ceil(rowCount / pageSize);
+  return pageCount(rowCount, pageSize);
 }
 
 export function formatWalletDate(value: string | null | undefined): string {
-  if (!value) return "Not provided";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Not provided";
-  return `${date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "Asia/Bangkok",
-  })} · ${date.toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Asia/Bangkok",
-  })} ICT`;
+  const formatted = formatAdminTimestamp(value, "Asia/Bangkok");
+  return formatted === (value?.trim() || "") && !value?.trim().match(/^\d{1,2}\s+[A-Za-z]{3}\s+\d{4}/)
+    ? "Not provided"
+    : formatted;
 }
 
 export function formatWalletMoney(satang: number | null | undefined): string {
@@ -316,6 +351,10 @@ export function formatWalletMoney(satang: number | null | undefined): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+}
+
+export function formatWalletMovementAmount(satang: number): string {
+  return `${satang < 0 ? "-" : "+"}${formatWalletMoney(Math.abs(satang))}`;
 }
 
 export function walletStatusClass(status: WalletStatus): string {

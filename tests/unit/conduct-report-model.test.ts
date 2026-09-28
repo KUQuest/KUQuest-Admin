@@ -42,9 +42,15 @@ describe("Conduct Report model", () => {
       reporterName: "Benja Ariyawat",
       reasonCode: "CONDUCT_OUT_OF_SCOPE",
       questId: "QST-12001",
+      questState: "QUEST_FAILED",
+      failedAt: "2026-09-12T11:00:00.000Z",
       relatedQuestTitle: "Verify dorm fire exits",
       details: "The Worker was asked to perform work outside the Quest Condition.",
       submittedAt: "2026-09-12T12:00:00.000Z",
+      reportedMemberStatus: "ACTIVE",
+      previousReportCount: 2,
+      confirmedViolationCount: 1,
+      previousModerationActions: ["Red Flag"],
       version: 3,
     });
 
@@ -57,14 +63,23 @@ describe("Conduct Report model", () => {
       reasonCode: "CONDUCT_OUT_OF_SCOPE",
       questId: "QST-12001",
       questTitle: "Verify dorm fire exits",
+      questState: "QUEST_FAILED",
+      questFailedAt: "2026-09-12T11:00:00.000Z",
       reportedMemberName: "Amara Ariyawat",
       reporterName: "Benja Ariyawat",
       detail: "The Worker was asked to perform work outside the Quest Condition.",
-      submittedAt: "2026-09-12T12:00:00.000Z",
+      submittedAt: "12 Sep 2026 12:00",
       version: 3,
     });
     expect(model?.reportedMemberHref).toBe("/member/member-reported");
     expect(model?.reporterHref).toBe("/member/member-reporter");
+    expect(model?.questHref).toBe("/quest/QST-12001");
+    expect(model?.moderationHistory).toMatchObject({
+      currentMemberStatus: "ACTIVE",
+      previousReportCount: 2,
+      confirmedViolationCount: 1,
+      previousActions: ["Red Flag"],
+    });
     expect(model?.title).toBe("Out of scope work");
     expect(conductReportModelFromRecord({
       id: "RPT-1",

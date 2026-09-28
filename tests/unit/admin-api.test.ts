@@ -101,7 +101,7 @@ describe("Admin API boundary", () => {
     const options = { headers: { Cookie: "kuquest-admin=server-session" } };
     await adminApi.listReports({}, options);
     await adminApi.getReport("report-1", options);
-    await adminApi.getEvidence("evidence-1", options);
+    await adminApi.getEvidence("evidence-1", { ...options, idempotencyKey: "evidence-read-1" });
 
     expect(cookies).toEqual([
       "kuquest-admin=server-session",
@@ -395,9 +395,7 @@ describe("Admin API boundary", () => {
     expect(request?.url).toBe("https://api.example.test/api/v1/admin/payouts/payout%2F1/cancel");
     expect(request?.headers.get("idempotency-key")).toBe("reject-payout-1");
     expect(request?.headers.get("if-match")).toBe("4");
-    expect(await request?.json()).toEqual({
-      reasonCode: "PAYOUT_INVALID_DESTINATION",
-    });
+    expect(await request?.json()).toEqual({ reasonCode: "PAYOUT_INVALID_DESTINATION" });
   });
 
   it("sends the Payout approval contract", async () => {
@@ -413,7 +411,6 @@ describe("Admin API boundary", () => {
       idempotencyKey: "approve-payout-1",
       expectedVersion: 4,
       reasonCode: "PAYOUT_RISK_REVIEW",
-      note: "Destination and balance were verified.",
     });
 
     expect(request?.url).toBe("https://api.example.test/api/v1/admin/payouts/payout-1/approve");
@@ -515,7 +512,6 @@ describe("Admin API boundary", () => {
     expect(request?.headers.get("idempotency-key")).toBe("hide-quest-1");
     expect(request?.headers.get("if-match")).toBe("2");
     expect(await request?.json()).toEqual({
-      reason: "The Quest needs policy review.",
       reasonCode: "POLICY_REVIEW",
     });
   });
@@ -546,7 +542,6 @@ describe("Admin API boundary", () => {
     expect(request?.headers.get("idempotency-key")).toBe("terminate-quest-1");
     expect(request?.headers.get("if-match")).toBe("2");
     expect(await request?.json()).toEqual({
-      reason: "The Quest violates the safety policy.",
       reasonCode: "SAFETY_REVIEW",
     });
   });
@@ -577,7 +572,6 @@ describe("Admin API boundary", () => {
     expect(request?.headers.get("idempotency-key")).toBe("restore-quest-1");
     expect(request?.headers.get("if-match")).toBe("2");
     expect(await request?.json()).toEqual({
-      reason: "The Quest is safe after review.",
       reasonCode: "POLICY_REVIEW",
     });
   });
@@ -594,19 +588,17 @@ describe("Admin API boundary", () => {
       });
     });
 
-    await adminApi.decideReport("CND-1", {
+    await adminApi.decideConductReport("CND-1", {
       idempotencyKey: "conduct-report-1",
-      decision: "CONDUCT_REPORT_UPHELD",
-      reason: "The Quest record confirms the violation.",
+      expectedVersion: 2,
+      outcome: "CONDUCT_REPORT_UPHELD",
     });
 
     expect(request?.url).toBe("https://api.example.test/api/v1/admin/reports/CND-1/decide");
     expect(request?.method).toBe("POST");
     expect(request?.headers.get("idempotency-key")).toBe("conduct-report-1");
-    expect(await request?.json()).toEqual({
-      decision: "CONDUCT_REPORT_UPHELD",
-      reason: "The Quest record confirms the violation.",
-    });
+    expect(request?.headers.get("if-match")).toBe("2");
+    expect(await request?.json()).toEqual({ outcome: "CONDUCT_REPORT_UPHELD" });
   });
 
   it("maps an API error envelope to ApiError", async () => {
@@ -670,12 +662,13 @@ describe("Admin API boundary", () => {
     await adminApi.retryTopUpProviderEvent("top-up-event-1");
     await adminApi.listReports();
     await adminApi.getReport("report-1");
-    await adminApi.decideReport("report-1", {
+    await adminApi.decideReportCase("report-1", {
       idempotencyKey: "decide-1",
-      decision: "REPORT_CASE_DISMISSED",
-      reason: "No confirmed violation.",
+      expectedVersion: 1,
+      outcome: "REPORT_CASE_DISMISSED",
+      reasonCode: "POLICY_REVIEW",
     });
-    await adminApi.getEvidence("evidence-1");
+    await adminApi.getEvidence("evidence-1", { idempotencyKey: "evidence-read-1" });
     await adminApi.listMembers();
     await adminApi.getMember("member-1");
     await adminApi.listWallets();

@@ -1,0 +1,64 @@
+import type { HTMLAttributes, ReactNode } from "react";
+import { cn } from "@/lib/utils";
+
+type CardElement = "div" | "section";
+
+export type CardProps = HTMLAttributes<HTMLDivElement> & {
+  as?: CardElement;
+};
+
+export function Card({ as = "div", className, ...props }: CardProps) {
+  const Component = as;
+  return <Component data-slot="card" className={cn("rounded-admin-md border border-admin-border bg-admin-surface shadow-admin-card", className)} {...props} />;
+}
+
+type CardHeaderProps = HTMLAttributes<HTMLDivElement> & {
+  flush?: boolean;
+};
+
+export function CardHeader({ className, flush = false, ...props }: CardHeaderProps) {
+  return <div data-slot="card-header" className={cn(flush ? "" : "border-b border-admin-border px-5 py-4", className)} {...props} />;
+}
+
+export function CardTitle({ className, children, ...props }: HTMLAttributes<HTMLHeadingElement>) {
+  return <h2 data-slot="card-title" className={cn("m-0 text-base font-semibold text-admin-text", className)} {...props}>{children}</h2>;
+}
+
+export function CardDescription({ className, ...props }: HTMLAttributes<HTMLParagraphElement>) {
+  return <p data-slot="card-description" className={cn("m-0 mt-1 text-sm text-admin-muted", className)} {...props} />;
+}
+
+type CardContentProps = HTMLAttributes<HTMLDivElement> & {
+  flush?: boolean;
+};
+
+export function CardContent({ className, flush = false, ...props }: CardContentProps) {
+  return <div data-slot="card-content" className={cn(flush ? "" : "px-5 py-4", className)} {...props} />;
+}
+
+type CardFooterProps = HTMLAttributes<HTMLDivElement> & {
+  flush?: boolean;
+};
+
+export function CardFooter({ className, flush = false, ...props }: CardFooterProps) {
+  return <div data-slot="card-footer" className={cn(flush ? "" : "flex items-center gap-3 border-t border-admin-border px-5 py-4", className)} {...props} />;
+}
+
+export type SectionProps = HTMLAttributes<HTMLElement> & {
+  title?: ReactNode;
+  description?: ReactNode;
+};
+
+export function Section({ className, title, description, children, ...props }: SectionProps) {
+  return (
+    <section data-slot="section" className={cn("rounded-admin-md border border-admin-border bg-admin-surface", className)} {...props}>
+      {title || description ? (
+        <header className="border-b border-admin-border px-5 py-4">
+          {title ? <h2 className="text-base font-semibold text-admin-text">{title}</h2> : null}
+          {description ? <p className="mt-1 text-sm text-admin-muted">{description}</p> : null}
+        </header>
+      ) : null}
+      <div className="p-5">{children}</div>
+    </section>
+  );
+}

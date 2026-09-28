@@ -1,6 +1,10 @@
 import { describe, expect, it } from "bun:test";
 
-import { mockWallets } from "../../src/features/admin/wallet/wallet-mock-data";
+import {
+  mockAllWallets,
+  mockWalletLedgerTransactions,
+  mockWallets,
+} from "../../src/features/admin/wallet/wallet-mock-data";
 import {
   pageWalletRows,
   searchWalletRows,
@@ -11,9 +15,38 @@ import {
   walletLedgerRowsFromApi,
   walletRowFromApi,
   walletSummaryFromApi,
+  walletEventTypeLabel,
+  walletBusinessReferenceLabel,
+  walletCompartmentLabel,
+  formatWalletMovementAmount,
 } from "../../src/features/admin/wallet/wallet-model";
 
 describe("Wallet route model", () => {
+  it("shows readable labels for Wallet Statement event types", () => {
+    expect(walletEventTypeLabel("TOP_UP")).toBe("Top-up");
+    expect(walletEventTypeLabel("FUNDING_RESERVE")).toBe("Funding Reserve");
+    expect(walletEventTypeLabel("EARNINGS_CONVERSION")).toBe("Earnings Conversion");
+    expect(walletEventTypeLabel("NEW_EVENT_TYPE")).toBe("New Event Type");
+  });
+
+  it("shows Wallet Statement business references without underscores", () => {
+    expect(walletBusinessReferenceLabel("TOP_UP-1")).toBe("TOP UP-1");
+    expect(walletBusinessReferenceLabel("PAYOUT-WAL-1001-01")).toBe("PAYOUT-WAL-1001-01");
+  });
+
+  it("shows Wallet Statement compartments with readable labels", () => {
+    expect(walletCompartmentLabel("SPENDING")).toBe("Spending Balance");
+    expect(walletCompartmentLabel("EARNINGS")).toBe("Earnings Balance");
+    expect(walletCompartmentLabel("FUNDING_RESERVED")).toBe("Funding Reserved");
+    expect(walletCompartmentLabel("RESERVED_FOR_PAYOUTS")).toBe("Reserved For Payouts");
+    expect(walletCompartmentLabel("NEW_COMPARTMENT")).toBe("New Compartment");
+  });
+
+  it("shows a sign before each Wallet Statement compartment movement amount", () => {
+    expect(formatWalletMovementAmount(1125)).toBe("+฿11.25");
+    expect(formatWalletMovementAmount(-1125)).toBe("-฿11.25");
+  });
+
   it("maps Wallet DTOs to a separate view model and keeps the API balance", () => {
     const wallet = {
       ...mockWallets[0],
@@ -35,6 +68,35 @@ describe("Wallet route model", () => {
     });
     expect(row).not.toHaveProperty("walletStatus");
     expect(row).not.toHaveProperty("memberStatus");
+  });
+
+  it("keeps Wallet rows usable when the API omits the Member association", () => {
+    const wallet = {
+      ...mockWallets[0],
+      id: "WAL-MISSING-MEMBER",
+      userId: "member-orphan",
+      member: null,
+    } as unknown as Parameters<typeof walletRowFromApi>[0];
+
+    expect(walletRowFromApi(wallet)).toMatchObject({
+      id: "WAL-MISSING-MEMBER",
+      memberId: "member-orphan",
+      memberAvailable: false,
+      memberName: "Member not provided",
+      studentId: null,
+      email: "Email not provided",
+    });
+  });
+
+  it("provides the latest transaction date for every Mock Wallet with a statement", () => {
+    const walletsWithSealedStatements = mockAllWallets.filter((wallet) => (
+      mockWalletLedgerTransactions[wallet.id] ?? []
+    ).some((transaction) => transaction.sealedAt !== null));
+
+    expect(walletsWithSealedStatements.length).toBe(mockAllWallets.length);
+    expect(walletsWithSealedStatements.every((wallet) => Boolean(wallet.latestTransactionAt))).toBe(true);
+    expect(mockAllWallets.find((wallet) => wallet.id === "WAL-1006")?.latestTransactionAt)
+      .toBe("2026-09-01T06:00:00.000Z");
   });
 
   it("keeps Wallet status tabs separate from Member status values", () => {

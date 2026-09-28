@@ -1,12 +1,18 @@
 import { cookies } from "next/headers";
 
 import type { AdminApiRequestOptions } from "../api/admin-api";
-import { adminApi } from "../api/admin-api";
+import { adminApiProvider } from "../api/admin-provider";
 import { adminApiRequestOptions } from "../api/admin-api-request-options";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { adminSessionCookieHeader } from "../../../lib/auth/admin-session-policy";
 import { loadAllWalletLedgerTransactions } from "./wallet-ledger-pages";
-import { mockWalletFinanceSummary, mockWallets } from "./wallet-mock-data";
+import {
+  mockAllWallets,
+  mockWalletFinanceSummary,
+  mockWalletLedgerTransactions,
+  mockWalletStatusHistory,
+  mockWallets,
+} from "./wallet-mock-data";
 import {
   walletDetailFromApi,
   walletHistoryFromApi,
@@ -32,6 +38,7 @@ export type RemainingWalletRows = {
 
 export type WalletBoardPageData = {
   rows: WalletBoardRow[];
+  allRows?: WalletBoardRow[];
   remainingRows: Promise<RemainingWalletRows> | null;
   summary: WalletFinanceSummary | null;
   summaryError: string | null;
@@ -71,20 +78,24 @@ export async function loadWalletDrawerData(
   dataSource: WalletDataSource,
 ): Promise<WalletDrawerData> {
   if (dataSource === "mock") {
-    const wallet = mockWallets.find((item) => item.id === walletId);
+    const wallet = mockAllWallets.find((item) => item.id === walletId);
     if (!wallet) throw new Error("Wallet detail is not available.");
     return {
       detail: walletDetailFromApi({ ...wallet, projectionMatchesLedger: true }),
-      history: [],
-      ledger: [],
+      history: walletHistoryFromApi(mockWalletStatusHistory[walletId] ?? []),
+      ledger: walletLedgerRowsFromApi(
+        mockWalletLedgerTransactions[walletId] ?? [],
+        wallet.id,
+        wallet.balances,
+      ),
     };
   }
 
   const options = adminApiRequestOptions(cookieHeader);
   const [walletResult, historyResult, ledgerResult] = await Promise.all([
-    adminApi.getWallet(walletId, options),
-    adminApi.getWalletStatusHistory(walletId, options),
-    adminApi.listLedgerTransactions({ walletId, limit: 5 }, options),
+    adminApiProvider.read.getWallet(walletId, options),
+    adminApiProvider.read.getWalletStatusHistory(walletId, options),
+    adminApiProvider.read.listLedgerTransactions({ walletId, limit: 5 }, options),
   ]);
   return {
     detail: walletDetailFromApi(walletResult.wallet),
@@ -99,17 +110,21 @@ export async function loadWalletStatementPageData(
   dataSource: WalletDataSource,
 ): Promise<WalletStatementPageData> {
   if (dataSource === "mock") {
-    const wallet = mockWallets.find((item) => item.userId === memberId);
+    const wallet = mockAllWallets.find((item) => item.userId === memberId);
     if (!wallet) throw new Error("Wallet Statement is not available for this Member.");
     return {
       wallet: walletStatementPageFromApi(wallet),
-      ledger: [],
+      ledger: walletLedgerRowsFromApi(
+        mockWalletLedgerTransactions[wallet.id] ?? [],
+        wallet.id,
+        wallet.balances,
+      ),
       dataSource,
     };
   }
 
   const options = adminApiRequestOptions(cookieHeader);
-  const walletsResult = await adminApi.listWallets({ userId: memberId, limit: 1 }, options);
+  const walletsResult = await adminApiProvider.read.listWallets({ userId: memberId, limit: 1 }, options);
   const wallet = walletsResult.items[0];
   if (!wallet) throw new Error("Wallet Statement is not available for this Member.");
   const transactions = await loadAllWalletLedgerTransactions(wallet.id, options);
@@ -127,7 +142,7 @@ export async function verifyWalletProjection(
   dataSource: WalletDataSource,
 ): Promise<WalletVerificationView> {
   if (dataSource === "mock") {
-    const wallet = mockWallets.find((item) => item.id === walletId);
+    const wallet = mockAllWallets.find((item) => item.id === walletId);
     if (!wallet) throw new Error("Wallet detail is not available.");
     return {
       matches: true,
@@ -137,7 +152,7 @@ export async function verifyWalletProjection(
     };
   }
 
-  const result = await adminApi.verifyWalletProjection(walletId, adminApiRequestOptions(cookieHeader));
+  const result = await adminApiProvider.read.verifyWalletProjection(walletId, adminApiRequestOptions(cookieHeader));
   return walletVerificationFromApi(result);
 }
 
@@ -145,12 +160,12 @@ async function listRemainingWallets(
   initialCursor: string,
   options: AdminApiRequestOptions,
 ): Promise<RemainingWalletRows> {
-  const items = [] as Awaited<ReturnType<typeof adminApi.listWallets>>["items"];
+  const items = [] as Awaited<ReturnType<typeof adminApiProvider.read.listWallets>>["items"];
   let cursor: string | undefined = initialCursor;
 
   try {
     while (cursor) {
-      const page = await adminApi.listWallets({ limit: 50, cursor }, options);
+      const page = await adminApiProvider.read.listWallets({ limit: 50, cursor }, options);
       items.push(...page.items);
       const nextCursor = page.nextCursor ?? undefined;
       if (nextCursor === cursor) break;
@@ -169,6 +184,7 @@ export async function loadWalletBoardPageData(
   if (dataSource === "mock") {
     return {
       rows: walletRowsFromApi(mockWallets),
+      allRows: walletRowsFromApi(mockAllWallets),
       remainingRows: null,
       summary: walletSummaryFromApi(mockWalletFinanceSummary),
       summaryError: null,
@@ -179,8 +195,8 @@ export async function loadWalletBoardPageData(
 
   const options = adminApiRequestOptions(cookieHeader);
   const [walletsResult, summaryResult] = await Promise.allSettled([
-    adminApi.listWallets({ limit: 50 }, options),
-    adminApi.getFinanceOverview(options),
+    adminApiProvider.read.listWallets({ limit: 50 }, options),
+    adminApiProvider.read.getFinanceOverview(options),
   ]);
   if (walletsResult.status === "rejected") {
     return {

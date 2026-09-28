@@ -39,6 +39,8 @@ describe("Activity Log route service", () => {
       resourceType: "",
       resourceId: "",
       adminId: "",
+      fromDate: "",
+      toDate: "",
       sort: "newest",
     });
   });

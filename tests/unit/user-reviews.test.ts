@@ -9,7 +9,7 @@ import {
   readUserReviews,
   saveUserReviews,
   type BrowserStorage,
-} from "../../src/features/admin/data/legacy-admin-data-adapter";
+} from "../../src/features/admin/data/admin-demo-data-adapter";
 import {
   reportSubmissionSchema,
   type AdminReview,
@@ -74,7 +74,7 @@ describe("user review model", () => {
 
 });
 
-describe("legacy admin data adapter", () => {
+describe("admin demo data adapter", () => {
   it("rejects malformed persisted records at the storage boundary", () => {
     const storage = storageWith({
       version: "demo",

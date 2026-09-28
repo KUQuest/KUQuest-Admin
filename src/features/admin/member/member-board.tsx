@@ -3,13 +3,18 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { AdminLoading } from "../../../components/admin/admin-feedback";
+import { AdminPageHeader } from "../../../components/admin/admin-page-header";
+import { AdminSortableHeader } from "../../../components/admin/admin-sortable-header";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import { isAdminApiEnabled } from "../api/admin-provider";
+import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
 import { memberRoutes } from "../admin-routes";
-import { loadMembersFromMock } from "./member-adapter";
+import { displayAdminId } from "../display-admin-id";
+import { pageCount, pageRange, pageRows } from "../data/board-pagination";
+import { countBoardTabMatches } from "../data/board-tab-counts";
+import { useAdminBoardReset } from "../data/use-admin-board-reset";
 import {
   memberStatusClass,
   memberStatusText,
@@ -18,7 +23,10 @@ import {
   walletStatusClass,
   walletStatusText,
 } from "./member-model";
-import { loadMemberPageData } from "./member-service";
+import { useMemberBoardStore, type MemberSortKey, type MemberTab } from "./member-board-store";
+import { useMemberBoardQuery } from "./member-query";
+import { adminBoardCount, adminBoardPagination, adminBoardTable } from "../../../components/admin/admin-record-styles";
+import { sortBoardRows } from "../data/board-sorting";
 
 const tabs = [
   { id: "all", label: "All" },
@@ -28,9 +36,7 @@ const tabs = [
   { id: "Perm Ban", label: "Perm Ban" },
 ] as const;
 
-type MemberTab = (typeof tabs)[number]["id"];
-
-export const MEMBER_UPDATED_EVENT = "kuquest:member-updated";
+export { MEMBER_UPDATED_EVENT } from "./member-events";
 
 function matchesTab(model: MemberModel, tab: MemberTab): boolean {
   return tab === "all" || model.memberStatus === tab;
@@ -52,109 +58,115 @@ function matchesQuery(model: MemberModel, query: string): boolean {
   ].some((field) => field?.toLowerCase().includes(value));
 }
 
+function memberSortValue(model: MemberModel, key: MemberSortKey): string | number | null {
+  switch (key) {
+    case "id":
+      return model.id;
+    case "member":
+      return model.title;
+    case "studentId":
+      return displayAdminId(model.studentId);
+    case "academicProfile":
+      return [model.faculty, model.department, model.occupation].filter(Boolean).join(" · ") || null;
+    case "status":
+      return model.memberStatus ? memberStatusText(model) : null;
+    case "walletStatus":
+      return model.walletStatus ? walletStatusText(model) : null;
+  }
+}
+
 export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
   const { translateText } = useAdminShell();
   const router = useRouter();
-  const [page, setPage] = useState<MemberPageData | null>(initialData ?? null);
-  const [activeTab, setActiveTab] = useState<MemberTab>("all");
-  const [query, setQuery] = useState("");
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const {
+    data: page,
+    isPending,
+    error: queryError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useMemberBoardQuery(initialData);
+  const {
+    activeTab,
+    query,
+    pageSize,
+    pageNumber,
+    sortKey,
+    sortDirection,
+    setActiveTab,
+    setQuery,
+    setPageSize,
+    setPageNumber,
+    sortBy,
+    reset,
+  } = useMemberBoardStore();
   const [paginationError, setPaginationError] = useState<string | null>(null);
-  const [loadingMore, setLoadingMore] = useState(false);
 
-  useEffect(() => {
-    if (initialData || isAdminApiEnabled()) return;
-    let cancelled = false;
-    try {
-      const nextPage = loadMembersFromMock(localStorage);
-      if (!cancelled) setPage(nextPage);
-    } catch (error: unknown) {
-      if (!cancelled) setLoadError(error instanceof Error ? error.message : "Members could not load.");
-    }
-    return () => {
-      cancelled = true;
-    };
-  }, [initialData]);
-
-  useEffect(() => {
-    if (initialData) setPage(initialData);
-  }, [initialData]);
-
-  useEffect(() => {
-    const updateMember = (event: Event) => {
-      const model = (event as CustomEvent<MemberModel>).detail;
-      if (!model) return;
-      setPage((current) => current
-        ? { ...current, items: current.items.map((item) => item.id === model.id ? model : item) }
-        : current);
-    };
-    window.addEventListener(MEMBER_UPDATED_EVENT, updateMember);
-    return () => window.removeEventListener(MEMBER_UPDATED_EVENT, updateMember);
-  }, []);
+  useAdminBoardReset(reset);
 
   const openDrawer = (id: string) => {
     router.push(memberRoutes.detail(id), { scroll: false });
   };
 
   const loadMore = async () => {
-    if (!page?.nextCursor || page.source !== "api" || loadingMore) return;
-    setLoadingMore(true);
+    if (!hasNextPage || isFetchingNextPage) return;
     setPaginationError(null);
     try {
-      const nextPage = await loadMemberPageData(undefined, page.nextCursor);
-      setPage((current) => current
-        ? { ...current, items: [...current.items, ...nextPage.items], nextCursor: nextPage.nextCursor }
-        : current);
+      await fetchNextPage();
     } catch (error: unknown) {
       setPaginationError(error instanceof Error ? error.message : "More Members could not load.");
-    } finally {
-      setLoadingMore(false);
     }
   };
 
-  if (!page) return <AdminLoading message={translateText(loadError ?? "Loading Members…")} />;
-  if (loadError) {
-    return <main className="admin-feedback"><section className="panel"><h1>{translateText("Members unavailable")}</h1><p>{translateText(loadError)}</p></section></main>;
+  const loadAllPages = async () => {
+    if (!hasNextPage || isFetchingNextPage) return;
+    setPaginationError(null);
+    try {
+      let result = await fetchNextPage();
+      while (result.hasNextPage) result = await fetchNextPage();
+    } catch (error: unknown) {
+      setPaginationError(error instanceof Error ? error.message : "More Members could not load.");
+    }
+  };
+
+  if (isPending) return <AdminLoading message={translateText("Loading Members…")} />;
+  if (queryError) {
+    const loadError = queryError instanceof Error ? queryError.message : "Members could not load.";
+    return <main className="admin-feedback"><Card as="section" className="overflow-hidden"><CardHeader><h1 className="text-lg font-semibold">{translateText("Members unavailable")}</h1></CardHeader><p className="p-5">{translateText(loadError)}</p></Card></main>;
   }
 
-  const models = page.items.filter((model) => matchesTab(model, activeTab) && matchesQuery(model, query));
+  const filteredModels = page.items.filter((model) => matchesTab(model, activeTab) && matchesQuery(model, query));
+  const models = sortKey ? sortBoardRows(filteredModels, (model) => memberSortValue(model, sortKey), sortDirection) : filteredModels;
+  const totalPages = pageCount(models.length, pageSize);
+  const currentPage = Math.min(pageNumber, Math.max(totalPages, 1));
+  const visibleModels = pageRows(models, currentPage, pageSize);
+  const { start: pageStart, end: pageEnd } = pageRange(models.length, currentPage, pageSize);
   const visibleTabs = page.source === "api" && page.items.every((model) => model.memberStatus === null)
     ? tabs.slice(0, 1)
     : tabs;
+  const tabCounts = countBoardTabMatches(page.items, tabs, matchesTab);
 
   return (
     <main id="member-main" className="admin-route-page member-board" tabIndex={-1}>
-      <div className="page-head">
-        <div>
-          <p className="admin-route-kicker">{translateText("KUQuest Admin")}</p>
-          <h1>{translateText("Members")}</h1>
-          <p>{translateText("Review Member profiles and account status.")}</p>
-        </div>
-      </div>
-      <section className="panel resource" aria-labelledby="member-board-heading">
-        <div className="panel-head">
+      <AdminPageHeader title={translateText("Members")} description={translateText("Review Member profiles and account status.")} />
+      <Card as="section" className="resource overflow-hidden" aria-labelledby="member-board-heading">
+        <CardHeader className="flex min-h-[60px] items-center justify-between gap-4">
           <div>
-            <h2 id="member-board-heading">{translateText("Members")}</h2>
-            <p>{translateText("Review Member profiles, Wallet status, and moderation history.")}</p>
+            <CardTitle id="member-board-heading">{translateText("Members")}</CardTitle>
+            <CardDescription>{translateText("Review Member profiles, Wallet status, and moderation history.")}</CardDescription>
           </div>
-          <span className="count">{models.length} {translateText("shown")}</span>
-        </div>
-        <div className="tabs" role="tablist" aria-label={translateText("Filter Members")}>{visibleTabs.map((tab) => (
-          <button
-            key={tab.id}
-            className={`tab ${activeTab === tab.id ? "active" : ""}`}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === tab.id}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            {translateText(tab.label)}
-          </button>
-        ))}</div>
-        <div className="toolbar">
-          <label className="inline-search" htmlFor="member-search">
-            {translateText("Search Members")}
-            <input
+          <span className={adminBoardCount}>{visibleModels.length} {translateText("shown")}</span>
+        </CardHeader>
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as MemberTab)}>
+          <TabsList className="px-3" aria-label={translateText("Filter Members")}>
+            {visibleTabs.map((tab) => <TabsTrigger key={tab.id} value={tab.id}>{translateText(tab.label)} ({tabCounts.get(tab.id) ?? 0})</TabsTrigger>)}
+          </TabsList>
+        </Tabs>
+        <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2">
+          <label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text max-[600px]:basis-full max-[600px]:max-w-none" htmlFor="member-search">
+            <span className="visually-hidden">{translateText("Search Members")}</span>
+            <Input
+              className="h-9 min-h-9 px-3 py-1.5 text-sm"
               id="member-search"
               type="search"
               aria-label={translateText("Search Members")}
@@ -163,18 +175,23 @@ export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
               onChange={(event) => setQuery(event.target.value)}
             />
           </label>
+          <PageSizeControls value={pageSize} disabled={isFetchingNextPage} translateText={translateText} onChange={(size) => { setPageSize(size); if (size === "all") void loadAllPages(); }} />
+          <span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span>
+          <span className={adminBoardCount} aria-live="polite">
+            {isFetchingNextPage ? translateText("Loading more records…") : models.length ? `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${models.length} ${translateText("results")}` : translateText("Showing 0 of 0 results")}
+          </span>
         </div>
-        <div className="table-wrap" role="region" aria-label={translateText("Members table")}>
-          <table className="data member-table">
+        <div className="overflow-x-auto" role="region" aria-label={translateText("Members table")}>
+          <Table className={`${adminBoardTable} member-table`}>
             <caption>{translateText("Members")}</caption>
-            <thead><tr><th>{translateText("Student ID")}</th><th>{translateText("Member")}</th><th>{translateText("Member ID")}</th><th>{translateText("Academic profile")}</th><th>{translateText("Status")}</th><th>{translateText("Wallet status")}</th></tr></thead>
+            <thead><tr><AdminSortableHeader label={translateText("Member")} sortKey="member" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Student ID")} sortKey="studentId" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Academic profile")} sortKey="academicProfile" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Wallet status")} sortKey="walletStatus" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead>
             <tbody>
-              {models.map((model) => (
+              {visibleModels.map((model) => (
                 <tr
                   key={model.id}
                   data-member-id={model.id}
                   tabIndex={0}
-                  aria-label={`${translateText("Open Member")} ${model.id}`}
+                  aria-label={`${translateText("Open Member")} ${model.title}`}
                   onClick={() => openDrawer(model.id)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
@@ -183,21 +200,21 @@ export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
                     }
                   }}
                 >
-                  <td><button className="table-link" type="button" aria-label={`${translateText("Open Member")} ${model.id}`} onClick={(event) => { event.stopPropagation(); openDrawer(model.id); }}>{model.studentId}</button></td>
                   <td><Link className="user-record-link" href={memberRoutes.detail(model.id)} onClick={(event) => event.stopPropagation()}>{model.title}</Link><small>{model.email}</small></td>
-                  <td>{model.id}</td>
+                  <td>{displayAdminId(model.studentId) ?? "—"}</td>
                   <td>{[model.faculty, model.department, model.occupation].filter(Boolean).join(" · ") || "—"}</td>
                   <td>{model.memberStatus ? <span className={`badge ${memberStatusClass(model)}`}>{translateText(memberStatusText(model))}</span> : <span className="audit-note">{translateText(memberStatusText(model))}</span>}</td>
                   <td>{model.walletStatus ? <span className={`badge ${walletStatusClass(model)}`}>{translateText(walletStatusText(model))}</span> : <span className="audit-note">{translateText(walletStatusText(model))}</span>}</td>
                 </tr>
               ))}
             </tbody>
-          </table>
-          {models.length === 0 && <p className="empty-state">{translateText("No matching Members")}</p>}
+          </Table>
+          {models.length === 0 && <EmptyState className="border-0 rounded-none p-6" title={translateText("No matching Members")} />}
         </div>
         {paginationError && <p className="field-error" role="alert">{translateText(paginationError)}</p>}
-        {page.nextCursor && <button className="btn" type="button" onClick={loadMore} disabled={loadingMore}>{loadingMore ? translateText("Loading…") : translateText("Load more Members")}</button>}
-      </section>
+        {models.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Members pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className={adminBoardPagination} /> : null}
+        {hasNextPage && <Button variant="outline" type="button" onClick={loadMore} disabled={isFetchingNextPage}>{isFetchingNextPage ? translateText("Loading…") : translateText("Load more Members")}</Button>}
+      </Card>
     </main>
   );
 }

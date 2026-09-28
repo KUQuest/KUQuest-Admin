@@ -7,8 +7,28 @@ import {
   loadPayoutBoardPageData,
   loadPayoutDetailPageData,
 } from "../../src/features/admin/payout/payout-service";
+import {
+  applyMockPayoutDecision,
+  applyMockPayoutOverride,
+  payoutMockOverrideFromDetail,
+  readMockPayoutOverride,
+  saveMockPayoutOverride,
+} from "../../src/features/admin/payout/payout-mock-state";
+import { payoutDetailViewFromApi } from "../../src/features/admin/payout/payout-model";
 
 const originalFetch = globalThis.fetch;
+
+function storage(): Storage {
+  const values = new Map<string, string>();
+  return {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => { values.set(key, value); },
+    clear: () => values.clear(),
+    removeItem: (key) => { values.delete(key); },
+    key: (index) => [...values.keys()][index] ?? null,
+    get length() { return values.size; },
+  };
+}
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -34,6 +54,12 @@ describe("Payout service boundary", () => {
 
     expect(calls).toBe(0);
     expect(result.rows.map((row) => row.id)).toEqual(["PAY-9637", "PAY-9636", "PAY-9638", "PAY-9639"]);
+  });
+
+  it("loads the Payout linked from the Overview queue", async () => {
+    const result = await loadPayoutDetailPageData("PAY-9631", undefined, "mock");
+
+    expect(result?.detail.id).toBe("PAY-9631");
   });
 
   it("reads the Payout board through the Admin API and forwards the server cookie", async () => {
@@ -83,6 +109,7 @@ describe("Payout service boundary", () => {
       const url = new URL(request.url);
       if (url.pathname.endsWith("/missing")) return jsonResponse({ success: false, error: { code: "NOT_FOUND", message: "Payout not found." } }, 404);
       if (url.pathname === "/api/v1/admin/payouts") return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
+      if (url.pathname.endsWith("/status-history")) return jsonResponse({ success: true, data: mockPendingPayout.history });
       return jsonResponse({ success: true, data: mockPendingPayout });
     }) as typeof globalThis.fetch;
 
@@ -93,5 +120,22 @@ describe("Payout service boundary", () => {
     expect(requestCache).toBe("no-store");
 
     await expect(loadPayoutDetailPageData("missing", "kuquest-admin=session", "api")).resolves.toBeNull();
+  });
+
+  it("persists and restores a Mock Payout decision across reloads", () => {
+    const detail = payoutDetailViewFromApi(mockPendingPayout, [mockPendingPayout]);
+    const next = applyMockPayoutDecision(detail, "approve", null, "2026-09-17T03:25:00.000Z");
+    const browserStorage = storage();
+
+    saveMockPayoutOverride(browserStorage, { id: next.id, ...payoutMockOverrideFromDetail(next) });
+
+    const restored = applyMockPayoutOverride(
+      detail,
+      readMockPayoutOverride(browserStorage, detail.id),
+    );
+    expect(restored.status).toBe("SUBMITTED_TO_PROVIDER");
+    expect(restored.version).toBe(detail.version + 1);
+    expect(restored.history.at(-1)?.toStatus).toBe("SUBMITTED_TO_PROVIDER");
+    expect(restored.decisionContext.heading).toBe("Transfer submitted");
   });
 });

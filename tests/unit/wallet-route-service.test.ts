@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it } from "bun:test";
 
-import { mockWalletDetails, mockWallets } from "../../src/features/admin/wallet/wallet-mock-data";
+import {
+  mockWalletDetails,
+  mockWalletLedgerTransactions,
+  mockWallets,
+} from "../../src/features/admin/wallet/wallet-mock-data";
 import {
   loadWalletBoardPageData,
   loadWalletDrawerData,
@@ -95,6 +99,39 @@ describe("Wallet route service boundary", () => {
     expect(requests.some((request) => new URL(request.url).searchParams.get("cursor") === "wallet-next")).toBe(true);
   });
 
+  it("keeps the API Wallet board usable when a Wallet has no Member association", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    const walletWithoutMember = { ...mockWallets[0], member: null };
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = new Request(input, init);
+      if (new URL(request.url).pathname === "/api/v1/admin/wallets") {
+        return jsonResponse({ success: true, data: { items: [walletWithoutMember], nextCursor: null } });
+      }
+      return jsonResponse({
+        success: true,
+        data: {
+          memberBalancesSummary: {
+            totalSpendingSatang: 0,
+            totalEarningsSatang: 0,
+            totalFundingReservedSatang: 0,
+            totalPayoutReservedSatang: 0,
+            totalCirculatingSatang: 0,
+          },
+        },
+      });
+    }) as unknown as typeof globalThis.fetch;
+
+    const result = await loadWalletBoardPageData("kuquest-admin=session", "api");
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]).toMatchObject({
+      id: mockWallets[0]?.id,
+      memberAvailable: false,
+      memberName: "Member not provided",
+      memberId: mockWallets[0]?.userId,
+    });
+  });
+
   it("loads Wallet drawer data through the service with the server cookie", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     const requests: Request[] = [];
@@ -146,6 +183,34 @@ describe("Wallet route service boundary", () => {
     expect(requests).toHaveLength(3);
     expect(requests.every((request) => request.headers.get("cookie") === "kuquest-admin=session")).toBe(true);
     expect(cacheModes.every((cache) => cache === "no-store")).toBe(true);
+  });
+
+  it("loads committed and sealed mock Ledger Transactions for the Wallet drawer and Statement", async () => {
+    let calls = 0;
+    globalThis.fetch = (async () => {
+      calls += 1;
+      return jsonResponse({ success: true, data: null });
+    }) as unknown as typeof globalThis.fetch;
+
+    const drawer = await loadWalletDrawerData("WAL-1001", undefined, "mock");
+    const generatedDrawer = await loadWalletDrawerData("WAL-1006", undefined, "mock");
+    const statement = await loadWalletStatementPageData("68000100", undefined, "mock");
+
+    expect(calls).toBe(0);
+    expect(mockWalletLedgerTransactions["WAL-1001"]).toHaveLength(5);
+    expect(mockWalletLedgerTransactions["WAL-1001"]?.every((transaction) => transaction.sealedAt !== null)).toBe(true);
+    expect(drawer.ledger).toHaveLength(5);
+    expect(drawer.ledger.map((transaction) => transaction.id)).toEqual([
+      "LEDGER-WAL-1001-01",
+      "LEDGER-WAL-1001-02",
+      "LEDGER-WAL-1001-03",
+      "LEDGER-WAL-1001-04",
+      "LEDGER-WAL-1001-05",
+    ]);
+    expect(drawer.ledger.every((transaction) => transaction.movement.length > 0)).toBe(true);
+    expect(generatedDrawer.ledger).toHaveLength(5);
+    expect(statement.ledger).toHaveLength(5);
+    expect(statement.ledger.map((transaction) => transaction.id)).toEqual(drawer.ledger.map((transaction) => transaction.id.replace("WAL-1001", "WAL-1006")));
   });
 
   it("loads every Ledger page for the full Wallet Statement", async () => {

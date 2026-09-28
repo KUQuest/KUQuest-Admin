@@ -6,6 +6,7 @@ import {
   formatQuestMoney,
   pageQuestRows,
   questDetailViewFromApi,
+  questDisplayIdFor,
   questFinanceViewFromApi,
   questMatchesTab,
   questPageCount,
@@ -54,7 +55,7 @@ describe("Quest route model", () => {
 
     expect(detail).toMatchObject({
       id: apiDetail.id,
-      displayId: apiDetail.id,
+      displayId: "",
       title: apiDetail.title,
       state: "QUEST_FAILED",
       hirer: apiDetail.hirer,
@@ -81,6 +82,12 @@ describe("Quest route model", () => {
       participationLabel: "Solo",
     });
     expect(questRowFromApi(quest())).toMatchObject({ displayId: "quest-1" });
+  });
+
+  it("keeps the Quest UUID out of display text when no display id exists", () => {
+    expect(questDisplayIdFor("00000000-0000-0000-0000-000000000002")).toBe("");
+    expect(questDisplayIdFor("quest-1")).toBe("quest-1");
+    expect(questDisplayIdFor("quest-1", "QST-12001")).toBe("QST-12001");
   });
 
   it("maps Team, Solo, and canonical Quest State filters", () => {

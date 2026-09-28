@@ -6,6 +6,7 @@ import {
   loadPayoutDetailPageData,
   loadPayoutRouteContext,
 } from "../../../../features/admin/payout/payout-service";
+import { displayAdminId } from "../../../../features/admin/display-admin-id";
 
 type PayoutDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -13,7 +14,8 @@ type PayoutDetailPageProps = {
 
 export async function generateMetadata({ params }: PayoutDetailPageProps): Promise<Metadata> {
   const { id } = await params;
-  return { title: `Payout ${id}` };
+  const displayId = displayAdminId(id);
+  return { title: displayId ? `Payout ${displayId}` : "Payout" };
 }
 
 export default async function PayoutDetailPage({ params }: PayoutDetailPageProps) {

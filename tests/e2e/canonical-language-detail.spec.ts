@@ -29,8 +29,8 @@ test.describe("Thai language on canonical routes", () => {
     await expect(page.getByRole("heading", { level: 1, name: "สมาชิก" })).toBeVisible();
     await expect(page.getByRole("searchbox", { name: "ค้นหาสมาชิก" })).toBeVisible();
 
-    await page.getByRole("button", { name: "เปิดสมาชิก 68000000" }).click();
-    await page.getByRole("dialog", { name: "รายละเอียดรายการ" }).getByRole("link", { name: "ดูโปรไฟล์สมาชิกฉบับเต็ม" }).click();
+    await page.locator('tr[data-member-id="68000000"]').click();
+    await page.getByRole("dialog", { name: "Akarin Ariyawat" }).getByRole("link", { name: "ดูโปรไฟล์สมาชิกฉบับเต็ม" }).click();
     await expect(page).toHaveURL(/\/member\/68000000$/);
     await expect(page.getByRole("navigation", { name: "ส่วนรายละเอียดสมาชิก" })).toBeVisible();
     await expect(page.getByRole("link", { name: "รายการ Wallet", exact: true })).toBeVisible();

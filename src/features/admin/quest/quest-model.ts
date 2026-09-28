@@ -1,16 +1,29 @@
 import type {
+  AdminApiQuestStatus,
   AdminQuest,
   AdminQuestDetail,
   AdminQuestFinance,
   AdminQuestMember,
 } from "../api/admin-api";
+import { pageCount, pageRows, type BoardPageSize } from "@/lib/board-pagination";
+import { formatAdminTimestamp } from "../date-format";
 import { questStateFor, questStateLabel, type QuestState } from "../domain/rulebook";
+import { displayAdminId } from "../display-admin-id";
 
 export type QuestMemberView = {
   id: string;
+  memberId: string;
   firstName: string;
   lastName: string;
   email: string;
+};
+
+export type QuestTimelineView = {
+  event: string;
+  status: AdminApiQuestStatus | null;
+  occurredAt: string;
+  actorId: string | null;
+  reasonCode: string | null;
 };
 
 type QuestModeView = "FIRST_COME_FIRST_SERVED" | "CANDIDATE";
@@ -122,6 +135,7 @@ export type QuestDetailView = {
         }>;
       }
   >;
+  timeline: QuestTimelineView[];
   adminActions: Array<{
     id: string;
     admin: { id: string; firstName: string; lastName: string };
@@ -198,7 +212,7 @@ export const QUEST_BOARD_TABS = [
 ] as const;
 
 export type QuestBoardTab = (typeof QUEST_BOARD_TABS)[number]["id"];
-export type QuestBoardPageSize = number | "all";
+export type QuestBoardPageSize = BoardPageSize;
 export type QuestSortKey = "id" | "title" | "hirer" | "createdAt" | "reward" | "status";
 export type QuestSortDirection = "ascending" | "descending";
 
@@ -218,9 +232,15 @@ export type QuestBoardRow = {
   version: number;
 };
 
+/** Keep the canonical Quest UUID out of screen text when no display ID exists. */
+export function questDisplayIdFor(id: string, displayId?: string | null): string {
+  return displayAdminId(displayId, id) ?? "";
+}
+
 function questMemberViewFromApi(member: AdminQuestMember): QuestMemberView {
   return {
     id: member.id,
+    memberId: member.memberId ?? member.id,
     firstName: member.firstName,
     lastName: member.lastName,
     email: member.email,
@@ -230,7 +250,7 @@ function questMemberViewFromApi(member: AdminQuestMember): QuestMemberView {
 export function questDetailViewFromApi(detail: AdminQuestDetail): QuestDetailView {
   const view: QuestDetailView = {
     id: detail.id,
-    displayId: detail.displayId ?? detail.id,
+    displayId: questDisplayIdFor(detail.id, detail.displayId),
     apiVersion: detail.apiVersion,
     version: detail.version,
     title: detail.title,
@@ -348,6 +368,13 @@ export function questDetailViewFromApi(detail: AdminQuestDetail): QuestDetailVie
       reasonCode: action.reasonCode,
       createdAt: action.createdAt,
     })),
+    timeline: (detail.timeline ?? []).map((entry) => ({
+      event: entry.event,
+      status: entry.status,
+      occurredAt: entry.occurredAt,
+      actorId: entry.actorId,
+      reasonCode: entry.reasonCode,
+    })),
   };
 
   if (detail.images !== undefined) {
@@ -428,7 +455,7 @@ export function questRowFromApi(quest: AdminQuest): QuestBoardRow {
   const state = questStateFor(quest.questStatus);
   return {
     id: quest.id,
-    displayId: quest.displayId ?? quest.id,
+    displayId: questDisplayIdFor(quest.id, quest.displayId),
     title: quest.title,
     hirerName: memberName(quest.hirer),
     hirerEmail: quest.hirer.email,
@@ -502,29 +529,15 @@ export function pageQuestRows(
   page: number,
   pageSize: QuestBoardPageSize,
 ): QuestBoardRow[] {
-  if (pageSize === "all") return rows;
-  const start = Math.max(0, page - 1) * pageSize;
-  return rows.slice(start, start + pageSize);
+  return pageRows(rows, page, pageSize);
 }
 
 export function questPageCount(rowCount: number, pageSize: QuestBoardPageSize): number {
-  return pageSize === "all" ? (rowCount ? 1 : 0) : Math.ceil(rowCount / pageSize);
+  return pageCount(rowCount, pageSize);
 }
 
 export function formatQuestDate(value: string | null | undefined): string {
-  if (!value) return "Not provided";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return `${date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "Asia/Bangkok",
-  })} · ${date.toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Asia/Bangkok",
-  })} ICT`;
+  return formatAdminTimestamp(value, "Asia/Bangkok");
 }
 
 export function formatQuestMoney(satang: number | null | undefined): string {

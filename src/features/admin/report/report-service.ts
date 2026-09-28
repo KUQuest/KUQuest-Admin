@@ -1,6 +1,7 @@
 import type { AdminReportListQuery } from "../api/admin-api";
-import { adminApi } from "../api/admin-api";
+import { adminApiProvider } from "../api/admin-provider";
 import { adminApiRequestOptions } from "../api/admin-api-request-options";
+import { displayAdminId } from "../display-admin-id";
 import { reportCaseModelFromRecord, type ReportCaseModel } from "./report-model";
 
 export type ReportCasePageData = {
@@ -20,8 +21,13 @@ export async function loadReportCasePageData(
   cookieHeader?: string,
   cursor?: string,
 ): Promise<ReportCasePageData> {
-  const query: AdminReportListQuery = { limit: 50, ...(cursor ? { cursor } : {}) };
-  const page = await adminApi.listReports(
+  const query: AdminReportListQuery = {
+    kind: "REPORT_CASE",
+    limit: 50,
+    sort: "newest",
+    ...(cursor ? { cursor } : {}),
+  };
+  const page = await adminApiProvider.read.listReports(
     query,
     adminApiRequestOptions(cookieHeader),
   );
@@ -36,7 +42,15 @@ export async function loadReportCaseDetailFromApi(
   reportId: string,
   cookieHeader?: string,
 ): Promise<ReportCaseModel | null> {
-  const report = await adminApi.getReport(reportId, adminApiRequestOptions(cookieHeader));
+  const report = await adminApiProvider.read.getReport(reportId, adminApiRequestOptions(cookieHeader));
   const model = reportCaseModelFromRecord(report);
+  if (model?.relatedQuestId) {
+    try {
+      const quest = await adminApiProvider.read.getQuest(model.relatedQuestId, adminApiRequestOptions(cookieHeader));
+      model.relatedQuestDisplayId = displayAdminId(quest.displayId);
+    } catch {
+      // The Report Case remains readable when its related Quest cannot load.
+    }
+  }
   return model?.id === reportId ? model : null;
 }

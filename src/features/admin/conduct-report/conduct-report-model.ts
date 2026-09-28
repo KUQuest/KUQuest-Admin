@@ -1,17 +1,32 @@
-import { memberRoutes } from "../admin-routes";
+import { memberRoutes, questRoutes } from "../admin-routes";
+import { formatAdminTimestamp } from "../date-format";
+import {
+  moderationHistoryFromRecord,
+  type ModerationHistorySummary,
+} from "../moderation-case/moderation-case-context";
 import {
   isConductReportStatus,
   isReportCaseStatus,
+  questStateFor,
   type ConductReportStatus,
+  type QuestState,
 } from "../domain/rulebook";
 import { statusBadgeClass } from "../status-badge";
+import { displayAdminId } from "../display-admin-id";
 
 export type ConductReportRecord = {
   id: string;
   [key: string]: unknown;
 };
 
-export type ConductReportDecisionChoice = "no-violation" | "confirmed-violation";
+export type ConductReportDecisionChoice =
+  | "no-violation"
+  | "insufficient-evidence"
+  | "confirmed-violation";
+
+export type ConductReportDecisionReasonCode =
+  | "CONDUCT_REPORT_NO_VIOLATION"
+  | "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE";
 
 export type ConductReportCommand =
   | "CONDUCT_REPORT_DISMISSED"
@@ -21,18 +36,26 @@ export const conductReportDecisionMetadata = {
   "no-violation": {
     command: "CONDUCT_REPORT_DISMISSED",
     label: "No violation",
+    reasonCode: "CONDUCT_REPORT_NO_VIOLATION",
+  },
+  "insufficient-evidence": {
+    command: "CONDUCT_REPORT_DISMISSED",
+    label: "Insufficient evidence",
+    reasonCode: "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE",
   },
   "confirmed-violation": {
     command: "CONDUCT_REPORT_UPHELD",
     label: "Violation confirmed",
+    reasonCode: null,
   },
 } as const satisfies Record<
   ConductReportDecisionChoice,
-  { command: ConductReportCommand; label: string }
+  { command: ConductReportCommand; label: string; reasonCode: ConductReportDecisionReasonCode | null }
 >;
 
 export type ConductReportModel = {
   id: string;
+  displayId: string;
   status: ConductReportStatus;
   statusLabel: string;
   badgeClass: string;
@@ -41,7 +64,11 @@ export type ConductReportModel = {
   reason: string;
   reasonCode: string | null;
   questId: string | null;
+  questDisplayId: string | null;
   questTitle: string;
+  questHref: string | null;
+  questState: QuestState | null;
+  questFailedAt: string | null;
   questRecord: string | null;
   reportedMemberId: string;
   reportedMemberName: string;
@@ -49,6 +76,7 @@ export type ConductReportModel = {
   reporterId: string | null;
   reporterName: string;
   reporterHref: string | null;
+  moderationHistory: ModerationHistorySummary;
   detail: string;
   submittedAt: string;
   decisionLabel: string | null;
@@ -61,6 +89,12 @@ export type ConductReportModel = {
 };
 
 export const CONDUCT_REPORT_UPDATED_EVENT = "kuquest:conduct-report-updated";
+
+export function conductReportDecisionReasonCodeFor(
+  choice: ConductReportDecisionChoice,
+): ConductReportDecisionReasonCode | null {
+  return conductReportDecisionMetadata[choice].reasonCode;
+}
 
 function asRecord(value: unknown): ConductReportRecord | null {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -159,17 +193,8 @@ export function conductReportDecisionFor(
   return conductReportDecisionMetadata[choice].command;
 }
 
-export function conductReportDecisionDetailsForCommand(command: ConductReportCommand): {
-  choice: ConductReportDecisionChoice;
-  command: ConductReportCommand;
-  label: string;
-} {
-  for (const [choice, metadata] of Object.entries(conductReportDecisionMetadata)) {
-    if (metadata.command === command) {
-      return { choice: choice as ConductReportDecisionChoice, ...metadata };
-    }
-  }
-  throw new Error(`Unsupported Conduct Report command: ${command}`);
+export function conductReportDecisionDetailsForChoice(choice: ConductReportDecisionChoice) {
+  return { choice, ...conductReportDecisionMetadata[choice] };
 }
 
 export function conductReportModelFromRecord(value: unknown): ConductReportModel | null {
@@ -189,13 +214,13 @@ export function conductReportModelFromRecord(value: unknown): ConductReportModel
     record.reportedMemberName,
     record.reportedUserName,
     personName(record.reportedMember),
-    reportedMemberId ? `Member ${reportedMemberId}` : "Member not provided",
+    reportedMemberId ? "Member" : "Member not provided",
   ) as string;
   const reporterName = firstText(
     record.reporterName,
     record.submittedByMemberName,
     personName(record.reporter),
-    reporterId ? `Member ${reporterId}` : "Reporter not provided",
+    reporterId ? "Member" : "Reporter not provided",
   ) as string;
   const reasonValue = firstText(
     record.reasonCode,
@@ -207,20 +232,29 @@ export function conductReportModelFromRecord(value: unknown): ConductReportModel
   const reason = conductReportReasonLabel(reasonValue);
   const quest = asRecord(record.quest);
   const questId = firstText(record.questId, record.relatedQuestId, quest?.id);
+  const questDisplayId = displayAdminId(record.questDisplayId, quest?.displayId, questId);
   const questTitle = firstText(
     record.relatedQuestTitle,
     record.questTitle,
     quest?.title,
     record.title,
   ) ?? "Quest not recorded";
+  const questStateValue = firstText(record.questState, record.questStatus, quest?.questState, quest?.questStatus);
+  const questState = questStateValue ? questStateFor(questStateValue) : null;
+  const questFailedAt = firstText(record.failedAt, record.questFailedAt, quest?.failedAt);
   const decisionLabel = firstText(
     record.decisionLabel,
     status === "CONDUCT_REPORT_UPHELD" ? "Violation confirmed" : null,
+    status === "CONDUCT_REPORT_DISMISSED"
+      && record.decisionReasonCode === "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE"
+      ? "Insufficient evidence"
+      : null,
     status === "CONDUCT_REPORT_DISMISSED" ? "No violation" : null,
   );
 
   return {
     id,
+    displayId: displayAdminId(record.displayId, id) ?? "",
     status,
     statusLabel: conductReportStatusLabel(status),
     badgeClass: statusBadgeClass(status),
@@ -229,7 +263,11 @@ export function conductReportModelFromRecord(value: unknown): ConductReportModel
     reason,
     reasonCode: firstText(record.reasonCode, record.conductReportReason),
     questId,
+    questDisplayId,
     questTitle,
+    questHref: questId ? questRoutes.detail(questId) : null,
+    questState,
+    questFailedAt,
     questRecord: firstText(record.questRecord, record.questRecordSummary, record.questEvidence),
     reportedMemberId,
     reportedMemberName,
@@ -237,10 +275,10 @@ export function conductReportModelFromRecord(value: unknown): ConductReportModel
     reporterId,
     reporterName,
     reporterHref: reporterId ? memberRoutes.detail(reporterId) : null,
+    moderationHistory: moderationHistoryFromRecord(record),
     detail: firstText(record.details, record.description)
-      ?? "No Conduct Report detail was provided by the Admin API.",
-    submittedAt: firstText(record.reportedAt, record.submittedAt, record.createdAt)
-      ?? "Time not provided",
+      ?? "No Conduct Report detail was provided.",
+    submittedAt: formatAdminTimestamp(firstText(record.reportedAt, record.submittedAt, record.createdAt) ?? "Time not provided"),
     decisionLabel,
     decisionReason: firstText(record.decisionReason),
     resolution: firstText(record.resolution),

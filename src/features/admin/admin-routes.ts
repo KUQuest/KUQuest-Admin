@@ -29,6 +29,7 @@ export const reportRoutes = {
 
 export const conductReportRoutes = {
   list: () => "/conduct-report",
+  detail: (id: string) => `/conduct-report/${pathSegment(id)}`,
 } as const;
 
 export const payoutRoutes = {
@@ -43,6 +44,10 @@ export const memberRoutes = {
 
 export const walletRoutes = {
   list: () => "/wallet",
+} as const;
+
+export const financeRoutes = {
+  list: () => "/finance",
 } as const;
 
 export const activityRoutes = {

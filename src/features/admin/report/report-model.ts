@@ -1,4 +1,9 @@
-import { memberRoutes } from "../admin-routes";
+import { memberRoutes, questRoutes } from "../admin-routes";
+import { formatAdminTimestamp } from "../date-format";
+import {
+  moderationHistoryFromRecord,
+  type ModerationHistorySummary,
+} from "../moderation-case/moderation-case-context";
 import {
   isConductReportStatus,
   isReportCaseStatus,
@@ -7,6 +12,7 @@ import {
   type ReportCaseStatus,
 } from "../domain/rulebook";
 import { statusBadgeClass } from "../status-badge";
+import { displayAdminId } from "../display-admin-id";
 
 export type ReportCaseRecord = {
   id: string;
@@ -45,6 +51,7 @@ export type ReportCaseEvidence = {
 
 export type ReportCaseModel = {
   id: string;
+  displayId: string;
   status: ReportCaseStatus;
   statusLabel: string;
   badgeClass: string;
@@ -58,6 +65,11 @@ export type ReportCaseModel = {
   reporterId: string | null;
   reporterName: string;
   reporterHref: string | null;
+  relatedQuestId: string | null;
+  relatedQuestDisplayId: string | null;
+  relatedQuestTitle: string | null;
+  relatedQuestHref: string | null;
+  moderationHistory: ModerationHistorySummary;
   detail: string;
   submittedAt: string;
   evidence: ReportCaseEvidence[];
@@ -156,6 +168,15 @@ export function reportCaseDecisionFor(
   return reportCaseDecisionMetadata[choice].command;
 }
 
+export function reportCaseReasonCodeFor(
+  choice: ReportCaseDecisionChoice,
+  value: string,
+): string {
+  const normalized = value.trim().toUpperCase();
+  if (/^[A-Z][A-Z0-9_.-]{0,99}$/.test(normalized)) return normalized;
+  return choice === "no-violation" ? "POLICY_REVIEW" : "SAFETY_REVIEW";
+}
+
 export function reportCaseDecisionDetailsForCommand(command: ReportCaseCommand): {
   choice: ReportCaseDecisionChoice;
   command: ReportCaseCommand;
@@ -186,14 +207,18 @@ export function reportCaseModelFromRecord(value: unknown): ReportCaseModel | nul
     record.reportedMemberName,
     record.reportedUserName,
     personName(record.reportedMember),
-    reportedMemberId ? `Member ${reportedMemberId}` : "Member not provided",
+    reportedMemberId ? "Member" : "Member not provided",
   ) as string;
   const reporterName = firstText(
     record.reporterName,
     record.submittedByMemberName,
     personName(record.reporter),
-    reporterId ? `Member ${reporterId}` : "Reporter not provided",
+    reporterId ? "Member" : "Reporter not provided",
   ) as string;
+  const quest = asRecord(record.quest);
+  const relatedQuestId = firstText(record.questId, record.relatedQuestId, quest?.id);
+  const relatedQuestDisplayId = displayAdminId(record.questDisplayId, quest?.displayId, relatedQuestId);
+  const relatedQuestTitle = firstText(record.questTitle, record.relatedQuestTitle, quest?.title);
   const evidenceRefs = stringList(record.evidenceRefs);
   const evidenceLabel = text(record.evidence);
   const evidence = evidenceRefs.length
@@ -215,6 +240,7 @@ export function reportCaseModelFromRecord(value: unknown): ReportCaseModel | nul
 
   return {
     id,
+    displayId: displayAdminId(record.displayId, id) ?? "",
     status,
     statusLabel: reportCaseStatusLabel(status),
     badgeClass: statusBadgeClass(status),
@@ -228,8 +254,13 @@ export function reportCaseModelFromRecord(value: unknown): ReportCaseModel | nul
     reporterId,
     reporterName,
     reporterHref: reporterId ? memberRoutes.detail(reporterId) : null,
-    detail: firstText(record.details, record.description) ?? "No report detail was provided by the Admin API.",
-    submittedAt: firstText(record.reportedAt, record.submittedAt, record.createdAt) ?? "Time not provided",
+    relatedQuestId,
+    relatedQuestDisplayId,
+    relatedQuestTitle,
+    relatedQuestHref: relatedQuestId ? questRoutes.detail(relatedQuestId) : null,
+    moderationHistory: moderationHistoryFromRecord(record),
+    detail: firstText(record.details, record.description) ?? "No Report Case detail was provided.",
+    submittedAt: formatAdminTimestamp(firstText(record.reportedAt, record.submittedAt, record.createdAt) ?? "Time not provided"),
     evidence,
     decisionLabel,
     decisionReason: firstText(record.decisionReason),

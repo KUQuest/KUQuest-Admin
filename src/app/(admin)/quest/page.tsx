@@ -12,5 +12,5 @@ export default async function QuestPage() {
     cookieStore ? adminSessionCookieHeader(cookieStore.getAll()) : "",
     dataSource,
   );
-  return <AdminQuestPage initialData={initialData} />;
+  return <AdminQuestPage initialData={initialData} dataSource={dataSource} />;
 }

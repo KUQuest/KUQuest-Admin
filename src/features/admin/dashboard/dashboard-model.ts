@@ -1,5 +1,12 @@
 import type { PersistedAdminData } from "../data/admin-records";
 import type { AdminActivityLog, AdminOverview } from "../api/admin-api";
+import { formatAdminTimestamp } from "../date-format";
+import {
+  activityLogActionLabel,
+  activityLogReasonLabel,
+  activityLogTargetLabel,
+  type ActivityLogEntry,
+} from "../activity-log/activity-log-model";
 import {
   QUEST_STATES,
   disputeCaseStatusFor,
@@ -9,6 +16,7 @@ import {
   isReportCasePending,
   walletStatusFor,
 } from "../domain/rulebook";
+import { displayAdminId } from "../display-admin-id";
 
 type LegacyRecord = Record<string, unknown>;
 
@@ -78,6 +86,10 @@ function text(record: LegacyRecord, key: string): string {
   return typeof value === "string" || typeof value === "number" ? String(value) : "";
 }
 
+function displayRecordId(record: LegacyRecord): string {
+  return displayAdminId(text(record, "displayId"), text(record, "id")) ?? "";
+}
+
 function number(record: LegacyRecord, key: string): number {
   const value = Number(record[key]);
   return Number.isFinite(value) ? value : 0;
@@ -121,11 +133,18 @@ function activityInitials(entry: AdminActivityLog): string {
 }
 
 export function dashboardActivityFromApi(entry: AdminActivityLog): DashboardActivity {
+  const activityEntry: ActivityLogEntry = {
+    ...entry,
+    adminId: entry.admin.id,
+    adminName: `${entry.admin.firstName.trim()} ${entry.admin.lastName.trim()}`.trim(),
+    adminInitials: activityInitials(entry),
+    createdAtTimestamp: Date.parse(entry.createdAt) || null,
+  };
   return {
     id: entry.id,
     actor: activityInitials(entry),
-    title: entry.action,
-    detail: `${entry.resourceType} · ${entry.resourceId}${entry.reasonCode ? ` · ${entry.reasonCode}` : ""}`,
+    title: activityLogActionLabel(entry.action),
+    detail: `${activityLogTargetLabel(activityEntry)}${entry.reasonCode ? ` · ${activityLogReasonLabel(entry.reasonCode)}` : ""}`,
     timestamp: Date.parse(entry.createdAt) || 0,
   };
 }
@@ -193,9 +212,9 @@ export function dashboardModel(
       id: text(record, "id"),
       view: "disputes",
       title: `Resolve ${text(record, "disputeType")} dispute`,
-      detail: `${text(record, "id")} · ${text(record, "title")}`,
+      detail: `${displayRecordId(record) ? `${displayRecordId(record)} · ` : ""}${text(record, "title")}`,
       metric: `฿${formatAmount(number(record, "amount"))} held`,
-      age: text(record, "disputeDate"),
+      age: formatAdminTimestamp(text(record, "disputeDate"), "Asia/Bangkok"),
       tone: tone(record, "danger"),
       timestamp: reviewTimestamp(record),
     })),
@@ -203,9 +222,9 @@ export function dashboardModel(
       id: text(record, "id"),
       view: "reports",
       title: "New user report",
-      detail: `${text(record, "id")} · ${text(record, "reportedUserName")}`,
+      detail: `${displayRecordId(record) ? `${displayRecordId(record)} · ` : ""}${text(record, "reportedUserName")}`,
       metric: "Active report",
-      age: text(record, "reportedAt"),
+      age: formatAdminTimestamp(text(record, "reportedAt"), "Asia/Bangkok"),
       tone: tone(record, "warning"),
       timestamp: reviewTimestamp(record),
     })),

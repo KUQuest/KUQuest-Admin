@@ -1,4 +1,9 @@
 import { memberRoutes, questRoutes } from "../admin-routes";
+import { formatAdminTimestamp } from "../date-format";
+import {
+  moderationHistoryFromRecord,
+  type ModerationHistorySummary,
+} from "../moderation-case/moderation-case-context";
 import {
   isConductReportStatus,
   isDisputeCaseStatus,
@@ -11,6 +16,7 @@ import {
   type QuestState,
 } from "../domain/rulebook";
 import { statusBadgeClass } from "../status-badge";
+import { displayAdminId } from "../display-admin-id";
 
 export type DisputeCaseRecord = {
   id: string;
@@ -25,11 +31,11 @@ export type DisputeCaseCommand =
 export const disputeCaseDecisionMetadata = {
   dismiss: {
     command: "DISPUTE_CASE_DISMISSED",
-    label: "Hirer wins",
+    label: "Dismissed",
   },
   resolve: {
     command: "DISPUTE_CASE_RESOLVED",
-    label: "Worker wins",
+    label: "Resolved",
   },
 } as const satisfies Record<DisputeCaseDecisionChoice, { command: DisputeCaseCommand; label: string }>;
 
@@ -47,10 +53,12 @@ export type DisputeCaseModel = {
   isActionable: boolean;
   title: string;
   questId: string;
+  questDisplayId: string | null;
   questTitle: string;
   questHref: string | null;
   questState: QuestState;
   questFailedAt: string | null;
+  moneyHoldDeadline: string | null;
   category: string;
   detail: string;
   filerId: string | null;
@@ -65,11 +73,14 @@ export type DisputeCaseModel = {
   respondentStatement: string;
   amountAtRiskSatang: number | null;
   amountAtRiskLabel: string;
+  sharedCapSatang: number | null;
+  sharedCapLabel: string;
   resolvedAmountSatang: number | null;
   resolvedAmountLabel: string | null;
   workerId: string | null;
   workerName: string;
   workerHref: string | null;
+  moderationHistory: ModerationHistorySummary;
   evidence: DisputeCaseEvidence[];
   submittedAt: string;
   updatedAt: string | null;
@@ -87,6 +98,10 @@ export type DisputeCaseModelSource = "api" | "mock";
 export const DISPUTE_CASE_UPDATED_EVENT = "kuquest:dispute-case-updated";
 
 const missingApiValue = "Not provided by the Admin API.";
+
+function missingValueFor(source: DisputeCaseModelSource): string {
+  return source === "mock" ? "Not provided." : missingApiValue;
+}
 
 function asRecord(value: unknown): DisputeCaseRecord | null {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -106,6 +121,21 @@ function firstText(...values: unknown[]): string | null {
     if (result) return result;
   }
   return null;
+}
+
+function disputeDecisionLabel(value: unknown): string | null {
+  switch (text(value)) {
+    case "Hirer wins":
+    case "Hirer retains funds":
+    case "Retained":
+      return "Dismissed";
+    case "Worker wins":
+    case "Worker receives funds":
+    case "Redirected":
+      return "Resolved";
+    default:
+      return text(value);
+  }
 }
 
 function personName(value: unknown): string | null {
@@ -141,8 +171,8 @@ function roleIs(value: unknown, role: "Hirer" | "Worker"): boolean {
   return text(value)?.toLowerCase() === role.toLowerCase();
 }
 
-function formatSatang(value: number | null): string {
-  if (value === null) return missingApiValue;
+function formatSatang(value: number | null, fallback = missingApiValue): string {
+  if (value === null) return fallback;
   return `฿${(value / 100).toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -152,19 +182,16 @@ function formatSatang(value: number | null): string {
 function formatDate(value: unknown, fallback: string): string {
   const raw = text(value);
   if (!raw) return fallback;
+  const formatted = formatAdminTimestamp(raw, "Asia/Bangkok");
+  return formatted === "Not provided" ? fallback : formatted;
+}
 
+function sevenDayHoldDeadline(value: unknown, fallback = missingApiValue): string | null {
+  const raw = text(value);
+  if (!raw) return null;
   const timestamp = Date.parse(raw);
-  if (Number.isNaN(timestamp)) return raw;
-
-  return new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Asia/Bangkok",
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(new Date(timestamp)).replace(",", " ·");
+  if (Number.isNaN(timestamp)) return null;
+  return formatDate(new Date(timestamp + 7 * 24 * 60 * 60 * 1000).toISOString(), fallback);
 }
 
 export function disputeCaseStatusFromRecord(value: unknown): DisputeCaseStatus | null {
@@ -223,16 +250,17 @@ export function disputeCaseModelFromRecord(
   const record = value;
   const status = disputeCaseStatusFromRecord(record);
   if (!status) return null;
+  const missingValue = missingValueFor(source);
 
   const id = text(record.id) as string;
   const quest = asRecord(record.quest);
   const questId = firstText(record.questId, quest?.id) ?? "";
-  const questTitle = firstText(record.questTitle, quest?.title, record.title) ?? missingApiValue;
+  const questTitle = firstText(record.questTitle, quest?.title, record.title) ?? missingValue;
   const questState = questStateFor(record.questState ?? quest?.questStatus);
   const filerId = firstText(record.filerUserId, record.filerId);
   const respondentId = firstText(record.respondentUserId, record.respondentId);
-  const filerRole = firstText(record.filerRole) ?? "Filer";
-  const respondentRole = firstText(record.respondentRole) ?? "Respondent";
+  const filerRole = firstText(record.filerRole) ?? "Hirer";
+  const respondentRole = firstText(record.respondentRole) ?? "Worker";
   const workerId = firstText(
     record.resolvedWorkerId,
     record.workerId,
@@ -242,22 +270,25 @@ export function disputeCaseModelFromRecord(
   const filerName = firstText(
     record.filerName,
     personName(record.filer),
-    filerId ? `Member ${filerId}` : null,
+    filerId ? "Member" : null,
     source === "mock" ? record.reporterName : null,
-    source === "mock" ? "Filer not provided" : null,
-  ) ?? missingApiValue;
+    source === "mock" ? "Hirer not provided" : null,
+  ) ?? missingValue;
   const respondentName = firstText(
     record.respondentName,
     personName(record.respondent),
     personName(record.worker),
-    respondentId ? `Member ${respondentId}` : null,
+    respondentId ? "Member" : null,
     source === "mock" ? record.workerName : null,
-    source === "mock" ? "Respondent not provided" : null,
-  ) ?? missingApiValue;
+    source === "mock" ? "Worker not provided" : null,
+  ) ?? missingValue;
   const workerName = roleIs(filerRole, "Worker") ? filerName : respondentName;
   const amountAtRiskSatang = positiveInteger(record.amountAtRiskSatang)
     ?? (source === "mock" ? positiveInteger(record.amountSatang) : null)
     ?? (source === "mock" && typeof record.amount === "number" ? Math.round(record.amount * 100) : null);
+  const sharedCapSatang = positiveInteger(record.remainingDisputeCapSatang)
+    ?? positiveInteger(record.remainingFundingReservationSatang)
+    ?? (source === "mock" ? amountAtRiskSatang : null);
   const resolvedAmountSatang = positiveInteger(record.resolvedAmountSatang);
   const evidenceRefs = stringList(record.evidenceRefs);
   const evidenceLabel = firstText(record.evidence);
@@ -272,62 +303,68 @@ export function disputeCaseModelFromRecord(
       ? [{ reference: null, label: evidenceLabel }]
       : [];
   const decisionLabel = firstText(
-    record.decisionLabel,
-    status === "DISPUTE_CASE_DISMISSED" ? "Hirer wins" : null,
-    status === "DISPUTE_CASE_RESOLVED" ? "Worker wins" : null,
+    disputeDecisionLabel(record.decisionLabel),
+    status === "DISPUTE_CASE_DISMISSED" ? "Dismissed" : null,
+    status === "DISPUTE_CASE_RESOLVED" ? "Resolved" : null,
   );
   const submittedAt = formatDate(
     record.createdAt ?? record.disputeDate,
-    source === "mock" ? firstText(record.disputeDate) ?? "Time not provided" : missingApiValue,
+    source === "mock" ? firstText(record.disputeDate) ?? "Time not provided" : missingValue,
   );
+  const questFailedAt = firstText(record.failedAt, quest?.failedAt);
 
   return {
     id,
-    displayId: firstText(record.displayId) ?? id,
+    displayId: displayAdminId(record.displayId, id) ?? "",
     status,
     statusLabel: disputeCaseStatusLabel(status),
     badgeClass: statusBadgeClass(status),
     isActionable: canResolveDispute(questState, status),
     title: questTitle,
     questId,
+    questDisplayId: displayAdminId(record.questDisplayId, quest?.displayId, questId),
     questTitle,
     questHref: questId ? questRoutes.detail(questId) : null,
     questState,
-    questFailedAt: firstText(record.failedAt, quest?.failedAt),
-    category: firstText(record.category, record.disputeType) ?? (source === "mock" ? "Dispute Case" : missingApiValue),
+    questFailedAt,
+    moneyHoldDeadline: sevenDayHoldDeadline(questFailedAt, missingValue),
+    category: firstText(record.category, record.disputeType) ?? (source === "mock" ? "Dispute Case" : missingValue),
     detail: firstText(record.detail, record.details, record.description)
-      ?? (source === "mock" ? "Review the Quest record and the submitted statements." : missingApiValue),
+      ?? (source === "mock" ? "Review the Quest record and the submitted statements." : missingValue),
     filerId,
     filerRole,
     filerName,
     filerHref: filerId ? memberRoutes.detail(filerId) : null,
     filerStatement: firstText(record.filerStatement, record.claim)
-      ?? (source === "mock" ? "The Filer submitted this Dispute Case for Admin review." : missingApiValue),
+      ?? (source === "mock" ? "The Hirer submitted this Dispute Case for Admin review." : missingValue),
     respondentId,
     respondentRole,
     respondentName,
     respondentHref: respondentId ? memberRoutes.detail(respondentId) : null,
     respondentStatement: firstText(record.respondentStatement, record.response)
-      ?? (source === "mock" ? "The Respondent statement was not provided in the demo record." : missingApiValue),
+      ?? (source === "mock" ? "The Worker statement was not provided in the demo record." : missingValue),
     amountAtRiskSatang,
-    amountAtRiskLabel: formatSatang(amountAtRiskSatang),
+    amountAtRiskLabel: formatSatang(amountAtRiskSatang, missingValue),
+    sharedCapSatang,
+    sharedCapLabel: formatSatang(sharedCapSatang, missingValue),
     resolvedAmountSatang,
-    resolvedAmountLabel: resolvedAmountSatang === null ? null : formatSatang(resolvedAmountSatang),
+    resolvedAmountLabel: resolvedAmountSatang === null ? null : formatSatang(resolvedAmountSatang, missingValue),
     workerId,
     workerName,
     workerHref: workerId ? memberRoutes.detail(workerId) : null,
+    moderationHistory: moderationHistoryFromRecord(record),
     evidence,
     submittedAt,
-    updatedAt: firstText(record.updatedAt) ? formatDate(record.updatedAt, missingApiValue) : null,
+    updatedAt: firstText(record.updatedAt) ? formatDate(record.updatedAt, missingValue) : null,
     decisionLabel,
     decisionReason: firstText(record.decisionReason, record.reason),
     resolution: firstText(record.resolution),
     resolvedBy: firstText(record.resolvedBy, record.resolvedByAdminId),
     resolutionAt: firstText(record.resolutionAt, record.resolvedAt)
-      ? formatDate(record.resolutionAt ?? record.resolvedAt, missingApiValue)
+      ? formatDate(record.resolutionAt ?? record.resolvedAt, missingValue)
       : null,
     closedAt: firstText(record.closedAt)
-      ? formatDate(record.closedAt, missingApiValue)
+      ? formatDate(record.closedAt, missingValue)
       : null,
     version: typeof record.version === "number" ? record.version : undefined,
   };

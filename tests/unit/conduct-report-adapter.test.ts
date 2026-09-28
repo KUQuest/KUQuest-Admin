@@ -4,7 +4,8 @@ import {
   loadConductReportsFromMock,
   saveMockConductReportDecision,
 } from "../../src/features/admin/conduct-report/conduct-report-adapter";
-import { ADMIN_DEMO_DATA_KEY } from "../../src/features/admin/data/legacy-admin-data-adapter";
+import { ADMIN_DEMO_DATA_KEY } from "../../src/features/admin/data/admin-demo-data-adapter";
+import { findMemberFromMock } from "../../src/features/admin/member/member-adapter";
 
 function memoryStorage() {
   const values = new Map<string, string>();
@@ -60,6 +61,39 @@ describe("Conduct Report mock adapter", () => {
     )).toBeNull();
   });
 
+  it("applies the next Misconduct tier, including Wallet auto-freeze", () => {
+    const storage = memoryStorage();
+    storage.setItem(ADMIN_DEMO_DATA_KEY, JSON.stringify({
+      version: "test",
+      collections: {
+        users: [{
+          id: "member-conduct",
+          title: "Reported Member",
+          memberStatus: "Flag",
+          walletStatus: "ACTIVE",
+          confirmedViolationCount: 1,
+        }],
+        quests: [],
+        payouts: [],
+        disputes: [],
+        reports: [{
+          id: "CND-1",
+          reportedMemberId: "member-conduct",
+          status: "CONDUCT_REPORT_PENDING",
+          conductReportStatus: "CONDUCT_REPORT_PENDING",
+        }],
+      },
+    }));
+
+    saveMockConductReportDecision(storage, "CND-1", "CONDUCT_REPORT_UPHELD", "Quest evidence confirms a violation.");
+
+    expect(findMemberFromMock(storage, "member-conduct")).toMatchObject({
+      memberStatus: "Temp Ban",
+      walletStatus: "FROZEN",
+      confirmedViolationCount: 2,
+    });
+  });
+
   it("adds the Conduct Report seed to the previous dashboard seed", () => {
     const storage = memoryStorage();
     storage.setItem(ADMIN_DEMO_DATA_KEY, JSON.stringify({
@@ -73,9 +107,12 @@ describe("Conduct Report mock adapter", () => {
       },
     }));
 
-    expect(loadConductReportsFromMock(storage).items).toHaveLength(3);
+    const firstPage = loadConductReportsFromMock(storage);
+    expect(firstPage.items).toHaveLength(3);
+    expect(firstPage.nextCursor).toBe("mock-page-2");
+    expect(loadConductReportsFromMock(storage, firstPage.nextCursor ?? undefined).items.length).toBeGreaterThan(0);
     expect(JSON.parse(storage.getItem(ADMIN_DEMO_DATA_KEY) ?? "{}").version).toBe(
-      "dashboard-bootstrap-v3-canonical-conduct-reports",
+      "dashboard-bootstrap-v4-expanded-mock-fixtures",
     );
   });
 });

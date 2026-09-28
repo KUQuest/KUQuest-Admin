@@ -1,6 +1,7 @@
 import type { AdminReportListQuery } from "../api/admin-api";
-import { adminApi } from "../api/admin-api";
+import { adminApiProvider } from "../api/admin-provider";
 import { adminApiRequestOptions } from "../api/admin-api-request-options";
+import { displayAdminId } from "../display-admin-id";
 import { conductReportModelFromRecord, type ConductReportModel } from "./conduct-report-model";
 
 export type ConductReportPageData = {
@@ -20,8 +21,13 @@ export async function loadConductReportPageData(
   cookieHeader?: string,
   cursor?: string,
 ): Promise<ConductReportPageData> {
-  const query: AdminReportListQuery = { limit: 50, ...(cursor ? { cursor } : {}) };
-  const page = await adminApi.listReports(
+  const query: AdminReportListQuery = {
+    kind: "CONDUCT_REPORT",
+    limit: 50,
+    sort: "newest",
+    ...(cursor ? { cursor } : {}),
+  };
+  const page = await adminApiProvider.read.listReports(
     query,
     adminApiRequestOptions(cookieHeader),
   );
@@ -30,4 +36,24 @@ export async function loadConductReportPageData(
     items: conductReportModels(page.items),
     nextCursor: page.nextCursor,
   };
+}
+
+export async function loadConductReportDetailFromApi(
+  reportId: string,
+  cookieHeader?: string,
+): Promise<ConductReportModel | null> {
+  const report = await adminApiProvider.read.getReport(
+    reportId,
+    adminApiRequestOptions(cookieHeader),
+  );
+  const model = conductReportModelFromRecord(report);
+  if (model?.questId && !model.questDisplayId) {
+    try {
+      const quest = await adminApiProvider.read.getQuest(model.questId, adminApiRequestOptions(cookieHeader));
+      model.questDisplayId = displayAdminId(quest.displayId);
+    } catch {
+      // The Conduct Report remains readable when its related Quest cannot load.
+    }
+  }
+  return model?.id === reportId ? model : null;
 }

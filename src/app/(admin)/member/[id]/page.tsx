@@ -8,7 +8,7 @@ import {
 import { isAdminApiEnabled } from "../../../../features/admin/api/admin-provider";
 import { MemberDetail } from "../../../../features/admin/member/member-detail";
 import { memberTabFrom } from "../../../../features/admin/member/member-model";
-import { loadMemberDetailFromApi } from "../../../../features/admin/member/member-service";
+import { loadMemberDetailFromApi, loadMemberDetailFromMock } from "../../../../features/admin/member/member-service";
 import { adminSessionCookieHeader } from "../../../../lib/auth/admin-session-policy";
 
 type MemberPageProps = AdminDetailRoutePageProps & {
@@ -25,7 +25,7 @@ export default async function MemberDetailPage({ params, searchParams }: MemberP
   const rawTab = values.tab;
   const tab = Array.isArray(rawTab) ? rawTab[0] : rawTab;
   if (!isAdminApiEnabled()) {
-    return <MemberDetail memberId={id} initialTab={memberTabFrom(tab)} />;
+    return <MemberDetail memberId={id} initialModel={loadMemberDetailFromMock(id)} initialTab={memberTabFrom(tab)} />;
   }
 
   const cookieStore = await cookies();

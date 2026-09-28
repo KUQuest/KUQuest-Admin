@@ -2,8 +2,8 @@ import { describe, expect, it } from "bun:test";
 import {
   ADMIN_DEMO_DATA_KEY,
   type BrowserStorage,
-} from "../../src/features/admin/data/legacy-admin-data-adapter";
-import { recordMemberViolation } from "../../src/features/admin/member/member-adapter";
+} from "../../src/features/admin/data/admin-demo-data-adapter";
+import { recordMemberViolation, removeMemberPenalty } from "../../src/features/admin/member/member-adapter";
 
 import type { AdminMemberDetail } from "../../src/features/admin/api/admin-api";
 import {
@@ -68,6 +68,39 @@ describe("Member route model", () => {
     expect(model?.reports[0]?.href).toBe("/report/RPT-1");
     expect(model?.walletStatement).toHaveLength(50);
     expect(walletStatementRows(model!, { eventType: "TOP_UP", from: "", to: "" }, 25)).toHaveLength(11);
+  });
+
+  it("provides deterministic mock moderation history, notes, and related case links", () => {
+    const data = mockData();
+    data.collections.users.push({
+      id: "68000020",
+      title: "Amara Ariyawat",
+      person: "amara@ku.th",
+    });
+    data.collections.reports.push({
+      id: "RPT-SUBMITTED",
+      reportedMemberId: "member-1",
+      reporterId: "68000020",
+      reporterName: "Amara Ariyawat",
+      category: "Harassment",
+      status: "REPORT_CASE_PENDING",
+    });
+
+    const model = memberModelFromMockRecord(data.collections.users[0], data);
+
+    expect(model?.source).toBe("mock");
+    expect(model?.penaltyHistory[0]).toMatchObject({
+      event: "Report Case received",
+      caseId: "RPT-8201",
+      caseType: "Report Case",
+      caseHref: "/report/RPT-8201",
+    });
+    expect(model?.adminNotes[0]?.note).toContain("Evidence Reference");
+    expect(model?.reportsSubmitted[0]).toMatchObject({
+      id: "RPT-SUBMITTED",
+      kind: "Report Case",
+    });
+    expect(model?.reportsSubmittedError).toBeNull();
   });
 
   it("keeps the complete Ledger balance when filtering displayed rows", () => {
@@ -185,6 +218,8 @@ describe("Member route model", () => {
     expect(model.memberStatus).toBeNull();
     expect(model.walletStatus).toBe("FROZEN");
     expect(model.memberStatusSource).toBe("NOT_PROVIDED_BY_API");
+    expect(model.reportsSubmitted).toEqual([]);
+    expect(model.reportsSubmittedError).toContain("not provided by the Admin API");
   });
   it("applies PC-12 Red Flag exemptions before the misconduct ladder", () => {
     const data = mockData();
@@ -211,5 +246,47 @@ describe("Member route model", () => {
     expect(result?.model.memberStatus).toBe("Normal");
     expect(result?.model.confirmedViolationCount).toBe(1);
     expect(result?.model.newUserExemptionRemaining).toBe(0);
+  });
+
+  it("removes one active Mock penalty and keeps a reversal history entry", () => {
+    const data = mockData();
+    data.collections.users.push({
+      id: "member-penalty",
+      title: "Penalty Member",
+      person: "penalty@ku.th",
+      memberStatus: "Temp Ban",
+      walletStatus: "FROZEN",
+      confirmedViolationCount: 2,
+      penalty: {
+        label: "Temporary ban",
+        reason: "Repeated policy violations.",
+        recordedAt: "2026-09-10T09:00:00.000Z",
+        appliedBy: "Admin",
+        durationDays: 7,
+      },
+    });
+    const values: Record<string, string> = {
+      [ADMIN_DEMO_DATA_KEY]: JSON.stringify(data),
+    };
+    const storage: BrowserStorage = {
+      getItem: (key) => values[key] ?? null,
+      setItem: (key, value) => {
+        values[key] = value;
+      },
+    };
+
+    const result = removeMemberPenalty(storage, "member-penalty", "The original decision was corrected.");
+
+    expect(result?.previousStatus).toBe("Temp Ban");
+    expect(result?.nextStatus).toBe("Flag");
+    expect(result?.model.confirmedViolationCount).toBe(1);
+    expect(result?.model.memberStatus).toBe("Flag");
+    expect(result?.model.walletStatus).toBe("ACTIVE");
+    expect(result?.model.penaltyHistory[0]).toMatchObject({
+      event: "Member penalty removed",
+      reason: "The original decision was corrected.",
+      previousStatus: "Temp Ban",
+      newStatus: "Flag",
+    });
   });
 });

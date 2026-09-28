@@ -6,6 +6,7 @@ import {
   normalizeAdminLanguage,
   type AdminLanguage,
 } from "../../features/admin/language/admin-language";
+import { Button } from "../ui/button";
 
 type AdminLanguageControlProps = {
   language?: AdminLanguage;
@@ -59,16 +60,16 @@ export function AdminLanguageControl({
   const showThai = useCallback(() => selectLanguage("th"), [selectLanguage]);
 
   return (
-    <div className="language-control" data-language-control>
-      <span className="language-control-label">{translateText("Language")}</span>
-      <fieldset className="language-options" aria-label={translateText("Language options")}>
+    <div className="flex-none py-2" data-language-control>
+      <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.07em] text-admin-muted">{translateText("Language")}</span>
+      <fieldset className="grid min-w-0 grid-cols-2 gap-1 border-0 p-0" aria-label={translateText("Language options")}>
         <legend className="visually-hidden">{translateText("Language options")}</legend>
-        <button className="language-option" type="button" aria-pressed={language === "en"} onClick={showEnglish}>
+        <Button variant="outline" size="sm" className="min-h-9 w-auto bg-admin-soft px-2 py-1.5 text-xs text-admin-muted aria-pressed:border-admin-accent aria-pressed:bg-admin-accent-soft aria-pressed:text-admin-accent" type="button" aria-pressed={language === "en"} onClick={showEnglish}>
           English
-        </button>
-        <button className="language-option" type="button" aria-pressed={language === "th"} onClick={showThai}>
+        </Button>
+        <Button variant="outline" size="sm" className="min-h-9 w-auto bg-admin-soft px-2 py-1.5 text-xs text-admin-muted aria-pressed:border-admin-accent aria-pressed:bg-admin-accent-soft aria-pressed:text-admin-accent" type="button" aria-pressed={language === "th"} onClick={showThai}>
           ไทย
-        </button>
+        </Button>
       </fieldset>
     </div>
   );

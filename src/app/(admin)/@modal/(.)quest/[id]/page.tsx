@@ -21,5 +21,5 @@ export default async function QuestModalRoute({
     dataSource,
   );
   if (!initialData) notFound();
-  return <QuestDetailPage questId={questId} presentation="drawer" initialData={initialData} />;
+  return <QuestDetailPage questId={questId} presentation="drawer" initialData={initialData} dataSource={dataSource} />;
 }

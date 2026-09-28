@@ -42,11 +42,11 @@ test.describe("Admin session and private-route boundary", () => {
     const main = page.locator("#activity-main");
     await expect(main.getByRole("heading", { level: 1, name: "Activity Log" })).toBeVisible();
     await expect(main.locator("tbody tr")).toHaveCount(2);
-    await expect(main.locator("tbody tr").first()).toContainText("QUEST_HIDDEN");
+    await expect(main.locator("tbody tr").first()).toContainText("Quest Hidden");
 
     await main.getByLabel("Search loaded activity").fill("PAYOUT_APPROVED");
     await expect(main.locator("tbody tr")).toHaveCount(1);
-    await expect(main.locator("tbody tr").first()).toContainText("PAYOUT_APPROVED");
+    await expect(main.locator("tbody tr").first()).toContainText("Payout Approved");
 
     const activityRequests: string[] = [];
     page.on("request", (request) => {
@@ -58,12 +58,13 @@ test.describe("Admin session and private-route boundary", () => {
       && request.url().includes("sort=oldest")
     ));
     await main.getByLabel("Action filter").fill("PAYOUT_APPROVED");
-    await main.getByLabel("Sort activity").selectOption("oldest");
+    await main.getByRole("combobox", { name: "Sort activity" }).click();
+    await page.getByRole("option", { name: "Oldest first" }).click();
     await main.getByRole("button", { name: "Apply filters" }).click();
     await filterRequest;
     expect(activityRequests.some((url) => url.includes("action=PAYOUT_APPROVED") && url.includes("sort=oldest"))).toBe(true);
     await expect(main.locator("tbody tr")).toHaveCount(1);
-    await expect(main.locator("tbody tr").first()).toContainText("PAYOUT_APPROVED");
+    await expect(main.locator("tbody tr").first()).toContainText("Payout Approved");
 
     await main.getByLabel("Search loaded activity").fill("");
     await main.getByRole("button", { name: "Clear filters" }).click();
@@ -71,9 +72,9 @@ test.describe("Admin session and private-route boundary", () => {
     const opener = main.getByRole("button", { name: "View activity details" }).first();
     await opener.focus();
     await opener.click();
-    const detail = page.getByRole("dialog", { name: "QUEST_HIDDEN" });
+    const detail = page.getByRole("dialog", { name: "Activity log entry" });
     await expect(detail).toBeVisible();
-    await expect(detail).toContainText("POLICY_REVIEW");
+    await expect(detail).toContainText("Policy Review");
     await page.keyboard.press("Escape");
     await expect(detail).toHaveCount(0);
     await expect(opener).toBeFocused();
@@ -87,7 +88,7 @@ test.describe("Admin session and private-route boundary", () => {
     await expect(detail).toBeVisible();
     await page.reload();
     await expect(page.locator("#activity-main")).toBeVisible();
-    await expect(page.getByRole("dialog", { name: "QUEST_HIDDEN" })).toHaveCount(0);
+    await expect(page.getByRole("dialog", { name: "Activity log entry" })).toHaveCount(0);
   });
 
   test("covers Activity Log mobile, language, theme, export, and pagination behavior", async ({ context, page }) => {
