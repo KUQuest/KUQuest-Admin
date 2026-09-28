@@ -196,7 +196,9 @@ test.describe("Payout App Router route family", () => {
 
     const drawer = page.getByRole("dialog", { name: /^Payout for / });
     await drawer.getByRole("button", { name: "Approve Payout" }).click();
-    await page.getByRole("dialog", { name: "Approve Payout" }).getByRole("button", { name: "Approve Payout" }).click();
+    const approval = page.getByRole("dialog", { name: "Approve Payout" });
+    await approval.getByLabel(/Reason code/).selectOption("PAYOUT_POLICY_REVIEW");
+    await approval.getByRole("button", { name: "Approve Payout" }).click();
     await expect(drawer.getByRole("heading", { name: "Transfer submitted" })).toBeVisible();
     await expect(drawer.locator(".admin-action-receipt")).toHaveCSS("display", "block");
     await expect(drawer.getByRole("link", { name: "Full Payout detail" })).toBeVisible();

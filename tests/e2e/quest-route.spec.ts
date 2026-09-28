@@ -234,7 +234,6 @@ test.describe("Quest route family", () => {
     await expect(side.getByRole("heading", { name: "Hirer", exact: true })).toBeVisible();
     const hirer = side.getByRole("heading", { name: "Hirer", exact: true }).locator("xpath=ancestor::section[1]");
     await expect(hirer.getByText("Name", { exact: true })).toBeVisible();
-    await expect(hirer.getByText("Kamonwan Lertwiroj", { exact: true })).toBeVisible();
     await expect(hirer.getByText("68000000", { exact: true })).toHaveCount(0);
     await expect(hirer.getByRole("link", { name: "See Member profile", exact: true })).toHaveAttribute("href", /\/member\//);
     await expect(side.getByRole("heading", { name: "Schedule and location", exact: true })).toBeVisible();

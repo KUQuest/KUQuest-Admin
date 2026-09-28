@@ -26,8 +26,8 @@ test.describe("Member route family", () => {
     const demoSearch = board.getByRole("searchbox", { name: "Search Members" });
     await demoSearch.fill("Demo Member 01");
     const demoRow = board.locator("tbody tr[data-member-id]").first();
-    await expect(demoRow.locator("td").nth(0)).toHaveText("68000100");
-    await expect(demoRow.locator("td").nth(2)).toHaveText("6510200100");
+    await expect(demoRow.locator("td").nth(0)).toContainText("Demo Member 01");
+    await expect(demoRow.locator("td").nth(1)).toHaveText("6510200100");
     await demoSearch.fill("");
 
     const opener = board.locator('tbody tr[data-member-id="68000000"]');
@@ -69,7 +69,7 @@ test.describe("Member route family", () => {
     await expect(studentIdSort).toBeVisible();
     await studentIdSort.click();
     await expect(board.locator("tbody tr[data-member-id]").first().locator("td").nth(1)).toHaveText("6510200100");
-    await expect(board.locator("thead th").first()).toHaveAttribute("aria-sort", "ascending");
+    await expect(board.locator("thead th").nth(1)).toHaveAttribute("aria-sort", "ascending");
     await studentIdSort.click();
     await expect(board.locator("tbody tr[data-member-id]").first().locator("td").nth(1)).toHaveText("6510200299");
     await expect(board.locator("thead th").nth(1)).toHaveAttribute("aria-sort", "descending");

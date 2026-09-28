@@ -264,12 +264,10 @@ test.describe("legacy parity for inputs on mobile", () => {
     const dialog = page.getByRole("dialog", { name: "Confirm violation for Akarin Ariyawat" });
     await expect(dialog.getByRole("region", { name: "Penalty ladder" })).toContainText("Next outcome");
     const reason = dialog.getByLabel("Reason for confirmed violation");
-    const note = dialog.getByLabel("Internal admin note (optional)");
     await reason.fill("Repeated off-platform payment requests.");
-    await note.fill("Review again after the appeal window.");
+    await expect(dialog.getByLabel("Internal admin note (optional)")).toHaveCount(0);
     await expect(reason).toHaveValue("Repeated off-platform payment requests.");
     await expectResponsiveInput(page, reason);
-    await expectResponsiveInput(page, note);
     await dialog.getByRole("button", { name: "Close penalty form" }).click();
     await expect(dialog).toHaveCount(0);
   });
@@ -317,16 +315,15 @@ test.describe("legacy parity for inputs on mobile", () => {
     await expect(dialog).toHaveCount(0);
   });
 
-  test("Payout decision reason code accepts input on mobile", async ({ page }) => {
+  test("Payout decision reason code is required on mobile", async ({ page }) => {
     await signIn(page);
     await page.goto("/payout/PAY-9637");
 
     await page.getByRole("button", { name: "Approve Payout" }).click();
     const approval = page.getByRole("dialog", { name: "Approve Payout" });
     const approvalReasonCode = approval.getByLabel(/Reason code/);
-    await approvalReasonCode.selectOption("PAYOUT_POLICY_REVIEW");
-    await expect(approvalReasonCode).toHaveValue("PAYOUT_POLICY_REVIEW");
-    await expectResponsiveInput(page, approvalReasonCode);
+    await expect(approvalReasonCode).toBeVisible();
+    await expect(approval.getByRole("button", { name: "Approve Payout" })).toBeDisabled();
     await page.keyboard.press("Escape");
     await expect(approval).toHaveCount(0);
 
