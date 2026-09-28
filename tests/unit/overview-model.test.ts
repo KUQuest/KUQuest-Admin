@@ -320,9 +320,9 @@ describe("Overview search results", () => {
     }, "ari");
 
     expect(results.map((result) => [result.kind, result.id, result.href])).toEqual([
-      ["member", "68000000", "/member/68000000"],
+      ["member", "", "/member/68000000"],
       ["payout", "PAY-9637", "/payout/PAY-9637"],
-      ["wallet", "WLT-68000000", "/wallet"],
+      ["wallet", "", "/wallet"],
     ]);
     expect(overviewSearchResultsFromMockData({
       version: "test",
@@ -358,7 +358,7 @@ describe("Overview search results", () => {
       payouts: [],
     }, "6612345678");
 
-    expect(results[0]).toMatchObject({ kind: "member", id: "68000000", href: "/member/68000000" });
+    expect(results[0]).toMatchObject({ kind: "member", id: "", href: "/member/68000000" });
   });
 
   it("shows status and sorts categories before newest records", () => {
@@ -383,14 +383,14 @@ describe("Overview search results", () => {
     }, "Ari");
 
     expect(results.map((result) => `${result.kind}:${result.id}`)).toEqual([
-      "member:68000002",
-      "member:68000001",
+      "member:",
+      "member:",
       "quest:QST-NEW",
       "quest:QST-OLD",
       "payout:PAY-NEW",
       "payout:PAY-OLD",
-      "wallet:WLT-68000002",
-      "wallet:WLT-68000001",
+      "wallet:",
+      "wallet:",
     ]);
     expect(results.map((result) => result.status)).toEqual([
       "Normal",

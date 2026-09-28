@@ -27,10 +27,11 @@ export function loadDashboardData(storage: BrowserStorage): PersistedAdminData {
     });
   }
 
+  const seededData = JSON.parse(JSON.stringify(dashboardSeedData)) as PersistedAdminData;
   try {
-    storage.setItem(ADMIN_DEMO_DATA_KEY, JSON.stringify(dashboardSeedData));
+    storage.setItem(ADMIN_DEMO_DATA_KEY, JSON.stringify(seededData));
   } catch {
     // Use the in-memory seed when browser storage is unavailable.
   }
-  return dashboardSeedData;
+  return seededData;
 }

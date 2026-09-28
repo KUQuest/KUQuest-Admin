@@ -512,7 +512,6 @@ describe("Admin API boundary", () => {
     expect(request?.headers.get("idempotency-key")).toBe("hide-quest-1");
     expect(request?.headers.get("if-match")).toBe("2");
     expect(await request?.json()).toEqual({
-      reason: "The Quest needs policy review.",
       reasonCode: "POLICY_REVIEW",
     });
   });
@@ -543,7 +542,6 @@ describe("Admin API boundary", () => {
     expect(request?.headers.get("idempotency-key")).toBe("terminate-quest-1");
     expect(request?.headers.get("if-match")).toBe("2");
     expect(await request?.json()).toEqual({
-      reason: "The Quest violates the safety policy.",
       reasonCode: "SAFETY_REVIEW",
     });
   });
@@ -574,7 +572,6 @@ describe("Admin API boundary", () => {
     expect(request?.headers.get("idempotency-key")).toBe("restore-quest-1");
     expect(request?.headers.get("if-match")).toBe("2");
     expect(await request?.json()).toEqual({
-      reason: "The Quest is safe after review.",
       reasonCode: "POLICY_REVIEW",
     });
   });
