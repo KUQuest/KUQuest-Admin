@@ -1,6 +1,7 @@
 import type { AdminDisputeListQuery } from "../api/admin-api";
 import { adminApiProvider } from "../api/admin-provider";
 import { adminApiRequestOptions } from "../api/admin-api-request-options";
+import { displayAdminId } from "../display-admin-id";
 import {
   disputeCaseModelFromRecord,
   type DisputeCaseModel,
@@ -44,5 +45,13 @@ export async function loadDisputeCaseDetailFromApi(
     adminApiRequestOptions(cookieHeader),
   );
   const model = disputeCaseModelFromRecord(dispute, "api");
+  if (model?.questId) {
+    try {
+      const quest = await adminApiProvider.read.getQuest(model.questId, adminApiRequestOptions(cookieHeader));
+      model.questDisplayId = displayAdminId(quest.displayId);
+    } catch {
+      // The Dispute Case remains readable when its related Quest cannot load.
+    }
+  }
   return model?.id === disputeId ? model : null;
 }

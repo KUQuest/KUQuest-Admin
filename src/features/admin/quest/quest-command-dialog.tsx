@@ -71,7 +71,7 @@ export function QuestCommandDialog({
             <p>{translateText(command === "terminate" ? "This changes the Quest to Cancelled and preserves the Admin Action." : "The API Server remains the authority for this Quest action.")}</p>
           <AdminActionSummary
             title={translateText("Before you confirm")}
-            affected={`${translateText("Quest")} ${detail.displayId || detail.id}`}
+            affected={`${translateText("Quest")} ${detail.displayId || detail.title}`}
             currentState={translateText(command === "restore" ? "Hidden" : command === "hide" ? "Discoverable" : questStateLabel(detail.state))}
             nextState={translateText(command === "restore" ? "Discoverable" : command === "hide" ? "Hidden" : questStateLabel("QUEST_CANCELLED"))}
             effect={translateText(command === "hide"

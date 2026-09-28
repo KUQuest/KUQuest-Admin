@@ -301,7 +301,7 @@ function walletSortValue(row: WalletBoardRow, key: WalletSortKey): string | numb
   if (key === "balance") return row.currentBalanceSatang;
   if (key === "latestTransactionAt") return Date.parse(row.latestTransactionAt ?? "") || 0;
   if (key === "createdAt") return Date.parse(row.createdAt) || 0;
-  if (key === "id") return row.id;
+  if (key === "id") return row.studentId ?? "";
   if (key === "member") return row.memberName;
   return row.statusLabel;
 }

@@ -43,6 +43,7 @@ import {
 } from "./dispute-model";
 import { questStateLabel } from "../domain/rulebook";
 import { questStatusClass } from "../quest/quest-model";
+import { displayAdminId } from "../display-admin-id";
 import { DisputeDecisionDialog, useDisputeModalFocus } from "./dispute-decision-dialog";
 import { useDisputeDecisionMutation, useDisputeDetailQuery, useDisputeEvidenceQuery } from "./dispute-query";
 
@@ -97,7 +98,7 @@ function Overview({ model, translateText, compact = false }: { model: DisputeCas
           <div className={adminRecordFacts}><div className={adminRecordFact}><span>{translateText("Status")}</span><strong><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></strong></div><div className={adminRecordFact}><span>{translateText("Category")}</span><strong>{translateText(model.category)}</strong></div><div className={adminRecordFact}><span>{translateText("Amount at risk")}</span><strong>{model.amountAtRiskLabel}</strong></div></div>
           <AdminOverviewMeta className="moderation-case-context-grid !grid-cols-2 max-[600px]:!grid-cols-1"><div><dt>{translateText("Case")}</dt><dd>{model.displayId}</dd></div><div><dt>{translateText("Case type")}</dt><dd>{translateText("Dispute Case")}</dd></div><div><dt>{translateText("Source")}</dt><dd>{translateText("Quest settlement")}</dd></div><div><dt>{translateText("Submitted")}</dt><dd>{model.submittedAt}</dd></div><div><dt>{translateText("Evidence References")}</dt><dd>{model.evidence.length || translateText("None")}</dd></div></AdminOverviewMeta>
           <div className={adminRecordGroup}><span>{translateText("Submitted detail")}</span><p>{model.detail}</p></div>
-          <div className={adminRecordPartyGrid}><div><span>{translateText(model.filerRole)}</span><strong><MemberLink id={model.filerId} name={model.filerName} href={model.filerHref} interactive={false} /></strong><small>{model.filerId ?? "—"}</small></div><div><span>{translateText(model.respondentRole)}</span><strong><MemberLink id={model.respondentId} name={model.respondentName} href={model.respondentHref} interactive={false} /></strong><small>{model.respondentId ?? "—"}</small></div></div>
+          <div className={adminRecordPartyGrid}><div><span>{translateText(model.filerRole)}</span><strong><MemberLink id={model.filerId} name={model.filerName} href={model.filerHref} interactive={false} /></strong>{displayAdminId(model.filerId) && <small>{displayAdminId(model.filerId)}</small>}</div><div><span>{translateText(model.respondentRole)}</span><strong><MemberLink id={model.respondentId} name={model.respondentName} href={model.respondentHref} interactive={false} /></strong>{displayAdminId(model.respondentId) && <small>{displayAdminId(model.respondentId)}</small>}</div></div>
       </Card>
     );
   }
@@ -153,11 +154,12 @@ function Timeline({ model, translateText }: { model: DisputeCaseModel; translate
 
 function DecisionDetails({ model, translateText }: { model: DisputeCaseModel; translateText: (value: string) => string }) {
   if (!model.decisionReason && !model.resolution && !model.resolvedBy) return null;
-  return <div className={adminRecordGroup}><span>{translateText("Reason for decision")}</span><p>{model.decisionReason ?? translateText("Reason not provided.")}</p><AdminOverviewMeta className="dispute-resolution-meta !grid-cols-2 mt-[14px] max-[700px]:!grid-cols-1"><div><dt>{translateText("Outcome")}</dt><dd>{translateText(model.decisionLabel ?? model.statusLabel)}</dd></div>{model.resolvedAmountLabel && <div><dt>{translateText("Transferred")}</dt><dd>{model.resolvedAmountLabel}</dd></div>}{model.resolvedBy && <div><dt>{translateText("Resolved by")}</dt><dd>{model.resolvedBy}</dd></div>}</AdminOverviewMeta></div>;
+  const resolvedBy = displayAdminId(model.resolvedBy);
+  return <div className={adminRecordGroup}><span>{translateText("Reason for decision")}</span><p>{model.decisionReason ?? translateText("Reason not provided.")}</p><AdminOverviewMeta className="dispute-resolution-meta !grid-cols-2 mt-[14px] max-[700px]:!grid-cols-1"><div><dt>{translateText("Outcome")}</dt><dd>{translateText(model.decisionLabel ?? model.statusLabel)}</dd></div>{model.resolvedAmountLabel && <div><dt>{translateText("Transferred")}</dt><dd>{model.resolvedAmountLabel}</dd></div>}{resolvedBy && <div><dt>{translateText("Resolved by")}</dt><dd>{resolvedBy}</dd></div>}</AdminOverviewMeta></div>;
 }
 
 function MemberSummary({ heading, id, name, href, translateText }: { heading: string; id: string | null; name: string; href: string | null; translateText: (value: string) => string }) {
-  return <Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText(heading)}</h2></CardHeader><div className={adminRecordSideFacts}><div><span>{translateText("Name")}</span><strong><MemberLink id={id} name={name} href={href} /></strong></div><div><span>{translateText("Member ID")}</span><strong>{id ?? "—"}</strong></div></div>{href && <Button asChild variant="outline" className="mt-3 w-full"><Link href={href}>{translateText("See Member profile")}</Link></Button>}</Card>;
+  return <Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText(heading)}</h2></CardHeader><div className={adminRecordSideFacts}><div><span>{translateText("Name")}</span><strong><MemberLink id={id} name={name} href={href} /></strong></div><div><span>{translateText("Member ID")}</span><strong>{displayAdminId(id) ?? "—"}</strong></div></div>{href && <Button asChild variant="outline" className="mt-3 w-full"><Link href={href}>{translateText("See Member profile")}</Link></Button>}</Card>;
 }
 
 function RelatedQuestPanel({ model, translateText }: { model: DisputeCaseModel; translateText: (value: string) => string }) {
@@ -166,7 +168,7 @@ function RelatedQuestPanel({ model, translateText }: { model: DisputeCaseModel; 
       <CardHeader flush className={adminRecordHeader}><h3 className={adminRecordHeading}>{translateText("Related Quest")}</h3><span className={`badge ${questStatusClass(model.questState)}`}>{translateText(questStateLabel(model.questState))}</span></CardHeader>
       <div className={adminRecordSideFacts}>
         <div><span>{translateText("Quest")}</span><strong>{model.questTitle}</strong></div>
-        <div><span>{translateText("Quest ID")}</span><strong>{model.questId}</strong></div>
+        <div><span>{translateText("Quest ID")}</span><strong>{model.questDisplayId ?? "—"}</strong></div>
         <div><span>{translateText("Quest State")}</span><strong>{translateText(questStateLabel(model.questState))}</strong></div>
         <div><span>{translateText("Failed at")}</span><strong>{model.questFailedAt ? formatAdminTimestamp(model.questFailedAt) : translateText("Not provided.")}</strong></div>
       </div>
@@ -227,7 +229,7 @@ function DrawerSections({ model, translateText, onOpenEvidence, selectedChoice, 
     detail={model.detail}
     reportedMember={{ id: model.workerId, name: model.workerName, href: model.workerHref, role: "Worker" }}
     reporter={{ id: model.filerId, name: model.filerName, href: model.filerHref, role: model.filerRole }}
-    relatedRecord={{ id: model.questId, title: model.questTitle, href: model.questHref, state: model.questState }}
+    relatedRecord={{ id: model.questId, displayId: model.questDisplayId, title: model.questTitle, href: model.questHref, state: model.questState }}
     evidenceCount={model.evidence.length}
     financialSummary={[{ label: "Amount at risk", value: model.amountAtRiskLabel }]}
     moderationHistory={model.moderationHistory}
@@ -334,7 +336,7 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
     }
   };
 
-  const receipt = actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Dispute Case" resourceId={model.id} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {actionReceipt.reason}</p>} /> : null;
+  const receipt = actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Dispute Case" resourceId={model.displayId || null} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {actionReceipt.reason}</p>} /> : null;
   const evidenceState: EvidenceState | null = evidenceReference ? {
     reference: evidenceReference,
     value: evidenceQuery.data ?? null,
@@ -352,9 +354,9 @@ export function DisputeCaseDrawer({ disputeId, initialModel, onClose, onUpdated 
   const { translateText } = useAdminShell();
   return <AdminDrawer
     ariaLabel={translateText("Close drawer")}
-    title={<><span aria-hidden="true">{initialModel?.title ?? disputeId}</span><span className="visually-hidden">{translateText("Dispute Case details")}</span></>}
+    title={<><span aria-hidden="true">{initialModel?.title ?? translateText("Dispute Case")}</span><span className="visually-hidden">{translateText("Dispute Case details")}</span></>}
     titleId="dispute-case-drawer-title"
-    subtitle={<>{translateText("Dispute Case")} {initialModel?.displayId ?? disputeId} · {translateText("Dispute Case detail drawer")}</>}
+    subtitle={<>{initialModel?.displayId ? <>{translateText("Dispute Case")} {initialModel.displayId} · </> : null}{translateText("Dispute Case detail drawer")}</>}
     className="dispute-case-drawer quest-style-drawer"
     openerAttribute="data-dispute-id"
     openerValue={disputeId}

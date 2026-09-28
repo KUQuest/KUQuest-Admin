@@ -5,11 +5,13 @@ import { notFound } from "next/navigation";
 import { isAdminApiEnabled } from "../../../../features/admin/api/admin-provider";
 import { QuestDetailPage } from "../../../../features/admin/quest/quest-page";
 import { loadQuestDetailPageData } from "../../../../features/admin/quest/quest-service";
+import { displayAdminId } from "../../../../features/admin/display-admin-id";
 import { adminSessionCookieHeader } from "../../../../lib/auth/admin-session-policy";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  return { title: `Quest ${id}` };
+  const displayId = displayAdminId(id);
+  return { title: displayId ? `Quest ${displayId}` : "Quest" };
 }
 
 export default async function QuestRoute({ params }: { params: Promise<{ id: string }> }) {

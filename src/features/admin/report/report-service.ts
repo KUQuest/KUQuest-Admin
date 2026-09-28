@@ -1,6 +1,7 @@
 import type { AdminReportListQuery } from "../api/admin-api";
 import { adminApiProvider } from "../api/admin-provider";
 import { adminApiRequestOptions } from "../api/admin-api-request-options";
+import { displayAdminId } from "../display-admin-id";
 import { reportCaseModelFromRecord, type ReportCaseModel } from "./report-model";
 
 export type ReportCasePageData = {
@@ -43,5 +44,13 @@ export async function loadReportCaseDetailFromApi(
 ): Promise<ReportCaseModel | null> {
   const report = await adminApiProvider.read.getReport(reportId, adminApiRequestOptions(cookieHeader));
   const model = reportCaseModelFromRecord(report);
+  if (model?.relatedQuestId) {
+    try {
+      const quest = await adminApiProvider.read.getQuest(model.relatedQuestId, adminApiRequestOptions(cookieHeader));
+      model.relatedQuestDisplayId = displayAdminId(quest.displayId);
+    } catch {
+      // The Report Case remains readable when its related Quest cannot load.
+    }
+  }
   return model?.id === reportId ? model : null;
 }

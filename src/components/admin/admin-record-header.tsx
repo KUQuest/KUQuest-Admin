@@ -4,7 +4,7 @@ import Link from "next/link";
 type AdminRecordHeaderProps = {
   breadcrumbHref: string;
   breadcrumbLabel: ReactNode;
-  recordId: ReactNode;
+  recordId?: ReactNode;
   title: ReactNode;
   subtitle: ReactNode;
   actions: ReactNode;
@@ -22,12 +22,11 @@ export function AdminRecordHeader({
     <>
       <div className="record-breadcrumb mb-[18px] flex items-center gap-[7px] text-admin-muted">
         <Link className="text-admin-accent no-underline" href={breadcrumbHref}>{breadcrumbLabel}</Link>
-        <span aria-hidden="true">›</span>
-        <span>{recordId}</span>
+        {recordId ? <><span aria-hidden="true">›</span><span>{recordId}</span></> : null}
       </div>
       <div className="full-record-head mb-5 flex items-start justify-between gap-6 max-[700px]:block">
         <div>
-          <div className="record-id text-admin-muted text-[13px] font-bold">{recordId}</div>
+          {recordId ? <div className="record-id text-admin-muted text-[13px] font-bold">{recordId}</div> : null}
           <h1 className="m-0 mb-[5px] mt-0.5 text-2xl tracking-[-0.025em] max-[700px]:text-[23px]">{title}</h1>
           <p className="m-0 text-admin-muted">{subtitle}</p>
         </div>

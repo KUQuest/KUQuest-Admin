@@ -28,6 +28,7 @@ import {
   adminRecordSideFacts,
 } from "../../../components/admin/admin-record-styles";
 import { conductReportRoutes } from "../admin-routes";
+import { displayAdminId } from "../display-admin-id";
 import { questStateLabel } from "../domain/rulebook";
 import { questStatusClass } from "../quest/quest-model";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
@@ -132,12 +133,12 @@ function ConductReportOverview({
         <div>
           <span>{translateText("Reported Member")}</span>
           <strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} interactive={!compact} /></strong>
-          <small>{model.reportedMemberId || "—"}</small>
+          <small>{displayAdminId(model.reportedMemberId) ?? "—"}</small>
         </div>
         <div>
           <span>{translateText("Reported by")}</span>
           <strong><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} interactive={!compact} /></strong>
-          <small>{model.reporterId || "—"}</small>
+          <small>{displayAdminId(model.reporterId) ?? "—"}</small>
         </div>
       </div>
     </Card>
@@ -185,7 +186,7 @@ function RelatedQuestPanel({
       </CardHeader>
       <div className={adminRecordSideFacts}>
         <div><span>{translateText("Quest")}</span><strong>{model.questTitle}</strong></div>
-        <div><span>{translateText("Quest ID")}</span><strong>{model.questId ?? "—"}</strong></div>
+        <div><span>{translateText("Quest ID")}</span><strong>{model.questDisplayId ?? "—"}</strong></div>
         <div><span>{translateText("Quest State")}</span><strong>{model.questState ? translateText(questStateLabel(model.questState)) : translateText("Not provided.")}</strong></div>
         <div><span>{translateText("Failed at")}</span><strong>{model.questFailedAt ? formatAdminTimestamp(model.questFailedAt) : translateText("Not provided.")}</strong></div>
       </div>
@@ -212,7 +213,7 @@ function ConductMemberSummaryPanel({
   return (
     <Card as="section" className={adminRecordSection}>
       <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText(heading)}</h2></CardHeader>
-      <div className={adminRecordSideFacts}><div><span>{translateText("Name")}</span><strong><MemberLink id={id} name={name} href={href} /></strong></div><div><span>{translateText("Member ID")}</span><strong>{id || "—"}</strong></div></div>
+      <div className={adminRecordSideFacts}><div><span>{translateText("Name")}</span><strong><MemberLink id={id} name={name} href={href} /></strong></div><div><span>{translateText("Member ID")}</span><strong>{displayAdminId(id) ?? "—"}</strong></div></div>
       {href && <Button asChild variant="outline" className="mt-3 w-full"><Link href={href}>{translateText("See Member profile")}</Link></Button>}
     </Card>
   );
@@ -248,7 +249,7 @@ function ResolutionDetails({
 }) {
   const details = [
     ["Resolution", model.resolution],
-    ["Resolved by", model.resolvedBy],
+    ["Resolved by", displayAdminId(model.resolvedBy)],
     ["Resolution time", model.resolutionAt ? formatAdminTimestamp(model.resolutionAt) : null],
     ["Closed at", model.closedAt ? formatAdminTimestamp(model.closedAt) : null],
   ] as const;
@@ -448,7 +449,7 @@ function ConductReportDrawerBody({
         detail={model.detail}
         reportedMember={{ id: model.reportedMemberId, name: model.reportedMemberName, href: model.reportedMemberHref, role: "Reported Member" }}
         reporter={{ id: model.reporterId, name: model.reporterName, href: model.reporterHref, role: "Reporting Member" }}
-        relatedRecord={model.questId ? { id: model.questId, title: model.questTitle, href: model.questHref } : null}
+        relatedRecord={model.questId ? { id: model.questId, displayId: model.questDisplayId, title: model.questTitle, href: model.questHref } : null}
         evidenceCount={model.questRecord ? 1 : 0}
         evidenceLabel="Quest record"
         moderationHistory={model.moderationHistory}
@@ -611,7 +612,7 @@ export function ConductReportDrawer({
       onStartDecision={startDecision}
       compact={presentation === "drawer"}
       showFullLink={presentation === "drawer"}
-      actionReceipt={actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Conduct Report" resourceId={reportModel.id} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {actionReceipt.reason}</p>} /> : null}
+      actionReceipt={actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Conduct Report" resourceId={reportModel.displayId || null} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {actionReceipt.reason}</p>} /> : null}
     />
   );
   const decisionDialog = (
@@ -645,7 +646,7 @@ export function ConductReportDrawer({
           actions={<Button asChild size="lg" variant="outline"><Link href={conductReportRoutes.list()}>{translateText("Back to Conduct Reports")}</Link></Button>}
         />
         <ConductReportAlert model={reportModel} translateText={translateText} />
-        <RecordStatusBar className="conduct-report-record-status-bar" items={[{ id: "status", label: translateText("Status"), value: <span className={`badge ${reportModel.badgeClass}`}>{translateText(reportModel.statusLabel)}</span> }, { id: "reason", label: translateText("Reason"), value: translateText(reportModel.reason) }, { id: "reported", label: translateText("Reported"), value: formatAdminTimestamp(reportModel.submittedAt) }, { id: "reported-member", label: translateText("Reported Member"), value: <MemberLink id={reportModel.reportedMemberId} name={reportModel.reportedMemberName} href={reportModel.reportedMemberHref} /> }, { id: "quest", label: translateText("Quest"), value: reportModel.questId ?? translateText("Not provided.") }]} />
+        <RecordStatusBar className="conduct-report-record-status-bar" items={[{ id: "status", label: translateText("Status"), value: <span className={`badge ${reportModel.badgeClass}`}>{translateText(reportModel.statusLabel)}</span> }, { id: "reason", label: translateText("Reason"), value: translateText(reportModel.reason) }, { id: "reported", label: translateText("Reported"), value: formatAdminTimestamp(reportModel.submittedAt) }, { id: "reported-member", label: translateText("Reported Member"), value: <MemberLink id={reportModel.reportedMemberId} name={reportModel.reportedMemberName} href={reportModel.reportedMemberHref} /> }, { id: "quest", label: translateText("Quest"), value: reportModel.questDisplayId ?? translateText("Not provided.") }]} />
         {body}
         {decisionDialog}
       </main>

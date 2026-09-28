@@ -12,6 +12,7 @@ import {
   type ReportCaseStatus,
 } from "../domain/rulebook";
 import { statusBadgeClass } from "../status-badge";
+import { displayAdminId } from "../display-admin-id";
 
 export type ReportCaseRecord = {
   id: string;
@@ -65,6 +66,7 @@ export type ReportCaseModel = {
   reporterName: string;
   reporterHref: string | null;
   relatedQuestId: string | null;
+  relatedQuestDisplayId: string | null;
   relatedQuestTitle: string | null;
   relatedQuestHref: string | null;
   moderationHistory: ModerationHistorySummary;
@@ -205,16 +207,17 @@ export function reportCaseModelFromRecord(value: unknown): ReportCaseModel | nul
     record.reportedMemberName,
     record.reportedUserName,
     personName(record.reportedMember),
-    reportedMemberId ? `Member ${reportedMemberId}` : "Member not provided",
+    reportedMemberId ? "Member" : "Member not provided",
   ) as string;
   const reporterName = firstText(
     record.reporterName,
     record.submittedByMemberName,
     personName(record.reporter),
-    reporterId ? `Member ${reporterId}` : "Reporter not provided",
+    reporterId ? "Member" : "Reporter not provided",
   ) as string;
   const quest = asRecord(record.quest);
   const relatedQuestId = firstText(record.questId, record.relatedQuestId, quest?.id);
+  const relatedQuestDisplayId = displayAdminId(record.questDisplayId, quest?.displayId, relatedQuestId);
   const relatedQuestTitle = firstText(record.questTitle, record.relatedQuestTitle, quest?.title);
   const evidenceRefs = stringList(record.evidenceRefs);
   const evidenceLabel = text(record.evidence);
@@ -237,7 +240,7 @@ export function reportCaseModelFromRecord(value: unknown): ReportCaseModel | nul
 
   return {
     id,
-    displayId: text(record.displayId) ?? id,
+    displayId: displayAdminId(record.displayId, id) ?? "",
     status,
     statusLabel: reportCaseStatusLabel(status),
     badgeClass: statusBadgeClass(status),
@@ -252,6 +255,7 @@ export function reportCaseModelFromRecord(value: unknown): ReportCaseModel | nul
     reporterName,
     reporterHref: reporterId ? memberRoutes.detail(reporterId) : null,
     relatedQuestId,
+    relatedQuestDisplayId,
     relatedQuestTitle,
     relatedQuestHref: relatedQuestId ? questRoutes.detail(relatedQuestId) : null,
     moderationHistory: moderationHistoryFromRecord(record),

@@ -16,6 +16,7 @@ import {
   type QuestState,
 } from "../domain/rulebook";
 import { statusBadgeClass } from "../status-badge";
+import { displayAdminId } from "../display-admin-id";
 
 export type DisputeCaseRecord = {
   id: string;
@@ -52,6 +53,7 @@ export type DisputeCaseModel = {
   isActionable: boolean;
   title: string;
   questId: string;
+  questDisplayId: string | null;
   questTitle: string;
   questHref: string | null;
   questState: QuestState;
@@ -268,7 +270,7 @@ export function disputeCaseModelFromRecord(
   const filerName = firstText(
     record.filerName,
     personName(record.filer),
-    filerId ? `Member ${filerId}` : null,
+    filerId ? "Member" : null,
     source === "mock" ? record.reporterName : null,
     source === "mock" ? "Hirer not provided" : null,
   ) ?? missingValue;
@@ -276,7 +278,7 @@ export function disputeCaseModelFromRecord(
     record.respondentName,
     personName(record.respondent),
     personName(record.worker),
-    respondentId ? `Member ${respondentId}` : null,
+    respondentId ? "Member" : null,
     source === "mock" ? record.workerName : null,
     source === "mock" ? "Worker not provided" : null,
   ) ?? missingValue;
@@ -313,13 +315,14 @@ export function disputeCaseModelFromRecord(
 
   return {
     id,
-    displayId: firstText(record.displayId) ?? id,
+    displayId: displayAdminId(record.displayId, id) ?? "",
     status,
     statusLabel: disputeCaseStatusLabel(status),
     badgeClass: statusBadgeClass(status),
     isActionable: canResolveDispute(questState, status),
     title: questTitle,
     questId,
+    questDisplayId: displayAdminId(record.questDisplayId, quest?.displayId, questId),
     questTitle,
     questHref: questId ? questRoutes.detail(questId) : null,
     questState,

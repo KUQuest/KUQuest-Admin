@@ -91,7 +91,7 @@ export function ConductReportDecisionDialog({
           {choice ? (
             <AdminActionSummary
               title={translateText("Before you confirm")}
-              affected={`${translateText("Conduct Report")} ${model.displayId} · ${translateText("Quest")} ${model.questId ?? "—"}`}
+              affected={`${translateText("Conduct Report")} ${model.displayId} · ${translateText("Quest")} ${model.questDisplayId ?? "—"}`}
               currentState={model.statusLabel}
               nextState={conductReportStatusLabel(nextState)}
               effect={translateText(effect)}

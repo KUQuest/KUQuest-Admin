@@ -8,8 +8,8 @@ type WalletStatementPageProps = {
 };
 
 export async function generateMetadata({ params }: WalletStatementPageProps): Promise<Metadata> {
-  const { id } = await params;
-  return { title: `Wallet Statement ${id}` };
+  await params;
+  return { title: "Wallet Statement" };
 }
 
 export default async function WalletStatementPage({ params }: WalletStatementPageProps) {

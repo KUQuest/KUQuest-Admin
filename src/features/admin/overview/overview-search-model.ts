@@ -32,6 +32,7 @@ import {
   type AdminSearchResultKind,
 } from "../search/search-descriptors";
 import { hasHiddenQuestOverlay } from "../domain/rulebook";
+import { displayAdminId } from "../display-admin-id";
 
 export type OverviewSearchResult = {
   kind: AdminSearchResultKind;
@@ -48,8 +49,8 @@ export type OverviewApiSearchData = {
   quests: Array<{ id: string; displayId?: string; title: string; hiddenAt?: string | null; status?: string; newestAt?: string | number | null }>;
   members: Array<{ id: string; firstName: string; lastName: string; studentId: string | null; status?: string; newestAt?: string | number | null }>;
   payouts: Array<{ id: string; student: { firstName: string; lastName: string }; status?: string; newestAt?: string | number | null }>;
-  disputes?: Array<{ id: string; title: string; questId?: string; status?: string; newestAt?: string | number | null }>;
-  reports?: Array<{ id: string; title: string; reportedMemberId?: string; conduct?: boolean; status?: string; newestAt?: string | number | null }>;
+  disputes?: Array<{ id: string; displayId?: string; title: string; questId?: string; status?: string; newestAt?: string | number | null }>;
+  reports?: Array<{ id: string; displayId?: string; title: string; reportedMemberId?: string; conduct?: boolean; status?: string; newestAt?: string | number | null }>;
   wallets?: Array<{ id: string; memberId: string; memberName: string; status?: string; newestAt?: string | number | null }>;
 };
 
@@ -95,26 +96,28 @@ export function overviewSearchResultsFromMockData(
 ): OverviewSearchResult[] {
   const members = data.collections.users.map((member): OverviewSearchResult => ({
     kind: "member",
-    id: member.id,
-    title: member.title,
+    id: "",
+    title: displayAdminId(member.title) ? member.title : "Member",
     detail: "Member",
     status: mockMemberSearchStatus(member),
     newestAt: recordNewestAt(member, ["updatedAt", "lastActiveAt", "createdAt", "accountCreatedAt"]),
     href: memberRoutes.detail(member.id),
-    searchText: recordText(member, "studentId"),
+    searchText: `${member.id} ${recordText(member, "studentId")}`,
   }));
   const quests = data.collections.quests.flatMap((record): OverviewSearchResult[] => {
     if (record && typeof record === "object" && hasHiddenQuestOverlay(record as { hiddenAt?: unknown; status?: unknown; questState?: unknown })) return [];
     const id = recordText(record, "id");
+    const displayId = displayAdminId(recordText(record, "displayId"), id) ?? "";
     const title = recordText(record, "title");
     return id && title ? [{
       kind: "quest",
-      id,
+      id: displayId,
       title,
       detail: "Quest",
       status: recordStatusLabel(record, ["questState", "status"], questStateLabel),
       newestAt: recordNewestAt(record, ["updatedAt", "createdAt", "startTime"]),
       href: questRoutes.detail(id),
+      searchText: id,
     }] : [];
   });
   const payouts = data.collections.payouts.flatMap((record): OverviewSearchResult[] => {
@@ -122,48 +125,51 @@ export function overviewSearchResultsFromMockData(
     const title = recordText(record, "title");
     return id && title ? [{
       kind: "payout",
-      id,
+      id: displayAdminId(recordText(record, "displayId"), id) ?? "",
       title,
       detail: "Payout",
       status: recordStatusLabel(record, ["payoutStatus", "status"], payoutStatusLabel),
       newestAt: recordNewestAt(record, ["updatedAt", "createdAt"]),
       href: payoutRoutes.detail(id),
+      searchText: id,
     }] : [];
   });
   const disputes = data.collections.disputes.flatMap((record): OverviewSearchResult[] => {
-    const id = recordText(record, "displayId") || recordText(record, "id");
+    const id = displayAdminId(recordText(record, "displayId"), recordText(record, "id")) ?? "";
+    const resourceId = recordText(record, "id");
     const title = recordText(record, "title") || "Dispute Case";
     const questId = recordText(record, "questId");
-    return id ? [{
+    return resourceId ? [{
       kind: "dispute",
       id,
       title,
       detail: "Dispute Case",
       status: recordStatusLabel(record, ["disputeCaseStatus", "status"], disputeCaseStatusLabel),
       newestAt: recordNewestAt(record, ["updatedAt", "disputeDate", "createdAt", "failedAt"]),
-      href: disputeRoutes.detail(recordText(record, "id") || id),
-      searchText: `${questId} ${recordText(record, "status")} ${recordText(record, "filerName")}`,
+      href: disputeRoutes.detail(resourceId),
+      searchText: `${resourceId} ${questId} ${recordText(record, "status")} ${recordText(record, "filerName")}`,
     }] : [];
   });
   const reports = data.collections.reports.flatMap((record): OverviewSearchResult[] => {
-    const id = recordText(record, "id");
+    const resourceId = recordText(record, "id");
+    const id = displayAdminId(recordText(record, "displayId"), resourceId) ?? "";
     const conduct = isConductReportStatus(recordText(record, "status")) || isConductReportStatus(recordText(record, "conductReportStatus"));
     const title = recordText(record, conduct ? "reasonCode" : "category") || (conduct ? "Conduct Report" : "Report Case");
-    return id ? [{
+    return resourceId ? [{
       kind: conduct ? "conduct-report" : "report",
       id,
       title,
       detail: conduct ? "Conduct Report" : "Report Case",
       status: recordStatusLabel(record, [conduct ? "conductReportStatus" : "reportCaseStatus", "status"], reportCaseStatusLabel),
       newestAt: recordNewestAt(record, ["updatedAt", "reportedAt", "createdAt", "closedAt"]),
-      href: conduct ? conductReportRoutes.detail(id) : reportRoutes.detail(id),
-      searchText: `${recordText(record, "reportedMemberId")} ${recordText(record, "reportedUserName")} ${recordText(record, "questId")} ${recordText(record, "details")}`,
+      href: conduct ? conductReportRoutes.detail(resourceId) : reportRoutes.detail(resourceId),
+      searchText: `${resourceId} ${recordText(record, "reportedMemberId")} ${recordText(record, "reportedUserName")} ${recordText(record, "questId")} ${recordText(record, "details")}`,
     }] : [];
   });
   const wallets = data.collections.users.map((member): OverviewSearchResult => ({
     kind: "wallet",
-    id: `WLT-${member.id}`,
-    title: `${member.title} Wallet`,
+    id: "",
+    title: `${displayAdminId(member.title) ? member.title : "Member"} Wallet`,
     detail: "Wallet",
     status: recordStatusLabel(member, ["walletStatus"], walletStatusLabel),
     newestAt: recordNewestAt(member, ["walletUpdatedAt", "updatedAt", "lastActiveAt", "createdAt"]),
@@ -189,57 +195,59 @@ export function overviewSearchResultsFromApi(
 ): OverviewSearchResult[] {
   const members = records.members.map((member): OverviewSearchResult => ({
     kind: "member",
-    id: member.id,
+    id: "",
     title: memberName(member),
     detail: "Member",
     status: apiStatusLabel(member.status, memberStatusLabel),
     newestAt: timestampValue(member.newestAt),
     href: memberRoutes.detail(member.id),
-    searchText: member.studentId ?? "",
+    searchText: `${member.id} ${member.studentId ?? ""}`,
   }));
   const quests = records.quests
     .filter((quest) => !quest.hiddenAt)
     .map((quest): OverviewSearchResult => ({
       kind: "quest",
-      id: quest.displayId ?? quest.id,
+      id: displayAdminId(quest.displayId, quest.id) ?? "",
       title: quest.title,
       detail: "Quest",
       status: apiStatusLabel(quest.status, questStateLabel),
       newestAt: timestampValue(quest.newestAt),
       href: questRoutes.detail(quest.id),
+      searchText: quest.id,
     }));
   const payouts = records.payouts.map((payout): OverviewSearchResult => ({
     kind: "payout",
-    id: payout.id,
+    id: displayAdminId(payout.id) ?? "",
     title: memberName(payout.student),
     detail: "Payout",
     status: apiStatusLabel(payout.status, payoutStatusLabel),
     newestAt: timestampValue(payout.newestAt),
     href: payoutRoutes.detail(payout.id),
+    searchText: payout.id,
   }));
   const disputes = (records.disputes ?? []).map((dispute): OverviewSearchResult => ({
     kind: "dispute",
-    id: dispute.id,
+    id: displayAdminId(dispute.displayId, dispute.id) ?? "",
     title: dispute.title,
     detail: "Dispute Case",
     status: apiStatusLabel(dispute.status, disputeCaseStatusLabel),
     newestAt: timestampValue(dispute.newestAt),
     href: disputeRoutes.detail(dispute.id),
-    searchText: dispute.questId ?? "",
+    searchText: `${dispute.id} ${dispute.questId ?? ""}`,
   }));
   const reports = (records.reports ?? []).map((report): OverviewSearchResult => ({
     kind: report.conduct ? "conduct-report" : "report",
-    id: report.id,
+    id: displayAdminId(report.displayId, report.id) ?? "",
     title: report.title,
     detail: report.conduct ? "Conduct Report" : "Report Case",
     status: apiStatusLabel(report.status, reportCaseStatusLabel),
     newestAt: timestampValue(report.newestAt),
     href: report.conduct ? conductReportRoutes.detail(report.id) : reportRoutes.detail(report.id),
-    searchText: report.reportedMemberId ?? "",
+    searchText: `${report.id} ${report.reportedMemberId ?? ""}`,
   }));
   const wallets = (records.wallets ?? []).map((wallet): OverviewSearchResult => ({
     kind: "wallet",
-    id: wallet.id,
+    id: "",
     title: `${wallet.memberName} Wallet`,
     detail: "Wallet",
     status: apiStatusLabel(wallet.status, walletStatusLabel),
@@ -253,12 +261,13 @@ export function overviewSearchResultsFromApi(
 export function overviewSearchResultsFromSearchApi(items: AdminSearchResult[]): OverviewSearchResult[] {
   return items.map((item): OverviewSearchResult => ({
     kind: item.kind,
-    id: item.id,
+    id: displayAdminId(item.id) ?? "",
     title: item.title,
     detail: searchResultLabel(item.kind),
     status: searchApiStatusLabel(item),
     newestAt: timestampValue(item.newestAt),
     href: searchApiResultHref(item),
+    searchText: item.resourceId,
   }));
 }
 

@@ -27,6 +27,7 @@ import {
 } from "../domain/rulebook";
 import type { PersistedAdminData } from "../data/admin-records";
 import type { DashboardActivity } from "../dashboard/dashboard-model";
+import { displayAdminId } from "../display-admin-id";
 import { recordText, timestampValue } from "./overview-values";
 
 export {
@@ -492,12 +493,12 @@ function mockQueueRecordCreatedAt(queueId: OverviewQueueId, record: unknown): st
 }
 
 function mockQueueRecordTitle(queueId: OverviewQueueId, record: unknown): string {
-  const title = firstRecordText(record, ["title", "category", "reasonCode"]);
+  const title = displayAdminId(firstRecordText(record, ["title", "category", "reasonCode"]));
   switch (queueId) {
     case "payouts":
-      return `Payout approval · ${title || firstRecordText(record, ["id"])}`;
+      return `Payout approval · ${title || "Payout review"}`;
     case "disputes":
-      return `Dispute Case · ${title || firstRecordText(record, ["id"])}`;
+      return `Dispute Case · ${title || "Dispute review"}`;
     case "reports":
       return `Report Case · ${title || "Report review"}`;
     case "conductReports":

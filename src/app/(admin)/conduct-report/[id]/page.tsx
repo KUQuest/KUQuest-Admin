@@ -6,11 +6,13 @@ import type { AdminDetailRoutePageProps } from "../../../../components/admin/adm
 import { isAdminApiEnabled } from "../../../../features/admin/api/admin-provider";
 import { ConductReportDetail } from "../../../../features/admin/conduct-report/conduct-report-detail";
 import { loadConductReportDetailFromApi } from "../../../../features/admin/conduct-report/conduct-report-service";
+import { displayAdminId } from "../../../../features/admin/display-admin-id";
 import { adminSessionCookieHeader } from "../../../../lib/auth/admin-session-policy";
 
 export async function generateMetadata({ params }: AdminDetailRoutePageProps): Promise<Metadata> {
   const { id } = await params;
-  return { title: `Conduct Report ${id}` };
+  const displayId = displayAdminId(id);
+  return { title: displayId ? `Conduct Report ${displayId}` : "Conduct Report" };
 }
 
 export default async function ConductReportPage({ params }: AdminDetailRoutePageProps) {

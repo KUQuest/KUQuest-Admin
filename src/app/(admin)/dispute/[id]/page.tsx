@@ -6,11 +6,13 @@ import type { AdminDetailRoutePageProps } from "../../../../components/admin/adm
 import { isAdminApiEnabled } from "../../../../features/admin/api/admin-provider";
 import { DisputeCaseDetail } from "../../../../features/admin/dispute/dispute-detail";
 import { loadDisputeCaseDetailFromApi } from "../../../../features/admin/dispute/dispute-service";
+import { displayAdminId } from "../../../../features/admin/display-admin-id";
 import { adminSessionCookieHeader } from "../../../../lib/auth/admin-session-policy";
 
 export async function generateMetadata({ params }: AdminDetailRoutePageProps): Promise<Metadata> {
   const { id } = await params;
-  return { title: `Dispute Case ${id}` };
+  const displayId = displayAdminId(id);
+  return { title: displayId ? `Dispute Case ${displayId}` : "Dispute Case" };
 }
 
 export default async function DisputeCasePage({ params }: AdminDetailRoutePageProps) {

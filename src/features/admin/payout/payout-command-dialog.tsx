@@ -111,7 +111,7 @@ export function PayoutCommandDialog({
             <p>{translateText(command === "approve" ? "Review the destination and balance before approving this Payout." : "Choose a reason for rejecting this Payout.")}</p>
             <AdminActionSummary
               title={translateText("Before you confirm")}
-              affected={`${translateText("Payout")} ${detail.id} · ${detail.student.name}`}
+              affected={`${translateText("Payout")} · ${detail.student.name}`}
               currentState={payoutStatusLabel(detail.status)}
               nextState={command === "approve" ? "Submitted to Provider" : "Cancelled"}
               effect={command === "approve"

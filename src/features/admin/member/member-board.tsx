@@ -11,6 +11,7 @@ import { AdminSortableHeader } from "../../../components/admin/admin-sortable-he
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
 import { memberRoutes } from "../admin-routes";
+import { displayAdminId } from "../display-admin-id";
 import { pageCount, pageRange, pageRows } from "../data/board-pagination";
 import { countBoardTabMatches } from "../data/board-tab-counts";
 import { useAdminBoardReset } from "../data/use-admin-board-reset";
@@ -64,7 +65,7 @@ function memberSortValue(model: MemberModel, key: MemberSortKey): string | numbe
     case "member":
       return model.title;
     case "studentId":
-      return model.studentId;
+      return displayAdminId(model.studentId);
     case "academicProfile":
       return [model.faculty, model.department, model.occupation].filter(Boolean).join(" · ") || null;
     case "status":
@@ -183,14 +184,14 @@ export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
         <div className="overflow-x-auto" role="region" aria-label={translateText("Members table")}>
           <Table className={`${adminBoardTable} member-table`}>
             <caption>{translateText("Members")}</caption>
-            <thead><tr><AdminSortableHeader label={translateText("Member ID")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Member")} sortKey="member" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Student ID")} sortKey="studentId" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Academic profile")} sortKey="academicProfile" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Wallet status")} sortKey="walletStatus" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead>
+            <thead><tr><AdminSortableHeader label={translateText("Member")} sortKey="member" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Student ID")} sortKey="studentId" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Academic profile")} sortKey="academicProfile" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Wallet status")} sortKey="walletStatus" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead>
             <tbody>
               {visibleModels.map((model) => (
                 <tr
                   key={model.id}
                   data-member-id={model.id}
                   tabIndex={0}
-                  aria-label={`${translateText("Open Member")} ${model.id}`}
+                  aria-label={`${translateText("Open Member")} ${model.title}`}
                   onClick={() => openDrawer(model.id)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
@@ -199,9 +200,8 @@ export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
                     }
                   }}
                 >
-                  <td><Button variant="ghost" size="xs" className="h-auto min-h-8 p-0 text-left font-bold hover:text-admin-accent hover:underline hover:underline-offset-4" type="button" aria-label={`${translateText("Open Member")} ${model.id}`} onClick={(event) => { event.stopPropagation(); openDrawer(model.id); }}>{model.id}</Button></td>
                   <td><Link className="user-record-link" href={memberRoutes.detail(model.id)} onClick={(event) => event.stopPropagation()}>{model.title}</Link><small>{model.email}</small></td>
-                  <td>{model.studentId || "—"}</td>
+                  <td>{displayAdminId(model.studentId) ?? "—"}</td>
                   <td>{[model.faculty, model.department, model.occupation].filter(Boolean).join(" · ") || "—"}</td>
                   <td>{model.memberStatus ? <span className={`badge ${memberStatusClass(model)}`}>{translateText(memberStatusText(model))}</span> : <span className="audit-note">{translateText(memberStatusText(model))}</span>}</td>
                   <td>{model.walletStatus ? <span className={`badge ${walletStatusClass(model)}`}>{translateText(walletStatusText(model))}</span> : <span className="audit-note">{translateText(walletStatusText(model))}</span>}</td>

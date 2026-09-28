@@ -1,6 +1,7 @@
 import type { AdminReportListQuery } from "../api/admin-api";
 import { adminApiProvider } from "../api/admin-provider";
 import { adminApiRequestOptions } from "../api/admin-api-request-options";
+import { displayAdminId } from "../display-admin-id";
 import { conductReportModelFromRecord, type ConductReportModel } from "./conduct-report-model";
 
 export type ConductReportPageData = {
@@ -46,5 +47,13 @@ export async function loadConductReportDetailFromApi(
     adminApiRequestOptions(cookieHeader),
   );
   const model = conductReportModelFromRecord(report);
+  if (model?.questId && !model.questDisplayId) {
+    try {
+      const quest = await adminApiProvider.read.getQuest(model.questId, adminApiRequestOptions(cookieHeader));
+      model.questDisplayId = displayAdminId(quest.displayId);
+    } catch {
+      // The Conduct Report remains readable when its related Quest cannot load.
+    }
+  }
   return model?.id === reportId ? model : null;
 }

@@ -8,6 +8,7 @@ import { Button, Card, CardHeader, EmptyState } from "../../../components/ui";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { formatAdminTimestamp } from "../date-format";
 import { memberRoutes } from "../admin-routes";
+import { displayAdminId } from "../display-admin-id";
 import { ADMIN_API_TOP_UP_STATUSES } from "../api/admin-api";
 import { formatMoneySatang } from "../member/member-wallet-model";
 import {
@@ -99,7 +100,7 @@ function TopUpOperations({ initialData }: { initialData: FinancePageData }) {
     setReconcileNotice(null);
     try {
       const result = await reconcile.mutateAsync(topUpId);
-      setReconcileNotice(`${translateText("Top-up reconciliation completed for")} ${topUpId} · ${translateText(result.topUp.topUpStatus)}.`);
+      setReconcileNotice(`${translateText("Top-up reconciliation completed for")} ${displayAdminId(result.topUp.id) ?? translateText("Top-up")} · ${translateText(result.topUp.topUpStatus)}.`);
     } catch (mutationError) {
       setReconcileNotice(mutationError instanceof Error ? mutationError.message : "Top-up reconciliation failed.");
     }
@@ -125,13 +126,13 @@ function TopUpOperations({ initialData }: { initialData: FinancePageData }) {
           <table className="w-full min-w-[850px] border-collapse text-left text-sm" aria-label={translateText("Top-ups table")}>
             <thead><tr className="border-b border-admin-border text-admin-muted"><th className="p-2">{translateText("Top-up")}</th><th className="p-2">{translateText("Member")}</th><th className="p-2">{translateText("Credit amount")}</th><th className="p-2">{translateText("Payment total")}</th><th className="p-2">{translateText("Status")}</th><th className="p-2">{translateText("Created")}</th><th className="p-2">{translateText("Action")}</th></tr></thead>
             <tbody>{topUps.map((topUp) => <tr key={topUp.id} className="border-b border-admin-border last:border-0">
-              <td className="p-2"><strong className="block">{topUp.id}</strong><small className="text-admin-muted">{topUp.providerReference ?? translateText("Provider reference not provided")}</small></td>
-              <td className="p-2"><Link className="text-admin-accent hover:underline" href={memberRoutes.detail(topUp.userId)}>{`${topUp.member.firstName} ${topUp.member.lastName}`.trim()}</Link><small className="block text-admin-muted">{topUp.member.studentId ?? "—"}</small></td>
+              <td className="p-2"><strong className="block">{displayAdminId(topUp.id) ?? translateText("Top-up")}</strong><small className="text-admin-muted">{topUp.providerReference ?? translateText("Provider reference not provided")}</small></td>
+              <td className="p-2"><Link className="text-admin-accent hover:underline" href={memberRoutes.detail(topUp.userId)}>{`${topUp.member.firstName} ${topUp.member.lastName}`.trim()}</Link><small className="block text-admin-muted">{displayAdminId(topUp.member.studentId) ?? "—"}</small></td>
               <td className="p-2 tabular-nums">{formatMoneySatang(topUp.creditAmountSatang)}</td>
               <td className="p-2 tabular-nums">{formatMoneySatang(topUp.paymentTotalSatang)}</td>
               <td className="p-2">{translateText(topUp.topUpStatus)}</td>
               <td className="p-2">{formatAdminTimestamp(topUp.createdAt)}</td>
-              <td className="p-2"><Button variant="outline" size="sm" type="button" disabled={reconcile.isPending} onClick={() => { if (window.confirm(`${translateText("Reconcile this Top-up with the Provider?")}\n${topUp.id}`)) void reconcileTopUp(topUp.id); }}>{reconcile.isPending ? translateText("Reconciling…") : translateText("Reconcile")}</Button></td>
+              <td className="p-2"><Button variant="outline" size="sm" type="button" disabled={reconcile.isPending} onClick={() => { if (window.confirm(`${translateText("Reconcile this Top-up with the Provider?")}\n${displayAdminId(topUp.member.studentId) ?? `${topUp.member.firstName} ${topUp.member.lastName}`.trim()}`)) void reconcileTopUp(topUp.id); }}>{reconcile.isPending ? translateText("Reconciling…") : translateText("Reconcile")}</Button></td>
             </tr>)}</tbody>
           </table>
         </div>
@@ -157,7 +158,7 @@ function ProviderEventRetry() {
     setError(null);
     try {
       const result = await retry.mutateAsync({ kind, eventId: normalizedId });
-      setNotice(`${result.event.id} · ${translateText(result.event.processingStatus)} · ${translateText("Attempts")}: ${result.event.attemptCount}`);
+      setNotice(`${displayAdminId(result.event.providerEventId) ?? translateText("Provider event")} · ${translateText(result.event.processingStatus)} · ${translateText("Attempts")}: ${result.event.attemptCount}`);
     } catch (retryError) {
       setError(retryError instanceof Error ? retryError.message : "Provider Event retry failed.");
     }

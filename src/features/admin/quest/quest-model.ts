@@ -8,6 +8,7 @@ import type {
 import { pageCount, pageRows, type BoardPageSize } from "@/lib/board-pagination";
 import { formatAdminTimestamp } from "../date-format";
 import { questStateFor, questStateLabel, type QuestState } from "../domain/rulebook";
+import { displayAdminId } from "../display-admin-id";
 
 export type QuestMemberView = {
   id: string;
@@ -231,17 +232,9 @@ export type QuestBoardRow = {
   version: number;
 };
 
-/**
- * Keep the canonical Quest identifier for API calls, but use a short stable
- * label when the Admin API does not provide a human-readable display ID.
- */
+/** Keep the canonical Quest UUID out of screen text when no display ID exists. */
 export function questDisplayIdFor(id: string, displayId?: string | null): string {
-  const preferred = displayId?.trim();
-  if (preferred) return preferred;
-
-  const canonical = id.trim();
-  if (canonical.length <= 24) return canonical;
-  return `${canonical.slice(0, 8)}…${canonical.slice(-4)}`;
+  return displayAdminId(displayId, id) ?? "";
 }
 
 function questMemberViewFromApi(member: AdminQuestMember): QuestMemberView {

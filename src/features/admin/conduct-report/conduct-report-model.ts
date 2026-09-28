@@ -12,6 +12,7 @@ import {
   type QuestState,
 } from "../domain/rulebook";
 import { statusBadgeClass } from "../status-badge";
+import { displayAdminId } from "../display-admin-id";
 
 export type ConductReportRecord = {
   id: string;
@@ -63,6 +64,7 @@ export type ConductReportModel = {
   reason: string;
   reasonCode: string | null;
   questId: string | null;
+  questDisplayId: string | null;
   questTitle: string;
   questHref: string | null;
   questState: QuestState | null;
@@ -212,13 +214,13 @@ export function conductReportModelFromRecord(value: unknown): ConductReportModel
     record.reportedMemberName,
     record.reportedUserName,
     personName(record.reportedMember),
-    reportedMemberId ? `Member ${reportedMemberId}` : "Member not provided",
+    reportedMemberId ? "Member" : "Member not provided",
   ) as string;
   const reporterName = firstText(
     record.reporterName,
     record.submittedByMemberName,
     personName(record.reporter),
-    reporterId ? `Member ${reporterId}` : "Reporter not provided",
+    reporterId ? "Member" : "Reporter not provided",
   ) as string;
   const reasonValue = firstText(
     record.reasonCode,
@@ -230,6 +232,7 @@ export function conductReportModelFromRecord(value: unknown): ConductReportModel
   const reason = conductReportReasonLabel(reasonValue);
   const quest = asRecord(record.quest);
   const questId = firstText(record.questId, record.relatedQuestId, quest?.id);
+  const questDisplayId = displayAdminId(record.questDisplayId, quest?.displayId, questId);
   const questTitle = firstText(
     record.relatedQuestTitle,
     record.questTitle,
@@ -251,7 +254,7 @@ export function conductReportModelFromRecord(value: unknown): ConductReportModel
 
   return {
     id,
-    displayId: text(record.displayId) ?? id,
+    displayId: displayAdminId(record.displayId, id) ?? "",
     status,
     statusLabel: conductReportStatusLabel(status),
     badgeClass: statusBadgeClass(status),
@@ -260,6 +263,7 @@ export function conductReportModelFromRecord(value: unknown): ConductReportModel
     reason,
     reasonCode: firstText(record.reasonCode, record.conductReportReason),
     questId,
+    questDisplayId,
     questTitle,
     questHref: questId ? questRoutes.detail(questId) : null,
     questState,
