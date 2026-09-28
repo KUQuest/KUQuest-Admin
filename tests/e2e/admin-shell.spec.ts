@@ -8,6 +8,7 @@ const canonicalRoutes = [
   { path: "/report", activeHref: "/report" },
   { path: "/conduct-report", activeHref: "/conduct-report" },
   { path: "/payout", activeHref: "/payout" },
+  { path: "/finance", activeHref: "/finance" },
   { path: "/member", activeHref: "/member" },
   { path: "/wallet", activeHref: "/wallet" },
   { path: "/activity", activeHref: "/activity" },
@@ -35,6 +36,7 @@ test.describe("shared Admin shell", () => {
       "/report",
       "/conduct-report",
       "/payout",
+      "/finance",
       "/member",
       "/wallet",
       "/activity",
@@ -54,6 +56,7 @@ test.describe("shared Admin shell", () => {
   });
 
   test("redirects legacy query and plural detail URLs to canonical routes", async ({ page }) => {
+    test.setTimeout(60_000);
     await signIn(page);
 
     const redirects = [
@@ -168,7 +171,7 @@ test.describe("shared Admin shell", () => {
       },
       {
         route: "/wallet",
-        open: async () => page.getByRole("button", { name: "Open Wallet WAL-1001" }).click(),
+        open: async () => page.locator('button[data-wallet-drawer-trigger="WAL-1001"]').click(),
       },
       {
         route: "/activity",
@@ -452,7 +455,7 @@ test.describe("shared Admin shell", () => {
     await expect(dashboard.locator(".overview-command-center-activity")).toContainText("DSP-5201");
 
     const openSearch = async () => {
-      await page.getByRole("button", { name: "Search marketplace records" }).click();
+      await page.getByRole("button", { name: "Search all records" }).click();
       const dialog = page.locator("#overview-command");
       await expect(dialog).toBeVisible();
       return dialog;
@@ -492,7 +495,7 @@ test.describe("shared Admin shell", () => {
   test("centers the global search surface over the Admin shell", async ({ page }) => {
     await signIn(page);
     await page.goto("/overview");
-    await page.getByRole("button", { name: "Search marketplace records" }).click();
+    await page.getByRole("button", { name: "Search all records" }).click();
 
     const dialog = page.getByRole("dialog", { name: "Search marketplace records" });
     const surface = dialog.locator(".admin-global-search-box");

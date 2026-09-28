@@ -232,7 +232,7 @@ test.describe("legacy parity for inputs on mobile", () => {
 
   test("Overview global search accepts input on mobile", async ({ page }) => {
     await signIn(page);
-    await page.getByRole("button", { name: "Search marketplace records" }).click();
+    await page.getByRole("button", { name: "Search all records" }).click();
 
     const search = page.getByRole("searchbox", { name: "Search marketplace records" });
     await search.fill("QST-12001");

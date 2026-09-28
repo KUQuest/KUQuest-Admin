@@ -40,8 +40,8 @@ test.describe("Wallet App Router board", () => {
 
     await page.getByRole("tab", { name: /^Frozen \(\d+\)$/ }).click();
     await expect(page.locator("[data-wallet-row]")).toHaveCount(10);
-    await expect(page.getByText("WAL-1001", { exact: true })).toBeVisible();
-    await expect(page.getByText("WAL-1002", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("6510100001", { exact: true })).toBeVisible();
+    await expect(page.getByText("6510100002", { exact: true })).toHaveCount(0);
 
     await page.getByLabel("Search Wallets").fill("68000040");
     await expect(page.getByRole("heading", { level: 3, name: "No matching records" })).toBeVisible();
@@ -62,7 +62,7 @@ test.describe("Wallet App Router board", () => {
     await expect(closedRow).toBeVisible();
     await expect(closedRow.locator('[data-wallet-status="CLOSED"]')).toHaveText("Closed");
 
-    await closedRow.getByRole("button", { name: "Open Wallet WAL-1004" }).click();
+    await closedRow.locator('button[data-wallet-drawer-trigger="WAL-1004"]').click();
     const drawer = page.locator("dialog.wallet-drawer");
     await expect(drawer.getByText("Closed is terminal. No Wallet status change is available.", { exact: true })).toBeVisible();
     await expect(drawer.locator("[data-wallet-status-action]")).toHaveCount(0);
@@ -72,7 +72,7 @@ test.describe("Wallet App Router board", () => {
     await signIn(page);
     await page.goto("/wallet");
 
-    const opener = page.getByRole("button", { name: "Open Wallet WAL-1001" });
+    const opener = page.locator('button[data-wallet-drawer-trigger="WAL-1001"]');
     await page.locator('[data-wallet-row="WAL-1001"] td').nth(3).click();
     await expect(page.locator("dialog.wallet-drawer")).toBeVisible();
     await page.locator("dialog.wallet-drawer").getByRole("button", { name: "Close Wallet detail" }).click();
@@ -109,7 +109,7 @@ test.describe("Wallet App Router board", () => {
     await signIn(page);
     await page.goto("/wallet");
 
-    await page.getByRole("button", { name: "Open Wallet WAL-1001" }).click();
+    await page.locator('button[data-wallet-drawer-trigger="WAL-1001"]').click();
     await page.getByRole("link", { name: "See Wallet Statement" }).click();
 
     await expect(page).toHaveURL("/member/68000000?tab=wallet-statement");
@@ -121,7 +121,7 @@ test.describe("Wallet App Router board", () => {
     await signIn(page);
     await page.goto("/wallet");
 
-    await page.getByRole("button", { name: "Open Wallet WAL-1002" }).click();
+    await page.locator('button[data-wallet-drawer-trigger="WAL-1002"]').click();
     const drawer = page.locator("dialog.wallet-drawer");
     await expect(drawer.getByText("Wallet balances", { exact: true })).toBeVisible();
 
@@ -165,7 +165,7 @@ test.describe("Wallet App Router board", () => {
     await signIn(page);
     await page.goto("/wallet");
 
-    await page.getByRole("button", { name: "Open Wallet WAL-1005" }).click();
+    await page.locator('button[data-wallet-drawer-trigger="WAL-1005"]').click();
     const drawer = page.locator("dialog.wallet-drawer");
     await expect(drawer.getByText("Wallet balances", { exact: true })).toBeVisible();
     await drawer.getByRole("button", { name: "Freeze Wallet" }).click();

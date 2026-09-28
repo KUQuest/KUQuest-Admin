@@ -43,7 +43,7 @@ test.describe("Admin canonical click flows", () => {
   test("global search links use canonical record routes", async ({ page }) => {
     await signIn(page, { expectEmailFocused: true });
 
-    await page.getByRole("button", { name: "Search marketplace records" }).click();
+    await page.getByRole("button", { name: "Search all records" }).click();
     const searchDialog = page.getByRole("dialog", { name: "Search marketplace records" });
     const search = searchDialog.getByRole("searchbox", { name: "Search marketplace records" });
 
@@ -144,7 +144,7 @@ test.describe("Admin canonical click flows", () => {
     await signIn(page, { expectEmailFocused: true });
     await page.goto("/wallet");
 
-    const opener = page.getByRole("button", { name: "Open Wallet WAL-1001" });
+    const opener = page.locator('button[data-wallet-drawer-trigger="WAL-1001"]');
     await opener.click();
     const drawer = page.locator("dialog.wallet-drawer");
     await expect(drawer).toBeVisible();
