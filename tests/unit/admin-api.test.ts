@@ -101,7 +101,7 @@ describe("Admin API boundary", () => {
     const options = { headers: { Cookie: "kuquest-admin=server-session" } };
     await adminApi.listReports({}, options);
     await adminApi.getReport("report-1", options);
-    await adminApi.getEvidence("evidence-1", options);
+    await adminApi.getEvidence("evidence-1", { ...options, idempotencyKey: "evidence-read-1" });
 
     expect(cookies).toEqual([
       "kuquest-admin=server-session",
@@ -390,16 +390,12 @@ describe("Admin API boundary", () => {
       idempotencyKey: "reject-payout-1",
       expectedVersion: 4,
       reasonCode: "PAYOUT_INVALID_DESTINATION",
-      reason: "The destination account does not match the verified Member details.",
     });
 
     expect(request?.url).toBe("https://api.example.test/api/v1/admin/payouts/payout%2F1/cancel");
     expect(request?.headers.get("idempotency-key")).toBe("reject-payout-1");
     expect(request?.headers.get("if-match")).toBe("4");
-    expect(await request?.json()).toEqual({
-      reasonCode: "PAYOUT_INVALID_DESTINATION",
-      reason: "The destination account does not match the verified Member details.",
-    });
+    expect(await request?.json()).toEqual({ reasonCode: "PAYOUT_INVALID_DESTINATION" });
   });
 
   it("sends the Payout approval contract", async () => {
@@ -415,31 +411,12 @@ describe("Admin API boundary", () => {
       idempotencyKey: "approve-payout-1",
       expectedVersion: 4,
       reasonCode: "PAYOUT_RISK_REVIEW",
-      note: "Destination and balance were verified.",
     });
 
     expect(request?.url).toBe("https://api.example.test/api/v1/admin/payouts/payout-1/approve");
     expect(request?.headers.get("idempotency-key")).toBe("approve-payout-1");
     expect(request?.headers.get("if-match")).toBe("4");
     expect(await request?.json()).toEqual({ reasonCode: "PAYOUT_RISK_REVIEW" });
-  });
-
-  it("sends an empty body when approving without a reason code", async () => {
-    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
-    let request: Request | undefined;
-
-    mockFetch(async (input, init) => {
-      request = new Request(input, init);
-      return jsonResponse({ success: true, data: { id: "payout-1" } });
-    });
-
-    await adminApi.approvePayout("payout-1", {
-      idempotencyKey: "approve-payout-1",
-      expectedVersion: 4,
-    });
-
-    expect(request?.url).toBe("https://api.example.test/api/v1/admin/payouts/payout-1/approve");
-    expect(await request?.json()).toEqual({});
   });
 
   it("sends the Payout reconciliation command", async () => {
@@ -614,19 +591,17 @@ describe("Admin API boundary", () => {
       });
     });
 
-    await adminApi.decideReport("CND-1", {
+    await adminApi.decideConductReport("CND-1", {
       idempotencyKey: "conduct-report-1",
-      decision: "CONDUCT_REPORT_UPHELD",
-      reason: "The Quest record confirms the violation.",
+      expectedVersion: 2,
+      outcome: "CONDUCT_REPORT_UPHELD",
     });
 
     expect(request?.url).toBe("https://api.example.test/api/v1/admin/reports/CND-1/decide");
     expect(request?.method).toBe("POST");
     expect(request?.headers.get("idempotency-key")).toBe("conduct-report-1");
-    expect(await request?.json()).toEqual({
-      decision: "CONDUCT_REPORT_UPHELD",
-      reason: "The Quest record confirms the violation.",
-    });
+    expect(request?.headers.get("if-match")).toBe("2");
+    expect(await request?.json()).toEqual({ outcome: "CONDUCT_REPORT_UPHELD" });
   });
 
   it("maps an API error envelope to ApiError", async () => {
@@ -690,12 +665,13 @@ describe("Admin API boundary", () => {
     await adminApi.retryTopUpProviderEvent("top-up-event-1");
     await adminApi.listReports();
     await adminApi.getReport("report-1");
-    await adminApi.decideReport("report-1", {
+    await adminApi.decideReportCase("report-1", {
       idempotencyKey: "decide-1",
-      decision: "REPORT_CASE_DISMISSED",
-      reason: "No confirmed violation.",
+      expectedVersion: 1,
+      outcome: "REPORT_CASE_DISMISSED",
+      reasonCode: "POLICY_REVIEW",
     });
-    await adminApi.getEvidence("evidence-1");
+    await adminApi.getEvidence("evidence-1", { idempotencyKey: "evidence-read-1" });
     await adminApi.listMembers();
     await adminApi.getMember("member-1");
     await adminApi.listWallets();

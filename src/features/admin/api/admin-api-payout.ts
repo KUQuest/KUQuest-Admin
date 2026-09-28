@@ -90,10 +90,13 @@ export function createAdminPayoutApi() {
       );
     },
 
-    listTopUps(query: AdminTopUpListQuery = {}): Promise<AdminPage<AdminTopUpListItem>> {
+    listTopUps(
+      query: AdminTopUpListQuery = {},
+      options: AdminApiRequestOptions = {},
+    ): Promise<AdminPage<AdminTopUpListItem>> {
       return apiRequest<AdminPage<AdminTopUpListItem>>(
         `/api/v1/admin/top-ups${queryString(query)}`,
-        { cache: "no-store" },
+        { cache: "no-store", ...options },
       );
     },
 
