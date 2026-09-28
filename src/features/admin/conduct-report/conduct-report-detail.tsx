@@ -133,12 +133,10 @@ function ConductReportOverview({
         <div>
           <span>{translateText("Reported Member")}</span>
           <strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} interactive={!compact} /></strong>
-          <small>{displayAdminId(model.reportedMemberId) ?? "—"}</small>
         </div>
         <div>
           <span>{translateText("Reported by")}</span>
           <strong><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} interactive={!compact} /></strong>
-          <small>{displayAdminId(model.reporterId) ?? "—"}</small>
         </div>
       </div>
     </Card>
@@ -213,7 +211,7 @@ function ConductMemberSummaryPanel({
   return (
     <Card as="section" className={adminRecordSection}>
       <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText(heading)}</h2></CardHeader>
-      <div className={adminRecordSideFacts}><div><span>{translateText("Name")}</span><strong><MemberLink id={id} name={name} href={href} /></strong></div><div><span>{translateText("Member ID")}</span><strong>{displayAdminId(id) ?? "—"}</strong></div></div>
+      <div className={adminRecordSideFacts}><div><span>{translateText("Name")}</span><strong><MemberLink id={id} name={name} href={href} /></strong></div></div>
       {href && <Button asChild variant="outline" className="mt-3 w-full"><Link href={href}>{translateText("See Member profile")}</Link></Button>}
     </Card>
   );

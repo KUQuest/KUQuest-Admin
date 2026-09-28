@@ -433,7 +433,7 @@ function QuestDetailContent({
           </div>
           <div className="change-meta">
             <div><span>{translateText("Status")}</span><strong>{translateText(pendingHirerChange.requestStatus)}</strong></div>
-            <div><span>{translateText("Requested by")}</span><strong>{pendingHirerChange.requestedByUserId === detail.hirer.id ? `${questMemberName(detail.hirer)} · ${translateText("Hirer")}` : displayAdminId(pendingHirerChange.requestedByUserId) ?? translateText("Member")}</strong></div>
+            <div><span>{translateText("Requested by")}</span><strong>{pendingHirerChange.requestedByUserId === detail.hirer.id ? `${questMemberName(detail.hirer)} · ${translateText("Hirer")}` : translateText("Member")}</strong></div>
             <div><span>{translateText("Requested at")}</span><strong>{formatQuestDate(pendingHirerChange.createdAt)}</strong></div>
             <div><span>{translateText("Expires at")}</span><strong>{formatQuestDate(pendingHirerChange.expiresAt)}</strong></div>
           </div>

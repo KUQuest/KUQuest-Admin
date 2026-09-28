@@ -102,17 +102,17 @@ test.describe("Admin canonical click flows", () => {
     await expect(page).toHaveURL(/\/payout$/);
     await expect(page.getByRole("heading", { level: 1, name: "Payouts" })).toBeVisible();
     await page.waitForLoadState("networkidle");
-    await page.getByRole("link", { name: "Open Payout PAY-9637" }).click();
+    await page.locator('a[data-payout-drawer-trigger="PAY-9637"]').click();
     await expect(page).toHaveURL(/\/payout\/PAY-9637$/);
-    const payoutDrawer = page.getByRole("dialog", { name: "PAY-9637" });
+    const payoutDrawer = page.getByRole("dialog", { name: "Payout for Mali S." });
     await expect(payoutDrawer).toBeVisible();
     await payoutDrawer.getByRole("button", { name: "Close Payout detail" }).click();
     await expect(page).toHaveURL(/\/payout$/);
 
     await page.locator('.admin-shell aside a[href="/member"]').click();
     await expect(page).toHaveURL(/\/member$/);
-    await page.getByRole("button", { name: "Open Member 68000000" }).click();
-    await page.getByRole("dialog", { name: "68000000" }).getByRole("link", { name: "See full Member profile" }).click();
+    await page.locator('tr[data-member-id="68000000"]').click();
+    await page.getByRole("dialog", { name: "Akarin Ariyawat" }).getByRole("link", { name: "See full Member profile" }).click();
     await expect(page).toHaveURL(/\/member\/68000000$/);
     await expect(page.getByRole("heading", { level: 1, name: "Akarin Ariyawat" })).toBeVisible();
   });

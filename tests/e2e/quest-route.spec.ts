@@ -234,7 +234,8 @@ test.describe("Quest route family", () => {
     await expect(side.getByRole("heading", { name: "Hirer", exact: true })).toBeVisible();
     const hirer = side.getByRole("heading", { name: "Hirer", exact: true }).locator("xpath=ancestor::section[1]");
     await expect(hirer.getByText("Name", { exact: true })).toBeVisible();
-    await expect(hirer.getByText("Member ID", { exact: true })).toBeVisible();
+    await expect(hirer.getByText("Kamonwan Lertwiroj", { exact: true })).toBeVisible();
+    await expect(hirer.getByText("68000000", { exact: true })).toHaveCount(0);
     await expect(hirer.getByRole("link", { name: "See Member profile", exact: true })).toHaveAttribute("href", /\/member\//);
     await expect(side.getByRole("heading", { name: "Schedule and location", exact: true })).toBeVisible();
     await expect(side.getByRole("heading", { name: "Dispute and risk", exact: true })).toBeVisible();
@@ -260,12 +261,13 @@ test.describe("Quest route family", () => {
     await page.goto(`/quest/${CANDIDATE_QUEST_DISPLAY_ID}`);
 
     const candidates = page.getByRole("heading", { name: "Candidates", exact: true }).locator("xpath=ancestor::section[1]");
-    await expect(candidates.getByText(/Member ID:/).first()).toBeVisible();
+    await expect(candidates.getByText(/Member ID:/)).toHaveCount(0);
     await expect(candidates.getByRole("link", { name: "See Member profile", exact: true })).toHaveAttribute("href", /\/member\//);
 
     await page.goto(`/quest/${FAILED_QUEST_ID}`);
     const hirer = page.locator(".quest-detail-page > div > div > aside").getByRole("heading", { name: "Hirer", exact: true }).locator("xpath=ancestor::section[1]");
-    await expect(hirer.getByText("68000000", { exact: true })).toBeVisible();
+    await expect(hirer.getByText("Kamonwan Lertwiroj", { exact: true })).toBeVisible();
+    await expect(hirer.getByText("68000000", { exact: true })).toHaveCount(0);
     await expect(hirer.getByRole("link", { name: "See Member profile", exact: true })).toHaveAttribute("href", "/member/68000000");
   });
 
@@ -277,7 +279,7 @@ test.describe("Quest route family", () => {
     const drawer = page.locator(".quest-drawer");
     const candidates = drawer.getByRole("heading", { name: "Candidates", exact: true }).locator("xpath=ancestor::section[1]");
     await expect(candidates).toContainText("Demo Member 02");
-    await expect(candidates.getByText(/Member ID:/).first()).toBeVisible();
+    await expect(candidates.getByText(/Member ID:/)).toHaveCount(0);
     await candidates.getByRole("link", { name: "See Member profile", exact: true }).click();
     const memberDrawer = page.locator('[data-slot="admin-drawer"]').last();
     await expect(memberDrawer.getByText("Loading Member…", { exact: true })).toHaveCount(0, { timeout: 10_000 });

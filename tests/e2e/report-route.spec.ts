@@ -73,6 +73,8 @@ test.describe("Report Case routes", () => {
 
     await expect(page.getByRole("heading", { level: 1, name: "Report against Amara Ariyawat" })).toBeVisible();
     await expect(page.locator(".report-page-alert")).toBeVisible();
+    await expect(page.getByText("68000020", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Member ID", { exact: true })).toHaveCount(0);
     await expect(page.locator('a[href="/member/68000020"]').first()).toBeVisible();
     await expect(page.locator('a[href*="/users/"]')).toHaveCount(0);
 
@@ -80,7 +82,7 @@ test.describe("Report Case routes", () => {
     await page.getByRole("button", { name: "Close report" }).first().click();
     const dialog = page.locator("dialog.report-decision-dialog");
     await expect(dialog).toBeVisible();
-    await dialog.getByLabel("Reason for this decision").fill("No policy violation found.");
+    await dialog.getByLabel("Reason for this decision").fill("POLICY_REVIEWED");
     await dialog.getByRole("button", { name: "Confirm decision" }).click();
 
     await expect(dialog).toBeHidden();

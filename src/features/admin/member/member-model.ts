@@ -616,7 +616,7 @@ export function memberModelFromMockRecord(
   const walletStatus = hasStoredModerationState
     ? walletStatusFor(record.walletStatus ?? record.status)
     : parity?.walletStatus ?? walletStatusFor(record.walletStatus ?? record.status);
-  const studentId = nullableText(record.studentId) ?? displayAdminId(id);
+  const studentId = nullableText(record.studentId);
   const createdAt = text(record.accountCreatedAt ?? record.createdAt, "Not recorded");
   const walletId = nullableText(record.walletId) ?? `WAL-${id}`;
   const academicProfile = {

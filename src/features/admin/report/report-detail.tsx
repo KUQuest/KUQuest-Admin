@@ -148,7 +148,7 @@ function ReportOverview({
           <div className={adminRecordFacts}><div className={adminRecordFact}><span>{translateText("Status")}</span><strong><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></strong></div><div className={adminRecordFact}><span>{translateText("Report type")}</span><strong>{translateText(model.reportType)}</strong></div><div className={adminRecordFact}><span>{translateText("Reported")}</span><strong>{formatAdminTimestamp(model.submittedAt)}</strong></div></div>
           <AdminOverviewMeta className="moderation-case-context-grid !grid-cols-2 max-[600px]:!grid-cols-1"><div><dt>{translateText("Case")}</dt><dd>{model.displayId}</dd></div><div><dt>{translateText("Case type")}</dt><dd>{translateText("Report Case")}</dd></div><div><dt>{translateText("Source")}</dt><dd>{translateText("Message")}</dd></div><div><dt>{translateText("Submitted")}</dt><dd>{formatAdminTimestamp(model.submittedAt)}</dd></div><div><dt>{translateText("Evidence References")}</dt><dd>{model.evidence.length || translateText("None")}</dd></div></AdminOverviewMeta>
           <div className={adminRecordGroup}><span>{translateText("Submitted detail")}</span><p>{model.detail}</p></div>
-          <div className={`${adminRecordFacts} report-overview-parties`}><div className={adminRecordFact}><span>{translateText("Reported Member")}</span><strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} interactive={false} /></strong><small>{displayAdminId(model.reportedMemberId) ?? "—"}</small></div><div className={adminRecordFact}><span>{translateText("Reporting Member")}</span><strong><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} interactive={false} /></strong><small>{displayAdminId(model.reporterId) ?? "—"}</small></div></div>
+          <div className={`${adminRecordFacts} report-overview-parties`}><div className={adminRecordFact}><span>{translateText("Reported Member")}</span><strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} interactive={false} /></strong></div><div className={adminRecordFact}><span>{translateText("Reporting Member")}</span><strong><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} interactive={false} /></strong></div></div>
       </Card>
     );
   }
@@ -195,7 +195,7 @@ function PeopleInvolved({
     return (
       <Card as="section" className={adminRecordSection}>
         <CardHeader flush className={adminRecordHeader}><h3 className={adminRecordHeading}>{translateText("People involved")}</h3></CardHeader>
-        <div className={adminRecordFacts}><div className={adminRecordFact}><span>{translateText("Reported Member")}</span><strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} interactive={!compact} /></strong><small>{displayAdminId(model.reportedMemberId) ?? "—"}</small></div><div className={adminRecordFact}><span>{translateText("Reported by")}</span><strong><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} interactive={!compact} /></strong><small>{displayAdminId(model.reporterId) ?? "—"}</small></div></div>
+        <div className={adminRecordFacts}><div className={adminRecordFact}><span>{translateText("Reported Member")}</span><strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} interactive={!compact} /></strong></div><div className={adminRecordFact}><span>{translateText("Reported by")}</span><strong><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} interactive={!compact} /></strong></div></div>
       </Card>
     );
   }
@@ -204,8 +204,8 @@ function PeopleInvolved({
     <Card as="section" className={adminRecordSection}>
       <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("People involved")}</h2></CardHeader>
       <div className={`${adminRecordPartyGrid} report-parties`}>
-        <div><span>{translateText("Reporting Member")}</span><strong><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} /></strong>{displayAdminId(model.reporterId) && <small>{displayAdminId(model.reporterId)}</small>}</div>
-        <div><span>{translateText("Reported Member")}</span><strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} /></strong>{displayAdminId(model.reportedMemberId) && <small>{displayAdminId(model.reportedMemberId)}</small>}</div>
+        <div><span>{translateText("Reporting Member")}</span><strong><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} /></strong></div>
+        <div><span>{translateText("Reported Member")}</span><strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} /></strong></div>
       </div>
     </Card>
   );
@@ -256,7 +256,7 @@ function MemberSummaryPanel({
   return (
     <Card as="section" className={adminRecordSection}>
       <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText(heading)}</h2></CardHeader>
-      <div className={adminRecordSideFacts}><div><span>{translateText("Name")}</span><strong><MemberLink id={id} name={name} href={href} /></strong></div><div><span>{translateText("Member ID")}</span><strong>{displayAdminId(id) ?? "—"}</strong></div></div>
+      <div className={adminRecordSideFacts}><div><span>{translateText("Name")}</span><strong><MemberLink id={id} name={name} href={href} /></strong></div></div>
       {href && <Button asChild variant="outline" className="mt-3 w-full"><Link href={href}>{translateText("See Member profile")}</Link></Button>}
     </Card>
   );

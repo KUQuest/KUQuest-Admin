@@ -40,7 +40,7 @@ test.describe("Wallet App Router board", () => {
 
     await page.getByRole("tab", { name: /^Frozen \(\d+\)$/ }).click();
     await expect(page.locator("[data-wallet-row]")).toHaveCount(10);
-    await expect(page.getByText("6510100001", { exact: true })).toBeVisible();
+    await expect(page.locator('[data-wallet-row="WAL-1001"]')).toContainText("6510100001");
     await expect(page.getByText("6510100002", { exact: true })).toHaveCount(0);
 
     await page.getByLabel("Search Wallets").fill("68000040");

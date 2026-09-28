@@ -28,8 +28,8 @@ async function expectResponsiveInput(page: Page, input: Locator) {
 
 async function openMemberDrawer(page: Page) {
   await page.goto("/member");
-  await page.getByRole("button", { name: "Open Member 68000000" }).click();
-  const drawer = page.getByRole("dialog", { name: "68000000" });
+  await page.locator('tr[data-member-id="68000000"]').click();
+  const drawer = page.getByRole("dialog", { name: "Akarin Ariyawat" });
   await expect(drawer).toBeVisible();
   return drawer;
 }
@@ -297,7 +297,7 @@ test.describe("legacy parity for inputs on mobile", () => {
     const dialog = page.locator("dialog.report-decision-dialog");
     const reason = dialog.getByLabel("Reason for this decision");
     await reason.fill("The account action was reviewed and recorded.");
-    await expect(reason).toHaveValue("The account action was reviewed and recorded.");
+    await expect(reason).toHaveValue("THE ACCOUNT ACTION WAS REVIEWED AND RECORDED.");
     await expectResponsiveInput(page, reason);
     await dialog.getByRole("button", { name: "Cancel" }).click();
     await expect(dialog).toHaveCount(0);
@@ -317,13 +317,16 @@ test.describe("legacy parity for inputs on mobile", () => {
     await expect(dialog).toHaveCount(0);
   });
 
-  test("Payout rejection reason code accepts input on mobile", async ({ page }) => {
+  test("Payout decision reason code accepts input on mobile", async ({ page }) => {
     await signIn(page);
     await page.goto("/payout/PAY-9637");
 
     await page.getByRole("button", { name: "Approve Payout" }).click();
     const approval = page.getByRole("dialog", { name: "Approve Payout" });
-    await expect(approval.getByLabel(/Reason code/)).toHaveCount(0);
+    const approvalReasonCode = approval.getByLabel(/Reason code/);
+    await approvalReasonCode.selectOption("PAYOUT_POLICY_REVIEW");
+    await expect(approvalReasonCode).toHaveValue("PAYOUT_POLICY_REVIEW");
+    await expectResponsiveInput(page, approvalReasonCode);
     await page.keyboard.press("Escape");
     await expect(approval).toHaveCount(0);
 

@@ -85,7 +85,6 @@ export function ModerationHistoryPanel({
   const noteText = summary.adminNotes.length
     ? summary.adminNotes.join(" · ")
     : fallback;
-  const memberDisplayId = displayAdminId(member?.id);
 
   return (
     <Card as="section" className={panelClass}>
@@ -98,7 +97,6 @@ export function ModerationHistoryPanel({
           <span>{translateText(memberLabel)}</span>
           <p>
             <strong className="font-semibold">{!compact && member.href && member.id ? <Link href={member.href}>{member.name}</Link> : member.name}</strong>
-            {memberDisplayId && <small className="text-xs text-admin-muted"> · {memberDisplayId}</small>}
           </p>
         </div>
       )}
@@ -143,9 +141,7 @@ function CaseContextPanel({
 }: Omit<ModerationCaseWorkspaceProps, "children">) {
   const fallback = translateText("Not provided.");
   const panelClass = `${adminRecordSection} moderation-case-context`;
-  const reportedMemberDisplayId = displayAdminId(reportedMember?.id);
-  const reporterDisplayId = displayAdminId(reporter?.id);
-  const relatedRecordDisplayId = displayAdminId(relatedRecord?.displayId, relatedRecord?.id);
+  const relatedRecordDisplayId = displayAdminId(relatedRecord?.displayId);
   const relatedRecordTitle = relatedRecord?.title ?? relatedRecordDisplayId ?? fallback;
 
   return (
@@ -170,8 +166,8 @@ function CaseContextPanel({
       </div>
       {(reportedMember || reporter) && (
         <div className={`${adminRecordPartyGrid} moderation-case-parties`}>
-          {reportedMember && <div><span>{translateText(reportedMember.role)}</span><strong><PersonLink person={reportedMember} interactive={!compact} /></strong>{reportedMemberDisplayId && <small>{reportedMemberDisplayId}</small>}</div>}
-          {reporter && <div><span>{translateText(reporter.role)}</span><strong><PersonLink person={reporter} interactive={!compact} /></strong>{reporterDisplayId && <small>{reporterDisplayId}</small>}</div>}
+          {reportedMember && <div><span>{translateText(reportedMember.role)}</span><strong><PersonLink person={reportedMember} interactive={!compact} /></strong></div>}
+          {reporter && <div><span>{translateText(reporter.role)}</span><strong><PersonLink person={reporter} interactive={!compact} /></strong></div>}
         </div>
       )}
       {showRelatedRecord && relatedRecord && (
