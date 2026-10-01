@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
-import { isAdminApiEnabled } from "../api/admin-provider";
+import { adminApiProvider, isAdminApiEnabled } from "../api/admin-provider";
 import { replaceInfiniteItem } from "../data/query-data";
 import { loadAllMembersFromMock, loadMembersFromMock, recordMemberViolationFromMember, removeMemberPenalty, saveMemberNote } from "./member-adapter";
 import { MEMBER_UPDATED_EVENT } from "./member-events";
@@ -109,6 +109,25 @@ export function useMemberDetailQuery(memberId: string, initialModel?: MemberMode
     data: query.data ?? null,
     queryKey,
   };
+}
+
+export function useMemberTopUpsQuery(memberId: string, enabled: boolean) {
+  const apiEnabled = isAdminApiEnabled();
+  return useInfiniteQuery({
+    queryKey: ["admin", "members", "detail", memberId, "top-ups"],
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam }) => adminApiProvider.read.listTopUps({
+      userId: memberId,
+      limit: 25,
+      ...(pageParam ? { cursor: pageParam } : {}),
+    }),
+    enabled: apiEnabled && enabled,
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+    retry: false,
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
+  });
 }
 
 export type MemberActionMutationInput =

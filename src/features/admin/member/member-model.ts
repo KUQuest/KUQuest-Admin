@@ -50,6 +50,7 @@ export const MEMBER_TABS = [
   "overview",
   "activity",
   "payouts",
+  "top-ups",
   "wallet-statement",
   "reviews",
   "reports",

@@ -41,8 +41,10 @@ function mockData(): PersistedAdminData {
 
 describe("Member route model", () => {
   it("normalizes tabs and uses the canonical Member detail helper", () => {
+    expect(memberTabFrom("top-ups")).toBe("top-ups");
     expect(memberTabFrom("wallet-statement")).toBe("wallet-statement");
     expect(memberTabFrom("unknown")).toBe("overview");
+    expect(memberTabHref("member-1", "top-ups")).toBe("/member/member-1?tab=top-ups");
     expect(memberTabHref("member/1", "wallet-statement")).toBe("/member/member%2F1?tab=wallet-statement");
   });
 
