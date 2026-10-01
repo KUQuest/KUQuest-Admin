@@ -12,11 +12,11 @@ import type {
   AdminDisputeCaseDetail,
   AdminDisputeEvidence,
   AdminDisputeEvidenceRequest,
+  AdminDisputeListPage,
   AdminDisputeListQuery,
   AdminDisputeOpenCommand,
   AdminDisputeOpenResult,
   AdminDisputeResolutionResult,
-  AdminPage,
   DisputeResolution,
 } from "./admin-api";
 
@@ -25,8 +25,8 @@ export function createAdminDisputeApi() {
     listDisputes(
       query: AdminDisputeListQuery = {},
       options: AdminApiRequestOptions = {},
-    ): Promise<AdminPage<AdminDisputeCase>> {
-      return apiRequest<AdminPage<AdminDisputeCase>>(
+    ): Promise<AdminDisputeListPage> {
+      return apiRequest<AdminDisputeListPage>(
         `/api/v1/admin/disputes${queryString(query)}`,
         { cache: "no-store", ...options },
       );

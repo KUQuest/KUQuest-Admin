@@ -11,6 +11,7 @@ import { isAdminApiEnabled } from "../api/admin-provider";
 import { activityRoutes } from "../admin-routes";
 import { memberStatusLabel, walletStatusLabel } from "../domain/rulebook";
 import { dashboardActivityKey } from "../dashboard/dashboard-model";
+import { formatAdminTimestamp } from "../date-format";
 import {
   questStateTones,
   type OverviewModel,
@@ -85,6 +86,14 @@ function FinanceMetric({ label, value }: { label: string; value: number }) {
   return <div className="overview-command-center-finance-metric grid min-w-0 gap-1"><span className="text-xs leading-tight text-admin-muted">{label}</span><strong className="text-lg tabular-nums text-admin-text">{moneyFromSatang(value)}</strong></div>;
 }
 
+function FinanceFact({ label, value }: { label: string; value: string }) {
+  return <div className="overview-command-center-finance-metric grid min-w-0 gap-1"><span className="text-xs leading-tight text-admin-muted">{label}</span><strong className="text-sm text-admin-text">{value}</strong></div>;
+}
+
+function OverviewMetric({ label, value }: { label: string; value: number | null }) {
+  return <div className="overview-command-center-finance-metric grid min-w-0 gap-1"><span className="text-xs leading-tight text-admin-muted">{label}</span><strong className="text-xl tabular-nums text-admin-text">{countLabel(value)}</strong></div>;
+}
+
 function FinanceGroup({ title, children }: { title: string; children: ReactNode }) {
   return <div className="overview-command-center-finance-group min-w-0 border-r border-admin-border p-[15px_18px_17px] last:border-r-0 max-[560px]:border-b max-[560px]:border-r-0 max-[560px]:last:border-b-0"><h3 className="mb-3 text-[15px] font-semibold text-admin-text">{title}</h3>{children}</div>;
 }
@@ -102,20 +111,26 @@ function FinanceOverviewSection({
 }) {
   const sourceLabel = isAdminApiEnabled() ? "Admin API" : "Local demo data";
   if (loading) {
-    return <Card as="section" className="overview-command-center-finance overview-command-center-finance-member-focused mt-[18px] overflow-hidden" aria-labelledby="overview-finance-heading"><CardHeader flush className={overviewSectionHead}><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p className="mt-2 text-[15px] text-admin-muted">{translateText("Member Wallet totals and lifetime volume.")}</p></div><span className="whitespace-nowrap text-xs font-extrabold text-admin-muted">{translateText(sourceLabel)}</span></CardHeader><p className={overviewNote}>{translateText(isAdminApiEnabled() ? "Reading the Finance Overview from the Admin API…" : "Loading the Finance Overview…")}</p></Card>;
+    return <Card as="section" className="overview-command-center-finance overview-command-center-finance-member-focused mt-[18px] overflow-hidden" aria-labelledby="overview-finance-heading"><CardHeader flush className={overviewSectionHead}><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p className="mt-2 text-[15px] text-admin-muted">{translateText("Member Wallet totals, lifetime volume, and Ledger integrity.")}</p></div><span className="whitespace-nowrap text-xs font-extrabold text-admin-muted">{translateText(sourceLabel)}</span></CardHeader><p className={overviewNote}>{translateText(isAdminApiEnabled() ? "Reading the Finance Overview from the Admin API…" : "Loading the Finance Overview…")}</p></Card>;
   }
   if (error || !overview) {
-    return <Card as="section" className="overview-command-center-finance overview-command-center-finance-member-focused mt-[18px] overflow-hidden" aria-labelledby="overview-finance-heading"><CardHeader flush className={overviewSectionHead}><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p className="mt-2 text-[15px] text-admin-muted">{translateText("Member Wallet totals and lifetime volume.")}</p></div><span className="whitespace-nowrap text-xs font-extrabold text-admin-muted">{translateText("Unavailable")}</span></CardHeader><p className={overviewNote}>{error ? translateText(error) : translateText("Finance Overview is not available.")}</p></Card>;
+    return <Card as="section" className="overview-command-center-finance overview-command-center-finance-member-focused mt-[18px] overflow-hidden" aria-labelledby="overview-finance-heading"><CardHeader flush className={overviewSectionHead}><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p className="mt-2 text-[15px] text-admin-muted">{translateText("Member Wallet totals, lifetime volume, and Ledger integrity.")}</p></div><span className="whitespace-nowrap text-xs font-extrabold text-admin-muted">{translateText("Unavailable")}</span></CardHeader><p className={overviewNote}>{error ? translateText(error) : translateText("Finance Overview is not available.")}</p></Card>;
   }
 
   return <Card as="section" className="overview-command-center-finance overview-command-center-finance-member-focused mt-[18px] overflow-hidden" aria-labelledby="overview-finance-heading">
-    <CardHeader flush className={overviewSectionHead}><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p className="mt-2 text-[15px] text-admin-muted">{translateText("Member Wallet totals and lifetime volume.")}</p></div><span className="whitespace-nowrap text-xs font-extrabold text-admin-muted">{translateText(sourceLabel)}</span></CardHeader>
+    <CardHeader flush className={overviewSectionHead}><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p className="mt-2 text-[15px] text-admin-muted">{translateText("Member Wallet totals, lifetime volume, and Ledger integrity.")}</p></div><span className="whitespace-nowrap text-xs font-extrabold text-admin-muted">{translateText(sourceLabel)}</span></CardHeader>
     <div className="overview-command-center-finance-groups grid grid-cols-2 border-t border-admin-border max-[560px]:grid-cols-1">
+      <FinanceGroup title={translateText("Platform Balances")}>
+        <div className="overview-command-center-finance-metrics grid grid-cols-2 gap-2.5"><FinanceMetric label={translateText("Revenue")} value={overview.platformBalances.revenueSatang} /><FinanceMetric label={translateText("Suspense")} value={overview.platformBalances.suspenseSatang} /></div>
+      </FinanceGroup>
       <FinanceGroup title={translateText("All Member Wallet Summary")}>
         <div className="overview-command-center-finance-metrics grid grid-cols-2 gap-2.5"><FinanceMetric label={translateText("All Spending balance")} value={overview.memberBalancesSummary.totalSpendingSatang} /><FinanceMetric label={translateText("All Earnings balance")} value={overview.memberBalancesSummary.totalEarningsSatang} /><FinanceMetric label={translateText("All Funding reserved")} value={overview.memberBalancesSummary.totalFundingReservedSatang} /><FinanceMetric label={translateText("All Payout reserved")} value={overview.memberBalancesSummary.totalPayoutReservedSatang} /><FinanceMetric label={translateText("Total circulating")} value={overview.memberBalancesSummary.totalCirculatingSatang} /></div>
       </FinanceGroup>
       <FinanceGroup title={translateText("Lifetime Volume")}>
         <div className="overview-command-center-finance-metrics grid grid-cols-2 gap-2.5"><FinanceMetric label={translateText("Top-ups deposited")} value={overview.volumeLifetime.totalTopUpDepositedSatang} /><FinanceMetric label={translateText("Payouts completed")} value={overview.volumeLifetime.totalPayoutCompletedSatang} /><FinanceMetric label={translateText("Platform fees earned")} value={overview.volumeLifetime.totalPlatformFeesEarnedSatang} /></div>
+      </FinanceGroup>
+      <FinanceGroup title={translateText("Ledger Integrity")}>
+        <div className="overview-command-center-finance-metrics grid grid-cols-2 gap-2.5"><FinanceFact label={translateText("Subledger status")} value={translateText(overview.integrity.subledgerBalanced ? "Balanced" : "Unbalanced")} /><FinanceMetric label={translateText("Posting discrepancy")} value={overview.integrity.totalPostingsDiscrepancySatang} /><FinanceFact label={translateText("Last audited")} value={formatAdminTimestamp(overview.integrity.lastAuditedAt, "Asia/Bangkok")} /></div>
       </FinanceGroup>
     </div>
   </Card>;
@@ -170,6 +185,15 @@ export function AdminOverview({
         </Card>
 
         <FinanceOverviewSection overview={financeOverview} loading={isPending && !data} error={financeOverviewError} translateText={translateText} />
+
+        <Card as="section" className="mt-[18px] overflow-hidden" aria-labelledby="overview-operational-totals-heading">
+          <CardHeader flush className={overviewSectionHead}><div><h2 id="overview-operational-totals-heading" className="m-0 text-[19px] font-semibold tracking-[-.02em] text-admin-text">{translateText("Operational totals")}</h2><p className="mt-2 text-[15px] text-admin-muted">{translateText("Additional marketplace totals.")}</p></div><span className="whitespace-nowrap text-[13px] font-extrabold text-admin-muted">{translateText(isAdminApiEnabled() ? "Admin API" : "Local demo data")}</span></CardHeader>
+          <div className="grid grid-cols-3 gap-x-5 gap-y-4 p-[16px_18px] max-[820px]:grid-cols-3 max-[560px]:grid-cols-2">
+            <OverviewMetric label={translateText("Hidden Quests")} value={model.hiddenQuestCount} />
+            <OverviewMetric label={translateText("All Dispute Cases")} value={model.disputeTotal} />
+            <OverviewMetric label={translateText("Payouts in flight")} value={model.inFlightPayouts} />
+          </div>
+        </Card>
 
         <div className="overview-command-center-grid mt-[10px] grid grid-cols-[minmax(0,1.25fr)_minmax(320px,.75fr)] items-start gap-[18px] max-[820px]:grid-cols-1">
           <Card as="section" className="overview-command-center-table overflow-hidden" aria-labelledby="overview-command-queue-heading">
@@ -242,7 +266,7 @@ export function AdminOverview({
           </Card>
 
           <Card as="section" className="overview-command-center-snapshot-card overflow-hidden" aria-labelledby="overview-command-wallets-heading">
-            <CardHeader flush className={overviewSectionHead}><div><h2 id="overview-command-wallets-heading" className="m-0 text-[19px] font-semibold tracking-[-.02em] text-admin-text">{translateText("Wallets")}</h2><p className="mt-2 text-[15px] text-admin-muted">{translateText("Count by Wallet status.")}</p></div><span className="whitespace-nowrap text-[13px] font-extrabold text-admin-muted">{translateText(model.walletStatusSource)}</span></CardHeader>
+            <CardHeader flush className={overviewSectionHead}><div><h2 id="overview-command-wallets-heading" className="m-0 text-[19px] font-semibold tracking-[-.02em] text-admin-text">{translateText(model.walletStatusSource === "Admin API" ? "Wallet Holds" : "Wallets")}</h2><p className="mt-2 text-[15px] text-admin-muted">{translateText("Count by Wallet status.")}</p></div><span className="whitespace-nowrap text-[13px] font-extrabold text-admin-muted">{translateText(model.walletStatusSource)}</span></CardHeader>
             <ul className="overview-command-center-status-list m-0 list-none px-[18px] pt-[5px]">
               {model.walletStatusCounts.map((entry) => (
                 <li key={entry.status} className="overview-command-center-status-row grid min-h-[53px] grid-cols-[8px_minmax(0,1fr)_auto] items-center gap-2.5 border-b border-admin-border-subtle last:border-b-0">

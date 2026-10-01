@@ -7,8 +7,8 @@ import type {
   AdminConductReportCommandResult,
   AdminApiRequestOptions,
   AdminEvidence,
-  AdminPage,
   AdminReportCase,
+  AdminReportListPage,
   AdminReportCommandResult,
   AdminReportEvidenceRequestOptions,
   AdminReportListQuery,
@@ -21,8 +21,8 @@ export function createAdminReportApi() {
     listReports(
       query: AdminReportListQuery = {},
       options: AdminApiRequestOptions = {},
-    ): Promise<AdminPage<AdminReportCase>> {
-      return apiRequest<AdminPage<AdminReportCase>>(
+    ): Promise<AdminReportListPage> {
+      return apiRequest<AdminReportListPage>(
         `/api/v1/admin/reports${queryString(query)}`,
         { cache: "no-store", ...options },
       );
