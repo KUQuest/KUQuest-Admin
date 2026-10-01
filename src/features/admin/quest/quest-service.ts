@@ -37,8 +37,11 @@ function apiRequestOptions(cookieHeader?: string): AdminApiRequestOptions {
   return cookieHeader ? { headers: { Cookie: cookieHeader } } : {};
 }
 
-async function resolveApiQuestId(questId: string, options: AdminApiRequestOptions): Promise<string> {
-  if (!/^QST-/i.test(questId)) return questId;
+async function resolveApiQuestId(
+  questId: string,
+  options: AdminApiRequestOptions,
+): Promise<{ id: string; displayId?: string }> {
+  if (!/^QST-/i.test(questId)) return { id: questId };
 
   let cursor: string | undefined;
   do {
@@ -48,12 +51,12 @@ async function resolveApiQuestId(questId: string, options: AdminApiRequestOption
       ...(cursor ? { cursor } : {}),
     }, options);
     const match = page.items.find((item) => item.displayId === questId || item.id === questId);
-    if (match) return match.id;
+    if (match) return { id: match.id, displayId: match.displayId ?? questId };
     if (!page.nextCursor || page.nextCursor === cursor) break;
     cursor = page.nextCursor;
   } while (cursor);
 
-  return questId;
+  return { id: questId, displayId: questId };
 }
 
 export async function loadQuestBoardPageData(
@@ -97,10 +100,10 @@ export async function loadQuestDetailPageData(
   }
 
   const options = apiRequestOptions(cookieHeader);
-  const apiQuestId = await resolveApiQuestId(questId, options);
+  const apiQuest = await resolveApiQuestId(questId, options);
   const [detailResult, financeResult] = await Promise.allSettled([
-    adminApiProvider.read.getQuest(apiQuestId, options),
-    adminApiProvider.read.getQuestFinance(apiQuestId, options),
+    adminApiProvider.read.getQuest(apiQuest.id, options),
+    adminApiProvider.read.getQuestFinance(apiQuest.id, options),
   ]);
 
   if (detailResult.status === "rejected") {
@@ -108,7 +111,10 @@ export async function loadQuestDetailPageData(
     throw detailResult.reason;
   }
 
-  const detail = questDetailViewFromApi(detailResult.value);
+  const detail = questDetailViewFromApi({
+    ...detailResult.value,
+    displayId: detailResult.value.displayId ?? apiQuest.displayId,
+  });
 
   let linkedDisputeId: string | null = null;
   let disputeLookupError: string | null = null;
