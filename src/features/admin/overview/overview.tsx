@@ -66,7 +66,7 @@ function queueSourceLabel(row: OverviewQueue, translateText: (value: string) => 
 }
 
 function countLabel(count: number | null): string {
-  return count === null ? "—" : new Intl.NumberFormat("en-US").format(count);
+  return new Intl.NumberFormat("en-US").format(count ?? 0);
 }
 
 function moneyFromSatang(value: number): string {
