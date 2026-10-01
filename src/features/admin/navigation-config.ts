@@ -28,10 +28,10 @@ export const adminNavigation = [
   { key: "report", label: "Report Cases", href: reportRoutes.list(), icon: "report", group: "primary", count: "reports" },
   { key: "conduct-report", label: "Conduct Reports", href: conductReportRoutes.list(), icon: "conduct-report", group: "primary", count: "conductReports" },
   { key: "payout", label: "Payouts", href: payoutRoutes.list(), icon: "payout", group: "primary", count: "payouts" },
-  { key: "finance", label: "Finance", href: financeRoutes.list(), icon: "finance", group: "primary", count: null },
   { key: "member", label: "Members", href: memberRoutes.list(), icon: "member", group: "primary", count: null },
   { key: "wallet", label: "Wallets", href: walletRoutes.list(), icon: "wallet", group: "primary", count: null },
   { key: "activity", label: "Activity Log", href: activityRoutes.list(), icon: "activity", group: "system", count: null },
+  { key: "finance", label: "Finance", href: financeRoutes.list(), icon: "finance", group: "system", count: null },
 ] as const satisfies readonly AdminNavigationItem[];
 
 export type AdminNavigationKey = (typeof adminNavigation)[number]["key"];
