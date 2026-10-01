@@ -10,7 +10,7 @@ import {
   loadDisputeCasesFromMock,
   saveMockDisputeDecision,
 } from "./dispute-adapter";
-import { loadDisputeCasePageData, type DisputeCasePageData } from "./dispute-service";
+import { loadDisputeCaseDetailFromApi, loadDisputeCasePageData, type DisputeCasePageData } from "./dispute-service";
 import type { AdminDisputeEvidence } from "../api/admin-api";
 import { DISPUTE_CASE_UPDATED_EVENT, disputeCaseModelFromRecord, type DisputeCaseCommand, type DisputeCaseModel } from "./dispute-model";
 
@@ -122,10 +122,14 @@ export function useDisputeDetailQuery(disputeId: string, initialModel?: DisputeC
   const query = useQuery({
     queryKey,
     queryFn: async () => {
-      const record = apiEnabled
-        ? await adminApiProvider.read.getDispute(disputeId)
-        : findDisputeCaseFromMock(localStorage, disputeId);
-      const model = disputeCaseModelFromRecord(record, apiEnabled ? "api" : "mock");
+      if (apiEnabled) {
+        const model = await loadDisputeCaseDetailFromApi(disputeId);
+        if (!model) throw new Error("The Dispute Case was not found.");
+        return model;
+      }
+
+      const record = findDisputeCaseFromMock(localStorage, disputeId);
+      const model = disputeCaseModelFromRecord(record, "mock");
       if (!model || model.id !== disputeId) throw new Error("The Dispute Case was not found.");
       return model;
     },

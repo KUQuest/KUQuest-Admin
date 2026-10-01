@@ -102,8 +102,8 @@ export function DisputeDecisionDialog({
   if (!open) return null;
   const title = choice === "resolve" ? translateText("Confirm Resolved") : translateText("Confirm Dismissed");
   const description = choice === "resolve"
-    ? `${translateText("This will transfer the full remaining Dispute Case amount to the Worker Earnings Balance for")} ${model.id}.`
-    : `${translateText("This will keep the full held amount with the Hirer and close the Dispute Case for")} ${model.id}.`;
+    ? `${translateText("This will transfer the full remaining Dispute Case amount to the Worker Earnings Balance for")} ${model.displayId}.`
+    : `${translateText("This will keep the full held amount with the Hirer and close the Dispute Case for")} ${model.displayId}.`;
   const nextState = choice === "resolve" ? "DISPUTE_CASE_RESOLVED" : "DISPUTE_CASE_DISMISSED";
   const effect = choice === "resolve"
     ? `${translateText("Transfer the full remaining amount from the Hirer side of the held Funding Reservation to")} ${model.workerName} ${translateText("Earnings Balance")} (${model.sharedCapLabel}).`
@@ -120,7 +120,7 @@ export function DisputeDecisionDialog({
             <p>{description}</p>
             {choice ? <AdminActionSummary
               title={translateText("Before you confirm")}
-              affected={`${translateText("Dispute Case")} ${model.displayId} · ${translateText("Quest")} ${model.questId}`}
+              affected={`${translateText("Dispute Case")} ${model.displayId} · ${translateText("Quest")} ${model.questTitle}${model.questDisplayId ? ` (${model.questDisplayId})` : ""}`}
               currentState={model.statusLabel}
               nextState={disputeCaseStatusLabel(nextState)}
               effect={translateText(effect)}

@@ -52,6 +52,7 @@ export type DisputeCaseModel = {
   isActionable: boolean;
   title: string;
   questId: string;
+  questDisplayId: string | null;
   questTitle: string;
   questHref: string | null;
   questState: QuestState;
@@ -113,9 +114,24 @@ function text(value: unknown): string | null {
   return trimmed || null;
 }
 
+const uuidPattern = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
+
+function readableText(value: unknown): string | null {
+  const result = text(value);
+  return result && !uuidPattern.test(result) ? result : null;
+}
+
 function firstText(...values: unknown[]): string | null {
   for (const value of values) {
     const result = text(value);
+    if (result) return result;
+  }
+  return null;
+}
+
+function firstReadableText(...values: unknown[]): string | null {
+  for (const value of values) {
+    const result = readableText(value);
     if (result) return result;
   }
   return null;
@@ -138,8 +154,8 @@ function disputeDecisionLabel(value: unknown): string | null {
 
 function personName(value: unknown): string | null {
   const record = asRecord(value);
-  if (!record) return text(value);
-  return firstText(
+  if (!record) return readableText(value);
+  return firstReadableText(
     record.name,
     record.displayName,
     record.title,
@@ -253,7 +269,8 @@ export function disputeCaseModelFromRecord(
   const id = text(record.id) as string;
   const quest = asRecord(record.quest);
   const questId = firstText(record.questId, quest?.id) ?? "";
-  const questTitle = firstText(record.questTitle, quest?.title, record.title) ?? missingValue;
+  const questTitle = firstReadableText(record.questTitle, quest?.title, record.title) ?? missingValue;
+  const questDisplayId = firstReadableText(record.questDisplayId, quest?.displayId);
   const questState = questStateFor(record.questState ?? quest?.questStatus);
   const filerId = firstText(record.filerUserId, record.filerId);
   const respondentId = firstText(record.respondentUserId, record.respondentId);
@@ -265,18 +282,16 @@ export function disputeCaseModelFromRecord(
     roleIs(filerRole, "Worker") ? filerId : null,
     roleIs(respondentRole, "Worker") ? respondentId : null,
   );
-  const filerName = firstText(
+  const filerName = firstReadableText(
     record.filerName,
     personName(record.filer),
-    filerId ? `Member ${filerId}` : null,
     source === "mock" ? record.reporterName : null,
     source === "mock" ? "Hirer not provided" : null,
   ) ?? missingValue;
-  const respondentName = firstText(
+  const respondentName = firstReadableText(
     record.respondentName,
     personName(record.respondent),
     personName(record.worker),
-    respondentId ? `Member ${respondentId}` : null,
     source === "mock" ? record.workerName : null,
     source === "mock" ? "Worker not provided" : null,
   ) ?? missingValue;
@@ -313,13 +328,14 @@ export function disputeCaseModelFromRecord(
 
   return {
     id,
-    displayId: firstText(record.displayId) ?? id,
+    displayId: firstReadableText(record.displayId) ?? readableText(id) ?? "Dispute Case",
     status,
     statusLabel: disputeCaseStatusLabel(status),
     badgeClass: statusBadgeClass(status),
     isActionable: canResolveDispute(questState, status),
     title: questTitle,
     questId,
+    questDisplayId,
     questTitle,
     questHref: questId ? questRoutes.detail(questId) : null,
     questState,
@@ -356,7 +372,7 @@ export function disputeCaseModelFromRecord(
     decisionLabel,
     decisionReason: firstText(record.decisionReason, record.reason),
     resolution: firstText(record.resolution),
-    resolvedBy: firstText(record.resolvedBy, record.resolvedByAdminId),
+    resolvedBy: firstReadableText(record.resolvedBy, personName(record.resolvedBy)),
     resolutionAt: firstText(record.resolutionAt, record.resolvedAt)
       ? formatDate(record.resolutionAt ?? record.resolvedAt, missingValue)
       : null,

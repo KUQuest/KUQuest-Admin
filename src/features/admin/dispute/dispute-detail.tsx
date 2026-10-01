@@ -60,6 +60,19 @@ type EvidenceState = {
   loading: boolean;
 };
 
+const uuidPattern = /\b[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\b/gi;
+
+function redactUuidValues(value: unknown): unknown {
+  if (typeof value === "string") return value.replace(uuidPattern, "Hidden");
+  if (Array.isArray(value)) return value.map(redactUuidValues);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [key, redactUuidValues(entry)]),
+    );
+  }
+  return value;
+}
+
 function MemberLink({
   id,
   name,
@@ -97,7 +110,7 @@ function Overview({ model, translateText, compact = false }: { model: DisputeCas
           <div className={adminRecordFacts}><div className={adminRecordFact}><span>{translateText("Status")}</span><strong><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></strong></div><div className={adminRecordFact}><span>{translateText("Category")}</span><strong>{translateText(model.category)}</strong></div><div className={adminRecordFact}><span>{translateText("Amount at risk")}</span><strong>{model.amountAtRiskLabel}</strong></div></div>
           <AdminOverviewMeta className="moderation-case-context-grid !grid-cols-2 max-[600px]:!grid-cols-1"><div><dt>{translateText("Case")}</dt><dd>{model.displayId}</dd></div><div><dt>{translateText("Case type")}</dt><dd>{translateText("Dispute Case")}</dd></div><div><dt>{translateText("Source")}</dt><dd>{translateText("Quest settlement")}</dd></div><div><dt>{translateText("Submitted")}</dt><dd>{model.submittedAt}</dd></div><div><dt>{translateText("Evidence References")}</dt><dd>{model.evidence.length || translateText("None")}</dd></div></AdminOverviewMeta>
           <div className={adminRecordGroup}><span>{translateText("Submitted detail")}</span><p>{model.detail}</p></div>
-          <div className={adminRecordPartyGrid}><div><span>{translateText(model.filerRole)}</span><strong><MemberLink id={model.filerId} name={model.filerName} href={model.filerHref} interactive={false} /></strong><small>{model.filerId ?? "—"}</small></div><div><span>{translateText(model.respondentRole)}</span><strong><MemberLink id={model.respondentId} name={model.respondentName} href={model.respondentHref} interactive={false} /></strong><small>{model.respondentId ?? "—"}</small></div></div>
+          <div className={adminRecordPartyGrid}><div><span>{translateText(model.filerRole)}</span><strong><MemberLink id={model.filerId} name={model.filerName} href={model.filerHref} interactive={false} /></strong></div><div><span>{translateText(model.respondentRole)}</span><strong><MemberLink id={model.respondentId} name={model.respondentName} href={model.respondentHref} interactive={false} /></strong></div></div>
       </Card>
     );
   }
@@ -157,7 +170,7 @@ function DecisionDetails({ model, translateText }: { model: DisputeCaseModel; tr
 }
 
 function MemberSummary({ heading, id, name, href, translateText }: { heading: string; id: string | null; name: string; href: string | null; translateText: (value: string) => string }) {
-  return <Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText(heading)}</h2></CardHeader><div className={adminRecordSideFacts}><div><span>{translateText("Name")}</span><strong><MemberLink id={id} name={name} href={href} /></strong></div><div><span>{translateText("Member ID")}</span><strong>{id ?? "—"}</strong></div></div>{href && <Button asChild variant="outline" className="mt-3 w-full"><Link href={href}>{translateText("See Member profile")}</Link></Button>}</Card>;
+  return <Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText(heading)}</h2></CardHeader><div className={adminRecordSideFacts}><div><span>{translateText("Name")}</span><strong><MemberLink id={id} name={name} href={href} /></strong></div></div>{href && <Button asChild variant="outline" className="mt-3 w-full"><Link href={href}>{translateText("See Member profile")}</Link></Button>}</Card>;
 }
 
 function RelatedQuestPanel({ model, translateText }: { model: DisputeCaseModel; translateText: (value: string) => string }) {
@@ -166,7 +179,7 @@ function RelatedQuestPanel({ model, translateText }: { model: DisputeCaseModel; 
       <CardHeader flush className={adminRecordHeader}><h3 className={adminRecordHeading}>{translateText("Related Quest")}</h3><span className={`badge ${questStatusClass(model.questState)}`}>{translateText(questStateLabel(model.questState))}</span></CardHeader>
       <div className={adminRecordSideFacts}>
         <div><span>{translateText("Quest")}</span><strong>{model.questTitle}</strong></div>
-        <div><span>{translateText("Quest ID")}</span><strong>{model.questId}</strong></div>
+        {model.questDisplayId && <div><span>{translateText("Quest ID")}</span><strong>{model.questDisplayId}</strong></div>}
         <div><span>{translateText("Quest State")}</span><strong>{translateText(questStateLabel(model.questState))}</strong></div>
         <div><span>{translateText("Failed at")}</span><strong>{model.questFailedAt ? formatAdminTimestamp(model.questFailedAt) : translateText("Not provided.")}</strong></div>
       </div>
@@ -179,10 +192,11 @@ function EvidencePreview({ state, translateText, onClose }: { state: EvidenceSta
   const dialogRef = useRef<HTMLDialogElement>(null);
   let display = translateText("Bounded Evidence Reference context was not provided.");
   if (state.value !== null && state.value !== undefined) {
-    display = typeof state.value === "string" ? state.value : JSON.stringify(state.value, null, 2);
+    const safeValue = redactUuidValues(state.value);
+    display = typeof safeValue === "string" ? safeValue : JSON.stringify(safeValue, null, 2);
   }
   useDisputeModalFocus(dialogRef, true, onClose);
-  return <AdminModalPortal open onClose={onClose}><dialog ref={dialogRef} open className="dispute-evidence-dialog z-[60] w-[min(620px,calc(100vw-32px))]" aria-modal="true" aria-labelledby="dispute-evidence-title" tabIndex={-1}><div className="dialog-body p-5"><div className="sticky top-0 z-[2] flex items-center justify-between border-b border-admin-border bg-admin-surface/95 px-4 py-3 backdrop-blur-sm"><div><strong id="dispute-evidence-title" className="block">{translateText("Evidence Reference")}</strong><small className="block text-[13px] text-admin-muted">{state.reference}</small></div><button className="icon" type="button" aria-label={translateText("Close evidence")} onClick={onClose}><span className="close-lines" /></button></div>{state.loading && <p>{translateText("Loading Evidence Reference…")}</p>}{state.error && <p className="field-error" role="alert">{translateText(state.error)}</p>}{!state.loading && !state.error && <pre className="report-evidence-context max-h-[50vh] overflow-auto rounded-lg bg-admin-soft p-3 text-sm [overflow-wrap:anywhere]">{display}</pre>}<div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5"><Button variant="outline" type="button" onClick={onClose}>{translateText("Close")}</Button></div></div></dialog></AdminModalPortal>;
+  return <AdminModalPortal open onClose={onClose}><dialog ref={dialogRef} open className="dispute-evidence-dialog z-[60] w-[min(620px,calc(100vw-32px))]" aria-modal="true" aria-labelledby="dispute-evidence-title" tabIndex={-1}><div className="dialog-body p-5"><div className="sticky top-0 z-[2] flex items-center justify-between border-b border-admin-border bg-admin-surface/95 px-4 py-3 backdrop-blur-sm"><div><strong id="dispute-evidence-title" className="block">{translateText("Evidence Reference")}</strong><small className="block text-[13px] text-admin-muted">{translateText("Evidence details")}</small></div><button className="icon" type="button" aria-label={translateText("Close evidence")} onClick={onClose}><span className="close-lines" /></button></div>{state.loading && <p>{translateText("Loading Evidence Reference…")}</p>}{state.error && <p className="field-error" role="alert">{translateText(state.error)}</p>}{!state.loading && !state.error && <pre className="report-evidence-context max-h-[50vh] overflow-auto rounded-lg bg-admin-soft p-3 text-sm [overflow-wrap:anywhere]">{display}</pre>}<div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5"><Button variant="outline" type="button" onClick={onClose}>{translateText("Close")}</Button></div></div></dialog></AdminModalPortal>;
 }
 
 function DecisionControls({ model, translateText, selectedChoice, commandError, onSelect, onStart }: { model: DisputeCaseModel; translateText: (value: string) => string; selectedChoice: DisputeCaseDecisionChoice | null; commandError: string | null; onSelect: (choice: DisputeCaseDecisionChoice) => void; onStart: () => void }) {
@@ -198,7 +212,7 @@ function DecisionControls({ model, translateText, selectedChoice, commandError, 
       </div>
       <div className={`report-decision-option grid w-full grid-cols-[18px_1fr] items-start gap-x-2 gap-y-0.5 rounded-[9px] border border-admin-border bg-admin-surface px-3 py-[11px] text-left transition-colors hover:bg-admin-hover ${selectedChoice === "resolve" ? "border-admin-accent bg-admin-accent-soft shadow-[0_0_0_1px_var(--accent)]" : ""}`}>
         <input className="mt-0.5" id={`dispute-decision-${model.id}-resolve`} type="radio" name={`dispute-decision-${model.id}`} value="resolve" data-dispute-decision="resolve" checked={selectedChoice === "resolve"} onChange={() => onSelect("resolve")} disabled={!workerAvailable} />
-        <label className="grid cursor-pointer gap-0.5" htmlFor={`dispute-decision-${model.id}-resolve`}><strong className="text-sm leading-[1.35]">{translateText("Resolved")}</strong><small className="text-[13px] leading-[1.45] text-admin-muted">{workerAvailable ? translateText("Transfer the full remaining Dispute Case amount to the Worker.") : translateText("Worker ID was not provided.")}</small></label>
+        <label className="grid cursor-pointer gap-0.5" htmlFor={`dispute-decision-${model.id}-resolve`}><strong className="text-sm leading-[1.35]">{translateText("Resolved")}</strong><small className="text-[13px] leading-[1.45] text-admin-muted">{workerAvailable ? translateText("Transfer the full remaining Dispute Case amount to the Worker.") : translateText("Worker information is not available.")}</small></label>
       </div>
     </fieldset>
     {commandError && <p className="field-error" role="alert">{translateText(commandError)}</p>}
@@ -334,7 +348,7 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
     }
   };
 
-  const receipt = actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Dispute Case" resourceId={model.id} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {actionReceipt.reason}</p>} /> : null;
+  const receipt = actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Dispute Case" resourceId={model.displayId} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {actionReceipt.reason}</p>} /> : null;
   const evidenceState: EvidenceState | null = evidenceReference ? {
     reference: evidenceReference,
     value: evidenceQuery.data ?? null,
@@ -352,9 +366,9 @@ export function DisputeCaseDrawer({ disputeId, initialModel, onClose, onUpdated 
   const { translateText } = useAdminShell();
   return <AdminDrawer
     ariaLabel={translateText("Close drawer")}
-    title={<><span aria-hidden="true">{initialModel?.title ?? disputeId}</span><span className="visually-hidden">{translateText("Dispute Case details")}</span></>}
+    title={<><span aria-hidden="true">{initialModel?.title ?? translateText("Dispute Case")}</span><span className="visually-hidden">{translateText("Dispute Case details")}</span></>}
     titleId="dispute-case-drawer-title"
-    subtitle={<>{translateText("Dispute Case")} {initialModel?.displayId ?? disputeId} · {translateText("Dispute Case detail drawer")}</>}
+    subtitle={<>{translateText("Dispute Case")} {initialModel?.displayId ?? translateText("Dispute Case")} · {translateText("Dispute Case detail drawer")}</>}
     className="dispute-case-drawer quest-style-drawer"
     openerAttribute="data-dispute-id"
     openerValue={disputeId}
