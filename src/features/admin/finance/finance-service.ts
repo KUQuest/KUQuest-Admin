@@ -12,6 +12,10 @@ export type FinancePageData = {
   currentPolicy: AdminMoneyPolicy | null;
   policyRevisions: AdminMoneyPolicy[];
   policyError: string | null;
+};
+
+export type TopUpPageData = {
+  dataSource: FinanceDataSource;
   topUpPage: AdminPage<AdminTopUpListItem> | null;
   topUpError: string | null;
 };
@@ -44,16 +48,13 @@ export async function loadFinancePageData(
       currentPolicy: null,
       policyRevisions: [],
       policyError: null,
-      topUpPage: null,
-      topUpError: null,
     };
   }
 
   const options = adminApiRequestOptions(cookieHeader);
-  const [currentPolicyResult, revisionsResult, topUpResult] = await Promise.allSettled([
+  const [currentPolicyResult, revisionsResult] = await Promise.allSettled([
     adminApiProvider.read.getCurrentMoneyPolicy(options),
     adminApiProvider.read.listMoneyPolicyRevisions(options),
-    adminApiProvider.read.listTopUps({ limit: 25 }, options),
   ]);
 
   const policyFailure = currentPolicyResult.status === "rejected"
@@ -67,9 +68,26 @@ export async function loadFinancePageData(
     currentPolicy: currentPolicyResult.status === "fulfilled" ? currentPolicyResult.value.policy : null,
     policyRevisions: revisionsResult.status === "fulfilled" ? revisionsResult.value.policies : [],
     policyError: policyFailure,
-    topUpPage: topUpResult.status === "fulfilled" ? topUpResult.value : null,
-    topUpError: topUpResult.status === "rejected" ? errorMessage(topUpResult.reason) : null,
   };
+}
+
+export async function loadTopUpPageData(
+  cookieHeader: string | undefined,
+  dataSource: FinanceDataSource,
+): Promise<TopUpPageData> {
+  if (dataSource === "mock") {
+    return { dataSource, topUpPage: null, topUpError: null };
+  }
+
+  try {
+    const topUpPage = await adminApiProvider.read.listTopUps(
+      { limit: 25 },
+      adminApiRequestOptions(cookieHeader),
+    );
+    return { dataSource, topUpPage, topUpError: null };
+  } catch (error) {
+    return { dataSource, topUpPage: null, topUpError: errorMessage(error) };
+  }
 }
 
 export type FinanceTopUpFilter = "ALL" | AdminApiTopUpStatus;

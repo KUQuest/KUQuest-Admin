@@ -2,7 +2,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tansta
 
 import { adminApiProvider } from "../api/admin-provider";
 import type { AdminApiTopUpStatus } from "../api/admin-api";
-import type { FinancePageData, FinanceTopUpFilter } from "./finance-service";
+import type { FinancePageData, FinanceTopUpFilter, TopUpPageData } from "./finance-service";
 
 export const financePolicyQueryKey = ["admin", "finance", "money-policy"] as const;
 export const financeTopUpQueryKey = ["admin", "finance", "top-ups"] as const;
@@ -29,7 +29,7 @@ export function useFinancePolicyQuery(initialData: FinancePageData) {
   });
 }
 
-export function useFinanceTopUpQuery(status: FinanceTopUpFilter, initialData: FinancePageData) {
+export function useFinanceTopUpQuery(status: FinanceTopUpFilter, initialData: TopUpPageData) {
   return useInfiniteQuery({
     queryKey: [...financeTopUpQueryKey, status],
     initialPageParam: null as string | null,

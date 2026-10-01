@@ -50,6 +50,10 @@ export const financeRoutes = {
   list: () => "/finance",
 } as const;
 
+export const topUpRoutes = {
+  list: () => "/top-ups",
+} as const;
+
 export const activityRoutes = {
   list: () => "/activity",
 } as const;

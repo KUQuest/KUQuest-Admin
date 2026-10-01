@@ -8,6 +8,7 @@ import {
   payoutRoutes,
   questRoutes,
   reportRoutes,
+  topUpRoutes,
   walletRoutes,
 } from "./admin-routes";
 import type { AdminNavigationCountKey } from "./admin-navigation";
@@ -16,7 +17,7 @@ type AdminNavigationItem = {
   key: string;
   label: string;
   href: string;
-  icon: "home" | "quest" | "dispute" | "report" | "conduct-report" | "payout" | "member" | "wallet" | "finance" | "activity";
+  icon: "home" | "quest" | "dispute" | "report" | "conduct-report" | "payout" | "top-up" | "member" | "wallet" | "finance" | "activity";
   group: "primary" | "system";
   count: AdminNavigationCountKey | null;
 };
@@ -28,6 +29,7 @@ export const adminNavigation = [
   { key: "report", label: "Report Cases", href: reportRoutes.list(), icon: "report", group: "primary", count: "reports" },
   { key: "conduct-report", label: "Conduct Reports", href: conductReportRoutes.list(), icon: "conduct-report", group: "primary", count: "conductReports" },
   { key: "payout", label: "Payouts", href: payoutRoutes.list(), icon: "payout", group: "primary", count: "payouts" },
+  { key: "top-ups", label: "Top-ups", href: topUpRoutes.list(), icon: "top-up", group: "primary", count: null },
   { key: "member", label: "Members", href: memberRoutes.list(), icon: "member", group: "primary", count: null },
   { key: "wallet", label: "Wallets", href: walletRoutes.list(), icon: "wallet", group: "primary", count: null },
   { key: "activity", label: "Activity Log", href: activityRoutes.list(), icon: "activity", group: "system", count: null },

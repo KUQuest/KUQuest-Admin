@@ -11,6 +11,7 @@ describe("Admin navigation active state", () => {
       "/report",
       "/conduct-report",
       "/payout",
+      "/top-ups",
       "/member",
       "/wallet",
       "/activity",
@@ -24,6 +25,7 @@ describe("Admin navigation active state", () => {
       ["report", "reports"],
       ["conduct-report", "conductReports"],
       ["payout", "payouts"],
+      ["top-ups", null],
       ["member", null],
       ["wallet", null],
       ["activity", null],
@@ -40,6 +42,7 @@ describe("Admin navigation active state", () => {
     expect(activeAdminNavigation("/member/member-1")).toBe("member");
     expect(activeAdminNavigation("/activity")).toBe("activity");
     expect(activeAdminNavigation("/finance")).toBe("finance");
+    expect(activeAdminNavigation("/top-ups")).toBe("top-ups");
   });
 
   it("does not treat a similar path as an Admin route", () => {

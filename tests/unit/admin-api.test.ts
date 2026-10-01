@@ -333,11 +333,12 @@ describe("Admin API boundary", () => {
       userId: "member-1",
       limit: 50,
       cursor: "next-page",
-    });
+    }, { headers: { Cookie: "admin_session=session-1" } });
     await adminApi.reconcileTopUp("top-up-1");
 
     expect(requests[0].url).toBe("https://api.example.test/api/v1/admin/top-ups?status=PENDING&userId=member-1&limit=50&cursor=next-page");
     expect(requests[0].method).toBe("GET");
+    expect(requests[0].headers.get("cookie")).toBe("admin_session=session-1");
     expect(requests[1].url).toBe("https://api.example.test/api/v1/admin/top-ups/top-up-1/reconcile");
     expect(requests[1].method).toBe("POST");
   });
