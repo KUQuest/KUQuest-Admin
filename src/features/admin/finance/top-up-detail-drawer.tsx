@@ -58,6 +58,19 @@ export function TopUpDetailDrawer({
         <Fact label={translateText("Created")}>{formatAdminTimestamp(topUp.createdAt)}</Fact>
       </div>
     </TopUpDrawerSection>
+    <TopUpDrawerSection title={translateText("Top-up timing")}>
+      <div className="grid gap-2">
+        {[
+          { label: "Expires at", value: formatAdminTimestamp(topUp.expiresAt) },
+          { label: "Paid at", value: topUp.paidAt ? formatAdminTimestamp(topUp.paidAt) : "—" },
+        ].map(({ label, value }) => (
+          <div className="flex items-start justify-between gap-3 rounded-lg border border-admin-border bg-admin-soft p-2.5" key={label}>
+            <span className="text-[13px] leading-[1.4] text-admin-muted">{translateText(label)}</span>
+            <strong className="min-w-0 flex-1 text-right text-sm leading-[1.4] tabular-nums [overflow-wrap:anywhere]">{value}</strong>
+          </div>
+        ))}
+      </div>
+    </TopUpDrawerSection>
     <TopUpDrawerSection title={translateText("Member details")}>
       <div className={adminRecordFacts}>
         <Fact label={translateText("Member")}>{memberName}</Fact>
@@ -76,8 +89,6 @@ export function TopUpDetailDrawer({
     <TopUpDrawerSection title={translateText("Provider details")}>
       <div className={adminRecordFacts}>
         <Fact label={translateText("Provider reference")}>{topUp.providerReference ?? translateText("Provider reference not provided")}</Fact>
-        <Fact label={translateText("Expires at")}>{formatAdminTimestamp(topUp.expiresAt)}</Fact>
-        <Fact label={translateText("Paid at")}>{formatAdminTimestamp(topUp.paidAt)}</Fact>
       </div>
     </TopUpDrawerSection>
   </AdminDrawer>;

@@ -1136,6 +1136,7 @@ export const thaiTranslations: Record<string, string> = {
   "Loading Top-ups…": "กำลังโหลดรายการ Top-up…",
   "Top-ups table": "ตารางรายการ Top-up",
   "Top-up summary": "สรุปรายการ Top-up",
+  "Top-up timing": "ช่วงเวลา Top-up",
   "Member details": "รายละเอียด Member",
   "Payment details": "รายละเอียดการชำระเงิน",
   "Provider details": "รายละเอียด Provider",
