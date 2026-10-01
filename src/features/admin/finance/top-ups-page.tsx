@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
+import { AdminDrawer } from "../../../components/admin/admin-drawer";
+import { AdminRecordFact as Fact } from "../../../components/admin/admin-record-fields";
 import { AdminPageHeader } from "../../../components/admin/admin-page-header";
 import { AdminSortableHeader } from "../../../components/admin/admin-sortable-header";
-import { adminBoardCount, adminBoardPagination, adminBoardTable } from "../../../components/admin/admin-record-styles";
+import { adminBoardCount, adminBoardPagination, adminBoardTable, adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, TableCell, TableRow, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
 import { memberRoutes } from "../admin-routes";
+import type { AdminTopUpListItem } from "../api/admin-api";
 import { countBoardTabMatches } from "../data/board-tab-counts";
 import { useAdminBoardReset } from "../data/use-admin-board-reset";
 import { sortBoardRows } from "../data/board-sorting";
@@ -30,10 +33,78 @@ import {
 } from "./finance-query";
 import type { TopUpPageData } from "./finance-service";
 
+function TopUpDrawerSection({ title, children }: { title: string; children: ReactNode }) {
+  return <Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}><h3 className={adminRecordHeading}>{title}</h3></CardHeader>{children}</Card>;
+}
+
+function formatTopUpPaymentMethod(value: string): string {
+  if (value === "PROMPTPAY_QR") return "PromptPay QR";
+  return value.replaceAll("_", " ").toLocaleLowerCase().replace(/\b\w/g, (letter) => letter.toLocaleUpperCase());
+}
+
+function TopUpDrawer({
+  topUp,
+  opener,
+  onClose,
+}: {
+  topUp: AdminTopUpListItem;
+  opener: HTMLElement | null;
+  onClose: () => void;
+}) {
+  const { translateText } = useAdminShell();
+  const memberName = `${topUp.member.firstName} ${topUp.member.lastName}`.trim();
+  const statusLabel = TOP_UP_BOARD_TABS.find((item) => item.id === topUp.topUpStatus)?.label ?? topUp.topUpStatus;
+
+  return <AdminDrawer
+    ariaLabel={translateText("Close Top-up detail")}
+    title={topUp.id}
+    titleId="top-up-drawer-title"
+    subtitle={translateText("Top-up detail drawer")}
+    className="top-up-drawer [&>.drawer-body]:grid [&>.drawer-body]:content-start [&>.drawer-body]:gap-3.5 [&>.drawer-body]:!min-w-0 [&>.drawer-body]:!grid-cols-[minmax(0,1fr)]"
+    opener={opener}
+    onClose={onClose}
+    actions={<>
+      <Button asChild variant="outline"><Link href={memberRoutes.detail(topUp.userId)}>{translateText("See Member profile")}</Link></Button>
+      <Button variant="outline" type="button" onClick={onClose}>{translateText("Close record")}</Button>
+    </>}
+  >
+    <TopUpDrawerSection title={translateText("Top-up summary")}>
+      <div className={adminRecordFacts}>
+        <Fact label={translateText("Status")}><span className={`badge ${statusBadgeClass(topUp.topUpStatus)}`}>{translateText(statusLabel)}</span></Fact>
+        <Fact label={translateText("Created")}>{formatAdminTimestamp(topUp.createdAt)}</Fact>
+      </div>
+    </TopUpDrawerSection>
+    <TopUpDrawerSection title={translateText("Member details")}>
+      <div className={adminRecordFacts}>
+        <Fact label={translateText("Member")}>{memberName}</Fact>
+        <Fact label={translateText("Student ID")}>{topUp.member.studentId ?? translateText("Student ID not provided")}</Fact>
+      </div>
+    </TopUpDrawerSection>
+    <TopUpDrawerSection title={translateText("Payment details")}>
+      <div className={adminRecordFacts}>
+        <Fact label={translateText("Credit amount")}>{formatMoneySatang(topUp.creditAmountSatang)}</Fact>
+        <Fact label={translateText("Payment total")}>{formatMoneySatang(topUp.paymentTotalSatang)}</Fact>
+        <Fact label={translateText("Provider fee")}>{formatMoneySatang(topUp.providerFeeSatang)}</Fact>
+        <Fact label={translateText("Provider tax")}>{formatMoneySatang(topUp.providerTaxSatang)}</Fact>
+        <Fact label={translateText("Payment method")}>{translateText(formatTopUpPaymentMethod(topUp.paymentMethod))}</Fact>
+      </div>
+    </TopUpDrawerSection>
+    <TopUpDrawerSection title={translateText("Provider details")}>
+      <div className={adminRecordFacts}>
+        <Fact label={translateText("Provider reference")}>{topUp.providerReference ?? translateText("Provider reference not provided")}</Fact>
+        <Fact label={translateText("Expires at")}>{formatAdminTimestamp(topUp.expiresAt)}</Fact>
+        <Fact label={translateText("Paid at")}>{formatAdminTimestamp(topUp.paidAt)}</Fact>
+      </div>
+    </TopUpDrawerSection>
+  </AdminDrawer>;
+}
+
 function TopUpOperations({ initialData }: { initialData: TopUpPageData }) {
   const { translateText } = useAdminShell();
   const [paginationError, setPaginationError] = useState<string | null>(null);
   const [reconcileNotice, setReconcileNotice] = useState<string | null>(null);
+  const [selectedTopUp, setSelectedTopUp] = useState<AdminTopUpListItem | null>(null);
+  const [drawerOpener, setDrawerOpener] = useState<HTMLElement | null>(null);
   const topUpQuery = useFinanceTopUpQuery(initialData);
   const reconcile = useFinanceTopUpReconcileMutation();
   const topUps = useMemo(
@@ -74,6 +145,15 @@ function TopUpOperations({ initialData }: { initialData: TopUpPageData }) {
   const currentPage = Math.min(page, Math.max(totalPages, 1));
   const visibleRows = pageRows(sortedRows, currentPage, pageSize);
   const { start: pageStart, end: pageEnd } = pageRange(sortedRows.length, currentPage, pageSize);
+
+  function openTopUpDrawer(topUp: AdminTopUpListItem, opener: HTMLElement) {
+    setDrawerOpener(opener);
+    setSelectedTopUp(topUp);
+  }
+
+  function closeTopUpDrawer() {
+    setSelectedTopUp(null);
+  }
 
   async function loadMore() {
     if (!topUpQuery.hasNextPage || topUpQuery.isFetchingNextPage) return;
@@ -123,6 +203,7 @@ function TopUpOperations({ initialData }: { initialData: TopUpPageData }) {
   }
 
   return (
+    <>
     <Card as="section" className="overflow-hidden" aria-label={translateText("Top-up review board")}>
       <CardHeader className="flex min-h-[60px] items-center justify-between gap-4">
         <div><CardTitle>{translateText("Top-ups")}</CardTitle><CardDescription>{translateText("Review Top-up payments and reconcile a payment with the Provider.")}</CardDescription></div>
@@ -145,7 +226,7 @@ function TopUpOperations({ initialData }: { initialData: TopUpPageData }) {
       {error ? <div className="m-3 rounded-admin-sm border border-admin-danger bg-admin-danger-soft p-3 text-sm" role="alert">{translateText(error)} <Button variant="outline" size="sm" type="button" onClick={() => { void topUpQuery.refetch(); }}>{translateText("Try again")}</Button></div> : null}
       {reconcileNotice ? <p className={`mx-3 mb-3 text-sm ${reconcile.error ? "field-error" : "audit-note"}`} role={reconcile.error ? "alert" : "status"}>{translateText(reconcileNotice)}</p> : null}
       {topUpQuery.isPending && !topUps.length ? <p className="px-3 py-5" aria-live="polite">{translateText("Loading Top-ups…")}</p> : !sortedRows.length ? <EmptyState title={translateText("No matching Top-ups")} description={translateText("There are no Top-ups in this view.")} action={<Button variant="outline" type="button" onClick={() => { setQuery(""); setTab("all"); }}>{translateText("Reset view")}</Button>} /> : <div className="overflow-x-auto">
-        <Table className={`${adminBoardTable} !min-w-[850px] [&_tbody>tr]:!cursor-default`}>
+        <Table className={`${adminBoardTable} !min-w-[850px] [&_tbody>tr]:cursor-pointer`}>
           <caption>{translateText("Top-ups table")}</caption>
           <thead><tr>
             <AdminSortableHeader label={translateText("Top-up")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} />
@@ -156,8 +237,8 @@ function TopUpOperations({ initialData }: { initialData: TopUpPageData }) {
             <AdminSortableHeader label={translateText("Created")} sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} />
             <th scope="col">{translateText("Action")}</th>
           </tr></thead>
-          <tbody>{visibleRows.map((topUp) => <TableRow key={topUp.id}>
-            <TableCell><strong>{topUp.id}</strong><small>{topUp.providerReference ?? translateText("Provider reference not provided")}</small></TableCell>
+          <tbody>{visibleRows.map((topUp) => <TableRow className="focus-visible:relative focus-visible:outline-3 focus-visible:outline-admin-accent focus-visible:outline-offset-[-3px]" data-top-up-row={topUp.id} key={topUp.id} tabIndex={0} aria-label={`${translateText("Open Top-up")} ${topUp.id}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; openTopUpDrawer(topUp, event.currentTarget); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openTopUpDrawer(topUp, event.currentTarget); } }}>
+            <TableCell><button className="row-record-button" type="button" data-top-up-drawer-trigger={topUp.id} aria-label={`${translateText("Open Top-up")} ${topUp.id}`} onClick={(event) => openTopUpDrawer(topUp, event.currentTarget)}>{topUp.id}</button><small>{topUp.providerReference ?? translateText("Provider reference not provided")}</small></TableCell>
             <TableCell><Link className="text-admin-accent no-underline hover:underline hover:underline-offset-4" href={memberRoutes.detail(topUp.userId)}>{`${topUp.member.firstName} ${topUp.member.lastName}`.trim()}</Link><small>{topUp.member.studentId ?? "—"}</small></TableCell>
             <TableCell className="money">{formatMoneySatang(topUp.creditAmountSatang)}</TableCell>
             <TableCell className="money">{formatMoneySatang(topUp.paymentTotalSatang)}</TableCell>
@@ -173,6 +254,8 @@ function TopUpOperations({ initialData }: { initialData: TopUpPageData }) {
         {paginationError ? <p className="field-error" role="alert">{translateText(paginationError)}</p> : null}
       </div> : null}
     </Card>
+    {selectedTopUp ? <TopUpDrawer topUp={selectedTopUp} opener={drawerOpener} onClose={closeTopUpDrawer} /> : null}
+    </>
   );
 }
 

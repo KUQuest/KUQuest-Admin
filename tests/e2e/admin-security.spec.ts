@@ -91,6 +91,38 @@ test.describe("Admin session and private-route boundary", () => {
     await expect(page.getByRole("dialog", { name: "Activity log entry" })).toHaveCount(0);
   });
 
+  test("opens and closes a Top-up detail drawer from the table", async ({ context, page }) => {
+    await addAdminCookie(context, "valid-session");
+    await page.goto("/top-ups");
+
+    const opener = page.getByRole("button", { name: "Open Top-up TOP-1001" });
+    await expect(opener).toBeVisible();
+    await opener.click();
+
+    const drawer = page.getByRole("dialog", { name: "TOP-1001" });
+    await expect(drawer).toBeVisible();
+    await expect(drawer).toContainText("฿1,000.00");
+    await expect(drawer).toContainText("provider-ref-1001");
+
+    await drawer.getByRole("button", { name: "Close Top-up detail" }).click();
+    await expect(drawer).toHaveCount(0);
+    await expect(opener).toBeFocused();
+
+    const row = page.locator('[data-top-up-row="TOP-1001"]');
+    await row.locator("td").nth(2).click();
+    await expect(drawer).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(drawer).toHaveCount(0);
+    await expect(row).toBeFocused();
+
+    await row.focus();
+    await page.keyboard.press("Enter");
+    await expect(drawer).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(drawer).toHaveCount(0);
+    await expect(row).toBeFocused();
+  });
+
   test("covers Activity Log mobile, language, theme, export, and pagination behavior", async ({ context, page }) => {
     await addAdminCookie(context, "valid-session");
     await page.setViewportSize({ width: 390, height: 844 });
@@ -146,7 +178,8 @@ test.describe("Admin session and private-route boundary", () => {
   });
 
   test("protects Activity Log records at the Admin API boundary", async ({ page }) => {
-    const apiUrl = "http://localhost:5002/api/v1/admin/activity-log";
+    const apiPort = process.env.ADMIN_SECURITY_API_PORT ?? "5002";
+    const apiUrl = `http://localhost:${apiPort}/api/v1/admin/activity-log`;
     const noSession = await page.request.get(apiUrl);
     expect(noSession.status()).toBe(401);
 

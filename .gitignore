@@ -18,6 +18,7 @@
 # next.js
 /.next/
 /.next-quest/
+/.next-top-up-e2e/
 /out/
 
 # production

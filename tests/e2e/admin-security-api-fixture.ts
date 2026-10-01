@@ -1,6 +1,7 @@
 import { mockWalletFinanceSummary } from "../../src/features/admin/wallet/wallet-mock-data";
 
-const adminOrigin = "http://localhost:3006";
+const adminOrigin = process.env.ADMIN_SECURITY_ADMIN_ORIGIN ?? "http://localhost:3006";
+const apiPort = Number(process.env.ADMIN_SECURITY_API_PORT ?? "5002");
 const adminSessionCookieName = "kuquest-admin.session_token";
 
 function json(body: unknown, status = 200): Response {
@@ -72,7 +73,7 @@ const activityLogItems = [
 ];
 
 const server = Bun.serve({
-  port: 5002,
+  port: apiPort,
   async fetch(request) {
     const url = new URL(request.url);
     const cookie = request.headers.get("cookie") ?? "";
@@ -147,6 +148,24 @@ const server = Bun.serve({
 
     if (url.pathname === "/api/v1/admin/wallets") {
       return json({ success: true, data: { items: [], nextCursor: null } });
+    }
+
+    if (url.pathname === "/api/v1/admin/top-ups") {
+      return json({ success: true, data: { items: [{
+        id: "TOP-1001",
+        userId: "member-1",
+        member: { firstName: "Akarin", lastName: "Ariyawat", studentId: "68000000" },
+        topUpStatus: "PAID",
+        creditAmountSatang: 100000,
+        providerFeeSatang: 2500,
+        providerTaxSatang: 175,
+        paymentTotalSatang: 102675,
+        paymentMethod: "PROMPTPAY_QR",
+        providerReference: "provider-ref-1001",
+        expiresAt: "2026-09-15T00:05:00.000Z",
+        paidAt: "2026-09-15T00:03:00.000Z",
+        createdAt: "2026-09-15T00:00:00.000Z",
+      }], nextCursor: null } });
     }
 
     if (url.pathname === "/api/v1/admin/activity-log") {
