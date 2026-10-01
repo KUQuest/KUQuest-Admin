@@ -188,8 +188,10 @@ function walletStatusCountsFromApi(
 ): Array<{ status: WalletStatus; count: OverviewCount }> {
   if (!byStatus) {
     return [
+      { status: "ACTIVE", count: null },
       { status: "FROZEN", count: countValue(frozenWallets) },
       { status: "SUSPENDED", count: countValue(suspendedWallets) },
+      { status: "CLOSED", count: null },
     ];
   }
   return [

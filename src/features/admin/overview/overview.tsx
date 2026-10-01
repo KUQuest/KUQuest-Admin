@@ -266,7 +266,7 @@ export function AdminOverview({
           </Card>
 
           <Card as="section" className="overview-command-center-snapshot-card overflow-hidden" aria-labelledby="overview-command-wallets-heading">
-            <CardHeader flush className={overviewSectionHead}><div><h2 id="overview-command-wallets-heading" className="m-0 text-[19px] font-semibold tracking-[-.02em] text-admin-text">{translateText(model.walletStatusSource === "Admin API" ? "Wallet Holds" : "Wallets")}</h2><p className="mt-2 text-[15px] text-admin-muted">{translateText("Count by Wallet status.")}</p></div><span className="whitespace-nowrap text-[13px] font-extrabold text-admin-muted">{translateText(model.walletStatusSource)}</span></CardHeader>
+            <CardHeader flush className={overviewSectionHead}><div><h2 id="overview-command-wallets-heading" className="m-0 text-[19px] font-semibold tracking-[-.02em] text-admin-text">{translateText("Wallets")}</h2><p className="mt-2 text-[15px] text-admin-muted">{translateText("Count by Wallet status.")}</p></div><span className="whitespace-nowrap text-[13px] font-extrabold text-admin-muted">{translateText(model.walletStatusSource)}</span></CardHeader>
             <ul className="overview-command-center-status-list m-0 list-none px-[18px] pt-[5px]">
               {model.walletStatusCounts.map((entry) => (
                 <li key={entry.status} className="overview-command-center-status-row grid min-h-[53px] grid-cols-[8px_minmax(0,1fr)_auto] items-center gap-2.5 border-b border-admin-border-subtle last:border-b-0">
@@ -276,7 +276,7 @@ export function AdminOverview({
                 </li>
               ))}
             </ul>
-            {model.walletStatusSource === "Unavailable" ? <p className={overviewNote}>{translateText("Wallet status counts are not provided by the Admin API.")}</p> : model.walletStatusSource === "Local fallback" ? <p className={overviewNote}>{translateText("Wallet status counts use local fallback data because the Admin API does not provide them.")}</p> : null}
+            {model.walletStatusSource === "Admin API" && model.walletStatusCounts.some((entry) => entry.count === null) ? <p className={overviewNote}>{translateText("Some Wallet status counts are not provided by the Admin API.")}</p> : model.walletStatusSource === "Unavailable" ? <p className={overviewNote}>{translateText("Wallet status counts are not provided by the Admin API.")}</p> : model.walletStatusSource === "Local fallback" ? <p className={overviewNote}>{translateText("Wallet status counts use local fallback data because the Admin API does not provide them.")}</p> : null}
           </Card>
         </div>
     </main>
