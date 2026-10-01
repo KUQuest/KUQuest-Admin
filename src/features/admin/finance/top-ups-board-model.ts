@@ -1,0 +1,42 @@
+import type { AdminApiTopUpStatus, AdminTopUpListItem } from "../api/admin-api";
+import { dateSortValue } from "../data/board-sorting";
+
+export const TOP_UP_BOARD_TABS = [
+  { id: "all", label: "All" },
+  { id: "PENDING", label: "Pending" },
+  { id: "PAID", label: "Paid" },
+  { id: "EXPIRED", label: "Expired" },
+  { id: "FAILED", label: "Failed" },
+] as const satisfies readonly { id: "all" | AdminApiTopUpStatus; label: string }[];
+
+export type TopUpBoardTab = (typeof TOP_UP_BOARD_TABS)[number]["id"];
+export type TopUpSortKey = "id" | "member" | "creditAmount" | "paymentTotal" | "status" | "createdAt";
+
+export function topUpMatchesTab(topUp: AdminTopUpListItem, tab: TopUpBoardTab): boolean {
+  return tab === "all" || topUp.topUpStatus === tab;
+}
+
+export function searchTopUps(topUps: AdminTopUpListItem[], query: string): AdminTopUpListItem[] {
+  const value = query.trim().toLocaleLowerCase();
+  if (!value) return topUps;
+
+  return topUps.filter((topUp) => [
+    topUp.id,
+    topUp.member.firstName,
+    topUp.member.lastName,
+    topUp.member.studentId,
+    topUp.providerReference,
+    topUp.topUpStatus,
+  ].some((field) => field?.toLocaleLowerCase().includes(value)));
+}
+
+export function topUpSortValue(topUp: AdminTopUpListItem, key: TopUpSortKey): number | string | null {
+  switch (key) {
+    case "id": return topUp.id;
+    case "member": return `${topUp.member.firstName} ${topUp.member.lastName}`.trim();
+    case "creditAmount": return topUp.creditAmountSatang;
+    case "paymentTotal": return topUp.paymentTotalSatang;
+    case "status": return topUp.topUpStatus;
+    case "createdAt": return dateSortValue(topUp.createdAt);
+  }
+}

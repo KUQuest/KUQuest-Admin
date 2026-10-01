@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 
 import { adminSessionCookieHeader } from "../../../lib/auth/admin-session-policy";
 import { adminApiRequestOptions } from "../api/admin-api-request-options";
-import type { AdminApiTopUpStatus, AdminMoneyPolicy, AdminPage, AdminTopUpListItem } from "../api/admin-api";
+import type { AdminMoneyPolicy, AdminPage, AdminTopUpListItem } from "../api/admin-api";
 import { adminApiProvider, isAdminApiEnabled } from "../api/admin-provider";
 
 export type FinanceDataSource = "api" | "mock";
@@ -89,5 +89,3 @@ export async function loadTopUpPageData(
     return { dataSource, topUpPage: null, topUpError: errorMessage(error) };
   }
 }
-
-export type FinanceTopUpFilter = "ALL" | AdminApiTopUpStatus;
