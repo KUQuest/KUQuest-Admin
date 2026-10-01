@@ -117,6 +117,18 @@ test.describe("Admin canonical click flows", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Akarin Ariyawat" })).toBeVisible();
   });
 
+  test("admin opens the related Quest as a full page from full Dispute Case detail", async ({ page }) => {
+    await signIn(page, { expectEmailFocused: true });
+    await page.goto("/dispute/DSP-5201");
+
+    await expect(page.getByRole("heading", { name: "Dispute detail" })).toBeVisible();
+    await page.getByRole("link", { name: "Open Quest detail" }).click();
+
+    await expect(page.locator(".quest-detail-page h1")).toHaveText("Verify dorm fire exits");
+    await expect(page.locator(".quest-drawer")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Dispute detail" })).toHaveCount(0);
+  });
+
   test("moderation queues open on pending cases by default", async ({ page }) => {
     await signIn(page, { expectEmailFocused: true });
 
