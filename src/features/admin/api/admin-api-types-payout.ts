@@ -1,5 +1,6 @@
 export type AdminPayout = {
   id: string;
+  displayId: string;
   student: {
     id: string;
     email: string;

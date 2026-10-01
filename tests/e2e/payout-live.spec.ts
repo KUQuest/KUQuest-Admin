@@ -22,7 +22,7 @@ test("renders a Payout from the live Admin API", async ({ page }) => {
     page.getByRole("heading", { level: 1, name: "Payouts" }),
   ).toBeVisible();
   const payoutLink = page
-    .getByRole("link", { name: /Open Payout [0-9a-f-]{36}/i })
+    .getByRole("link", { name: /Open Payout PAY-[0-9]+/i })
     .first();
   await expect(payoutLink).toBeVisible();
 

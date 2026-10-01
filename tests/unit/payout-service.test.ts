@@ -64,6 +64,11 @@ describe("Payout service boundary", () => {
 
   it("reads the Payout board through the Admin API and forwards the server cookie", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    const apiPayout = {
+      ...mockPendingPayout,
+      id: "123e4567-e89b-42d3-a456-426614174000",
+      displayId: "PAY-9637",
+    };
     const requests: Request[] = [];
     const cacheModes: (RequestCache | undefined)[] = [];
     globalThis.fetch = (async (input, init) => {
@@ -76,14 +81,17 @@ describe("Payout service boundary", () => {
         data: cursor
           ? { items: [], nextCursor: null }
           : new URL(request.url).searchParams.get("status") === "PENDING_ADMIN_APPROVAL"
-            ? { items: [mockPendingPayout], nextCursor: "next-page" }
+            ? { items: [apiPayout], nextCursor: "next-page" }
             : { items: [], nextCursor: null },
       });
     }) as typeof globalThis.fetch;
 
     const result = await loadPayoutBoardPageData("kuquest-admin=session", "api");
 
-    expect(result.rows[0]?.id).toBe("PAY-9637");
+    expect(result.rows[0]).toMatchObject({
+      id: "123e4567-e89b-42d3-a456-426614174000",
+      displayId: "PAY-9637",
+    });
     expect(requests).toHaveLength(7);
     expect(new Set(requests.map((request) => new URL(request.url).searchParams.get("status")))).toEqual(new Set([
       "PENDING_ADMIN_APPROVAL",

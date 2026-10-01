@@ -143,6 +143,7 @@ const makePayoutDetail = (input: {
   const actualDebitSatang = input.actualDebitSatang ?? input.amount + actualFeeSatang + actualTaxSatang;
   return {
     id: input.id,
+    displayId: input.id,
     student: {
       id: studentId,
       email: input.email,

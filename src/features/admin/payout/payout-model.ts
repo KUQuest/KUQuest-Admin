@@ -33,6 +33,7 @@ export type PayoutStudentView = {
 
 export type PayoutBoardRow = {
   id: string;
+  displayId: string;
   studentName: string;
   studentEmail: string;
   status: PayoutStatus;
@@ -161,6 +162,7 @@ export function payoutRowFromApi(payout: AdminPayout): PayoutBoardRow {
   const status = payoutStatusFor(payout.payoutStatus);
   return {
     id: payout.id,
+    displayId: payout.displayId,
     studentName: studentName(payout.student),
     studentEmail: payout.student.email,
     status,
@@ -240,6 +242,7 @@ export function searchPayoutRows(rows: PayoutBoardRow[], query: string): PayoutB
   const value = query.trim().toLocaleLowerCase();
   if (!value) return rows;
   return rows.filter((row) => [
+    row.displayId,
     row.id,
     row.studentName,
     row.studentEmail,
@@ -260,7 +263,7 @@ function comparePayoutRows(left: PayoutBoardRow, right: PayoutBoardRow, key: Pay
 
 function payoutSortValue(row: PayoutBoardRow, key: PayoutSortKey): string {
   return key === "id"
-    ? row.id
+    ? row.displayId
     : key === "student"
       ? row.studentName
       : row.statusLabel;
