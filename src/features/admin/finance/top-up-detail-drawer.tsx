@@ -41,7 +41,7 @@ export function TopUpDetailDrawer({
 
   return <AdminDrawer
     ariaLabel={translateText("Close Top-up detail")}
-    title={topUp.id}
+    title={topUp.displayId}
     titleId="top-up-drawer-title"
     subtitle={translateText("Top-up detail drawer")}
     className="top-up-drawer [&>.drawer-body]:grid [&>.drawer-body]:content-start [&>.drawer-body]:gap-3.5 [&>.drawer-body]:!min-w-0 [&>.drawer-body]:!grid-cols-[minmax(0,1fr)]"

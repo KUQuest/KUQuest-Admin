@@ -247,7 +247,7 @@ function MemberTopUpsTab({ model, translateText }: { model: MemberModel; transla
                 data-member-top-up-row={topUp.id}
                 key={topUp.id}
               >
-                <td><button className="row-record-button" type="button" data-member-top-up-drawer-trigger={topUp.id} aria-label={`${translateText("Open Top-up")} ${topUp.id}`} onClick={(event) => openTopUp(topUp, event.currentTarget)}>{topUp.id}</button><small>{topUp.providerReference ?? translateText("Provider reference not provided")}</small></td>
+                <td><button className="row-record-button" type="button" data-member-top-up-drawer-trigger={topUp.id} aria-label={`${translateText("Open Top-up")} ${topUp.displayId}`} onClick={(event) => openTopUp(topUp, event.currentTarget)}>{topUp.displayId}</button><small>{topUp.providerReference ?? translateText("Provider reference not provided")}</small></td>
                 <td className="money">{formatMoneySatang(topUp.creditAmountSatang)}</td>
                 <td className="money">{formatMoneySatang(topUp.paymentTotalSatang)}</td>
                 <td>{translateText(formatTopUpPaymentMethod(topUp.paymentMethod))}</td>

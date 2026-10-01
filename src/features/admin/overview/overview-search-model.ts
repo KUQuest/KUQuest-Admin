@@ -253,7 +253,7 @@ export function overviewSearchResultsFromApi(
 export function overviewSearchResultsFromSearchApi(items: AdminSearchResult[]): OverviewSearchResult[] {
   return items.map((item): OverviewSearchResult => ({
     kind: item.kind,
-    id: item.id,
+    id: item.displayId ?? item.studentId ?? item.id,
     title: item.title,
     detail: searchResultLabel(item.kind),
     status: searchApiStatusLabel(item),

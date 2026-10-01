@@ -31,6 +31,7 @@ export type WalletSortDirection = "ascending" | "descending";
 
 export type WalletBoardRow = {
   id: string;
+  displayId: string;
   memberId: string;
   memberAvailable: boolean;
   memberName: string;
@@ -71,6 +72,7 @@ export type WalletHistoryView = {
   toStatus: WalletStatus;
   reason: string;
   actorAdminId: string | null;
+  actorDisplayName: string | null;
   createdAt: string;
 };
 
@@ -152,6 +154,7 @@ export function walletRowFromApi(wallet: AdminWallet): WalletBoardRow {
   const member = wallet.member;
   return {
     id: wallet.id,
+    displayId: wallet.displayId,
     memberId: wallet.userId,
     memberAvailable: Boolean(member),
     memberName: memberName(member),
@@ -193,6 +196,7 @@ export function walletHistoryFromApi(
     toStatus: entry.toStatus,
     reason: entry.reason,
     actorAdminId: entry.actorAdminId,
+    actorDisplayName: entry.actorDisplayName,
     createdAt: entry.createdAt,
   }));
 }
@@ -288,6 +292,7 @@ export function searchWalletRows(rows: WalletBoardRow[], query: string): WalletB
   const value = query.trim().toLocaleLowerCase();
   if (!value) return rows;
   return rows.filter((row) => [
+    row.displayId,
     row.id,
     row.memberId,
     row.memberName,
@@ -301,7 +306,7 @@ function walletSortValue(row: WalletBoardRow, key: WalletSortKey): string | numb
   if (key === "balance") return row.currentBalanceSatang;
   if (key === "latestTransactionAt") return Date.parse(row.latestTransactionAt ?? "") || 0;
   if (key === "createdAt") return Date.parse(row.createdAt) || 0;
-  if (key === "id") return row.id;
+  if (key === "id") return row.displayId;
   if (key === "member") return row.memberName;
   return row.statusLabel;
 }

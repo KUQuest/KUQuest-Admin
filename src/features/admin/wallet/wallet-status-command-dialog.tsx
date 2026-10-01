@@ -116,7 +116,7 @@ export function WalletStatusCommandDialog({
         <p>{translateText("Review the Wallet status change before saving. Every Wallet status change requires a reason.")}</p>
         <AdminActionSummary
           title={translateText("Before you confirm")}
-          affected={`${translateText("Wallet")} ${row.id} · ${row.memberName}`}
+          affected={`${translateText("Wallet")} ${row.displayId} · ${row.memberName}`}
           currentState={walletStatusLabel(row.status)}
           nextState={walletStatusLabel(targetStatus)}
           effect={translateText(transitionCopy.join(" "))}

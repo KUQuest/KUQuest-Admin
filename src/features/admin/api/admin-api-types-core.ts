@@ -176,6 +176,8 @@ export type AdminSearchResult = {
   kind: AdminSearchResultKind;
   id: string;
   resourceId: string;
+  displayId?: string;
+  studentId?: string | null;
   title: string;
   status: string | null;
   newestAt: string | null;

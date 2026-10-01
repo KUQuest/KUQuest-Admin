@@ -82,6 +82,7 @@ export type AdminMemberFinance = {
 
 export type AdminWallet = {
   id: string;
+  displayId: string;
   userId: string;
   /**
    * The Wallet API normally embeds its Member. Keep this nullable at the
@@ -120,6 +121,7 @@ export type AdminWalletStatusHistoryEntry = {
   reason: string;
   actorUserId: string | null;
   actorAdminId: string | null;
+  actorDisplayName: string | null;
   createdAt: string;
 };
 

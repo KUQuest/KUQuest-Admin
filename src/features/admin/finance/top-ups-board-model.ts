@@ -46,6 +46,7 @@ export function searchTopUps(topUps: AdminTopUpListItem[], query: string): Admin
   if (!value) return topUps;
 
   return topUps.filter((topUp) => [
+    topUp.displayId,
     topUp.id,
     topUp.member.firstName,
     topUp.member.lastName,
@@ -57,7 +58,7 @@ export function searchTopUps(topUps: AdminTopUpListItem[], query: string): Admin
 
 export function topUpSortValue(topUp: AdminTopUpListItem, key: TopUpSortKey): number | string | null {
   switch (key) {
-    case "id": return topUp.id;
+    case "id": return topUp.displayId;
     case "member": return `${topUp.member.firstName} ${topUp.member.lastName}`.trim();
     case "creditAmount": return topUp.creditAmountSatang;
     case "paymentTotal": return topUp.paymentTotalSatang;

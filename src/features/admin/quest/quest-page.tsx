@@ -105,7 +105,7 @@ function currentQuestValue(detail: QuestDetailView, field: string): unknown {
     case "dueAt": return detail.dueAt;
     case "proofRequired": return detail.proofRequired;
     case "locations": return detail.locations.map((location) => location.label);
-    case "images": return detail.images?.map((image) => image.fileId);
+    case "images": return detail.images.map((image) => image.fileId);
     default: return "Previous value not provided.";
   }
 }
@@ -219,7 +219,6 @@ function QuestDetailContent({
   detail,
   finance,
   linkedDisputeId,
-  disputeLookupError,
   onCommand,
   onOpenDispute,
   disputePending,
@@ -230,7 +229,6 @@ function QuestDetailContent({
   detail: QuestDetailView;
   finance: QuestFinanceView | null;
   linkedDisputeId: string | null;
-  disputeLookupError: string | null;
   onCommand: (command: QuestCommand) => void;
   onOpenDispute: (workerId: string) => void;
   disputePending: boolean;
@@ -251,25 +249,19 @@ function QuestDetailContent({
   const reward = financeQuest?.rewardSatang ?? detail.rewardSatang;
   const platformFee = financeQuest?.platformFeePerWorkerSatang ?? detail.platformFeePerWorkerSatang;
   const statusTimeline = detail.timeline
-    .filter((entry) => entry.status !== null)
-    .map((entry, index, entries) => {
-      const previousStatus = entries[index - 1]?.status;
-      const status = entry.status as string;
-      const statusLabel = readableValue(status.replace("QUEST_", ""));
-      const previousLabel = previousStatus ? readableValue(previousStatus.replace("QUEST_", "")) : null;
-      const transition = previousLabel && previousLabel !== statusLabel
-        ? `${previousLabel} → ${statusLabel}`
-        : statusLabel;
+    .map((entry) => {
+      const fromLabel = readableValue(entry.fromState.replace("QUEST_", ""));
+      const toLabel = readableValue(entry.toState.replace("QUEST_", ""));
+      const actorLabel = entry.actor.type === "MEMBER" ? "Member" : entry.actor.type === "ADMIN" ? "Admin" : "System";
       const detailText = [
-        readableValue(entry.event),
         entry.reasonCode ? `${translateText("Reason code:")} ${translateText(readableValue(entry.reasonCode))}` : null,
-        entry.actorId ? `${translateText("Actor:")} ${entry.actorId}` : null,
+        `${translateText("Actor:")} ${translateText(actorLabel)}`,
       ].filter(Boolean).join(" · ");
       return {
-        id: `${entry.event}-${entry.occurredAt}-${index}`,
-        title: transition,
-        time: formatQuestDate(entry.occurredAt),
-        detail: detailText || translateText("Quest State recorded."),
+        id: entry.id,
+        title: `${fromLabel} → ${toLabel}`,
+        time: formatQuestDate(entry.changedAt),
+        detail: detailText,
       };
     });
   const timeline = statusTimeline.length
@@ -285,8 +277,22 @@ function QuestDetailContent({
   const candidateTeams = hasAcceptedRoster ? [] : detail.candidates.teams;
   const candidateCount = questCandidateCount(detail);
   const sectionVariant = recordLayout ? "record" : "panel";
-  const disputeRiskContent = disputeLookupError ? (
-    <p className="field-error" role="alert">{translateText(disputeLookupError)}</p>
+  const disputeRiskContent = detail.disputeCases.length ? (
+    <>
+      <p>{translateText(detail.disputeCases.length === 1 ? "A Dispute Case is linked to this Quest." : "Dispute Cases are linked to this Quest.")}</p>
+      <div className="grid gap-2">
+        {detail.disputeCases.map((disputeCase) => (
+          <div className="grid gap-2 rounded-lg border border-admin-border bg-admin-soft p-2.5" key={disputeCase.id}>
+            <div className="flex items-center justify-between gap-3">
+              <strong>{disputeCase.displayId}</strong>
+              <span>{translateText(readableValue(disputeCase.status.replace("DISPUTE_CASE_", "")))}</span>
+            </div>
+            <small className="text-admin-muted">{translateText("Opened")}: {formatQuestDate(disputeCase.createdAt)}</small>
+            <UiButton asChild variant="primary" className="w-full"><Link href={disputeRoutes.detail(disputeCase.id)}>{translateText("Open Dispute Case")}</Link></UiButton>
+          </div>
+        ))}
+      </div>
+    </>
   ) : linkedDisputeId ? (
     <>
       <p>{translateText("A Dispute Case is linked to this Quest.")}</p>
@@ -398,10 +404,8 @@ function QuestDetailContent({
         </div> : null}
       </Section>
 
-      <Section title="Hirer attachments" count={detail.images?.length ?? 0} variant={sectionVariant}>
-        {detail.images === undefined ? (
-          <p className="audit-note">{translateText("Hirer attachments are not available.")}</p>
-        ) : detail.images.length ? (
+      <Section title="Hirer attachments" count={detail.images.length} variant={sectionVariant}>
+        {detail.images.length ? (
           <div className="related-list">
             {detail.images.map((image) => (
               <a
@@ -483,7 +487,7 @@ function QuestDetailContent({
                     <strong>{questMemberName(application.worker)}</strong>
                     <span className="text-[13px] text-admin-muted">{formatQuestDate(application.appliedAt)}</span>
                   </span>
-                  <small>{translateText("Member ID")}: {application.worker.memberId}</small>
+                  <small>{translateText("Student ID")}: {application.worker.studentId ?? translateText("Student ID not provided")}</small>
                   <small>{translateText("Candidate")} · {translateText(readableValue(application.applicationStatus))}</small>
                 </span>
                 <UiButton asChild variant="outline" size="xs" className="shrink-0">
@@ -574,8 +578,8 @@ function QuestDetailContent({
                 <strong><Link href={memberRoutes.detail(detail.hirer.memberId)}>{questMemberName(detail.hirer)}</Link></strong>
               </div>
               <div>
-                <span>{translateText("Member ID")}</span>
-                <strong>{detail.hirer.memberId}</strong>
+                <span>{translateText("Student ID")}</span>
+                <strong>{detail.hirer.studentId ?? translateText("Student ID not provided")}</strong>
               </div>
             </div>
             <UiButton asChild variant="outline" className="mt-3 w-full">
@@ -624,7 +628,6 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
   const [detail, setDetail] = useState<QuestDetailView>(initialData.detail);
   const [finance, setFinance] = useState<QuestFinanceView | null>(initialData.finance);
   const [linkedDisputeId, setLinkedDisputeId] = useState<string | null>(initialData.linkedDisputeId);
-  const [disputeLookupError, setDisputeLookupError] = useState<string | null>(initialData.disputeLookupError);
   const [command, setCommand] = useState<QuestCommand | null>(null);
   const [commandError, setCommandError] = useState<string | null>(null);
   const [disputeError, setDisputeError] = useState<string | null>(null);
@@ -644,7 +647,6 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
     setDetail(persistedDetail);
     setFinance(initialData.finance);
     setLinkedDisputeId(initialData.linkedDisputeId);
-    setDisputeLookupError(initialData.disputeLookupError);
     setDisputeError(null);
   }, [initialData, dataSource]);
 
@@ -658,7 +660,7 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
   }
 
   async function openDispute(workerId: string) {
-    if (linkedDisputeId || disputeLookupError || openDisputeMutation.isPending || detail.state !== "QUEST_FAILED") return;
+    if (detail.disputeCases.length || linkedDisputeId || openDisputeMutation.isPending || detail.state !== "QUEST_FAILED") return;
     if (!detail.assignments.some((assignment) => assignment.worker.id === workerId)) return;
     const worker = detail.assignments.find((assignment) => assignment.worker.id === workerId)?.worker;
     if (!worker || !window.confirm(`Open a Dispute Case for ${questMemberName(worker)}?`)) return;
@@ -700,7 +702,7 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
   }
 
   const receipt = actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Quest" resourceId={detail.displayId || detail.id} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {translateText(actionReceipt.reason)}</p>} /> : null;
-  const content = <><QuestDetailContent detail={detail} finance={finance} linkedDisputeId={linkedDisputeId} disputeLookupError={disputeLookupError} onCommand={openCommand} onOpenDispute={openDispute} disputePending={openDisputeMutation.isPending} disputeError={disputeError} showFullDetailLink={presentation === "drawer"} recordLayout={presentation === "page"} />{receipt}</>;
+  const content = <><QuestDetailContent detail={detail} finance={finance} linkedDisputeId={linkedDisputeId} onCommand={openCommand} onOpenDispute={openDispute} disputePending={openDisputeMutation.isPending} disputeError={disputeError} showFullDetailLink={presentation === "drawer"} recordLayout={presentation === "page"} />{receipt}</>;
 
   if (presentation === "drawer") {
     return (

@@ -19,17 +19,21 @@ function isQuestState(value: unknown): value is QuestState {
   return typeof value === "string" && QUEST_STATES.includes(value as QuestState);
 }
 
-function isTimelineStatus(value: unknown): value is AdminApiQuestStatus | null {
-  return value === null || (typeof value === "string" && value.startsWith("QUEST_"));
+function isTimelineStatus(value: unknown): value is AdminApiQuestStatus {
+  return typeof value === "string" && value.startsWith("QUEST_");
 }
 
 function isTimeline(value: unknown): value is QuestTimelineView[] {
   return Array.isArray(value) && value.every((entry) => (
     isRecord(entry)
-    && typeof entry.event === "string"
-    && isTimelineStatus(entry.status)
-    && typeof entry.occurredAt === "string"
-    && (entry.actorId === null || typeof entry.actorId === "string")
+    && typeof entry.id === "string"
+    && isTimelineStatus(entry.fromState)
+    && isTimelineStatus(entry.toState)
+    && typeof entry.changedAt === "string"
+    && isRecord(entry.actor)
+    && (entry.actor.type === "SYSTEM"
+      ? entry.actor.id === null
+      : (entry.actor.type === "MEMBER" || entry.actor.type === "ADMIN") && typeof entry.actor.id === "string")
     && (entry.reasonCode === null || typeof entry.reasonCode === "string")
   ));
 }
@@ -130,10 +134,11 @@ export function applyMockQuestCommand(
   const nextHiddenAt = command === "hide" ? occurredAt : command === "restore" ? null : detail.hiddenAt;
   const timeline = command === "terminate"
     ? [...detail.timeline, {
-        event: "QUEST_STATUS_CHANGED",
-        status: nextState,
-        occurredAt,
-        actorId: "mock-admin",
+        id: `local-terminate-${Date.now()}`,
+        fromState: detail.state,
+        toState: nextState,
+        changedAt: occurredAt,
+        actor: { type: "ADMIN" as const, id: "mock-admin" },
         reasonCode,
       }]
     : detail.timeline;

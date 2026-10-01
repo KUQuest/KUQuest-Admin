@@ -7,6 +7,7 @@ import { searchTopUps, topUpMatchesTab, topUpSortValue, topUpStatusTimeline } fr
 function makeTopUp(overrides: Partial<AdminTopUpListItem> = {}): AdminTopUpListItem {
   return {
     id: "TOP-001",
+    displayId: "TOP-001",
     userId: "member-001",
     member: { firstName: "Ariya", lastName: "Wat", studentId: "650000001" },
     topUpStatus: "PENDING",
@@ -35,9 +36,10 @@ describe("Top-up board model", () => {
   });
 
   it("searches Top-up ID, Member details, and Provider reference", () => {
-    const topUp = makeTopUp();
+    const topUp = makeTopUp({ id: "top-up-uuid-001", displayId: "TOP-001" });
 
     expect(searchTopUps([topUp], "top-001")).toEqual([topUp]);
+    expect(topUpSortValue(topUp, "id")).toBe("TOP-001");
     expect(searchTopUps([topUp], "650000001")).toEqual([topUp]);
     expect(searchTopUps([topUp], "PROVIDER-REF-001")).toEqual([topUp]);
     expect(searchTopUps([topUp], "not-found")).toEqual([]);

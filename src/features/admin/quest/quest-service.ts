@@ -12,9 +12,7 @@ import {
   type QuestDetailView,
   type QuestFinanceView,
 } from "./quest-model";
-import { DISPUTE_LOOKUP_UNAVAILABLE_MESSAGE, findDisputeForQuest } from "./quest-dispute";
 import {
-  mockDisputeIdForQuest,
   mockQuestDetailForId,
   mockQuestFinance,
   mockAllQuests,
@@ -30,7 +28,6 @@ export type QuestDetailPageData = {
   detail: QuestDetailView;
   finance: QuestFinanceView | null;
   linkedDisputeId: string | null;
-  disputeLookupError: string | null;
 };
 
 function apiRequestOptions(cookieHeader?: string): AdminApiRequestOptions {
@@ -94,8 +91,7 @@ export async function loadQuestDetailPageData(
     return {
       detail: questDetailViewFromApi(apiDetail),
       finance: questFinanceViewFromApi(mockQuestFinance(apiDetail)),
-      linkedDisputeId: mockDisputeIdForQuest(apiDetail.id),
-      disputeLookupError: null,
+      linkedDisputeId: apiDetail.disputeCases[0]?.id ?? null,
     };
   }
 
@@ -116,20 +112,9 @@ export async function loadQuestDetailPageData(
     displayId: detailResult.value.displayId ?? apiQuest.displayId,
   });
 
-  let linkedDisputeId: string | null = null;
-  let disputeLookupError: string | null = null;
-  if (detail.state === "QUEST_FAILED") {
-    try {
-      linkedDisputeId = await findDisputeForQuest(detail.id, options);
-    } catch {
-      disputeLookupError = DISPUTE_LOOKUP_UNAVAILABLE_MESSAGE;
-    }
-  }
-
   return {
     detail,
     finance: financeResult.status === "fulfilled" ? questFinanceViewFromApi(financeResult.value) : null,
-    linkedDisputeId,
-    disputeLookupError,
+    linkedDisputeId: detail.disputeCases[0]?.id ?? null,
   };
 }

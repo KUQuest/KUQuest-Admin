@@ -4,7 +4,6 @@ import {
   loadQuestBoardPageData,
   loadQuestDetailPageData,
 } from "../../src/features/admin/quest/quest-service";
-import { DISPUTE_LOOKUP_UNAVAILABLE_MESSAGE } from "../../src/features/admin/quest/quest-dispute";
 import { mockQuestDetail, mockQuestFinance, mockQuestSummary } from "../../src/features/admin/quest/quest-mock-data";
 
 const originalFetch = globalThis.fetch;
@@ -182,20 +181,26 @@ describe("Quest route service", () => {
     expect(requests.every((request) => request.headers.get("cookie") === "kuquest-admin=session")).toBe(true);
   });
 
-  it("preserves a Dispute Case lookup failure in Quest detail data", async () => {
+  it("uses linked Dispute Cases from Quest detail without a separate list request", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
-    const apiDetail = mockQuestDetail(mockQuestSummary({
+    const apiDetail = {
+      ...mockQuestDetail(mockQuestSummary({
       id: "quest-1",
       questStatus: "QUEST_FAILED",
-    }));
+      })),
+      disputeCases: [{
+        id: "dispute-uuid-1",
+        displayId: "DSP-1",
+        questId: "quest-1",
+        status: "DISPUTE_CASE_PENDING",
+        createdAt: "2026-09-14T09:00:00.000Z",
+        updatedAt: "2026-09-14T09:00:00.000Z",
+      }],
+    };
+    const requests: string[] = [];
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = new Request(input, init);
-      if (request.url.includes("/api/v1/admin/disputes")) {
-        return new Response(JSON.stringify({
-          success: false,
-          error: { code: "DISPUTE_LOOKUP_UNAVAILABLE", message: "Dispute Case lookup is unavailable." },
-        }), { status: 503 });
-      }
+      requests.push(request.url);
       if (request.url.includes("/finance/quests/")) {
         return new Response(JSON.stringify({
           success: true,
@@ -210,8 +215,10 @@ describe("Quest route service", () => {
 
     const result = await loadQuestDetailPageData("quest-1", "kuquest-admin=session");
 
-    expect(result?.linkedDisputeId).toBeNull();
-    expect(result?.disputeLookupError).toBe(DISPUTE_LOOKUP_UNAVAILABLE_MESSAGE);
+    expect(result?.linkedDisputeId).toBe("dispute-uuid-1");
+    expect(result?.detail.disputeCases[0]).toMatchObject({ displayId: "DSP-1", status: "DISPUTE_CASE_PENDING" });
+    expect(requests).toHaveLength(2);
+    expect(requests.some((url) => url.includes("/api/v1/admin/disputes"))).toBe(false);
   });
 
   it("returns no detail for a Quest that the Admin API does not find", async () => {

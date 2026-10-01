@@ -27,6 +27,7 @@ function makeWallet(input: {
 }): AdminWallet {
   return {
     id: input.id,
+    displayId: input.id,
     userId: input.userId,
     member: {
       firstName: input.firstName,
@@ -304,6 +305,7 @@ export const mockWalletStatusHistory: Record<string, AdminWalletStatusHistoryEnt
     reason: "Temporary administrative hold pending review.",
     actorUserId: null,
     actorAdminId: "admin-mock",
+    actorDisplayName: "Nicha P.",
     createdAt: "2026-09-12T08:30:00.000Z",
   }],
   "WAL-1003": [{
@@ -314,6 +316,7 @@ export const mockWalletStatusHistory: Record<string, AdminWalletStatusHistoryEnt
     reason: "Administrative review required before the Wallet can be restored.",
     actorUserId: null,
     actorAdminId: "admin-mock",
+    actorDisplayName: "Nicha P.",
     createdAt: "2026-09-10T10:00:00.000Z",
   }],
 };

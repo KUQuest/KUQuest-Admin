@@ -7,6 +7,7 @@ import {
   overviewModelFromMockData,
   overviewModelFromApi,
   overviewSearchResultsFromApi,
+  overviewSearchResultsFromSearchApi,
   overviewSearchResultsFromMockData,
 } from "../../src/features/admin/overview/overview-model";
 
@@ -359,6 +360,34 @@ describe("Overview search results", () => {
     }, "6612345678");
 
     expect(results[0]).toMatchObject({ kind: "member", id: "68000000", href: "/member/68000000" });
+  });
+
+  it("shows readable Search IDs and uses resource IDs for Admin routes", () => {
+    const results = overviewSearchResultsFromSearchApi([
+      {
+        kind: "member",
+        id: "68000000",
+        resourceId: "member-uuid-1",
+        studentId: "6612345678",
+        title: "Ari Member",
+        status: "NORMAL",
+        newestAt: "2026-09-16T09:00:00.000Z",
+      },
+      {
+        kind: "quest",
+        id: "quest-uuid-1",
+        resourceId: "quest-uuid-1",
+        displayId: "QST-12001",
+        title: "Verify dorm fire exits",
+        status: "QUEST_OPEN",
+        newestAt: null,
+      },
+    ]);
+
+    expect(results.map((result) => [result.id, result.href])).toEqual([
+      ["6612345678", "/member/member-uuid-1"],
+      ["QST-12001", "/quest/quest-uuid-1"],
+    ]);
   });
 
   it("shows status and sorts categories before newest records", () => {

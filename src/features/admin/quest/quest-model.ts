@@ -12,16 +12,18 @@ import { questStateFor, questStateLabel, type QuestState } from "../domain/ruleb
 export type QuestMemberView = {
   id: string;
   memberId: string;
+  studentId: string | null;
   firstName: string;
   lastName: string;
   email: string;
 };
 
 export type QuestTimelineView = {
-  event: string;
-  status: AdminApiQuestStatus | null;
-  occurredAt: string;
-  actorId: string | null;
+  id: string;
+  fromState: AdminApiQuestStatus;
+  toState: AdminApiQuestStatus;
+  changedAt: string;
+  actor: { type: "MEMBER" | "ADMIN"; id: string } | { type: "SYSTEM"; id: null };
   reasonCode: string | null;
 };
 
@@ -85,7 +87,7 @@ export type QuestDetailView = {
     startedAt: string | null;
     createdAt: string;
   }>;
-  images?: Array<{
+  images: Array<{
     imageId: string;
     fileId: string;
     position: number;
@@ -135,6 +137,14 @@ export type QuestDetailView = {
       }
   >;
   timeline: QuestTimelineView[];
+  disputeCases: Array<{
+    id: string;
+    displayId: string;
+    questId: string;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+  }>;
   adminActions: Array<{
     id: string;
     admin: { id: string; firstName: string; lastName: string };
@@ -247,7 +257,8 @@ export function questDisplayIdFor(id: string, displayId?: string | null): string
 function questMemberViewFromApi(member: AdminQuestMember): QuestMemberView {
   return {
     id: member.id,
-    memberId: member.memberId ?? member.id,
+    memberId: member.id,
+    studentId: member.studentId,
     firstName: member.firstName,
     lastName: member.lastName,
     email: member.email,
@@ -318,6 +329,13 @@ export function questDetailViewFromApi(detail: AdminQuestDetail): QuestDetailVie
       startedAt: assignment.startedAt,
       createdAt: assignment.createdAt,
     })),
+    images: detail.images.map((image) => ({
+      imageId: image.imageId,
+      fileId: image.fileId,
+      position: image.position,
+      url: image.url,
+      urlExpiresAt: image.urlExpiresAt,
+    })),
     proofSubmissions: detail.proofSubmissions.map((submission) => ({
       id: submission.id,
       worker: submission.worker ? questMemberViewFromApi(submission.worker) : null,
@@ -375,24 +393,16 @@ export function questDetailViewFromApi(detail: AdminQuestDetail): QuestDetailVie
       reasonCode: action.reasonCode,
       createdAt: action.createdAt,
     })),
-    timeline: (detail.timeline ?? []).map((entry) => ({
-      event: entry.event,
-      status: entry.status,
-      occurredAt: entry.occurredAt,
-      actorId: entry.actorId,
+    timeline: detail.timeline.map((entry) => ({
+      id: entry.id,
+      fromState: entry.fromState,
+      toState: entry.toState,
+      changedAt: entry.changedAt,
+      actor: { ...entry.actor },
       reasonCode: entry.reasonCode,
     })),
+    disputeCases: detail.disputeCases.map((disputeCase) => ({ ...disputeCase })),
   };
-
-  if (detail.images !== undefined) {
-    view.images = detail.images.map((image) => ({
-      imageId: image.imageId,
-      fileId: image.fileId,
-      position: image.position,
-      url: image.url,
-      urlExpiresAt: image.urlExpiresAt,
-    }));
-  }
 
   return view;
 }

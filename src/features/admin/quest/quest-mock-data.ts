@@ -18,7 +18,7 @@ export const MOCK_ASSIGNED_WORKER_ID = "00000000-0000-0000-0000-000000000020";
 
 export const mockHirer = {
   id: "00000000-0000-0000-0000-000000000010",
-  memberId: "68000000",
+  studentId: "6599900015",
   firstName: "Kamonwan",
   lastName: "Lertwiroj",
   email: "hirer@ku.th",
@@ -26,6 +26,7 @@ export const mockHirer = {
 
 export const assignedWorker = {
   id: MOCK_ASSIGNED_WORKER_ID,
+  studentId: "6510200020",
   firstName: "Nicha",
   lastName: "Worker",
   email: "worker@ku.th",
@@ -86,13 +87,14 @@ function questTimelineFor(quest: AdminQuest): AdminQuestDetail["timeline"] {
   const elapsed = Math.max(0, timelineEnd - timelineStart);
   const interval = statuses.length > 1 ? Math.max(1, Math.floor(elapsed / (statuses.length - 1))) : 0;
 
-  return statuses.map((status, index) => ({
-    event: index === 0 ? "QUEST_CREATED" : "QUEST_STATUS_CHANGED",
-    status,
-    occurredAt: index === statuses.length - 1 && hasDateRange
+  return statuses.slice(1).map((toState, index) => ({
+    id: `${quest.id}-timeline-${index + 1}`,
+    fromState: statuses[index],
+    toState,
+    changedAt: index + 1 === statuses.length - 1 && hasDateRange
       ? quest.updatedAt
-      : new Date(timelineStart + interval * index).toISOString(),
-    actorId: null,
+      : new Date(timelineStart + interval * (index + 1)).toISOString(),
+    actor: { type: "SYSTEM", id: null } as const,
     reasonCode: null,
   }));
 }
@@ -115,6 +117,7 @@ const teamQuestTitles = [
 
 type DemoQuestMember = {
   id: string;
+  studentId: string | null;
   firstName: string;
   lastName: string;
   email: string;
@@ -125,6 +128,7 @@ function demoQuestMemberFor(index: number): DemoQuestMember {
   if (seed) {
     return {
       id: seed.id,
+      studentId: seed.studentId,
       firstName: seed.firstName,
       lastName: seed.lastName,
       email: seed.email,
@@ -134,6 +138,7 @@ function demoQuestMemberFor(index: number): DemoQuestMember {
   const sequence = String(index + 1).padStart(3, "0");
   return {
     id: String(68000200 + index),
+    studentId: `651030${String(index + 1).padStart(4, "0")}`,
     firstName: "Demo",
     lastName: `Member ${sequence}`,
     email: `demo.member${sequence}@ku.th`,
@@ -496,11 +501,20 @@ export function mockQuestDetail(quest: AdminQuest): AdminQuestDetail {
     proofSubmissions: teamProofSubmissionsFor(quest, teamMembers),
     editHistory: fieldEditHistoryFor(quest),
     timeline: questTimelineFor(quest),
+    disputeCases: (() => {
+      const displayId = mockDisputeIdForQuest(quest.displayId ?? quest.id);
+      return displayId ? [{
+        id: displayId,
+        displayId,
+        questId: quest.id,
+        status: "DISPUTE_CASE_PENDING",
+        createdAt: quest.updatedAt,
+        updatedAt: quest.updatedAt,
+      }] : [];
+    })(),
+    images: hirerAttachmentsFor(quest) ?? [],
     adminActions: [],
   };
-
-  const hirerAttachments = hirerAttachmentsFor(quest);
-  if (hirerAttachments) detail.images = hirerAttachments;
 
   if (quest.id === MOCK_TEAM_QUEST_ID) {
     detail.editHistory = [{
