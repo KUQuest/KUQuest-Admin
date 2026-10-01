@@ -12,6 +12,31 @@ export const TOP_UP_BOARD_TABS = [
 export type TopUpBoardTab = (typeof TOP_UP_BOARD_TABS)[number]["id"];
 export type TopUpSortKey = "id" | "member" | "creditAmount" | "paymentTotal" | "status" | "createdAt";
 
+export type TopUpStatusTimelineEntry = {
+  fromStatus: AdminApiTopUpStatus | null;
+  toStatus: AdminApiTopUpStatus;
+  occurredAt: string | null;
+};
+
+export function topUpStatusTimeline(topUp: AdminTopUpListItem): TopUpStatusTimelineEntry[] {
+  const initialStatus: TopUpStatusTimelineEntry = {
+    fromStatus: null,
+    toStatus: "PENDING",
+    occurredAt: topUp.createdAt,
+  };
+
+  if (topUp.topUpStatus === "PENDING") return [initialStatus];
+
+  return [
+    initialStatus,
+    {
+      fromStatus: "PENDING",
+      toStatus: topUp.topUpStatus,
+      occurredAt: topUp.topUpStatus === "PAID" ? topUp.paidAt : null,
+    },
+  ];
+}
+
 export function topUpMatchesTab(topUp: AdminTopUpListItem, tab: TopUpBoardTab): boolean {
   return tab === "all" || topUp.topUpStatus === tab;
 }

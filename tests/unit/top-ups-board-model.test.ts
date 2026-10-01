@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 
 import type { AdminTopUpListItem } from "../../src/features/admin/api/admin-api";
 import { sortBoardRows } from "../../src/features/admin/data/board-sorting";
-import { searchTopUps, topUpMatchesTab, topUpSortValue } from "../../src/features/admin/finance/top-ups-board-model";
+import { searchTopUps, topUpMatchesTab, topUpSortValue, topUpStatusTimeline } from "../../src/features/admin/finance/top-ups-board-model";
 
 function makeTopUp(overrides: Partial<AdminTopUpListItem> = {}): AdminTopUpListItem {
   return {
@@ -50,5 +50,28 @@ describe("Top-up board model", () => {
     const sorted = sortBoardRows([larger, smaller], (topUp) => topUpSortValue(topUp, "creditAmount"), "ascending");
 
     expect(sorted.map(({ id }) => id)).toEqual(["TOP-001", "TOP-002"]);
+  });
+
+  it("shows the initial Pending status and the known Paid status time", () => {
+    const paid = makeTopUp({
+      topUpStatus: "PAID",
+      paidAt: "2026-10-01T11:05:00.000Z",
+    });
+
+    expect(topUpStatusTimeline(paid)).toEqual([
+      { fromStatus: null, toStatus: "PENDING", occurredAt: paid.createdAt },
+      { fromStatus: "PENDING", toStatus: "PAID", occurredAt: paid.paidAt },
+    ]);
+  });
+
+  it("does not use the quote expiry deadline as a status-change time", () => {
+    for (const status of ["EXPIRED", "FAILED"] as const) {
+      const topUp = makeTopUp({ topUpStatus: status });
+
+      expect(topUpStatusTimeline(topUp)).toEqual([
+        { fromStatus: null, toStatus: "PENDING", occurredAt: topUp.createdAt },
+        { fromStatus: "PENDING", toStatus: status, occurredAt: null },
+      ]);
+    }
   });
 });

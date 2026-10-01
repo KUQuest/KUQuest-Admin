@@ -13,7 +13,7 @@ import { memberRoutes } from "../admin-routes";
 import { formatAdminTimestamp } from "../date-format";
 import { formatMoneySatang } from "../member/member-wallet-model";
 import { statusBadgeClass } from "../status-badge";
-import { TOP_UP_BOARD_TABS } from "./top-ups-board-model";
+import { topUpStatusTimeline, TOP_UP_BOARD_TABS } from "./top-ups-board-model";
 
 function TopUpDrawerSection({ title, children }: { title: string; children: ReactNode }) {
   return <Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}><h3 className={adminRecordHeading}>{title}</h3></CardHeader>{children}</Card>;
@@ -59,17 +59,17 @@ export function TopUpDetailDrawer({
       </div>
     </TopUpDrawerSection>
     <TopUpDrawerSection title={translateText("Top-up timing")}>
-      <div className="grid gap-2">
-        {[
-          { label: "Expires at", value: formatAdminTimestamp(topUp.expiresAt) },
-          { label: "Paid at", value: topUp.paidAt ? formatAdminTimestamp(topUp.paidAt) : "—" },
-        ].map(({ label, value }) => (
-          <div className="flex items-start justify-between gap-3 rounded-lg border border-admin-border bg-admin-soft p-2.5" key={label}>
-            <span className="text-[13px] leading-[1.4] text-admin-muted">{translateText(label)}</span>
-            <strong className="min-w-0 flex-1 text-right text-sm leading-[1.4] tabular-nums [overflow-wrap:anywhere]">{value}</strong>
-          </div>
-        ))}
-      </div>
+      <ol className="grid list-decimal gap-2 pl-7">
+        {topUpStatusTimeline(topUp).map((entry) => {
+          const entryLabel = TOP_UP_BOARD_TABS.find((tab) => tab.id === entry.toStatus)?.label ?? entry.toStatus;
+
+          return <li className="grid gap-2 rounded-lg border border-admin-border bg-admin-soft p-2.5" key={entry.toStatus}>
+            <div className="flex items-start justify-between gap-3"><span className="text-[13px] leading-[1.4] text-admin-muted">{translateText("Status")}</span><strong className="min-w-0 flex-1 text-right text-sm leading-[1.4] [overflow-wrap:anywhere]">{translateText(entryLabel)}</strong></div>
+            <div className="flex items-start justify-between gap-3"><span className="text-[13px] leading-[1.4] text-admin-muted">{translateText("Occurred at")}</span><strong className="min-w-0 flex-1 text-right text-sm leading-[1.4] tabular-nums [overflow-wrap:anywhere]">{entry.occurredAt ? <time dateTime={entry.occurredAt}>{formatAdminTimestamp(entry.occurredAt)}</time> : translateText("Not provided by the Admin API")}</strong></div>
+            {entry.fromStatus ? <div className="flex items-start justify-between gap-3"><span className="text-[13px] leading-[1.4] text-admin-muted">{translateText("Previous status")}</span><strong className="min-w-0 flex-1 text-right text-sm leading-[1.4] [overflow-wrap:anywhere]">{translateText(TOP_UP_BOARD_TABS.find((tab) => tab.id === entry.fromStatus)?.label ?? entry.fromStatus)}</strong></div> : null}
+          </li>;
+        })}
+      </ol>
     </TopUpDrawerSection>
     <TopUpDrawerSection title={translateText("Member details")}>
       <div className={adminRecordFacts}>
