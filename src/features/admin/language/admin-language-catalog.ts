@@ -519,6 +519,7 @@ export const thaiTranslations: Record<string, string> = {
   "Fixture search is active. Results use local demo records.": "กำลังใช้การค้นหาข้อมูลตัวอย่าง ผลลัพธ์มาจากข้อมูลสาธิตในเครื่อง",
   "Full Payout detail": "รายละเอียด Payout ฉบับเต็ม",
   "From date": "จากวันที่",
+  "Enter dates as DD/MM/YYYY.": "กรอกวันที่ในรูปแบบ DD/MM/YYYY",
   "Internal Admin notes": "โน้ตภายในของ Admin",
   "Loading Conduct Report…": "กำลังโหลด Conduct Report…",
   "Loading Dispute Case…": "กำลังโหลด Dispute Case…",

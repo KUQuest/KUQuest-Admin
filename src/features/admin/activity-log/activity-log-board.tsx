@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState, type FormEvent } from "react";
+import { CalendarDays } from "lucide-react";
+import { useCallback, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminPageHeader } from "../../../components/admin/admin-page-header";
@@ -19,8 +20,10 @@ import {
   activityLogStateLabel,
   activityLogTargetLabel,
   activityTargetHref,
+  formatActivityLogDateInput,
   formatActivityLogRelativeTime,
   formatActivityLogTimestamp,
+  parseActivityLogDateInput,
   type ActivityLogEntry,
 } from "./activity-log-model";
 import { pageCount, pageRange, pageRows } from "../data/board-pagination";
@@ -45,6 +48,56 @@ const EMPTY_ACTIVITY_LOG_ENTRIES: ActivityLogEntry[] = [];
 
 function displayValue(value: string | number | null | undefined): string {
   return value === null || value === undefined || value === "" ? "Not provided" : String(value);
+}
+
+function ActivityDateFilter({
+  id,
+  label,
+  value,
+  invalid,
+  onChange,
+  translateText,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  invalid: boolean;
+  onChange: (value: string) => void;
+  translateText: (value: string) => string;
+}) {
+  const pickerValue = parseActivityLogDateInput(value) || "";
+  const handlePickerChange = (event: ChangeEvent<HTMLInputElement>) => {
+    onChange(formatActivityLogDateInput(event.currentTarget.value));
+  };
+
+  return (
+    <div className="grid gap-1.5 text-sm font-semibold text-admin-muted">
+      <label htmlFor={id}>{translateText(label)}</label>
+      <div className="grid grid-cols-[minmax(0,1fr)_35px] gap-1">
+        <Input
+          id={id}
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          placeholder="dd/mm/yyyy"
+          value={value}
+          aria-invalid={invalid}
+          aria-describedby={invalid ? "activity-date-filter-error" : undefined}
+          onChange={(event) => onChange(event.currentTarget.value)}
+        />
+        <span className="relative inline-flex h-10 w-[35px] items-center justify-center rounded-admin-sm border border-admin-border bg-admin-surface text-admin-text hover:bg-admin-hover focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-admin-accent">
+          <CalendarDays aria-hidden="true" size={16} />
+          <input
+            className="absolute inset-0 size-full cursor-pointer opacity-0"
+            type="date"
+            aria-label={translateText("Open date picker")}
+            value={pickerValue}
+            onChange={handlePickerChange}
+          />
+        </span>
+      </div>
+    </div>
+  );
 }
 
 function activityLogSortValue(entry: ActivityLogEntry, key: ActivityLogSortKey): string | number | null {
@@ -163,6 +216,9 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
   const queryError = query.error instanceof Error ? query.error.message : query.error ? "The Admin API is unavailable." : null;
   const loadError = queryError ?? initialError ?? null;
   const [paginationError, setPaginationError] = useState<string | null>(null);
+  const [dateInputError, setDateInputError] = useState<string | null>(null);
+  const [fromDateText, setFromDateText] = useState(() => formatActivityLogDateInput(draftFilters.fromDate));
+  const [toDateText, setToDateText] = useState(() => formatActivityLogDateInput(draftFilters.toDate));
   const [selectedEntry, setSelectedEntry] = useState<ActivityLogEntry | null>(null);
   const loading = query.isPending || query.isFetching;
   useAdminBoardReset(reset);
@@ -191,14 +247,39 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
   );
   const { start: pageStart, end: pageEnd } = pageRange(sortedEntries.length, currentPage, pageSize);
 
+  const updateFromDate = useCallback((value: string) => {
+    setFromDateText(value);
+    setDateInputError(null);
+    const parsed = parseActivityLogDateInput(value);
+    if (parsed !== null) setDraftFilters({ fromDate: parsed });
+  }, [setDraftFilters]);
+
+  const updateToDate = useCallback((value: string) => {
+    setToDateText(value);
+    setDateInputError(null);
+    const parsed = parseActivityLogDateInput(value);
+    if (parsed !== null) setDraftFilters({ toDate: parsed });
+  }, [setDraftFilters]);
+
   const applyFilters = useCallback((event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setPaginationError(null);
+    const fromDate = parseActivityLogDateInput(fromDateText);
+    const toDate = parseActivityLogDateInput(toDateText);
+    if (fromDate === null || toDate === null) {
+      setDateInputError(translateText("Enter dates as DD/MM/YYYY."));
+      return;
+    }
+    setDateInputError(null);
+    setDraftFilters({ fromDate, toDate });
     applyBoardFilters();
-  }, [applyBoardFilters]);
+  }, [applyBoardFilters, fromDateText, setDraftFilters, toDateText, translateText]);
 
   const clearFilters = useCallback(() => {
     setPaginationError(null);
+    setDateInputError(null);
+    setFromDateText("");
+    setToDateText("");
     clearBoardFilters();
   }, [clearBoardFilters]);
 
@@ -247,10 +328,11 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
             <label className="grid gap-1.5 text-sm font-semibold text-admin-muted" htmlFor="activity-resource-type-filter">{translateText("Resource type filter")}<Input id="activity-resource-type-filter" type="search" value={draftFilters.resourceType} onChange={(event) => setDraftFilters({ resourceType: event.target.value })} /></label>
             <label className="grid gap-1.5 text-sm font-semibold text-admin-muted" htmlFor="activity-resource-id-filter">{translateText("Resource ID filter")}<Input id="activity-resource-id-filter" type="search" value={draftFilters.resourceId} onChange={(event) => setDraftFilters({ resourceId: event.target.value })} /></label>
             <label className="grid gap-1.5 text-sm font-semibold text-admin-muted" htmlFor="activity-admin-id-filter">{translateText("Admin ID filter")}<Input id="activity-admin-id-filter" type="search" value={draftFilters.adminId} onChange={(event) => setDraftFilters({ adminId: event.target.value })} /></label>
-            <label className="grid gap-1.5 text-sm font-semibold text-admin-muted" htmlFor="activity-from-date-filter">{translateText("From date")}<Input id="activity-from-date-filter" type="date" value={draftFilters.fromDate} onChange={(event) => setDraftFilters({ fromDate: event.target.value })} /></label>
-            <label className="grid gap-1.5 text-sm font-semibold text-admin-muted" htmlFor="activity-to-date-filter">{translateText("To date")}<Input id="activity-to-date-filter" type="date" value={draftFilters.toDate} onChange={(event) => setDraftFilters({ toDate: event.target.value })} /></label>
+            <ActivityDateFilter id="activity-from-date-filter" label="From date" value={fromDateText} invalid={Boolean(dateInputError && parseActivityLogDateInput(fromDateText) === null)} onChange={updateFromDate} translateText={translateText} />
+            <ActivityDateFilter id="activity-to-date-filter" label="To date" value={toDateText} invalid={Boolean(dateInputError && parseActivityLogDateInput(toDateText) === null)} onChange={updateToDate} translateText={translateText} />
             <label className="grid gap-1.5 text-sm font-semibold text-admin-muted" htmlFor="activity-sort">{translateText("Sort activity")}<Select value={draftFilters.sort} onValueChange={(value) => setDraftFilters({ sort: value === "oldest" ? "oldest" : "newest" })}><SelectTrigger id="activity-sort"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="newest">{translateText("Newest first")}</SelectItem><SelectItem value="oldest">{translateText("Oldest first")}</SelectItem></SelectContent></Select></label>
           </div>
+          {dateInputError ? <p id="activity-date-filter-error" className="m-0 text-sm text-admin-danger" role="alert">{dateInputError}</p> : null}
           <div className="flex justify-end gap-2 max-[700px]:justify-start"><Button variant="primary" type="submit" disabled={loading}>{translateText("Apply filters")}</Button><Button variant="outline" type="button" onClick={clearFilters} disabled={loading}>{translateText("Clear filters")}</Button></div>
         </form>
         <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2"><label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text max-[600px]:basis-full max-[600px]:max-w-none" htmlFor="activity-search"><span className="visually-hidden">{translateText("Search loaded activity")}</span><Input className="h-9 min-h-9 px-3 py-1.5 text-sm" id="activity-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={translateText("Search loaded activity")}/></label><span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span><PageSizeControls value={pageSize} translateText={translateText} onChange={setPageSize} /><span className={`${adminBoardCount} max-[720px]:block max-[720px]:w-full max-[720px]:ms-0`} aria-live="polite">{sortedEntries.length ? pageSize === "all" ? `${translateText("Showing all")} ${sortedEntries.length} ${translateText(sortedEntries.length === 1 ? "result" : "results")}` : `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${sortedEntries.length} ${translateText(sortedEntries.length === 1 ? "result" : "results")}` : translateText("Showing 0 of 0 results")}</span></div>
