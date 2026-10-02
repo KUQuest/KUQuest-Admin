@@ -199,9 +199,9 @@ export function isConductReportActionable(status: unknown): boolean {
 export function conductReportStatusLabel(status: ConductReportStatus): string {
   switch (status) {
     case "CONDUCT_REPORT_PENDING":
-      return "Open";
+      return "Pending";
     case "CONDUCT_REPORT_UPHELD":
-      return "Confirmed";
+      return "Upheld";
     case "CONDUCT_REPORT_DISMISSED":
       return "Dismissed";
   }

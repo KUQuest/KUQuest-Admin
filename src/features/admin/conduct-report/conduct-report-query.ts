@@ -59,23 +59,26 @@ export function useConductReportDecisionMutation() {
           : null,
       };
     },
-    onSuccess: (record, { reportId, apiEnabled }) => {
+    onSuccess: async (record, { reportId, apiEnabled }) => {
       const model = apiEnabled
         ? conductReportModelFromRecord(record)
         : record ? findConductReportModelFromMock(localStorage, reportId) : null;
       if (!model || model.id !== reportId) return;
       queryClient.setQueryData(conductReportDetailQueryKey(reportId), model);
       queryClient.setQueryData<InfiniteData<ConductReportPageData, string | null>>(conductReportBoardQueryKey, (current) => replaceInfiniteItem(current, model));
+      await queryClient.invalidateQueries({ queryKey: conductReportBoardQueryKey, refetchType: "all" });
     },
   });
 }
 
 function pageFromQueryData(pages: ConductReportPageData[]): ConductReportPageData {
+  const firstPage = pages[0];
   const lastPage = pages.at(-1);
   return {
     source: lastPage?.source ?? (isAdminApiEnabled() ? "api" : "mock"),
     items: pages.flatMap((page) => page.items),
     nextCursor: lastPage?.nextCursor ?? null,
+    ...(firstPage?.countsByStatus ? { countsByStatus: firstPage.countsByStatus } : {}),
   };
 }
 

@@ -36,6 +36,7 @@ import { hasModerationHistory } from "../moderation-case/moderation-case-context
 import {
   newConductReportIdempotencyKey,
 } from "./conduct-report-adapter";
+import { useConductReportBoardStore } from "./conduct-report-board-store";
 import { ConductReportDecisionDialog } from "./conduct-report-decision-dialog";
 import {
   CONDUCT_REPORT_UPDATED_EVENT,
@@ -547,6 +548,7 @@ export function ConductReportDrawer({
   presentation?: ConductReportPresentation;
 }) {
   const { translateText } = useAdminShell();
+  const setBoardActiveTab = useConductReportBoardStore((state) => state.setActiveTab);
   const [reportModel, setReportModel] = useState(model);
   const [selectedChoice, setSelectedChoice] = useState<ConductReportDecisionChoice | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -614,6 +616,11 @@ export function ConductReportDrawer({
         throw new Error(isAdminApiEnabled() ? "The Admin API returned an invalid Conduct Report." : "The Conduct Report record is invalid.");
       }
       setReportModel(updatedModel);
+      if (updatedModel.status === "CONDUCT_REPORT_UPHELD") {
+        setBoardActiveTab("confirmed");
+      } else if (updatedModel.status === "CONDUCT_REPORT_DISMISSED") {
+        setBoardActiveTab("dismissed");
+      }
       window.dispatchEvent(new CustomEvent(CONDUCT_REPORT_UPDATED_EVENT, { detail: updatedModel }));
       onUpdated?.(updatedModel);
       setDialogOpen(false);
