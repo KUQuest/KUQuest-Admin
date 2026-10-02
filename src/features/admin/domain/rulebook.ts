@@ -192,7 +192,7 @@ export function disputeCaseStatusFor(value: unknown): DisputeCaseStatus {
 export function disputeCaseStatusLabel(value: unknown): string {
   switch (disputeCaseStatusFor(value)) {
     case "DISPUTE_CASE_PENDING":
-      return "Open";
+      return "Pending";
     case "DISPUTE_CASE_DISMISSED":
       return "Dismissed";
     case "DISPUTE_CASE_RESOLVED":
@@ -213,7 +213,6 @@ export function reportCaseStatusFor(value: unknown, decision?: unknown): Moderat
 export function reportCaseStatusLabel(value: unknown, decision?: unknown): string {
   switch (reportCaseStatusFor(value, decision)) {
     case "REPORT_CASE_PENDING":
-    case "CONDUCT_REPORT_PENDING":
       return "Open";
     case "REPORT_CASE_DISMISSED":
     case "CONDUCT_REPORT_DISMISSED":
@@ -222,8 +221,10 @@ export function reportCaseStatusLabel(value: unknown, decision?: unknown): strin
       return "Confirmed";
     case "REPORT_CASE_RESTORED":
       return "Restored";
+    case "CONDUCT_REPORT_PENDING":
+      return "Pending";
     case "CONDUCT_REPORT_UPHELD":
-      return "Confirmed";
+      return "Upheld";
   }
 }
 

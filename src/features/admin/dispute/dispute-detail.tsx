@@ -35,6 +35,7 @@ import { ModerationCaseWorkspace, ModerationHistoryPanel } from "../moderation-c
 import {
   newDisputeCaseIdempotencyKey,
 } from "./dispute-adapter";
+import { useDisputeBoardStore } from "./dispute-board-store";
 import {
   disputeCaseDecisionFor,
   DISPUTE_CASE_UPDATED_EVENT,
@@ -270,6 +271,7 @@ function DrawerSections({ model, translateText, onOpenEvidence, selectedChoice, 
 
 export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = false, onUpdated }: DisputeCaseDetailProps) {
   const { translateText } = useAdminShell();
+  const setBoardActiveTab = useDisputeBoardStore((state) => state.setActiveTab);
   const { data: disputeModel, isPending, error } = useDisputeDetailQuery(disputeId, initialModel);
   const [selectedChoice, setSelectedChoice] = useState<DisputeCaseDecisionChoice | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -331,6 +333,11 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
         options,
         apiEnabled: isAdminApiEnabled(),
       });
+      if (updatedModel.status === "DISPUTE_CASE_RESOLVED") {
+        setBoardActiveTab("resolved");
+      } else if (updatedModel.status === "DISPUTE_CASE_DISMISSED") {
+        setBoardActiveTab("dismissed");
+      }
       window.dispatchEvent(new CustomEvent(DISPUTE_CASE_UPDATED_EVENT, { detail: updatedModel }));
       onUpdated?.(updatedModel);
       setDialogOpen(false);

@@ -144,7 +144,14 @@ export function DisputeCaseBoard({ initialData }: { initialData?: DisputeCasePag
   const currentPage = Math.min(pageNumber, Math.max(totalPages, 1));
   const visibleModels = pageRows(models, currentPage, pageSize);
   const { start: pageStart, end: pageEnd } = pageRange(models.length, currentPage, pageSize);
-  const tabCounts = countBoardTabMatches(page.items, tabs, tabMatches);
+  const tabCounts = page.countsByStatus
+    ? new Map<DisputeCaseTab, number>([
+        ["open", page.countsByStatus.DISPUTE_CASE_PENDING],
+        ["all", Object.values(page.countsByStatus).reduce((total, count) => total + count, 0)],
+        ["dismissed", page.countsByStatus.DISPUTE_CASE_DISMISSED],
+        ["resolved", page.countsByStatus.DISPUTE_CASE_RESOLVED],
+      ])
+    : countBoardTabMatches(page.items, tabs, tabMatches);
 
   return (
     <main id="dispute-main" className="admin-route-page dispute-case-board" tabIndex={-1}>

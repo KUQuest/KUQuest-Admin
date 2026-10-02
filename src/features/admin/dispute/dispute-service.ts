@@ -1,6 +1,7 @@
 import type { AdminDisputeCase, AdminDisputeListQuery, AdminQuestDetail, AdminQuestFinance } from "../api/admin-api";
 import { adminApiProvider } from "../api/admin-provider";
 import { adminApiRequestOptions } from "../api/admin-api-request-options";
+import type { DisputeCaseStatus } from "../domain/rulebook";
 import {
   disputeCaseModelFromRecord,
   type DisputeCaseModel,
@@ -10,7 +11,16 @@ export type DisputeCasePageData = {
   source: "api" | "mock";
   items: DisputeCaseModel[];
   nextCursor: string | null;
+  countsByStatus?: Record<DisputeCaseStatus, number>;
 };
+
+const disputeCaseStatuses = [
+  "DISPUTE_CASE_PENDING",
+  "DISPUTE_CASE_DISMISSED",
+  "DISPUTE_CASE_RESOLVED",
+] as const satisfies readonly DisputeCaseStatus[];
+
+type DisputeCaseStatusCursors = Partial<Record<DisputeCaseStatus, string>>;
 
 function disputeCaseModels(values: readonly unknown[]): DisputeCaseModel[] {
   return values.flatMap((value) => {
@@ -116,16 +126,36 @@ export async function loadDisputeCasePageData(
   cookieHeader?: string,
   cursor?: string,
 ): Promise<DisputeCasePageData> {
-  const query: AdminDisputeListQuery = { limit: 50, ...(cursor ? { cursor } : {}) };
-  const page = await adminApiProvider.read.listDisputes(
-    query,
-    adminApiRequestOptions(cookieHeader),
-  );
-  const items = await enrichDisputeCases(page.items, cookieHeader);
+  const statusCursors = cursor ? JSON.parse(cursor) as DisputeCaseStatusCursors : {};
+  const statusesToLoad = cursor
+    ? disputeCaseStatuses.filter((status) => statusCursors[status])
+    : disputeCaseStatuses;
+  const pages = await Promise.all(statusesToLoad.map(async (status) => {
+    const query: AdminDisputeListQuery = {
+      status,
+      limit: 50,
+      ...(statusCursors[status] ? { cursor: statusCursors[status] } : {}),
+    };
+    const page = await adminApiProvider.read.listDisputes(
+      query,
+      adminApiRequestOptions(cookieHeader),
+    );
+    return { status, page };
+  }));
+  const nextCursors: DisputeCaseStatusCursors = {};
+  for (const { status, page } of pages) {
+    if (page.nextCursor) nextCursors[status] = page.nextCursor;
+  }
+  const records = pages
+    .flatMap(({ page }) => page.items)
+    .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt));
+  const items = await enrichDisputeCases(records, cookieHeader);
+  const countsByStatus = pages[0]?.page.countsByStatus;
   return {
     source: "api",
     items: disputeCaseModels(items),
-    nextCursor: page.nextCursor,
+    nextCursor: Object.keys(nextCursors).length ? JSON.stringify(nextCursors) : null,
+    ...(countsByStatus ? { countsByStatus } : {}),
   };
 }
 

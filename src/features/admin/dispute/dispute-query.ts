@@ -71,11 +71,13 @@ export function useDisputeDecisionMutation() {
 function pageFromQueryData(
   pages: DisputeCasePageData[],
 ): DisputeCasePageData {
+  const firstPage = pages[0];
   const lastPage = pages.at(-1);
   return {
     source: lastPage?.source ?? (isAdminApiEnabled() ? "api" : "mock"),
     items: pages.flatMap((page) => page.items),
     nextCursor: lastPage?.nextCursor ?? null,
+    ...(firstPage?.countsByStatus ? { countsByStatus: firstPage.countsByStatus } : {}),
   };
 }
 
