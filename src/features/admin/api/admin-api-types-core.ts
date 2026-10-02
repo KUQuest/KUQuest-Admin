@@ -138,6 +138,7 @@ export type AdminActivityLog = {
   action: string;
   resourceType: string;
   resourceId: string;
+  resourceDisplayId?: string;
   reasonCode: string | null;
   reasonCatalogVersion: number;
   resultVersion: number | null;

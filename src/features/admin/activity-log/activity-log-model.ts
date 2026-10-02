@@ -18,6 +18,7 @@ export type ActivityLogEntry = {
   action: string;
   resourceType: string;
   resourceId: string;
+  resourceDisplayId?: string;
   reasonCode: string | null;
   reasonCatalogVersion: number | null;
   resultVersion: number | null;
@@ -455,7 +456,11 @@ export function activityLogStateLabel(value: string | null | undefined): string 
 
 export function activityLogTargetLabel(entry: ActivityLogEntry): string {
   const resourceType = entry.resourceType ? activityLogResourceTypeLabel(entry.resourceType) : "";
-  const resourceId = entry.resourceId || "";
+  const resourceId = entry.resourceDisplayId || (
+    /^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i.test(entry.resourceId)
+      ? ""
+      : entry.resourceId
+  );
   return !resourceType && !resourceId ? "" : [resourceType, resourceId].filter(Boolean).join(" · ");
 }
 
