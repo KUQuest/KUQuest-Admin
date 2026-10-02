@@ -95,15 +95,19 @@ export function isWalletStatus(value: unknown): value is WalletStatus {
 
 export function memberStatusFor(value: unknown): MemberStatus {
   switch (value) {
+    case "RED_FLAG":
     case "Flag":
     case "Red Flag":
       return "Flag";
+    case "TEMPORARY_BAN":
     case "Temp Ban":
     case "Temp ban":
       return "Temp Ban";
+    case "PERMANENT_BAN":
     case "Perm Ban":
     case "Perm ban":
       return "Perm Ban";
+    case "NORMAL":
     case "Normal":
     default:
       return "Normal";

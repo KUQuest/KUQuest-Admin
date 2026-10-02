@@ -129,7 +129,7 @@ export type MemberModel = {
   createdAt: string;
   lastActiveAt: string;
   memberStatus: MemberStatus | null;
-  memberStatusSource: "mock" | "NOT_PROVIDED_BY_API";
+  memberStatusSource: "mock" | "api" | "NOT_PROVIDED_BY_API";
   walletId: string | null;
   walletStatus: WalletStatus | null;
   walletBalances: MemberWalletBalances | null;
@@ -478,7 +478,10 @@ function notesFromMock(record: Record<string, unknown>, memberId: string): Membe
   return fixture ? [...fixture.notes] : [];
 }
 
-function baseModelFromListItem(member: AdminMemberListItem, source: "api" | "mock"): MemberModel {
+function baseModelFromListItem(
+  member: Omit<AdminMemberListItem, "memberStatus"> & { memberStatus?: AdminMemberListItem["memberStatus"] },
+  source: "api" | "mock",
+): MemberModel {
   const title = `${member.firstName} ${member.lastName}`.trim() || member.id;
   const wallet = member.wallet;
   const walletBalances = wallet
@@ -505,8 +508,8 @@ function baseModelFromListItem(member: AdminMemberListItem, source: "api" | "moc
     tags: [],
     createdAt: dateLabel(member.createdAt),
     lastActiveAt: "Not recorded",
-    memberStatus: null,
-    memberStatusSource: source === "mock" ? "mock" : "NOT_PROVIDED_BY_API",
+    memberStatus: member.memberStatus ? memberStatusFor(member.memberStatus) : null,
+    memberStatusSource: member.memberStatus ? "api" : source === "mock" ? "mock" : "NOT_PROVIDED_BY_API",
     walletId: wallet?.id ?? null,
     walletStatus: wallet?.walletStatus ?? null,
     walletBalances,

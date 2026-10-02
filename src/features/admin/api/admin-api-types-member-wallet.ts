@@ -1,4 +1,10 @@
 import type { WalletStatus } from "../domain/rulebook";
+export type AdminMemberRestrictionStatus =
+  | "NORMAL"
+  | "RED_FLAG"
+  | "TEMPORARY_BAN"
+  | "PERMANENT_BAN";
+
 export type AdminMemberWalletSummary = {
   id: string;
   walletStatus: WalletStatus;
@@ -17,6 +23,7 @@ export type AdminMemberListItem = {
   faculty: string | null;
   department: string | null;
   occupation: string | null;
+  memberStatus: AdminMemberRestrictionStatus;
   wallet: AdminMemberWalletSummary | null;
   createdAt: string;
 };
