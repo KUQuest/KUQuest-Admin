@@ -44,7 +44,6 @@ export function findMemberModerationSummaryFromMockData(
   const record = memberRecord(data, memberId);
   return record ? mockMemberModerationSummaryFromRecord(record, data) : null;
 }
-
 export function findMemberFromMockData(data: PersistedAdminData, memberId: string): MemberModel | null {
   const record = memberRecord(data, memberId);
   return record ? memberModelFromMockRecord(record, data) : null;
@@ -235,7 +234,6 @@ export function recordMemberViolationFromMemberInData(
 ): { model: MemberModel; outcome: MemberActionOutcome } | null {
   return recordMemberViolationWithOutcome(data, memberId, reason, note, undefined, selectedPenalty ?? undefined, true);
 }
-
 export function recordMemberViolation(
   storage: BrowserStorage,
   memberId: string,
@@ -263,7 +261,6 @@ export function recordMemberViolationFromMember(
   persist(storage, data);
   return result;
 }
-
 export type MemberPenaltyRemovalResult = {
   model: MemberModel;
   previousStatus: string;

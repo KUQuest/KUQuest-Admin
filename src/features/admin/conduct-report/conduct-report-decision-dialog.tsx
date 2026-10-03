@@ -14,6 +14,7 @@ type DecisionDialogProps = {
   busy: boolean;
   error: string | null;
   model: ConductReportModel;
+
   translateText: (value: string) => string;
   onCancel: () => void;
   onConfirm: (reason: string) => void;
@@ -44,6 +45,7 @@ export function ConductReportDecisionDialog({
   busy,
   error,
   model,
+
   translateText,
   onCancel,
   onConfirm,

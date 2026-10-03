@@ -43,7 +43,7 @@ test.describe("Admin canonical click flows", () => {
   test("global search links use canonical record routes", async ({ page }) => {
     await signIn(page, { expectEmailFocused: true });
 
-    await page.getByRole("button", { name: "Search marketplace records" }).click();
+    await page.getByRole("button", { name: "Search all records" }).click();
     const searchDialog = page.getByRole("dialog", { name: "Search marketplace records" });
     const search = searchDialog.getByRole("searchbox", { name: "Search marketplace records" });
 
@@ -102,9 +102,9 @@ test.describe("Admin canonical click flows", () => {
     await expect(page).toHaveURL(/\/payout$/);
     await expect(page.getByRole("heading", { level: 1, name: "Payouts" })).toBeVisible();
     await page.waitForLoadState("networkidle");
-    await page.getByRole("link", { name: "Open Payout PAY-9637" }).click();
+    await page.locator('a[data-payout-drawer-trigger="PAY-9637"]').click();
     await expect(page).toHaveURL(/\/payout\/PAY-9637$/);
-    const payoutDrawer = page.getByRole("dialog", { name: "PAY-9637" });
+    const payoutDrawer = page.getByRole("dialog", { name: "Payout for Mali S." });
     await expect(payoutDrawer).toBeVisible();
     await payoutDrawer.getByRole("button", { name: "Close Payout detail" }).click();
     await expect(page).toHaveURL(/\/payout$/);
@@ -128,7 +128,6 @@ test.describe("Admin canonical click flows", () => {
     await expect(page.locator(".quest-drawer")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Dispute detail" })).toHaveCount(0);
   });
-
   test("moderation queues open on pending cases by default", async ({ page }) => {
     await signIn(page, { expectEmailFocused: true });
 
@@ -156,7 +155,7 @@ test.describe("Admin canonical click flows", () => {
     await signIn(page, { expectEmailFocused: true });
     await page.goto("/wallet");
 
-    const opener = page.getByRole("button", { name: "Open Wallet WAL-1001" });
+    const opener = page.locator('button[data-wallet-drawer-trigger="WAL-1001"]');
     await opener.click();
     const drawer = page.locator("dialog.wallet-drawer");
     await expect(drawer).toBeVisible();

@@ -1,9 +1,12 @@
 import { ApiError } from "../../../lib/api/client";
 import type {
   AdminApiRequestOptions,
+  AdminDisputeCase,
   AdminQuest,
 } from "../api/admin-api";
 import { adminApiProvider } from "../api/admin-provider";
+import { displayAdminId } from "../display-admin-id";
+import { DISPUTE_LOOKUP_UNAVAILABLE_MESSAGE, listDisputeCasesForQuest } from "./quest-dispute";
 import {
   questDetailViewFromApi,
   questFinanceViewFromApi,
@@ -28,10 +31,21 @@ export type QuestDetailPageData = {
   detail: QuestDetailView;
   finance: QuestFinanceView | null;
   linkedDisputeId: string | null;
+  disputeLookupError?: string | null;
 };
 
 function apiRequestOptions(cookieHeader?: string): AdminApiRequestOptions {
   return cookieHeader ? { headers: { Cookie: cookieHeader } } : {};
+}
+function questDisputeCasesFromApi(disputes: AdminDisputeCase[]): QuestDetailView["disputeCases"] {
+  return disputes.map((dispute) => ({
+    id: dispute.id,
+    displayId: displayAdminId(dispute.displayId, dispute.id) ?? "",
+    questId: dispute.questId,
+    status: dispute.status,
+    createdAt: typeof dispute.createdAt === "string" ? dispute.createdAt : null,
+    updatedAt: typeof dispute.updatedAt === "string" ? dispute.updatedAt : null,
+  }));
 }
 
 async function resolveApiQuestId(
@@ -88,10 +102,13 @@ export async function loadQuestDetailPageData(
   if (dataSource === "mock") {
     const apiDetail = mockQuestDetailForId(questId);
     if (!apiDetail) return null;
+    const detail = questDetailViewFromApi(apiDetail);
+    detail.disputeCases = questDisputeCasesFromApi(apiDetail.disputeCases);
     return {
-      detail: questDetailViewFromApi(apiDetail),
+      detail,
       finance: questFinanceViewFromApi(mockQuestFinance(apiDetail)),
-      linkedDisputeId: apiDetail.disputeCases[0]?.id ?? null,
+      linkedDisputeId: detail.disputeCases[0]?.id ?? null,
+      disputeLookupError: null,
     };
   }
 
@@ -111,10 +128,20 @@ export async function loadQuestDetailPageData(
     ...detailResult.value,
     displayId: detailResult.value.displayId ?? apiQuest.displayId,
   });
-
+  let disputeCases: QuestDetailView["disputeCases"] = [];
+  let disputeLookupError: string | null = null;
+  if (detail.state === "QUEST_FAILED") {
+    try {
+      disputeCases = questDisputeCasesFromApi(await listDisputeCasesForQuest(apiQuest.id, options));
+    } catch {
+      disputeLookupError = DISPUTE_LOOKUP_UNAVAILABLE_MESSAGE;
+    }
+  }
+  detail.disputeCases = disputeCases;
   return {
     detail,
     finance: financeResult.status === "fulfilled" ? questFinanceViewFromApi(financeResult.value) : null,
     linkedDisputeId: detail.disputeCases[0]?.id ?? null,
+    disputeLookupError,
   };
 }

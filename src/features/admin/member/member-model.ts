@@ -17,6 +17,7 @@ import {
   type WalletStatus,
 } from "../domain/rulebook";
 import { statusBadgeClass } from "../status-badge";
+import { displayAdminId } from "../display-admin-id";
 import {
   conductReportRoutes,
   memberRoutes,
@@ -61,6 +62,7 @@ export type MemberTab = (typeof MEMBER_TABS)[number];
 
 export type MemberQuestHistoryEntry = {
   id: string;
+  displayId: string;
   title: string;
   status: string;
   role: "Hirer" | "Worker";
@@ -71,6 +73,7 @@ export type MemberQuestHistoryEntry = {
 
 export type MemberReportEntry = {
   id: string;
+  displayId: string;
   category: string;
   detail: string;
   reporterId: string | null;
@@ -183,7 +186,6 @@ export type MockMemberModerationSummary = {
   confirmedViolationCount: number | null;
   moderationHistory: MemberPenaltyHistoryEntry[];
 };
-
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>
@@ -199,10 +201,6 @@ function nullableText(value: unknown): string | null {
   return valueText ? valueText : null;
 }
 
-function readableId(value: unknown): string | null {
-  const result = nullableText(value);
-  return result && !/^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i.test(result) ? result : null;
-}
 
 function numberValue(value: unknown, fallback = 0): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
@@ -226,10 +224,11 @@ function reportFromApi(report: AdminReportCase): MemberReportEntry {
   const kind = isConductReportStatus(status) ? "Conduct Report" : "Report Case";
   return {
     id: report.id,
+    displayId: displayAdminId(record.displayId, report.id) ?? "",
     category: text(record.category ?? record.reportType ?? record.reasonCode, "Report Case"),
     detail: text(record.details ?? record.description ?? record.detail, "No report detail was provided."),
     reporterId,
-    reporterName: text(record.reporterName ?? record.submittedByMemberName ?? reporterId, "Reporter not provided"),
+    reporterName: text(record.reporterName ?? record.submittedByMemberName, reporterId ? "Member" : "Reporter not provided"),
     status,
     reportedAt,
     href: kind === "Conduct Report" ? conductReportRoutes.detail(report.id) : reportRoutes.detail(report.id),
@@ -247,6 +246,7 @@ function reportFromMock(value: unknown): MemberReportEntry | null {
   const kind = isConductReportStatus(status) ? "Conduct Report" : "Report Case";
   return {
     id,
+    displayId: displayAdminId(record.displayId, id) ?? "",
     category: text(record.category ?? record.reportType ?? record.reasonCode, "Report Case"),
     detail: text(record.details ?? record.description ?? record.detail, "No report detail was provided."),
     reporterId: nullableText(record.reporterId),
@@ -266,6 +266,7 @@ function questFromMock(value: unknown, memberTitle: string): MemberQuestHistoryE
   if (!id || !title) return null;
   return {
     id,
+    displayId: displayAdminId(record.displayId, id) ?? "",
     title,
     status: text(record.questState ?? record.status, "QUEST_OPEN"),
     role: text(record.person) === memberTitle ? "Hirer" : "Worker",
@@ -488,9 +489,7 @@ function baseModelFromListItem(
   member: Omit<AdminMemberListItem, "memberStatus"> & { memberStatus?: AdminMemberListItem["memberStatus"] },
   source: "api" | "mock",
 ): MemberModel {
-  const displayId = readableId(member.displayId)
-    ?? (source === "mock" ? readableId(member.id) : null)
-    ?? readableId(member.studentId);
+  const displayId = displayAdminId(member.displayId, source === "mock" ? member.id : null);
   const title = `${member.firstName} ${member.lastName}`.trim() || displayId || "Member";
   const wallet = member.wallet;
   const walletBalances = wallet
@@ -616,7 +615,7 @@ export function memberModelFromMockRecord(
   const record = asRecord(value);
   const id = nullableText(record?.id);
   if (!record || !id) return null;
-  const title = text(record.title, id);
+  const title = displayAdminId(record.title) ? text(record.title) : "Member";
   const [firstName = title, ...lastNameParts] = title.split(/\s+/);
   const lastName = lastNameParts.join(" ");
   const index = Math.max(0, data.collections.users.findIndex((candidate) => candidate.id === id));
@@ -634,8 +633,8 @@ export function memberModelFromMockRecord(
   const walletStatus = hasStoredModerationState
     ? walletStatusFor(record.walletStatus ?? record.status)
     : parity?.walletStatus ?? walletStatusFor(record.walletStatus ?? record.status);
-  const studentId = nullableText(record.studentId) ?? readableId(id);
-  const displayId = readableId(record.displayId) ?? readableId(id) ?? readableId(record.studentId);
+  const studentId = nullableText(record.studentId);
+  const displayId = displayAdminId(record.displayId, id);
   const createdAt = text(record.accountCreatedAt ?? record.createdAt, "Not recorded");
   const walletId = nullableText(record.walletId) ?? `WAL-${id}`;
   const academicProfile = {
@@ -647,7 +646,7 @@ export function memberModelFromMockRecord(
     const summary = baseModelFromListItem({
       id,
       displayId,
-      email: text(record.person, `${id}@ku.th`),
+      email: text(record.person, displayAdminId(id) ? `${id}@ku.th` : "Email not provided"),
       firstName,
       lastName,
       studentId,

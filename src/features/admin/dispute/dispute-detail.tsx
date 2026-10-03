@@ -44,6 +44,7 @@ import {
 } from "./dispute-model";
 import { questStateLabel } from "../domain/rulebook";
 import { questStatusClass } from "../quest/quest-model";
+import { displayAdminId } from "../display-admin-id";
 import { DisputeDecisionDialog, useDisputeModalFocus } from "./dispute-decision-dialog";
 import { useDisputeDecisionMutation, useDisputeDetailQuery, useDisputeEvidenceQuery } from "./dispute-query";
 
@@ -121,7 +122,7 @@ function Overview({ model, translateText, compact = false }: { model: DisputeCas
       <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Dispute detail")}</h2><span className="badge">{translateText(model.category)}</span></CardHeader>
       <p className="m-0 whitespace-pre-wrap text-base text-admin-text">{model.detail}</p>
       <AdminOverviewMeta>
-        <div><dt>{translateText("Quest")}</dt><dd><a href={model.questHref ?? questRoutes.list()}>{model.questTitle}</a></dd></div>
+        <div><dt>{translateText("Quest")}</dt><dd><Link href={model.questHref ?? questRoutes.list()}>{model.questTitle}</Link></dd></div>
           <div><dt>{translateText("Quest State")}</dt><dd>{translateText(questStateLabel(model.questState))}</dd></div>
         <div><dt>{translateText("Opened")}</dt><dd>{model.submittedAt}</dd></div>
       </AdminOverviewMeta>
@@ -167,7 +168,8 @@ function Timeline({ model, translateText }: { model: DisputeCaseModel; translate
 
 function DecisionDetails({ model, translateText }: { model: DisputeCaseModel; translateText: (value: string) => string }) {
   if (!model.decisionReason && !model.resolution && !model.resolvedBy) return null;
-  return <div className={adminRecordGroup}><span>{translateText("Reason for decision")}</span><p>{model.decisionReason ?? translateText("Reason not provided.")}</p><AdminOverviewMeta className="dispute-resolution-meta !grid-cols-2 mt-[14px] max-[700px]:!grid-cols-1"><div><dt>{translateText("Outcome")}</dt><dd>{translateText(model.decisionLabel ?? model.statusLabel)}</dd></div>{model.resolvedAmountLabel && <div><dt>{translateText("Transferred")}</dt><dd>{model.resolvedAmountLabel}</dd></div>}{model.resolvedBy && <div><dt>{translateText("Resolved by")}</dt><dd>{model.resolvedBy}</dd></div>}</AdminOverviewMeta></div>;
+  const resolvedBy = displayAdminId(model.resolvedBy);
+  return <div className={adminRecordGroup}><span>{translateText("Reason for decision")}</span><p>{model.decisionReason ?? translateText("Reason not provided.")}</p><AdminOverviewMeta className="dispute-resolution-meta !grid-cols-2 mt-[14px] max-[700px]:!grid-cols-1"><div><dt>{translateText("Outcome")}</dt><dd>{translateText(model.decisionLabel ?? model.statusLabel)}</dd></div>{model.resolvedAmountLabel && <div><dt>{translateText("Transferred")}</dt><dd>{model.resolvedAmountLabel}</dd></div>}{resolvedBy && <div><dt>{translateText("Resolved by")}</dt><dd>{resolvedBy}</dd></div>}</AdminOverviewMeta></div>;
 }
 
 function MemberSummary({ heading, id, name, href, translateText }: { heading: string; id: string | null; name: string; href: string | null; translateText: (value: string) => string }) {
@@ -180,7 +182,7 @@ function RelatedQuestPanel({ model, translateText }: { model: DisputeCaseModel; 
       <CardHeader flush className={adminRecordHeader}><h3 className={adminRecordHeading}>{translateText("Related Quest")}</h3><span className={`badge ${questStatusClass(model.questState)}`}>{translateText(questStateLabel(model.questState))}</span></CardHeader>
       <div className={adminRecordSideFacts}>
         <div><span>{translateText("Quest")}</span><strong>{model.questTitle}</strong></div>
-        {model.questDisplayId && <div><span>{translateText("Quest ID")}</span><strong>{model.questDisplayId}</strong></div>}
+        <div><span>{translateText("Quest ID")}</span><strong>{model.questDisplayId ?? "—"}</strong></div>
         <div><span>{translateText("Quest State")}</span><strong>{translateText(questStateLabel(model.questState))}</strong></div>
         <div><span>{translateText("Failed at")}</span><strong>{model.questFailedAt ? formatAdminTimestamp(model.questFailedAt) : translateText("Not provided.")}</strong></div>
       </div>
@@ -226,7 +228,7 @@ function FullSections({ model, translateText, onOpenEvidence, selectedChoice, co
   return <>
     <AdminRecordGrid
       primary={<><Overview model={model} translateText={translateText} /><PartyStatements model={model} translateText={translateText} /><EvidenceSection model={model} translateText={translateText} onOpen={onOpenEvidence} /><Timeline model={model} translateText={translateText} /></>}
-      side={<><MemberSummary heading={model.filerRole} id={model.filerId} name={model.filerName} href={model.filerHref} translateText={translateText} /><MemberSummary heading={model.respondentRole} id={model.respondentId} name={model.respondentName} href={model.respondentHref} translateText={translateText} /><Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Related Quest")}</h2></CardHeader><div className={adminRecordSideFacts}><div><span>{translateText("Quest")}</span><strong>{model.questTitle}</strong></div><div><span>{translateText("Quest State")}</span><strong>{translateText(questStateLabel(model.questState))}</strong></div><div><span>{translateText("Failed at")}</span><strong>{model.questFailedAt ? formatAdminTimestamp(model.questFailedAt) : translateText("Not provided.")}</strong></div></div><Button asChild variant="outline" className="mt-3 w-full"><a href={model.questHref ?? questRoutes.list()}>{translateText("Open Quest detail")}</a></Button></Card><Card as="section" className={`${adminRecordSection} dispute-decision-panel`}><CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{model.isActionable ? translateText("Dispute decision") : translateText("Recorded outcome")}</h2></CardHeader><DecisionControls model={model} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelect={onSelectChoice} onStart={onStartDecision} /></Card></>}
+      side={<><MemberSummary heading={model.filerRole} id={model.filerId} name={model.filerName} href={model.filerHref} translateText={translateText} /><MemberSummary heading={model.respondentRole} id={model.respondentId} name={model.respondentName} href={model.respondentHref} translateText={translateText} /><Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Related Quest")}</h2></CardHeader><div className={adminRecordSideFacts}><div><span>{translateText("Quest")}</span><strong>{model.questTitle}</strong></div><div><span>{translateText("Quest State")}</span><strong>{translateText(questStateLabel(model.questState))}</strong></div><div><span>{translateText("Failed at")}</span><strong>{model.questFailedAt ? formatAdminTimestamp(model.questFailedAt) : translateText("Not provided.")}</strong></div></div><Button asChild variant="outline" className="mt-3 w-full"><Link href={model.questHref ?? questRoutes.list()}>{translateText("Open Quest detail")}</Link></Button></Card><Card as="section" className={`${adminRecordSection} dispute-decision-panel`}><CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{model.isActionable ? translateText("Dispute decision") : translateText("Recorded outcome")}</h2></CardHeader><DecisionControls model={model} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelect={onSelectChoice} onStart={onStartDecision} /></Card></>}
     />{actionReceipt}
   </>;
 }
@@ -242,7 +244,7 @@ function DrawerSections({ model, translateText, onOpenEvidence, selectedChoice, 
     detail={model.detail}
     reportedMember={{ id: model.workerId, name: model.workerName, href: model.workerHref, role: "Worker" }}
     reporter={{ id: model.filerId, name: model.filerName, href: model.filerHref, role: model.filerRole }}
-    relatedRecord={{ id: model.questId, title: model.questTitle, href: model.questHref, state: model.questState }}
+    relatedRecord={{ id: model.questId, displayId: model.questDisplayId, title: model.questTitle, href: model.questHref, state: model.questState }}
     evidenceCount={model.evidence.length}
     financialSummary={[{ label: "Amount at risk", value: model.amountAtRiskLabel }]}
     moderationHistory={model.moderationHistory}
@@ -355,7 +357,7 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
     }
   };
 
-  const receipt = actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Dispute Case" resourceId={model.displayId} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {actionReceipt.reason}</p>} /> : null;
+  const receipt = actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Dispute Case" resourceId={model.displayId || null} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {actionReceipt.reason}</p>} /> : null;
   const evidenceState: EvidenceState | null = evidenceReference ? {
     reference: evidenceReference,
     value: evidenceQuery.data ?? null,
@@ -375,7 +377,7 @@ export function DisputeCaseDrawer({ disputeId, initialModel, onClose, onUpdated 
     ariaLabel={translateText("Close drawer")}
     title={<><span aria-hidden="true">{initialModel?.title ?? translateText("Dispute Case")}</span><span className="visually-hidden">{translateText("Dispute Case details")}</span></>}
     titleId="dispute-case-drawer-title"
-    subtitle={<>{translateText("Dispute Case")} {initialModel?.displayId ?? translateText("Dispute Case")} · {translateText("Dispute Case detail drawer")}</>}
+    subtitle={<>{initialModel?.displayId ? <>{translateText("Dispute Case")} {initialModel.displayId} · </> : null}{translateText("Dispute Case detail drawer")}</>}
     className="dispute-case-drawer quest-style-drawer"
     openerAttribute="data-dispute-id"
     openerValue={disputeId}

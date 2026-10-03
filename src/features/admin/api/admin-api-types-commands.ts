@@ -99,11 +99,21 @@ export type AdminReportCommandResult = {
   adminActionId: string;
 };
 
-export type ConductReportDecision = VersionedAdminCommand & {
-  outcome: "CONDUCT_REPORT_DISMISSED" | "CONDUCT_REPORT_UPHELD";
-  reason: string;
-  reasonCode: "POLICY_REVIEW";
-};
+export type ConductReportDecisionReasonCode =
+  | "CONDUCT_REPORT_NO_VIOLATION"
+  | "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE";
+
+export type ConductReportDecision = VersionedAdminCommand & (
+  | {
+      outcome: "CONDUCT_REPORT_DISMISSED";
+      reason: string;
+      decisionReasonCode: ConductReportDecisionReasonCode;
+    }
+  | {
+      outcome: "CONDUCT_REPORT_UPHELD";
+      reason: string;
+    }
+);
 
 export type AdminConductReportCommandResult = {
   resourceSummary: {

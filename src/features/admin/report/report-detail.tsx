@@ -24,12 +24,14 @@ import {
   adminRecordGroup,
   adminRecordHeader,
   adminRecordHeading,
+
   adminRecordSection,
   adminRecordSideFacts,
 } from "../../../components/admin/admin-record-styles";
 import { type AdminEvidence, type ReportCaseDecision } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { reportRoutes } from "../admin-routes";
+import { displayAdminId } from "../display-admin-id";
 import { ModerationCaseWorkspace, ModerationHistoryPanel } from "../moderation-case/moderation-case-workspace";
 import {
   newReportCaseIdempotencyKey,
@@ -40,6 +42,7 @@ import {
   reportCaseDecisionFor,
   reportCaseModelFromRecord,
   reportCaseModelWithEvidenceSender,
+  reportCaseReasonCodeFor,
   type ReportCaseDecisionChoice,
   type ReportCaseModel,
 } from "./report-model";
@@ -203,6 +206,7 @@ function ReportOverview({
   return (
     <Card as="section" className={`${adminRecordSection} report-overview`}>
       <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Report detail")}</h2></CardHeader>
+
       <AdminOverviewMeta className="mt-[18px]">
         <div><dt>{translateText("Status")}</dt><dd><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></dd></div>
         <div><dt>{translateText("Submitted")}</dt><dd>{formatAdminTimestamp(model.submittedAt)}</dd></div>
@@ -283,7 +287,7 @@ function MemberSummaryPanel({
 function ResolutionDetails({ model, translateText }: { model: ReportCaseModel; translateText: (value: string) => string }) {
   const details = [
     ["Resolution", model.resolution],
-    ["Resolved by", model.resolvedBy],
+    ["Resolved by", displayAdminId(model.resolvedBy)],
     ["Resolution time", model.resolutionAt ? formatAdminTimestamp(model.resolutionAt) : null],
     ["Closed at", model.closedAt ? formatAdminTimestamp(model.closedAt) : null],
   ] as const;
@@ -417,6 +421,7 @@ function ReportCaseSections({
       <AdminRecordGrid
         primary={<>
           <ReportOverview model={model} translateText={translateText} />
+
           <EvidenceSection model={model} translateText={translateText} onOpen={onOpenEvidence} />
           <ReportTimeline model={model} translateText={translateText} />
         </>}
@@ -472,7 +477,7 @@ function DrawerSections({
         detail={model.detail}
         reportedMember={{ id: model.reportedMemberId, displayId: model.reportedMemberDisplayId, name: model.reportedMemberName, href: model.reportedMemberHref, role: "Reported Member" }}
         reporter={{ id: model.reporterId, displayId: model.reporterDisplayId, name: model.reporterName, href: model.reporterHref, role: "Reporting Member" }}
-        relatedRecord={model.relatedQuestId ? { id: model.relatedQuestDisplayId, title: model.relatedQuestTitle, href: model.relatedQuestHref } : null}
+        relatedRecord={model.relatedQuestId ? { id: model.relatedQuestId, displayId: model.relatedQuestDisplayId, title: model.relatedQuestTitle, href: model.relatedQuestHref } : null}
         evidenceCount={model.evidence.length}
         moderationHistory={model.moderationHistory}
         policyNote="Admin may read Message content only through the named Evidence Reference. Every evidence read is logged as an Admin Action."
@@ -485,6 +490,7 @@ function DrawerSections({
         <ReportOverview model={model} translateText={translateText} compact />
         <EvidenceSection model={model} translateText={translateText} onOpen={onOpenEvidence} compact />
         <RelatedQuestPanel model={model} translateText={translateText} />
+
         <ModerationHistoryPanel
           summary={model.moderationHistory}
           translateText={translateText}
@@ -565,7 +571,7 @@ export function ReportCaseDetail({
     const options: ReportCaseDecision = {
       outcome: decision,
       reason,
-      reasonCode: "POLICY_REVIEW",
+      reasonCode: reportCaseReasonCodeFor(selectedChoice, reason),
       idempotencyKey: newReportCaseIdempotencyKey(model.id),
       expectedVersion: model.version ?? 1,
     };
@@ -616,12 +622,12 @@ export function ReportCaseDetail({
   const content = (
     <>
       <ReportAlert model={model} translateText={translateText} />
-      <ReportCaseSections model={model} translateText={translateText} onOpenEvidence={openEvidence} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} actionReceipt={actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Report Case" resourceId={model.id} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {actionReceipt.reason}</p>} /> : null} />
+      <ReportCaseSections model={model} translateText={translateText} onOpenEvidence={openEvidence} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} actionReceipt={actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Report Case" resourceId={model.displayId || null} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {actionReceipt.reason}</p>} /> : null} />
     </>
   );
 
   if (drawer) {
-    return <><DrawerSections model={model} translateText={translateText} onOpenEvidence={openEvidence} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} actionReceipt={actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Report Case" resourceId={model.id} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {actionReceipt.reason}</p>} /> : null} />{overlays}</>;
+    return <><DrawerSections model={model} translateText={translateText} onOpenEvidence={openEvidence} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} actionReceipt={actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Report Case" resourceId={model.displayId || null} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {actionReceipt.reason}</p>} /> : null} />{overlays}</>;
   }
 
   return (
@@ -656,9 +662,9 @@ export function ReportCaseDrawer({
     <AdminDrawer
       ariaLabel={translateText("Close Report Case drawer")}
       closeButtonAriaLabel={translateText("Close drawer")}
-      title={<><span aria-hidden="true">{initialModel?.title ?? reportId}</span><span className="visually-hidden">{translateText("Report Case details")}</span></>}
+      title={<><span aria-hidden="true">{initialModel?.title ?? translateText("Report Case")}</span><span className="visually-hidden">{translateText("Report Case details")}</span></>}
       titleId="report-case-drawer-title"
-      subtitle={<>{translateText("Report Case")} {initialModel?.displayId ?? initialModel?.id ?? reportId} · {translateText("Report Case detail drawer")}</>}
+      subtitle={<>{initialModel?.displayId ? <>{translateText("Report Case")} {initialModel.displayId} · </> : null}{translateText("Report Case detail drawer")}</>}
       className="report-case-drawer quest-style-drawer"
       openerAttribute="data-report-id"
       openerValue={reportId}

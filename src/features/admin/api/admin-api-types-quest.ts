@@ -18,7 +18,8 @@ export type AdminQuestParticipation = "SINGLE" | "GROUP";
 
 export type AdminQuestMember = {
   id: string;
-  studentId: string | null;
+  memberId?: string;
+  studentId?: string | null;
   firstName: string;
   lastName: string;
   email: string;
@@ -45,11 +46,10 @@ export type AdminQuest = {
 };
 
 export type AdminQuestTimelineEntry = {
-  id: string;
-  fromState: AdminApiQuestStatus;
-  toState: AdminApiQuestStatus;
-  changedAt: string;
-  actor: { type: "MEMBER" | "ADMIN"; id: string } | { type: "SYSTEM"; id: null };
+  event: string;
+  status: AdminApiQuestStatus | null;
+  occurredAt: string;
+  actorId: string | null;
   reasonCode: string | null;
 };
 
@@ -92,7 +92,7 @@ export type AdminQuestDetail = AdminQuest & {
     startedAt: string | null;
     createdAt: string;
   }>;
-  images: Array<{
+  images?: Array<{
     imageId: string;
     fileId: string;
     position: number;
@@ -141,15 +141,8 @@ export type AdminQuestDetail = AdminQuest & {
         }>;
       }
   >;
-  timeline: AdminQuestTimelineEntry[];
-  disputeCases: Array<{
-    id: string;
-    displayId: string;
-    questId: string;
-    status: string;
-    createdAt: string;
-    updatedAt: string;
-  }>;
+  /** The complete Quest lifecycle, when the Admin API provides it. */
+  timeline?: AdminQuestTimelineEntry[];
   adminActions: Array<{
     id: string;
     admin: { id: string; firstName: string; lastName: string };

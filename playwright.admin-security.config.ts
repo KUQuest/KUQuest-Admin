@@ -4,7 +4,6 @@ const adminOrigin = process.env.ADMIN_SECURITY_ADMIN_ORIGIN ?? "http://localhost
 const apiPort = process.env.ADMIN_SECURITY_API_PORT ?? "5002";
 const apiOrigin = `http://localhost:${apiPort}`;
 const adminPort = new URL(adminOrigin).port;
-
 export default defineConfig({
   testDir: "./tests/e2e",
   testMatch: /admin-security\.spec\.ts/,

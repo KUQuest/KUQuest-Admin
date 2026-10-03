@@ -9,6 +9,7 @@ export type ModerationHistorySummary = {
 
 export type ModerationCaseRelatedRecord = {
   id: string | null;
+  displayId?: string | null;
   title: string | null;
   href: string | null;
   state?: string | null;

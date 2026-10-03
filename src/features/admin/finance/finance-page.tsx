@@ -1,11 +1,13 @@
 "use client";
 
+
 import { useState, type FormEvent } from "react";
 
 import { AdminPageHeader } from "../../../components/admin/admin-page-header";
 import { Button, Card, CardHeader, EmptyState } from "../../../components/ui";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { formatAdminTimestamp } from "../date-format";
+import { displayAdminId } from "../display-admin-id";
 import { formatMoneySatang } from "../member/member-wallet-model";
 import {
   useFinancePolicyQuery,
@@ -76,6 +78,7 @@ function PolicyValues({ initialData }: { initialData: FinancePageData }) {
   );
 }
 
+
 function ProviderEventRetry() {
   const { translateText } = useAdminShell();
   const [kind, setKind] = useState<"top-up" | "payout">("top-up");
@@ -92,7 +95,7 @@ function ProviderEventRetry() {
     setError(null);
     try {
       const result = await retry.mutateAsync({ kind, eventId: normalizedId });
-      setNotice(`${result.event.id} · ${translateText(result.event.processingStatus)} · ${translateText("Attempts")}: ${result.event.attemptCount}`);
+      setNotice(`${displayAdminId(result.event.providerEventId) ?? translateText("Provider event")} · ${translateText(result.event.processingStatus)} · ${translateText("Attempts")}: ${result.event.attemptCount}`);
     } catch (retryError) {
       setError(retryError instanceof Error ? retryError.message : "Provider Event retry failed.");
     }

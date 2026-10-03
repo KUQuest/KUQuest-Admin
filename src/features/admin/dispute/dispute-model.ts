@@ -16,6 +16,7 @@ import {
   type QuestState,
 } from "../domain/rulebook";
 import { statusBadgeClass } from "../status-badge";
+import { displayAdminId } from "../display-admin-id";
 
 export type DisputeCaseRecord = {
   id: string;
@@ -136,7 +137,6 @@ function firstReadableText(...values: unknown[]): string | null {
   }
   return null;
 }
-
 function disputeDecisionLabel(value: unknown): string | null {
   switch (text(value)) {
     case "Hirer wins":
@@ -270,7 +270,7 @@ export function disputeCaseModelFromRecord(
   const quest = asRecord(record.quest);
   const questId = firstText(record.questId, quest?.id) ?? "";
   const questTitle = firstReadableText(record.questTitle, quest?.title, record.title) ?? missingValue;
-  const questDisplayId = firstReadableText(record.questDisplayId, quest?.displayId);
+  const questDisplayId = displayAdminId(record.questDisplayId, quest?.displayId, questId);
   const questState = questStateFor(record.questState ?? quest?.questStatus);
   const filerId = firstText(record.filerUserId, record.filerId);
   const respondentId = firstText(record.respondentUserId, record.respondentId);
@@ -287,6 +287,7 @@ export function disputeCaseModelFromRecord(
     personName(record.filer),
     source === "mock" ? record.reporterName : null,
     source === "mock" ? "Hirer not provided" : null,
+    filerId ? "Member" : null,
   ) ?? missingValue;
   const respondentName = firstReadableText(
     record.respondentName,
@@ -294,6 +295,7 @@ export function disputeCaseModelFromRecord(
     personName(record.worker),
     source === "mock" ? record.workerName : null,
     source === "mock" ? "Worker not provided" : null,
+    respondentId ? "Member" : null,
   ) ?? missingValue;
   const workerName = roleIs(filerRole, "Worker") ? filerName : respondentName;
   const amountAtRiskSatang = positiveInteger(record.amountAtRiskSatang)
@@ -328,7 +330,7 @@ export function disputeCaseModelFromRecord(
 
   return {
     id,
-    displayId: firstReadableText(record.displayId) ?? readableText(id) ?? "Dispute Case",
+    displayId: displayAdminId(record.displayId, id) ?? "",
     status,
     statusLabel: disputeCaseStatusLabel(status),
     badgeClass: statusBadgeClass(status),

@@ -2,6 +2,7 @@ import type { AdminReportListQuery } from "../api/admin-api";
 import { adminApiProvider } from "../api/admin-provider";
 import { adminApiRequestOptions } from "../api/admin-api-request-options";
 import type { ConductReportStatus } from "../domain/rulebook";
+import { displayAdminId } from "../display-admin-id";
 import { conductReportModelFromRecord, type ConductReportModel } from "./conduct-report-model";
 
 export type ConductReportPageData = {
@@ -26,6 +27,11 @@ function conductReportModels(values: readonly unknown[]): ConductReportModel[] {
   });
 }
 
+function timestampValue(value: unknown): number {
+  if (typeof value !== "string") return 0;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
 export async function loadConductReportPageData(
   cookieHeader?: string,
   cursor?: string,
@@ -54,19 +60,11 @@ export async function loadConductReportPageData(
   }
   const records = pages
     .flatMap(({ page }) => page.items)
-    .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt));
-  const apiCounts = pages[0]?.page.countsByStatus;
+    .sort((left, right) => timestampValue(right.createdAt) - timestampValue(left.createdAt));
   return {
     source: "api",
     items: conductReportModels(records),
     nextCursor: Object.keys(nextCursors).length ? JSON.stringify(nextCursors) : null,
-    ...(apiCounts ? {
-      countsByStatus: {
-        CONDUCT_REPORT_PENDING: apiCounts.CONDUCT_REPORT_PENDING,
-        CONDUCT_REPORT_UPHELD: apiCounts.CONDUCT_REPORT_UPHELD,
-        CONDUCT_REPORT_DISMISSED: apiCounts.CONDUCT_REPORT_DISMISSED,
-      },
-    } : {}),
   };
 }
 
@@ -79,5 +77,13 @@ export async function loadConductReportDetailFromApi(
     adminApiRequestOptions(cookieHeader),
   );
   const model = conductReportModelFromRecord(report);
+  if (model?.questId && !model.questDisplayId) {
+    try {
+      const quest = await adminApiProvider.read.getQuest(model.questId, adminApiRequestOptions(cookieHeader));
+      model.questDisplayId = displayAdminId(quest.displayId, quest.id);
+    } catch {
+      // The Conduct Report remains readable when its related Quest cannot load.
+    }
+  }
   return model?.id === reportId ? model : null;
 }

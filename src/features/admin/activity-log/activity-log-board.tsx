@@ -30,6 +30,7 @@ import { DEFAULT_ACTIVITY_LOG_FILTERS, type ActivityLogPageData } from "./activi
 import { useActivityLogBoardStore, type ActivityLogSortKey } from "./activity-log-board-store";
 import { useActivityLogQuery } from "./activity-log-query";
 import { formatAdminTimestamp } from "../date-format";
+import { displayAdminId } from "../display-admin-id";
 
 export type ActivityLogBoardProps = {
   initialData?: ActivityLogPageData;
@@ -44,7 +45,8 @@ type ActivityLogDetailProps = {
 const EMPTY_ACTIVITY_LOG_ENTRIES: ActivityLogEntry[] = [];
 
 function displayValue(value: string | number | null | undefined): string {
-  return value === null || value === undefined || value === "" ? "Not provided" : String(value);
+  if (typeof value === "number") return String(value);
+  return displayAdminId(value) ?? "Not provided";
 }
 
 function activityLogSortValue(entry: ActivityLogEntry, key: ActivityLogSortKey): string | number | null {
@@ -139,11 +141,13 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
   const apiEnabled = isAdminApiEnabled();
   const mockEnabled = isAdminMockEnabled();
   const {
+
     search,
     pageSize,
     pageNumber,
     sortKey,
     sortDirection,
+
     setSearch,
     setPageSize,
     setPageNumber,
@@ -186,6 +190,7 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
   );
   const { start: pageStart, end: pageEnd } = pageRange(sortedEntries.length, currentPage, pageSize);
 
+
   const loadMore = useCallback(() => {
     if (!query.hasNextPage || query.isFetchingNextPage) return;
     setPaginationError(null);
@@ -225,6 +230,7 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
         <AdminPageHeader title={translateText("Activity Log")} description={translateText("An audit trail of administrative decisions.")} actions={<Button variant="outline" type="button" onClick={exportCsv} disabled={!visibleEntries.length}>{translateText("Export CSV")}</Button>} showActionsOnMobile />
       <Card as="section" className="overflow-hidden" aria-labelledby="activity-log-heading">
         <CardHeader className="flex min-h-[60px] items-center justify-between gap-4"><div><CardTitle id="activity-log-heading">{translateText("Activity Log")}</CardTitle><CardDescription>{translateText("Review the administrative audit trail.")}</CardDescription></div><span className={adminBoardCount} aria-live="polite">{filteredEntries.length} {translateText("loaded entries")}</span></CardHeader>
+
         <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2"><label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text max-[600px]:basis-full max-[600px]:max-w-none" htmlFor="activity-search"><span className="visually-hidden">{translateText("Search loaded activity")}</span><Input className="h-9 min-h-9 px-3 py-1.5 text-sm" id="activity-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={translateText("Search loaded activity")}/></label><span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span><PageSizeControls value={pageSize} translateText={translateText} onChange={setPageSize} /><span className={`${adminBoardCount} max-[720px]:block max-[720px]:w-full max-[720px]:ms-0`} aria-live="polite">{sortedEntries.length ? pageSize === "all" ? `${translateText("Showing all")} ${sortedEntries.length} ${translateText(sortedEntries.length === 1 ? "result" : "results")}` : `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${sortedEntries.length} ${translateText(sortedEntries.length === 1 ? "result" : "results")}` : translateText("Showing 0 of 0 results")}</span></div>
         <output id="activity-status" className="mb-2 block min-h-5 text-sm text-admin-muted" aria-live="polite">{loading ? translateText("Loading activity") : `${filteredEntries.length} ${translateText("loaded entries")}`}</output>
         {mockEnabled ? <p className="api-data-notice m-0 mb-3 rounded-lg px-3 py-2.5 text-[13px]">{translateText("Fixture data is active. Some records do not include before and after state.")}</p> : null}
@@ -233,7 +239,7 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
         {!loadError && !loading && !visibleEntries.length ? <EmptyState className="border-0 rounded-none p-[60px_24px]" title={translateText("No activity recorded")} description={translateText("Administrative activity will appear here as actions are taken.")} /> : null}
         {!loadError && visibleEntries.length ? <div className="overflow-x-auto"><Table className={`${adminBoardTable} min-w-[980px]`}><caption>{translateText("Activity Log records")}</caption><thead><tr><AdminSortableHeader label={translateText("Timestamp")} sortKey="timestamp" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Actor")} sortKey="actor" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Activity")} sortKey="activity" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Target")} sortKey="target" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Reason")} sortKey="reason" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><th className="align-top" scope="col">{translateText("Details")}</th></tr></thead><tbody>{visibleEntries.map((entry) => {
           const target = activityLogTargetLabel(entry);
-          return <tr key={entry.id} tabIndex={0} aria-label={`${translateText("View activity details")}: ${translateText(activityLogActionLabel(entry.action))}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; setSelectedEntry(entry); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedEntry(entry); } }}><td>{entry.createdAt ? <time className="grid gap-0.5 whitespace-nowrap tabular-nums" dateTime={entry.createdAt}>{formatActivityLogTimestamp(entry.createdAt)}<small className="text-xs font-normal text-admin-muted">{formatActivityLogRelativeTime(entry.createdAt)}</small></time> : translateText("Not provided")}</td><td aria-label={entry.adminName || translateText("Not provided")}><span className="grid min-w-[150px] grid-cols-[auto_minmax(0,1fr)] items-center gap-2"><span className="avatar" aria-hidden="true">{entry.adminInitials}</span><strong>{entry.adminName || translateText("Not provided")}</strong></span></td><td><strong className="break-words">{translateText(activityLogActionLabel(entry.action))}</strong></td><td><span className="block min-w-0 break-words text-admin-text">{translateText(displayValue(target))}</span></td><td>{translateText(activityLogReasonLabel(entry.reasonCode))}</td><td><Button variant="outline" size="xs" className="whitespace-nowrap" type="button" onClick={() => setSelectedEntry(entry)} aria-label={translateText("View activity details")}>{translateText("View")}</Button></td></tr>;
+          return <tr key={entry.id} tabIndex={0} aria-label={`${translateText("View activity details")}: ${translateText(activityLogActionLabel(entry.action))}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; setSelectedEntry(entry); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedEntry(entry); } }}><td>{entry.createdAt ? <time className="grid gap-0.5 whitespace-nowrap tabular-nums" dateTime={entry.createdAt}>{formatActivityLogTimestamp(entry.createdAt)}<small className="text-xs font-normal text-admin-muted">{formatActivityLogRelativeTime(entry.createdAt)}</small></time> : translateText("Not provided")}</td><td aria-label={`${entry.adminName || translateText("Not provided")} · ${displayValue(entry.adminId)}`}><span className="grid min-w-[150px] grid-cols-[auto_minmax(0,1fr)] items-center gap-2"><span className="avatar" aria-hidden="true">{entry.adminInitials}</span><span className="grid gap-0.5"><strong>{entry.adminName || translateText("Not provided")}</strong><small className="text-xs font-normal text-admin-muted">{displayValue(entry.adminId)}</small></span></span></td><td><strong className="break-words">{translateText(activityLogActionLabel(entry.action))}</strong></td><td><span className="block min-w-0 break-words text-admin-text">{translateText(displayValue(target))}</span></td><td>{translateText(activityLogReasonLabel(entry.reasonCode))}</td><td><Button variant="outline" size="xs" className="whitespace-nowrap" type="button" onClick={() => setSelectedEntry(entry)} aria-label={translateText("View activity details")}>{translateText("View")}</Button></td></tr>;
         })}</tbody></Table></div> : null}
         {filteredEntries.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Activity Log pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className={adminBoardPagination} /> : null}
         {paginationError ? <div className="mb-3 flex items-center gap-2.5 rounded-admin-sm border border-admin-danger bg-admin-danger-soft px-3 py-2.5 text-sm text-admin-danger" role="alert"><p className="m-0 flex-1">{translateText(paginationError)}</p><Button variant="outline" type="button" onClick={loadMore}>{translateText("Try again")}</Button></div> : null}

@@ -85,7 +85,7 @@ describe("Admin Rulebook status boundary", () => {
     expect(questStateLabel("QUEST_COMPLETED")).toBe("Completed");
     expect(questStateLabel("QUEST_CANCELLED")).toBe("Cancelled");
     expect(questStateLabel("QUEST_FAILED")).toBe("Failed");
-    expect(disputeCaseStatusLabel("DISPUTE_CASE_PENDING")).toBe("Open");
+    expect(disputeCaseStatusLabel("DISPUTE_CASE_PENDING")).toBe("Pending");
     expect(disputeCaseStatusLabel("DISPUTE_CASE_DISMISSED")).toBe("Dismissed");
     expect(disputeCaseStatusLabel("DISPUTE_CASE_RESOLVED")).toBe("Resolved");
     expect(questStateFor("QUEST_FAILED")).toBe("QUEST_FAILED");
@@ -97,8 +97,8 @@ describe("Admin Rulebook status boundary", () => {
     expect(reportCaseStatusLabel("REPORT_CASE_DISMISSED")).toBe("Dismissed");
     expect(reportCaseStatusLabel("REPORT_CASE_HIDDEN")).toBe("Confirmed");
     expect(reportCaseStatusLabel("REPORT_CASE_RESTORED")).toBe("Restored");
-    expect(reportCaseStatusLabel("CONDUCT_REPORT_PENDING")).toBe("Open");
-    expect(reportCaseStatusLabel("CONDUCT_REPORT_UPHELD")).toBe("Confirmed");
+    expect(reportCaseStatusLabel("CONDUCT_REPORT_PENDING")).toBe("Pending");
+    expect(reportCaseStatusLabel("CONDUCT_REPORT_UPHELD")).toBe("Upheld");
     expect(reportCaseStatusLabel("CONDUCT_REPORT_DISMISSED")).toBe("Dismissed");
     expect(reportCaseStatusFor("CONDUCT_REPORT_UPHELD")).toBe("CONDUCT_REPORT_UPHELD");
   });

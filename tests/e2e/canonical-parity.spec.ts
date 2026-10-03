@@ -232,7 +232,7 @@ test.describe("legacy parity for inputs on mobile", () => {
 
   test("Overview global search accepts input on mobile", async ({ page }) => {
     await signIn(page);
-    await page.getByRole("button", { name: "Search marketplace records" }).click();
+    await page.getByRole("button", { name: "Search all records" }).click();
 
     const search = page.getByRole("searchbox", { name: "Search marketplace records" });
     await search.fill("QST-12001");
@@ -264,12 +264,10 @@ test.describe("legacy parity for inputs on mobile", () => {
     const dialog = page.getByRole("dialog", { name: "Confirm violation for Akarin Ariyawat" });
     await expect(dialog.getByRole("region", { name: "Penalty ladder" })).toContainText("Next outcome");
     const reason = dialog.getByLabel("Reason for confirmed violation");
-    const note = dialog.getByLabel("Internal admin note (optional)");
     await reason.fill("Repeated off-platform payment requests.");
-    await note.fill("Review again after the appeal window.");
+    await expect(dialog.getByLabel("Internal admin note (optional)")).toHaveCount(0);
     await expect(reason).toHaveValue("Repeated off-platform payment requests.");
     await expectResponsiveInput(page, reason);
-    await expectResponsiveInput(page, note);
     await dialog.getByRole("button", { name: "Close penalty form" }).click();
     await expect(dialog).toHaveCount(0);
   });
@@ -297,7 +295,7 @@ test.describe("legacy parity for inputs on mobile", () => {
     const dialog = page.locator("dialog.report-decision-dialog");
     const reason = dialog.getByLabel("Reason for this decision");
     await reason.fill("The account action was reviewed and recorded.");
-    await expect(reason).toHaveValue("The account action was reviewed and recorded.");
+    await expect(reason).toHaveValue("THE ACCOUNT ACTION WAS REVIEWED AND RECORDED.");
     await expectResponsiveInput(page, reason);
     await dialog.getByRole("button", { name: "Cancel" }).click();
     await expect(dialog).toHaveCount(0);

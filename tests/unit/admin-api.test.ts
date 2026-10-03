@@ -104,7 +104,7 @@ describe("Admin API boundary", () => {
     };
     await adminApi.listReports({}, options);
     await adminApi.getReport("report-1", options);
-    await adminApi.getEvidence("evidence-1", options);
+    await adminApi.getEvidence("evidence-1", { ...options, idempotencyKey: "evidence-read-1" });
 
     expect(cookies).toEqual([
       "kuquest-admin=server-session",
@@ -543,7 +543,6 @@ describe("Admin API boundary", () => {
     expect(request?.headers.get("idempotency-key")).toBe("hide-quest-1");
     expect(request?.headers.get("if-match")).toBe("2");
     expect(await request?.json()).toEqual({
-      reason: "The Quest needs policy review.",
       reasonCode: "POLICY_REVIEW",
     });
   });
@@ -574,7 +573,6 @@ describe("Admin API boundary", () => {
     expect(request?.headers.get("idempotency-key")).toBe("terminate-quest-1");
     expect(request?.headers.get("if-match")).toBe("2");
     expect(await request?.json()).toEqual({
-      reason: "The Quest violates the safety policy.",
       reasonCode: "SAFETY_REVIEW",
     });
   });
@@ -605,7 +603,6 @@ describe("Admin API boundary", () => {
     expect(request?.headers.get("idempotency-key")).toBe("restore-quest-1");
     expect(request?.headers.get("if-match")).toBe("2");
     expect(await request?.json()).toEqual({
-      reason: "The Quest is safe after review.",
       reasonCode: "POLICY_REVIEW",
     });
   });
@@ -627,7 +624,6 @@ describe("Admin API boundary", () => {
       expectedVersion: 2,
       outcome: "CONDUCT_REPORT_UPHELD",
       reason: "The Quest record confirms the violation.",
-      reasonCode: "POLICY_REVIEW",
     });
 
     expect(request?.url).toBe("https://api.example.test/api/v1/admin/reports/CND-1/decide");
@@ -637,7 +633,6 @@ describe("Admin API boundary", () => {
     expect(await request?.json()).toEqual({
       outcome: "CONDUCT_REPORT_UPHELD",
       reason: "The Quest record confirms the violation.",
-      reasonCode: "POLICY_REVIEW",
     });
   });
 

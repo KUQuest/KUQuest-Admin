@@ -73,6 +73,15 @@ test.describe("Member route family", () => {
     await memberIdSort.click();
     await expect(board.locator("tbody tr[data-member-id]").first()).toHaveAttribute("data-member-id", "68000299");
     await expect(board.locator("thead th").first()).toHaveAttribute("aria-sort", "descending");
+
+    const studentIdSort = board.getByRole("button", { name: /^Student ID/ });
+    await expect(studentIdSort).toBeVisible();
+    await studentIdSort.click();
+    await expect(board.locator("tbody tr[data-member-id]").first().locator("td").nth(2)).toHaveText("6510200100");
+    await expect(board.locator("thead th").nth(2)).toHaveAttribute("aria-sort", "ascending");
+    await studentIdSort.click();
+    await expect(board.locator("tbody tr[data-member-id]").first().locator("td").nth(2)).toHaveText("6510200299");
+    await expect(board.locator("thead th").nth(2)).toHaveAttribute("aria-sort", "descending");
   });
 
   test("renders a full Member detail page on refresh and keeps tabs canonical", async ({ page }) => {
@@ -104,6 +113,7 @@ test.describe("Member route family", () => {
     const dialog = page.getByRole("dialog", { name: "Confirm violation for Akarin Ariyawat" });
     await expect(dialog).toBeVisible();
     const reason = dialog.getByRole("textbox", { name: "Reason for confirmed violation" });
+    await expect(dialog.getByRole("textbox", { name: "Internal admin note (optional)" })).toHaveCount(0);
     await reason.fill("The evidence confirms a policy violation.");
     await expect(reason).toHaveValue("The evidence confirms a policy violation.");
     const box = await reason.boundingBox();

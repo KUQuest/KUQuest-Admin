@@ -17,11 +17,11 @@ import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { Badge as UiBadge, Button as UiButton, Card, CardContent, CardHeader, CardTitle } from "../../../components/ui";
 import { disputeRoutes, memberRoutes, questRoutes } from "../admin-routes";
 import { canHideQuest, isQuestTerminal, type QuestState } from "../domain/rulebook";
+import { displayAdminId } from "../display-admin-id";
 import {
   formatQuestDate,
   formatQuestMoney,
   questMemberName,
-  questDisplayIdFor,
   questStatusClass,
   type QuestDetailView,
   type QuestFinanceView,
@@ -105,7 +105,7 @@ function currentQuestValue(detail: QuestDetailView, field: string): unknown {
     case "dueAt": return detail.dueAt;
     case "proofRequired": return detail.proofRequired;
     case "locations": return detail.locations.map((location) => location.label);
-    case "images": return detail.images.map((image) => image.fileId);
+    case "images": return detail.images?.map((image) => image.fileId);
     default: return "Previous value not provided.";
   }
 }
@@ -219,6 +219,7 @@ function QuestDetailContent({
   detail,
   finance,
   linkedDisputeId,
+  disputeLookupError,
   onCommand,
   onOpenDispute,
   disputePending,
@@ -229,6 +230,7 @@ function QuestDetailContent({
   detail: QuestDetailView;
   finance: QuestFinanceView | null;
   linkedDisputeId: string | null;
+  disputeLookupError: string | null;
   onCommand: (command: QuestCommand) => void;
   onOpenDispute: (workerId: string) => void;
   disputePending: boolean;
@@ -249,19 +251,25 @@ function QuestDetailContent({
   const reward = financeQuest?.rewardSatang ?? detail.rewardSatang;
   const platformFee = financeQuest?.platformFeePerWorkerSatang ?? detail.platformFeePerWorkerSatang;
   const statusTimeline = detail.timeline
-    .map((entry) => {
-      const fromLabel = readableValue(entry.fromState.replace("QUEST_", ""));
-      const toLabel = readableValue(entry.toState.replace("QUEST_", ""));
-      const actorLabel = entry.actor.type === "MEMBER" ? "Member" : entry.actor.type === "ADMIN" ? "Admin" : "System";
+    .filter((entry) => entry.status !== null)
+    .map((entry, index, entries) => {
+      const previousStatus = entries[index - 1]?.status;
+      const status = entry.status as string;
+      const statusLabel = readableValue(status.replace("QUEST_", ""));
+      const previousLabel = previousStatus ? readableValue(previousStatus.replace("QUEST_", "")) : null;
+      const transition = previousLabel && previousLabel !== statusLabel
+        ? `${previousLabel} → ${statusLabel}`
+        : statusLabel;
       const detailText = [
+        readableValue(entry.event),
         entry.reasonCode ? `${translateText("Reason code:")} ${translateText(readableValue(entry.reasonCode))}` : null,
-        `${translateText("Actor:")} ${translateText(actorLabel)}`,
+        displayAdminId(entry.actorId) ? `${translateText("Actor:")} ${displayAdminId(entry.actorId)}` : null,
       ].filter(Boolean).join(" · ");
       return {
-        id: entry.id,
-        title: `${fromLabel} → ${toLabel}`,
-        time: formatQuestDate(entry.changedAt),
-        detail: detailText,
+        id: `${entry.event}-${entry.occurredAt}-${index}`,
+        title: transition,
+        time: formatQuestDate(entry.occurredAt),
+        detail: detailText || translateText("Quest State recorded."),
       };
     });
   const timeline = statusTimeline.length
@@ -284,15 +292,17 @@ function QuestDetailContent({
         {detail.disputeCases.map((disputeCase) => (
           <div className="grid gap-2 rounded-lg border border-admin-border bg-admin-soft p-2.5" key={disputeCase.id}>
             <div className="flex items-center justify-between gap-3">
-              <strong>{disputeCase.displayId}</strong>
+              <strong>{disputeCase.displayId || translateText("Dispute Case")}</strong>
               <span>{translateText(readableValue(disputeCase.status.replace("DISPUTE_CASE_", "")))}</span>
             </div>
-            <small className="text-admin-muted">{translateText("Opened")}: {formatQuestDate(disputeCase.createdAt)}</small>
+            {disputeCase.createdAt ? <small className="text-admin-muted">{translateText("Opened")}: {formatQuestDate(disputeCase.createdAt)}</small> : null}
             <UiButton asChild variant="primary" className="w-full"><Link href={disputeRoutes.detail(disputeCase.id)}>{translateText("Open Dispute Case")}</Link></UiButton>
           </div>
         ))}
       </div>
     </>
+  ) : disputeLookupError ? (
+    <p className="field-error" role="alert">{translateText(disputeLookupError)}</p>
   ) : linkedDisputeId ? (
     <>
       <p>{translateText("A Dispute Case is linked to this Quest.")}</p>
@@ -337,7 +347,7 @@ function QuestDetailContent({
   ) : <p className="audit-note">{translateText("No linked Dispute Case was returned.")}</p>;
 
   const commandButtons = <>
-    {showFullDetailLink ? <UiButton asChild variant="outline"><a href={questRoutes.detail(detail.displayId)}>{translateText("Full Quest detail")}</a></UiButton> : null}
+    {showFullDetailLink ? <UiButton asChild variant="outline"><a href={questRoutes.detail(detail.displayId || detail.id)}>{translateText("Full Quest detail")}</a></UiButton> : null}
     {!hidden && canHideQuest(state) ? <UiButton variant="outline" type="button" onClick={() => onCommand("hide")}>{translateText("Hide Quest")}</UiButton> : null}
     {hidden ? <UiButton variant="outline" type="button" onClick={() => onCommand("restore")}>{translateText("Restore Quest")}</UiButton> : null}
     {!isQuestTerminal(state) ? <UiButton variant="danger" type="button" onClick={() => onCommand("terminate")}>{translateText("Terminate Quest")}</UiButton> : null}
@@ -364,7 +374,7 @@ function QuestDetailContent({
           <Fact label={translateText("Quest Funding Total")}>{formatQuestMoney(fundingTotal)}</Fact>
           <Fact label={translateText("Participant mode")}>{translateText(detail.participation === "GROUP" ? "Team" : "Solo")}</Fact>
           <Fact label={translateText("Candidate mode")}>{translateText(detail.mode === "FIRST_COME_FIRST_SERVED" ? "First come, first served" : "Candidate")}</Fact>
-          <Fact label={translateText("Quest ID")}>{questDisplayIdFor(detail.id, detail.displayId)}</Fact>
+          <Fact label={translateText("Quest ID")}>{detail.displayId || translateText("Not provided by the Admin API")}</Fact>
           {!recordLayout ? <div className={adminRecordFact}>
             <span>{translateText("Hirer")}</span>
             <strong>{questMemberName(detail.hirer)}</strong>
@@ -404,8 +414,10 @@ function QuestDetailContent({
         </div> : null}
       </Section>
 
-      <Section title="Hirer attachments" count={detail.images.length} variant={sectionVariant}>
-        {detail.images.length ? (
+      <Section title="Hirer attachments" count={detail.images?.length ?? 0} variant={sectionVariant}>
+        {detail.images === undefined ? (
+          <p className="audit-note">{translateText("Hirer attachments are not available.")}</p>
+        ) : detail.images.length ? (
           <div className="related-list">
             {detail.images.map((image) => (
               <a
@@ -418,7 +430,7 @@ function QuestDetailContent({
                 <Image className="h-[54px] w-[72px] shrink-0 rounded-lg object-cover max-[500px]:h-12 max-[500px]:w-[60px]" src={image.url} alt={`${translateText("Hirer attachment")} ${image.position + 1}`} height={54} loading="lazy" unoptimized width={72} />
                 <span>
                   <strong>{translateText("Hirer attachment")} {image.position + 1}</strong>
-                  <small>{image.fileId} · {translateText("Link expires")} {formatQuestDate(image.urlExpiresAt)}</small>
+                  <small>{displayAdminId(image.fileId) ?? translateText("Attachment")} · {translateText("Link expires")} {formatQuestDate(image.urlExpiresAt)}</small>
                 </span>
                 <span>{translateText("Open")}</span>
               </a>
@@ -437,7 +449,7 @@ function QuestDetailContent({
           </div>
           <div className="change-meta">
             <div><span>{translateText("Status")}</span><strong>{translateText(pendingHirerChange.requestStatus)}</strong></div>
-            <div><span>{translateText("Requested by")}</span><strong>{pendingHirerChange.requestedByUserId === detail.hirer.id ? `${questMemberName(detail.hirer)} · ${translateText("Hirer")}` : pendingHirerChange.requestedByUserId ?? translateText("Hirer not provided.")}</strong></div>
+            <div><span>{translateText("Requested by")}</span><strong>{pendingHirerChange.requestedByUserId === detail.hirer.id ? `${questMemberName(detail.hirer)} · ${translateText("Hirer")}` : translateText("Member")}</strong></div>
             <div><span>{translateText("Requested at")}</span><strong>{formatQuestDate(pendingHirerChange.createdAt)}</strong></div>
             <div><span>{translateText("Expires at")}</span><strong>{formatQuestDate(pendingHirerChange.expiresAt)}</strong></div>
           </div>
@@ -462,7 +474,7 @@ function QuestDetailContent({
                   const worker = detail.assignments.find((assignment) => assignment.worker.id === response.workerId)?.worker;
                   return (
                     <div className="response-row" key={response.workerId}>
-                      <span><strong>{worker ? questMemberName(worker) : response.workerId}</strong><small>{response.reason ?? translateText("No response reason")}</small></span>
+                      <span><strong>{worker ? questMemberName(worker) : translateText("Member")}</strong><small>{response.reason ?? translateText("No response reason")}</small></span>
                       <span className="response-status">{response.decision ? translateText(response.decision) : translateText("Pending")}</span>
                     </div>
                   );
@@ -628,6 +640,7 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
   const [detail, setDetail] = useState<QuestDetailView>(initialData.detail);
   const [finance, setFinance] = useState<QuestFinanceView | null>(initialData.finance);
   const [linkedDisputeId, setLinkedDisputeId] = useState<string | null>(initialData.linkedDisputeId);
+  const [disputeLookupError, setDisputeLookupError] = useState<string | null>(initialData.disputeLookupError ?? null);
   const [command, setCommand] = useState<QuestCommand | null>(null);
   const [commandError, setCommandError] = useState<string | null>(null);
   const [disputeError, setDisputeError] = useState<string | null>(null);
@@ -647,6 +660,7 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
     setDetail(persistedDetail);
     setFinance(initialData.finance);
     setLinkedDisputeId(initialData.linkedDisputeId);
+    setDisputeLookupError(initialData.disputeLookupError ?? null);
     setDisputeError(null);
   }, [initialData, dataSource]);
 
@@ -660,7 +674,7 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
   }
 
   async function openDispute(workerId: string) {
-    if (detail.disputeCases.length || linkedDisputeId || openDisputeMutation.isPending || detail.state !== "QUEST_FAILED") return;
+    if (linkedDisputeId || disputeLookupError || openDisputeMutation.isPending || detail.state !== "QUEST_FAILED") return;
     if (!detail.assignments.some((assignment) => assignment.worker.id === workerId)) return;
     const worker = detail.assignments.find((assignment) => assignment.worker.id === workerId)?.worker;
     if (!worker || !window.confirm(`Open a Dispute Case for ${questMemberName(worker)}?`)) return;
@@ -701,13 +715,13 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
     }
   }
 
-  const receipt = actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Quest" resourceId={detail.displayId || detail.id} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {translateText(actionReceipt.reason)}</p>} /> : null;
-  const content = <><QuestDetailContent detail={detail} finance={finance} linkedDisputeId={linkedDisputeId} onCommand={openCommand} onOpenDispute={openDispute} disputePending={openDisputeMutation.isPending} disputeError={disputeError} showFullDetailLink={presentation === "drawer"} recordLayout={presentation === "page"} />{receipt}</>;
+  const receipt = actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Quest" resourceId={detail.displayId} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {translateText(actionReceipt.reason)}</p>} /> : null;
+  const content = <><QuestDetailContent detail={detail} finance={finance} linkedDisputeId={linkedDisputeId} disputeLookupError={disputeLookupError} onCommand={openCommand} onOpenDispute={openDispute} disputePending={openDisputeMutation.isPending} disputeError={disputeError} showFullDetailLink={presentation === "drawer"} recordLayout={presentation === "page"} />{receipt}</>;
 
   if (presentation === "drawer") {
     return (
       <>
-        <AdminDrawer ariaLabel={translateText("Close Quest detail")} title={detail.title} titleId="quest-drawer-title" subtitle={`${translateText("Quest")} ${questDisplayIdFor(detail.id, detail.displayId)} · ${translateText("Quest detail drawer")}`} className="quest-drawer" openerAttribute="data-quest-drawer-trigger" openerValue={questId} escapeDisabled={Boolean(command)} onClose={closeDrawer}>
+        <AdminDrawer ariaLabel={translateText("Close Quest detail")} title={detail.title} titleId="quest-drawer-title" subtitle={<>{translateText("Quest")} {detail.displayId || "—"} · {translateText("Quest detail drawer")}</>} className="quest-drawer" openerAttribute="data-quest-drawer-trigger" openerValue={questId} escapeDisabled={Boolean(command)} onClose={closeDrawer}>
           {content}
         </AdminDrawer>
         {command ? <QuestCommandDialog detail={detail} command={command} dataSource={dataSource} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandMutation.isPending} /> : null}
@@ -720,7 +734,7 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
       <AdminRecordHeader
         breadcrumbHref={questRoutes.list()}
         breadcrumbLabel={translateText("Quests")}
-        recordId={questDisplayIdFor(detail.id, detail.displayId)}
+        recordId={detail.displayId || translateText("Not provided by the Admin API")}
         title={detail.title}
         subtitle={`${translateText(detail.participation === "GROUP" ? "Team" : "Solo")} · ${translateText("created")} ${formatQuestDate(detail.createdAt)}`}
         actions={<UiButton asChild size="lg" variant="outline"><Link href={questRoutes.list()}>{translateText("Back to Quests")}</Link></UiButton>}

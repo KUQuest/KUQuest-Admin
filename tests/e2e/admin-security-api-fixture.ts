@@ -167,7 +167,6 @@ const server = Bun.serve({
         createdAt: "2026-09-15T00:00:00.000Z",
       }], nextCursor: null } });
     }
-
     if (url.pathname === "/api/v1/admin/activity-log") {
       const action = url.searchParams.get("action");
       if (action === "ACTIVITY_ERROR") {

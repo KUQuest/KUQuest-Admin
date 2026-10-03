@@ -21,9 +21,7 @@ test("renders a Payout from the live Admin API", async ({ page }) => {
   await expect(
     page.getByRole("heading", { level: 1, name: "Payouts" }),
   ).toBeVisible();
-  const payoutLink = page
-    .getByRole("link", { name: /Open Payout PAY-[0-9]+/i })
-    .first();
+  const payoutLink = page.locator("a[data-payout-drawer-trigger]").first();
   await expect(payoutLink).toBeVisible();
 
   const detailHref = await payoutLink.getAttribute("href");
@@ -33,7 +31,8 @@ test("renders a Payout from the live Admin API", async ({ page }) => {
 
   await payoutLink.click();
   await expect(page).toHaveURL(new RegExp(`/payout/${payoutId}$`));
-  const drawer = page.getByRole("dialog", { name: payoutId });
+  await expect(page.getByText(payoutId, { exact: true })).toHaveCount(0);
+  const drawer = page.getByRole("dialog", { name: /^Payout for / });
   await expect(drawer).toBeVisible();
   await expect(drawer.getByText("Payout amounts")).toBeVisible();
   await expect(
@@ -42,7 +41,8 @@ test("renders a Payout from the live Admin API", async ({ page }) => {
 
   await drawer.getByRole("link", { name: "Full Payout detail" }).click();
   await expect(
-    page.getByRole("heading", { level: 1, name: payoutId }),
+    page.getByRole("heading", { level: 1, name: /^Payout for / }),
   ).toBeVisible();
-  await expect(page.getByRole("dialog", { name: payoutId })).toHaveCount(0);
+  await expect(page.getByText(payoutId, { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: /^Payout for / })).toHaveCount(0);
 });

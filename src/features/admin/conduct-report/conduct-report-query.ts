@@ -48,10 +48,13 @@ export function useConductReportDecisionMutation() {
         version: result.resourceVersion,
         decisionLabel: options.outcome === "CONDUCT_REPORT_UPHELD"
           ? "Violation confirmed"
-          : choice === "insufficient-evidence"
+          : options.outcome === "CONDUCT_REPORT_DISMISSED"
+            && options.decisionReasonCode === "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE"
             ? "Insufficient evidence"
             : "No violation",
-        decisionReasonCode: null,
+        decisionReasonCode: options.outcome === "CONDUCT_REPORT_DISMISSED"
+          ? options.decisionReasonCode
+          : null,
         decisionReason: options.reason,
       };
     },

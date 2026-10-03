@@ -53,7 +53,6 @@ export const financeRoutes = {
 export const topUpRoutes = {
   list: () => "/top-ups",
 } as const;
-
 export const activityRoutes = {
   list: () => "/activity",
 } as const;

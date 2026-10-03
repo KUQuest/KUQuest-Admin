@@ -122,7 +122,6 @@ test.describe("Admin session and private-route boundary", () => {
     await expect(drawer).toHaveCount(0);
     await expect(row).toBeFocused();
   });
-
   test("covers Activity Log mobile, language, theme, export, and pagination behavior", async ({ context, page }) => {
     await addAdminCookie(context, "valid-session");
     await page.setViewportSize({ width: 390, height: 844 });

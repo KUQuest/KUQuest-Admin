@@ -129,6 +129,10 @@ export function useReportDetailQuery(reportId: string, initialModel?: ReportCase
   });
 
   useEffect(() => {
+    if (initialModel) queryClient.setQueryData(queryKey, initialModel);
+  }, [initialModel, queryClient, queryKey]);
+
+  useEffect(() => {
     const updateRecord = (event: Event) => {
       const model = (event as CustomEvent<ReportCaseModel>).detail;
       if (!model || model.id !== reportId) return;

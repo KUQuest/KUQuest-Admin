@@ -14,11 +14,11 @@ test.describe("Payout App Router route family", () => {
 
     await expect(page.getByRole("heading", { level: 1, name: "Payouts" })).toBeVisible();
     await expect(page.getByRole("tab", { name: /Needs review/ })).toHaveAttribute("aria-selected", "true");
-    await expect(page.getByRole("link", { name: "Open Payout PAY-9637" })).toBeVisible();
+    await expect(page.locator('a[data-payout-drawer-trigger="PAY-9637"]')).toBeVisible();
     await expect(page.getByText("PAY-9638", { exact: true })).toHaveCount(0);
     await page.reload();
     await expect(page.getByRole("heading", { level: 1, name: "Payouts" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Open Payout PAY-9637" })).toBeVisible();
+    await expect(page.locator('a[data-payout-drawer-trigger="PAY-9637"]')).toBeVisible();
     expect(payoutApiRequests).toBe(0);
   });
 
@@ -35,7 +35,8 @@ test.describe("Payout App Router route family", () => {
     await signIn(page);
     await page.goto("/payout/PAY-9637");
 
-    await expect(page.getByRole("heading", { level: 1, name: "PAY-9637" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Payout for Mali S." })).toBeVisible();
+    await expect(page.getByText("PAY-9637", { exact: true }).first()).toBeVisible();
     await expect(page.locator(".payout-page-alert")).toContainText("Payout approval is required");
     await expect(page.locator(".payout-record-status-bar")).toBeVisible();
     await expect(page.locator('.payout-detail-page .payout-detail-stack section[data-slot="card"]')).toHaveCount(5);
@@ -61,14 +62,14 @@ test.describe("Payout App Router route family", () => {
     await expect(page.getByText("Full Payout detail", { exact: true })).toHaveCount(0);
 
     await page.reload();
-    await expect(page.getByRole("heading", { level: 1, name: "PAY-9637" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Payout for Mali S." })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Payout timing" })).toHaveCount(0);
 
     await page.goto("/payout");
-    const trigger = page.getByRole("link", { name: "Open Payout PAY-9637" });
+    const trigger = page.locator('a[data-payout-drawer-trigger="PAY-9637"]');
     await trigger.click();
     await expect(page).toHaveURL(/\/payout\/PAY-9637$/);
-    const drawer = page.getByRole("dialog", { name: "PAY-9637" });
+    const drawer = page.getByRole("dialog", { name: "Payout for Mali S." });
     await expect(drawer).toBeVisible();
     const drawerBox = await drawer.boundingBox();
     const viewport = page.viewportSize();
@@ -97,26 +98,26 @@ test.describe("Payout App Router route family", () => {
 
     await closeButton.click();
     await expect(page).toHaveURL(/\/payout$/);
-    await expect(page.getByRole("dialog", { name: "PAY-9637" })).toHaveCount(0);
+    await expect(page.getByRole("dialog", { name: "Payout for Mali S." })).toHaveCount(0);
     await expect(trigger).toBeFocused();
 
     await trigger.click();
-    await expect(page.getByRole("dialog", { name: "PAY-9637" })).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Payout for Mali S." })).toBeVisible();
     await page.locator(".scrim").click({ position: { x: 10, y: 10 } });
     await expect(page).toHaveURL(/\/payout$/);
     await expect(trigger).toBeFocused();
 
     await trigger.click();
-    await expect(page.getByRole("dialog", { name: "PAY-9637" })).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Payout for Mali S." })).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(page).toHaveURL(/\/payout$/);
     await expect(trigger).toBeFocused();
 
     await trigger.click();
-    await expect(page.getByRole("dialog", { name: "PAY-9637" })).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Payout for Mali S." })).toBeVisible();
     await page.goBack();
     await expect(page).toHaveURL(/\/payout$/);
-    await expect(page.getByRole("dialog", { name: "PAY-9637" })).toHaveCount(0);
+    await expect(page.getByRole("dialog", { name: "Payout for Mali S." })).toHaveCount(0);
     await expect(trigger).toBeFocused();
   });
 
@@ -124,22 +125,22 @@ test.describe("Payout App Router route family", () => {
     await signIn(page);
     await page.goto("/payout");
 
-    await page.getByRole("link", { name: "Open Payout PAY-9637" }).click();
-    const drawer = page.getByRole("dialog", { name: "PAY-9637" });
+    await page.locator('a[data-payout-drawer-trigger="PAY-9637"]').click();
+    const drawer = page.getByRole("dialog", { name: "Payout for Mali S." });
     await expect(drawer).toBeVisible();
 
     await drawer.getByRole("link", { name: "Full Payout detail" }).click();
     await expect(page).toHaveURL(/\/payout\/PAY-9637$/);
-    await expect(page.getByRole("heading", { level: 1, name: "PAY-9637" })).toBeVisible();
-    await expect(page.getByRole("dialog", { name: "PAY-9637" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 1, name: "Payout for Mali S." })).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Payout for Mali S." })).toHaveCount(0);
   });
 
   test("keeps Payout decision actions in the scrollable detail drawer", async ({ page }) => {
     await signIn(page);
     await page.goto("/payout");
-    await page.getByRole("link", { name: "Open Payout PAY-9637" }).click();
+    await page.locator('a[data-payout-drawer-trigger="PAY-9637"]').click();
 
-    const drawer = page.getByRole("dialog", { name: "PAY-9637" });
+    const drawer = page.getByRole("dialog", { name: "Payout for Mali S." });
     const decisionSection = drawer.getByRole("heading", { name: "Admin decision" }).locator("xpath=ancestor::section[1]");
     const approveButton = decisionSection.getByRole("button", { name: "Approve Payout" });
     const rejectButton = decisionSection.getByRole("button", { name: "Reject Payout" });
@@ -155,13 +156,17 @@ test.describe("Payout App Router route family", () => {
     await expect(rejectButton).toBeInViewport();
   });
 
-  test("does not require a reason code to approve a Payout", async ({ page }) => {
+  test("requires a reason code to approve a Payout", async ({ page }) => {
     await signIn(page);
     await page.goto("/payout/PAY-9637");
 
     await page.getByRole("button", { name: "Approve Payout" }).click();
     const approval = page.getByRole("dialog", { name: "Approve Payout" });
-    await expect(approval.getByLabel(/Reason code/)).toHaveCount(0);
+    const reasonCode = approval.getByLabel(/Reason code/);
+    await expect(approval.getByRole("button", { name: "Approve Payout" })).toBeDisabled();
+    await reasonCode.selectOption("PAYOUT_POLICY_REVIEW");
+    await approval.getByLabel(/Reason for this decision/).fill("Review confirmed the payout destination.");
+    await expect(reasonCode).toHaveValue("PAYOUT_POLICY_REVIEW");
     await expect(approval.getByRole("button", { name: "Approve Payout" })).toBeEnabled();
     await approval.getByRole("button", { name: "Approve Payout" }).click();
     await expect(page).toHaveURL(/\/payout\/PAY-9637$/);
@@ -188,11 +193,14 @@ test.describe("Payout App Router route family", () => {
   test("keeps a Mock Payout approval in the drawer and board", async ({ page }) => {
     await signIn(page);
     await page.goto("/payout");
-    await page.getByRole("link", { name: "Open Payout PAY-9700" }).click();
+    await page.locator('a[data-payout-drawer-trigger="PAY-9700"]').click();
 
-    const drawer = page.getByRole("dialog", { name: "PAY-9700" });
+    const drawer = page.getByRole("dialog", { name: /^Payout for / });
     await drawer.getByRole("button", { name: "Approve Payout" }).click();
-    await page.getByRole("dialog", { name: "Approve Payout" }).getByRole("button", { name: "Approve Payout" }).click();
+    const approval = page.getByRole("dialog", { name: "Approve Payout" });
+    await approval.getByLabel(/Reason code/).selectOption("PAYOUT_POLICY_REVIEW");
+    await approval.getByLabel(/Reason for this decision/).fill("Review confirmed the payout destination.");
+    await approval.getByRole("button", { name: "Approve Payout" }).click();
     await expect(drawer.getByRole("heading", { name: "Transfer submitted" })).toBeVisible();
     await expect(drawer.locator(".admin-action-receipt")).toHaveCSS("display", "block");
     await expect(drawer.getByRole("link", { name: "Full Payout detail" })).toBeVisible();
@@ -253,8 +261,8 @@ test.describe("Payout App Router route family", () => {
     await page.goto("/payout");
     await page.getByRole("tab", { name: /^All/ }).click();
     await page.getByPlaceholder("Search Payouts…").fill("PAY-9703");
-    await page.getByRole("link", { name: "Open Payout PAY-9703" }).click();
-    const payoutTiming = page.getByRole("dialog", { name: "PAY-9703" }).getByRole("heading", { name: "Payout timing" }).locator("xpath=ancestor::section[1]");
+    await page.locator('a[data-payout-drawer-trigger="PAY-9703"]').click();
+    const payoutTiming = page.getByRole("dialog", { name: /^Payout for / }).getByRole("heading", { name: "Payout timing" }).locator("xpath=ancestor::section[1]");
     for (const status of ["Needs review", "Sent", "Processing", "Paid"]) {
       await expect(payoutTiming.getByText(status, { exact: true }).first()).toBeVisible();
     }

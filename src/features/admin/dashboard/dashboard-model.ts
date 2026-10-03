@@ -16,6 +16,7 @@ import {
   isReportCasePending,
   walletStatusFor,
 } from "../domain/rulebook";
+import { displayAdminId } from "../display-admin-id";
 
 type LegacyRecord = Record<string, unknown>;
 
@@ -83,6 +84,10 @@ function records(data: PersistedAdminData, collection: string): LegacyRecord[] {
 function text(record: LegacyRecord, key: string): string {
   const value = record[key];
   return typeof value === "string" || typeof value === "number" ? String(value) : "";
+}
+
+function displayRecordId(record: LegacyRecord): string {
+  return displayAdminId(text(record, "displayId"), text(record, "id")) ?? "";
 }
 
 function number(record: LegacyRecord, key: string): number {
@@ -208,7 +213,7 @@ export function dashboardModel(
       id: text(record, "id"),
       view: "disputes",
       title: `Resolve ${text(record, "disputeType")} dispute`,
-      detail: `${text(record, "id")} · ${text(record, "title")}`,
+      detail: `${displayRecordId(record) ? `${displayRecordId(record)} · ` : ""}${text(record, "title")}`,
       metric: `฿${formatAmount(number(record, "amount"))} held`,
       age: formatAdminTimestamp(text(record, "disputeDate"), "Asia/Bangkok"),
       tone: tone(record, "danger"),
@@ -218,7 +223,7 @@ export function dashboardModel(
       id: text(record, "id"),
       view: "reports",
       title: "New user report",
-      detail: `${text(record, "id")} · ${text(record, "reportedUserName")}`,
+      detail: `${displayRecordId(record) ? `${displayRecordId(record)} · ` : ""}${text(record, "reportedUserName")}`,
       metric: "Active report",
       age: formatAdminTimestamp(text(record, "reportedAt"), "Asia/Bangkok"),
       tone: tone(record, "warning"),

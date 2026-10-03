@@ -13,12 +13,6 @@ export type AdminDisputeCase = {
   [key: string]: unknown;
 };
 
-export type AdminDisputeListPage = {
-  items: Array<AdminDisputeCase & { createdAt: string }>;
-  nextCursor: string | null;
-  totalCount: number;
-  countsByStatus: Record<DisputeCaseStatus, number>;
-};
 
 export type AdminDisputeCaseDetail = AdminDisputeCase & {
   filerUserId: string;
@@ -49,13 +43,6 @@ export type AdminReportCase = {
   questId?: string;
   version?: number;
   [key: string]: unknown;
-};
-
-export type AdminReportListPage = {
-  items: Array<AdminReportCase & { createdAt: string }>;
-  nextCursor: string | null;
-  totalCount: number;
-  countsByStatus: Record<ReportCaseStatus | ConductReportStatus, number>;
 };
 
 export type AdminEvidenceMessage = {

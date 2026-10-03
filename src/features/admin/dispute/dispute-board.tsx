@@ -144,14 +144,7 @@ export function DisputeCaseBoard({ initialData }: { initialData?: DisputeCasePag
   const currentPage = Math.min(pageNumber, Math.max(totalPages, 1));
   const visibleModels = pageRows(models, currentPage, pageSize);
   const { start: pageStart, end: pageEnd } = pageRange(models.length, currentPage, pageSize);
-  const tabCounts = page.countsByStatus
-    ? new Map<DisputeCaseTab, number>([
-        ["open", page.countsByStatus.DISPUTE_CASE_PENDING],
-        ["all", Object.values(page.countsByStatus).reduce((total, count) => total + count, 0)],
-        ["dismissed", page.countsByStatus.DISPUTE_CASE_DISMISSED],
-        ["resolved", page.countsByStatus.DISPUTE_CASE_RESOLVED],
-      ])
-    : countBoardTabMatches(page.items, tabs, tabMatches);
+  const tabCounts = countBoardTabMatches(page.items, tabs, tabMatches);
 
   return (
     <main id="dispute-main" className="admin-route-page dispute-case-board" tabIndex={-1}>
@@ -176,7 +169,7 @@ export function DisputeCaseBoard({ initialData }: { initialData?: DisputeCasePag
                 const worker = partyMemberForRole(model, "Worker");
                 return <TableRow className="focus-visible:outline-2 focus-visible:outline-admin-accent focus-visible:outline-offset-[-2px]" key={model.id} data-dispute-id={model.id} data-dispute-display-id={model.displayId} data-dispute-status={model.status} tabIndex={0} aria-label={`${translateText("Open Dispute Case")} ${model.displayId}`} onClick={() => openDrawer(model.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openDrawer(model.id); } }}>
                   <TableCell><button className="min-h-8 border-0 bg-transparent p-0 text-left text-sm text-admin-text hover:text-admin-accent hover:underline hover:underline-offset-4" type="button" data-dispute-id={model.id} onClick={(event) => { event.stopPropagation(); openDrawer(model.id); }}><strong>{model.displayId}</strong></button></TableCell>
-                  <TableCell><Link className="text-admin-accent no-underline hover:underline hover:underline-offset-4" href={model.questHref ?? questRoutes.list()} onClick={(event) => event.stopPropagation()}>{model.questTitle}</Link>{model.questDisplayId && <small>{model.questDisplayId}</small>}</TableCell>
+                  <TableCell><Link className="text-admin-accent no-underline hover:underline hover:underline-offset-4" href={model.questHref ?? questRoutes.list()} onClick={(event) => event.stopPropagation()}>{model.questTitle}</Link><small>{model.questDisplayId || "—"}</small></TableCell>
                   <TableCell><MemberCell {...hirer} /></TableCell>
                   <TableCell><MemberCell {...worker} /></TableCell>
                   <TableCell>{translateText(model.category)}</TableCell>

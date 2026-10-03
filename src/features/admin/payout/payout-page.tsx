@@ -20,6 +20,7 @@ import { adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSec
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { Button as UiButton, Card, CardHeader, type ButtonSize } from "../../../components/ui";
 import { payoutRoutes } from "../admin-routes";
+import { displayAdminId } from "../display-admin-id";
 import { payoutStatusLabel } from "../domain/rulebook";
 import {
   formatPayoutDate,
@@ -68,7 +69,7 @@ function payoutReasonLabel(value: string): string {
     PAYOUT_RISK_REVIEW: "Risk review",
     PAYOUT_INVALID_DESTINATION: "Invalid destination",
   };
-  return reasonLabels[value] ?? value;
+  return reasonLabels[value] ?? readableValue(value);
 }
 
 function Section({ title, children, className }: { title: string; children: ReactNode; className?: string }) {
@@ -178,10 +179,10 @@ function PayoutDetailContent({
   const payoutSummarySection = <Section title={translateText("Payout summary")} className={`payout-summary-section ${fullDetail ? "col-span-full" : ""} ${fullSectionClass}`}>
     <div className={`${adminRecordFacts} payout-detail-facts`}>
       <Fact label={translateText("Status")}><Badge status={detail.status} /></Fact>
-      <Fact label={translateText("Payout record")}>{detail.id}</Fact>
+      <Fact label={translateText("Payout record")}>{displayAdminId(detail.displayId, detail.id) ?? "—"}</Fact>
       <Fact label={translateText("Student")}>{detail.student.name}</Fact>
       <Fact label={translateText("Student email")}>{detail.student.email}</Fact>
-      <Fact label={translateText("Quote")}>{detail.quoteId}</Fact>
+      <Fact label={translateText("Quote")}>{displayAdminId(detail.quoteId) ?? "—"}</Fact>
       <Fact label={translateText(fullDetail ? "Occurred at" : "Payout version")}>
         {fullDetail ? formatPayoutDate(detail.createdAt) : detail.version}
       </Fact>
@@ -218,7 +219,7 @@ function PayoutDetailContent({
           <div className="flex items-start justify-between gap-3"><span className="text-[13px] leading-[1.4] text-admin-muted">{translateText("Occurred at")}</span><strong className="min-w-0 flex-1 text-right text-sm leading-[1.4] tabular-nums [overflow-wrap:anywhere]">{formatPayoutDate(entry.occurredAt)}</strong></div>
           {entry.fromStatus ? <div className="flex items-start justify-between gap-3"><span className="text-[13px] leading-[1.4] text-admin-muted">{translateText("Previous status")}</span><strong className="min-w-0 flex-1 text-right text-sm leading-[1.4] tabular-nums [overflow-wrap:anywhere]">{translateText(payoutStatusLabel(entry.fromStatus))}</strong></div> : null}
           {entry.reason ? <div className="flex items-start justify-between gap-3"><span className="text-[13px] leading-[1.4] text-admin-muted">{translateText("Reason")}</span><strong className="min-w-0 flex-1 text-right text-sm leading-[1.4] tabular-nums [overflow-wrap:anywhere]">{translateText(payoutReasonLabel(entry.reason))}</strong></div> : null}
-          {entry.actorAdminId ? <div className="flex items-start justify-between gap-3"><span className="text-[13px] leading-[1.4] text-admin-muted">{translateText("Admin")}</span><strong className="min-w-0 flex-1 text-right text-sm leading-[1.4] tabular-nums [overflow-wrap:anywhere]">{entry.actorAdminId}</strong></div> : null}
+          {displayAdminId(entry.actorAdminId) ? <div className="flex items-start justify-between gap-3"><span className="text-[13px] leading-[1.4] text-admin-muted">{translateText("Admin")}</span><strong className="min-w-0 flex-1 text-right text-sm leading-[1.4] tabular-nums [overflow-wrap:anywhere]">{displayAdminId(entry.actorAdminId)}</strong></div> : null}
         </div>
       )) : <p className="audit-note">{translateText("No Payout history is available.")}</p>}
     </div>
@@ -233,7 +234,7 @@ function PayoutDetailContent({
     {detail.previousPayouts.length ? <div className="grid overflow-hidden rounded-lg border border-admin-border">
       {detail.previousPayouts.map((payout) => (
         <div className="flex min-h-12 items-center justify-between gap-3 border-b border-admin-border p-2.5 last:border-b-0 max-[420px]:items-end max-[420px]:flex-col max-[420px]:gap-1" key={payout.id}>
-          <span><strong className="block text-sm leading-[1.4]">{payout.id}</strong><small className="mt-0.5 block text-[13px] leading-[1.4] text-admin-muted">{formatPayoutDate(payout.createdAt)}</small></span>
+          <span><strong className="block text-sm leading-[1.4]">{displayAdminId(payout.displayId, payout.id) ?? translateText("Payout")}</strong><small className="mt-0.5 block text-[13px] leading-[1.4] text-admin-muted">{formatPayoutDate(payout.createdAt)}</small></span>
           <span className="flex shrink-0 items-center gap-2 max-[420px]:items-end max-[420px]:flex-col max-[420px]:gap-1"><strong className="block text-sm leading-[1.4] tabular-nums">{formatPayoutMoney(payout.principalSatang)}</strong><Badge status={payout.status} /></span>
         </div>
       ))}
@@ -252,7 +253,7 @@ function PayoutDetailContent({
       <AdminActionReceipt
         action={actionReceipt.action}
         resource="Payout"
-        resourceId={detail.id}
+        resourceId={displayAdminId(detail.displayId, detail.id)}
         status={actionReceipt.status}
         occurredAt={actionReceipt.occurredAt}
         mock
@@ -390,7 +391,7 @@ export function AdminPayoutDetailPage({
     try {
       await reconcileMutation.mutateAsync({ payoutId: detail.id, dataSource });
       if (dataSource === "api") router.refresh();
-      setReconcileNotice(`${translateText("Payout")} ${detail.id} ${translateText("was reconciled with the Provider.")}`);
+      setReconcileNotice(`${translateText("Payout for")} ${detail.student.name} ${translateText("was reconciled with the Provider.")}`);
     } catch (error) {
       setReconcileError(errorMessage(error));
     }
@@ -415,7 +416,7 @@ export function AdminPayoutDetailPage({
       <>
         <AdminDrawer
           ariaLabel={translateText("Close Payout detail")}
-          title={detail.id}
+          title={`${translateText("Payout for")} ${detail.student.name}`}
           titleId="payout-drawer-title"
           subtitle={translateText("Payout detail drawer")}
           className="payout-drawer [&>.drawer-body]:grid [&>.drawer-body]:content-start [&>.drawer-body]:gap-3.5 [&>.drawer-body]:!pb-7"
@@ -438,8 +439,8 @@ export function AdminPayoutDetailPage({
       <AdminRecordHeader
         breadcrumbHref={payoutRoutes.list()}
         breadcrumbLabel={translateText("Payouts")}
-        recordId={detail.id}
-        title={detail.id}
+        recordId={displayAdminId(detail.displayId, detail.id)}
+        title={`${translateText("Payout for")} ${detail.student.name}`}
         subtitle={`${translateText("Payout for")} ${detail.student.name} · ${translateText("created")} ${formatPayoutDate(detail.createdAt)}`}
         actions={<UiButton asChild size="lg" variant="outline"><Link href={payoutRoutes.list()}>{translateText("Back to Payouts")}</Link></UiButton>}
       />

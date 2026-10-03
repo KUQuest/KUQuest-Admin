@@ -57,9 +57,9 @@ describe("Mock Quest command state", () => {
     expect(next.state).toBe("QUEST_CANCELLED");
     expect(next.timeline).toHaveLength(current.timeline.length + 1);
     expect(next.timeline.at(-1)).toMatchObject({
-      fromState: "QUEST_OPEN",
-      toState: "QUEST_CANCELLED",
-      actor: { type: "ADMIN", id: "mock-admin" },
+      event: "QUEST_STATUS_CHANGED",
+      status: "QUEST_CANCELLED",
+      actorId: "mock-admin",
       reasonCode: "SAFETY_REVIEW",
     });
     expect(next.adminActions[0]).toMatchObject({ action: "QUEST_TERMINATED", reasonCode: "SAFETY_REVIEW" });

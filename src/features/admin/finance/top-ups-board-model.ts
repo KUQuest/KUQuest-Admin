@@ -1,4 +1,5 @@
 import type { AdminApiTopUpStatus, AdminTopUpListItem } from "../api/admin-api";
+import { displayAdminId } from "../display-admin-id";
 import { dateSortValue } from "../data/board-sorting";
 
 export const TOP_UP_BOARD_TABS = [
@@ -17,6 +18,10 @@ export type TopUpStatusTimelineEntry = {
   toStatus: AdminApiTopUpStatus;
   occurredAt: string | null;
 };
+
+export function topUpDisplayId(topUp: Pick<AdminTopUpListItem, "displayId">): string {
+  return displayAdminId(topUp.displayId) ?? "Top-up";
+}
 
 export function topUpStatusTimeline(topUp: AdminTopUpListItem): TopUpStatusTimelineEntry[] {
   const initialStatus: TopUpStatusTimelineEntry = {
@@ -46,7 +51,7 @@ export function searchTopUps(topUps: AdminTopUpListItem[], query: string): Admin
   if (!value) return topUps;
 
   return topUps.filter((topUp) => [
-    topUp.displayId,
+    topUpDisplayId(topUp),
     topUp.id,
     topUp.member.firstName,
     topUp.member.lastName,
@@ -58,7 +63,7 @@ export function searchTopUps(topUps: AdminTopUpListItem[], query: string): Admin
 
 export function topUpSortValue(topUp: AdminTopUpListItem, key: TopUpSortKey): number | string | null {
   switch (key) {
-    case "id": return topUp.displayId;
+    case "id": return topUpDisplayId(topUp);
     case "member": return `${topUp.member.firstName} ${topUp.member.lastName}`.trim();
     case "creditAmount": return topUp.creditAmountSatang;
     case "paymentTotal": return topUp.paymentTotalSatang;

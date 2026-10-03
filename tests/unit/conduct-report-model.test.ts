@@ -57,7 +57,7 @@ describe("Conduct Report model", () => {
     expect(model).toMatchObject({
       id: "CND-42",
       status: "CONDUCT_REPORT_PENDING",
-      statusLabel: "Open",
+      statusLabel: "Pending",
       badgeClass: "status-conduct-pending",
       reason: "Out of scope work",
       reasonCode: "CONDUCT_OUT_OF_SCOPE",

@@ -199,12 +199,7 @@ export const thaiTranslations: Record<string, string> = {
   "Quest States": "สถานะ Quest",
   "Quest status": "สถานะ Quest",
   "Current distribution across Quests.": "การกระจายสถานะของ Quest ในปัจจุบัน",
-  "Operational totals": "ยอดรวมการดำเนินงาน",
-  "Additional marketplace totals.": "ยอดรวมเพิ่มเติมของระบบตลาดกลาง",
-  "Hidden Quests": "Quest ที่ถูกซ่อน",
-  "All Dispute Cases": "Dispute Case ทั้งหมด",
-  "Frozen Wallets": "Wallet ที่ถูกแช่แข็ง",
-  "Suspended Wallets": "Wallet ที่ถูกระงับ",
+
   "Count by Member status.": "จำนวนตามสถานะ Member",
   "Member status": "สถานะ Member",
   "Count by Wallet status.": "จำนวนตามสถานะ Wallet",
@@ -217,7 +212,7 @@ export const thaiTranslations: Record<string, string> = {
   Clear: "ไม่มีรายการค้าง",
   "Needs review": "รอตรวจสอบ",
   Balanced: "สมดุล",
-  Unbalanced: "ไม่สมดุล",
+
   Draft: "ฉบับร่าง",
   Assigned: "มอบหมายแล้ว",
   "In progress": "กำลังดำเนินการ",
@@ -519,7 +514,7 @@ export const thaiTranslations: Record<string, string> = {
   "Fixture search is active. Results use local demo records.": "กำลังใช้การค้นหาข้อมูลตัวอย่าง ผลลัพธ์มาจากข้อมูลสาธิตในเครื่อง",
   "Full Payout detail": "รายละเอียด Payout ฉบับเต็ม",
   "From date": "จากวันที่",
-  "Enter dates as DD/MM/YYYY.": "กรอกวันที่ในรูปแบบ DD/MM/YYYY",
+
   "Internal Admin notes": "โน้ตภายในของ Admin",
   "Loading Conduct Report…": "กำลังโหลด Conduct Report…",
   "Loading Dispute Case…": "กำลังโหลด Dispute Case…",

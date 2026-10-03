@@ -4,7 +4,6 @@ export type AdminMemberRestrictionStatus =
   | "RED_FLAG"
   | "TEMPORARY_BAN"
   | "PERMANENT_BAN";
-
 export type AdminMemberWalletSummary = {
   id: string;
   walletStatus: WalletStatus;
@@ -90,7 +89,7 @@ export type AdminMemberFinance = {
 
 export type AdminWallet = {
   id: string;
-  displayId: string;
+  displayId?: string | null;
   userId: string;
   /**
    * The Wallet API normally embeds its Member. Keep this nullable at the

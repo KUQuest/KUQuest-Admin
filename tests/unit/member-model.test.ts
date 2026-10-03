@@ -385,7 +385,6 @@ describe("Member route model", () => {
       "Permanent ban",
     )).toThrow("This violation is exempt. No penalty can be selected.");
   });
-
   it("removes one active Mock penalty and keeps a reversal history entry", () => {
     const data = mockData();
     data.collections.users.push({

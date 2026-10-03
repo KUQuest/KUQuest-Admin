@@ -7,8 +7,8 @@ import type {
   AdminConductReportCommandResult,
   AdminApiRequestOptions,
   AdminEvidence,
+  AdminPage,
   AdminReportCase,
-  AdminReportListPage,
   AdminReportCommandResult,
   AdminReportEvidenceRequestOptions,
   AdminReportListQuery,
@@ -21,8 +21,8 @@ export function createAdminReportApi() {
     listReports(
       query: AdminReportListQuery = {},
       options: AdminApiRequestOptions = {},
-    ): Promise<AdminReportListPage> {
-      return apiRequest<AdminReportListPage>(
+    ): Promise<AdminPage<AdminReportCase>> {
+      return apiRequest<AdminPage<AdminReportCase>>(
         `/api/v1/admin/reports${queryString(query)}`,
         { cache: "no-store", ...options },
       );
@@ -65,11 +65,13 @@ export function createAdminReportApi() {
             "Idempotency-Key": options.idempotencyKey,
             "If-Match": String(options.expectedVersion),
           },
-          body: {
-            outcome: options.outcome,
-            reason: options.reason,
-            reasonCode: options.reasonCode,
-          },
+          body: options.outcome === "CONDUCT_REPORT_DISMISSED"
+            ? {
+                outcome: options.outcome,
+                reason: options.reason,
+                decisionReasonCode: options.decisionReasonCode,
+              }
+            : { outcome: options.outcome, reason: options.reason },
         },
       );
     },

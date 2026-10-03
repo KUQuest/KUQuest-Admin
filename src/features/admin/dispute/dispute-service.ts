@@ -2,6 +2,7 @@ import type { AdminDisputeCase, AdminDisputeListQuery, AdminQuestDetail, AdminQu
 import { adminApiProvider } from "../api/admin-provider";
 import { adminApiRequestOptions } from "../api/admin-api-request-options";
 import type { DisputeCaseStatus } from "../domain/rulebook";
+import { displayAdminId } from "../display-admin-id";
 import {
   disputeCaseModelFromRecord,
   type DisputeCaseModel,
@@ -37,6 +38,12 @@ function record(value: unknown): Record<string, unknown> | null {
 
 function stringValue(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+function timestampValue(value: unknown): number {
+  const valueText = stringValue(value);
+  if (!valueText) return 0;
+  const timestamp = Date.parse(valueText);
+  return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
 function memberName(member: { firstName: string; lastName: string }): string {
@@ -78,7 +85,7 @@ async function enrichDisputeCases(
 
     const source = dispute as unknown as Record<string, unknown>;
     const filerId = stringValue(source.filerUserId) ?? stringValue(source.filerId);
-    const workers = quest.assignments.map((assignment) => assignment.worker);
+    const workers = (quest.assignments ?? []).map((assignment) => assignment.worker);
     const filerIsHirer = filerId === quest.hirer.id;
     const filerWorker = workers.find((worker) => worker.id === filerId);
     const filer = filerIsHirer ? quest.hirer : filerWorker;
@@ -102,7 +109,7 @@ async function enrichDisputeCases(
         ...existingQuest,
         id: quest.id,
         title: quest.title,
-        displayId: quest.displayId,
+        displayId: displayAdminId(quest.displayId, quest.id),
         questStatus: quest.questStatus,
         hirerId: quest.hirer.id,
         hirer: quest.hirer,
@@ -148,14 +155,13 @@ export async function loadDisputeCasePageData(
   }
   const records = pages
     .flatMap(({ page }) => page.items)
-    .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt));
+    .filter((dispute) => disputeCaseModelFromRecord(dispute, "api") !== null)
+    .sort((left, right) => timestampValue(record(right)?.createdAt) - timestampValue(record(left)?.createdAt));
   const items = await enrichDisputeCases(records, cookieHeader);
-  const countsByStatus = pages[0]?.page.countsByStatus;
   return {
     source: "api",
     items: disputeCaseModels(items),
     nextCursor: Object.keys(nextCursors).length ? JSON.stringify(nextCursors) : null,
-    ...(countsByStatus ? { countsByStatus } : {}),
   };
 }
 
@@ -167,7 +173,8 @@ export async function loadDisputeCaseDetailFromApi(
     disputeId,
     adminApiRequestOptions(cookieHeader),
   );
+  const model = disputeCaseModelFromRecord(dispute, "api");
+  if (model?.id !== disputeId) return null;
   const [enriched] = await enrichDisputeCases([dispute], cookieHeader);
-  const model = disputeCaseModelFromRecord(enriched, "api");
-  return model?.id === disputeId ? model : null;
+  return disputeCaseModelFromRecord(enriched, "api");
 }

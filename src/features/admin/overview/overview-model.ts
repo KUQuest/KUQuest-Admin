@@ -28,6 +28,7 @@ import {
 } from "../domain/rulebook";
 import type { PersistedAdminData } from "../data/admin-records";
 import type { DashboardActivity } from "../dashboard/dashboard-model";
+import { displayAdminId } from "../display-admin-id";
 import { recordText, timestampValue } from "./overview-values";
 
 export {
@@ -504,12 +505,12 @@ function mockQueueRecordCreatedAt(queueId: OverviewQueueId, record: unknown): st
 }
 
 function mockQueueRecordTitle(queueId: OverviewQueueId, record: unknown): string {
-  const title = firstRecordText(record, ["title", "category", "reasonCode"]);
+  const title = displayAdminId(firstRecordText(record, ["title", "category", "reasonCode"]));
   switch (queueId) {
     case "payouts":
-      return `Payout approval · ${title || firstRecordText(record, ["id"])}`;
+      return `Payout approval · ${title || "Payout review"}`;
     case "disputes":
-      return `Dispute Case · ${title || firstRecordText(record, ["id"])}`;
+      return `Dispute Case · ${title || "Dispute review"}`;
     case "reports":
       return `Report Case · ${title || "Report review"}`;
     case "conductReports":
@@ -756,9 +757,6 @@ export function overviewModelFromMockData(
   const payouts = payoutRecords
     .filter((record) => payoutStatusFor(record.payoutStatus ?? record.status) === "PENDING_ADMIN_APPROVAL")
     .length;
-  const inFlightPayouts = payoutRecords
-    .filter((record) => ["SUBMITTED_TO_PROVIDER", "PROVIDER_PENDING"].includes(payoutStatusFor(record.payoutStatus ?? record.status)))
-    .length;
   const questCounts = new Map<QuestState, number>(QUEST_STATES.map((status) => [status, 0]));
   let hiddenQuestCount = 0;
   data.collections.quests.forEach((record) => {
@@ -774,10 +772,10 @@ export function overviewModelFromMockData(
   const oldestReport = oldestPendingMockQueueCase(data, "reports", reportCases ?? 0, loadedAt);
   const oldestConductReport = oldestPendingMockQueueCase(data, "conductReports", conductReports ?? 0, loadedAt);
   const queues = [
-    queue({ id: "payouts", title: "Payout Approvals", count: payouts, source: "Local fallback", status: "Needs review", oldest: oldestPayout?.id ?? "Oldest record not provided", oldestId: oldestPayout?.id, waiting: oldestPayout?.age ?? "—", tone: "overview-queue-status-review", priority: oldestPayout?.priority ?? "Not provided", slaState: oldestPayout?.slaState ?? "Not provided", assignedAdmin: oldestPayout?.assignedAdmin ?? "Not assigned" }),
-    queue({ id: "disputes", title: "Dispute Cases", count: disputes, source: "Local fallback", status: disputes ? "Open" : "Clear", oldest: oldestDispute?.id ?? "Oldest record not provided", oldestId: oldestDispute?.id, waiting: oldestDispute?.age ?? "—", tone: disputes ? "overview-queue-status-overdue" : "", priority: disputes ? oldestDispute?.priority ?? "Not provided" : "Not provided", slaState: disputes ? oldestDispute?.slaState ?? "Not provided" : "Not provided", assignedAdmin: disputes ? oldestDispute?.assignedAdmin ?? "Not assigned" : "Not assigned" }),
-    queue({ id: "reports", title: "Report Cases", count: reportCases, source: "Local fallback", status: reportCases ? "Open" : "Clear", oldest: oldestReport?.id ?? "Oldest record not provided", oldestId: oldestReport?.id, waiting: oldestReport?.age ?? "—", tone: reportCases ? "overview-queue-status-review" : "", priority: reportCases ? oldestReport?.priority ?? "Not provided" : "Not provided", slaState: reportCases ? oldestReport?.slaState ?? "Not provided" : "Not provided", assignedAdmin: reportCases ? oldestReport?.assignedAdmin ?? "Not assigned" : "Not assigned" }),
-    queue({ id: "conductReports", title: "Conduct Reports", count: conductReports, source: "Local fallback", status: conductReports ? "Open" : "Clear", oldest: oldestConductReport?.id ?? "Oldest record not provided", oldestId: oldestConductReport?.id, waiting: oldestConductReport?.age ?? "—", tone: conductReports ? "overview-queue-status-review" : "", priority: conductReports ? oldestConductReport?.priority ?? "Not provided" : "Not provided", slaState: conductReports ? oldestConductReport?.slaState ?? "Not provided" : "Not provided", assignedAdmin: conductReports ? oldestConductReport?.assignedAdmin ?? "Not assigned" : "Not assigned" }),
+    queue({ id: "payouts", title: "Payout Approvals", count: payouts, source: "Local fallback", status: "Needs review", oldest: oldestPayout?.title ?? "Oldest record not provided", oldestId: oldestPayout?.id, waiting: oldestPayout?.age ?? "—", tone: "overview-queue-status-review", priority: oldestPayout?.priority ?? "Not provided", slaState: oldestPayout?.slaState ?? "Not provided", assignedAdmin: oldestPayout?.assignedAdmin ?? "Not assigned" }),
+    queue({ id: "disputes", title: "Dispute Cases", count: disputes, source: "Local fallback", status: disputes ? "Open" : "Clear", oldest: oldestDispute?.title ?? "Oldest record not provided", oldestId: oldestDispute?.id, waiting: oldestDispute?.age ?? "—", tone: disputes ? "overview-queue-status-overdue" : "", priority: disputes ? oldestDispute?.priority ?? "Not provided" : "Not provided", slaState: disputes ? oldestDispute?.slaState ?? "Not provided" : "Not provided", assignedAdmin: disputes ? oldestDispute?.assignedAdmin ?? "Not assigned" : "Not assigned" }),
+    queue({ id: "reports", title: "Report Cases", count: reportCases, source: "Local fallback", status: reportCases ? "Open" : "Clear", oldest: oldestReport?.title ?? "Oldest record not provided", oldestId: oldestReport?.id, waiting: oldestReport?.age ?? "—", tone: reportCases ? "overview-queue-status-review" : "", priority: reportCases ? oldestReport?.priority ?? "Not provided" : "Not provided", slaState: reportCases ? oldestReport?.slaState ?? "Not provided" : "Not provided", assignedAdmin: reportCases ? oldestReport?.assignedAdmin ?? "Not assigned" : "Not assigned" }),
+    queue({ id: "conductReports", title: "Conduct Reports", count: conductReports, source: "Local fallback", status: conductReports ? "Open" : "Clear", oldest: oldestConductReport?.title ?? "Oldest record not provided", oldestId: oldestConductReport?.id, waiting: oldestConductReport?.age ?? "—", tone: conductReports ? "overview-queue-status-review" : "", priority: conductReports ? oldestConductReport?.priority ?? "Not provided" : "Not provided", slaState: conductReports ? oldestConductReport?.slaState ?? "Not provided" : "Not provided", assignedAdmin: conductReports ? oldestConductReport?.assignedAdmin ?? "Not assigned" : "Not assigned" }),
   ];
   const walletCounts = data.collections.users.reduce(
     (counts, record) => {
@@ -814,7 +812,7 @@ export function overviewModelFromMockData(
     walletStatusSource: "Local fallback",
     frozenWallets: walletCounts.frozen,
     suspendedWallets: walletCounts.suspended,
-    inFlightPayouts,
+    inFlightPayouts: null,
     activity: activity.slice(0, 10),
   };
 }

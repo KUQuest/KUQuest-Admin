@@ -12,6 +12,7 @@ import {
   type ReportCaseStatus,
 } from "../domain/rulebook";
 import { statusBadgeClass } from "../status-badge";
+import { displayAdminId } from "../display-admin-id";
 
 export type ReportCaseRecord = {
   id: string;
@@ -105,11 +106,6 @@ function firstText(...values: unknown[]): string | null {
   return null;
 }
 
-function readableId(value: unknown): string | null {
-  const result = text(value);
-  if (!result || /^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i.test(result)) return null;
-  return result;
-}
 
 function personName(value: unknown): string | null {
   const record = asRecord(value);
@@ -191,6 +187,15 @@ export function reportCaseDecisionFor(
   return reportCaseDecisionMetadata[choice].command;
 }
 
+export function reportCaseReasonCodeFor(
+  choice: ReportCaseDecisionChoice,
+  value: string,
+): string {
+  const normalized = value.trim().toUpperCase();
+  if (/^[A-Z][A-Z0-9_.-]{0,99}$/.test(normalized)) return normalized;
+  return choice === "no-violation" ? "POLICY_REVIEW" : "SAFETY_REVIEW";
+}
+
 export function reportCaseDecisionDetailsForCommand(command: ReportCaseCommand): {
   choice: ReportCaseDecisionChoice;
   command: ReportCaseCommand;
@@ -229,7 +234,7 @@ export function reportCaseModelFromRecord(value: unknown): ReportCaseModel | nul
   const reportedMemberName = firstText(
     record.reportedMemberName,
     record.reportedUserName,
-    personName(reportedMember),
+    personName(record.reportedMember),
     "Member not provided",
   ) as string;
   const reporterName = firstText(
@@ -241,11 +246,11 @@ export function reportCaseModelFromRecord(value: unknown): ReportCaseModel | nul
   const quest = asRecord(record.quest) ?? asRecord(record.relatedQuest);
   const relatedQuestId = firstText(record.questId, record.relatedQuestId, quest?.id);
   const relatedQuestTitle = firstText(record.questTitle, record.relatedQuestTitle, quest?.title);
-  const relatedQuestDisplayId = firstText(
-    readableId(record.questDisplayId),
-    readableId(record.relatedQuestDisplayId),
-    readableId(quest?.displayId),
-    readableId(relatedQuestId),
+  const relatedQuestDisplayId = displayAdminId(
+    record.questDisplayId,
+    record.relatedQuestDisplayId,
+    quest?.displayId,
+    relatedQuestId,
   );
   const evidenceRefs = evidenceReferences(record.evidenceReferences ?? record.evidenceRefs);
   const evidenceLabel = text(record.evidence);
@@ -268,7 +273,7 @@ export function reportCaseModelFromRecord(value: unknown): ReportCaseModel | nul
 
   return {
     id,
-    displayId: readableId(record.displayId) ?? readableId(id) ?? "Report Case",
+    displayId: displayAdminId(record.displayId, id) ?? "",
     status,
     statusLabel: reportCaseStatusLabel(status),
     badgeClass: statusBadgeClass(status),
@@ -277,23 +282,11 @@ export function reportCaseModelFromRecord(value: unknown): ReportCaseModel | nul
     reportType: reportReasonLabel(firstText(record.category, record.reportType, record.reason, reporterEntry?.reason)) ?? "Message content",
     source: "Message",
     reportedMemberId,
-    reportedMemberDisplayId: firstText(
-      readableId(record.reportedMemberStudentId),
-      readableId(reportedMember?.studentId),
-      readableId(record.reportedMemberId),
-      readableId(record.reportedUserId),
-    ),
+    reportedMemberDisplayId: displayAdminId(record.reportedMemberDisplayId, reportedMember?.displayId),
     reportedMemberName,
     reportedMemberHref: reportedMemberId ? memberRoutes.detail(reportedMemberId) : null,
     reporterId,
-    reporterDisplayId: firstText(
-      readableId(record.reporterStudentId),
-      readableId(record.submittedByStudentId),
-      readableId(reporter?.studentId),
-      readableId(record.reporterId),
-      readableId(record.submittedByMemberId),
-      readableId(record.submittedByUserId),
-    ),
+    reporterDisplayId: displayAdminId(record.reporterDisplayId, reporter?.displayId),
     reporterName,
     reporterHref: reporterId ? memberRoutes.detail(reporterId) : null,
     relatedQuestId,

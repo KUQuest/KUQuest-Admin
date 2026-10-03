@@ -12,6 +12,7 @@ import {
   type QuestState,
 } from "../domain/rulebook";
 import { statusBadgeClass } from "../status-badge";
+import { displayAdminId } from "../display-admin-id";
 
 export type ConductReportRecord = {
   id: string;
@@ -113,6 +114,12 @@ export type ConductReportModel = {
 
 export const CONDUCT_REPORT_UPDATED_EVENT = "kuquest:conduct-report-updated";
 
+export function conductReportDecisionReasonCodeFor(
+  choice: ConductReportDecisionChoice,
+): ConductReportDecisionReasonCode | null {
+  return conductReportDecisionMetadata[choice].reasonCode;
+}
+
 function asRecord(value: unknown): ConductReportRecord | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value as ConductReportRecord
@@ -133,11 +140,6 @@ function firstText(...values: unknown[]): string | null {
   return null;
 }
 
-function readableId(value: unknown): string | null {
-  const result = text(value);
-  if (!result || /^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i.test(result)) return null;
-  return result;
-}
 
 function personName(value: unknown): string | null {
   const record = asRecord(value);
@@ -250,7 +252,7 @@ export function conductReportModelFromRecord(value: unknown): ConductReportModel
   const reportedMemberName = firstText(
     record.reportedMemberName,
     record.reportedUserName,
-    personName(reportedMember),
+    personName(record.reportedMember),
     "Member not provided",
   ) as string;
   const reporterName = firstText(
@@ -269,12 +271,7 @@ export function conductReportModelFromRecord(value: unknown): ConductReportModel
   const reason = conductReportReasonLabel(reasonValue);
   const quest = asRecord(record.quest) ?? asRecord(record.relatedQuest);
   const questId = firstText(record.questId, record.relatedQuestId, quest?.id);
-  const questDisplayId = firstText(
-    readableId(record.questDisplayId),
-    readableId(record.relatedQuestDisplayId),
-    readableId(quest?.displayId),
-    readableId(questId),
-  );
+  const questDisplayId = displayAdminId(record.questDisplayId, quest?.displayId, questId);
   const questTitle = firstText(
     record.relatedQuestTitle,
     record.questTitle,
@@ -296,7 +293,7 @@ export function conductReportModelFromRecord(value: unknown): ConductReportModel
 
   return {
     id,
-    displayId: readableId(record.displayId) ?? readableId(id) ?? "Conduct Report",
+    displayId: displayAdminId(record.displayId, id) ?? "",
     status,
     statusLabel: conductReportStatusLabel(status),
     badgeClass: statusBadgeClass(status),
@@ -334,23 +331,11 @@ export function conductReportModelFromRecord(value: unknown): ConductReportModel
         }
       : null,
     reportedMemberId,
-    reportedMemberDisplayId: firstText(
-      readableId(record.reportedMemberStudentId),
-      readableId(reportedMember?.studentId),
-      readableId(record.reportedMemberId),
-      readableId(record.reportedUserId),
-    ),
+    reportedMemberDisplayId: displayAdminId(record.reportedMemberDisplayId, reportedMember?.displayId),
     reportedMemberName,
     reportedMemberHref: reportedMemberId ? memberRoutes.detail(reportedMemberId) : null,
     reporterId,
-    reporterDisplayId: firstText(
-      readableId(record.reporterStudentId),
-      readableId(record.submittedByStudentId),
-      readableId(filer?.studentId),
-      readableId(record.reporterId),
-      readableId(record.submittedByMemberId),
-      readableId(record.submittedByUserId),
-    ),
+    reporterDisplayId: displayAdminId(record.reporterDisplayId, filer?.displayId),
     reporterName,
     reporterHref: reporterId ? memberRoutes.detail(reporterId) : null,
     moderationHistory: moderationHistoryFromRecord(record),

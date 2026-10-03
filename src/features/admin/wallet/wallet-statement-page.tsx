@@ -6,6 +6,7 @@ import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminPageHeader } from "../../../components/admin/admin-page-header";
 import { Button, Card, CardHeader } from "../../../components/ui";
 import { memberRoutes } from "../admin-routes";
+import { displayAdminId } from "../display-admin-id";
 import { adminRecordFact, adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
 import { walletStatusLabel, type WalletStatus } from "../domain/rulebook";
 import {
@@ -29,11 +30,11 @@ export function AdminWalletStatementPage({ data }: { data: WalletStatementPageDa
     <AdminPageHeader kicker={translateText("Member Wallet")} title={translateText("Wallet Statement")} description={`${wallet.memberName} · ${wallet.email}`} actions={wallet.memberAvailable ? <Button asChild variant="outline"><Link href={memberRoutes.detail(wallet.memberId)}>{translateText("Back to Member")}</Link></Button> : null} />
     <Card as="section" className="overflow-hidden" aria-label={translateText("Wallet Statement")}>
       <Card as="section" className="wallet-record">
-        <div className="drawer-title"><span className="att-icon neutral">W</span><div><h2>{wallet.memberName}</h2><p>{wallet.email} · {wallet.studentId || translateText("Student ID not provided")}</p></div></div>
+        <div className="drawer-title"><span className="att-icon neutral">W</span><div><h2>{wallet.memberName}</h2><p>{wallet.email} · {displayAdminId(wallet.studentId) ?? translateText("Student ID not provided")}</p></div></div>
         <div className={adminRecordFacts}>
           <div className={adminRecordFact}><span>{translateText("Wallet Status")}</span><strong><WalletStatusBadge status={wallet.status} /></strong></div>
           <div className={adminRecordFact}><span>{translateText("Current Wallet Balance")}</span><strong>{formatWalletMoney(wallet.currentBalanceSatang)}</strong></div>
-          <div className={adminRecordFact}><span>{translateText("Wallet record")}</span><strong>{wallet.displayId}</strong></div>
+          {displayAdminId(wallet.displayId) ? <div className={adminRecordFact}><span>{translateText("Wallet record")}</span><strong>{displayAdminId(wallet.displayId)}</strong></div> : null}
           <div className={adminRecordFact}><span>{translateText("Latest Wallet Transaction Date")}</span><strong>{formatWalletDate(wallet.latestTransactionAt)}</strong></div>
         </div>
       </Card>

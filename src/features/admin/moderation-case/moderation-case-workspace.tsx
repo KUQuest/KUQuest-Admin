@@ -7,6 +7,7 @@ import type {
 } from "./moderation-case-context";
 import { hasModerationHistory } from "./moderation-case-context";
 import { questStateLabel } from "../domain/rulebook";
+import { displayAdminId } from "../display-admin-id";
 import { Card, CardHeader } from "../../../components/ui/card";
 import { AdminOverviewMeta } from "../../../components/admin/admin-overview-meta";
 import {
@@ -28,10 +29,6 @@ type Person = {
   role: string;
 };
 
-function readableId(value: string | null | undefined): string | null {
-  if (!value || /^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i.test(value)) return null;
-  return value;
-}
 
 export type ModerationCaseWorkspaceProps = {
   kind: ModerationCaseKind;
@@ -98,14 +95,14 @@ export function ModerationHistoryPanel({
     <Card as="section" className={panelClass}>
       <CardHeader flush className={adminRecordHeader}>
         {compact ? <h3 className={adminRecordHeading}>{translateText("Member moderation context")}</h3> : <h2 className={adminRecordHeading}>{translateText("Member moderation context")}</h2>}
-        {!hasModerationHistory(summary) && <span className={adminRecordCount}>{translateText("Partial")}</span>}
+        <span className={adminRecordCount}>{hasModerationHistory(summary) ? translateText("Available") : translateText("Partial")}</span>
       </CardHeader>
       {member && (
         <div className={`${adminRecordGroup} moderation-case-history-member`}>
           <span>{translateText(memberLabel)}</span>
           <p>
             <strong className="font-semibold">{!compact && member.href && member.id ? <Link href={member.href}>{member.name}</Link> : member.name}</strong>
-            {(member.displayId ?? readableId(member.id)) && <small className="text-xs text-admin-muted"> · {member.displayId ?? readableId(member.id)}</small>}
+            {displayAdminId(member.displayId) && <small className="text-xs text-admin-muted"> · {displayAdminId(member.displayId)}</small>}
           </p>
         </div>
       )}
@@ -150,6 +147,8 @@ function CaseContextPanel({
 }: Omit<ModerationCaseWorkspaceProps, "children">) {
   const fallback = translateText("Not provided.");
   const panelClass = `${adminRecordSection} moderation-case-context`;
+  const relatedRecordDisplayId = displayAdminId(relatedRecord?.displayId);
+  const relatedRecordTitle = relatedRecord?.title ?? relatedRecordDisplayId ?? fallback;
 
   return (
     <Card as="section" className={panelClass} data-moderation-case-workspace="context">
@@ -173,8 +172,8 @@ function CaseContextPanel({
       </div>
       {(reportedMember || reporter) && (
         <div className={`${adminRecordPartyGrid} moderation-case-parties`}>
-          {reportedMember && <div><span>{translateText(reportedMember.role)}</span><strong><PersonLink person={reportedMember} interactive={!compact} /></strong><small>{reportedMember.displayId ?? readableId(reportedMember.id) ?? "—"}</small></div>}
-          {reporter && <div><span>{translateText(reporter.role)}</span><strong><PersonLink person={reporter} interactive={!compact} /></strong><small>{reporter.displayId ?? readableId(reporter.id) ?? "—"}</small></div>}
+          {reportedMember && <div><span>{translateText(reportedMember.role)}</span><strong><PersonLink person={reportedMember} interactive={!compact} /></strong></div>}
+          {reporter && <div><span>{translateText(reporter.role)}</span><strong><PersonLink person={reporter} interactive={!compact} /></strong></div>}
         </div>
       )}
       {showRelatedRecord && relatedRecord && (
@@ -182,9 +181,9 @@ function CaseContextPanel({
           <span>{translateText(kind === "Dispute Case" ? "Related Quest and settlement" : "Related Quest")}</span>
           <p>
             {relatedRecord.href && relatedRecord.id && !compact
-              ? <Link href={relatedRecord.href}>{relatedRecord.title ?? relatedRecord.id}</Link>
-              : <strong>{relatedRecord.title ?? relatedRecord.id ?? fallback}</strong>}
-            {readableId(relatedRecord.id) && <small> · {readableId(relatedRecord.id)}</small>}
+              ? <Link href={relatedRecord.href}>{relatedRecordTitle}</Link>
+              : <strong>{relatedRecordTitle}</strong>}
+            {relatedRecordDisplayId && <small> · {relatedRecordDisplayId}</small>}
           </p>
           {relatedRecord.state && <p>{translateText("Quest State")}: {translateText(questStateLabel(relatedRecord.state))}</p>}
         </div>

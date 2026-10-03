@@ -127,6 +127,7 @@ describe("Payout route model", () => {
     const current = payoutDetail();
     const previous = payout({
       id: "PAY-9636",
+      displayId: "PAY-9636",
       payoutStatus: "SUCCEEDED",
       createdAt: "2026-09-13T01:00:00.000Z",
     });
@@ -140,6 +141,7 @@ describe("Payout route model", () => {
 
     expect(detail.previousPayouts).toEqual([{
       id: "PAY-9636",
+      displayId: "PAY-9636",
       status: "SUCCEEDED",
       principalSatang: 420000,
       createdAt: "2026-09-13T01:00:00.000Z",

@@ -8,14 +8,15 @@ import {
 } from "./admin-api-transport";
 import type {
   AdminApiRequestOptions,
+  AdminDisputeCase,
   AdminDisputeCaseDetail,
   AdminDisputeEvidence,
   AdminDisputeEvidenceRequest,
-  AdminDisputeListPage,
   AdminDisputeListQuery,
   AdminDisputeOpenCommand,
   AdminDisputeOpenResult,
   AdminDisputeResolutionResult,
+  AdminPage,
   DisputeResolution,
 } from "./admin-api";
 
@@ -24,8 +25,8 @@ export function createAdminDisputeApi() {
     listDisputes(
       query: AdminDisputeListQuery = {},
       options: AdminApiRequestOptions = {},
-    ): Promise<AdminDisputeListPage> {
-      return apiRequest<AdminDisputeListPage>(
+    ): Promise<AdminPage<AdminDisputeCase>> {
+      return apiRequest<AdminPage<AdminDisputeCase>>(
         `/api/v1/admin/disputes${queryString(query)}`,
         { cache: "no-store", ...options },
       );

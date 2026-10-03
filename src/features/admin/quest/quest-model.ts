@@ -8,6 +8,7 @@ import type {
 import { pageCount, pageRows, type BoardPageSize } from "@/lib/board-pagination";
 import { formatAdminTimestamp } from "../date-format";
 import { questStateFor, questStateLabel, type QuestState } from "../domain/rulebook";
+import { displayAdminId } from "../display-admin-id";
 
 export type QuestMemberView = {
   id: string;
@@ -19,11 +20,10 @@ export type QuestMemberView = {
 };
 
 export type QuestTimelineView = {
-  id: string;
-  fromState: AdminApiQuestStatus;
-  toState: AdminApiQuestStatus;
-  changedAt: string;
-  actor: { type: "MEMBER" | "ADMIN"; id: string } | { type: "SYSTEM"; id: null };
+  event: string;
+  status: AdminApiQuestStatus | null;
+  occurredAt: string;
+  actorId: string | null;
   reasonCode: string | null;
 };
 
@@ -142,8 +142,8 @@ export type QuestDetailView = {
     displayId: string;
     questId: string;
     status: string;
-    createdAt: string;
-    updatedAt: string;
+    createdAt: string | null;
+    updatedAt?: string | null;
   }>;
   adminActions: Array<{
     id: string;
@@ -241,24 +241,16 @@ export type QuestBoardRow = {
   version: number;
 };
 
-/**
- * Keep the canonical Quest identifier for API calls, but use a short stable
- * label when the Admin API does not provide a human-readable display ID.
- */
+/** Keep the canonical Quest UUID out of screen text when no display ID exists. */
 export function questDisplayIdFor(id: string, displayId?: string | null): string {
-  const preferred = displayId?.trim();
-  if (preferred) return preferred;
-
-  const canonical = id.trim();
-  if (canonical.length <= 24) return canonical;
-  return `${canonical.slice(0, 8)}…${canonical.slice(-4)}`;
+  return displayAdminId(displayId, id) ?? "";
 }
 
 function questMemberViewFromApi(member: AdminQuestMember): QuestMemberView {
   return {
     id: member.id,
     memberId: member.id,
-    studentId: member.studentId,
+    studentId: member.studentId ?? null,
     firstName: member.firstName,
     lastName: member.lastName,
     email: member.email,
@@ -329,7 +321,7 @@ export function questDetailViewFromApi(detail: AdminQuestDetail): QuestDetailVie
       startedAt: assignment.startedAt,
       createdAt: assignment.createdAt,
     })),
-    images: detail.images.map((image) => ({
+    images: (detail.images ?? []).map((image) => ({
       imageId: image.imageId,
       fileId: image.fileId,
       position: image.position,
@@ -393,15 +385,14 @@ export function questDetailViewFromApi(detail: AdminQuestDetail): QuestDetailVie
       reasonCode: action.reasonCode,
       createdAt: action.createdAt,
     })),
-    timeline: detail.timeline.map((entry) => ({
-      id: entry.id,
-      fromState: entry.fromState,
-      toState: entry.toState,
-      changedAt: entry.changedAt,
-      actor: { ...entry.actor },
+    timeline: (detail.timeline ?? []).map((entry) => ({
+      event: entry.event,
+      status: entry.status,
+      occurredAt: entry.occurredAt,
+      actorId: entry.actorId,
       reasonCode: entry.reasonCode,
     })),
-    disputeCases: detail.disputeCases.map((disputeCase) => ({ ...disputeCase })),
+    disputeCases: [],
   };
 
   return view;

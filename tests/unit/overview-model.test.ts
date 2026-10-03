@@ -83,10 +83,10 @@ describe("Overview model", () => {
       { status: "Perm Ban", count: 1 },
     ]);
     expect(model.walletStatusCounts).toEqual([
-      { status: "ACTIVE", count: 10 },
-      { status: "FROZEN", count: 2 },
-      { status: "SUSPENDED", count: 1 },
-      { status: "CLOSED", count: 1 },
+      { status: "ACTIVE", count: null },
+      { status: "FROZEN", count: 1 },
+      { status: "SUSPENDED", count: 2 },
+      { status: "CLOSED", count: null },
     ]);
     expect(model.queues.map((row) => [row.title, row.count, row.source])).toEqual([
       ["Payout Approvals", 3, "Admin API"],
@@ -271,7 +271,7 @@ describe("Overview model", () => {
     expect(model.totalWorkLeft).toBeNull();
     expect(model.memberSignals).toBeNull();
     expect(model.memberStatusSource).toBe("Unavailable");
-    expect(model.walletStatusSource).toBe("Unavailable");
+    expect(model.walletStatusSource).toBe("Admin API");
     expect(model.queues.map((row) => [row.title, row.count, row.source, row.status])).toEqual([
       ["Payout Approvals", 3, "Admin API", "Open"],
       ["Dispute Cases", 2, "Admin API", "Open"],
@@ -321,9 +321,9 @@ describe("Overview search results", () => {
     }, "ari");
 
     expect(results.map((result) => [result.kind, result.id, result.href])).toEqual([
-      ["member", "68000000", "/member/68000000"],
+      ["member", "6612345678", "/member/68000000"],
       ["payout", "PAY-9637", "/payout/PAY-9637"],
-      ["wallet", "WLT-68000000", "/wallet"],
+      ["wallet", "", "/wallet"],
     ]);
     expect(overviewSearchResultsFromMockData({
       version: "test",
@@ -359,7 +359,78 @@ describe("Overview search results", () => {
       payouts: [],
     }, "6612345678");
 
-    expect(results[0]).toMatchObject({ kind: "member", id: "68000000", href: "/member/68000000" });
+    expect(results[0]).toMatchObject({ kind: "member", id: "6612345678", href: "/member/68000000" });
+  });
+
+  it("shows status and sorts categories before newest records", () => {
+    const results = overviewSearchResultsFromMockData({
+      version: "test",
+      collections: {
+        users: [
+          { id: "68000001", title: "Ari Old", memberStatus: "Flag", walletStatus: "FROZEN", createdAt: "2026-09-10T09:00:00.000Z" },
+          { id: "68000002", title: "Ari New", memberStatus: "Normal", walletStatus: "ACTIVE", createdAt: "2026-09-16T09:00:00.000Z" },
+        ],
+        quests: [
+          { id: "QST-OLD", title: "Ari Quest Old", status: "QUEST_OPEN", createdAt: "2026-09-11T09:00:00.000Z" },
+          { id: "QST-NEW", title: "Ari Quest New", status: "QUEST_FAILED", createdAt: "2026-09-15T09:00:00.000Z" },
+        ],
+        payouts: [
+          { id: "PAY-OLD", title: "Ari Old", status: "FAILED", createdAt: "2026-09-12T09:00:00.000Z" },
+          { id: "PAY-NEW", title: "Ari New", status: "SUCCEEDED", createdAt: "2026-09-14T09:00:00.000Z" },
+        ],
+        disputes: [],
+        reports: [],
+      },
+    }, "Ari");
+
+    expect(results.map((result) => `${result.kind}:${result.id}`)).toEqual([
+      "member:",
+      "member:",
+      "quest:QST-NEW",
+      "quest:QST-OLD",
+      "payout:PAY-NEW",
+      "payout:PAY-OLD",
+      "wallet:",
+      "wallet:",
+    ]);
+    expect(results.map((result) => result.status)).toEqual([
+      "Normal",
+      "Flag",
+      "Failed",
+      "Open",
+      "Paid",
+      "Failed",
+      "Active",
+      "Frozen",
+    ]);
+  });
+
+  it("does not expose hidden Quests in Mock or API Overview search", () => {
+    const mockResults = overviewSearchResultsFromMockData({
+      version: "test",
+      collections: {
+        users: [],
+        quests: [
+          { id: "QST-VISIBLE", title: "Visible Quest" },
+          { id: "QST-HIDDEN", title: "Hidden Quest", hiddenAt: "2026-09-16T09:00:00.000Z" },
+          { id: "QST-HIDDEN-STATUS", title: "Hidden Status Quest", status: "Hidden" },
+        ],
+        payouts: [],
+        disputes: [],
+        reports: [],
+      },
+    }, "QST");
+    const apiResults = overviewSearchResultsFromApi({
+      quests: [
+        { id: "QST-VISIBLE", title: "Visible Quest" },
+        { id: "QST-HIDDEN", title: "Hidden Quest", hiddenAt: "2026-09-16T09:00:00.000Z" },
+      ],
+      members: [],
+      payouts: [],
+    }, "QST");
+
+    expect(mockResults.map((result) => result.id)).toEqual(["QST-VISIBLE"]);
+    expect(apiResults.map((result) => result.id)).toEqual(["QST-VISIBLE"]);
   });
 
   it("shows readable Search IDs and uses resource IDs for Admin routes", () => {
@@ -412,14 +483,14 @@ describe("Overview search results", () => {
     }, "Ari");
 
     expect(results.map((result) => `${result.kind}:${result.id}`)).toEqual([
-      "member:68000002",
-      "member:68000001",
+      "member:",
+      "member:",
       "quest:QST-NEW",
       "quest:QST-OLD",
       "payout:PAY-NEW",
       "payout:PAY-OLD",
-      "wallet:WLT-68000002",
-      "wallet:WLT-68000001",
+      "wallet:",
+      "wallet:",
     ]);
     expect(results.map((result) => result.status)).toEqual([
       "Normal",

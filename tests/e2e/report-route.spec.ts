@@ -31,6 +31,7 @@ test.describe("Report Case routes", () => {
       "Report overview",
       "Evidence",
       "Related Quest",
+
       "Member moderation context",
       "Report decision",
     ]);
@@ -83,7 +84,7 @@ test.describe("Report Case routes", () => {
     await page.getByRole("button", { name: "Close report" }).first().click();
     const dialog = page.locator("dialog.report-decision-dialog");
     await expect(dialog).toBeVisible();
-    await dialog.getByLabel("Reason for this decision").fill("No policy violation found.");
+    await dialog.getByLabel("Reason for this decision").fill("POLICY_REVIEWED");
     await dialog.getByRole("button", { name: "Confirm decision" }).click();
 
     await expect(dialog).toBeHidden();

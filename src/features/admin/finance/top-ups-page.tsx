@@ -20,6 +20,7 @@ import { formatMoneySatang } from "../member/member-wallet-model";
 import {
   searchTopUps,
   TOP_UP_BOARD_TABS,
+  topUpDisplayId,
   topUpMatchesTab,
   topUpSortValue,
   type TopUpBoardTab,
@@ -129,7 +130,7 @@ function TopUpOperations({ initialData }: { initialData: TopUpPageData }) {
     setReconcileNotice(null);
     try {
       const result = await reconcile.mutateAsync(topUpId);
-      setReconcileNotice(`${translateText("Top-up reconciliation completed for")} ${topUpId} · ${translateText(result.topUp.topUpStatus)}.`);
+      setReconcileNotice(`${translateText("Top-up reconciliation completed for")} ${topUpDisplayId(result.topUp)} · ${translateText(result.topUp.topUpStatus)}.`);
     } catch (mutationError) {
       setReconcileNotice(mutationError instanceof Error ? mutationError.message : "Top-up reconciliation failed.");
     }
@@ -170,14 +171,14 @@ function TopUpOperations({ initialData }: { initialData: TopUpPageData }) {
             <AdminSortableHeader label={translateText("Created")} sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} />
             <th scope="col">{translateText("Action")}</th>
           </tr></thead>
-          <tbody>{visibleRows.map((topUp) => <TableRow className="focus-visible:relative focus-visible:outline-3 focus-visible:outline-admin-accent focus-visible:outline-offset-[-3px]" data-top-up-row={topUp.id} key={topUp.id} tabIndex={0} aria-label={`${translateText("Open Top-up")} ${topUp.displayId}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; openTopUpDrawer(topUp, event.currentTarget); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openTopUpDrawer(topUp, event.currentTarget); } }}>
-            <TableCell><button className="row-record-button" type="button" data-top-up-drawer-trigger={topUp.id} aria-label={`${translateText("Open Top-up")} ${topUp.displayId}`} onClick={(event) => openTopUpDrawer(topUp, event.currentTarget)}>{topUp.displayId}</button><small>{topUp.providerReference ?? translateText("Provider reference not provided")}</small></TableCell>
-            <TableCell><Link className="text-admin-accent no-underline hover:underline hover:underline-offset-4" href={memberRoutes.detail(topUp.userId)}>{`${topUp.member.firstName} ${topUp.member.lastName}`.trim()}</Link><small>{topUp.member.studentId ?? "—"}</small></TableCell>
+          <tbody>{visibleRows.map((topUp) => <TableRow className="focus-visible:relative focus-visible:outline-3 focus-visible:outline-admin-accent focus-visible:outline-offset-[-3px]" data-top-up-row={topUp.id} key={topUp.id} tabIndex={0} aria-label={`${translateText("Open Top-up")} ${topUpDisplayId(topUp)}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; openTopUpDrawer(topUp, event.currentTarget); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openTopUpDrawer(topUp, event.currentTarget); } }}>
+            <TableCell><button className="row-record-button" type="button" data-top-up-drawer-trigger={topUp.id} aria-label={`${translateText("Open Top-up")} ${topUpDisplayId(topUp)}`} onClick={(event) => openTopUpDrawer(topUp, event.currentTarget)}>{topUpDisplayId(topUp)}</button><small>{topUp.providerReference ?? translateText("Provider reference not provided")}</small></TableCell>
+            <TableCell><Link className="text-admin-accent no-underline hover:underline hover:underline-offset-4" href={memberRoutes.detail(topUp.userId)}>{`${topUp.member.firstName} ${topUp.member.lastName}`.trim()}</Link><small>{translateText("Student ID")}: {topUp.member.studentId ?? "—"}</small></TableCell>
             <TableCell className="money">{formatMoneySatang(topUp.creditAmountSatang)}</TableCell>
             <TableCell className="money">{formatMoneySatang(topUp.paymentTotalSatang)}</TableCell>
             <TableCell><span className={`badge ${statusBadgeClass(topUp.topUpStatus)}`}>{translateText(TOP_UP_BOARD_TABS.find((item) => item.id === topUp.topUpStatus)?.label ?? topUp.topUpStatus)}</span></TableCell>
             <TableCell>{formatAdminTimestamp(topUp.createdAt)}</TableCell>
-            <TableCell><Button variant="outline" size="sm" type="button" disabled={reconcile.isPending} onClick={() => { if (window.confirm(`${translateText("Reconcile this Top-up with the Provider?")}\n${topUp.displayId}`)) void reconcileTopUp(topUp.id); }}>{reconcile.isPending ? translateText("Reconciling…") : translateText("Reconcile")}</Button></TableCell>
+            <TableCell><Button variant="outline" size="sm" type="button" disabled={reconcile.isPending} onClick={() => { if (window.confirm(`${translateText("Reconcile this Top-up with the Provider?")}\n${topUpDisplayId(topUp)}`)) void reconcileTopUp(topUp.id); }}>{reconcile.isPending ? translateText("Reconciling…") : translateText("Reconcile")}</Button></TableCell>
           </TableRow>)}</tbody>
         </Table>
       </div>}

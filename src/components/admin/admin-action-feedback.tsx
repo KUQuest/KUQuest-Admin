@@ -83,7 +83,7 @@ export type AdminActionReceiptProps = {
   title?: string;
   action: string;
   resource: string;
-  resourceId: string;
+  resourceId: string | null;
   status?: string;
   admin?: string;
   occurredAt?: string;
@@ -118,7 +118,7 @@ export function AdminActionReceipt({
       </div>
       <dl className="admin-action-receipt-facts">
         <div><dt>{translateText("Action")}</dt><dd>{translateText(displayState(action))}</dd></div>
-        <div><dt>{translateText("Resource")}</dt><dd>{translateText(resource)} · {resourceId}</dd></div>
+        {resourceId ? <div><dt>{translateText("Resource")}</dt><dd>{translateText(resource)} · {resourceId}</dd></div> : null}
         <div><dt>{translateText("Result")}</dt><dd>{translateText(displayState(status))}</dd></div>
         <div><dt>{translateText("Admin")}</dt><dd>{admin}</dd></div>
         <div><dt>{translateText("Time")}</dt><dd><time dateTime={timestamp}>{formatAdminTimestamp(timestamp)}</time></dd></div>

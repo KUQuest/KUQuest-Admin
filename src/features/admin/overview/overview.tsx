@@ -6,6 +6,7 @@ import { type ReactNode } from "react";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { Card, CardHeader } from "../../../components/ui/card";
 import { isAdminMockEnabled } from "../../../lib/auth/admin-auth-mode";
+import { displayAdminId } from "../display-admin-id";
 import type { AdminFinanceOverview } from "../api/admin-api";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { activityRoutes } from "../admin-routes";
@@ -185,6 +186,7 @@ export function AdminOverview({
                   <span className="overview-command-center-queue-title grid min-w-0 gap-0.5"><strong className="text-sm text-admin-text"><Link className="text-inherit no-underline hover:underline hover:underline-offset-2" href={row.listHref}>{translateText(row.title)}</Link></strong><small className="text-[13px] text-admin-muted">{countLabel(row.count)} {translateText("open")}</small>{isAdminMockEnabled() && row.count !== null && row.count > 0 && processHref ? <Link className="text-sm text-admin-accent underline underline-offset-2" href={processHref}>{translateText("Process next")}</Link> : null}</span>
                   <span className="overview-command-center-queue-oldest min-w-0 overflow-hidden text-[13px] leading-[1.35] text-admin-muted [overflow-wrap:anywhere] max-[560px]:col-span-full max-[560px]:row-start-2">
                     {row.oldestHref ? <Link className="text-inherit hover:underline hover:underline-offset-2" href={row.oldestHref}>{translateOverviewValue(row.oldest, translateText)}</Link> : translateOverviewValue(row.oldest, translateText)}
+                    {displayAdminId(row.oldestId) ? <small className="mt-0.5 block text-xs text-admin-muted">{displayAdminId(row.oldestId)}</small> : null}
                   </span>
                   <span className={`overview-command-center-queue-status ${row.tone} justify-self-start rounded-full px-2 py-1 text-xs font-extrabold ${queueToneClasses[row.tone] ?? "bg-admin-accent-soft text-admin-accent"} max-[560px]:col-span-full max-[560px]:row-start-3`}><strong>{translateText(row.status)}</strong></span>
                   <span className="overview-command-center-queue-waiting justify-self-start text-[13px] font-bold text-admin-muted max-[560px]:col-start-2 max-[560px]:row-start-1"><strong>{translateOverviewValue(row.waiting, translateText)}</strong></span>

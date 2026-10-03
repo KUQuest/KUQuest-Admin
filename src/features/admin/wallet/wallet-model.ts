@@ -9,6 +9,7 @@ import type {
 } from "../api/admin-api";
 import { pageCount, pageRows, type BoardPageSize } from "@/lib/board-pagination";
 import { formatAdminTimestamp } from "../date-format";
+import { displayAdminId } from "../display-admin-id";
 import {
   walletStatusFor,
   walletStatusLabel,
@@ -154,7 +155,7 @@ export function walletRowFromApi(wallet: AdminWallet): WalletBoardRow {
   const member = wallet.member;
   return {
     id: wallet.id,
-    displayId: wallet.displayId,
+    displayId: displayAdminId(wallet.displayId) ?? "",
     memberId: wallet.userId,
     memberAvailable: Boolean(member),
     memberName: memberName(member),

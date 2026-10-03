@@ -28,9 +28,11 @@ import {
   adminRecordSideFacts,
 } from "../../../components/admin/admin-record-styles";
 import { conductReportRoutes } from "../admin-routes";
+import { displayAdminId } from "../display-admin-id";
 import { questStateLabel } from "../domain/rulebook";
 import { questStatusClass } from "../quest/quest-model";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
+import { RecordStatusBar } from "../../../components/admin/record-status-bar";
 import { ModerationCaseWorkspace, ModerationHistoryPanel } from "../moderation-case/moderation-case-workspace";
 import { hasModerationHistory } from "../moderation-case/moderation-case-context";
 import {
@@ -40,7 +42,9 @@ import { useConductReportBoardStore } from "./conduct-report-board-store";
 import { ConductReportDecisionDialog } from "./conduct-report-decision-dialog";
 import {
   CONDUCT_REPORT_UPDATED_EVENT,
+  conductReportReasonLabel,
   conductReportDecisionFor,
+  conductReportDecisionReasonCodeFor,
   conductReportModelFromRecord,
   type ConductReportDecisionChoice,
   type ConductReportModel,
@@ -104,7 +108,7 @@ function ConductReportOverview({
       {compact ? (
         <CardHeader flush className={adminRecordHeader}><h3 className={adminRecordHeading}>{translateText("Conduct Report overview")}</h3></CardHeader>
       ) : (
-        <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Conduct Report detail")}</h2></CardHeader>
+        <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Conduct Report detail")}</h2><span className="badge">{translateText(model.reason)}</span></CardHeader>
       )}
       <div className={adminRecordFacts}>
         <div className={adminRecordFact}>
@@ -126,6 +130,7 @@ function ConductReportOverview({
         <div><dt>{translateText("Source")}</dt><dd>{translateText("Quest record")}</dd></div>
         <div><dt>{translateText("Submitted")}</dt><dd>{formatAdminTimestamp(model.submittedAt)}</dd></div>
         <div><dt>{translateText("Evidence")}</dt><dd>{conductEvidenceCount(model) || translateText("None")}</dd></div>
+        <div><dt>{translateText("Reason code")}</dt><dd>{model.reasonCode ? translateText(conductReportReasonLabel(model.reasonCode)) : "—"}</dd></div>
       </AdminOverviewMeta>
       <div className={adminRecordGroup}>
         <span>{translateText("Submitted detail")}</span>
@@ -257,6 +262,7 @@ function ConductModerationContext({ model, translateText }: { model: ConductRepo
   const fallback = translateText("Not provided.");
   const actionFallback = translateText(summary.memberRecordAvailable ? "None recorded." : "Not provided.");
   const actionText = summary.previousActions.length ? summary.previousActions.map((action) => translateText(action)).join(" · ") : actionFallback;
+  const noteText = summary.adminNotes.length ? summary.adminNotes.join(" · ") : fallback;
 
   return (
     <Card as="section" className={adminRecordSection}>
@@ -267,6 +273,8 @@ function ConductModerationContext({ model, translateText }: { model: ConductRepo
         <div><dt>{translateText("Confirmed previous violations")}</dt><dd>{summary.confirmedViolationCount ?? fallback}</dd></div>
       </AdminOverviewMeta>
       <div className={adminRecordGroup}><span>{translateText("Previous moderation actions")}</span><p>{actionText}</p></div>
+      <div className={adminRecordGroup}><span>{translateText("Internal Admin notes")}</span><p>{noteText}</p></div>
+      <div className={adminRecordGroup}><span>{translateText("Policy boundary")}</span><p>{translateText("Conduct Reports use the Quest record. Work Chat or Candidate Inquiry history may be opened only for this case, with an Admin Action log entry.")}</p></div>
     </Card>
   );
 }
@@ -280,7 +288,7 @@ function ResolutionDetails({
 }) {
   const details = [
     ["Resolution", model.resolution],
-    ["Resolved by", model.resolvedBy],
+    ["Resolved by", displayAdminId(model.resolvedBy)],
     ["Resolution time", model.resolutionAt ? formatAdminTimestamp(model.resolutionAt) : null],
     ["Closed at", model.closedAt ? formatAdminTimestamp(model.closedAt) : null],
   ] as const;
@@ -480,7 +488,7 @@ function ConductReportDrawerBody({
         detail={model.detail}
         reportedMember={{ id: model.reportedMemberId, displayId: model.reportedMemberDisplayId, name: model.reportedMemberName, href: model.reportedMemberHref, role: "Reported Member" }}
         reporter={{ id: model.reporterId, displayId: model.reporterDisplayId, name: model.reporterName, href: model.reporterHref, role: "Reporting Member" }}
-        relatedRecord={model.questId ? { id: model.questDisplayId, title: model.questTitle, href: model.questHref } : null}
+        relatedRecord={model.questId ? { id: model.questId, displayId: model.questDisplayId, title: model.questTitle, href: model.questHref } : null}
         evidenceCount={conductEvidenceCount(model)}
         evidenceLabel="Quest record"
         moderationHistory={model.moderationHistory}
@@ -586,13 +594,21 @@ export function ConductReportDrawer({
     }
     setCommandError(null);
     const decision = conductReportDecisionFor(selectedChoice);
-    const options: ConductReportDecision = {
-      outcome: decision,
-      reason,
-      reasonCode: "POLICY_REVIEW",
-      expectedVersion: reportModel.version ?? 1,
-      idempotencyKey: newConductReportIdempotencyKey(reportModel.id),
-    };
+    const reasonCode = conductReportDecisionReasonCodeFor(selectedChoice);
+    const options: ConductReportDecision = decision === "CONDUCT_REPORT_DISMISSED"
+      ? {
+          outcome: decision,
+          reason,
+          decisionReasonCode: reasonCode as NonNullable<typeof reasonCode>,
+          expectedVersion: reportModel.version ?? 1,
+          idempotencyKey: newConductReportIdempotencyKey(reportModel.id),
+        }
+      : {
+          outcome: decision,
+          reason,
+          expectedVersion: reportModel.version ?? 1,
+          idempotencyKey: newConductReportIdempotencyKey(reportModel.id),
+        };
 
     try {
       const updated = await decisionMutation.mutateAsync({
@@ -644,12 +660,13 @@ export function ConductReportDrawer({
       onStartDecision={startDecision}
       compact={presentation === "drawer"}
       showFullLink={presentation === "drawer"}
-      actionReceipt={actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Conduct Report" resourceId={reportModel.id} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {actionReceipt.reason}</p>} /> : null}
+      actionReceipt={actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Conduct Report" resourceId={reportModel.displayId || null} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {actionReceipt.reason}</p>} /> : null}
     />
   );
   const decisionDialog = (
     <ConductReportDecisionDialog
         model={reportModel}
+
         open={dialogOpen}
       choice={selectedChoice}
       busy={decisionMutation.isPending}
@@ -677,6 +694,7 @@ export function ConductReportDrawer({
           actions={<Button asChild size="lg" variant="outline"><Link href={conductReportRoutes.list()}>{translateText("Back to Conduct Reports")}</Link></Button>}
         />
         <ConductReportAlert model={reportModel} translateText={translateText} />
+        <RecordStatusBar className="conduct-report-record-status-bar" items={[{ id: "status", label: translateText("Status"), value: <span className={`badge ${reportModel.badgeClass}`}>{translateText(reportModel.statusLabel)}</span> }, { id: "reason", label: translateText("Reason"), value: translateText(reportModel.reason) }, { id: "reported", label: translateText("Reported"), value: formatAdminTimestamp(reportModel.submittedAt) }, { id: "reported-member", label: translateText("Reported Member"), value: <MemberLink id={reportModel.reportedMemberId} name={reportModel.reportedMemberName} href={reportModel.reportedMemberHref} /> }, { id: "quest", label: translateText("Quest"), value: reportModel.questDisplayId ?? translateText("Not provided.") }]} />
         {body}
         {decisionDialog}
       </main>

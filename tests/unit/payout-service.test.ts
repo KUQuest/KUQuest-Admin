@@ -117,6 +117,7 @@ describe("Payout service boundary", () => {
       const url = new URL(request.url);
       if (url.pathname.endsWith("/missing")) return jsonResponse({ success: false, error: { code: "NOT_FOUND", message: "Payout not found." } }, 404);
       if (url.pathname === "/api/v1/admin/payouts") return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
+      if (url.pathname.endsWith("/status-history")) return jsonResponse({ success: true, data: mockPendingPayout.history });
       return jsonResponse({ success: true, data: mockPendingPayout });
     }) as typeof globalThis.fetch;
 

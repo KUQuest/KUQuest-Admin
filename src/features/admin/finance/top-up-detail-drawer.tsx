@@ -13,7 +13,7 @@ import { memberRoutes } from "../admin-routes";
 import { formatAdminTimestamp } from "../date-format";
 import { formatMoneySatang } from "../member/member-wallet-model";
 import { statusBadgeClass } from "../status-badge";
-import { topUpStatusTimeline, TOP_UP_BOARD_TABS } from "./top-ups-board-model";
+import { topUpDisplayId, topUpStatusTimeline, TOP_UP_BOARD_TABS } from "./top-ups-board-model";
 
 function TopUpDrawerSection({ title, children }: { title: string; children: ReactNode }) {
   return <Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}><h3 className={adminRecordHeading}>{title}</h3></CardHeader>{children}</Card>;
@@ -41,7 +41,7 @@ export function TopUpDetailDrawer({
 
   return <AdminDrawer
     ariaLabel={translateText("Close Top-up detail")}
-    title={topUp.displayId}
+    title={topUpDisplayId(topUp)}
     titleId="top-up-drawer-title"
     subtitle={translateText("Top-up detail drawer")}
     className="top-up-drawer [&>.drawer-body]:grid [&>.drawer-body]:content-start [&>.drawer-body]:gap-3.5 [&>.drawer-body]:!min-w-0 [&>.drawer-body]:!grid-cols-[minmax(0,1fr)]"

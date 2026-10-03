@@ -1,4 +1,5 @@
 import type { AdminActivityLog } from "../api/admin-api";
+import { displayAdminId } from "../display-admin-id";
 import { formatAdminTimestamp } from "../date-format";
 import {
   activityRoutes,
@@ -456,11 +457,7 @@ export function activityLogStateLabel(value: string | null | undefined): string 
 
 export function activityLogTargetLabel(entry: ActivityLogEntry): string {
   const resourceType = entry.resourceType ? activityLogResourceTypeLabel(entry.resourceType) : "";
-  const resourceId = entry.resourceDisplayId || (
-    /^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i.test(entry.resourceId)
-      ? ""
-      : entry.resourceId
-  );
+  const resourceId = displayAdminId(entry.resourceDisplayId, entry.resourceId) ?? "";
   return !resourceType && !resourceId ? "" : [resourceType, resourceId].filter(Boolean).join(" · ");
 }
 
@@ -489,13 +486,13 @@ export function activityLogCsv(entries: readonly ActivityLogEntry[]): string {
     "note",
   ];
   const rows = entries.map((entry) => [
-    entry.id,
+    displayAdminId(entry.id) ?? "",
     entry.createdAt,
-    entry.adminId,
+    displayAdminId(entry.adminId) ?? "",
     entry.adminName,
     entry.action,
     entry.resourceType,
-    entry.resourceId,
+    displayAdminId(entry.resourceId) ?? "",
     activityLogTargetLabel(entry),
     entry.reasonCode,
     entry.reasonCatalogVersion,

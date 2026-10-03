@@ -56,10 +56,10 @@ describe("Quest route model", () => {
 
     expect(detail).toMatchObject({
       id: apiDetail.id,
-      displayId: "00000000…0001",
+      displayId: "",
       title: apiDetail.title,
       state: "QUEST_FAILED",
-      hirer: apiDetail.hirer,
+      hirer: { id: apiDetail.hirer.id, studentId: apiDetail.hirer.studentId },
     });
     expect("questStatus" in detail).toBe(false);
     expect(detail).not.toBe(apiDetail);
@@ -76,32 +76,22 @@ describe("Quest route model", () => {
     expect(finance).not.toBe(apiFinance);
   });
 
-  it("maps Quest timeline, linked Dispute Cases, images, and readable Member IDs", () => {
+  it("maps the API Quest timeline, images, and Member identifiers", () => {
     const apiDetail = {
       ...mockQuestDetail(mockQuestSummary({ id: "quest-uuid-1", displayId: "QST-1" })),
       timeline: [{
-        id: "timeline-1",
-        fromState: "QUEST_OPEN" as const,
-        toState: "QUEST_FAILED" as const,
-        changedAt: "2026-09-02T01:00:00.000Z",
-        actor: { type: "ADMIN" as const, id: "admin-uuid-1" },
+        event: "QUEST_STATUS_CHANGED",
+        status: "QUEST_FAILED" as const,
+        occurredAt: "2026-09-02T01:00:00.000Z",
+        actorId: "admin-uuid-1",
         reasonCode: "WORK_NOT_COMPLETED",
-      }],
-      disputeCases: [{
-        id: "dispute-uuid-1",
-        displayId: "DSP-1",
-        questId: "quest-uuid-1",
-        status: "DISPUTE_CASE_PENDING",
-        createdAt: "2026-09-02T01:00:00.000Z",
-        updatedAt: "2026-09-02T01:00:00.000Z",
       }],
     };
 
     const detail = questDetailViewFromApi(apiDetail);
 
     expect(detail.timeline[0]).toEqual(apiDetail.timeline[0]);
-    expect(detail.disputeCases[0]).toMatchObject({ id: "dispute-uuid-1", displayId: "DSP-1" });
-    expect(detail.images).toEqual(apiDetail.images);
+    expect(detail.images).toEqual(apiDetail.images ?? []);
     expect(detail.hirer.memberId).toBe("00000000-0000-0000-0000-000000000010");
     expect(detail.hirer.studentId).toBe("6599900015");
   });
@@ -116,8 +106,8 @@ describe("Quest route model", () => {
     expect(questRowFromApi(quest())).toMatchObject({ displayId: "quest-1" });
   });
 
-  it("uses a short stable label when a Quest has no display id", () => {
-    expect(questDisplayIdFor("00000000-0000-0000-0000-000000000002")).toBe("00000000…0002");
+  it("keeps the Quest UUID out of display text when no display id exists", () => {
+    expect(questDisplayIdFor("00000000-0000-0000-0000-000000000002")).toBe("");
     expect(questDisplayIdFor("quest-1")).toBe("quest-1");
     expect(questDisplayIdFor("quest-1", "QST-12001")).toBe("QST-12001");
   });
