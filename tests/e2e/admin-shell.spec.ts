@@ -36,10 +36,11 @@ test.describe("shared Admin shell", () => {
       "/report",
       "/conduct-report",
       "/payout",
-      "/finance",
+      "/top-ups",
       "/member",
       "/wallet",
       "/activity",
+      "/finance",
     ]);
     expect(hrefs.some((href) => href?.includes("?view="))).toBe(false);
     for (const href of ["/dispute", "/report", "/conduct-report", "/payout"]) {
@@ -239,7 +240,7 @@ test.describe("shared Admin shell", () => {
 
     await main.getByRole("tab", { name: /^Confirmed \(\d+\)$/ }).click();
     await expect(main.locator('tbody tr[data-conduct-report-status="CONDUCT_REPORT_UPHELD"]')).toHaveCount(10);
-      await main.getByRole("tab", { name: /^Open/ }).click();
+      await main.getByRole("tab", { name: /^Pending/ }).click();
     const pendingRows = main.locator('tbody tr[data-conduct-report-status="CONDUCT_REPORT_PENDING"]');
     await expect(pendingRows).toHaveCount(10);
     const pendingRow = main.locator('tbody tr[data-conduct-report-id="CND-8301"]');
@@ -263,7 +264,7 @@ test.describe("shared Admin shell", () => {
 
     await expect(decisionDialog).toBeHidden();
     await expect(drawer).toContainText("Violation confirmed");
-    await expect(main.locator('tbody tr[data-conduct-report-status="CONDUCT_REPORT_PENDING"]')).toHaveCount(10);
+    await expect(main.locator('tbody tr[data-conduct-report-id="CND-8301"][data-conduct-report-status="CONDUCT_REPORT_UPHELD"]')).toHaveCount(1);
     await drawer.getByRole("button", { name: "Close drawer" }).click();
     await main.getByRole("tab", { name: /^Confirmed \(\d+\)$/ }).click();
     await expect(main.locator('tbody tr[data-conduct-report-status="CONDUCT_REPORT_UPHELD"]')).toHaveCount(10);
@@ -278,8 +279,11 @@ test.describe("shared Admin shell", () => {
       await expect(tabs.first()).toBeVisible();
       for (const tab of await tabs.all()) await expect(tab).toHaveText(/\(\d+\)$/);
 
-      if (["/dispute", "/report", "/conduct-report"].includes(route)) {
+      if (route === "/report" || route === "/dispute") {
         await expect(tabs.first()).toHaveText(/^Open \(\d+\)$/);
+      }
+      if (route === "/conduct-report") {
+        await expect(tabs.first()).toHaveText(/^Pending \(\d+\)$/);
       }
     }
   });
