@@ -134,7 +134,7 @@ test.describe("Admin canonical click flows", () => {
     const queues = [
       { path: "/dispute", main: "#dispute-main", tabName: /^Open/, statusSelector: "tbody tr[data-dispute-status]", statusAttribute: "data-dispute-status", pendingStatus: "DISPUTE_CASE_PENDING" },
       { path: "/report", main: "#report-main", tabName: /^Open/, statusSelector: "tbody tr[data-report-id] td:nth-child(6) .badge", pendingStatus: "Open" },
-      { path: "/conduct-report", main: "#conduct-report-main", tabName: /^Open/, statusSelector: "tbody tr[data-conduct-report-status]", statusAttribute: "data-conduct-report-status", pendingStatus: "CONDUCT_REPORT_PENDING" },
+      { path: "/conduct-report", main: "#conduct-report-main", tabName: /^Pending/, statusSelector: "tbody tr[data-conduct-report-status]", statusAttribute: "data-conduct-report-status", pendingStatus: "CONDUCT_REPORT_PENDING" },
     ];
 
     for (const queue of queues) {

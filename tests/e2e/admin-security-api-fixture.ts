@@ -152,7 +152,8 @@ const server = Bun.serve({
 
     if (url.pathname === "/api/v1/admin/top-ups") {
       return json({ success: true, data: { items: [{
-        id: "TOP-1001",
+        id: "00000000-0000-4000-8000-000000001001",
+        displayId: "TOP-1001",
         userId: "member-1",
         member: { firstName: "Akarin", lastName: "Ariyawat", studentId: "68000000" },
         topUpStatus: "PAID",

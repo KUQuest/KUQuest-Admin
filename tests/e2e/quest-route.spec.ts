@@ -218,7 +218,7 @@ test.describe("Quest route family", () => {
     await expect(page.getByText("Quest description", { exact: true })).toBeVisible();
     await expect(page.getByText("Schedule and location", { exact: true })).toBeVisible();
     await expect(page.getByText("Hirer attachments", { exact: true })).toBeVisible();
-    await expect(page.getByText("Hirer attachments are not available.", { exact: true })).toBeVisible();
+    await expect(page.getByText("No Hirer attachments were returned.", { exact: true })).toBeVisible();
     await expect(page.getByText("Ledger Transactions", { exact: true })).toHaveCount(0);
     await expect(page.getByText("Funding Reservation", { exact: true })).toHaveCount(0);
     await expect(page.getByText("Reserved", { exact: true })).toHaveCount(0);
@@ -234,7 +234,7 @@ test.describe("Quest route family", () => {
     await expect(side.getByRole("heading", { name: "Hirer", exact: true })).toBeVisible();
     const hirer = side.getByRole("heading", { name: "Hirer", exact: true }).locator("xpath=ancestor::section[1]");
     await expect(hirer.getByText("Name", { exact: true })).toBeVisible();
-    await expect(hirer.getByText("Member ID", { exact: true })).toBeVisible();
+    await expect(hirer.getByText("Student ID", { exact: true })).toBeVisible();
     await expect(hirer.getByRole("link", { name: "See Member profile", exact: true })).toHaveAttribute("href", /\/member\//);
     await expect(side.getByRole("heading", { name: "Schedule and location", exact: true })).toBeVisible();
     await expect(side.getByRole("heading", { name: "Dispute and risk", exact: true })).toBeVisible();
@@ -266,8 +266,8 @@ test.describe("Quest route family", () => {
     await page.goto(`/quest/${FAILED_QUEST_ID}`);
     const hirer = page.locator(".quest-detail-page > div > div > aside").getByRole("heading", { name: "Hirer", exact: true }).locator("xpath=ancestor::section[1]");
     await expect(hirer.getByText("Kamonwan Lertwiroj", { exact: true })).toBeVisible();
-    await expect(hirer.getByText("68000000", { exact: true })).toBeVisible();
-    await expect(hirer.getByRole("link", { name: "See Member profile", exact: true })).toHaveAttribute("href", "/member/68000000");
+    await expect(hirer.getByText("6599900015", { exact: true })).toBeVisible();
+    await expect(hirer.getByRole("link", { name: "See Member profile", exact: true })).toHaveAttribute("href", "/member/00000000-0000-0000-0000-000000000010");
   });
 
   test("shows Candidate details in the Quest drawer", async ({ page }) => {
