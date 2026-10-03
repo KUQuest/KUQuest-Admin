@@ -28,6 +28,7 @@ const memberDetail: AdminMemberDetail = {
     faculty: "Engineering",
     department: "Computer Engineering",
     occupation: "Student",
+    memberStatus: "NORMAL",
     bio: "About Ari",
     createdAt: "2026-09-01T00:00:00.000Z",
   },

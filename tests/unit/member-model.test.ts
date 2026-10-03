@@ -180,7 +180,7 @@ describe("Member route model", () => {
     expect(rows[0]?.resultingWalletBalanceSatang).toBe(100);
   });
 
-  it("does not infer Member penalty status from API Wallet status", () => {
+  it("uses Admin API Member status instead of inferring it from Wallet status", () => {
     const detail: AdminMemberDetail = {
       member: {
         id: "member-api-1",
@@ -193,6 +193,7 @@ describe("Member route model", () => {
         faculty: "Engineering",
         department: "Computer Engineering",
         occupation: "Student",
+        memberStatus: "NORMAL",
         bio: "About Ari",
         createdAt: "2026-09-01T00:00:00.000Z",
       },
@@ -217,9 +218,9 @@ describe("Member route model", () => {
       },
     };
     const model = memberModelFromApi(detail);
-    expect(model.memberStatus).toBeNull();
+    expect(model.memberStatus).toBe("Normal");
     expect(model.walletStatus).toBe("FROZEN");
-    expect(model.memberStatusSource).toBe("NOT_PROVIDED_BY_API");
+    expect(model.memberStatusSource).toBe("api");
     expect(model.reportsSubmitted).toEqual([]);
     expect(model.reportsSubmittedError).toContain("not provided by the Admin API");
   });
