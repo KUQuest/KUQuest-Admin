@@ -49,6 +49,7 @@ export function createAdminReportApi() {
           },
           body: {
             outcome: options.outcome,
+            reason: options.reason,
             reasonCode: options.reasonCode,
           },
         },
@@ -64,9 +65,11 @@ export function createAdminReportApi() {
             "Idempotency-Key": options.idempotencyKey,
             "If-Match": String(options.expectedVersion),
           },
-          body: options.outcome === "CONDUCT_REPORT_DISMISSED"
-            ? { outcome: options.outcome, decisionReasonCode: options.decisionReasonCode }
-            : { outcome: options.outcome },
+          body: {
+            outcome: options.outcome,
+            reason: options.reason,
+            reasonCode: options.reasonCode,
+          },
         },
       );
     },

@@ -48,15 +48,11 @@ export function useConductReportDecisionMutation() {
         version: result.resourceVersion,
         decisionLabel: options.outcome === "CONDUCT_REPORT_UPHELD"
           ? "Violation confirmed"
-          : options.decisionReasonCode === "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE"
+          : choice === "insufficient-evidence"
             ? "Insufficient evidence"
             : "No violation",
-        decisionReasonCode: options.outcome === "CONDUCT_REPORT_DISMISSED"
-          ? options.decisionReasonCode
-          : null,
-        decisionReason: options.outcome === "CONDUCT_REPORT_DISMISSED"
-          ? options.decisionReasonCode
-          : null,
+        decisionReasonCode: null,
+        decisionReason: options.reason,
       };
     },
     onSuccess: async (record, { reportId, apiEnabled }) => {

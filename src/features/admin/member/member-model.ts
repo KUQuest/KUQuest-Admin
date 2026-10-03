@@ -114,6 +114,7 @@ export type MemberStats = {
 
 export type MemberModel = {
   id: string;
+  displayId: string | null;
   studentId: string | null;
   firstName: string;
   lastName: string;
@@ -196,6 +197,11 @@ function text(value: unknown, fallback = ""): string {
 function nullableText(value: unknown): string | null {
   const valueText = text(value).trim();
   return valueText ? valueText : null;
+}
+
+function readableId(value: unknown): string | null {
+  const result = nullableText(value);
+  return result && !/^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i.test(result) ? result : null;
 }
 
 function numberValue(value: unknown, fallback = 0): number {
@@ -482,7 +488,10 @@ function baseModelFromListItem(
   member: Omit<AdminMemberListItem, "memberStatus"> & { memberStatus?: AdminMemberListItem["memberStatus"] },
   source: "api" | "mock",
 ): MemberModel {
-  const title = `${member.firstName} ${member.lastName}`.trim() || member.id;
+  const displayId = readableId(member.displayId)
+    ?? (source === "mock" ? readableId(member.id) : null)
+    ?? readableId(member.studentId);
+  const title = `${member.firstName} ${member.lastName}`.trim() || displayId || "Member";
   const wallet = member.wallet;
   const walletBalances = wallet
     ? {
@@ -494,6 +503,7 @@ function baseModelFromListItem(
     : null;
   return {
     id: member.id,
+    displayId,
     studentId: nullableText(member.studentId) ?? (source === "api" ? "Not provided by the Admin API" : null),
     firstName: member.firstName,
     lastName: member.lastName,
@@ -624,7 +634,8 @@ export function memberModelFromMockRecord(
   const walletStatus = hasStoredModerationState
     ? walletStatusFor(record.walletStatus ?? record.status)
     : parity?.walletStatus ?? walletStatusFor(record.walletStatus ?? record.status);
-  const studentId = nullableText(record.studentId) ?? id;
+  const studentId = nullableText(record.studentId) ?? readableId(id);
+  const displayId = readableId(record.displayId) ?? readableId(id) ?? readableId(record.studentId);
   const createdAt = text(record.accountCreatedAt ?? record.createdAt, "Not recorded");
   const walletId = nullableText(record.walletId) ?? `WAL-${id}`;
   const academicProfile = {
@@ -635,6 +646,7 @@ export function memberModelFromMockRecord(
   if (options.summaryOnly) {
     const summary = baseModelFromListItem({
       id,
+      displayId,
       email: text(record.person, `${id}@ku.th`),
       firstName,
       lastName,
@@ -764,6 +776,7 @@ export function memberModelFromMockRecord(
     : walletTransactionsFromMock(walletId);
   return {
     id,
+    displayId,
     studentId,
     firstName,
     lastName,

@@ -60,7 +60,7 @@ export function createAdminPayoutApi() {
         {
           method: "POST",
           headers: payoutCommandHeaders(options),
-          body: { reasonCode: options.reasonCode },
+          body: { ...(options.reason !== undefined ? { reason: options.reason } : {}), reasonCode: "PAYOUT_POLICY_REVIEW" },
         },
       );
     },
@@ -71,7 +71,7 @@ export function createAdminPayoutApi() {
         {
           method: "POST",
           headers: payoutCommandHeaders(options),
-          body: { reasonCode: options.reasonCode },
+          body: { ...(options.reason !== undefined ? { reason: options.reason } : {}), reasonCode: options.reasonCode },
         },
       );
     },

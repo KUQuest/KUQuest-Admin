@@ -45,7 +45,7 @@ function matchesQuery(model: MemberModel, query: string): boolean {
   const value = query.trim().toLowerCase();
   if (!value) return true;
   return [
-    model.id,
+    model.displayId,
     model.studentId,
     model.title,
     model.email,
@@ -60,7 +60,7 @@ function matchesQuery(model: MemberModel, query: string): boolean {
 function memberSortValue(model: MemberModel, key: MemberSortKey): string | number | null {
   switch (key) {
     case "id":
-      return model.id;
+      return model.displayId;
     case "member":
       return model.title;
     case "studentId":
@@ -190,7 +190,7 @@ export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
                   key={model.id}
                   data-member-id={model.id}
                   tabIndex={0}
-                  aria-label={`${translateText("Open Member")} ${model.id}`}
+                  aria-label={`${translateText("Open Member")} ${model.displayId ?? "—"}`}
                   onClick={() => openDrawer(model.id)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
@@ -199,7 +199,7 @@ export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
                     }
                   }}
                 >
-                  <td><Button variant="ghost" size="xs" className="h-auto min-h-8 p-0 text-left font-bold hover:text-admin-accent hover:underline hover:underline-offset-4" type="button" aria-label={`${translateText("Open Member")} ${model.id}`} onClick={(event) => { event.stopPropagation(); openDrawer(model.id); }}>{model.id}</Button></td>
+                  <td><Button variant="ghost" size="xs" className="h-auto min-h-8 p-0 text-left font-bold hover:text-admin-accent hover:underline hover:underline-offset-4" type="button" aria-label={`${translateText("Open Member")} ${model.displayId ?? "—"}`} onClick={(event) => { event.stopPropagation(); openDrawer(model.id); }}>{model.displayId ?? "—"}</Button></td>
                   <td><Link className="user-record-link" href={memberRoutes.detail(model.id)} onClick={(event) => event.stopPropagation()}>{model.title}</Link><small>{model.email}</small></td>
                   <td>{model.studentId || "—"}</td>
                   <td>{[model.faculty, model.department, model.occupation].filter(Boolean).join(" · ") || "—"}</td>

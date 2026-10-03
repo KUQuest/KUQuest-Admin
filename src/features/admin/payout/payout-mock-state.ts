@@ -155,7 +155,7 @@ export function applyMockPayoutDecision(
       actorUserId: null,
       actorAdminId: "mock-admin",
       source: command === "approve" ? "ADMIN_APPROVAL" : "ADMIN_REJECTION",
-      reason: command === "reject" ? reason : null,
+      reason,
       occurredAt,
     }],
   };

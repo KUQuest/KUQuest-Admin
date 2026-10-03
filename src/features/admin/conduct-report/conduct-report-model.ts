@@ -113,12 +113,6 @@ export type ConductReportModel = {
 
 export const CONDUCT_REPORT_UPDATED_EVENT = "kuquest:conduct-report-updated";
 
-export function conductReportDecisionReasonCodeFor(
-  choice: ConductReportDecisionChoice,
-): ConductReportDecisionReasonCode | null {
-  return conductReportDecisionMetadata[choice].reasonCode;
-}
-
 function asRecord(value: unknown): ConductReportRecord | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value as ConductReportRecord

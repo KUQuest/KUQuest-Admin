@@ -62,7 +62,13 @@ function readableValue(value: string): string {
 }
 
 function payoutReasonLabel(value: string): string {
-  return /^[A-Z0-9]+(?:_[A-Z0-9]+)+$/.test(value) ? readableValue(value) : value;
+  const reasonLabels: Record<string, string> = {
+    POLICY_REVIEW: "Policy review",
+    PAYOUT_POLICY_REVIEW: "Policy review",
+    PAYOUT_RISK_REVIEW: "Risk review",
+    PAYOUT_INVALID_DESTINATION: "Invalid destination",
+  };
+  return reasonLabels[value] ?? value;
 }
 
 function Section({ title, children, className }: { title: string; children: ReactNode; className?: string }) {

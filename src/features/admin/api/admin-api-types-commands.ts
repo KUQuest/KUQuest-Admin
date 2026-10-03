@@ -79,6 +79,7 @@ type VersionedAdminCommand = Omit<AdminCommandOptions, "expectedVersion"> & {
 
 export type ReportCaseDecision = VersionedAdminCommand & {
   outcome: "REPORT_CASE_DISMISSED" | "REPORT_CASE_HIDDEN" | "REPORT_CASE_RESTORED";
+  reason: string;
   reasonCode: string;
 };
 
@@ -98,19 +99,11 @@ export type AdminReportCommandResult = {
   adminActionId: string;
 };
 
-export type ConductReportDecisionReasonCode =
-  | "CONDUCT_REPORT_NO_VIOLATION"
-  | "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE";
-
-export type ConductReportDecision = VersionedAdminCommand & (
-  | {
-      outcome: "CONDUCT_REPORT_DISMISSED";
-      decisionReasonCode: ConductReportDecisionReasonCode;
-    }
-  | {
-      outcome: "CONDUCT_REPORT_UPHELD";
-    }
-);
+export type ConductReportDecision = VersionedAdminCommand & {
+  outcome: "CONDUCT_REPORT_DISMISSED" | "CONDUCT_REPORT_UPHELD";
+  reason: string;
+  reasonCode: "POLICY_REVIEW";
+};
 
 export type AdminConductReportCommandResult = {
   resourceSummary: {
@@ -144,10 +137,12 @@ export type WalletStatusCommand = AdminCommandOptions & {
 
 export type PayoutApproval = Omit<AdminCommandOptions, "expectedVersion"> & {
   expectedVersion: number;
+  reason?: string;
   reasonCode: string;
 };
 export type PayoutRejection = Omit<AdminCommandOptions, "expectedVersion"> & {
   expectedVersion: number;
+  reason?: string;
   reasonCode: string;
 };
 

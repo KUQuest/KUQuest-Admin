@@ -579,7 +579,7 @@ function DrawerContent({ model, translateText, onRecordViolation, onRemovePenalt
       </Card>
       <Card as="section" className={adminRecordSection}>
         <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Account")}</h2></CardHeader>
-        <div className="user-context-list grid gap-3"><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Student ID")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{model.studentId || "—"}</strong></div><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Member ID")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{model.id}</strong></div><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Created")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{model.createdAt}</strong></div></div>
+        <div className="user-context-list grid gap-3"><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Student ID")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{model.studentId || "—"}</strong></div><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Member ID")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{model.displayId || "—"}</strong></div><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Created")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{model.createdAt}</strong></div></div>
       </Card>
       <Card as="section" className={adminRecordSection}>
         <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Wallet")}</h2></CardHeader>
@@ -689,7 +689,7 @@ export function MemberDetail({ memberId, initialModel = null, initialTab = "over
 
 export function MemberDrawer({ memberId, initialModel, onClose }: { memberId: string; initialModel?: MemberModel | null; onClose: () => void }) {
   const { translateText } = useAdminShell();
-  return <AdminDrawer ariaLabel={translateText("Close Member drawer")} title={memberId} titleId="member-drawer-title" subtitle={translateText("Member")} onClose={onClose}><MemberDetail memberId={memberId} initialModel={initialModel} drawer /></AdminDrawer>;
+  return <AdminDrawer ariaLabel={translateText("Close Member drawer")} title={initialModel?.displayId ?? translateText("Member")} titleId="member-drawer-title" subtitle={translateText("Member")} onClose={onClose}><MemberDetail memberId={memberId} initialModel={initialModel} drawer /></AdminDrawer>;
 }
 
 export function MemberDrawerRoute({ memberId, initialModel }: { memberId: string; initialModel?: MemberModel | null }) {

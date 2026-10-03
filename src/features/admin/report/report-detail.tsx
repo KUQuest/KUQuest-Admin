@@ -40,7 +40,6 @@ import {
   reportCaseDecisionFor,
   reportCaseModelFromRecord,
   reportCaseModelWithEvidenceSender,
-  reportCaseReasonCodeFor,
   type ReportCaseDecisionChoice,
   type ReportCaseModel,
 } from "./report-model";
@@ -565,7 +564,8 @@ export function ReportCaseDetail({
     const decision = reportCaseDecisionFor(selectedChoice);
     const options: ReportCaseDecision = {
       outcome: decision,
-      reasonCode: reportCaseReasonCodeFor(selectedChoice, reason),
+      reason,
+      reasonCode: "POLICY_REVIEW",
       idempotencyKey: newReportCaseIdempotencyKey(model.id),
       expectedVersion: model.version ?? 1,
     };

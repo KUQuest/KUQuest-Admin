@@ -41,7 +41,6 @@ import { ConductReportDecisionDialog } from "./conduct-report-decision-dialog";
 import {
   CONDUCT_REPORT_UPDATED_EVENT,
   conductReportDecisionFor,
-  conductReportDecisionReasonCodeFor,
   conductReportModelFromRecord,
   type ConductReportDecisionChoice,
   type ConductReportModel,
@@ -587,19 +586,13 @@ export function ConductReportDrawer({
     }
     setCommandError(null);
     const decision = conductReportDecisionFor(selectedChoice);
-    const reasonCode = conductReportDecisionReasonCodeFor(selectedChoice);
-    const options: ConductReportDecision = decision === "CONDUCT_REPORT_DISMISSED"
-      ? {
-          outcome: decision,
-          decisionReasonCode: reasonCode as NonNullable<typeof reasonCode>,
-          expectedVersion: reportModel.version ?? 1,
-          idempotencyKey: newConductReportIdempotencyKey(reportModel.id),
-        }
-      : {
-          outcome: decision,
-          expectedVersion: reportModel.version ?? 1,
-          idempotencyKey: newConductReportIdempotencyKey(reportModel.id),
-        };
+    const options: ConductReportDecision = {
+      outcome: decision,
+      reason,
+      reasonCode: "POLICY_REVIEW",
+      expectedVersion: reportModel.version ?? 1,
+      idempotencyKey: newConductReportIdempotencyKey(reportModel.id),
+    };
 
     try {
       const updated = await decisionMutation.mutateAsync({
@@ -657,7 +650,6 @@ export function ConductReportDrawer({
   const decisionDialog = (
     <ConductReportDecisionDialog
         model={reportModel}
-        apiEnabled={isAdminApiEnabled()}
         open={dialogOpen}
       choice={selectedChoice}
       busy={decisionMutation.isPending}

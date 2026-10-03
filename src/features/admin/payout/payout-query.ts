@@ -42,16 +42,18 @@ export function usePayoutCommandMutation() {
           await adminApiProvider.commands.approvePayout(detail.id, {
             ...options,
             reasonCode: submission.reasonCode,
+            reason: submission.reason,
           });
         } else {
           await adminApiProvider.commands.rejectPayout(detail.id, {
             ...options,
             reasonCode: submission.reasonCode,
+            reason: submission.reason,
           });
         }
-        return { detail: null, command: submission.command, reason: submission.command === "reject" ? submission.reason : null, occurredAt: null };
+        return { detail: null, command: submission.command, reason: submission.reason, occurredAt: null };
       }
-      const decisionReason = submission.command === "reject" ? submission.reason : null;
+      const decisionReason = submission.reason;
       const decisionReasonCode = submission.command === "reject" ? submission.reasonCode : null;
       const occurredAt = new Date().toISOString();
       const nextDetail = applyMockPayoutDecision(detail, submission.command, decisionReason, occurredAt, decisionReasonCode);

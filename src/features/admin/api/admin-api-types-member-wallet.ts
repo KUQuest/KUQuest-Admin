@@ -14,6 +14,7 @@ export type AdminMemberWalletSummary = {
 };
 export type AdminMemberListItem = {
   id: string;
+  displayId?: string | null;
   email: string;
   firstName: string;
   lastName: string;

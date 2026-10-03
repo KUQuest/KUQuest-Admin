@@ -50,7 +50,7 @@ export function useReportDecisionMutation() {
         ...summary,
         status: summary.status,
         version: result.resourceVersion,
-        decisionReason: options.reasonCode,
+        decisionReason: options.reason,
       };
     },
     onSuccess: (record, { reportId }) => {
