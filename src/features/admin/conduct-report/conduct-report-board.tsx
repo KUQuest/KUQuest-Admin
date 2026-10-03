@@ -22,7 +22,7 @@ import { useConductReportBoardQuery } from "./conduct-report-query";
 import { adminBoardCount, adminBoardPagination, adminBoardTable } from "../../../components/admin/admin-record-styles";
 
 const tabs: Array<{ id: ConductReportTab; label: string }> = [
-  { id: "open", label: "Open" },
+  { id: "open", label: "Pending" },
   { id: "all", label: "All" },
   { id: "confirmed", label: "Confirmed" },
   { id: "dismissed", label: "Dismissed" },
@@ -150,7 +150,14 @@ export function ConductReportBoard({
   const currentPage = Math.min(pageNumber, Math.max(totalPages, 1));
   const visibleModels = pageRows(models, currentPage, pageSize);
   const { start: pageStart, end: pageEnd } = pageRange(models.length, currentPage, pageSize);
-  const tabCounts = countBoardTabMatches(page.items, tabs, tabMatches);
+  const tabCounts = page.countsByStatus
+    ? new Map<ConductReportTab, number>([
+        ["open", page.countsByStatus.CONDUCT_REPORT_PENDING],
+        ["all", Object.values(page.countsByStatus).reduce((total, count) => total + count, 0)],
+        ["confirmed", page.countsByStatus.CONDUCT_REPORT_UPHELD],
+        ["dismissed", page.countsByStatus.CONDUCT_REPORT_DISMISSED],
+      ])
+    : countBoardTabMatches(page.items, tabs, tabMatches);
   const openDrawer = (id: string) => {
     router.push(conductReportRoutes.detail(id), { scroll: false });
   };
@@ -241,14 +248,16 @@ export function ConductReportBoard({
                       {model.reportedMemberHref
                         ? <Link className="text-admin-accent no-underline hover:underline hover:underline-offset-4" href={model.reportedMemberHref} onClick={(event) => event.stopPropagation()}>{model.reportedMemberName}</Link>
                         : model.reportedMemberName}
+                      <small>{model.reportedMemberDisplayId ?? "—"}</small>
                     </TableCell>
                     <TableCell>
                       {model.reporterHref
                         ? <Link className="text-admin-accent no-underline hover:underline hover:underline-offset-4" href={model.reporterHref} onClick={(event) => event.stopPropagation()}>{model.reporterName}</Link>
                         : model.reporterName}
+                      <small>{model.reporterDisplayId ?? "—"}</small>
                     </TableCell>
                     <TableCell>{translateText(model.reason)}</TableCell>
-                    <TableCell><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></TableCell>
+                    <TableCell><span className={`badge ${model.badgeClass}`}>{translateText(model.status === "CONDUCT_REPORT_UPHELD" ? "Confirmed" : model.statusLabel)}</span></TableCell>
                     <TableCell>{formatAdminTimestamp(model.submittedAt)}</TableCell>
                   </TableRow>
                 ))}

@@ -9,14 +9,18 @@ import { useEffect, useMemo, useState } from "react";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminPageHeader } from "../../../components/admin/admin-page-header";
-import { Button, Card, CardContent, CardHeader, Table } from "../../../components/ui";
+import { Button, Card, CardContent, CardHeader, EmptyState, Table } from "../../../components/ui";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { adminRecordCount, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
 import { ADMIN_LEDGER_EVENT_TYPES } from "../api/admin-api";
+import type { AdminTopUpListItem } from "../api/admin-api";
 import { memberRoutes } from "../admin-routes";
 import { displayAdminId } from "../display-admin-id";
 import { formatAdminTimestamp } from "../date-format";
 import { payoutStatusLabel, questStateLabel, reportCaseStatusLabel } from "../domain/rulebook";
+import { formatTopUpPaymentMethod, TopUpDetailDrawer } from "../finance/top-up-detail-drawer";
+import { TOP_UP_BOARD_TABS } from "../finance/top-ups-board-model";
+import { statusBadgeClass } from "../status-badge";
 import { filterReviews } from "../user-reviews/review-model";
 import { MEMBER_UPDATED_EVENT } from "./member-board";
 import { NoteDialog, PenaltyDialog, RemovePenaltyDialog } from "./member-action-dialogs";
@@ -33,10 +37,11 @@ import {
   walletStatusClass,
   walletStatusText,
   walletStatementRows,
+  type MemberPenaltyChoice,
   type MemberModel,
   type MemberTab,
 } from "./member-model";
-import { useMemberActionMutation, useMemberDetailQuery } from "./member-query";
+import { useMemberActionMutation, useMemberDetailQuery, useMemberTopUpsQuery } from "./member-query";
 
 function initials(model: MemberModel): string {
   return `${model.firstName.charAt(0)}${model.lastName.charAt(0)}`.toUpperCase() || "M";
@@ -120,6 +125,7 @@ function MemberAccountInfo({ model, translateText }: { model: MemberModel; trans
     ["Wallet status", walletBadge(model, translateText)],
     ["Current Wallet Balance", model.walletBalances ? formatMoneySatang(currentWalletBalance(model.walletBalances)) : "—"],
     ["Latest Wallet Transaction Date", latestTransactionAt ? formatWalletDate(latestTransactionAt) : "—"],
+    ["Email", model.email],
     ["Email verified", model.source === "api" ? translateText("Not provided by the Admin API") : translateText("Yes")],
     ["Created", model.createdAt],
     ["Role", model.occupation ? translateText(model.occupation) : translateText("Student")],
@@ -205,6 +211,63 @@ function PayoutsTab({ model, translateText }: { model: MemberModel; translateTex
   return <Card as="section" className="user-detail-panel user-tab-panel col-span-full min-w-0 p-[16px_18px]"><CardHeader flush><h2>{translateText("Payouts")}</h2></CardHeader><MemberPayoutPreview model={model} translateText={translateText} /></Card>;
 }
 
+function MemberTopUpsTab({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
+  const topUpQuery = useMemberTopUpsQuery(model.id, model.source === "api");
+  const topUps = useMemo(
+    () => topUpQuery.data?.pages.flatMap((page) => page.items) ?? [],
+    [topUpQuery.data?.pages],
+  );
+  const [selectedTopUp, setSelectedTopUp] = useState<AdminTopUpListItem | null>(null);
+  const [drawerOpener, setDrawerOpener] = useState<HTMLElement | null>(null);
+  const error = topUpQuery.error instanceof Error ? topUpQuery.error.message : null;
+
+  function openTopUp(topUp: AdminTopUpListItem, opener: HTMLElement) {
+    setDrawerOpener(opener);
+    setSelectedTopUp(topUp);
+  }
+
+  return <>
+    <Card as="section" className="user-detail-panel user-tab-panel col-span-full min-w-0 p-[16px_18px]" data-member-top-ups>
+      <CardHeader flush className="user-panel-heading">
+        <div><h2>{translateText("Top-ups")}</h2><p>{translateText("Top-up records for this Member.")}</p></div>
+        <span className={adminRecordCount}>{topUps.length} {translateText("shown")}</span>
+      </CardHeader>
+      {model.source !== "api" ? <EmptyState title={translateText("Top-up data unavailable")} description={translateText("The Admin API is required to read Top-up records.")} /> : null}
+      {model.source === "api" && topUpQuery.isPending ? <p className="audit-note" aria-live="polite">{translateText("Loading Top-ups…")}</p> : null}
+      {model.source === "api" && error && !topUps.length ? <div className="m-3 rounded-admin-sm border border-admin-danger bg-admin-danger-soft p-3 text-sm" role="alert">{translateText(error)} <Button variant="outline" size="sm" type="button" onClick={() => { void topUpQuery.refetch(); }}>{translateText("Try again")}</Button></div> : null}
+      {model.source === "api" && !topUpQuery.isPending && !error && !topUps.length ? <EmptyState title={translateText("No Top-ups found")} description={translateText("This Member has no Top-up records.")} /> : null}
+      {model.source === "api" && topUps.length ? <>
+        {error ? <p className="field-error" role="alert">{translateText(error)}</p> : null}
+        <p className="mb-2 hidden rounded-[7px] border border-admin-border bg-admin-soft px-2.5 py-2 text-[15px] leading-[1.4] text-admin-muted max-[600px]:block">{translateText("On narrow screens, scroll horizontally to view all Top-up columns.")}</p>
+        <div className="min-w-0 overflow-x-auto [scrollbar-gutter:stable] max-[600px]:[overscroll-behavior-inline:contain]" role="region" aria-label={translateText("Member Top-ups table")}>
+          <Table className="min-w-[900px] [&_td_small]:mt-[3px] [&_td.money]:whitespace-nowrap">
+            <caption>{translateText("Top-ups for this Member")}</caption>
+            <thead><tr><th>{translateText("Top-up")}</th><th>{translateText("Credit amount")}</th><th>{translateText("Payment total")}</th><th>{translateText("Payment method")}</th><th>{translateText("Status")}</th><th>{translateText("Created")}</th><th>{translateText("Paid at")}</th></tr></thead>
+            <tbody>{topUps.map((topUp) => {
+              const statusLabel = TOP_UP_BOARD_TABS.find((tab) => tab.id === topUp.topUpStatus)?.label ?? topUp.topUpStatus;
+              return <tr
+                data-member-top-up-row={topUp.id}
+                key={topUp.id}
+              >
+                <td><button className="row-record-button" type="button" data-member-top-up-drawer-trigger={topUp.id} aria-label={`${translateText("Open Top-up")} ${topUp.displayId}`} onClick={(event) => openTopUp(topUp, event.currentTarget)}>{topUp.displayId}</button><small>{topUp.providerReference ?? translateText("Provider reference not provided")}</small></td>
+                <td className="money">{formatMoneySatang(topUp.creditAmountSatang)}</td>
+                <td className="money">{formatMoneySatang(topUp.paymentTotalSatang)}</td>
+                <td>{translateText(formatTopUpPaymentMethod(topUp.paymentMethod))}</td>
+                <td><span className={`badge ${statusBadgeClass(topUp.topUpStatus)}`}>{translateText(statusLabel)}</span></td>
+                <td><time dateTime={topUp.createdAt}>{formatAdminTimestamp(topUp.createdAt)}</time></td>
+                <td>{topUp.paidAt ? <time dateTime={topUp.paidAt}>{formatAdminTimestamp(topUp.paidAt)}</time> : "—"}</td>
+              </tr>;
+            })}</tbody>
+          </Table>
+        </div>
+      </> : null}
+      {topUpQuery.hasNextPage ? <div className="border-t border-admin-border px-1 py-3 text-sm text-admin-muted">
+        <Button variant="outline" size="sm" type="button" onClick={() => { void topUpQuery.fetchNextPage(); }} disabled={topUpQuery.isFetchingNextPage}>{translateText(topUpQuery.isFetchingNextPage ? "Loading more Top-ups…" : "Load more Top-ups")}</Button>
+      </div> : null}
+    </Card>
+    {selectedTopUp ? <TopUpDetailDrawer topUp={selectedTopUp} opener={drawerOpener} onClose={() => setSelectedTopUp(null)} showMemberProfileLink={false} /> : null}
+  </>;
+}
 function WalletStatementDateField({
   name,
   label,
@@ -483,7 +546,7 @@ export type MemberDetailProps = {
 };
 
 function DetailTabs({ model, activeTab, translateText }: { model: MemberModel; activeTab: MemberTab; translateText: (value: string) => string }) {
-  const labels: Record<MemberTab, string> = { overview: "Overview", activity: "Activity", payouts: "Payouts", "wallet-statement": "Wallet Statement", reviews: "Reviews", reports: "Reports", "penalty-history": "Penalty History" };
+  const labels: Record<MemberTab, string> = { overview: "Overview", activity: "Activity", payouts: "Payouts", "top-ups": "Top-ups", "wallet-statement": "Wallet Statement", reviews: "Reviews", reports: "Reports", "penalty-history": "Penalty History" };
   return <nav className="flex min-h-[42px] gap-[22px] overflow-x-auto border-b border-admin-border mb-[18px] max-[600px]:gap-[15px]" aria-label={translateText("Member detail sections")}>{Object.entries(labels).map(([value, label]) => {
     const active = activeTab === value;
     return <a className={`relative shrink-0 pb-[11px] font-semibold text-admin-muted hover:text-admin-text ${active ? "text-admin-text after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:bg-admin-accent" : ""}`} aria-current={active ? "page" : undefined} key={value} href={memberTabHref(model.id, value as MemberTab)}>{translateText(label)}</a>;
@@ -510,13 +573,13 @@ function DrawerContent({ model, translateText, onRecordViolation, onRemovePenalt
           <span className="att-icon info" aria-hidden="true">◉</span>
           <div className="member-drawer-identity-copy grid min-w-0 gap-1">
             <strong className="min-w-0 break-words text-[18px] font-semibold leading-[1.4]">{model.title}</strong>
-            <p className="m-0 min-w-0 break-words text-[15px] leading-[1.45] text-admin-muted">{model.email} · {displayAdminId(model.studentId) ?? "—"}</p>
+            <p className="m-0 min-w-0 break-words text-[15px] leading-[1.45] text-admin-muted">{model.email} · {model.studentId || "—"}</p>
           </div>
         </div>
       </Card>
       <Card as="section" className={adminRecordSection}>
         <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Account")}</h2></CardHeader>
-        <div className="user-context-list grid gap-3"><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Student ID")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{displayAdminId(model.studentId) ?? "—"}</strong></div><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Created")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{model.createdAt}</strong></div></div>
+        <div className="user-context-list grid gap-3"><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Student ID")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{model.studentId || "—"}</strong></div><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Member ID")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{model.displayId || "—"}</strong></div><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Created")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{model.createdAt}</strong></div></div>
       </Card>
       <Card as="section" className={adminRecordSection}>
         <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Wallet")}</h2></CardHeader>
@@ -558,11 +621,11 @@ export function MemberDetail({ memberId, initialModel = null, initialTab = "over
     window.dispatchEvent(new CustomEvent(MEMBER_UPDATED_EVENT, { detail: nextModel }));
   };
 
-  const confirmPenalty = async (reason: string, note: string) => {
+  const confirmPenalty = async (reason: string, note: string, penalty: MemberPenaltyChoice | null) => {
     if (!model) return;
     setActionError(null);
     try {
-      const nextModel = await actionMutation.mutateAsync({ type: "record-violation", memberId: model.id, reason, note });
+      const nextModel = await actionMutation.mutateAsync({ type: "record-violation", memberId: model.id, reason, note, penalty });
       updateModel(nextModel);
       setPenaltyOpen(false);
     } catch (commandError) {
@@ -609,6 +672,8 @@ export function MemberDetail({ memberId, initialModel = null, initialTab = "over
     ? <ActivityTab model={model} translateText={translateText} />
     : activeTab === "payouts"
       ? <PayoutsTab model={model} translateText={translateText} />
+      : activeTab === "top-ups"
+        ? <MemberTopUpsTab model={model} translateText={translateText} />
       : activeTab === "wallet-statement"
         ? <WalletStatementTab model={model} translateText={translateText} />
         : activeTab === "reviews"
@@ -619,12 +684,12 @@ export function MemberDetail({ memberId, initialModel = null, initialTab = "over
               ? <PenaltyHistoryTab model={model} translateText={translateText} onAddNote={() => { setActionError(null); setNoteOpen(true); }} />
               : <OverviewTab model={model} translateText={translateText} onRecordViolation={() => { setActionError(null); setPenaltyOpen(true); }} onAddNote={() => { setActionError(null); setNoteOpen(true); }} onOpenReviews={() => router.push(memberTabHref(model.id, "reviews"))} />;
 
-  return <>{overlays}<main className="admin-route-page user-detail-page" tabIndex={-1}><div className="user-detail-breadcrumb mb-4 flex items-center gap-2 text-sm text-admin-muted"><Link className="text-admin-accent hover:underline" href={memberRoutes.list()}>{translateText("Members")}</Link><span aria-hidden="true">›</span><span>{model.title}</span></div><AdminPageHeader title={model.title} description={translateText("Review Member information, activity, Payouts, and penalty history.")} /><div className="mb-5">{model.source === "mock" && <p className="audit-note" data-member-fixture>{translateText("Mock data for UI review. It is not a server record.")}</p>}</div><MemberSummary model={model} translateText={translateText} /><DetailTabs model={model} activeTab={activeTab} translateText={translateText} />{tabContent}</main></>;
+  return <>{overlays}<main className="admin-route-page user-detail-page" tabIndex={-1}><div className="user-detail-breadcrumb mb-4 flex items-center gap-2 text-sm text-admin-muted"><Link className="text-admin-accent hover:underline" href={memberRoutes.list()}>{translateText("Members")}</Link><span aria-hidden="true">›</span><span>{model.title}</span></div><AdminPageHeader title={model.title} description={translateText("Review Member information, activity, Top-ups, Payouts, and penalty history.")} /><div className="mb-5">{model.source === "mock" && <p className="audit-note" data-member-fixture>{translateText("Mock data for UI review. It is not a server record.")}</p>}</div><MemberSummary model={model} translateText={translateText} /><DetailTabs model={model} activeTab={activeTab} translateText={translateText} />{tabContent}</main></>;
 }
 
 export function MemberDrawer({ memberId, initialModel, onClose }: { memberId: string; initialModel?: MemberModel | null; onClose: () => void }) {
   const { translateText } = useAdminShell();
-  return <AdminDrawer ariaLabel={translateText("Close Member drawer")} title={initialModel?.title ?? translateText("Member")} titleId="member-drawer-title" subtitle={translateText("Member")} onClose={onClose}><MemberDetail memberId={memberId} initialModel={initialModel} drawer /></AdminDrawer>;
+  return <AdminDrawer ariaLabel={translateText("Close Member drawer")} title={initialModel?.displayId ?? initialModel?.title ?? translateText("Member")} titleId="member-drawer-title" subtitle={translateText("Member")} onClose={onClose}><MemberDetail memberId={memberId} initialModel={initialModel} drawer /></AdminDrawer>;
 }
 
 export function MemberDrawerRoute({ memberId, initialModel }: { memberId: string; initialModel?: MemberModel | null }) {

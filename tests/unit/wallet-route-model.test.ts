@@ -60,6 +60,7 @@ describe("Wallet route model", () => {
 
     expect(row).toMatchObject({
       id: "WAL-1001",
+      displayId: "WAL-1001",
       memberId: "68000000",
       memberName: "Akarin Ariyawat",
       status: "FROZEN",
@@ -156,8 +157,10 @@ describe("Wallet route model", () => {
       reason: "Risk review",
       actorUserId: null,
       actorAdminId: "admin-1",
+      actorDisplayName: "Nicha P.",
       createdAt: "2026-09-12T08:30:00.000Z",
     }]);
+    expect(history[0]?.actorDisplayName).toBe("Nicha P.");
     const ledger = walletLedgerRowsFromApi([{
       id: "ledger-1",
       businessReference: "TOPUP-1",

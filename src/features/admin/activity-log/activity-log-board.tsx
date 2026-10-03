@@ -1,12 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminPageHeader } from "../../../components/admin/admin-page-header";
 import { AdminSortableHeader } from "../../../components/admin/admin-sortable-header";
-import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table } from "../../../components/ui";
+import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table } from "../../../components/ui";
 import { adminBoardCount, adminBoardPagination, adminBoardTable, adminRecordFact, adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
 import { isAdminMockEnabled } from "../../../lib/auth/admin-auth-mode";
 import { isAdminApiEnabled } from "../api/admin-provider";
@@ -26,7 +26,7 @@ import {
 import { pageCount, pageRange, pageRows } from "../data/board-pagination";
 import { useAdminBoardReset } from "../data/use-admin-board-reset";
 import { sortBoardRows } from "../data/board-sorting";
-import type { ActivityLogPageData } from "./activity-log-service";
+import { DEFAULT_ACTIVITY_LOG_FILTERS, type ActivityLogPageData } from "./activity-log-service";
 import { useActivityLogBoardStore, type ActivityLogSortKey } from "./activity-log-board-store";
 import { useActivityLogQuery } from "./activity-log-query";
 import { formatAdminTimestamp } from "../date-format";
@@ -141,23 +141,20 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
   const apiEnabled = isAdminApiEnabled();
   const mockEnabled = isAdminMockEnabled();
   const {
-    appliedFilters,
-    draftFilters,
+
     search,
     pageSize,
     pageNumber,
     sortKey,
     sortDirection,
-    setDraftFilters,
-    applyFilters: applyBoardFilters,
-    clearFilters: clearBoardFilters,
+
     setSearch,
     setPageSize,
     setPageNumber,
     sortBy,
     reset,
   } = useActivityLogBoardStore();
-  const query = useActivityLogQuery(appliedFilters, initialData);
+  const query = useActivityLogQuery(DEFAULT_ACTIVITY_LOG_FILTERS, initialData);
   const page = query.data?.pages.reduce<ActivityLogPageData | null>((current, next) => current
     ? { ...next, items: [...current.items, ...next.items] }
     : next, null) ?? null;
@@ -193,16 +190,6 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
   );
   const { start: pageStart, end: pageEnd } = pageRange(sortedEntries.length, currentPage, pageSize);
 
-  const applyFilters = useCallback((event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setPaginationError(null);
-    applyBoardFilters();
-  }, [applyBoardFilters]);
-
-  const clearFilters = useCallback(() => {
-    setPaginationError(null);
-    clearBoardFilters();
-  }, [clearBoardFilters]);
 
   const loadMore = useCallback(() => {
     if (!query.hasNextPage || query.isFetchingNextPage) return;
@@ -243,18 +230,7 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
         <AdminPageHeader title={translateText("Activity Log")} description={translateText("An audit trail of administrative decisions.")} actions={<Button variant="outline" type="button" onClick={exportCsv} disabled={!visibleEntries.length}>{translateText("Export CSV")}</Button>} showActionsOnMobile />
       <Card as="section" className="overflow-hidden" aria-labelledby="activity-log-heading">
         <CardHeader className="flex min-h-[60px] items-center justify-between gap-4"><div><CardTitle id="activity-log-heading">{translateText("Activity Log")}</CardTitle><CardDescription>{translateText("Review the administrative audit trail.")}</CardDescription></div><span className={adminBoardCount} aria-live="polite">{filteredEntries.length} {translateText("loaded entries")}</span></CardHeader>
-        <form className="mb-4 grid gap-3.5 rounded-admin-sm border border-admin-border bg-admin-soft p-3.5" onSubmit={applyFilters}>
-          <div className="grid grid-cols-2 gap-3 min-[701px]:grid-cols-3 min-[1101px]:grid-cols-5">
-            <label className="grid gap-1.5 text-sm font-semibold text-admin-muted" htmlFor="activity-action-filter">{translateText("Action filter")}<Input id="activity-action-filter" type="search" value={draftFilters.action} onChange={(event) => setDraftFilters({ action: event.target.value })} /></label>
-            <label className="grid gap-1.5 text-sm font-semibold text-admin-muted" htmlFor="activity-resource-type-filter">{translateText("Resource type filter")}<Input id="activity-resource-type-filter" type="search" value={draftFilters.resourceType} onChange={(event) => setDraftFilters({ resourceType: event.target.value })} /></label>
-            <label className="grid gap-1.5 text-sm font-semibold text-admin-muted" htmlFor="activity-resource-id-filter">{translateText("Resource ID filter")}<Input id="activity-resource-id-filter" type="search" value={draftFilters.resourceId} onChange={(event) => setDraftFilters({ resourceId: event.target.value })} /></label>
-            <label className="grid gap-1.5 text-sm font-semibold text-admin-muted" htmlFor="activity-admin-id-filter">{translateText("Admin ID filter")}<Input id="activity-admin-id-filter" type="search" value={draftFilters.adminId} onChange={(event) => setDraftFilters({ adminId: event.target.value })} /></label>
-            <label className="grid gap-1.5 text-sm font-semibold text-admin-muted" htmlFor="activity-from-date-filter">{translateText("From date")}<Input id="activity-from-date-filter" type="date" value={draftFilters.fromDate} onChange={(event) => setDraftFilters({ fromDate: event.target.value })} /></label>
-            <label className="grid gap-1.5 text-sm font-semibold text-admin-muted" htmlFor="activity-to-date-filter">{translateText("To date")}<Input id="activity-to-date-filter" type="date" value={draftFilters.toDate} onChange={(event) => setDraftFilters({ toDate: event.target.value })} /></label>
-            <label className="grid gap-1.5 text-sm font-semibold text-admin-muted" htmlFor="activity-sort">{translateText("Sort activity")}<Select value={draftFilters.sort} onValueChange={(value) => setDraftFilters({ sort: value === "oldest" ? "oldest" : "newest" })}><SelectTrigger id="activity-sort"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="newest">{translateText("Newest first")}</SelectItem><SelectItem value="oldest">{translateText("Oldest first")}</SelectItem></SelectContent></Select></label>
-          </div>
-          <div className="flex justify-end gap-2 max-[700px]:justify-start"><Button variant="primary" type="submit" disabled={loading}>{translateText("Apply filters")}</Button><Button variant="outline" type="button" onClick={clearFilters} disabled={loading}>{translateText("Clear filters")}</Button></div>
-        </form>
+
         <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2"><label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text max-[600px]:basis-full max-[600px]:max-w-none" htmlFor="activity-search"><span className="visually-hidden">{translateText("Search loaded activity")}</span><Input className="h-9 min-h-9 px-3 py-1.5 text-sm" id="activity-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={translateText("Search loaded activity")}/></label><span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span><PageSizeControls value={pageSize} translateText={translateText} onChange={setPageSize} /><span className={`${adminBoardCount} max-[720px]:block max-[720px]:w-full max-[720px]:ms-0`} aria-live="polite">{sortedEntries.length ? pageSize === "all" ? `${translateText("Showing all")} ${sortedEntries.length} ${translateText(sortedEntries.length === 1 ? "result" : "results")}` : `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${sortedEntries.length} ${translateText(sortedEntries.length === 1 ? "result" : "results")}` : translateText("Showing 0 of 0 results")}</span></div>
         <output id="activity-status" className="mb-2 block min-h-5 text-sm text-admin-muted" aria-live="polite">{loading ? translateText("Loading activity") : `${filteredEntries.length} ${translateText("loaded entries")}`}</output>
         {mockEnabled ? <p className="api-data-notice m-0 mb-3 rounded-lg px-3 py-2.5 text-[13px]">{translateText("Fixture data is active. Some records do not include before and after state.")}</p> : null}

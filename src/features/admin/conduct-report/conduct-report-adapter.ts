@@ -3,7 +3,8 @@ import { ADMIN_DEMO_DATA_KEY, type BrowserStorage } from "../data/admin-demo-dat
 import { pageMockItems } from "../data/mock-pagination";
 import { loadDashboardData } from "../dashboard/dashboard-bootstrap";
 import { conductReportRoutes } from "../admin-routes";
-import { recordMemberViolationInData } from "../member/member-adapter";
+import { formatAdminTimestamp } from "../date-format";
+import { findMemberModerationSummaryFromMockData, recordMemberViolationInData } from "../member/member-adapter";
 import {
   conductReportDecisionDetailsForChoice,
   conductReportModelFromRecord,
@@ -38,10 +39,67 @@ function conductReportRecords(data: PersistedAdminData): ConductReportRecord[] {
   return conductReportsOnly(data.collections.reports);
 }
 
+function timestamp(value: unknown): number | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const formatted = formatAdminTimestamp(value, "Asia/Bangkok");
+  const parsed = Date.parse(formatted);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function recordTimestamp(record: Record<string, unknown>): number | null {
+  return timestamp(record.reportedAt) ?? timestamp(record.submittedAt) ?? timestamp(record.createdAt);
+}
+
+function conductReportModelFromMockRecord(
+  record: ConductReportRecord,
+  data: PersistedAdminData,
+): ConductReportModel | null {
+  const model = conductReportModelFromRecord(record);
+  if (!model) return null;
+
+  const member = findMemberModerationSummaryFromMockData(data, model.reportedMemberId);
+  if (!member) return model;
+
+  const submittedAt = recordTimestamp(record);
+  const previousReportCount = data.collections.reports.filter((value) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    const related = value as Record<string, unknown>;
+    const reportedMemberId = related.reportedMemberId ?? related.reportedUserId;
+    if (reportedMemberId !== member.id || related.id === model.id) return false;
+    const relatedAt = recordTimestamp(related);
+    return submittedAt === null || (relatedAt !== null && relatedAt < submittedAt);
+  }).length;
+  const previousActions = member.moderationHistory
+    .filter((entry) => {
+      if (entry.caseId === model.id || !/(applied|removed|restored|dismissed|upheld|hidden|expired|reversed)/i.test(entry.event)) return false;
+      const actionAt = timestamp(entry.at);
+      return submittedAt === null || (actionAt !== null && actionAt < submittedAt);
+    })
+    .map((entry) => entry.event)
+    .slice(0, 10);
+  const currentViolationCount = member.confirmedViolationCount;
+  const previousViolationCount = currentViolationCount === null
+    ? model.moderationHistory.confirmedViolationCount
+    : Math.max(0, currentViolationCount - (model.status === "CONDUCT_REPORT_UPHELD" ? 1 : 0));
+
+  return {
+    ...model,
+    moderationHistory: {
+      ...model.moderationHistory,
+      memberRecordAvailable: true,
+      currentMemberStatus: member.memberStatus ?? model.moderationHistory.currentMemberStatus,
+      previousReportCount,
+      confirmedViolationCount: previousViolationCount,
+      previousActions: previousActions.length ? previousActions : model.moderationHistory.previousActions,
+    },
+  };
+}
+
 export function loadConductReportsFromMock(storage: BrowserStorage, cursor?: string): ConductReportMockPage {
-  const records = conductReportRecords(loadDashboardData(storage));
+  const data = loadDashboardData(storage);
+  const records = conductReportRecords(data);
   const models = records.flatMap((record) => {
-    const model = conductReportModelFromRecord(record);
+    const model = conductReportModelFromMockRecord(record, data);
     return model ? [model] : [];
   });
   const page = pageMockItems(models, cursor, CONDUCT_REPORT_MOCK_PAGE_SIZE);
@@ -54,19 +112,22 @@ export function loadConductReportsFromMock(storage: BrowserStorage, cursor?: str
 
 /** Load the complete mock Conduct Report collection for local pagination. */
 export function loadAllConductReportsFromMock(storage: BrowserStorage): ConductReportMockPage {
-  const records = conductReportRecords(loadDashboardData(storage));
+  const data = loadDashboardData(storage);
+  const records = conductReportRecords(data);
   const items = records.flatMap((record) => {
-    const model = conductReportModelFromRecord(record);
+    const model = conductReportModelFromMockRecord(record, data);
     return model ? [model] : [];
   });
   return { source: "mock", items, nextCursor: null };
 }
 
-export function findConductReportFromMock(
+export function findConductReportModelFromMock(
   storage: BrowserStorage,
   reportId: string,
-): ConductReportRecord | null {
-  return conductReportRecords(loadDashboardData(storage)).find((record) => record.id === reportId) ?? null;
+): ConductReportModel | null {
+  const data = loadDashboardData(storage);
+  const record = conductReportRecords(data).find((candidate) => candidate.id === reportId);
+  return record ? conductReportModelFromMockRecord(record, data) : null;
 }
 
 function persist(storage: BrowserStorage, data: PersistedAdminData): void {

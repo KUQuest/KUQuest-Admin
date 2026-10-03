@@ -138,6 +138,7 @@ export type AdminActivityLog = {
   action: string;
   resourceType: string;
   resourceId: string;
+  resourceDisplayId?: string;
   reasonCode: string | null;
   reasonCatalogVersion: number;
   resultVersion: number | null;
@@ -176,6 +177,8 @@ export type AdminSearchResult = {
   kind: AdminSearchResultKind;
   id: string;
   resourceId: string;
+  displayId?: string;
+  studentId?: string | null;
   title: string;
   status: string | null;
   newestAt: string | null;

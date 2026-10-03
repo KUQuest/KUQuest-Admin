@@ -115,6 +115,13 @@ function text(value: unknown): string | null {
   return trimmed || null;
 }
 
+const uuidPattern = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
+
+function readableText(value: unknown): string | null {
+  const result = text(value);
+  return result && !uuidPattern.test(result) ? result : null;
+}
+
 function firstText(...values: unknown[]): string | null {
   for (const value of values) {
     const result = text(value);
@@ -123,6 +130,13 @@ function firstText(...values: unknown[]): string | null {
   return null;
 }
 
+function firstReadableText(...values: unknown[]): string | null {
+  for (const value of values) {
+    const result = readableText(value);
+    if (result) return result;
+  }
+  return null;
+}
 function disputeDecisionLabel(value: unknown): string | null {
   switch (text(value)) {
     case "Hirer wins":
@@ -140,8 +154,8 @@ function disputeDecisionLabel(value: unknown): string | null {
 
 function personName(value: unknown): string | null {
   const record = asRecord(value);
-  if (!record) return text(value);
-  return firstText(
+  if (!record) return readableText(value);
+  return firstReadableText(
     record.name,
     record.displayName,
     record.title,
@@ -255,7 +269,8 @@ export function disputeCaseModelFromRecord(
   const id = text(record.id) as string;
   const quest = asRecord(record.quest);
   const questId = firstText(record.questId, quest?.id) ?? "";
-  const questTitle = firstText(record.questTitle, quest?.title, record.title) ?? missingValue;
+  const questTitle = firstReadableText(record.questTitle, quest?.title, record.title) ?? missingValue;
+  const questDisplayId = displayAdminId(record.questDisplayId, quest?.displayId, questId);
   const questState = questStateFor(record.questState ?? quest?.questStatus);
   const filerId = firstText(record.filerUserId, record.filerId);
   const respondentId = firstText(record.respondentUserId, record.respondentId);
@@ -267,20 +282,20 @@ export function disputeCaseModelFromRecord(
     roleIs(filerRole, "Worker") ? filerId : null,
     roleIs(respondentRole, "Worker") ? respondentId : null,
   );
-  const filerName = firstText(
+  const filerName = firstReadableText(
     record.filerName,
     personName(record.filer),
-    filerId ? "Member" : null,
     source === "mock" ? record.reporterName : null,
     source === "mock" ? "Hirer not provided" : null,
+    filerId ? "Member" : null,
   ) ?? missingValue;
-  const respondentName = firstText(
+  const respondentName = firstReadableText(
     record.respondentName,
     personName(record.respondent),
     personName(record.worker),
-    respondentId ? "Member" : null,
     source === "mock" ? record.workerName : null,
     source === "mock" ? "Worker not provided" : null,
+    respondentId ? "Member" : null,
   ) ?? missingValue;
   const workerName = roleIs(filerRole, "Worker") ? filerName : respondentName;
   const amountAtRiskSatang = positiveInteger(record.amountAtRiskSatang)
@@ -322,7 +337,7 @@ export function disputeCaseModelFromRecord(
     isActionable: canResolveDispute(questState, status),
     title: questTitle,
     questId,
-    questDisplayId: displayAdminId(record.questDisplayId, quest?.displayId, questId),
+    questDisplayId,
     questTitle,
     questHref: questId ? questRoutes.detail(questId) : null,
     questState,
@@ -359,7 +374,7 @@ export function disputeCaseModelFromRecord(
     decisionLabel,
     decisionReason: firstText(record.decisionReason, record.reason),
     resolution: firstText(record.resolution),
-    resolvedBy: firstText(record.resolvedBy, record.resolvedByAdminId),
+    resolvedBy: firstReadableText(record.resolvedBy, personName(record.resolvedBy)),
     resolutionAt: firstText(record.resolutionAt, record.resolvedAt)
       ? formatDate(record.resolutionAt ?? record.resolvedAt, missingValue)
       : null,

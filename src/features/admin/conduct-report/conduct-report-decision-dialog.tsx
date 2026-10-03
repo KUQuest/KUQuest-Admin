@@ -14,7 +14,7 @@ type DecisionDialogProps = {
   busy: boolean;
   error: string | null;
   model: ConductReportModel;
-  apiEnabled: boolean;
+
   translateText: (value: string) => string;
   onCancel: () => void;
   onConfirm: (reason: string) => void;
@@ -45,7 +45,7 @@ export function ConductReportDecisionDialog({
   busy,
   error,
   model,
-  apiEnabled,
+
   translateText,
   onCancel,
   onConfirm,
@@ -80,7 +80,7 @@ export function ConductReportDecisionDialog({
         onSubmit={(event) => {
           event.preventDefault();
           const value = reason.trim();
-          if (!apiEnabled && value.length < 8) return;
+          if (value.length < 8) return;
           onConfirm(value);
         }}
       >
@@ -91,7 +91,7 @@ export function ConductReportDecisionDialog({
           {choice ? (
             <AdminActionSummary
               title={translateText("Before you confirm")}
-              affected={`${translateText("Conduct Report")} ${model.displayId} · ${translateText("Quest")} ${model.questDisplayId ?? "—"}`}
+              affected={`${translateText("Conduct Report")} ${model.displayId} · ${translateText("Quest")} ${model.questId ?? "—"}`}
               currentState={model.statusLabel}
               nextState={conductReportStatusLabel(nextState)}
               effect={translateText(effect)}
@@ -99,38 +99,29 @@ export function ConductReportDecisionDialog({
               warning={translateText("Use the Quest, Assignment, and Proof Submission record as the decision evidence.")}
             />
           ) : null}
-          {apiEnabled
-            ? <p className="audit-note">{translateText(choice === "confirmed-violation"
-              ? "The API records the upheld outcome. It does not accept a separate decision reason."
-              : "The API records the dismissal outcome and selected reason code.")}</p>
-            : <>
-              <label htmlFor="conduct-report-decision-reason">
-                {translateText("Reason for this decision")}
-              </label>
-              <textarea
-                id="conduct-report-decision-reason"
-                name="reason"
-                rows={4}
-                minLength={8}
-                maxLength={500}
-                required
-                value={reason}
-                aria-invalid={Boolean(error)}
-                onChange={(event) => setReason(event.target.value)}
-                placeholder={translateText("Enter the reason for the Conduct Report decision")}
-              />
-              <div className="mt-1.5 flex justify-between gap-3 text-[15px] leading-[1.4] text-admin-muted">
-                <span>{translateText("Minimum 8 characters")}</span>
-                <span>{reason.length}/500</span>
-              </div>
-            </>}
+          <label htmlFor="conduct-report-decision-reason">
+            {translateText("Reason for this decision")}
+          </label>
+          <textarea
+            id="conduct-report-decision-reason"
+            name="reason"
+            rows={4}
+            minLength={8}
+            maxLength={500}
+            required
+            value={reason}
+            autoFocus
+            aria-invalid={Boolean(error)}
+            onChange={(event) => setReason(event.target.value)}
+            placeholder={translateText("Enter the reason for the Conduct Report decision")}
+          />
           {error && <p className="field-error" role="alert">{translateText(error)}</p>}
         </div>
         <div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5">
           <Button variant="outline" type="button" onClick={onCancel} disabled={busy}>
             {translateText("Cancel")}
           </Button>
-          <Button variant="danger" type="submit" disabled={busy || (!apiEnabled && reason.trim().length < 8)}>
+          <Button variant="danger" type="submit" disabled={busy || reason.trim().length < 8}>
             {busy ? translateText("Saving…") : translateText("Confirm decision")}
           </Button>
         </div>

@@ -133,6 +133,7 @@ export function useWalletStatusMutation() {
           toStatus: input.targetStatus,
           reason: input.reason,
           actorAdminId: "admin-mock",
+          actorDisplayName: "Nicha P.",
           createdAt,
         },
         receipt: {

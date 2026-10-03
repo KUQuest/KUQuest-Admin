@@ -28,8 +28,8 @@ async function expectResponsiveInput(page: Page, input: Locator) {
 
 async function openMemberDrawer(page: Page) {
   await page.goto("/member");
-  await page.locator('tr[data-member-id="68000000"]').click();
-  const drawer = page.getByRole("dialog", { name: "Akarin Ariyawat" });
+  await page.getByRole("button", { name: "Open Member 68000000" }).click();
+  const drawer = page.getByRole("dialog", { name: "68000000" });
   await expect(drawer).toBeVisible();
   return drawer;
 }
@@ -262,7 +262,7 @@ test.describe("legacy parity for inputs on mobile", () => {
     await drawer.getByRole("button", { name: "Record violation" }).click();
 
     const dialog = page.getByRole("dialog", { name: "Confirm violation for Akarin Ariyawat" });
-    await expect(dialog.getByRole("region", { name: "Penalty ladder" })).toContainText("Next outcome");
+    await expect(dialog.getByRole("region", { name: "Penalty guidance" })).toContainText("Automatic next outcome");
     const reason = dialog.getByLabel("Reason for confirmed violation");
     await reason.fill("Repeated off-platform payment requests.");
     await expect(dialog.getByLabel("Internal admin note (optional)")).toHaveCount(0);
@@ -295,7 +295,7 @@ test.describe("legacy parity for inputs on mobile", () => {
     const dialog = page.locator("dialog.report-decision-dialog");
     const reason = dialog.getByLabel("Reason for this decision");
     await reason.fill("The account action was reviewed and recorded.");
-    await expect(reason).toHaveValue("THE ACCOUNT ACTION WAS REVIEWED AND RECORDED.");
+    await expect(reason).toHaveValue("The account action was reviewed and recorded.");
     await expectResponsiveInput(page, reason);
     await dialog.getByRole("button", { name: "Cancel" }).click();
     await expect(dialog).toHaveCount(0);
@@ -315,24 +315,28 @@ test.describe("legacy parity for inputs on mobile", () => {
     await expect(dialog).toHaveCount(0);
   });
 
-  test("Payout decision reason code is required on mobile", async ({ page }) => {
+  test("Payout decision reasons accept input on mobile", async ({ page }) => {
     await signIn(page);
     await page.goto("/payout/PAY-9637");
+    await page.waitForLoadState("networkidle");
 
     await page.getByRole("button", { name: "Approve Payout" }).click();
     const approval = page.getByRole("dialog", { name: "Approve Payout" });
     const approvalReasonCode = approval.getByLabel(/Reason code/);
-    await expect(approvalReasonCode).toBeVisible();
-    await expect(approval.getByRole("button", { name: "Approve Payout" })).toBeDisabled();
+    await approvalReasonCode.selectOption("PAYOUT_POLICY_REVIEW");
+    await expect(approvalReasonCode).toHaveValue("PAYOUT_POLICY_REVIEW");
+    const approvalReason = approval.getByLabel("Reason for this decision");
+    await approvalReason.fill("Review confirmed the payout destination.");
+    await expectResponsiveInput(page, approvalReason);
     await page.keyboard.press("Escape");
     await expect(approval).toHaveCount(0);
 
     await page.getByRole("button", { name: "Reject Payout" }).click();
     const rejection = page.getByRole("dialog", { name: "Reject Payout" });
-    const select = rejection.getByLabel(/Reason code/);
-    await select.selectOption("PAYOUT_INVALID_DESTINATION");
-    await expect(select).toHaveValue("PAYOUT_INVALID_DESTINATION");
-    await expectResponsiveInput(page, select);
+    const rejectionReasonCode = rejection.getByLabel(/Reason code/);
+    await rejectionReasonCode.selectOption("PAYOUT_INVALID_DESTINATION");
+    await expect(rejectionReasonCode).toHaveValue("PAYOUT_INVALID_DESTINATION");
+    await expectResponsiveInput(page, rejectionReasonCode);
     await page.keyboard.press("Escape");
     await expect(rejection).toHaveCount(0);
   });
@@ -372,7 +376,7 @@ test.describe("legacy parity for board controls and moderation", () => {
     await expect(page.getByRole("button", { name: "Previous", exact: true })).toBeDisabled();
   });
 
-  test("confirmed violations advance through the automatic penalty ladder", async ({ page }) => {
+  test("confirmed violations use selected outcomes and update Member status", async ({ page }) => {
     await signIn(page);
     const drawer = await openMemberDrawer(page);
 
@@ -380,6 +384,7 @@ test.describe("legacy parity for board controls and moderation", () => {
     for (const [index, reason] of reasons.entries()) {
       await drawer.getByRole("button", { name: "Record violation" }).click();
       const dialog = page.getByRole("dialog", { name: "Confirm violation for Akarin Ariyawat" });
+      await dialog.getByRole("radio", { name: index === 0 ? "Red Flag" : "Temporary ban" }).check();
       await dialog.getByLabel("Reason for confirmed violation").fill(reason);
       await dialog.getByRole("button", { name: "Confirm violation" }).click();
       await expect(dialog).toHaveCount(0);

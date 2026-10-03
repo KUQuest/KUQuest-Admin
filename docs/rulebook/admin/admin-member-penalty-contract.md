@@ -2,6 +2,10 @@
 
 Part of the [Admin Rulebook](admin-rulebook.md). Defines accepted policy for the Misconduct penalty ladder, Low-Average-Review ladder, Red Flags, Member Bans, and the `memberPenaltyRecord` audit trail.
 
+### Approved policy amendment — 2026-09-23
+
+Approved by Domain Owner T: when an Admin uses **Record violation** in a Member profile, the Admin must select the penalty to apply. This choice applies only to that direct Member action. Report Case and Conduct Report decisions continue to use the automatic Misconduct ladder below. Confirmed-violation counts and `PC-12`/`PC-13` exemptions do not change. When an exemption applies, the violation receives no penalty and the Admin cannot select one.
+
 ## Two independent ladders
 
 Member penalties operate through two independent ladders. A Member's strike count on one never affects the other.
@@ -13,6 +17,8 @@ Member penalties operate through two independent ladders. A Member's strike coun
 Triggered when an Admin confirms a violation:
 - a `REPORT_CASE_HIDDEN` Moderation Decision on a sent Message; or
 - a `CONDUCT_REPORT_UPHELD` decision on a Quest Conduct Report.
+
+These case decisions use the automatic penalty tiers below. A direct Member **Record violation** action uses the Admin-selected tier recorded in its audit entry, unless an exemption applies. A reversal of that direct action restores the Member and Wallet state that existed before the selected penalty.
 
 ### Penalty tiers
 

@@ -25,13 +25,13 @@ test.describe("Report Case routes", () => {
     await expect(drawer.getByRole("heading", { name: "Member moderation context", exact: true })).toBeVisible();
     await expect(drawer.locator(".moderation-case-history")).toContainText("Reported Member");
     await expect(drawer.getByRole("heading", { name: "Report detail", exact: true })).toHaveCount(0);
-    await expect(drawer.getByRole("heading", { name: "People involved", exact: true })).toBeVisible();
+    await expect(drawer.getByRole("heading", { name: "People involved", exact: true })).toHaveCount(0);
     const sectionHeadings = await drawer.locator(".moderation-case-workspace > section h3").allTextContents();
     expect(sectionHeadings).toEqual([
       "Report overview",
       "Evidence",
       "Related Quest",
-      "People involved",
+
       "Member moderation context",
       "Report decision",
     ]);
@@ -73,8 +73,10 @@ test.describe("Report Case routes", () => {
 
     await expect(page.getByRole("heading", { level: 1, name: "Report against Amara Ariyawat" })).toBeVisible();
     await expect(page.locator(".report-page-alert")).toBeVisible();
-    await expect(page.getByText("68000020", { exact: true })).toHaveCount(0);
-    await expect(page.getByText("Member ID", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Member moderation context", exact: true })).toBeVisible();
+    await expect(page.locator(".moderation-case-history")).toContainText("Previous reports received");
+    const precedingPanelText = await page.locator(".moderation-case-history").evaluate((panel) => panel.previousElementSibling?.textContent ?? "");
+    expect(precedingPanelText).toContain("Submitted by");
     await expect(page.locator('a[href="/member/68000020"]').first()).toBeVisible();
     await expect(page.locator('a[href*="/users/"]')).toHaveCount(0);
 

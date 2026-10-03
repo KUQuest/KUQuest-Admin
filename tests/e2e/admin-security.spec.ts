@@ -48,26 +48,9 @@ test.describe("Admin session and private-route boundary", () => {
     await expect(main.locator("tbody tr")).toHaveCount(1);
     await expect(main.locator("tbody tr").first()).toContainText("Payout Approved");
 
-    const activityRequests: string[] = [];
-    page.on("request", (request) => {
-      if (request.url().includes("/api/v1/admin/activity-log")) activityRequests.push(request.url());
-    });
-    const filterRequest = page.waitForRequest((request) => (
-      request.url().includes("/api/v1/admin/activity-log")
-      && request.url().includes("action=PAYOUT_APPROVED")
-      && request.url().includes("sort=oldest")
-    ));
-    await main.getByLabel("Action filter").fill("PAYOUT_APPROVED");
-    await main.getByRole("combobox", { name: "Sort activity" }).click();
-    await page.getByRole("option", { name: "Oldest first" }).click();
-    await main.getByRole("button", { name: "Apply filters" }).click();
-    await filterRequest;
-    expect(activityRequests.some((url) => url.includes("action=PAYOUT_APPROVED") && url.includes("sort=oldest"))).toBe(true);
-    await expect(main.locator("tbody tr")).toHaveCount(1);
-    await expect(main.locator("tbody tr").first()).toContainText("Payout Approved");
-
+    await expect(main.getByLabel("Action filter")).toHaveCount(0);
+    await expect(main.getByRole("button", { name: "Apply filters" })).toHaveCount(0);
     await main.getByLabel("Search loaded activity").fill("");
-    await main.getByRole("button", { name: "Clear filters" }).click();
     await expect(main.locator("tbody tr")).toHaveCount(2);
     const opener = main.getByRole("button", { name: "View activity details" }).first();
     await opener.focus();
@@ -91,6 +74,37 @@ test.describe("Admin session and private-route boundary", () => {
     await expect(page.getByRole("dialog", { name: "Activity log entry" })).toHaveCount(0);
   });
 
+  test("opens and closes a Top-up detail drawer from the table", async ({ context, page }) => {
+    await addAdminCookie(context, "valid-session");
+    await page.goto("/top-ups");
+
+    const opener = page.getByRole("button", { name: "Open Top-up TOP-1001" });
+    await expect(opener).toBeVisible();
+    await opener.click();
+
+    const drawer = page.getByRole("dialog", { name: "TOP-1001" });
+    await expect(drawer).toBeVisible();
+    await expect(drawer).toContainText("฿1,000.00");
+    await expect(drawer).toContainText("provider-ref-1001");
+
+    await drawer.getByRole("button", { name: "Close Top-up detail" }).click();
+    await expect(drawer).toHaveCount(0);
+    await expect(opener).toBeFocused();
+
+    const row = page.locator('[data-top-up-row="00000000-0000-4000-8000-000000001001"]');
+    await row.locator("td").nth(2).click();
+    await expect(drawer).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(drawer).toHaveCount(0);
+    await expect(row).toBeFocused();
+
+    await row.focus();
+    await page.keyboard.press("Enter");
+    await expect(drawer).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(drawer).toHaveCount(0);
+    await expect(row).toBeFocused();
+  });
   test("covers Activity Log mobile, language, theme, export, and pagination behavior", async ({ context, page }) => {
     await addAdminCookie(context, "valid-session");
     await page.setViewportSize({ width: 390, height: 844 });
@@ -129,24 +143,49 @@ test.describe("Admin session and private-route boundary", () => {
     await page.goto("/activity");
 
     const main = page.locator("#activity-main");
-    await main.getByLabel("Action filter").fill("ACTIVITY_SLOW");
-    await main.getByRole("button", { name: "Apply filters" }).click();
-    await expect(main.locator("#activity-status")).toHaveText("Loading activity");
-    await expect(main.locator("tbody tr")).toHaveCount(2);
+    let delayNextPage = true;
+    let failNextPage = false;
+    await page.route("**/api/v1/admin/activity-log?*", async (route) => {
+      const url = new URL(route.request().url());
+      if (!url.searchParams.has("cursor")) {
+        await route.continue();
+        return;
+      }
+      if (delayNextPage) {
+        delayNextPage = false;
+        url.searchParams.set("action", "ACTIVITY_SLOW");
+        await route.continue({ url: url.toString() });
+        return;
+      }
+      if (failNextPage) {
+        url.searchParams.set("action", "ACTIVITY_ERROR");
+        await route.continue({ url: url.toString() });
+        return;
+      }
+      await route.continue();
+    });
 
-    await main.getByLabel("Action filter").fill("ACTIVITY_EMPTY");
-    await main.getByRole("button", { name: "Apply filters" }).click();
+    const loadMore = main.getByRole("button", { name: "Load more" });
+    await expect(loadMore).toBeVisible();
+    await loadMore.click();
+    await expect(main.locator("#activity-status")).toHaveText("Loading activity");
+    await expect(main.locator("tbody tr")).toHaveCount(3);
+
+    await main.getByLabel("Search loaded activity").fill("NO_MATCH");
     await expect(main.getByRole("heading", { name: "No activity recorded" })).toBeVisible();
     await expect(main.locator("table")).toHaveCount(0);
 
-    await main.getByLabel("Action filter").fill("ACTIVITY_ERROR");
-    await main.getByRole("button", { name: "Apply filters" }).click();
+    failNextPage = true;
+    await page.reload();
+    await expect(main.getByRole("button", { name: "Load more" })).toBeVisible();
+    await main.getByRole("button", { name: "Load more" }).click();
     await expect(main.getByRole("alert")).toContainText("Activity log is not available");
     await expect(main.getByRole("button", { name: "Try again" })).toBeVisible();
   });
 
   test("protects Activity Log records at the Admin API boundary", async ({ page }) => {
-    const apiUrl = "http://localhost:5002/api/v1/admin/activity-log";
+    const apiPort = process.env.ADMIN_SECURITY_API_PORT ?? "5002";
+    const apiUrl = `http://localhost:${apiPort}/api/v1/admin/activity-log`;
     const noSession = await page.request.get(apiUrl);
     expect(noSession.status()).toBe(401);
 

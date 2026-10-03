@@ -34,6 +34,7 @@ function quest(overrides: Partial<AdminQuest> = {}): AdminQuest {
     updatedAt: "2026-09-02T01:00:00.000Z",
     hirer: {
       id: "member-1",
+      studentId: "650000001",
       firstName: "Ari",
       lastName: "Wattanakul",
       email: "ari@ku.th",
@@ -58,11 +59,12 @@ describe("Quest route model", () => {
       displayId: "",
       title: apiDetail.title,
       state: "QUEST_FAILED",
-      hirer: apiDetail.hirer,
+      hirer: { id: apiDetail.hirer.id, studentId: apiDetail.hirer.studentId },
     });
     expect("questStatus" in detail).toBe(false);
     expect(detail).not.toBe(apiDetail);
     expect(detail.hirer).not.toBe(apiDetail.hirer);
+    expect(detail.hirer).toMatchObject({ memberId: apiDetail.hirer.id, studentId: apiDetail.hirer.studentId });
     expect(finance).toMatchObject({
       quest: {
         id: apiFinance.quest.id,
@@ -72,6 +74,26 @@ describe("Quest route model", () => {
     });
     expect("questStatus" in finance.quest).toBe(false);
     expect(finance).not.toBe(apiFinance);
+  });
+
+  it("maps the API Quest timeline, images, and Member identifiers", () => {
+    const apiDetail = {
+      ...mockQuestDetail(mockQuestSummary({ id: "quest-uuid-1", displayId: "QST-1" })),
+      timeline: [{
+        event: "QUEST_STATUS_CHANGED",
+        status: "QUEST_FAILED" as const,
+        occurredAt: "2026-09-02T01:00:00.000Z",
+        actorId: "admin-uuid-1",
+        reasonCode: "WORK_NOT_COMPLETED",
+      }],
+    };
+
+    const detail = questDetailViewFromApi(apiDetail);
+
+    expect(detail.timeline[0]).toEqual(apiDetail.timeline[0]);
+    expect(detail.images).toEqual(apiDetail.images ?? []);
+    expect(detail.hirer.memberId).toBe("00000000-0000-0000-0000-000000000010");
+    expect(detail.hirer.studentId).toBe("6599900015");
   });
 
   it("uses the API Quest id while keeping an optional display id for the board", () => {
@@ -102,7 +124,7 @@ describe("Quest route model", () => {
   it("searches Quest ids, titles, and Hirer details", () => {
     const rows = [
       questRowFromApi(quest({ id: "quest-1", title: "Campus survey" })),
-      questRowFromApi(quest({ id: "quest-2", title: "Library map", hirer: { id: "member-2", firstName: "Benja", lastName: "Ariyawat", email: "benja@ku.th" } })),
+      questRowFromApi(quest({ id: "quest-2", title: "Library map", hirer: { id: "member-2", studentId: "650000002", firstName: "Benja", lastName: "Ariyawat", email: "benja@ku.th" } })),
     ];
 
     expect(searchQuestRows(rows, "benja").map((row) => row.id)).toEqual(["quest-2"]);

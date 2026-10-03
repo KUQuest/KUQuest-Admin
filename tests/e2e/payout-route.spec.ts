@@ -159,12 +159,14 @@ test.describe("Payout App Router route family", () => {
   test("requires a reason code to approve a Payout", async ({ page }) => {
     await signIn(page);
     await page.goto("/payout/PAY-9637");
-
+    await page.waitForLoadState("networkidle");
     await page.getByRole("button", { name: "Approve Payout" }).click();
     const approval = page.getByRole("dialog", { name: "Approve Payout" });
+    await expect(approval).toBeVisible();
     const reasonCode = approval.getByLabel(/Reason code/);
     await expect(approval.getByRole("button", { name: "Approve Payout" })).toBeDisabled();
     await reasonCode.selectOption("PAYOUT_POLICY_REVIEW");
+    await approval.getByLabel(/Reason for this decision/).fill("Review confirmed the payout destination.");
     await expect(reasonCode).toHaveValue("PAYOUT_POLICY_REVIEW");
     await expect(approval.getByRole("button", { name: "Approve Payout" })).toBeEnabled();
     await approval.getByRole("button", { name: "Approve Payout" }).click();
@@ -198,6 +200,7 @@ test.describe("Payout App Router route family", () => {
     await drawer.getByRole("button", { name: "Approve Payout" }).click();
     const approval = page.getByRole("dialog", { name: "Approve Payout" });
     await approval.getByLabel(/Reason code/).selectOption("PAYOUT_POLICY_REVIEW");
+    await approval.getByLabel(/Reason for this decision/).fill("Review confirmed the payout destination.");
     await approval.getByRole("button", { name: "Approve Payout" }).click();
     await expect(drawer.getByRole("heading", { name: "Transfer submitted" })).toBeVisible();
     await expect(drawer.locator(".admin-action-receipt")).toHaveCSS("display", "block");
@@ -220,7 +223,7 @@ test.describe("Payout App Router route family", () => {
     const rejection = page.getByRole("dialog", { name: "Reject Payout" });
     await expect(rejection.getByRole("button", { name: "Reject Payout" })).toBeDisabled();
     await rejection.getByLabel(/Reason code/).selectOption("PAYOUT_INVALID_DESTINATION");
-    await rejection.getByLabel(/Reason \*/).fill("The destination details do not match the verified Member record.");
+    await rejection.getByLabel(/Reason for this decision/).fill("The destination details do not match the verified Member record.");
     await expect(rejection.getByRole("button", { name: "Reject Payout" })).toBeEnabled();
     await rejection.getByRole("button", { name: "Reject Payout" }).click();
     await expect(page.getByText("Cancelled", { exact: true }).first()).toBeVisible();

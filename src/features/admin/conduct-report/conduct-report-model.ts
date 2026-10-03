@@ -32,6 +32,26 @@ export type ConductReportCommand =
   | "CONDUCT_REPORT_DISMISSED"
   | "CONDUCT_REPORT_UPHELD";
 
+export type ConductReportAssignment = {
+  workerName: string | null;
+  workerEmail: string | null;
+  status: string | null;
+  startedAt: string | null;
+  createdAt: string | null;
+};
+
+export type ConductReportProofSubmission = {
+  submittedByName: string | null;
+  status: string | null;
+  description: string | null;
+  workerMessage: string | null;
+  content: string | null;
+  reviewNote: string | null;
+  submittedAt: string | null;
+  sentAt: string | null;
+  reviewedAt: string | null;
+};
+
 export const conductReportDecisionMetadata = {
   "no-violation": {
     command: "CONDUCT_REPORT_DISMISSED",
@@ -70,10 +90,14 @@ export type ConductReportModel = {
   questState: QuestState | null;
   questFailedAt: string | null;
   questRecord: string | null;
+  assignment: ConductReportAssignment | null;
+  proofSubmission: ConductReportProofSubmission | null;
   reportedMemberId: string;
+  reportedMemberDisplayId: string | null;
   reportedMemberName: string;
   reportedMemberHref: string | null;
   reporterId: string | null;
+  reporterDisplayId: string | null;
   reporterName: string;
   reporterHref: string | null;
   moderationHistory: ModerationHistorySummary;
@@ -116,6 +140,7 @@ function firstText(...values: unknown[]): string | null {
   return null;
 }
 
+
 function personName(value: unknown): string | null {
   const record = asRecord(value);
   if (!record) return text(value);
@@ -126,6 +151,13 @@ function personName(value: unknown): string | null {
       .filter((part): part is string => Boolean(text(part)))
       .join(" "),
   );
+}
+
+function statusLabel(value: unknown, prefix: string): string | null {
+  const code = text(value);
+  if (!code) return null;
+  const label = code.startsWith(prefix) ? code.slice(prefix.length) : code;
+  return label.toLowerCase().replace(/\b[a-z]/g, (letter) => letter.toUpperCase()).replaceAll("_", " ");
 }
 
 export function conductReportStatusFromRecord(value: unknown): ConductReportStatus | null {
@@ -163,9 +195,9 @@ export function isConductReportActionable(status: unknown): boolean {
 export function conductReportStatusLabel(status: ConductReportStatus): string {
   switch (status) {
     case "CONDUCT_REPORT_PENDING":
-      return "Open";
+      return "Pending";
     case "CONDUCT_REPORT_UPHELD":
-      return "Confirmed";
+      return "Upheld";
     case "CONDUCT_REPORT_DISMISSED":
       return "Dismissed";
   }
@@ -204,23 +236,30 @@ export function conductReportModelFromRecord(value: unknown): ConductReportModel
   if (!status) return null;
 
   const id = text(record.id) as string;
-  const reportedMemberId = firstText(record.reportedMemberId, record.reportedUserId) ?? "";
+  const filer = asRecord(record.filer) ?? asRecord(record.reporter);
+  const reportedMember = asRecord(record.reportedMember);
+  const assignmentRecord = asRecord(record.assignment);
+  const assignmentWorker = asRecord(assignmentRecord?.worker);
+  const proofRecord = asRecord(record.proofSubmission);
+  const proofSubmitter = asRecord(proofRecord?.submittedBy);
+  const reportedMemberId = firstText(record.reportedMemberId, record.reportedUserId, reportedMember?.id) ?? "";
   const reporterId = firstText(
     record.reporterId,
     record.submittedByMemberId,
     record.submittedByUserId,
+    filer?.id,
   );
   const reportedMemberName = firstText(
     record.reportedMemberName,
     record.reportedUserName,
     personName(record.reportedMember),
-    reportedMemberId ? "Member" : "Member not provided",
+    "Member not provided",
   ) as string;
   const reporterName = firstText(
     record.reporterName,
     record.submittedByMemberName,
-    personName(record.reporter),
-    reporterId ? "Member" : "Reporter not provided",
+    personName(filer),
+    "Reporter not provided",
   ) as string;
   const reasonValue = firstText(
     record.reasonCode,
@@ -230,7 +269,7 @@ export function conductReportModelFromRecord(value: unknown): ConductReportModel
     record.reason,
   );
   const reason = conductReportReasonLabel(reasonValue);
-  const quest = asRecord(record.quest);
+  const quest = asRecord(record.quest) ?? asRecord(record.relatedQuest);
   const questId = firstText(record.questId, record.relatedQuestId, quest?.id);
   const questDisplayId = displayAdminId(record.questDisplayId, quest?.displayId, questId);
   const questTitle = firstText(
@@ -269,21 +308,45 @@ export function conductReportModelFromRecord(value: unknown): ConductReportModel
     questState,
     questFailedAt,
     questRecord: firstText(record.questRecord, record.questRecordSummary, record.questEvidence),
+    assignment: assignmentRecord
+      ? {
+          workerName: personName(assignmentWorker),
+          workerEmail: text(assignmentWorker?.email),
+          status: statusLabel(assignmentRecord.assignmentStatus, "ASSIGNMENT_"),
+          startedAt: firstText(assignmentRecord.startedAt),
+          createdAt: firstText(assignmentRecord.createdAt),
+        }
+      : null,
+    proofSubmission: proofRecord
+      ? {
+          submittedByName: personName(proofSubmitter),
+          status: statusLabel(proofRecord.submissionStatus, "PROOF_SUBMISSION_"),
+          description: firstText(proofRecord.description),
+          workerMessage: firstText(proofRecord.workerMessage),
+          content: firstText(proofRecord.content),
+          reviewNote: firstText(proofRecord.reviewNote),
+          submittedAt: firstText(proofRecord.submittedAt),
+          sentAt: firstText(proofRecord.sentAt),
+          reviewedAt: firstText(proofRecord.reviewedAt),
+        }
+      : null,
     reportedMemberId,
+    reportedMemberDisplayId: displayAdminId(record.reportedMemberDisplayId, reportedMember?.displayId),
     reportedMemberName,
     reportedMemberHref: reportedMemberId ? memberRoutes.detail(reportedMemberId) : null,
     reporterId,
+    reporterDisplayId: displayAdminId(record.reporterDisplayId, filer?.displayId),
     reporterName,
     reporterHref: reporterId ? memberRoutes.detail(reporterId) : null,
     moderationHistory: moderationHistoryFromRecord(record),
-    detail: firstText(record.details, record.description)
+    detail: firstText(record.details, record.detail, record.description)
       ?? "No Conduct Report detail was provided.",
     submittedAt: formatAdminTimestamp(firstText(record.reportedAt, record.submittedAt, record.createdAt) ?? "Time not provided"),
     decisionLabel,
     decisionReason: firstText(record.decisionReason),
     resolution: firstText(record.resolution),
     resolvedBy: firstText(record.resolvedBy, record.resolvedByAdminId),
-    resolutionAt: firstText(record.resolutionAt),
+    resolutionAt: firstText(record.resolutionAt, record.resolvedAt),
     closedAt: firstText(record.closedAt),
     version: typeof record.version === "number" ? record.version : undefined,
   };

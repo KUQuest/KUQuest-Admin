@@ -1,4 +1,9 @@
 import type { WalletStatus } from "../domain/rulebook";
+export type AdminMemberRestrictionStatus =
+  | "NORMAL"
+  | "RED_FLAG"
+  | "TEMPORARY_BAN"
+  | "PERMANENT_BAN";
 export type AdminMemberWalletSummary = {
   id: string;
   walletStatus: WalletStatus;
@@ -8,6 +13,7 @@ export type AdminMemberWalletSummary = {
 };
 export type AdminMemberListItem = {
   id: string;
+  displayId?: string | null;
   email: string;
   firstName: string;
   lastName: string;
@@ -17,6 +23,7 @@ export type AdminMemberListItem = {
   faculty: string | null;
   department: string | null;
   occupation: string | null;
+  memberStatus: AdminMemberRestrictionStatus;
   wallet: AdminMemberWalletSummary | null;
   createdAt: string;
 };
@@ -82,6 +89,7 @@ export type AdminMemberFinance = {
 
 export type AdminWallet = {
   id: string;
+  displayId?: string | null;
   userId: string;
   /**
    * The Wallet API normally embeds its Member. Keep this nullable at the
@@ -120,6 +128,7 @@ export type AdminWalletStatusHistoryEntry = {
   reason: string;
   actorUserId: string | null;
   actorAdminId: string | null;
+  actorDisplayName: string | null;
   createdAt: string;
 };
 

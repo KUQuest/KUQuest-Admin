@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { AdminActionReceipt } from "../../../components/admin/admin-action-feedback";
 import { formatAdminTimestamp } from "../date-format";
@@ -24,7 +24,7 @@ import {
   adminRecordGroup,
   adminRecordHeader,
   adminRecordHeading,
-  adminRecordPartyGrid,
+
   adminRecordSection,
   adminRecordSideFacts,
 } from "../../../components/admin/admin-record-styles";
@@ -41,6 +41,7 @@ import {
   REPORT_CASE_UPDATED_EVENT,
   reportCaseDecisionFor,
   reportCaseModelFromRecord,
+  reportCaseModelWithEvidenceSender,
   reportCaseReasonCodeFor,
   type ReportCaseDecisionChoice,
   type ReportCaseModel,
@@ -82,18 +83,67 @@ function EvidencePreview({
   translateText: (value: string) => string;
   onClose: () => void;
 }) {
+  const evidence = state.evidence;
+  const reportEvidence = evidence && "messages" in evidence ? evidence : null;
+
   return (
     <AdminModalPortal open onClose={onClose}>
       <dialog open className="report-evidence-dialog" aria-modal="true" aria-labelledby="report-evidence-title" tabIndex={-1}>
       <div className="dialog-body p-5">
         <div className="sticky top-0 z-[2] flex items-center justify-between border-b border-admin-border bg-admin-surface/95 px-4 py-3 backdrop-blur-sm">
-          <div><strong id="report-evidence-title" className="block">{translateText("Evidence Reference")}</strong><small className="block text-[13px] text-admin-muted">{state.reference}</small></div>
+          <strong id="report-evidence-title">{translateText("Evidence Reference")}</strong>
           <button className="icon" type="button" aria-label={translateText("Close evidence")} onClick={onClose}><span className="close-lines" /></button>
         </div>
         {state.loading && <p>{translateText("Loading Evidence Reference…")}</p>}
         {state.error && <p className="field-error" role="alert">{translateText(state.error)}</p>}
         {!state.loading && !state.error && (
-          <pre className="report-evidence-context max-h-[50vh] overflow-auto rounded-lg bg-admin-soft p-3 text-sm [overflow-wrap:anywhere]">{evidenceContext(state.evidence?.context, translateText)}</pre>
+          reportEvidence ? (
+            <div className="grid gap-3">
+              {reportEvidence.truncated && <p className="audit-note">{translateText("Only nearby Message context is shown.")}</p>}
+              {reportEvidence.messages.length > 0 ? (
+                <ol className="grid gap-3">
+                  {reportEvidence.messages.map((message) => {
+                    const isReportedMessage = message.id === reportEvidence.reportedMessageId;
+                    const senderName = message.sender
+                      ? [message.sender.firstName, message.sender.lastName].filter(Boolean).join(" ") || message.sender.email
+                      : message.kind === "SYSTEM" ? translateText("System") : translateText("Member not provided");
+
+                    return (
+                      <li key={message.id} className="rounded-lg border border-admin-border bg-admin-soft p-3">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div>
+                            <strong className="block">{translateText(isReportedMessage ? "Reported Message" : message.kind === "SYSTEM" ? "System Message" : "Conversation context")}</strong>
+                            <span>{senderName}</span>
+                            {message.sender?.email && <small className="block text-admin-muted">{message.sender.email}</small>}
+                          </div>
+                          <time className="text-sm text-admin-muted" dateTime={message.createdAt}>{formatAdminTimestamp(message.createdAt)}</time>
+                        </div>
+                        {message.contentText
+                          ? <p className="mt-3 whitespace-pre-wrap break-words">{message.contentText}</p>
+                          : message.systemType
+                            ? <p className="mt-3">{translateText(message.systemType)}</p>
+                            : <p className="mt-3 text-admin-muted">{translateText("No text content was provided.")}</p>}
+                        {message.attachments.length > 0 && (
+                          <ul className="mt-3 grid gap-2">
+                            {message.attachments.map((attachment) => (
+                              <li key={attachment.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-admin-border bg-admin-surface px-3 py-2">
+                                <span>
+                                  <strong className="block">{attachment.originalFilename}</strong>
+                                  <small className="text-admin-muted">{attachment.mimeType} · {attachment.sizeBytes} bytes</small>
+                                </span>
+                                {attachment.url && <a className="text-admin-accent hover:underline" href={attachment.url} target="_blank" rel="noreferrer">{translateText("Open attachment")}</a>}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ol>
+              ) : <p className="audit-note">{translateText("No Messages were returned for this Evidence Reference.")}</p>}
+              <p className="audit-note">{translateText("Evidence access is recorded as an Admin Action.")}</p>
+            </div>
+          ) : <pre className="report-evidence-context max-h-[50vh] overflow-auto rounded-lg bg-admin-soft p-3 text-sm [overflow-wrap:anywhere]">{evidenceContext(evidence && !("messages" in evidence) ? evidence.context : undefined, translateText)}</pre>
         )}
         <div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5"><Button variant="outline" type="button" onClick={onClose}>{translateText("Close")}</Button></div>
       </div>
@@ -148,7 +198,7 @@ function ReportOverview({
           <div className={adminRecordFacts}><div className={adminRecordFact}><span>{translateText("Status")}</span><strong><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></strong></div><div className={adminRecordFact}><span>{translateText("Report type")}</span><strong>{translateText(model.reportType)}</strong></div><div className={adminRecordFact}><span>{translateText("Reported")}</span><strong>{formatAdminTimestamp(model.submittedAt)}</strong></div></div>
           <AdminOverviewMeta className="moderation-case-context-grid !grid-cols-2 max-[600px]:!grid-cols-1"><div><dt>{translateText("Case")}</dt><dd>{model.displayId}</dd></div><div><dt>{translateText("Case type")}</dt><dd>{translateText("Report Case")}</dd></div><div><dt>{translateText("Source")}</dt><dd>{translateText("Message")}</dd></div><div><dt>{translateText("Submitted")}</dt><dd>{formatAdminTimestamp(model.submittedAt)}</dd></div><div><dt>{translateText("Evidence References")}</dt><dd>{model.evidence.length || translateText("None")}</dd></div></AdminOverviewMeta>
           <div className={adminRecordGroup}><span>{translateText("Submitted detail")}</span><p>{model.detail}</p></div>
-          <div className={`${adminRecordFacts} report-overview-parties`}><div className={adminRecordFact}><span>{translateText("Reported Member")}</span><strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} interactive={false} /></strong></div><div className={adminRecordFact}><span>{translateText("Reporting Member")}</span><strong><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} interactive={false} /></strong></div></div>
+          <div className={`${adminRecordFacts} report-overview-parties`}><div className={adminRecordFact}><span>{translateText("Reported Member")}</span><strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} interactive={false} /></strong><small>{model.reportedMemberDisplayId ?? "—"}</small></div><div className={adminRecordFact}><span>{translateText("Reporting Member")}</span><strong><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} interactive={false} /></strong><small>{model.reporterDisplayId ?? "—"}</small></div></div>
       </Card>
     );
   }
@@ -156,14 +206,13 @@ function ReportOverview({
   return (
     <Card as="section" className={`${adminRecordSection} report-overview`}>
       <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Report detail")}</h2></CardHeader>
-      <p className={adminRecordDescription}>{model.detail}</p>
+
       <AdminOverviewMeta className="mt-[18px]">
         <div><dt>{translateText("Status")}</dt><dd><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></dd></div>
         <div><dt>{translateText("Submitted")}</dt><dd>{formatAdminTimestamp(model.submittedAt)}</dd></div>
         <div><dt>{translateText("Report type")}</dt><dd>{translateText(model.reportType)}</dd></div>
-        <div><dt>{translateText("Submitted by")}</dt><dd><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} /></dd></div>
-        <div><dt>{translateText("Reported Member")}</dt><dd><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} /></dd></div>
       </AdminOverviewMeta>
+      <p className={`${adminRecordDescription} mt-4`}>{model.detail}</p>
     </Card>
   );
 }
@@ -178,35 +227,6 @@ function RelatedQuestPanel({ model, translateText }: { model: ReportCaseModel; t
         <div><span>{translateText("Quest ID")}</span><strong>{model.relatedQuestDisplayId ?? "—"}</strong></div>
       </div>
       {model.relatedQuestHref && <Button asChild variant="outline" className="mt-3 w-full"><Link href={model.relatedQuestHref}>{translateText("Open Quest detail")}</Link></Button>}
-    </Card>
-  );
-}
-
-function PeopleInvolved({
-  model,
-  translateText,
-  compact = false,
-}: {
-  model: ReportCaseModel;
-  translateText: (value: string) => string;
-  compact?: boolean;
-}) {
-  if (compact) {
-    return (
-      <Card as="section" className={adminRecordSection}>
-        <CardHeader flush className={adminRecordHeader}><h3 className={adminRecordHeading}>{translateText("People involved")}</h3></CardHeader>
-        <div className={adminRecordFacts}><div className={adminRecordFact}><span>{translateText("Reported Member")}</span><strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} interactive={!compact} /></strong></div><div className={adminRecordFact}><span>{translateText("Reported by")}</span><strong><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} interactive={!compact} /></strong></div></div>
-      </Card>
-    );
-  }
-
-  return (
-    <Card as="section" className={adminRecordSection}>
-      <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("People involved")}</h2></CardHeader>
-      <div className={`${adminRecordPartyGrid} report-parties`}>
-        <div><span>{translateText("Reporting Member")}</span><strong><MemberLink id={model.reporterId} name={model.reporterName} href={model.reporterHref} /></strong></div>
-        <div><span>{translateText("Reported Member")}</span><strong><MemberLink id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} /></strong></div>
-      </div>
     </Card>
   );
 }
@@ -243,12 +263,14 @@ function EvidenceSection({
 function MemberSummaryPanel({
   heading,
   id,
+  displayId,
   name,
   href,
   translateText,
 }: {
   heading: string;
   id: string | null;
+  displayId: string | null;
   name: string;
   href: string | null;
   translateText: (value: string) => string;
@@ -256,7 +278,7 @@ function MemberSummaryPanel({
   return (
     <Card as="section" className={adminRecordSection}>
       <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText(heading)}</h2></CardHeader>
-      <div className={adminRecordSideFacts}><div><span>{translateText("Name")}</span><strong><MemberLink id={id} name={name} href={href} /></strong></div></div>
+      <div className={adminRecordSideFacts}><div><span>{translateText("Name")}</span><strong><MemberLink id={id} name={name} href={href} /></strong></div><div><span>{translateText("Member ID")}</span><strong>{displayId ?? "—"}</strong></div></div>
       {href && <Button asChild variant="outline" className="mt-3 w-full"><Link href={href}>{translateText("See Member profile")}</Link></Button>}
     </Card>
   );
@@ -399,13 +421,19 @@ function ReportCaseSections({
       <AdminRecordGrid
         primary={<>
           <ReportOverview model={model} translateText={translateText} />
-          <PeopleInvolved model={model} translateText={translateText} />
+
           <EvidenceSection model={model} translateText={translateText} onOpen={onOpenEvidence} />
           <ReportTimeline model={model} translateText={translateText} />
         </>}
         side={<>
-          <MemberSummaryPanel heading="Reported Member" id={model.reportedMemberId} name={model.reportedMemberName} href={model.reportedMemberHref} translateText={translateText} />
-          <MemberSummaryPanel heading="Submitted by" id={model.reporterId} name={model.reporterName} href={model.reporterHref} translateText={translateText} />
+          <MemberSummaryPanel heading="Reported Member" id={model.reportedMemberId} displayId={model.reportedMemberDisplayId} name={model.reportedMemberName} href={model.reportedMemberHref} translateText={translateText} />
+          <MemberSummaryPanel heading="Submitted by" id={model.reporterId} displayId={model.reporterDisplayId} name={model.reporterName} href={model.reporterHref} translateText={translateText} />
+          <ModerationHistoryPanel
+            summary={model.moderationHistory}
+            translateText={translateText}
+            compact={false}
+            member={{ id: model.reportedMemberId, displayId: model.reportedMemberDisplayId, name: model.reportedMemberName, href: model.reportedMemberHref }}
+          />
           <Card as="section" className={`${adminRecordSection} report-decision-panel pb-[18px]`}>
             <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{model.isActionable ? translateText("Report decision") : translateText("Recorded outcome")}</h2></CardHeader>
             {decisionPanel}
@@ -447,8 +475,8 @@ function DrawerSections({
         submittedAt={formatAdminTimestamp(model.submittedAt)}
         source="Message"
         detail={model.detail}
-        reportedMember={{ id: model.reportedMemberId, name: model.reportedMemberName, href: model.reportedMemberHref, role: "Reported Member" }}
-        reporter={{ id: model.reporterId, name: model.reporterName, href: model.reporterHref, role: "Reporting Member" }}
+        reportedMember={{ id: model.reportedMemberId, displayId: model.reportedMemberDisplayId, name: model.reportedMemberName, href: model.reportedMemberHref, role: "Reported Member" }}
+        reporter={{ id: model.reporterId, displayId: model.reporterDisplayId, name: model.reporterName, href: model.reporterHref, role: "Reporting Member" }}
         relatedRecord={model.relatedQuestId ? { id: model.relatedQuestId, displayId: model.relatedQuestDisplayId, title: model.relatedQuestTitle, href: model.relatedQuestHref } : null}
         evidenceCount={model.evidence.length}
         moderationHistory={model.moderationHistory}
@@ -462,12 +490,12 @@ function DrawerSections({
         <ReportOverview model={model} translateText={translateText} compact />
         <EvidenceSection model={model} translateText={translateText} onOpen={onOpenEvidence} compact />
         <RelatedQuestPanel model={model} translateText={translateText} />
-        <PeopleInvolved model={model} translateText={translateText} compact />
+
         <ModerationHistoryPanel
           summary={model.moderationHistory}
           translateText={translateText}
           compact
-          member={{ id: model.reportedMemberId, name: model.reportedMemberName, href: model.reportedMemberHref }}
+          member={{ id: model.reportedMemberId, displayId: model.reportedMemberDisplayId, name: model.reportedMemberName, href: model.reportedMemberHref }}
         />
         <Card as="section" className={`${adminRecordSection} report-decision-panel pb-[18px]`}><CardHeader flush className={adminRecordHeader}><h3 className={adminRecordHeading}>{model.isActionable ? translateText("Report decision") : translateText("Resolution")}</h3></CardHeader><DecisionControls model={model} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelect={onSelectChoice} onStart={onStartDecision} /></Card>
       </ModerationCaseWorkspace>
@@ -497,8 +525,15 @@ export function ReportCaseDetail({
   } | null>(null);
   const decisionMutation = useReportDecisionMutation();
 
-  const model = reportModel;
   const evidenceQuery = useReportEvidenceQuery(evidenceReference);
+  const model = reportModel
+    ? reportCaseModelWithEvidenceSender(reportModel, evidenceQuery.data)
+    : null;
+
+  useEffect(() => {
+    if (!reportModel || !model || model === reportModel) return;
+    window.dispatchEvent(new CustomEvent(REPORT_CASE_UPDATED_EVENT, { detail: model }));
+  }, [model, reportModel]);
 
   if (isPending && !model) return <AdminLoading message={translateText("Loading Report Case…")} />;
   if (!model) {
@@ -535,6 +570,7 @@ export function ReportCaseDetail({
     const decision = reportCaseDecisionFor(selectedChoice);
     const options: ReportCaseDecision = {
       outcome: decision,
+      reason,
       reasonCode: reportCaseReasonCodeFor(selectedChoice, reason),
       idempotencyKey: newReportCaseIdempotencyKey(model.id),
       expectedVersion: model.version ?? 1,

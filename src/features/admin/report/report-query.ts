@@ -50,7 +50,7 @@ export function useReportDecisionMutation() {
         ...summary,
         status: summary.status,
         version: result.resourceVersion,
-        decisionReason: options.reasonCode,
+        decisionReason: options.reason,
       };
     },
     onSuccess: (record, { reportId }) => {
@@ -110,7 +110,7 @@ export function useReportBoardQuery(initialData?: ReportCasePageData) {
 export function useReportDetailQuery(reportId: string, initialModel?: ReportCaseModel | null) {
   const queryClient = useQueryClient();
   const apiEnabled = isAdminApiEnabled();
-  const queryKey = reportDetailQueryKey(reportId);
+  const queryKey = useMemo(() => reportDetailQueryKey(reportId), [reportId]);
   const query = useQuery({
     queryKey,
     queryFn: async () => {

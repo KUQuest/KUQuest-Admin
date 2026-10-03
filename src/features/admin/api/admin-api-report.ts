@@ -49,6 +49,7 @@ export function createAdminReportApi() {
           },
           body: {
             outcome: options.outcome,
+            reason: options.reason,
             reasonCode: options.reasonCode,
           },
         },
@@ -65,8 +66,12 @@ export function createAdminReportApi() {
             "If-Match": String(options.expectedVersion),
           },
           body: options.outcome === "CONDUCT_REPORT_DISMISSED"
-            ? { outcome: options.outcome, decisionReasonCode: options.decisionReasonCode }
-            : { outcome: options.outcome },
+            ? {
+                outcome: options.outcome,
+                reason: options.reason,
+                decisionReasonCode: options.decisionReasonCode,
+              }
+            : { outcome: options.outcome, reason: options.reason },
         },
       );
     },

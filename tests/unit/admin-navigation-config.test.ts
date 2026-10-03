@@ -11,10 +11,11 @@ describe("Admin navigation active state", () => {
       "/report",
       "/conduct-report",
       "/payout",
-      "/finance",
+      "/top-ups",
       "/member",
       "/wallet",
       "/activity",
+      "/finance",
     ]);
     expect(adminNavigation.every(({ href }) => !href.includes("?view="))).toBe(true);
     expect(adminNavigation.map(({ key, count }) => [key, count])).toEqual([
@@ -24,10 +25,15 @@ describe("Admin navigation active state", () => {
       ["report", "reports"],
       ["conduct-report", "conductReports"],
       ["payout", "payouts"],
-      ["finance", null],
+      ["top-ups", null],
       ["member", null],
       ["wallet", null],
       ["activity", null],
+      ["finance", null],
+    ]);
+    expect(adminNavigation.filter(({ group }) => group === "system").map(({ key }) => key)).toEqual([
+      "activity",
+      "finance",
     ]);
   });
 
@@ -35,6 +41,8 @@ describe("Admin navigation active state", () => {
     expect(activeAdminNavigation("/quest/QST-1")).toBe("quest");
     expect(activeAdminNavigation("/member/member-1")).toBe("member");
     expect(activeAdminNavigation("/activity")).toBe("activity");
+    expect(activeAdminNavigation("/finance")).toBe("finance");
+    expect(activeAdminNavigation("/top-ups")).toBe("top-ups");
   });
 
   it("does not treat a similar path as an Admin route", () => {

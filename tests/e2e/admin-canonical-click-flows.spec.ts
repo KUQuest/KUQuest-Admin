@@ -111,19 +111,30 @@ test.describe("Admin canonical click flows", () => {
 
     await page.locator('.admin-shell aside a[href="/member"]').click();
     await expect(page).toHaveURL(/\/member$/);
-    await page.locator('tr[data-member-id="68000000"]').click();
-    await page.getByRole("dialog", { name: "Akarin Ariyawat" }).getByRole("link", { name: "See full Member profile" }).click();
+    await page.getByRole("button", { name: "Open Member 68000000" }).click();
+    await page.getByRole("dialog", { name: "68000000" }).getByRole("link", { name: "See full Member profile" }).click();
     await expect(page).toHaveURL(/\/member\/68000000$/);
     await expect(page.getByRole("heading", { level: 1, name: "Akarin Ariyawat" })).toBeVisible();
   });
 
+  test("admin opens the related Quest as a full page from full Dispute Case detail", async ({ page }) => {
+    await signIn(page, { expectEmailFocused: true });
+    await page.goto("/dispute/DSP-5201");
+
+    await expect(page.getByRole("heading", { name: "Dispute detail" })).toBeVisible();
+    await page.getByRole("link", { name: "Open Quest detail" }).click();
+
+    await expect(page.locator(".quest-detail-page h1")).toHaveText("Verify dorm fire exits");
+    await expect(page.locator(".quest-drawer")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Dispute detail" })).toHaveCount(0);
+  });
   test("moderation queues open on pending cases by default", async ({ page }) => {
     await signIn(page, { expectEmailFocused: true });
 
     const queues = [
       { path: "/dispute", main: "#dispute-main", tabName: /^Open/, statusSelector: "tbody tr[data-dispute-status]", statusAttribute: "data-dispute-status", pendingStatus: "DISPUTE_CASE_PENDING" },
       { path: "/report", main: "#report-main", tabName: /^Open/, statusSelector: "tbody tr[data-report-id] td:nth-child(6) .badge", pendingStatus: "Open" },
-      { path: "/conduct-report", main: "#conduct-report-main", tabName: /^Open/, statusSelector: "tbody tr[data-conduct-report-status]", statusAttribute: "data-conduct-report-status", pendingStatus: "CONDUCT_REPORT_PENDING" },
+      { path: "/conduct-report", main: "#conduct-report-main", tabName: /^Pending/, statusSelector: "tbody tr[data-conduct-report-status]", statusAttribute: "data-conduct-report-status", pendingStatus: "CONDUCT_REPORT_PENDING" },
     ];
 
     for (const queue of queues) {

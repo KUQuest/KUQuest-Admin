@@ -23,10 +23,12 @@ export type ModerationCaseKind = "Report Case" | "Conduct Report" | "Dispute Cas
 
 type Person = {
   id: string | null;
+  displayId?: string | null;
   name: string;
   href: string | null;
   role: string;
 };
+
 
 export type ModerationCaseWorkspaceProps = {
   kind: ModerationCaseKind;
@@ -70,18 +72,21 @@ export function ModerationHistoryPanel({
   compact,
   member,
   memberLabel = "Reported Member",
+  showAdminNotes = true,
 }: {
   summary: ModerationHistorySummary;
   translateText: (value: string) => string;
   compact: boolean;
-  member?: { id: string | null; name: string; href: string | null } | null;
+  member?: { id: string | null; displayId?: string | null; name: string; href: string | null } | null;
   memberLabel?: string;
+  showAdminNotes?: boolean;
 }) {
   const fallback = translateText("Not provided.");
   const panelClass = `${adminRecordSection} moderation-case-history`;
+  const actionFallback = translateText(summary.memberRecordAvailable ? "None recorded." : "Not provided.");
   const actionText = summary.previousActions.length
     ? summary.previousActions.map((action) => translateText(action)).join(" · ")
-    : fallback;
+    : actionFallback;
   const noteText = summary.adminNotes.length
     ? summary.adminNotes.join(" · ")
     : fallback;
@@ -97,6 +102,7 @@ export function ModerationHistoryPanel({
           <span>{translateText(memberLabel)}</span>
           <p>
             <strong className="font-semibold">{!compact && member.href && member.id ? <Link href={member.href}>{member.name}</Link> : member.name}</strong>
+            {displayAdminId(member.displayId) && <small className="text-xs text-admin-muted"> · {displayAdminId(member.displayId)}</small>}
           </p>
         </div>
       )}
@@ -109,10 +115,10 @@ export function ModerationHistoryPanel({
         <span>{translateText("Previous moderation actions")}</span>
         <p>{actionText}</p>
       </div>
-      <div className={adminRecordGroup}>
+      {showAdminNotes && <div className={adminRecordGroup}>
         <span>{translateText("Internal Admin notes")}</span>
         <p>{noteText}</p>
-      </div>
+      </div>}
     </Card>
   );
 }

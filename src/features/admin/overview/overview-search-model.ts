@@ -96,8 +96,8 @@ export function overviewSearchResultsFromMockData(
 ): OverviewSearchResult[] {
   const members = data.collections.users.map((member): OverviewSearchResult => ({
     kind: "member",
-    id: "",
-    title: displayAdminId(member.title) ? member.title : "Member",
+    id: displayAdminId(recordText(member, "studentId")) ?? "",
+    title: member.title,
     detail: "Member",
     status: mockMemberSearchStatus(member),
     newestAt: recordNewestAt(member, ["updatedAt", "lastActiveAt", "createdAt", "accountCreatedAt"]),
@@ -195,7 +195,7 @@ export function overviewSearchResultsFromApi(
 ): OverviewSearchResult[] {
   const members = records.members.map((member): OverviewSearchResult => ({
     kind: "member",
-    id: "",
+    id: displayAdminId(member.studentId) ?? "",
     title: memberName(member),
     detail: "Member",
     status: apiStatusLabel(member.status, memberStatusLabel),
@@ -261,7 +261,9 @@ export function overviewSearchResultsFromApi(
 export function overviewSearchResultsFromSearchApi(items: AdminSearchResult[]): OverviewSearchResult[] {
   return items.map((item): OverviewSearchResult => ({
     kind: item.kind,
-    id: displayAdminId(item.id) ?? "",
+    id: item.kind === "member"
+      ? displayAdminId(item.studentId) ?? ""
+      : displayAdminId(item.displayId, item.id) ?? "",
     title: item.title,
     detail: searchResultLabel(item.kind),
     status: searchApiStatusLabel(item),

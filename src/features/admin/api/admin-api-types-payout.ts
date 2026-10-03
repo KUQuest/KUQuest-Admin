@@ -1,5 +1,6 @@
 export type AdminPayout = {
   id: string;
+  displayId?: string | null;
   student: {
     id: string;
     email: string;
@@ -140,6 +141,7 @@ export type AdminApiTopUpStatus = (typeof ADMIN_API_TOP_UP_STATUSES)[number];
 
 export type AdminTopUpListItem = {
   id: string;
+  displayId?: string | null;
   userId: string;
   member: {
     firstName: string;
@@ -160,6 +162,7 @@ export type AdminTopUpListItem = {
 
 export type AdminTopUpDetail = {
   id: string;
+  displayId?: string | null;
   internalReference: string;
   principalUserId: string;
   quoteId: string;

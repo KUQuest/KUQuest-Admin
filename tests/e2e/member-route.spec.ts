@@ -17,6 +17,7 @@ test.describe("Member route family", () => {
 
     const headers = await board.locator("thead th").allTextContents();
     expect(headers).toEqual([
+      "Member ID↕",
       "Member↕",
       "Student ID↕",
       "Academic profile↕",
@@ -26,17 +27,16 @@ test.describe("Member route family", () => {
     const demoSearch = board.getByRole("searchbox", { name: "Search Members" });
     await demoSearch.fill("Demo Member 01");
     const demoRow = board.locator("tbody tr[data-member-id]").first();
-    await expect(demoRow.locator("td").nth(0)).toContainText("Demo Member 01");
-    await expect(demoRow.locator("td").nth(1)).toHaveText("6510200100");
+    await expect(demoRow.locator("td").nth(0)).toHaveText("68000100");
+    await expect(demoRow.locator("td").nth(2)).toHaveText("6510200100");
     await demoSearch.fill("");
 
-    const opener = board.locator('tbody tr[data-member-id="68000000"]');
+    const opener = board.getByRole("button", { name: "Open Member 68000000" });
     await opener.click();
     await expect(page).toHaveURL(/\/member\/68000000$/);
-    const drawer = page.getByRole("dialog", { name: "Akarin Ariyawat" });
+    const drawer = page.getByRole("dialog", { name: "68000000" });
     await expect(drawer).toBeVisible();
     await expect(drawer).toContainText("Akarin Ariyawat");
-    await expect(drawer.getByText("68000000", { exact: true })).toHaveCount(0);
     await expect(drawer.locator("[data-member-drawer-moderation-history]")).toContainText("Moderation History");
     await page.goBack();
     await expect(page).toHaveURL(/\/member$/);
@@ -65,14 +65,23 @@ test.describe("Member route family", () => {
     await page.goto("/member");
 
     const board = page.locator("#member-main");
+    const memberIdSort = board.getByRole("button", { name: /^Member ID/ });
+    await expect(memberIdSort).toBeVisible();
+    await memberIdSort.click();
+    await expect(board.locator("tbody tr[data-member-id]").first()).toHaveAttribute("data-member-id", "68000000");
+    await expect(board.locator("thead th").first()).toHaveAttribute("aria-sort", "ascending");
+    await memberIdSort.click();
+    await expect(board.locator("tbody tr[data-member-id]").first()).toHaveAttribute("data-member-id", "68000299");
+    await expect(board.locator("thead th").first()).toHaveAttribute("aria-sort", "descending");
+
     const studentIdSort = board.getByRole("button", { name: /^Student ID/ });
     await expect(studentIdSort).toBeVisible();
     await studentIdSort.click();
-    await expect(board.locator("tbody tr[data-member-id]").first().locator("td").nth(1)).toHaveText("6510200100");
-    await expect(board.locator("thead th").nth(1)).toHaveAttribute("aria-sort", "ascending");
+    await expect(board.locator("tbody tr[data-member-id]").first().locator("td").nth(2)).toHaveText("6510200100");
+    await expect(board.locator("thead th").nth(2)).toHaveAttribute("aria-sort", "ascending");
     await studentIdSort.click();
-    await expect(board.locator("tbody tr[data-member-id]").first().locator("td").nth(1)).toHaveText("6510200299");
-    await expect(board.locator("thead th").nth(1)).toHaveAttribute("aria-sort", "descending");
+    await expect(board.locator("tbody tr[data-member-id]").first().locator("td").nth(2)).toHaveText("6510200299");
+    await expect(board.locator("thead th").nth(2)).toHaveAttribute("aria-sort", "descending");
   });
 
   test("renders a full Member detail page on refresh and keeps tabs canonical", async ({ page }) => {
@@ -109,9 +118,14 @@ test.describe("Member route family", () => {
     await expect(reason).toHaveValue("The evidence confirms a policy violation.");
     const box = await reason.boundingBox();
     expect(box?.width).toBeLessThanOrEqual(390);
+    expect(box?.height).toBeGreaterThanOrEqual(128);
+    await expect(dialog.getByRole("textbox", { name: "Internal admin note (optional)" })).toHaveCount(0);
+    await dialog.getByRole("button", { name: "Confirm violation" }).click();
+    await expect(dialog.getByRole("alert")).toContainText("Select a penalty to apply.");
+    await dialog.getByRole("radio", { name: /Temporary ban/ }).click();
     await dialog.getByRole("button", { name: "Confirm violation" }).click();
     await expect(page.locator(".user-counter-list")).toContainText("1");
-    await expect(page.locator(".user-summary-name")).toContainText("Flag");
+    await expect(page.locator(".user-summary-name")).toContainText("Temp Ban");
   });
 
   test("shows mock moderation history, related cases, and submitted reports", async ({ page }) => {

@@ -210,5 +210,5 @@ function MemberCell({
   name: string;
   href: string | null;
 }) {
-  return <div>{href && id ? <Link className="text-admin-accent no-underline hover:underline hover:underline-offset-4" href={href} onClick={(event) => event.stopPropagation()}>{name}</Link> : <span>{name}</span>}<small>{id ?? "—"}</small></div>;
+  return <div>{href && id ? <Link className="text-admin-accent no-underline hover:underline hover:underline-offset-4" href={href} onClick={(event) => event.stopPropagation()}>{name}</Link> : <span>{name}</span>}</div>;
 }

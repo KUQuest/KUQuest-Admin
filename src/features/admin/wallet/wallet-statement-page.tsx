@@ -34,6 +34,7 @@ export function AdminWalletStatementPage({ data }: { data: WalletStatementPageDa
         <div className={adminRecordFacts}>
           <div className={adminRecordFact}><span>{translateText("Wallet Status")}</span><strong><WalletStatusBadge status={wallet.status} /></strong></div>
           <div className={adminRecordFact}><span>{translateText("Current Wallet Balance")}</span><strong>{formatWalletMoney(wallet.currentBalanceSatang)}</strong></div>
+          {displayAdminId(wallet.displayId) ? <div className={adminRecordFact}><span>{translateText("Wallet record")}</span><strong>{displayAdminId(wallet.displayId)}</strong></div> : null}
           <div className={adminRecordFact}><span>{translateText("Latest Wallet Transaction Date")}</span><strong>{formatWalletDate(wallet.latestTransactionAt)}</strong></div>
         </div>
       </Card>

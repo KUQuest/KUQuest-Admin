@@ -120,7 +120,7 @@ export function DisputeDecisionDialog({
             <p>{description}</p>
             {choice ? <AdminActionSummary
               title={translateText("Before you confirm")}
-              affected={`${translateText("Dispute Case")} ${model.displayId} · ${translateText("Quest")} ${model.questDisplayId ?? translateText("Not provided.")}`}
+              affected={`${translateText("Dispute Case")} ${model.displayId} · ${translateText("Quest")} ${model.questTitle}${model.questDisplayId ? ` (${model.questDisplayId})` : ""}`}
               currentState={model.statusLabel}
               nextState={disputeCaseStatusLabel(nextState)}
               effect={translateText(effect)}

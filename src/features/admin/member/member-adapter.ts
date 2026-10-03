@@ -7,9 +7,12 @@ import { loadDashboardData } from "../dashboard/dashboard-bootstrap";
 import type { PersistedAdminData } from "../data/admin-records";
 import {
   memberModelFromMockRecord,
+  mockMemberModerationSummaryFromRecord,
+  memberPenaltyForChoice,
   nextPenaltyFor,
   type MemberActionOutcome,
   type MemberModel,
+  type MemberPenaltyChoice,
 } from "./member-model";
 
 export type MemberMockPage = {
@@ -34,6 +37,13 @@ function memberRecord(data: PersistedAdminData, memberId: string): Record<string
   return record ? record as Record<string, unknown> : null;
 }
 
+export function findMemberModerationSummaryFromMockData(
+  data: PersistedAdminData,
+  memberId: string,
+) {
+  const record = memberRecord(data, memberId);
+  return record ? mockMemberModerationSummaryFromRecord(record, data) : null;
+}
 export function findMemberFromMockData(data: PersistedAdminData, memberId: string): MemberModel | null {
   const record = memberRecord(data, memberId);
   return record ? memberModelFromMockRecord(record, data) : null;
@@ -100,17 +110,21 @@ function addMemberHistory(
   outcome: MemberActionOutcome,
   reason: string,
   context?: MemberViolationContext,
+  previousWalletStatus?: string,
+  appliedAt = new Date(),
 ): void {
   const history = Array.isArray(record.moderationHistory) ? record.moderationHistory : [];
   record.moderationHistory = [
     {
       event: `${outcome.label} applied`,
-      at: new Date().toISOString(),
+      at: appliedAt.toISOString(),
       by: "Admin",
       reason,
-      previousStatus: record.walletStatus ?? record.status,
+      previousStatus: previousWalletStatus ?? record.walletStatus ?? record.status,
       newStatus: outcome.walletStatus,
       outcome: outcome.label,
+      ...(outcome.durationDays ? { durationDays: outcome.durationDays } : {}),
+      ...(outcome.durationDays ? { expiresAt: outcome.expiresAt } : {}),
       ...(context?.caseId ? { caseId: context.caseId } : {}),
       ...(context?.caseType ? { caseType: context.caseType } : {}),
       ...(context?.caseHref ? { caseHref: context.caseHref } : {}),
@@ -119,24 +133,44 @@ function addMemberHistory(
   ];
 }
 
-/** Apply one confirmed Misconduct violation to a loaded Mock data set. */
-export function recordMemberViolationInData(
+function recordMemberViolationWithOutcome(
   data: PersistedAdminData,
   memberId: string,
   reason: string,
-  note = "",
-  context?: MemberViolationContext,
+  note: string,
+  context: MemberViolationContext | undefined,
+  selectedPenalty?: MemberPenaltyChoice,
+  manualChoiceRequired = false,
 ): { model: MemberModel; outcome: MemberActionOutcome } | null {
   const record = memberRecord(data, memberId);
   if (!record) return null;
   const current = memberModelFromMockRecord(record, data);
   if (!current) return null;
-  const outcome = nextPenaltyFor(current);
+  const automaticOutcome = nextPenaltyFor(current);
+  if (manualChoiceRequired && !automaticOutcome.exempted && !selectedPenalty) {
+    throw new Error("Select a penalty to apply.");
+  }
+  if (selectedPenalty && automaticOutcome.exempted) {
+    throw new Error("This violation is exempt. No penalty can be selected.");
+  }
+  const outcome = selectedPenalty ? memberPenaltyForChoice(current, selectedPenalty) : automaticOutcome;
   const appliedAt = new Date();
   const expiresAt = outcome.durationDays
     ? new Date(appliedAt.getTime() + outcome.durationDays * 86_400_000).toISOString()
     : null;
-  const previousWalletStatus = record.walletStatus ?? record.status;
+  const appliedOutcome = { ...outcome, expiresAt };
+  const previousWalletStatus = current.walletStatus ?? undefined;
+  const previousState = {
+    memberStatus: current.memberStatus ?? "Normal",
+    walletStatus: current.walletStatus ?? "ACTIVE",
+    statusReason: record.statusReason ?? null,
+    statusAppliedAt: record.statusAppliedAt ?? null,
+    statusAppliedBy: record.statusAppliedBy ?? null,
+    redFlagExpiresAt: record.redFlagExpiresAt ?? null,
+    banExpiresAt: record.banExpiresAt ?? null,
+    penalty: record.penalty ?? null,
+    age: record.age ?? null,
+  };
   record.confirmedViolationCount = (current.confirmedViolationCount ?? 0) + 1;
   record.memberStatus = outcome.memberStatus;
   record.walletStatus = outcome.walletStatus;
@@ -162,10 +196,11 @@ export function recordMemberViolationInData(
       appliedBy: "Admin",
       ...(outcome.durationDays ? { durationDays: outcome.durationDays } : {}),
       ...(expiresAt ? { expiresAt } : {}),
+      previousState,
     };
   }
   record.age = expiresAt ? `${outcome.label} · expires ${expiresAt}` : outcome.label;
-  addMemberHistory(record, outcome, reason, context);
+  addMemberHistory(record, appliedOutcome, reason, context, previousWalletStatus, appliedAt);
   if (note.trim()) {
     const notes = Array.isArray(record.adminNotes) ? record.adminNotes : [];
     record.adminNotes = [{ at: appliedAt.toISOString(), by: "Admin", note: note.trim() }, ...notes];
@@ -175,9 +210,30 @@ export function recordMemberViolationInData(
   if (previousWalletStatus === outcome.walletStatus) {
     model.statusReason = reason;
   }
-  return { model, outcome };
+  return { model, outcome: appliedOutcome };
 }
 
+/** Apply one confirmed violation with the automatic outcome for case decisions. */
+export function recordMemberViolationInData(
+  data: PersistedAdminData,
+  memberId: string,
+  reason: string,
+  note = "",
+  context?: MemberViolationContext,
+): { model: MemberModel; outcome: MemberActionOutcome } | null {
+  return recordMemberViolationWithOutcome(data, memberId, reason, note, context);
+}
+
+/** Apply a Member-profile violation with the Admin-selected penalty. */
+export function recordMemberViolationFromMemberInData(
+  data: PersistedAdminData,
+  memberId: string,
+  reason: string,
+  note: string,
+  selectedPenalty: MemberPenaltyChoice | null,
+): { model: MemberModel; outcome: MemberActionOutcome } | null {
+  return recordMemberViolationWithOutcome(data, memberId, reason, note, undefined, selectedPenalty ?? undefined, true);
+}
 export function recordMemberViolation(
   storage: BrowserStorage,
   memberId: string,
@@ -192,6 +248,19 @@ export function recordMemberViolation(
   return result;
 }
 
+export function recordMemberViolationFromMember(
+  storage: BrowserStorage,
+  memberId: string,
+  reason: string,
+  note: string,
+  selectedPenalty: MemberPenaltyChoice | null,
+): { model: MemberModel; outcome: MemberActionOutcome } | null {
+  const data = loadDashboardData(storage);
+  const result = recordMemberViolationFromMemberInData(data, memberId, reason, note, selectedPenalty);
+  if (!result) return null;
+  persist(storage, data);
+  return result;
+}
 export type MemberPenaltyRemovalResult = {
   model: MemberModel;
   previousStatus: string;
@@ -218,14 +287,25 @@ export function removeMemberPenaltyInData(
 
   const previousStatus = current.memberStatus;
   const nextViolationCount = Math.max(0, current.confirmedViolationCount - 1);
-  const nextMemberStatus = nextViolationCount >= 3
+  const automaticMemberStatus = nextViolationCount >= 3
     ? "Perm Ban"
     : nextViolationCount === 2
       ? "Temp Ban"
       : nextViolationCount === 1
         ? "Flag"
         : "Normal";
-  const nextWalletStatus = nextMemberStatus === "Temp Ban" || nextMemberStatus === "Perm Ban" ? "FROZEN" : "ACTIVE";
+  const activePenalty = record.penalty && typeof record.penalty === "object" && !Array.isArray(record.penalty)
+    ? record.penalty as Record<string, unknown>
+    : null;
+  const previousState = activePenalty?.previousState && typeof activePenalty.previousState === "object" && !Array.isArray(activePenalty.previousState)
+    ? activePenalty.previousState as Record<string, unknown>
+    : null;
+  const nextMemberStatus = typeof previousState?.memberStatus === "string"
+    ? previousState.memberStatus
+    : automaticMemberStatus;
+  const nextWalletStatus = typeof previousState?.walletStatus === "string"
+    ? previousState.walletStatus
+    : nextMemberStatus === "Temp Ban" || nextMemberStatus === "Perm Ban" ? "FROZEN" : "ACTIVE";
   const now = new Date().toISOString();
   const history = Array.isArray(record.moderationHistory) ? record.moderationHistory : [];
 
@@ -234,25 +314,17 @@ export function removeMemberPenaltyInData(
   record.walletStatus = nextWalletStatus;
   record.status = nextWalletStatus;
   record.tone = nextMemberStatus === "Normal" ? "success" : nextWalletStatus === "ACTIVE" ? "warning" : "danger";
-  record.statusReason = nextMemberStatus === "Normal" ? undefined : "Previous penalty remains active after the latest reversal.";
-  record.statusAppliedAt = now;
-  record.statusAppliedBy = "Admin";
-  record.redFlagExpiresAt = undefined;
-  record.banExpiresAt = undefined;
-  if (nextMemberStatus === "Normal") {
-    delete record.penalty;
-    record.age = "No active penalty";
+  record.statusReason = typeof previousState?.statusReason === "string" ? previousState.statusReason : undefined;
+  record.statusAppliedAt = typeof previousState?.statusAppliedAt === "string" ? previousState.statusAppliedAt : now;
+  record.statusAppliedBy = typeof previousState?.statusAppliedBy === "string" ? previousState.statusAppliedBy : "Admin";
+  record.redFlagExpiresAt = typeof previousState?.redFlagExpiresAt === "string" ? previousState.redFlagExpiresAt : undefined;
+  record.banExpiresAt = typeof previousState?.banExpiresAt === "string" ? previousState.banExpiresAt : undefined;
+  if (previousState && previousState.penalty && typeof previousState.penalty === "object" && !Array.isArray(previousState.penalty)) {
+    record.penalty = previousState.penalty;
   } else {
-    const nextPenaltyLabel = nextMemberStatus === "Flag" ? "Red Flag" : nextMemberStatus === "Temp Ban" ? "Temporary ban" : "Permanent ban";
-    record.penalty = {
-      label: nextPenaltyLabel,
-      reason: "Previous penalty remains active after the latest reversal.",
-      recordedAt: now,
-      appliedBy: "Admin",
-      ...(nextMemberStatus === "Flag" || nextMemberStatus === "Temp Ban" ? { durationDays: 7 } : {}),
-    };
-    record.age = nextPenaltyLabel;
+    delete record.penalty;
   }
+  record.age = typeof previousState?.age === "string" ? previousState.age : nextMemberStatus === "Normal" ? "No active penalty" : nextMemberStatus;
   record.moderationHistory = [
     {
       event: "Member penalty removed",

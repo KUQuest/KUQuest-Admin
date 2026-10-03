@@ -66,7 +66,7 @@ function queueSourceLabel(row: OverviewQueue, translateText: (value: string) => 
 }
 
 function countLabel(count: number | null): string {
-  return count === null ? "—" : new Intl.NumberFormat("en-US").format(count);
+  return new Intl.NumberFormat("en-US").format(count ?? 0);
 }
 
 function moneyFromSatang(value: number): string {
@@ -253,7 +253,7 @@ export function AdminOverview({
                 </li>
               ))}
             </ul>
-            {model.walletStatusSource === "Unavailable" ? <p className={overviewNote}>{translateText("Wallet status counts are not provided by the Admin API.")}</p> : model.walletStatusSource === "Local fallback" ? <p className={overviewNote}>{translateText("Wallet status counts use local fallback data because the Admin API does not provide them.")}</p> : null}
+            {model.walletStatusSource === "Admin API" && model.walletStatusCounts.some((entry) => entry.count === null) ? <p className={overviewNote}>{translateText("Some Wallet status counts are not provided by the Admin API.")}</p> : model.walletStatusSource === "Unavailable" ? <p className={overviewNote}>{translateText("Wallet status counts are not provided by the Admin API.")}</p> : model.walletStatusSource === "Local fallback" ? <p className={overviewNote}>{translateText("Wallet status counts use local fallback data because the Admin API does not provide them.")}</p> : null}
           </Card>
         </div>
     </main>

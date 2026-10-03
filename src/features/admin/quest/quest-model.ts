@@ -13,6 +13,7 @@ import { displayAdminId } from "../display-admin-id";
 export type QuestMemberView = {
   id: string;
   memberId: string;
+  studentId: string | null;
   firstName: string;
   lastName: string;
   email: string;
@@ -86,7 +87,7 @@ export type QuestDetailView = {
     startedAt: string | null;
     createdAt: string;
   }>;
-  images?: Array<{
+  images: Array<{
     imageId: string;
     fileId: string;
     position: number;
@@ -136,6 +137,14 @@ export type QuestDetailView = {
       }
   >;
   timeline: QuestTimelineView[];
+  disputeCases: Array<{
+    id: string;
+    displayId: string;
+    questId: string;
+    status: string;
+    createdAt: string | null;
+    updatedAt?: string | null;
+  }>;
   adminActions: Array<{
     id: string;
     admin: { id: string; firstName: string; lastName: string };
@@ -240,7 +249,8 @@ export function questDisplayIdFor(id: string, displayId?: string | null): string
 function questMemberViewFromApi(member: AdminQuestMember): QuestMemberView {
   return {
     id: member.id,
-    memberId: member.memberId ?? member.id,
+    memberId: member.id,
+    studentId: member.studentId ?? null,
     firstName: member.firstName,
     lastName: member.lastName,
     email: member.email,
@@ -311,6 +321,13 @@ export function questDetailViewFromApi(detail: AdminQuestDetail): QuestDetailVie
       startedAt: assignment.startedAt,
       createdAt: assignment.createdAt,
     })),
+    images: (detail.images ?? []).map((image) => ({
+      imageId: image.imageId,
+      fileId: image.fileId,
+      position: image.position,
+      url: image.url,
+      urlExpiresAt: image.urlExpiresAt,
+    })),
     proofSubmissions: detail.proofSubmissions.map((submission) => ({
       id: submission.id,
       worker: submission.worker ? questMemberViewFromApi(submission.worker) : null,
@@ -375,17 +392,8 @@ export function questDetailViewFromApi(detail: AdminQuestDetail): QuestDetailVie
       actorId: entry.actorId,
       reasonCode: entry.reasonCode,
     })),
+    disputeCases: [],
   };
-
-  if (detail.images !== undefined) {
-    view.images = detail.images.map((image) => ({
-      imageId: image.imageId,
-      fileId: image.fileId,
-      position: image.position,
-      url: image.url,
-      urlExpiresAt: image.urlExpiresAt,
-    }));
-  }
 
   return view;
 }

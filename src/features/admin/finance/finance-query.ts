@@ -1,8 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { adminApiProvider } from "../api/admin-provider";
-import type { AdminApiTopUpStatus } from "../api/admin-api";
-import type { FinancePageData, FinanceTopUpFilter } from "./finance-service";
+import type { FinancePageData, TopUpPageData } from "./finance-service";
 
 export const financePolicyQueryKey = ["admin", "finance", "money-policy"] as const;
 export const financeTopUpQueryKey = ["admin", "finance", "top-ups"] as const;
@@ -29,16 +28,15 @@ export function useFinancePolicyQuery(initialData: FinancePageData) {
   });
 }
 
-export function useFinanceTopUpQuery(status: FinanceTopUpFilter, initialData: FinancePageData) {
+export function useFinanceTopUpQuery(initialData: TopUpPageData) {
   return useInfiniteQuery({
-    queryKey: [...financeTopUpQueryKey, status],
+    queryKey: financeTopUpQueryKey,
     initialPageParam: null as string | null,
     queryFn: ({ pageParam }) => adminApiProvider.read.listTopUps({
       limit: 25,
-      ...(status === "ALL" ? {} : { status: status as AdminApiTopUpStatus }),
       ...(pageParam ? { cursor: pageParam } : {}),
     }),
-    initialData: status === "ALL" && initialData.topUpPage
+    initialData: initialData.topUpPage
       ? { pages: [initialData.topUpPage], pageParams: [null] }
       : undefined,
     enabled: initialData.dataSource === "api",

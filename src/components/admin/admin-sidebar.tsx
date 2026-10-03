@@ -41,6 +41,7 @@ const navigationIconNodes: Record<AdminNavigationIcon, ReactNode> = {
   report: <path d="M5 21V4m0 0h12l-2 4 2 4H5" />,
   "conduct-report": <><path d="M5 21V4m0 0h12l-2 4 2 4H5" /><path d="m9 16 2 2 4-4" /></>,
   payout: walletIconNode,
+  "top-up": <><path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Zm0 0 12-3v3" /><path d="M12 10v6m-3-3 3 3 3-3" /></>,
   finance: walletIconNode,
   member: <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.8" />,
   wallet: walletIconNode,

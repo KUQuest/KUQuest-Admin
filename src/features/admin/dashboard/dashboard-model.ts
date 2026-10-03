@@ -132,9 +132,10 @@ function activityInitials(entry: AdminActivityLog): string {
   return initials || "AD";
 }
 
-export function dashboardActivityFromApi(entry: AdminActivityLog): DashboardActivity {
+export function dashboardActivityFromApi(entry: AdminActivityLog, displayId?: string): DashboardActivity {
   const activityEntry: ActivityLogEntry = {
     ...entry,
+    resourceId: displayId ?? "",
     adminId: entry.admin.id,
     adminName: `${entry.admin.firstName.trim()} ${entry.admin.lastName.trim()}`.trim(),
     adminInitials: activityInitials(entry),

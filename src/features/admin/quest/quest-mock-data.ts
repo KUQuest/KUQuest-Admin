@@ -1,4 +1,5 @@
 import type {
+  AdminDisputeCase,
   AdminApiQuestStatus,
   AdminQuest,
   AdminQuestDetail,
@@ -18,6 +19,7 @@ export const MOCK_ASSIGNED_WORKER_ID = "00000000-0000-0000-0000-000000000020";
 
 export const mockHirer = {
   id: "00000000-0000-0000-0000-000000000010",
+  studentId: "6599900015",
   memberId: "68000000",
   firstName: "Kamonwan",
   lastName: "Lertwiroj",
@@ -26,6 +28,7 @@ export const mockHirer = {
 
 export const assignedWorker = {
   id: MOCK_ASSIGNED_WORKER_ID,
+  studentId: "6510200020",
   firstName: "Nicha",
   lastName: "Worker",
   email: "worker@ku.th",
@@ -115,6 +118,7 @@ const teamQuestTitles = [
 
 type DemoQuestMember = {
   id: string;
+  studentId: string | null;
   firstName: string;
   lastName: string;
   email: string;
@@ -125,6 +129,7 @@ function demoQuestMemberFor(index: number): DemoQuestMember {
   if (seed) {
     return {
       id: seed.id,
+      studentId: seed.studentId,
       firstName: seed.firstName,
       lastName: seed.lastName,
       email: seed.email,
@@ -134,6 +139,7 @@ function demoQuestMemberFor(index: number): DemoQuestMember {
   const sequence = String(index + 1).padStart(3, "0");
   return {
     id: String(68000200 + index),
+    studentId: `651030${String(index + 1).padStart(4, "0")}`,
     firstName: "Demo",
     lastName: `Member ${sequence}`,
     email: `demo.member${sequence}@ku.th`,
@@ -459,11 +465,15 @@ function hirerAttachmentsFor(quest: AdminQuest): NonNullable<AdminQuestDetail["i
   }));
 }
 
-export function mockQuestDetail(quest: AdminQuest): AdminQuestDetail {
+type MockQuestDetail = AdminQuestDetail & {
+  disputeCases: AdminDisputeCase[];
+};
+
+export function mockQuestDetail(quest: AdminQuest): MockQuestDetail {
   const teamMembers = quest.participation === "GROUP" ? teamMembersFor(quest) : [];
   const teamAssignments = teamAssignmentsFor(quest, teamMembers);
   const teamCandidates = teamCandidatesFor(quest, teamMembers);
-  const detail: AdminQuestDetail = {
+  const detail: MockQuestDetail = {
     ...quest,
     description: `Full description for ${quest.title}.`,
     condition: {
@@ -496,12 +506,20 @@ export function mockQuestDetail(quest: AdminQuest): AdminQuestDetail {
     proofSubmissions: teamProofSubmissionsFor(quest, teamMembers),
     editHistory: fieldEditHistoryFor(quest),
     timeline: questTimelineFor(quest),
+    disputeCases: (() => {
+      const displayId = mockDisputeIdForQuest(quest.displayId ?? quest.id);
+      return displayId ? [{
+        id: displayId,
+        displayId,
+        questId: quest.id,
+        status: "DISPUTE_CASE_PENDING",
+        createdAt: quest.updatedAt,
+        updatedAt: quest.updatedAt,
+      }] : [];
+    })(),
+    images: hirerAttachmentsFor(quest) ?? [],
     adminActions: [],
   };
-
-  const hirerAttachments = hirerAttachmentsFor(quest);
-  if (hirerAttachments) detail.images = hirerAttachments;
-
   if (quest.id === MOCK_TEAM_QUEST_ID) {
     detail.editHistory = [{
       kind: "EDIT_REQUEST",
@@ -529,7 +547,7 @@ export function mockQuestDetail(quest: AdminQuest): AdminQuestDetail {
   return detail;
 }
 
-export function mockQuestDetailForId(questId: string): AdminQuestDetail | null {
+export function mockQuestDetailForId(questId: string): MockQuestDetail | null {
   const quest = mockAllQuests.find(
     (item) => item.id === questId || item.displayId === questId,
   );

@@ -51,6 +51,7 @@ export const MEMBER_TABS = [
   "overview",
   "activity",
   "payouts",
+  "top-ups",
   "wallet-statement",
   "reviews",
   "reports",
@@ -116,6 +117,7 @@ export type MemberStats = {
 
 export type MemberModel = {
   id: string;
+  displayId: string | null;
   studentId: string | null;
   firstName: string;
   lastName: string;
@@ -131,7 +133,7 @@ export type MemberModel = {
   createdAt: string;
   lastActiveAt: string;
   memberStatus: MemberStatus | null;
-  memberStatusSource: "mock" | "NOT_PROVIDED_BY_API";
+  memberStatusSource: "mock" | "api" | "NOT_PROVIDED_BY_API";
   walletId: string | null;
   walletStatus: WalletStatus | null;
   walletBalances: MemberWalletBalances | null;
@@ -175,6 +177,15 @@ export type MemberActionOutcome = {
   exempted: boolean;
 };
 
+export const MEMBER_PENALTY_CHOICES = ["Red Flag", "Temporary ban", "Permanent ban"] as const;
+export type MemberPenaltyChoice = (typeof MEMBER_PENALTY_CHOICES)[number];
+
+export type MockMemberModerationSummary = {
+  id: string;
+  memberStatus: MemberStatus | null;
+  confirmedViolationCount: number | null;
+  moderationHistory: MemberPenaltyHistoryEntry[];
+};
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>
@@ -189,6 +200,7 @@ function nullableText(value: unknown): string | null {
   const valueText = text(value).trim();
   return valueText ? valueText : null;
 }
+
 
 function numberValue(value: unknown, fallback = 0): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
@@ -473,8 +485,12 @@ function notesFromMock(record: Record<string, unknown>, memberId: string): Membe
   return fixture ? [...fixture.notes] : [];
 }
 
-function baseModelFromListItem(member: AdminMemberListItem, source: "api" | "mock"): MemberModel {
-  const title = `${member.firstName} ${member.lastName}`.trim() || "Member";
+function baseModelFromListItem(
+  member: Omit<AdminMemberListItem, "memberStatus"> & { memberStatus?: AdminMemberListItem["memberStatus"] },
+  source: "api" | "mock",
+): MemberModel {
+  const displayId = displayAdminId(member.displayId, source === "mock" ? member.id : null);
+  const title = `${member.firstName} ${member.lastName}`.trim() || displayId || "Member";
   const wallet = member.wallet;
   const walletBalances = wallet
     ? {
@@ -486,6 +502,7 @@ function baseModelFromListItem(member: AdminMemberListItem, source: "api" | "moc
     : null;
   return {
     id: member.id,
+    displayId,
     studentId: nullableText(member.studentId) ?? (source === "api" ? "Not provided by the Admin API" : null),
     firstName: member.firstName,
     lastName: member.lastName,
@@ -500,8 +517,8 @@ function baseModelFromListItem(member: AdminMemberListItem, source: "api" | "moc
     tags: [],
     createdAt: dateLabel(member.createdAt),
     lastActiveAt: "Not recorded",
-    memberStatus: null,
-    memberStatusSource: source === "mock" ? "mock" : "NOT_PROVIDED_BY_API",
+    memberStatus: member.memberStatus ? memberStatusFor(member.memberStatus) : null,
+    memberStatusSource: member.memberStatus ? "api" : source === "mock" ? "mock" : "NOT_PROVIDED_BY_API",
     walletId: wallet?.id ?? null,
     walletStatus: wallet?.walletStatus ?? null,
     walletBalances,
@@ -617,6 +634,7 @@ export function memberModelFromMockRecord(
     ? walletStatusFor(record.walletStatus ?? record.status)
     : parity?.walletStatus ?? walletStatusFor(record.walletStatus ?? record.status);
   const studentId = nullableText(record.studentId);
+  const displayId = displayAdminId(record.displayId, id);
   const createdAt = text(record.accountCreatedAt ?? record.createdAt, "Not recorded");
   const walletId = nullableText(record.walletId) ?? `WAL-${id}`;
   const academicProfile = {
@@ -627,6 +645,7 @@ export function memberModelFromMockRecord(
   if (options.summaryOnly) {
     const summary = baseModelFromListItem({
       id,
+      displayId,
       email: text(record.person, displayAdminId(id) ? `${id}@ku.th` : "Email not provided"),
       firstName,
       lastName,
@@ -756,6 +775,7 @@ export function memberModelFromMockRecord(
     : walletTransactionsFromMock(walletId);
   return {
     id,
+    displayId,
     studentId,
     firstName,
     lastName,
@@ -800,6 +820,23 @@ export function memberModelFromMockRecord(
   };
 }
 
+export function mockMemberModerationSummaryFromRecord(
+  value: unknown,
+  data: PersistedAdminData,
+): MockMemberModerationSummary | null {
+  const record = asRecord(value);
+  const id = nullableText(record?.id);
+  if (!record || !id) return null;
+  const member = memberModelFromMockRecord(record, data, { summaryOnly: true });
+  if (!member) return null;
+  return {
+    id,
+    memberStatus: member.memberStatus,
+    confirmedViolationCount: member.confirmedViolationCount,
+    moderationHistory: historyFromMock(record, member.createdAt, id),
+  };
+}
+
 export function memberStatusText(model: MemberModel): string {
   return model.memberStatus ? memberStatusLabel(model.memberStatus) : "Not provided by the Admin API";
 }
@@ -841,6 +878,16 @@ export function nextPenaltyFor(model: MemberModel): MemberActionOutcome {
   if (violationNumber === 1) return { label: "Red Flag", walletStatus: "ACTIVE", memberStatus: "Flag", durationDays: 7, expiresAt: null, exempted: false };
   if (violationNumber === 2) return { label: "Temporary ban", walletStatus: "FROZEN", memberStatus: "Temp Ban", durationDays: 7, expiresAt: null, exempted: false };
   return { label: "Permanent ban", walletStatus: "FROZEN", memberStatus: "Perm Ban", durationDays: null, expiresAt: null, exempted: false };
+}
+
+export function memberPenaltyForChoice(model: MemberModel, choice: MemberPenaltyChoice): MemberActionOutcome {
+  if (choice === "Red Flag") {
+    return { label: choice, walletStatus: model.walletStatus ?? "ACTIVE", memberStatus: "Flag", durationDays: 7, expiresAt: null, exempted: false };
+  }
+  if (choice === "Temporary ban") {
+    return { label: choice, walletStatus: "FROZEN", memberStatus: "Temp Ban", durationDays: 7, expiresAt: null, exempted: false };
+  }
+  return { label: choice, walletStatus: "FROZEN", memberStatus: "Perm Ban", durationDays: null, expiresAt: null, exempted: false };
 }
 
 export function reportRouteForMember(memberId: string): string {

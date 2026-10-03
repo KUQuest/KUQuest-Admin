@@ -285,7 +285,23 @@ function QuestDetailContent({
   const candidateTeams = hasAcceptedRoster ? [] : detail.candidates.teams;
   const candidateCount = questCandidateCount(detail);
   const sectionVariant = recordLayout ? "record" : "panel";
-  const disputeRiskContent = disputeLookupError ? (
+  const disputeRiskContent = detail.disputeCases.length ? (
+    <>
+      <p>{translateText(detail.disputeCases.length === 1 ? "A Dispute Case is linked to this Quest." : "Dispute Cases are linked to this Quest.")}</p>
+      <div className="grid gap-2">
+        {detail.disputeCases.map((disputeCase) => (
+          <div className="grid gap-2 rounded-lg border border-admin-border bg-admin-soft p-2.5" key={disputeCase.id}>
+            <div className="flex items-center justify-between gap-3">
+              <strong>{disputeCase.displayId || translateText("Dispute Case")}</strong>
+              <span>{translateText(readableValue(disputeCase.status.replace("DISPUTE_CASE_", "")))}</span>
+            </div>
+            {disputeCase.createdAt ? <small className="text-admin-muted">{translateText("Opened")}: {formatQuestDate(disputeCase.createdAt)}</small> : null}
+            <UiButton asChild variant="primary" className="w-full"><Link href={disputeRoutes.detail(disputeCase.id)}>{translateText("Open Dispute Case")}</Link></UiButton>
+          </div>
+        ))}
+      </div>
+    </>
+  ) : disputeLookupError ? (
     <p className="field-error" role="alert">{translateText(disputeLookupError)}</p>
   ) : linkedDisputeId ? (
     <>
@@ -483,6 +499,7 @@ function QuestDetailContent({
                     <strong>{questMemberName(application.worker)}</strong>
                     <span className="text-[13px] text-admin-muted">{formatQuestDate(application.appliedAt)}</span>
                   </span>
+                  <small>{translateText("Student ID")}: {application.worker.studentId ?? translateText("Student ID not provided")}</small>
                   <small>{translateText("Candidate")} · {translateText(readableValue(application.applicationStatus))}</small>
                 </span>
                 <UiButton asChild variant="outline" size="xs" className="shrink-0">
@@ -572,6 +589,10 @@ function QuestDetailContent({
                 <span>{translateText("Name")}</span>
                 <strong><Link href={memberRoutes.detail(detail.hirer.memberId)}>{questMemberName(detail.hirer)}</Link></strong>
               </div>
+              <div>
+                <span>{translateText("Student ID")}</span>
+                <strong>{detail.hirer.studentId ?? translateText("Student ID not provided")}</strong>
+              </div>
             </div>
             <UiButton asChild variant="outline" className="mt-3 w-full">
               <Link href={memberRoutes.detail(detail.hirer.memberId)}>{translateText("See Member profile")}</Link>
@@ -619,7 +640,7 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
   const [detail, setDetail] = useState<QuestDetailView>(initialData.detail);
   const [finance, setFinance] = useState<QuestFinanceView | null>(initialData.finance);
   const [linkedDisputeId, setLinkedDisputeId] = useState<string | null>(initialData.linkedDisputeId);
-  const [disputeLookupError, setDisputeLookupError] = useState<string | null>(initialData.disputeLookupError);
+  const [disputeLookupError, setDisputeLookupError] = useState<string | null>(initialData.disputeLookupError ?? null);
   const [command, setCommand] = useState<QuestCommand | null>(null);
   const [commandError, setCommandError] = useState<string | null>(null);
   const [disputeError, setDisputeError] = useState<string | null>(null);
@@ -639,7 +660,7 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
     setDetail(persistedDetail);
     setFinance(initialData.finance);
     setLinkedDisputeId(initialData.linkedDisputeId);
-    setDisputeLookupError(initialData.disputeLookupError);
+    setDisputeLookupError(initialData.disputeLookupError ?? null);
     setDisputeError(null);
   }, [initialData, dataSource]);
 

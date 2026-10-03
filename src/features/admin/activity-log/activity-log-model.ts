@@ -19,6 +19,7 @@ export type ActivityLogEntry = {
   action: string;
   resourceType: string;
   resourceId: string;
+  resourceDisplayId?: string;
   reasonCode: string | null;
   reasonCatalogVersion: number | null;
   resultVersion: number | null;
@@ -59,6 +60,30 @@ export const DEFAULT_ACTIVITY_LOG_FILTERS: ActivityLogFilters = {
   toDate: "",
   sort: "newest",
 };
+
+export function parseActivityLogDateInput(value: string): string | null {
+  const trimmedValue = value.trim();
+  if (!trimmedValue) return "";
+
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(trimmedValue);
+  if (!match) return null;
+
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  if (month < 1 || month > 12) return null;
+
+  const isLeapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [31, isLeapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1];
+  if (day < 1 || day > daysInMonth) return null;
+
+  return `${match[3]}-${match[2]}-${match[1]}`;
+}
+
+export function formatActivityLogDateInput(value: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : "";
+}
 
 export function activityLogEntryFromApi(entry: AdminActivityLog): ActivityLogEntry {
   const adminName = `${entry.admin.firstName.trim()} ${entry.admin.lastName.trim()}`.trim();
@@ -432,7 +457,7 @@ export function activityLogStateLabel(value: string | null | undefined): string 
 
 export function activityLogTargetLabel(entry: ActivityLogEntry): string {
   const resourceType = entry.resourceType ? activityLogResourceTypeLabel(entry.resourceType) : "";
-  const resourceId = displayAdminId(entry.resourceId) || "";
+  const resourceId = displayAdminId(entry.resourceDisplayId, entry.resourceId) ?? "";
   return !resourceType && !resourceId ? "" : [resourceType, resourceId].filter(Boolean).join(" · ");
 }
 

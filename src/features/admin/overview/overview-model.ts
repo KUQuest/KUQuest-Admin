@@ -14,6 +14,7 @@ import {
   QUEST_STATES,
   WALLET_STATUSES,
   disputeCaseStatusFor,
+  hasHiddenQuestOverlay,
   memberStatusFor,
   payoutStatusFor,
   questStateFor,
@@ -124,6 +125,8 @@ export type OverviewModel = {
   totalWorkLeft: OverviewCount;
   queues: OverviewQueue[];
   questTotal: number;
+  hiddenQuestCount: number;
+  disputeTotal: number;
   questStates: OverviewQuestState[];
   memberSignals: OverviewCount;
   reportCases: OverviewCount;
@@ -181,8 +184,17 @@ function memberStatusCountsFromApi(
 function walletStatusCountsFromApi(
   byStatus: Record<string, number> | undefined,
   fallback: Array<{ status: WalletStatus; count: OverviewCount }>,
+  frozenWallets: number,
+  suspendedWallets: number,
 ): Array<{ status: WalletStatus; count: OverviewCount }> {
-  if (!byStatus) return fallback;
+  if (!byStatus) {
+    return [
+      { status: "ACTIVE", count: null },
+      { status: "FROZEN", count: countValue(frozenWallets) },
+      { status: "SUSPENDED", count: countValue(suspendedWallets) },
+      { status: "CLOSED", count: null },
+    ];
+  }
   return [
     { status: "ACTIVE", count: countValue(byStatus.ACTIVE) },
     { status: "FROZEN", count: countValue(byStatus.FROZEN) },
@@ -624,8 +636,9 @@ function sourceForCount(apiValue: OverviewCount, fallback: OverviewCount): Overv
 function sourceForStatusCounts(
   apiValue: Record<string, number> | undefined,
   fallback: Array<{ status: string; count: OverviewCount }>,
+  hasApiCounts = false,
 ): OverviewSource {
-  if (apiValue) return "Admin API";
+  if (apiValue || hasApiCounts) return "Admin API";
   return fallback.some((entry) => entry.count !== null) ? "Local fallback" : "Unavailable";
 }
 
@@ -644,7 +657,12 @@ export function overviewModelFromApi(
   const reportCountersAvailable = reportsFromApi !== null
     && conductReportsFromApi !== null;
   const memberStatusCounts = memberStatusCountsFromApi(overview.members.byStatus, fallback.memberStatusCounts);
-  const walletStatusCounts = walletStatusCountsFromApi(overview.wallets?.byStatus, fallback.walletStatusCounts);
+  const walletStatusCounts = walletStatusCountsFromApi(
+    overview.wallets?.byStatus,
+    fallback.walletStatusCounts,
+    overview.members.frozenWallets,
+    overview.members.suspendedWallets,
+  );
   const queues = [
     queueFromApi({ id: "payouts", title: "Payout Approvals", fallbackCount: payouts, summary: overview.queues?.payouts, fallbackSource: "Admin API", fallbackOldest: "Queue detail not provided", fallbackWaiting: "—", tone: "overview-queue-status-review", loadedAt }),
     queueFromApi({ id: "disputes", title: "Dispute Cases", fallbackCount: disputes, summary: overview.queues?.disputes, fallbackSource: "Admin API", fallbackOldest: "Queue detail not provided", fallbackWaiting: "—", tone: "overview-queue-status-overdue", loadedAt }),
@@ -657,8 +675,7 @@ export function overviewModelFromApi(
       return !summary || (summary.count > 0 && !summary.oldest);
     });
   const hasUnavailableData = !reportCountersAvailable
-    || !overview.members.byStatus
-    || !overview.wallets?.byStatus;
+    || !overview.members.byStatus;
 
   return {
     source: "Admin API",
@@ -668,6 +685,8 @@ export function overviewModelFromApi(
     totalWorkLeft: totalQueueCount(queues),
     queues,
     questTotal: countValue(overview.quests.total),
+    hiddenQuestCount: countValue(overview.quests.hidden),
+    disputeTotal: countValue(overview.disputes.total),
     questStates: questStatesFromCounts(overview.quests.byState, overview.quests.total),
     memberSignals: sumCounts(reports, conductReports),
     reportCases: reports,
@@ -675,7 +694,11 @@ export function overviewModelFromApi(
     memberStatusCounts,
     memberStatusSource: sourceForStatusCounts(overview.members.byStatus, fallback.memberStatusCounts),
     walletStatusCounts,
-    walletStatusSource: sourceForStatusCounts(overview.wallets?.byStatus, fallback.walletStatusCounts),
+    walletStatusSource: sourceForStatusCounts(
+      overview.wallets?.byStatus,
+      fallback.walletStatusCounts,
+      true,
+    ),
     frozenWallets: overview.wallets?.byStatus
       ? countValue(overview.wallets.byStatus.FROZEN)
       : countValue(overview.members.frozenWallets),
@@ -729,16 +752,19 @@ export function overviewModelFromMockData(
   const reportCases = fallback.reports;
   const conductReports = fallback.conductReports;
   const disputes = fallback.disputes;
-  const payouts = data.collections.payouts
-    .filter((record): record is Record<string, unknown> => Boolean(record) && typeof record === "object" && !Array.isArray(record))
+  const payoutRecords = data.collections.payouts
+    .filter((record): record is Record<string, unknown> => Boolean(record) && typeof record === "object" && !Array.isArray(record));
+  const payouts = payoutRecords
     .filter((record) => payoutStatusFor(record.payoutStatus ?? record.status) === "PENDING_ADMIN_APPROVAL")
     .length;
   const questCounts = new Map<QuestState, number>(QUEST_STATES.map((status) => [status, 0]));
+  let hiddenQuestCount = 0;
   data.collections.quests.forEach((record) => {
     if (!record || typeof record !== "object" || Array.isArray(record)) return;
     const quest = record as Record<string, unknown>;
     const status = questStateFor(quest.questState ?? quest.status);
     questCounts.set(status, (questCounts.get(status) ?? 0) + 1);
+    if (hasHiddenQuestOverlay(quest)) hiddenQuestCount += 1;
   });
   const questTotal = data.collections.quests.length;
   const oldestPayout = oldestPendingMockQueueCase(data, "payouts", payouts ?? 0, loadedAt);
@@ -769,6 +795,8 @@ export function overviewModelFromMockData(
     totalWorkLeft: totalQueueCount(queues),
     queues,
     questTotal,
+    hiddenQuestCount,
+    disputeTotal: data.collections.disputes.length,
     questStates: QUEST_STATES.map((status) => ({
       status,
       label: questStateLabel(status),

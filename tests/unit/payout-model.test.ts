@@ -8,12 +8,15 @@ import {
   payoutDetailViewFromApi,
   payoutOutcomeReason,
   payoutRowFromApi,
+  searchPayoutRows,
+  sortPayoutRows,
   type PayoutDetailView,
 } from "../../src/features/admin/payout/payout-model";
 
 function payout(overrides: Partial<AdminPayout> = {}): AdminPayout {
   return {
     id: "PAY-9637",
+    displayId: "PAY-9637",
     student: {
       id: "member-1",
       email: "student@ku.th",
@@ -64,20 +67,32 @@ function payoutDetail(overrides: Partial<AdminPayout> = {}): AdminPayoutDetail {
 
 describe("Payout route model", () => {
   it("maps a Payout DTO to safe board and detail view models", () => {
-    const apiPayout = payoutDetail({ payoutStatus: "CANCELLED", cancellationReasonCode: "PAYOUT_RISK_REVIEW" });
+    const apiPayout = payoutDetail({
+      id: "123e4567-e89b-42d3-a456-426614174000",
+      displayId: "PAY-9637",
+      payoutStatus: "CANCELLED",
+      cancellationReasonCode: "PAYOUT_RISK_REVIEW",
+    });
 
     const row = payoutRowFromApi(apiPayout);
     const detail = payoutDetailViewFromApi(apiPayout);
 
     expect(row).toMatchObject({
-      id: "PAY-9637",
+      id: "123e4567-e89b-42d3-a456-426614174000",
+      displayId: "PAY-9637",
       studentName: "Ari Wattanakul",
       status: "CANCELLED",
       principalSatang: 420000,
       maskedDestinationValue: "xxx-x-xx123-x",
     });
+    expect(searchPayoutRows([row], "PAY-9637")).toEqual([row]);
+    const earlierPayout = payoutRowFromApi(payout({ displayId: "PAY-9636" }));
+    expect(sortPayoutRows([row, earlierPayout], "id", "ascending").map((item) => item.displayId)).toEqual([
+      "PAY-9636",
+      "PAY-9637",
+    ]);
     expect(detail).toMatchObject({
-      id: "PAY-9637",
+      id: "123e4567-e89b-42d3-a456-426614174000",
       status: "CANCELLED",
       amounts: {
         principalSatang: 420000,
@@ -112,6 +127,7 @@ describe("Payout route model", () => {
     const current = payoutDetail();
     const previous = payout({
       id: "PAY-9636",
+      displayId: "PAY-9636",
       payoutStatus: "SUCCEEDED",
       createdAt: "2026-09-13T01:00:00.000Z",
     });
@@ -125,6 +141,7 @@ describe("Payout route model", () => {
 
     expect(detail.previousPayouts).toEqual([{
       id: "PAY-9636",
+      displayId: "PAY-9636",
       status: "SUCCEEDED",
       principalSatang: 420000,
       createdAt: "2026-09-13T01:00:00.000Z",

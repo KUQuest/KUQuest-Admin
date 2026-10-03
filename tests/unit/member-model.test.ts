@@ -3,7 +3,7 @@ import {
   ADMIN_DEMO_DATA_KEY,
   type BrowserStorage,
 } from "../../src/features/admin/data/admin-demo-data-adapter";
-import { recordMemberViolation, removeMemberPenalty } from "../../src/features/admin/member/member-adapter";
+import { recordMemberViolation, recordMemberViolationFromMember, recordMemberViolationFromMemberInData, recordMemberViolationInData, removeMemberPenalty } from "../../src/features/admin/member/member-adapter";
 
 import type { AdminMemberDetail } from "../../src/features/admin/api/admin-api";
 import {
@@ -41,8 +41,10 @@ function mockData(): PersistedAdminData {
 
 describe("Member route model", () => {
   it("normalizes tabs and uses the canonical Member detail helper", () => {
+    expect(memberTabFrom("top-ups")).toBe("top-ups");
     expect(memberTabFrom("wallet-statement")).toBe("wallet-statement");
     expect(memberTabFrom("unknown")).toBe("overview");
+    expect(memberTabHref("member-1", "top-ups")).toBe("/member/member-1?tab=top-ups");
     expect(memberTabHref("member/1", "wallet-statement")).toBe("/member/member%2F1?tab=wallet-statement");
   });
 
@@ -178,7 +180,7 @@ describe("Member route model", () => {
     expect(rows[0]?.resultingWalletBalanceSatang).toBe(100);
   });
 
-  it("does not infer Member penalty status from API Wallet status", () => {
+  it("uses Admin API Member status instead of inferring it from Wallet status", () => {
     const detail: AdminMemberDetail = {
       member: {
         id: "member-api-1",
@@ -191,6 +193,7 @@ describe("Member route model", () => {
         faculty: "Engineering",
         department: "Computer Engineering",
         occupation: "Student",
+        memberStatus: "NORMAL",
         bio: "About Ari",
         createdAt: "2026-09-01T00:00:00.000Z",
       },
@@ -215,9 +218,9 @@ describe("Member route model", () => {
       },
     };
     const model = memberModelFromApi(detail);
-    expect(model.memberStatus).toBeNull();
+    expect(model.memberStatus).toBe("Normal");
     expect(model.walletStatus).toBe("FROZEN");
-    expect(model.memberStatusSource).toBe("NOT_PROVIDED_BY_API");
+    expect(model.memberStatusSource).toBe("api");
     expect(model.reportsSubmitted).toEqual([]);
     expect(model.reportsSubmittedError).toContain("not provided by the Admin API");
   });
@@ -248,6 +251,140 @@ describe("Member route model", () => {
     expect(result?.model.newUserExemptionRemaining).toBe(0);
   });
 
+  it("lets the Member action select a penalty and restores the prior state on removal", () => {
+    const data = mockData();
+    data.collections.users.push({
+      id: "member-manual-penalty",
+      title: "Manual Penalty Member",
+      person: "manual@ku.th",
+      memberStatus: "Normal",
+      walletStatus: "ACTIVE",
+      confirmedViolationCount: 10,
+      newUserExemptionRemaining: 0,
+      postBanExemptionRemaining: 0,
+    });
+    const values: Record<string, string> = {
+      [ADMIN_DEMO_DATA_KEY]: JSON.stringify(data),
+    };
+    const storage: BrowserStorage = {
+      getItem: (key) => values[key] ?? null,
+      setItem: (key, value) => {
+        values[key] = value;
+      },
+    };
+
+    const result = recordMemberViolationFromMember(
+      storage,
+      "member-manual-penalty",
+      "The evidence confirms a policy violation.",
+      "",
+      "Red Flag",
+    );
+
+    expect(result?.outcome.label).toBe("Red Flag");
+    expect(result?.model.confirmedViolationCount).toBe(11);
+    expect(result?.model.memberStatus).toBe("Flag");
+    expect(result?.model.walletStatus).toBe("ACTIVE");
+    expect(result?.model.newUserExemptionRemaining).toBe(0);
+
+    const removed = removeMemberPenalty(storage, "member-manual-penalty", "The penalty decision was corrected.");
+    expect(removed?.model.confirmedViolationCount).toBe(10);
+    expect(removed?.model.memberStatus).toBe("Normal");
+    expect(removed?.model.walletStatus).toBe("ACTIVE");
+  });
+
+  it("applies a selected permanent ban and freezes the Wallet", () => {
+    const data = mockData();
+    data.collections.users.push({
+      id: "member-manual-permanent-ban",
+      title: "Manual Ban Member",
+      person: "ban@ku.th",
+      memberStatus: "Normal",
+      walletStatus: "ACTIVE",
+      confirmedViolationCount: 0,
+    });
+
+    const result = recordMemberViolationFromMemberInData(
+      data,
+      "member-manual-permanent-ban",
+      "The evidence confirms a policy violation.",
+      "",
+      "Permanent ban",
+    );
+
+    expect(result?.outcome.label).toBe("Permanent ban");
+    expect(result?.outcome.durationDays).toBeNull();
+    expect(result?.model.confirmedViolationCount).toBe(1);
+    expect(result?.model.memberStatus).toBe("Perm Ban");
+    expect(result?.model.walletStatus).toBe("FROZEN");
+  });
+
+  it("keeps case-triggered violation recording on the automatic ladder", () => {
+    const data = mockData();
+    data.collections.users.push({
+      id: "member-automatic-penalty",
+      title: "Automatic Penalty Member",
+      person: "automatic@ku.th",
+      memberStatus: "Normal",
+      walletStatus: "ACTIVE",
+      confirmedViolationCount: 0,
+    });
+
+    const result = recordMemberViolationInData(
+      data,
+      "member-automatic-penalty",
+      "The evidence confirms a policy violation.",
+    );
+
+    expect(result?.outcome.label).toBe("Red Flag");
+    expect(result?.model.memberStatus).toBe("Flag");
+  });
+
+  it("requires a penalty choice for a non-exempt Member action", () => {
+    const data = mockData();
+    data.collections.users.push({
+      id: "member-manual-choice-required",
+      title: "Manual Choice Member",
+      person: "choice@ku.th",
+      memberStatus: "Normal",
+      walletStatus: "ACTIVE",
+      confirmedViolationCount: 0,
+    });
+
+    expect(() => recordMemberViolationFromMember(
+      {
+        getItem: (key) => key === ADMIN_DEMO_DATA_KEY ? JSON.stringify(data) : null,
+        setItem: () => undefined,
+      },
+      "member-manual-choice-required",
+      "The evidence confirms a policy violation.",
+      "",
+      null,
+    )).toThrow("Select a penalty to apply.");
+  });
+
+  it("does not allow a manual penalty choice during an active exemption", () => {
+    const data = mockData();
+    data.collections.users.push({
+      id: "member-manual-exempt",
+      title: "Exempt Member",
+      person: "exempt@ku.th",
+      memberStatus: "Normal",
+      walletStatus: "ACTIVE",
+      newUserExemptionRemaining: 1,
+    });
+
+    expect(() => recordMemberViolationFromMember(
+      {
+        getItem: (key) => key === ADMIN_DEMO_DATA_KEY ? JSON.stringify(data) : null,
+        setItem: () => undefined,
+      },
+      "member-manual-exempt",
+      "The evidence confirms a policy violation.",
+      "",
+      "Permanent ban",
+    )).toThrow("This violation is exempt. No penalty can be selected.");
+  });
   it("removes one active Mock penalty and keeps a reversal history entry", () => {
     const data = mockData();
     data.collections.users.push({

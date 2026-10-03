@@ -5,7 +5,7 @@ import { adminApiProvider, isAdminApiEnabled } from "../api/admin-provider";
 import type { ConductReportDecision } from "../api/admin-api";
 import { replaceInfiniteItem } from "../data/query-data";
 import {
-  findConductReportFromMock,
+  findConductReportModelFromMock,
   loadAllConductReportsFromMock,
   loadConductReportsFromMock,
   saveMockConductReportDecision,
@@ -48,32 +48,36 @@ export function useConductReportDecisionMutation() {
         version: result.resourceVersion,
         decisionLabel: options.outcome === "CONDUCT_REPORT_UPHELD"
           ? "Violation confirmed"
-          : options.decisionReasonCode === "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE"
+          : options.outcome === "CONDUCT_REPORT_DISMISSED"
+            && options.decisionReasonCode === "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE"
             ? "Insufficient evidence"
             : "No violation",
         decisionReasonCode: options.outcome === "CONDUCT_REPORT_DISMISSED"
           ? options.decisionReasonCode
           : null,
-        decisionReason: options.outcome === "CONDUCT_REPORT_DISMISSED"
-          ? options.decisionReasonCode
-          : null,
+        decisionReason: options.reason,
       };
     },
-    onSuccess: (record, { reportId }) => {
-      const model = conductReportModelFromRecord(record);
+    onSuccess: async (record, { reportId, apiEnabled }) => {
+      const model = apiEnabled
+        ? conductReportModelFromRecord(record)
+        : record ? findConductReportModelFromMock(localStorage, reportId) : null;
       if (!model || model.id !== reportId) return;
       queryClient.setQueryData(conductReportDetailQueryKey(reportId), model);
       queryClient.setQueryData<InfiniteData<ConductReportPageData, string | null>>(conductReportBoardQueryKey, (current) => replaceInfiniteItem(current, model));
+      await queryClient.invalidateQueries({ queryKey: conductReportBoardQueryKey, refetchType: "all" });
     },
   });
 }
 
 function pageFromQueryData(pages: ConductReportPageData[]): ConductReportPageData {
+  const firstPage = pages[0];
   const lastPage = pages.at(-1);
   return {
     source: lastPage?.source ?? (isAdminApiEnabled() ? "api" : "mock"),
     items: pages.flatMap((page) => page.items),
     nextCursor: lastPage?.nextCursor ?? null,
+    ...(firstPage?.countsByStatus ? { countsByStatus: firstPage.countsByStatus } : {}),
   };
 }
 
@@ -120,10 +124,9 @@ export function useConductReportDetailQuery(reportId: string, initialModel?: Con
   const query = useQuery({
     queryKey,
     queryFn: async () => {
-      const record = apiEnabled
-        ? await adminApiProvider.read.getReport(reportId)
-        : findConductReportFromMock(localStorage, reportId);
-      const model = conductReportModelFromRecord(record);
+      const model = apiEnabled
+        ? conductReportModelFromRecord(await adminApiProvider.read.getReport(reportId))
+        : findConductReportModelFromMock(localStorage, reportId);
       if (!model || model.id !== reportId) throw new Error("The Conduct Report was not found.");
       return model;
     },

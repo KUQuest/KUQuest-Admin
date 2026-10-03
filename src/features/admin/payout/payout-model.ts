@@ -4,6 +4,7 @@ import type {
 } from "../api/admin-api";
 import { pageCount, pageRows, type BoardPageSize } from "@/lib/board-pagination";
 import { formatAdminTimestamp } from "../date-format";
+import { displayAdminId } from "../display-admin-id";
 import {
   payoutStatusFor,
   payoutStatusLabel,
@@ -33,6 +34,7 @@ export type PayoutStudentView = {
 
 export type PayoutBoardRow = {
   id: string;
+  displayId: string;
   studentName: string;
   studentEmail: string;
   status: PayoutStatus;
@@ -46,6 +48,7 @@ export type PayoutBoardRow = {
 
 export type PayoutDetailView = {
   id: string;
+  displayId: string | null;
   student: PayoutStudentView;
   quoteId: string;
   status: PayoutStatus;
@@ -76,6 +79,7 @@ export type PayoutDetailView = {
     next: string;
   };
   previousPayouts: Array<{
+    displayId?: string | null;
     id: string;
     status: PayoutStatus;
     principalSatang: number;
@@ -151,6 +155,7 @@ function previousPayoutsFromApi(
     .toSorted((left, right) => payoutTimestamp(right.createdAt) - payoutTimestamp(left.createdAt))
     .map((payout) => ({
       id: payout.id,
+      displayId: displayAdminId(payout.displayId),
       status: payoutStatusFor(payout.payoutStatus),
       principalSatang: payout.principalSatang,
       createdAt: payout.createdAt,
@@ -161,6 +166,7 @@ export function payoutRowFromApi(payout: AdminPayout): PayoutBoardRow {
   const status = payoutStatusFor(payout.payoutStatus);
   return {
     id: payout.id,
+    displayId: displayAdminId(payout.displayId) ?? "",
     studentName: studentName(payout.student),
     studentEmail: payout.student.email,
     status,
@@ -183,6 +189,7 @@ export function payoutDetailViewFromApi(
 ): PayoutDetailView {
   const status = payoutStatusFor(payout.payoutStatus);
   return {
+    displayId: displayAdminId(payout.displayId),
     id: payout.id,
     student: {
       id: payout.student.id,
@@ -240,6 +247,7 @@ export function searchPayoutRows(rows: PayoutBoardRow[], query: string): PayoutB
   const value = query.trim().toLocaleLowerCase();
   if (!value) return rows;
   return rows.filter((row) => [
+    row.displayId,
     row.id,
     row.studentName,
     row.studentEmail,
@@ -260,7 +268,7 @@ function comparePayoutRows(left: PayoutBoardRow, right: PayoutBoardRow, key: Pay
 
 function payoutSortValue(row: PayoutBoardRow, key: PayoutSortKey): string {
   return key === "id"
-    ? row.id
+    ? row.displayId
     : key === "student"
       ? row.studentName
       : row.statusLabel;
