@@ -8,7 +8,6 @@ import {
 } from "./admin-api-transport";
 import type {
   AdminApiRequestOptions,
-  AdminDisputeCase,
   AdminDisputeCaseDetail,
   AdminDisputeEvidence,
   AdminDisputeEvidenceRequest,
