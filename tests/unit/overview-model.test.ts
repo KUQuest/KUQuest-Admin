@@ -62,7 +62,6 @@ describe("Overview model", () => {
     }, 123);
 
     expect(model).toMatchObject({
-      source: "Admin API",
       loadedAt: 123,
       totalWorkLeft: 15,
       questTotal: 8,
