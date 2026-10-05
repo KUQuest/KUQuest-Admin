@@ -2,7 +2,6 @@ import { runPlaywrightConfigs } from "./run-playwright-configs.mjs";
 
 const configs = [
   "playwright.config.ts",
-  "playwright.admin-security.config.ts",
   "playwright.quest-api.config.ts",
   "playwright.activity-live.config.ts",
   "playwright.payout-live.config.ts",

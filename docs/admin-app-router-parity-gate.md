@@ -1,6 +1,6 @@
 # Admin App Router parity gate
 
-Status: verified on 2026-09-16.
+Status: historical verification from 2026-09-16. The test totals and Mock-based route coverage below predate the API-only cutover on 2026-10-06.
 
 Scope: Issue 81, the Admin App Router migration under parent Issue 68.
 
@@ -34,7 +34,7 @@ The following historical parity notes are retained for product context. They are
 | Quest Export log, Quest detail translations, combined Quest filters, and the Quest-to-Dispute Case board link | Admin App maintainer + Quest Domain Owner | Defer. Create a product follow-up before adding controls or changing the Quest board contract. |
 | Admin Log out control, detail global search, and Dispute Case translations | Admin App maintainer | Defer. Create a UI parity follow-up with explicit route and responsive requirements. |
 | Temporary ban expiry and note, Report Case evidence file, and saved Report Case demo data | Admin App maintainer + Admin Operations Domain Owner | Defer. Confirm the required Admin operation and persistence contract first. |
-| Dispute Case drawer refresh and final Quest status after resolution | Admin App maintainer + Quest Domain Owner | Defer. Decide whether mock mode must simulate Admin commands or whether API-mode coverage is sufficient. |
-| Quest hide persistence, Activity Log search in mock mode, and larger mock Quest data | Admin App test maintainer | Defer. Keep command assertions at the Admin API boundary until mock command and pagination fixtures are defined. |
+| Dispute Case drawer refresh and final Quest status after resolution | Admin App maintainer + Quest Domain Owner | Historical note. Verify command outcomes against the Admin API when the workflow contract is ready. |
+| Quest hide persistence, Activity Log search, and larger Quest data | Admin App test maintainer | Historical Mock-mode coverage is retired. Keep command assertions at the Admin API boundary and use API data or isolated HTTP fixtures for new coverage. |
 | Live disabled-Admin Activity Log coverage | Admin App test maintainer + Admin API Security Owner | Defer. Add a known disabled Admin identity in the live environment before enabling this check. |
 | Legacy-runtime-only checks | Admin App maintainer | Retired with the legacy implementation. |
