@@ -125,10 +125,8 @@ function MemberAccountInfo({ model, translateText }: { model: MemberModel; trans
     ["Current Wallet Balance", model.walletBalances ? formatMoneySatang(currentWalletBalance(model.walletBalances)) : "—"],
     ["Latest Wallet Transaction Date", latestTransactionAt ? formatWalletDate(latestTransactionAt) : "—"],
     ["Email", model.email],
-    ["Email verified", translateText("Not provided by the Admin API")],
     ["Created", model.createdAt],
     ["Role", model.occupation ? translateText(model.occupation) : translateText("Student")],
-    ["University", translateText("Not provided by the Admin API")],
     ["Faculty", model.faculty || translateText("Not recorded")],
   ];
   return <Card as="section" className="user-detail-panel p-[16px_18px]"><CardHeader flush><h2>{translateText("Account Information")}</h2></CardHeader><dl className="user-facts m-0 grid gap-0">{facts.map(([label, value]) => <div className="flex justify-between gap-3 border-t border-admin-border py-2 first:border-t-0 first:pt-0" key={label}><dt className="text-sm text-admin-muted">{translateText(label)}</dt><dd className="m-0 text-right text-sm font-semibold">{value}</dd></div>)}</dl></Card>;
