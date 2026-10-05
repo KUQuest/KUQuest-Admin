@@ -81,23 +81,6 @@ export function transactionFromApi(transaction: AdminLedgerTransaction): MemberW
   };
 }
 
-export function walletTransactionsFromMock(walletId: string): MemberWalletTransaction[] {
-  return Array.from({ length: 50 }, (_, index) => {
-    const eventType = index < 11 ? "TOP_UP" : index % 3 === 0 ? "PAYOUT" : "EARNINGS_CONVERSION";
-    const amountSatang = 1000 + index * 125;
-    const createdAt = new Date(Date.UTC(2026, 7, 28, 8, 0, 0) - index * 86_400_000).toISOString();
-    return {
-      id: `LEDGER-${walletId}-${index + 1}`,
-      businessReference: `${eventType}-${index + 1}`,
-      eventType,
-      description: `${eventType.replaceAll("_", " ")} record`,
-      createdAt,
-      sealedAt: createdAt,
-      postings: [{ accountType: "SPENDING", walletId, amountSatang }],
-    };
-  });
-}
-
 export function currentWalletBalance(balances: MemberWalletBalances | null): number {
   if (!balances) return 0;
   return balances.spendingBalanceSatang
