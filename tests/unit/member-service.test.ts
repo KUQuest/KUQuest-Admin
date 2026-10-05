@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "bun:test";
 
 import { loadMemberDetailFromApi } from "../../src/features/admin/member/member-service";
-import { mockWalletDetails } from "../../src/features/admin/wallet/wallet-mock-data";
+import { adminWalletDetailFixtures } from "../fixtures/admin-wallet-api-fixtures";
 
 const originalFetch = globalThis.fetch;
 
@@ -51,7 +51,7 @@ const memberDetail = {
   },
   wallet: {
     id: "WAL-1001",
-    walletStatus: mockWalletDetails[0]!.walletStatus,
+    walletStatus: adminWalletDetailFixtures[0]!.walletStatus,
     spendingBalanceSatang: 100,
     earningsBalanceSatang: 0,
     fundingReservedSatang: 0,
