@@ -287,13 +287,10 @@ test.describe("shared Admin shell", () => {
     const dismissalNote = decisionDialog.getByLabel("Admin decision note (optional)");
     await expect(dismissalNote).toHaveAttribute("type", "text");
     await expect(dismissalNote).toHaveAttribute("maxlength", "200");
-    await expect(reasonCode.locator("option")).toHaveText([
-      "Select a reason code",
-      "CONDUCT_REPORT_NO_VIOLATION",
-      "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE",
-    ]);
     await expect(decisionDialog.getByRole("button", { name: "Confirm decision" })).toBeDisabled();
-    await reasonCode.selectOption("CONDUCT_REPORT_INSUFFICIENT_EVIDENCE");
+    await reasonCode.click();
+    await expect(page.getByRole("option")).toHaveText(["No violation", "Insufficient evidence"]);
+    await page.getByRole("option", { name: "Insufficient evidence", exact: true }).click();
     await decisionDialog.getByRole("button", { name: "Confirm decision" }).click();
     await expect(decisionDialog).toBeHidden();
     await expect(drawer).toContainText("Insufficient evidence");

@@ -11,7 +11,14 @@ import {
   saveMockConductReportDecision,
 } from "./conduct-report-adapter";
 import { loadConductReportPageData, type ConductReportPageData } from "./conduct-report-service";
-import { CONDUCT_REPORT_UPDATED_EVENT, conductReportModelFromRecord, type ConductReportCommand, type ConductReportDecisionChoice, type ConductReportModel } from "./conduct-report-model";
+import {
+  CONDUCT_REPORT_UPDATED_EVENT,
+  conductReportDecisionDetailsForCommand,
+  conductReportModelFromRecord,
+  type ConductReportCommand,
+  type ConductReportDecisionChoice,
+  type ConductReportModel,
+} from "./conduct-report-model";
 
 export const conductReportBoardQueryKey = ["admin", "conduct-reports", "board"] as const;
 
@@ -45,19 +52,14 @@ export function useConductReportDecisionMutation() {
       if (summary.kind !== "CONDUCT_REPORT" || summary.id !== reportId || summary.status !== decision) {
         throw new Error("The Admin API returned an invalid Conduct Report decision.");
       }
+      const decisionDetails = conductReportDecisionDetailsForCommand(options);
       return {
         ...currentModel,
         ...summary,
         status: summary.status,
         version: result.resourceVersion,
-        decisionLabel: options.outcome === "CONDUCT_REPORT_UPHELD"
-          ? "Violation confirmed"
-          : options.decisionReasonCode === "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE"
-            ? "Insufficient evidence"
-            : "No violation",
-        decisionReasonCode: options.outcome === "CONDUCT_REPORT_DISMISSED"
-          ? options.decisionReasonCode
-          : null,
+        decisionLabel: decisionDetails.label,
+        decisionReasonCode: decisionDetails.decisionReasonCode,
       };
     },
     onSuccess: async (record, { reportId, apiEnabled }) => {

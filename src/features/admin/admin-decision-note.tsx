@@ -1,6 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Input } from "../../components/ui/input";
+
+export type AdminDecisionSubmission<Field extends string, ReasonCode extends string | null> =
+  Record<Field, ReasonCode> & {
+    decisionReasonText?: string;
+  };
 
 type AdminDecisionNoteInputProps = {
   id: string;
@@ -32,8 +38,8 @@ export function AdminDecisionNoteInput({
   return (
     <label className="grid gap-1 text-[16px] leading-[1.4] font-semibold" htmlFor={id}>
       {translateText("Admin decision note (optional)")}
-      <input
-        className="w-full rounded-lg border border-admin-border-strong bg-admin-surface px-2.5 py-2 text-lg leading-[1.45] text-admin-text"
+      <Input
+        className="text-lg leading-[1.45]"
         id={id}
         name="decisionReasonText"
         type="text"

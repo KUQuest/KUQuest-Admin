@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { AdminActionReceipt } from "../../../components/admin/admin-action-feedback";
+import type { AdminDecisionSubmission } from "../admin-decision-note";
 import { formatAdminTimestamp } from "../date-format";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminRecordHeader } from "../../../components/admin/admin-record-header";
@@ -562,7 +563,7 @@ export function ReportCaseDetail({
   const confirmDecision = async ({
     reasonCode,
     decisionReasonText,
-  }: Pick<ReportCaseDecision, "reasonCode" | "decisionReasonText">) => {
+  }: AdminDecisionSubmission<"reasonCode", ReportCaseDecision["reasonCode"]>) => {
     if (!selectedChoice) return;
     if (isAdminApiEnabled() && model.version === undefined) {
       setCommandError("The current Report Case version is not available. Reload the Report Case before deciding.");

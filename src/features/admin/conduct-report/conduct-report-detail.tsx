@@ -12,6 +12,7 @@ import { AdminRecordGrid } from "../../../components/admin/admin-record-grid";
 import { AdminStatusAlert } from "../../../components/admin/admin-status-alert";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import type { ConductReportDecision } from "../api/admin-api";
+import type { AdminDecisionSubmission } from "../admin-decision-note";
 import { isAdminApiEnabled } from "../api/admin-provider";
 import { Button } from "../../../components/ui/button";
 import { Card, CardContent, CardHeader } from "../../../components/ui/card";
@@ -573,10 +574,7 @@ export function ConductReportDrawer({
   const confirmDecision = async ({
     decisionReasonCode,
     decisionReasonText,
-  }: {
-    decisionReasonCode: ConductReportDecisionReasonCode | null;
-    decisionReasonText?: string;
-  }) => {
+  }: AdminDecisionSubmission<"decisionReasonCode", ConductReportDecisionReasonCode | null>) => {
     if (!selectedChoice) return;
     if (isAdminApiEnabled() && reportModel.version === undefined) {
       setCommandError("The current Conduct Report version is missing. Reload the report before you decide.");

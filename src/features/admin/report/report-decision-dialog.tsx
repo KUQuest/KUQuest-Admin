@@ -5,7 +5,15 @@ import { useEffect, useState } from "react";
 import { AdminActionSummary } from "../../../components/admin/admin-action-feedback";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { Button } from "../../../components/ui/button";
-import { AdminDecisionNoteInput, useAdminDecisionNote } from "../admin-decision-note";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../../components/ui/select";
+import { ADMIN_REVIEW_REASON_CODE_OPTIONS } from "../admin-reason-codes";
+import { AdminDecisionNoteInput, useAdminDecisionNote, type AdminDecisionSubmission } from "../admin-decision-note";
 import type { AdminReviewReasonCode } from "../api/admin-api";
 import { type ReportCaseDecisionChoice, type ReportCaseModel } from "./report-model";
 import { reportCaseStatusLabel } from "../domain/rulebook";
@@ -18,7 +26,7 @@ type DecisionDialogProps = {
   model: ReportCaseModel;
   translateText: (value: string) => string;
   onCancel: () => void;
-  onConfirm: (submission: { reasonCode: AdminReviewReasonCode; decisionReasonText?: string }) => void;
+  onConfirm: (submission: AdminDecisionSubmission<"reasonCode", AdminReviewReasonCode>) => void;
 };
 
 function decisionDialogTitle(choice: ReportCaseDecisionChoice | null, translateText: (value: string) => string): string {
@@ -80,10 +88,10 @@ export function ReportDecisionDialog({
         method="dialog"
         onSubmit={(event) => {
           event.preventDefault();
-          const value = reasonCode;
-          if (!value) return;
+          const selectedReasonCode = reasonCode;
+          if (!selectedReasonCode) return;
           onConfirm({
-            reasonCode: value,
+            reasonCode: selectedReasonCode,
             ...(decisionReasonText ? { decisionReasonText } : {}),
           });
         }}
@@ -103,21 +111,24 @@ export function ReportDecisionDialog({
               warning={translateText("Read Message content only through the named Evidence Reference. The evidence read is logged as an Admin Action.")}
             />
           ) : null}
-          <label htmlFor="report-decision-reason-code">{translateText("Reason code")}</label>
-          <select
-            className="w-full rounded-lg border border-admin-border-strong bg-admin-surface px-2.5 py-2 text-lg leading-[1.45] text-admin-text"
-            id="report-decision-reason-code"
-            name="reasonCode"
-            required
+          <label htmlFor="report-decision-reason-code">
+            {translateText("Reason code")} <span aria-hidden="true">*</span>
+          </label>
+          <Select
             value={reasonCode}
-            autoFocus
-            aria-invalid={Boolean(error)}
-            onChange={(event) => setReasonCode(event.target.value as AdminReviewReasonCode | "")}
+            onValueChange={(value) => setReasonCode(value as AdminReviewReasonCode)}
           >
-            <option value="">{translateText("Select a reason code")}</option>
-            <option value="POLICY_REVIEW">POLICY_REVIEW</option>
-            <option value="SAFETY_REVIEW">SAFETY_REVIEW</option>
-          </select>
+            <SelectTrigger id="report-decision-reason-code" autoFocus aria-required="true" aria-invalid={Boolean(error)}>
+              <SelectValue placeholder={translateText("Select a reason code")} />
+            </SelectTrigger>
+            <SelectContent>
+              {ADMIN_REVIEW_REASON_CODE_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {translateText(option.label)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <AdminDecisionNoteInput
             id="report-decision-reason-text"
             value={decisionNote}

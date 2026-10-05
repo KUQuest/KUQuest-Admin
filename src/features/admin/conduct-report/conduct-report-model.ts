@@ -212,6 +212,31 @@ export function conductReportDecisionFor(
 export function conductReportDecisionDetailsForChoice(choice: ConductReportDecisionChoice) {
   return { choice, ...conductReportDecisionMetadata[choice] };
 }
+export function conductReportDecisionDetailsForCommand(
+  command:
+    | {
+        outcome: "CONDUCT_REPORT_DISMISSED";
+        decisionReasonCode: ConductReportDecisionReasonCode;
+      }
+    | { outcome: "CONDUCT_REPORT_UPHELD" },
+) {
+  if (command.outcome === "CONDUCT_REPORT_UPHELD") {
+    return {
+      label: "Violation confirmed",
+      decisionReasonCode: null,
+      resolution: "Violation confirmed; the Member Misconduct ladder was applied.",
+    };
+  }
+
+  const insufficientEvidence = command.decisionReasonCode === "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE";
+  return {
+    label: insufficientEvidence ? "Insufficient evidence" : "No violation",
+    decisionReasonCode: command.decisionReasonCode,
+    resolution: insufficientEvidence
+      ? "Conduct Report dismissed; the evidence did not establish a policy violation."
+      : "Conduct Report dismissed; no policy violation found.",
+  };
+}
 
 export function conductReportModelFromRecord(value: unknown): ConductReportModel | null {
   if (!isConductReportRecord(value)) return null;

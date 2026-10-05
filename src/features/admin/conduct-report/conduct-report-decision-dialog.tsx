@@ -5,7 +5,15 @@ import { useEffect, useState } from "react";
 import { AdminActionSummary } from "../../../components/admin/admin-action-feedback";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { Button } from "../../../components/ui/button";
-import { AdminDecisionNoteInput, useAdminDecisionNote } from "../admin-decision-note";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../../components/ui/select";
+import { CONDUCT_REPORT_DISMISS_REASON_CODE_OPTIONS } from "../admin-reason-codes";
+import { AdminDecisionNoteInput, useAdminDecisionNote, type AdminDecisionSubmission } from "../admin-decision-note";
 import {
   conductReportStatusLabel,
   type ConductReportDecisionChoice,
@@ -23,7 +31,7 @@ type DecisionDialogProps = {
 
   translateText: (value: string) => string;
   onCancel: () => void;
-  onConfirm: (submission: { decisionReasonCode: ConductReportDecisionReasonCode | null; decisionReasonText?: string }) => void;
+  onConfirm: (submission: AdminDecisionSubmission<"decisionReasonCode", ConductReportDecisionReasonCode | null>) => void;
 };
 
 function decisionDialogTitle(
@@ -91,10 +99,10 @@ export function ConductReportDecisionDialog({
         method="dialog"
         onSubmit={(event) => {
           event.preventDefault();
-          const value = choice === "dismiss" ? decisionReasonCode : null;
-          if (choice === "dismiss" && !value) return;
+          const selectedDecisionReasonCode = choice === "dismiss" ? decisionReasonCode : null;
+          if (choice === "dismiss" && !selectedDecisionReasonCode) return;
           onConfirm({
-            decisionReasonCode: value || null,
+            decisionReasonCode: selectedDecisionReasonCode || null,
             ...(decisionReasonText ? { decisionReasonText } : {}),
           });
         }}
@@ -116,21 +124,24 @@ export function ConductReportDecisionDialog({
           ) : null}
           {choice === "dismiss" ? (
             <>
-              <label htmlFor="conduct-report-decision-reason-code">{translateText("Decision reason code")}</label>
-              <select
-                className="w-full rounded-lg border border-admin-border-strong bg-admin-surface px-2.5 py-2 text-lg leading-[1.45] text-admin-text"
-                id="conduct-report-decision-reason-code"
-                name="decisionReasonCode"
-                required
+              <label htmlFor="conduct-report-decision-reason-code">
+                {translateText("Decision reason code")} <span aria-hidden="true">*</span>
+              </label>
+              <Select
                 value={decisionReasonCode}
-                autoFocus
-                aria-invalid={Boolean(error)}
-                onChange={(event) => setDecisionReasonCode(event.target.value as ConductReportDecisionReasonCode | "")}
+                onValueChange={(value) => setDecisionReasonCode(value as ConductReportDecisionReasonCode)}
               >
-                <option value="">{translateText("Select a reason code")}</option>
-                <option value="CONDUCT_REPORT_NO_VIOLATION">CONDUCT_REPORT_NO_VIOLATION</option>
-                <option value="CONDUCT_REPORT_INSUFFICIENT_EVIDENCE">CONDUCT_REPORT_INSUFFICIENT_EVIDENCE</option>
-              </select>
+                <SelectTrigger id="conduct-report-decision-reason-code" autoFocus aria-required="true" aria-invalid={Boolean(error)}>
+                  <SelectValue placeholder={translateText("Select a reason code")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {CONDUCT_REPORT_DISMISS_REASON_CODE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {translateText(option.label)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </>
           ) : null}
           <AdminDecisionNoteInput

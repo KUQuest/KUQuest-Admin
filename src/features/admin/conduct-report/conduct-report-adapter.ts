@@ -7,6 +7,7 @@ import { formatAdminTimestamp } from "../date-format";
 import { findMemberModerationSummaryFromMockData, recordMemberViolationInData } from "../member/member-adapter";
 import {
   conductReportDecisionDetailsForChoice,
+  conductReportDecisionDetailsForCommand,
   conductReportModelFromRecord,
   conductReportStatusFromRecord,
   conductReportsOnly,
@@ -153,29 +154,25 @@ export function saveMockConductReportDecision(
     return null;
   }
 
-  if (decision === "CONDUCT_REPORT_DISMISSED" && !decisionReasonCode) return null;
   const now = new Date().toISOString();
   const selectedChoice = choice ?? (decision === "CONDUCT_REPORT_UPHELD" ? "confirmed-violation" : "dismiss");
   const metadata = conductReportDecisionDetailsForChoice(selectedChoice);
-  if (metadata.command !== decision) return null;
+  const decisionDetails = decision === "CONDUCT_REPORT_UPHELD"
+    ? conductReportDecisionDetailsForCommand({ outcome: decision })
+    : decisionReasonCode
+      ? conductReportDecisionDetailsForCommand({ outcome: decision, decisionReasonCode })
+      : null;
+  if (!decisionDetails || metadata.command !== decision) return null;
   report.status = decision;
   report.conductReportStatus = decision;
   report.decision = metadata.choice;
-  report.decisionLabel = decision === "CONDUCT_REPORT_UPHELD"
-    ? "Violation confirmed"
-    : decisionReasonCode === "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE"
-      ? "Insufficient evidence"
-      : "No violation";
-  report.decisionReasonCode = decision === "CONDUCT_REPORT_DISMISSED" ? decisionReasonCode : null;
+  report.decisionLabel = decisionDetails.label;
+  report.decisionReasonCode = decisionDetails.decisionReasonCode;
   report.resolvedBy = "Admin";
   report.resolutionAt = now;
   report.closedAt = now;
   report.tone = decision === "CONDUCT_REPORT_UPHELD" ? "danger" : "neutral";
-  report.resolution = decision === "CONDUCT_REPORT_UPHELD"
-    ? "Violation confirmed; the Member Misconduct ladder was applied."
-    : decisionReasonCode === "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE"
-      ? "Conduct Report dismissed; the evidence did not establish a policy violation."
-      : "Conduct Report dismissed; no policy violation found.";
+  report.resolution = decisionDetails.resolution;
   if (typeof report.version === "number") report.version += 1;
 
   if (decision === "CONDUCT_REPORT_UPHELD") {
