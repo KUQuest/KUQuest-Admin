@@ -64,13 +64,11 @@ export type DisputeCaseModel = {
   filerId: string | null;
   filerRole: string;
   filerName: string;
-  filerStudentId: string | null;
   filerHref: string | null;
   filerStatement: string;
   respondentId: string | null;
   respondentRole: string;
   respondentName: string;
-  respondentStudentId: string | null;
   respondentHref: string | null;
   respondentStatement: string;
   amountAtRiskSatang: number | null;
@@ -269,9 +267,6 @@ export function disputeCaseModelFromRecord(
   const questState = questStateFor(record.questState ?? quest?.questStatus);
   const filerId = firstText(record.filerUserId, record.filerId);
   const respondentId = firstText(record.respondentUserId, record.respondentId);
-  const filerMember = asRecord(record.filer);
-  const respondentMember = asRecord(record.respondent);
-  const workerMember = asRecord(record.worker);
   const filerRole = firstText(record.filerRole) ?? "Hirer";
   const respondentRole = firstText(record.respondentRole) ?? "Worker";
   const workerId = firstText(
@@ -282,13 +277,13 @@ export function disputeCaseModelFromRecord(
   );
   const filerName = firstReadableText(
     record.filerName,
-    personName(filerMember),
+    personName(record.filer),
     filerId ? "Member" : null,
   ) ?? missingValue;
   const respondentName = firstReadableText(
     record.respondentName,
-    personName(respondentMember),
-    personName(workerMember),
+    personName(record.respondent),
+    personName(record.worker),
     respondentId ? "Member" : null,
   ) ?? missingValue;
   const workerName = roleIs(filerRole, "Worker") ? filerName : respondentName;
@@ -341,14 +336,12 @@ export function disputeCaseModelFromRecord(
     filerId,
     filerRole,
     filerName,
-    filerStudentId: firstText(filerMember?.studentId),
     filerHref: filerId ? memberRoutes.detail(filerId) : null,
     filerStatement: firstText(record.filerStatement, record.claim)
       ?? missingValue,
     respondentId,
     respondentRole,
     respondentName,
-    respondentStudentId: firstText(respondentMember?.studentId, workerMember?.studentId),
     respondentHref: respondentId ? memberRoutes.detail(respondentId) : null,
     respondentStatement: firstText(record.respondentStatement, record.response)
       ?? missingValue,
