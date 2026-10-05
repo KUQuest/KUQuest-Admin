@@ -91,6 +91,13 @@ test.describe("Report Case routes", () => {
       "SAFETY_REVIEW",
     ]);
     await expect(dialog.getByRole("button", { name: "Confirm decision" })).toBeDisabled();
+    const decisionNote = dialog.getByLabel("Admin decision note (optional)");
+    await expect(decisionNote).toHaveAttribute("type", "text");
+    await expect(decisionNote).toHaveAttribute("maxlength", "200");
+    await expect(decisionNote).not.toHaveAttribute("required");
+    await decisionNote.fill("n".repeat(220));
+    expect((await decisionNote.inputValue()).length).toBe(200);
+    await decisionNote.fill("");
     await reasonCode.selectOption("POLICY_REVIEW");
     await dialog.getByRole("button", { name: "Confirm decision" }).click();
 
@@ -105,6 +112,9 @@ test.describe("Report Case routes", () => {
     await page.getByRole("button", { name: "Close report", exact: true }).click();
     const hideDialog = page.locator("dialog.report-decision-dialog");
     const hideReasonCode = hideDialog.getByLabel("Reason code");
+    const hideNote = hideDialog.getByLabel("Admin decision note (optional)");
+    await expect(hideNote).toHaveAttribute("type", "text");
+    await expect(hideNote).toHaveAttribute("maxlength", "200");
     await expect(hideReasonCode.locator("option")).toHaveText([
       "Select a reason code",
       "POLICY_REVIEW",
@@ -116,6 +126,9 @@ test.describe("Report Case routes", () => {
     await page.getByRole("button", { name: "Restore Message" }).click();
     const restoreDialog = page.locator("dialog.report-decision-dialog");
     const restoreReasonCode = restoreDialog.getByLabel("Reason code");
+    const restoreNote = restoreDialog.getByLabel("Admin decision note (optional)");
+    await expect(restoreNote).toHaveAttribute("type", "text");
+    await expect(restoreNote).toHaveAttribute("maxlength", "200");
     await expect(restoreReasonCode.locator("option")).toHaveText([
       "Select a reason code",
       "POLICY_REVIEW",

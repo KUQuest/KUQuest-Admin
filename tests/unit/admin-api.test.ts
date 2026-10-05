@@ -624,11 +624,13 @@ describe("Admin API boundary", () => {
       expectedVersion: 2,
       outcome: "REPORT_CASE_HIDDEN",
       reasonCode: "SAFETY_REVIEW",
+      decisionReasonText: "Reviewed the named Evidence Reference.",
     });
 
     expect(await request?.json()).toEqual({
       outcome: "REPORT_CASE_HIDDEN",
       reasonCode: "SAFETY_REVIEW",
+      decisionReasonText: "Reviewed the named Evidence Reference.",
     });
   });
 
@@ -649,11 +651,13 @@ describe("Admin API boundary", () => {
       expectedVersion: 2,
       outcome: "CONDUCT_REPORT_DISMISSED",
       decisionReasonCode: "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE",
+      decisionReasonText: "The Quest record supports dismissal.",
     });
 
     expect(await request?.json()).toEqual({
       outcome: "CONDUCT_REPORT_DISMISSED",
       decisionReasonCode: "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE",
+      decisionReasonText: "The Quest record supports dismissal.",
     });
   });
 
@@ -673,9 +677,53 @@ describe("Admin API boundary", () => {
       idempotencyKey: "conduct-report-uphold-1",
       expectedVersion: 2,
       outcome: "CONDUCT_REPORT_UPHELD",
+      decisionReasonText: "The filed reason is supported by the Quest record.",
     });
 
-    expect(await request?.json()).toEqual({ outcome: "CONDUCT_REPORT_UPHELD" });
+    expect(await request?.json()).toEqual({
+      outcome: "CONDUCT_REPORT_UPHELD",
+      decisionReasonText: "The filed reason is supported by the Quest record.",
+    });
+  });
+
+  it("omits whitespace-only decision notes for every report outcome", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    const bodies: unknown[] = [];
+
+    mockFetch(async (input, init) => {
+      bodies.push(await new Request(input, init).json());
+      return jsonResponse({ success: true, data: { id: "report-1" } });
+    });
+
+    await adminApi.decideReportCase("RPT-1", {
+      idempotencyKey: "report-case-blank-note",
+      expectedVersion: 2,
+      outcome: "REPORT_CASE_RESTORED",
+      reasonCode: "POLICY_REVIEW",
+      decisionReasonText: "   ",
+    });
+    await adminApi.decideConductReport("CND-1", {
+      idempotencyKey: "conduct-dismiss-blank-note",
+      expectedVersion: 2,
+      outcome: "CONDUCT_REPORT_DISMISSED",
+      decisionReasonCode: "CONDUCT_REPORT_NO_VIOLATION",
+      decisionReasonText: " ",
+    });
+    await adminApi.decideConductReport("CND-2", {
+      idempotencyKey: "conduct-uphold-blank-note",
+      expectedVersion: 2,
+      outcome: "CONDUCT_REPORT_UPHELD",
+      decisionReasonText: "",
+    });
+
+    expect(bodies).toEqual([
+      { outcome: "REPORT_CASE_RESTORED", reasonCode: "POLICY_REVIEW" },
+      {
+        outcome: "CONDUCT_REPORT_DISMISSED",
+        decisionReasonCode: "CONDUCT_REPORT_NO_VIOLATION",
+      },
+      { outcome: "CONDUCT_REPORT_UPHELD" },
+    ]);
   });
 
   it("maps an API error envelope to ApiError", async () => {

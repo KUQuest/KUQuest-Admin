@@ -570,7 +570,10 @@ export function ConductReportDrawer({
     setDialogOpen(true);
   };
 
-  const confirmDecision = async (decisionReasonCode: ConductReportDecisionReasonCode | null) => {
+  const confirmDecision = async (
+    decisionReasonCode: ConductReportDecisionReasonCode | null,
+    decisionReasonText?: string,
+  ) => {
     if (!selectedChoice) return;
     if (isAdminApiEnabled() && reportModel.version === undefined) {
       setCommandError("The current Conduct Report version is missing. Reload the report before you decide.");
@@ -580,6 +583,7 @@ export function ConductReportDrawer({
     const commandContext = {
       expectedVersion: reportModel.version ?? 1,
       idempotencyKey: newConductReportIdempotencyKey(reportModel.id),
+      ...(decisionReasonText ? { decisionReasonText } : {}),
     };
     let options: ConductReportDecision;
     if (decision === "CONDUCT_REPORT_DISMISSED") {

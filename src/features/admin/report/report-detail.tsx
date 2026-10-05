@@ -559,7 +559,10 @@ export function ReportCaseDetail({
     setDialogOpen(true);
   };
 
-  const confirmDecision = async (reasonCode: ReportCaseDecision["reasonCode"]) => {
+  const confirmDecision = async (
+    reasonCode: ReportCaseDecision["reasonCode"],
+    decisionReasonText?: string,
+  ) => {
     if (!selectedChoice) return;
     if (isAdminApiEnabled() && model.version === undefined) {
       setCommandError("The current Report Case version is not available. Reload the Report Case before deciding.");
@@ -570,6 +573,7 @@ export function ReportCaseDetail({
     const options: ReportCaseDecision = {
       outcome: decision,
       reasonCode,
+      ...(decisionReasonText ? { decisionReasonText } : {}),
       idempotencyKey: newReportCaseIdempotencyKey(model.id),
       expectedVersion: model.version ?? 1,
     };

@@ -17,7 +17,7 @@ type DecisionDialogProps = {
   model: ReportCaseModel;
   translateText: (value: string) => string;
   onCancel: () => void;
-  onConfirm: (reasonCode: AdminQuestReasonCode) => void;
+  onConfirm: (reasonCode: AdminQuestReasonCode, decisionReasonText?: string) => void;
 };
 
 function decisionDialogTitle(choice: ReportCaseDecisionChoice | null, translateText: (value: string) => string): string {
@@ -43,9 +43,13 @@ export function ReportDecisionDialog({
   onConfirm,
 }: DecisionDialogProps) {
   const [reasonCode, setReasonCode] = useState<AdminQuestReasonCode | "">("");
+  const [decisionReasonText, setDecisionReasonText] = useState("");
 
   useEffect(() => {
-    if (open) setReasonCode("");
+    if (open) {
+      setReasonCode("");
+      setDecisionReasonText("");
+    }
   }, [open, choice]);
 
   if (!open) return null;
@@ -76,7 +80,8 @@ export function ReportDecisionDialog({
           event.preventDefault();
           const value = reasonCode;
           if (!value) return;
-          onConfirm(value);
+          const note = decisionReasonText.trim();
+          onConfirm(value, note || undefined);
         }}
       >
         <div className="dialog-body p-5">
@@ -109,6 +114,16 @@ export function ReportDecisionDialog({
             <option value="POLICY_REVIEW">POLICY_REVIEW</option>
             <option value="SAFETY_REVIEW">SAFETY_REVIEW</option>
           </select>
+          <label htmlFor="report-decision-reason-text">{translateText("Admin decision note (optional)")}</label>
+          <input
+            className="w-full rounded-lg border border-admin-border-strong bg-admin-surface px-2.5 py-2 text-lg leading-[1.45] text-admin-text"
+            id="report-decision-reason-text"
+            name="decisionReasonText"
+            type="text"
+            maxLength={200}
+            value={decisionReasonText}
+            onChange={(event) => setDecisionReasonText(event.target.value)}
+          />
           {error && <p className="field-error" role="alert">{translateText(error)}</p>}
         </div>
         <div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5">

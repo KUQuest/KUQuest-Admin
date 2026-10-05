@@ -259,6 +259,9 @@ test.describe("shared Admin shell", () => {
     await expect(decisionDialog).toBeVisible();
     await expect(decisionDialog.getByLabel("Reason for this decision")).toHaveCount(0);
     await expect(decisionDialog.getByLabel("Decision reason code")).toHaveCount(0);
+    const upholdNote = decisionDialog.getByLabel("Admin decision note (optional)");
+    await expect(upholdNote).toHaveAttribute("type", "text");
+    await expect(upholdNote).toHaveAttribute("maxlength", "200");
     await decisionDialog.getByRole("button", { name: "Confirm decision" }).click();
 
     await expect(decisionDialog).toBeHidden();
@@ -281,6 +284,9 @@ test.describe("shared Admin shell", () => {
 
     const decisionDialog = page.getByRole("dialog", { name: "Dismiss Conduct Report" });
     const reasonCode = decisionDialog.getByLabel("Decision reason code");
+    const dismissalNote = decisionDialog.getByLabel("Admin decision note (optional)");
+    await expect(dismissalNote).toHaveAttribute("type", "text");
+    await expect(dismissalNote).toHaveAttribute("maxlength", "200");
     await expect(reasonCode.locator("option")).toHaveText([
       "Select a reason code",
       "CONDUCT_REPORT_NO_VIOLATION",

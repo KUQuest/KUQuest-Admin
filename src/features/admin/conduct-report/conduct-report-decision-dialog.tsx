@@ -22,7 +22,7 @@ type DecisionDialogProps = {
 
   translateText: (value: string) => string;
   onCancel: () => void;
-  onConfirm: (decisionReasonCode: ConductReportDecisionReasonCode | null) => void;
+  onConfirm: (decisionReasonCode: ConductReportDecisionReasonCode | null, decisionReasonText?: string) => void;
 };
 
 function decisionDialogTitle(
@@ -57,9 +57,13 @@ export function ConductReportDecisionDialog({
   onConfirm,
 }: DecisionDialogProps) {
   const [decisionReasonCode, setDecisionReasonCode] = useState<ConductReportDecisionReasonCode | "">("");
+  const [decisionReasonText, setDecisionReasonText] = useState("");
 
   useEffect(() => {
-    if (open) setDecisionReasonCode("");
+    if (open) {
+      setDecisionReasonCode("");
+      setDecisionReasonText("");
+    }
   }, [choice, open]);
 
   if (!open) return null;
@@ -87,7 +91,8 @@ export function ConductReportDecisionDialog({
           event.preventDefault();
           const value = choice === "dismiss" ? decisionReasonCode : null;
           if (choice === "dismiss" && !value) return;
-          onConfirm(value || null);
+          const note = decisionReasonText.trim();
+          onConfirm(value || null, note || undefined);
         }}
       >
         <div className="dialog-body p-5">
@@ -124,6 +129,16 @@ export function ConductReportDecisionDialog({
               </select>
             </>
           ) : null}
+          <label htmlFor="conduct-report-decision-reason-text">{translateText("Admin decision note (optional)")}</label>
+          <input
+            className="w-full rounded-lg border border-admin-border-strong bg-admin-surface px-2.5 py-2 text-lg leading-[1.45] text-admin-text"
+            id="conduct-report-decision-reason-text"
+            name="decisionReasonText"
+            type="text"
+            maxLength={200}
+            value={decisionReasonText}
+            onChange={(event) => setDecisionReasonText(event.target.value)}
+          />
           {error && <p className="field-error" role="alert">{translateText(error)}</p>}
         </div>
         <div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5">

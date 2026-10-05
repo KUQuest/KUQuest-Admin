@@ -173,6 +173,7 @@ export const thaiTranslations: Record<string, string> = {
   "Dismiss Conduct Report": "ยกเลิก Conduct Report",
   "Choose a Conduct Report decision before closing.": "เลือกการตัดสิน Conduct Report ก่อนปิด",
   "Choose a decision reason code before confirming.": "เลือกรหัสเหตุผลการตัดสินใจก่อนยืนยัน",
+  "Admin decision note (optional)": "บันทึกการตัดสินใจของ Admin (ไม่บังคับ)",
   "Activity ID": "รหัสกิจกรรม",
   "Resource type": "ประเภททรัพยากร",
   "Resource ID": "รหัสทรัพยากร",

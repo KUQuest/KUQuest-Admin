@@ -75,6 +75,7 @@ export type AdminQuestCommandResult = {
 
 type VersionedAdminCommand = Omit<AdminCommandOptions, "expectedVersion"> & {
   expectedVersion: number;
+  decisionReasonText?: string;
 };
 
 export type ReportCaseDecision = VersionedAdminCommand & {
