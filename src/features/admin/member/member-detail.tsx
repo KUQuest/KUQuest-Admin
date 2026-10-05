@@ -492,34 +492,34 @@ function ReportsTable({ reports, translateText }: { reports: MemberModel["report
 function ReportsTab({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
   return (
     <Card as="section" className="user-detail-panel user-tab-panel col-span-full min-w-0 p-[16px_18px]">
-      <div className="user-reports-tab-content">
-        <CardHeader flush className="user-panel-heading">
-          <div>
+      <div className="user-reports-tab-content grid gap-4">
+        <CardHeader flush className="user-panel-heading flex items-start justify-between gap-3">
+          <div className="min-w-0">
             <h2>{translateText("Reports and Conduct Reports")}</h2>
             <p>{translateText("Cases received against this Member and cases submitted by this Member.")}</p>
           </div>
-          <span className={adminRecordCount}>{model.reports.length + model.reportsSubmitted.length}</span>
+          <span className={`${adminRecordCount} shrink-0`}>{model.reports.length + model.reportsSubmitted.length}</span>
         </CardHeader>
-        <Card as="section" className="user-detail-panel p-[16px_18px]">
-          <CardHeader flush className="user-panel-heading">
-            <div>
+        <section className="min-w-0 border-t border-admin-border pt-4">
+          <CardHeader flush className="user-panel-heading flex items-start justify-between gap-3">
+            <div className="min-w-0">
               <h3>{translateText("Reports received")}</h3>
               <p>{translateText("Report Cases and Conduct Reports filed against this Member.")}</p>
             </div>
-            <span className={adminRecordCount}>{model.reports.length}</span>
+            <span className={`${adminRecordCount} shrink-0`}>{model.reports.length}</span>
           </CardHeader>
           {model.reportsError ? <p className="audit-note">{translateText(model.reportsError)}</p> : <ReportsTable reports={model.reports} translateText={translateText} />}
-        </Card>
-        <Card as="section" className="user-detail-panel p-[16px_18px]">
-          <CardHeader flush className="user-panel-heading">
-            <div>
+        </section>
+        <section className="min-w-0 border-t border-admin-border pt-4">
+          <CardHeader flush className="user-panel-heading flex items-start justify-between gap-3">
+            <div className="min-w-0">
               <h3>{translateText("Reports submitted")}</h3>
               <p>{translateText("Cases submitted by this Member about another Member or Quest.")}</p>
             </div>
-            <span className={adminRecordCount}>{model.reportsSubmitted.length}</span>
+            <span className={`${adminRecordCount} shrink-0`}>{model.reportsSubmitted.length}</span>
           </CardHeader>
           {model.reportsSubmittedError ? <p className="audit-note">{translateText(model.reportsSubmittedError)}</p> : <ReportsTable reports={model.reportsSubmitted} translateText={translateText} />}
-        </Card>
+        </section>
       </div>
     </Card>
   );
