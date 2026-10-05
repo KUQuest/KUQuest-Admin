@@ -8,15 +8,12 @@ import { AdminPageHeader } from "../../../components/admin/admin-page-header";
 import { AdminSortableHeader } from "../../../components/admin/admin-sortable-header";
 import { Button, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table } from "../../../components/ui";
 import { adminBoardCount, adminBoardPagination, adminBoardTable, adminRecordFact, adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
-import { isAdminMockEnabled } from "../../../lib/auth/admin-auth-mode";
-import { isAdminApiEnabled } from "../api/admin-provider";
 import {
   activityLogCsv,
   activityLogActionLabel,
   activityLogMatchesSearch,
   activityLogReasonLabel,
   activityLogResourceTypeLabel,
-  activityLogStateLabel,
   activityLogTargetLabel,
   activityTargetHref,
   formatActivityLogRelativeTime,
@@ -117,13 +114,7 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
           </Card>
           <Card as="section" className={`${adminRecordSection} activity-log-state-section`} aria-labelledby="activity-log-state-heading">
             <CardHeader flush className={adminRecordHeader}><h3 id="activity-log-state-heading" className={adminRecordHeading}>{translateText("State change")}</h3></CardHeader>
-            {entry.previousState || entry.newState ? (
-              <div className="activity-log-state-change grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2.5 max-[600px]:grid-cols-1">
-                <div className="min-w-0 rounded-admin-sm border border-admin-border bg-admin-soft p-2.5"><span className="block text-sm text-admin-muted">{translateText("Previous state")}</span><strong className="mt-1 block break-words text-base font-semibold">{translateText(activityLogStateLabel(entry.previousState))}</strong></div>
-                <span className="activity-log-state-arrow text-xl font-extrabold text-admin-accent max-[600px]:justify-self-center max-[600px]:rotate-90" aria-hidden="true">→</span>
-                <div className="min-w-0 rounded-admin-sm border border-admin-border bg-admin-soft p-2.5"><span className="block text-sm text-admin-muted">{translateText("New state")}</span><strong className="mt-1 block break-words text-base font-semibold">{translateText(activityLogStateLabel(entry.newState))}</strong></div>
-              </div>
-            ) : <p className="activity-log-missing-context m-0 text-[15px] leading-[1.45] text-admin-muted">{translateText("Before and after state are not included in this record.")}</p>}
+            <p className="activity-log-missing-context m-0 text-[15px] leading-[1.45] text-admin-muted">{translateText("Before and after state are not included in this record.")}</p>
             {entry.note ? <p className="activity-log-note m-0 mt-3 grid gap-1 rounded-admin-sm bg-admin-soft p-2.5 text-[15px] leading-[1.45] text-admin-muted"><strong className="text-[17px] leading-[1.4] text-admin-text">{translateText("Admin note")}</strong>{entry.note}</p> : null}
           </Card>
           <div className="admin-drawer-actions sticky bottom-[-28px] z-[4] m-[18px_-24px_-28px] flex flex-wrap gap-2 border-t border-admin-border bg-admin-surface/95 px-6 py-3.5 shadow-[0_-6px_18px_rgba(0,0,0,0.09)] [&>*]:min-h-11 [&>*]:flex-[1_1_180px] [&>*]:text-center max-[720px]:bottom-[-24px] max-[720px]:m-[18px_-16px_-24px] max-[720px]:px-4 max-[720px]:[&>*]:basis-full">
@@ -138,8 +129,6 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
 export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoardProps) {
   const { translateText } = useAdminShell();
   const router = useRouter();
-  const apiEnabled = isAdminApiEnabled();
-  const mockEnabled = isAdminMockEnabled();
   const {
 
     search,
@@ -214,17 +203,6 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
     URL.revokeObjectURL(url);
   }, [filteredEntries]);
 
-  if (!apiEnabled && !mockEnabled) {
-    return (
-      <main id="activity-main" className="admin-route-page activity-log-board" tabIndex={-1}>
-        <AdminPageHeader title={translateText("Activity Log")} description={translateText("An audit trail of administrative decisions.")} />
-        <Card as="section" className="overflow-hidden" aria-labelledby="activity-unavailable-title">
-          <EmptyState className="border-0 rounded-none p-[60px_24px]" title={translateText("Activity Log unavailable")} description={translateText("The Admin API is required to display this read-only log.")} />
-        </Card>
-      </main>
-    );
-  }
-
   return (
     <main id="activity-main" className="admin-route-page activity-log-board" tabIndex={-1}>
         <AdminPageHeader title={translateText("Activity Log")} description={translateText("An audit trail of administrative decisions.")} actions={<Button variant="outline" type="button" onClick={exportCsv} disabled={!visibleEntries.length}>{translateText("Export CSV")}</Button>} showActionsOnMobile />
@@ -233,7 +211,6 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
 
         <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2"><label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text max-[600px]:basis-full max-[600px]:max-w-none" htmlFor="activity-search"><span className="visually-hidden">{translateText("Search loaded activity")}</span><Input className="h-9 min-h-9 px-3 py-1.5 text-sm" id="activity-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={translateText("Search loaded activity")}/></label><span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span><PageSizeControls value={pageSize} translateText={translateText} onChange={setPageSize} /><span className={`${adminBoardCount} max-[720px]:block max-[720px]:w-full max-[720px]:ms-0`} aria-live="polite">{sortedEntries.length ? pageSize === "all" ? `${translateText("Showing all")} ${sortedEntries.length} ${translateText(sortedEntries.length === 1 ? "result" : "results")}` : `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${sortedEntries.length} ${translateText(sortedEntries.length === 1 ? "result" : "results")}` : translateText("Showing 0 of 0 results")}</span></div>
         <output id="activity-status" className="mb-2 block min-h-5 text-sm text-admin-muted" aria-live="polite">{loading ? translateText("Loading activity") : `${filteredEntries.length} ${translateText("loaded entries")}`}</output>
-        {mockEnabled ? <p className="api-data-notice m-0 mb-3 rounded-lg px-3 py-2.5 text-[13px]">{translateText("Fixture data is active. Some records do not include before and after state.")}</p> : null}
         {loadError ? <div className="mb-3 flex items-center gap-2.5 rounded-admin-sm border border-admin-danger bg-admin-danger-soft px-3 py-2.5 text-sm text-admin-danger" role="alert"><strong>{translateText("Activity log is not available")}</strong><p className="m-0 flex-1">{translateText(loadError)}</p><Button variant="outline" type="button" onClick={retry}>{translateText("Try again")}</Button></div> : null}
         {!loadError && loading && !entries.length ? <EmptyState className="border-0 rounded-none p-[60px_24px]" title={translateText("Loading activity")} description={translateText("Loading activity records.")} /> : null}
         {!loadError && !loading && !visibleEntries.length ? <EmptyState className="border-0 rounded-none p-[60px_24px]" title={translateText("No activity recorded")} description={translateText("Administrative activity will appear here as actions are taken.")} /> : null}

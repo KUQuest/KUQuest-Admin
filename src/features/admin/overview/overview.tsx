@@ -5,10 +5,8 @@ import { type ReactNode } from "react";
 
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { Card, CardHeader } from "../../../components/ui/card";
-import { isAdminMockEnabled } from "../../../lib/auth/admin-auth-mode";
 import { displayAdminId } from "../display-admin-id";
 import type { AdminFinanceOverview } from "../api/admin-api";
-import { isAdminApiEnabled } from "../api/admin-provider";
 import { activityRoutes } from "../admin-routes";
 import { memberStatusLabel, walletStatusLabel } from "../domain/rulebook";
 import { dashboardActivityKey } from "../dashboard/dashboard-model";
@@ -101,9 +99,9 @@ function FinanceOverviewSection({
   error: string | null;
   translateText: (value: string) => string;
 }) {
-  const sourceLabel = isAdminApiEnabled() ? "Admin API" : "Local demo data";
+  const sourceLabel = "Admin API";
   if (loading) {
-    return <Card as="section" className="overview-command-center-finance overview-command-center-finance-member-focused mt-[18px] overflow-hidden" aria-labelledby="overview-finance-heading"><CardHeader flush className={overviewSectionHead}><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p className="mt-2 text-[15px] text-admin-muted">{translateText("Member Wallet totals and lifetime volume.")}</p></div><span className="whitespace-nowrap text-xs font-extrabold text-admin-muted">{translateText(sourceLabel)}</span></CardHeader><p className={overviewNote}>{translateText(isAdminApiEnabled() ? "Reading the Finance Overview from the Admin API…" : "Loading the Finance Overview…")}</p></Card>;
+    return <Card as="section" className="overview-command-center-finance overview-command-center-finance-member-focused mt-[18px] overflow-hidden" aria-labelledby="overview-finance-heading"><CardHeader flush className={overviewSectionHead}><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p className="mt-2 text-[15px] text-admin-muted">{translateText("Member Wallet totals and lifetime volume.")}</p></div><span className="whitespace-nowrap text-xs font-extrabold text-admin-muted">{translateText(sourceLabel)}</span></CardHeader><p className={overviewNote}>{translateText("Reading the Finance Overview from the Admin API…")}</p></Card>;
   }
   if (error || !overview) {
     return <Card as="section" className="overview-command-center-finance overview-command-center-finance-member-focused mt-[18px] overflow-hidden" aria-labelledby="overview-finance-heading"><CardHeader flush className={overviewSectionHead}><div><h2 id="overview-finance-heading">{translateText("Finance Overview")}</h2><p className="mt-2 text-[15px] text-admin-muted">{translateText("Member Wallet totals and lifetime volume.")}</p></div><span className="whitespace-nowrap text-xs font-extrabold text-admin-muted">{translateText("Unavailable")}</span></CardHeader><p className={overviewNote}>{error ? translateText(error) : translateText("Finance Overview is not available.")}</p></Card>;
@@ -181,9 +179,8 @@ export function AdminOverview({
             <div className="overview-command-center-table-head grid grid-cols-[minmax(0,1.15fr)_minmax(150px,1fr)_minmax(105px,.7fr)_minmax(70px,.45fr)] items-center gap-4 bg-admin-soft px-[18px] py-2.5 text-xs font-extrabold uppercase tracking-[.08em] text-admin-faint max-[560px]:grid-cols-[minmax(0,1fr)_auto] [&_span:nth-child(2)]:max-[560px]:hidden [&_span:nth-child(3)]:max-[560px]:hidden"><span>{translateText("Queue")}</span><span>{translateText("Detail")}</span><span>{translateText("State")}</span><span>{translateText("Waiting")}</span></div>
             <ul className="overview-command-center-queue m-0 list-none p-0">
               {model.queues.map((row) => {
-                const processHref = row.oldestHref;
                 return <li key={row.id} className="grid min-h-16 grid-cols-[minmax(0,1.15fr)_minmax(150px,1fr)_minmax(105px,.7fr)_minmax(70px,.45fr)] items-center gap-4 border-t border-admin-border-subtle px-[18px] py-[11px] max-[560px]:grid-cols-[minmax(0,1fr)_auto]">
-                  <span className="overview-command-center-queue-title grid min-w-0 gap-0.5"><strong className="text-sm text-admin-text"><Link className="text-inherit no-underline hover:underline hover:underline-offset-2" href={row.listHref}>{translateText(row.title)}</Link></strong><small className="text-[13px] text-admin-muted">{countLabel(row.count)} {translateText("open")}</small>{isAdminMockEnabled() && row.count !== null && row.count > 0 && processHref ? <Link className="text-sm text-admin-accent underline underline-offset-2" href={processHref}>{translateText("Process next")}</Link> : null}</span>
+                  <span className="overview-command-center-queue-title grid min-w-0 gap-0.5"><strong className="text-sm text-admin-text"><Link className="text-inherit no-underline hover:underline hover:underline-offset-2" href={row.listHref}>{translateText(row.title)}</Link></strong><small className="text-[13px] text-admin-muted">{countLabel(row.count)} {translateText("open")}</small></span>
                   <span className="overview-command-center-queue-oldest min-w-0 overflow-hidden text-[13px] leading-[1.35] text-admin-muted [overflow-wrap:anywhere] max-[560px]:col-span-full max-[560px]:row-start-2">
                     {row.oldestHref ? <Link className="text-inherit hover:underline hover:underline-offset-2" href={row.oldestHref}>{translateOverviewValue(row.oldest, translateText)}</Link> : translateOverviewValue(row.oldest, translateText)}
                     {displayAdminId(row.oldestId) ? <small className="mt-0.5 block text-xs text-admin-muted">{displayAdminId(row.oldestId)}</small> : null}

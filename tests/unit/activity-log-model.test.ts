@@ -7,10 +7,7 @@ import {
   activityLogTargetLabel,
   activityLogReasonLabel,
   activityLogResourceTypeLabel,
-  activityLogStateLabel,
   activityLogEntryFromApi,
-  activityLogFixtures,
-  activityLogFixturePageData,
   activityLogEntryMatchesFilters,
   activityLogMatchesSearch,
   activityTargetHref,
@@ -90,7 +87,6 @@ describe("Activity Log model", () => {
     expect(activityLogActionLabel("DISPUTE_CASE_RESOLVED")).toBe("Dispute Case Resolved");
     expect(activityLogReasonLabel("EVIDENCE_REVIEWED")).toBe("Evidence Reviewed");
     expect(activityLogResourceTypeLabel("CONDUCT_REPORT")).toBe("Conduct Report");
-    expect(activityLogStateLabel("REPORT_CASE_PENDING")).toBe("Report Case Pending");
     expect(activityLogActionLabel(null)).toBe("Not provided");
   });
 
@@ -103,55 +99,10 @@ describe("Activity Log model", () => {
     const csv = activityLogCsv([view]);
 
     expect(csv.split("\r\n")[0]).toBe(
-      '"id","createdAt","adminId","adminName","action","resourceType","resourceId","target","reasonCode","reasonCatalogVersion","resultVersion","resultTimestamp","previousState","newState","note"',
+      '"id","createdAt","adminId","adminName","action","resourceType","resourceId","target","reasonCode","reasonCatalogVersion","resultVersion","resultTimestamp","note"',
     );
     expect(csv).toContain('"EXPORT, ""quoted"""');
     expect(csv).toContain('"\'=UNSAFE(A1)"');
   });
 
-  it("provides mock before and after state for the Activity Log workflow", () => {
-    const page = activityLogFixturePageData();
-    const reportEntry = page.items.find((item) => item.resourceType === "REPORT_CASE");
-
-    expect(reportEntry).toMatchObject({
-      previousState: "REPORT_CASE_PENDING",
-      newState: "REPORT_CASE_HIDDEN",
-    });
-    if (!reportEntry) throw new Error("The mock Activity Log must include a Report Case entry.");
-    expect(activityLogEntryMatchesFilters(reportEntry, {
-      action: "REPORT_CASE",
-      resourceType: "REPORT_CASE",
-      resourceId: "RPT-8201",
-      adminId: "admin-supansa",
-      fromDate: "2026-09-15",
-      toDate: "2026-09-15",
-      sort: "newest",
-    })).toBe(true);
-  });
-
-  it("provides a deterministic mock collection large enough to exercise board pagination", () => {
-    const first = activityLogFixtures();
-    const second = activityLogFixtures();
-
-    expect(first).toHaveLength(200);
-    expect(new Set(first.map((item) => item.id)).size).toBe(200);
-    expect(first.map((item) => item.id)).toEqual(second.map((item) => item.id));
-    expect(first.map((item) => item.createdAt)).toEqual(second.map((item) => item.createdAt));
-  });
-
-  it("keeps mock cursor pages deterministic until all Activity Log fixtures are loaded", () => {
-    const ids: string[] = [];
-    let cursor: string | undefined;
-
-    do {
-      const page = activityLogFixturePageData(undefined, cursor);
-      ids.push(...page.items.map((item) => item.id));
-      cursor = page.nextCursor ?? undefined;
-    } while (cursor);
-
-    expect(ids).toHaveLength(200);
-    expect(new Set(ids).size).toBe(200);
-    expect(ids[0]).toBe("ACT-9006");
-    expect(ids.at(-1)).toBe("ACT-8807");
-  });
 });

@@ -1,61 +1,43 @@
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { isAdminApiEnabled } from "../api/admin-provider";
-import { subscribeToAdminDataUpdates, subscribeToStorageUpdates } from "../data/admin-query-events";
-import { loadOverviewModelFromMock } from "./overview-adapter";
-import { mockFinanceOverview } from "./overview-finance-mock-data";
+import { subscribeToAdminDataUpdates } from "../data/admin-query-events";
 import { loadOverviewPageData, type OverviewPageData } from "./overview-service";
 
 export const overviewQueryKey = ["admin", "overview"] as const;
 
-function mockOverviewPageData(): OverviewPageData {
-  return {
-    model: loadOverviewModelFromMock(window.localStorage),
-    financeOverview: mockFinanceOverview,
-    financeOverviewError: null,
-  };
-}
-
 export function useOverviewQuery(initialData?: OverviewPageData) {
   const queryClient = useQueryClient();
-  const apiEnabled = isAdminApiEnabled();
-  const queryKey = useMemo(
-    () => [...overviewQueryKey, apiEnabled ? "api" : "mock"] as const,
-    [apiEnabled],
-  );
   const query = useQuery({
-    queryKey,
-    queryFn: () => apiEnabled ? loadOverviewPageData() : mockOverviewPageData(),
+    queryKey: overviewQueryKey,
+    queryFn: () => loadOverviewPageData(),
     initialData,
-    staleTime: initialData ? Infinity : apiEnabled ? 0 : Infinity,
+    staleTime: initialData ? Infinity : 0,
     gcTime: Infinity,
-    refetchOnMount: !initialData && apiEnabled,
+    refetchOnMount: !initialData,
     refetchOnWindowFocus: false,
   });
 
   useEffect(() => {
-    if (initialData) queryClient.setQueryData(queryKey, initialData);
-  }, [initialData, queryClient, queryKey]);
+    if (initialData) queryClient.setQueryData(overviewQueryKey, initialData);
+  }, [initialData, queryClient]);
 
   useEffect(() => {
     const updateOverview = () => {
-      void queryClient.invalidateQueries({ queryKey });
+      void queryClient.invalidateQueries({ queryKey: overviewQueryKey });
     };
     const refreshWhenVisible = () => {
       if (document.visibilityState === "visible") updateOverview();
     };
     const unsubscribeFromDataUpdates = subscribeToAdminDataUpdates(updateOverview);
-    const unsubscribeFromStorageUpdates = subscribeToStorageUpdates(updateOverview);
     window.addEventListener("focus", updateOverview);
     document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
       unsubscribeFromDataUpdates();
-      unsubscribeFromStorageUpdates();
       window.removeEventListener("focus", updateOverview);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, [apiEnabled, queryClient, queryKey]);
+  }, [queryClient]);
 
-  return { ...query, queryKey };
+  return { ...query, queryKey: overviewQueryKey };
 }

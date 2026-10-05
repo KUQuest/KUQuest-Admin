@@ -7,7 +7,6 @@ import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { Button } from "../../../components/ui";
 import {
   overviewSearchResultsFromSearchApi,
-  overviewSearchResultsFromMockData,
   sortOverviewSearchResults,
   type OverviewSearchResult,
 } from "../overview/overview-model";
@@ -151,8 +150,7 @@ export function AdminGlobalSearch({ open, onClose }: AdminGlobalSearchProps) {
   }, [onClose, open]);
 
   const allResults = useMemo(() => {
-    if (data?.source === "mock") return overviewSearchResultsFromMockData(data.data, query);
-    if (data?.source === "api") return overviewSearchResultsFromSearchApi(data.data.items);
+    if (data) return overviewSearchResultsFromSearchApi(data.items);
     return [];
   }, [data, query]);
   const results = useMemo(
@@ -258,7 +256,6 @@ export function AdminGlobalSearch({ open, onClose }: AdminGlobalSearchProps) {
         <div id="admin-global-search-results" aria-live="polite">
           {searchError && !data ? <p className="p-[60px_24px] text-center text-sm text-admin-muted">{translateText(searchError)}</p> : null}
           {query.trim() && !searchError && (searchQuery.isDebouncing || searchQuery.isPending) && !data ? <p className="p-[60px_24px] text-center text-sm text-admin-muted">{translateText("Loading search records…")}</p> : null}
-          {data?.source === "mock" ? <p className="api-data-notice admin-global-search-notice mx-4 my-3 mb-1 rounded-lg p-[9px_10px] text-[13px]">{translateText("Fixture search is active. Results use local demo records.")}</p> : null}
           {groups.map((group) => (
             <section key={group.kind} className="admin-global-search-group" aria-labelledby={`admin-global-search-group-${group.kind}`}>
               <h3 className="m-0 flex items-center justify-between gap-2 border-b border-admin-border px-4 pb-2 pt-2.5 text-xs font-bold uppercase tracking-[.08em] text-admin-muted" id={`admin-global-search-group-${group.kind}`}>{translateText(searchResultDescriptor(group.kind).label)}<span className="min-w-5 rounded-full bg-admin-soft px-1.5 py-0.5 text-center text-xs tracking-normal text-admin-text">{group.items.length}</span></h3>
