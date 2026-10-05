@@ -3,6 +3,7 @@ import { ADMIN_DEMO_DATA_KEY, type BrowserStorage } from "../data/admin-demo-dat
 import { pageMockItems } from "../data/mock-pagination";
 import { loadDashboardData } from "../dashboard/dashboard-bootstrap";
 import { reportRoutes } from "../admin-routes";
+import type { AdminReviewReasonCode } from "../api/admin-api";
 import { recordMemberViolationInData } from "../member/member-adapter";
 import {
   reportCaseDecisionDetailsForCommand,
@@ -79,7 +80,7 @@ export function saveMockReportDecision(
   storage: BrowserStorage,
   reportId: string,
   decision: ReportCaseCommand,
-  reasonCode: string,
+  reasonCode: AdminReviewReasonCode,
 ): ReportCaseRecord | null {
   const data = loadDashboardData(storage);
   const report = reportRecords(data).find((candidate) => candidate.id === reportId);

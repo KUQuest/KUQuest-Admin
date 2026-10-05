@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { Input } from "../../components/ui/input";
 
 export type AdminDecisionSubmission<Field extends string, ReasonCode extends string | null> =
@@ -35,6 +35,9 @@ export function AdminDecisionNoteInput({
   onChange,
   translateText,
 }: AdminDecisionNoteInputProps) {
+  function handleChange(event: ChangeEvent<HTMLInputElement>) {
+    onChange(event.target.value);
+  }
   return (
     <label className="grid gap-1 text-[16px] leading-[1.4] font-semibold" htmlFor={id}>
       {translateText("Admin decision note (optional)")}
@@ -45,7 +48,7 @@ export function AdminDecisionNoteInput({
         type="text"
         maxLength={200}
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={handleChange}
       />
     </label>
   );

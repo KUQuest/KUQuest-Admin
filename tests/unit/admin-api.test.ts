@@ -607,7 +607,7 @@ describe("Admin API boundary", () => {
     });
   });
 
-  it("sends a Report Case decision code without a free-text explanation", async () => {
+  it("sends a Report Case reason code with its optional decision note", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     let request: Request | undefined;
 

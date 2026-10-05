@@ -5,13 +5,7 @@ import { useEffect, useState } from "react";
 import { AdminActionSummary } from "../../../components/admin/admin-action-feedback";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { Button } from "../../../components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../../components/ui/select";
+import { AdminReasonCodeField } from "../admin-reason-code-field";
 import { CONDUCT_REPORT_DISMISS_REASON_CODE_OPTIONS } from "../admin-reason-codes";
 import { AdminDecisionNoteInput, useAdminDecisionNote, type AdminDecisionSubmission } from "../admin-decision-note";
 import {
@@ -123,26 +117,15 @@ export function ConductReportDecisionDialog({
             />
           ) : null}
           {choice === "dismiss" ? (
-            <>
-              <label htmlFor="conduct-report-decision-reason-code">
-                {translateText("Decision reason code")} <span aria-hidden="true">*</span>
-              </label>
-              <Select
-                value={decisionReasonCode}
-                onValueChange={(value) => setDecisionReasonCode(value as ConductReportDecisionReasonCode)}
-              >
-                <SelectTrigger id="conduct-report-decision-reason-code" autoFocus aria-required="true" aria-invalid={Boolean(error)}>
-                  <SelectValue placeholder={translateText("Select a reason code")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {CONDUCT_REPORT_DISMISS_REASON_CODE_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {translateText(option.label)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </>
+            <AdminReasonCodeField
+              id="conduct-report-decision-reason-code"
+              label="Decision reason code"
+              value={decisionReasonCode}
+              options={CONDUCT_REPORT_DISMISS_REASON_CODE_OPTIONS}
+              onValueChange={setDecisionReasonCode}
+              translateText={translateText}
+              invalid={Boolean(error)}
+            />
           ) : null}
           <AdminDecisionNoteInput
             id="conduct-report-decision-reason-text"

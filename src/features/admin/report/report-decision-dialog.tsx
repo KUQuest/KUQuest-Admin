@@ -5,13 +5,7 @@ import { useEffect, useState } from "react";
 import { AdminActionSummary } from "../../../components/admin/admin-action-feedback";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { Button } from "../../../components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../../components/ui/select";
+import { AdminReasonCodeField } from "../admin-reason-code-field";
 import { ADMIN_REVIEW_REASON_CODE_OPTIONS } from "../admin-reason-codes";
 import { AdminDecisionNoteInput, useAdminDecisionNote, type AdminDecisionSubmission } from "../admin-decision-note";
 import type { AdminReviewReasonCode } from "../api/admin-api";
@@ -111,24 +105,15 @@ export function ReportDecisionDialog({
               warning={translateText("Read Message content only through the named Evidence Reference. The evidence read is logged as an Admin Action.")}
             />
           ) : null}
-          <label htmlFor="report-decision-reason-code">
-            {translateText("Reason code")} <span aria-hidden="true">*</span>
-          </label>
-          <Select
+          <AdminReasonCodeField
+            id="report-decision-reason-code"
+            label="Reason code"
             value={reasonCode}
-            onValueChange={(value) => setReasonCode(value as AdminReviewReasonCode)}
-          >
-            <SelectTrigger id="report-decision-reason-code" autoFocus aria-required="true" aria-invalid={Boolean(error)}>
-              <SelectValue placeholder={translateText("Select a reason code")} />
-            </SelectTrigger>
-            <SelectContent>
-              {ADMIN_REVIEW_REASON_CODE_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {translateText(option.label)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            options={ADMIN_REVIEW_REASON_CODE_OPTIONS}
+            onValueChange={setReasonCode}
+            translateText={translateText}
+            invalid={Boolean(error)}
+          />
           <AdminDecisionNoteInput
             id="report-decision-reason-text"
             value={decisionNote}
