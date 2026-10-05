@@ -6,7 +6,6 @@ import { displayAdminId } from "../display-admin-id";
 import { conductReportModelFromRecord, type ConductReportModel } from "./conduct-report-model";
 
 export type ConductReportPageData = {
-  source: "api" | "mock";
   items: ConductReportModel[];
   nextCursor: string | null;
   countsByStatus?: Record<ConductReportStatus, number>;
@@ -62,7 +61,6 @@ export async function loadConductReportPageData(
     .flatMap(({ page }) => page.items)
     .sort((left, right) => timestampValue(right.createdAt) - timestampValue(left.createdAt));
   return {
-    source: "api",
     items: conductReportModels(records),
     nextCursor: Object.keys(nextCursors).length ? JSON.stringify(nextCursors) : null,
   };
@@ -86,4 +84,11 @@ export async function loadConductReportDetailFromApi(
     }
   }
   return model?.id === reportId ? model : null;
+}
+
+export function newConductReportIdempotencyKey(reportId: string): string {
+  const uuid = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `admin-decide-conduct-report-${reportId}-${uuid}`;
 }

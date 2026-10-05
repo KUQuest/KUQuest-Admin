@@ -5,7 +5,6 @@ import { displayAdminId } from "../display-admin-id";
 import { reportCaseModelFromRecord, type ReportCaseModel } from "./report-model";
 
 export type ReportCasePageData = {
-  source: "api" | "mock";
   items: ReportCaseModel[];
   nextCursor: string | null;
 };
@@ -32,7 +31,6 @@ export async function loadReportCasePageData(
     adminApiRequestOptions(cookieHeader),
   );
   return {
-    source: "api",
     items: reportCaseModels(page.items),
     nextCursor: page.nextCursor,
   };
@@ -53,4 +51,11 @@ export async function loadReportCaseDetailFromApi(
     }
   }
   return model?.id === reportId ? model : null;
+}
+
+export function newReportCaseIdempotencyKey(reportId: string): string {
+  const uuid = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `admin-decide-report-${reportId}-${uuid}`;
 }

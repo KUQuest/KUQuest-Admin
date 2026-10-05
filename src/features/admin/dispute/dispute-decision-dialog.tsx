@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 
 import { AdminActionSummary } from "../../../components/admin/admin-action-feedback";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
@@ -88,14 +88,9 @@ export function DisputeDecisionDialog({
   model: DisputeCaseModel;
   translateText: (value: string) => string;
   onCancel: () => void;
-  onConfirm: (reason: string) => void;
+  onConfirm: () => void;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const [reason, setReason] = useState("");
-
-  useEffect(() => {
-    if (open) setReason("");
-  }, [choice, open]);
 
   useDisputeModalFocus(dialogRef, open, onCancel);
 
@@ -113,7 +108,7 @@ export function DisputeDecisionDialog({
   return (
     <AdminModalPortal open onClose={onCancel}>
       <dialog ref={dialogRef} open className="dispute-decision-dialog z-[60]" aria-modal="true" aria-labelledby="dispute-decision-title" tabIndex={-1}>
-        <form method="dialog" onSubmit={(event) => { event.preventDefault(); const value = reason.trim(); if (value.length < 8 || fullAmountUnavailable) return; onConfirm(value); }}>
+        <form method="dialog" onSubmit={(event) => { event.preventDefault(); if (fullAmountUnavailable) return; onConfirm(); }}>
           <div className="dialog-body p-5">
             <div className="warning-icon grid size-[38px] place-items-center rounded-[10px] bg-admin-danger-soft font-bold text-admin-danger" aria-hidden="true">!</div>
             <h2 id="dispute-decision-title">{title}</h2>
@@ -132,12 +127,9 @@ export function DisputeDecisionDialog({
                 : "Dismiss the Dispute Case. The full held amount stays with the Hirer.")}
             /> : null}
             {choice === "resolve" && <div className="decision-amount-summary mt-4 flex items-baseline justify-between gap-3 rounded-lg border border-admin-border bg-admin-soft px-3 py-2.5"><span className="text-sm text-admin-muted">{translateText("Worker outcome")}</span><strong className="text-right text-base">{translateText("Full remaining amount")} · {model.sharedCapLabel}</strong></div>}
-            <label htmlFor="dispute-decision-reason">{translateText("Reason for this decision")}</label>
-            <textarea id="dispute-decision-reason" name="reason" rows={4} minLength={8} maxLength={500} required value={reason} aria-invalid={Boolean(error)} onChange={(event) => setReason(event.target.value)} placeholder={translateText("Enter the reason for the Dispute Case decision")} />
-            <div className="mt-1.5 flex justify-between gap-3 text-[15px] leading-[1.4] text-admin-muted"><span>{translateText("Minimum 8 characters")}</span><span>{reason.length}/500</span></div>
             {error && <p className="field-error" role="alert">{translateText(error)}</p>}
           </div>
-          <div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5"><Button variant="outline" type="button" onClick={onCancel} disabled={busy}>{translateText("Cancel")}</Button><Button variant="danger" type="submit" disabled={busy || reason.trim().length < 8 || fullAmountUnavailable}>{busy ? translateText("Saving…") : translateText("Confirm decision")}</Button></div>
+          <div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5"><Button variant="outline" type="button" onClick={onCancel} disabled={busy}>{translateText("Cancel")}</Button><Button variant="danger" type="submit" disabled={busy || fullAmountUnavailable}>{busy ? translateText("Saving…") : translateText("Confirm decision")}</Button></div>
         </form>
       </dialog>
     </AdminModalPortal>
