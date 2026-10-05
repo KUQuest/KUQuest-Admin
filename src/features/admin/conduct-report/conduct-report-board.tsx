@@ -248,13 +248,13 @@ export function ConductReportBoard({
                       {model.reportedMemberHref
                         ? <Link className="text-admin-accent no-underline hover:underline hover:underline-offset-4" href={model.reportedMemberHref} onClick={(event) => event.stopPropagation()}>{model.reportedMemberName}</Link>
                         : model.reportedMemberName}
-                      <small>{model.reportedMemberDisplayId ?? "—"}</small>
+                      <small>{translateText("Student ID")}: {model.reportedMemberStudentId ?? translateText("Student ID not provided")}</small>
                     </TableCell>
                     <TableCell>
                       {model.reporterHref
                         ? <Link className="text-admin-accent no-underline hover:underline hover:underline-offset-4" href={model.reporterHref} onClick={(event) => event.stopPropagation()}>{model.reporterName}</Link>
                         : model.reporterName}
-                      <small>{model.reporterDisplayId ?? "—"}</small>
+                      <small>{translateText("Student ID")}: {model.reporterStudentId ?? translateText("Student ID not provided")}</small>
                     </TableCell>
                     <TableCell>{translateText(model.reason)}</TableCell>
                     <TableCell><span className={`badge ${model.badgeClass}`}>{translateText(model.status === "CONDUCT_REPORT_UPHELD" ? "Confirmed" : model.statusLabel)}</span></TableCell>

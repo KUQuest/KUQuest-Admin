@@ -170,8 +170,8 @@ export function DisputeCaseBoard({ initialData }: { initialData?: DisputeCasePag
                 return <TableRow className="focus-visible:outline-2 focus-visible:outline-admin-accent focus-visible:outline-offset-[-2px]" key={model.id} data-dispute-id={model.id} data-dispute-display-id={model.displayId} data-dispute-status={model.status} tabIndex={0} aria-label={`${translateText("Open Dispute Case")} ${model.displayId}`} onClick={() => openDrawer(model.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openDrawer(model.id); } }}>
                   <TableCell><button className="min-h-8 border-0 bg-transparent p-0 text-left text-sm text-admin-text hover:text-admin-accent hover:underline hover:underline-offset-4" type="button" data-dispute-id={model.id} onClick={(event) => { event.stopPropagation(); openDrawer(model.id); }}><strong>{model.displayId}</strong></button></TableCell>
                   <TableCell><Link className="text-admin-accent no-underline hover:underline hover:underline-offset-4" href={model.questHref ?? questRoutes.list()} onClick={(event) => event.stopPropagation()}>{model.questTitle}</Link><small>{model.questDisplayId || "—"}</small></TableCell>
-                  <TableCell><MemberCell {...hirer} /></TableCell>
-                  <TableCell><MemberCell {...worker} /></TableCell>
+                  <TableCell><MemberCell {...hirer} translateText={translateText} /></TableCell>
+                  <TableCell><MemberCell {...worker} translateText={translateText} /></TableCell>
                   <TableCell>{translateText(model.category)}</TableCell>
                   <TableCell>{model.amountAtRiskLabel}</TableCell>
                   <TableCell><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></TableCell>
@@ -191,12 +191,12 @@ export function DisputeCaseBoard({ initialData }: { initialData?: DisputeCasePag
 }
 
 function partyMemberForRole(model: DisputeCaseModel, role: "Hirer" | "Worker") {
-  const filer = { id: model.filerId, name: model.filerName, href: model.filerHref, role: model.filerRole };
-  const respondent = { id: model.respondentId, name: model.respondentName, href: model.respondentHref, role: model.respondentRole };
+  const filer = { id: model.filerId, name: model.filerName, href: model.filerHref, studentId: model.filerStudentId, role: model.filerRole };
+  const respondent = { id: model.respondentId, name: model.respondentName, href: model.respondentHref, studentId: model.respondentStudentId, role: model.respondentRole };
   const matchingParty = [filer, respondent].find((party) => party.role.toLowerCase() === role.toLowerCase());
   if (matchingParty) return matchingParty;
   if (role === "Worker" && model.workerId) {
-    return { id: model.workerId, name: model.workerName, href: model.workerHref, role };
+    return { id: model.workerId, name: model.workerName, href: model.workerHref, studentId: null, role };
   }
   return role === "Hirer" ? filer : respondent;
 }
@@ -205,10 +205,14 @@ function MemberCell({
   id,
   name,
   href,
+  studentId,
+  translateText,
 }: {
   id: string | null;
   name: string;
   href: string | null;
+  studentId: string | null;
+  translateText: (value: string) => string;
 }) {
-  return <div>{href && id ? <Link className="text-admin-accent no-underline hover:underline hover:underline-offset-4" href={href} onClick={(event) => event.stopPropagation()}>{name}</Link> : <span>{name}</span>}</div>;
+  return <div>{href && id ? <Link className="text-admin-accent no-underline hover:underline hover:underline-offset-4" href={href} onClick={(event) => event.stopPropagation()}>{name}</Link> : <span>{name}</span>}<small>{translateText("Student ID")}: {studentId ?? translateText("Student ID not provided")}</small></div>;
 }

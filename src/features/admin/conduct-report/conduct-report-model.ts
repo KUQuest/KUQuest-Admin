@@ -83,10 +83,12 @@ export type ConductReportModel = {
   proofSubmission: ConductReportProofSubmission | null;
   reportedMemberId: string;
   reportedMemberDisplayId: string | null;
+  reportedMemberStudentId: string | null;
   reportedMemberName: string;
   reportedMemberHref: string | null;
   reporterId: string | null;
   reporterDisplayId: string | null;
+  reporterStudentId: string | null;
   reporterName: string;
   reporterHref: string | null;
   moderationHistory: ModerationHistorySummary;
@@ -341,10 +343,12 @@ export function conductReportModelFromRecord(value: unknown): ConductReportModel
       : null,
     reportedMemberId,
     reportedMemberDisplayId: displayAdminId(record.reportedMemberDisplayId, reportedMember?.displayId),
+    reportedMemberStudentId: firstText(reportedMember?.studentId),
     reportedMemberName,
     reportedMemberHref: reportedMemberId ? memberRoutes.detail(reportedMemberId) : null,
     reporterId,
     reporterDisplayId: displayAdminId(record.reporterDisplayId, filer?.displayId),
+    reporterStudentId: firstText(filer?.studentId),
     reporterName,
     reporterHref: reporterId ? memberRoutes.detail(reporterId) : null,
     moderationHistory: moderationHistoryFromRecord(record),
