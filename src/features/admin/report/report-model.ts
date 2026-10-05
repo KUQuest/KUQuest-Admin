@@ -61,10 +61,12 @@ export type ReportCaseModel = {
   source: "Message";
   reportedMemberId: string;
   reportedMemberDisplayId: string | null;
+  reportedMemberStudentId: string | null;
   reportedMemberName: string;
   reportedMemberHref: string | null;
   reporterId: string | null;
   reporterDisplayId: string | null;
+  reporterStudentId: string | null;
   reporterName: string;
   reporterHref: string | null;
   relatedQuestId: string | null;
@@ -268,10 +270,12 @@ export function reportCaseModelFromRecord(value: unknown): ReportCaseModel | nul
     source: "Message",
     reportedMemberId,
     reportedMemberDisplayId: displayAdminId(record.reportedMemberDisplayId, reportedMember?.displayId),
+    reportedMemberStudentId: firstText(reportedMember?.studentId),
     reportedMemberName,
     reportedMemberHref: reportedMemberId ? memberRoutes.detail(reportedMemberId) : null,
     reporterId,
     reporterDisplayId: displayAdminId(record.reporterDisplayId, reporter?.displayId),
+    reporterStudentId: firstText(reporter?.studentId),
     reporterName,
     reporterHref: reporterId ? memberRoutes.detail(reporterId) : null,
     relatedQuestId,
