@@ -471,9 +471,6 @@ test.describe("shared Admin shell", () => {
     await conductDrawer.getByLabel("Confirm violation").check();
     await conductDrawer.getByRole("button", { name: "Close report", exact: true }).click();
     const conductDecision = page.getByRole("dialog", { name: "Confirm violation" });
-    await conductDecision.getByLabel("Reason for this decision").fill(
-      "The Quest record confirms the reported conduct violation.",
-    );
     await conductDecision.getByRole("button", { name: "Confirm decision" }).click();
     await expect(conductQueue).toContainText("10 open");
     await expect(conductQueue).not.toContainText("CND-8301");
