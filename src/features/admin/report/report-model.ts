@@ -158,13 +158,6 @@ export function reportCaseStatusFromRecord(value: unknown): ReportCaseStatus | n
   if (isReportCaseStatus(record.reportCaseStatus)) return record.reportCaseStatus;
   if (isReportCaseStatus(record.status)) return record.status;
 
-  // The demo adapter can contain older Report Case rows. Only an explicit
-  // reportCaseStatus field may use the legacy Closed value.
-  if (record.reportCaseStatus === "Closed") {
-    const status = reportCaseStatusFor(record.reportCaseStatus, record.decision);
-    return isReportCaseStatus(status) ? status : null;
-  }
-
   return null;
 }
 
