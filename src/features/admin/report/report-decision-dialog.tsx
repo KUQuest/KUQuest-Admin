@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import { AdminActionSummary } from "../../../components/admin/admin-action-feedback";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { Button } from "../../../components/ui/button";
-import type { AdminQuestReasonCode } from "../api/admin-api";
+import { AdminDecisionNoteInput, useAdminDecisionNote } from "../admin-decision-note";
+import type { AdminReviewReasonCode } from "../api/admin-api";
 import { type ReportCaseDecisionChoice, type ReportCaseModel } from "./report-model";
 import { reportCaseStatusLabel } from "../domain/rulebook";
 
@@ -17,7 +18,7 @@ type DecisionDialogProps = {
   model: ReportCaseModel;
   translateText: (value: string) => string;
   onCancel: () => void;
-  onConfirm: (reasonCode: AdminQuestReasonCode, decisionReasonText?: string) => void;
+  onConfirm: (submission: { reasonCode: AdminReviewReasonCode; decisionReasonText?: string }) => void;
 };
 
 function decisionDialogTitle(choice: ReportCaseDecisionChoice | null, translateText: (value: string) => string): string {
@@ -42,14 +43,15 @@ export function ReportDecisionDialog({
   onCancel,
   onConfirm,
 }: DecisionDialogProps) {
-  const [reasonCode, setReasonCode] = useState<AdminQuestReasonCode | "">("");
-  const [decisionReasonText, setDecisionReasonText] = useState("");
+  const [reasonCode, setReasonCode] = useState<AdminReviewReasonCode | "">("");
+  const {
+    value: decisionNote,
+    setValue: setDecisionNote,
+    decisionReasonText,
+  } = useAdminDecisionNote(open, choice);
 
   useEffect(() => {
-    if (open) {
-      setReasonCode("");
-      setDecisionReasonText("");
-    }
+    if (open) setReasonCode("");
   }, [open, choice]);
 
   if (!open) return null;
@@ -80,8 +82,10 @@ export function ReportDecisionDialog({
           event.preventDefault();
           const value = reasonCode;
           if (!value) return;
-          const note = decisionReasonText.trim();
-          onConfirm(value, note || undefined);
+          onConfirm({
+            reasonCode: value,
+            ...(decisionReasonText ? { decisionReasonText } : {}),
+          });
         }}
       >
         <div className="dialog-body p-5">
@@ -108,21 +112,17 @@ export function ReportDecisionDialog({
             value={reasonCode}
             autoFocus
             aria-invalid={Boolean(error)}
-            onChange={(event) => setReasonCode(event.target.value as AdminQuestReasonCode | "")}
+            onChange={(event) => setReasonCode(event.target.value as AdminReviewReasonCode | "")}
           >
             <option value="">{translateText("Select a reason code")}</option>
             <option value="POLICY_REVIEW">POLICY_REVIEW</option>
             <option value="SAFETY_REVIEW">SAFETY_REVIEW</option>
           </select>
-          <label htmlFor="report-decision-reason-text">{translateText("Admin decision note (optional)")}</label>
-          <input
-            className="w-full rounded-lg border border-admin-border-strong bg-admin-surface px-2.5 py-2 text-lg leading-[1.45] text-admin-text"
+          <AdminDecisionNoteInput
             id="report-decision-reason-text"
-            name="decisionReasonText"
-            type="text"
-            maxLength={200}
-            value={decisionReasonText}
-            onChange={(event) => setDecisionReasonText(event.target.value)}
+            value={decisionNote}
+            onChange={setDecisionNote}
+            translateText={translateText}
           />
           {error && <p className="field-error" role="alert">{translateText(error)}</p>}
         </div>

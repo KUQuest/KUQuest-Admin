@@ -570,10 +570,13 @@ export function ConductReportDrawer({
     setDialogOpen(true);
   };
 
-  const confirmDecision = async (
-    decisionReasonCode: ConductReportDecisionReasonCode | null,
-    decisionReasonText?: string,
-  ) => {
+  const confirmDecision = async ({
+    decisionReasonCode,
+    decisionReasonText,
+  }: {
+    decisionReasonCode: ConductReportDecisionReasonCode | null;
+    decisionReasonText?: string;
+  }) => {
     if (!selectedChoice) return;
     if (isAdminApiEnabled() && reportModel.version === undefined) {
       setCommandError("The current Conduct Report version is missing. Reload the report before you decide.");

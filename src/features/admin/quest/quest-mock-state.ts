@@ -1,4 +1,4 @@
-import type { AdminApiQuestStatus, AdminQuestReasonCode } from "../api/admin-api";
+import type { AdminApiQuestStatus, AdminReviewReasonCode } from "../api/admin-api";
 import { QUEST_STATES, type QuestState } from "../domain/rulebook";
 import type { QuestDetailView, QuestTimelineView } from "./quest-model";
 
@@ -123,7 +123,7 @@ export function applyMockQuestCommand(
   detail: QuestDetailView,
   command: "hide" | "restore" | "terminate",
   reason: string,
-  reasonCode: AdminQuestReasonCode,
+  reasonCode: AdminReviewReasonCode,
   occurredAt: string,
 ): QuestDetailView {
   const nextState: QuestState = command === "terminate" ? "QUEST_CANCELLED" : detail.state;

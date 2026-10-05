@@ -559,10 +559,10 @@ export function ReportCaseDetail({
     setDialogOpen(true);
   };
 
-  const confirmDecision = async (
-    reasonCode: ReportCaseDecision["reasonCode"],
-    decisionReasonText?: string,
-  ) => {
+  const confirmDecision = async ({
+    reasonCode,
+    decisionReasonText,
+  }: Pick<ReportCaseDecision, "reasonCode" | "decisionReasonText">) => {
     if (!selectedChoice) return;
     if (isAdminApiEnabled() && model.version === undefined) {
       setCommandError("The current Report Case version is not available. Reload the Report Case before deciding.");

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { AdminActionSummary } from "../../../components/admin/admin-action-feedback";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { Button } from "../../../components/ui/button";
+import { AdminDecisionNoteInput, useAdminDecisionNote } from "../admin-decision-note";
 import {
   conductReportStatusLabel,
   type ConductReportDecisionChoice,
@@ -22,7 +23,7 @@ type DecisionDialogProps = {
 
   translateText: (value: string) => string;
   onCancel: () => void;
-  onConfirm: (decisionReasonCode: ConductReportDecisionReasonCode | null, decisionReasonText?: string) => void;
+  onConfirm: (submission: { decisionReasonCode: ConductReportDecisionReasonCode | null; decisionReasonText?: string }) => void;
 };
 
 function decisionDialogTitle(
@@ -57,13 +58,14 @@ export function ConductReportDecisionDialog({
   onConfirm,
 }: DecisionDialogProps) {
   const [decisionReasonCode, setDecisionReasonCode] = useState<ConductReportDecisionReasonCode | "">("");
-  const [decisionReasonText, setDecisionReasonText] = useState("");
+  const {
+    value: decisionNote,
+    setValue: setDecisionNote,
+    decisionReasonText,
+  } = useAdminDecisionNote(open, choice);
 
   useEffect(() => {
-    if (open) {
-      setDecisionReasonCode("");
-      setDecisionReasonText("");
-    }
+    if (open) setDecisionReasonCode("");
   }, [choice, open]);
 
   if (!open) return null;
@@ -91,8 +93,10 @@ export function ConductReportDecisionDialog({
           event.preventDefault();
           const value = choice === "dismiss" ? decisionReasonCode : null;
           if (choice === "dismiss" && !value) return;
-          const note = decisionReasonText.trim();
-          onConfirm(value || null, note || undefined);
+          onConfirm({
+            decisionReasonCode: value || null,
+            ...(decisionReasonText ? { decisionReasonText } : {}),
+          });
         }}
       >
         <div className="dialog-body p-5">
@@ -129,15 +133,11 @@ export function ConductReportDecisionDialog({
               </select>
             </>
           ) : null}
-          <label htmlFor="conduct-report-decision-reason-text">{translateText("Admin decision note (optional)")}</label>
-          <input
-            className="w-full rounded-lg border border-admin-border-strong bg-admin-surface px-2.5 py-2 text-lg leading-[1.45] text-admin-text"
+          <AdminDecisionNoteInput
             id="conduct-report-decision-reason-text"
-            name="decisionReasonText"
-            type="text"
-            maxLength={200}
-            value={decisionReasonText}
-            onChange={(event) => setDecisionReasonText(event.target.value)}
+            value={decisionNote}
+            onChange={setDecisionNote}
+            translateText={translateText}
           />
           {error && <p className="field-error" role="alert">{translateText(error)}</p>}
         </div>
