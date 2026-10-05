@@ -1,4 +1,4 @@
-import { mockWalletFinanceSummary } from "../../src/features/admin/wallet/wallet-mock-data";
+import { adminWalletFinanceSummary } from "../fixtures/admin-wallet-api-fixtures";
 
 const adminOrigin = process.env.ADMIN_SECURITY_ADMIN_ORIGIN ?? "http://localhost:3006";
 const apiPort = Number(process.env.ADMIN_SECURITY_API_PORT ?? "5002");
@@ -131,7 +131,7 @@ const server = Bun.serve({
       return json({
         success: true,
         data: {
-          memberBalancesSummary: mockWalletFinanceSummary,
+          memberBalancesSummary: adminWalletFinanceSummary,
           platformBalances: { revenueSatang: 0, suspenseSatang: 0 },
           volumeLifetime: {
             totalTopUpDepositedSatang: 0,
