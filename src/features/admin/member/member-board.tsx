@@ -36,8 +36,6 @@ const tabs = [
   { id: "Perm Ban", label: "Perm Ban" },
 ] as const;
 
-export { MEMBER_UPDATED_EVENT } from "./member-events";
-
 function matchesTab(model: MemberModel, tab: MemberTab): boolean {
   return tab === "all" || model.memberStatus === tab;
 }
@@ -141,7 +139,7 @@ export function MemberBoard({ initialData }: { initialData?: MemberPageData }) {
   const currentPage = Math.min(pageNumber, Math.max(totalPages, 1));
   const visibleModels = pageRows(models, currentPage, pageSize);
   const { start: pageStart, end: pageEnd } = pageRange(models.length, currentPage, pageSize);
-  const visibleTabs = page.source === "api" && page.items.every((model) => model.memberStatus === null)
+  const visibleTabs = page.items.every((model) => model.memberStatus === null)
     ? tabs.slice(0, 1)
     : tabs;
   const tabCounts = countBoardTabMatches(page.items, tabs, matchesTab);

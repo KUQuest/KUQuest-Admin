@@ -5,18 +5,12 @@ import type {
 import { adminApiProvider } from "../api/admin-provider";
 import { adminApiRequestOptions } from "../api/admin-api-request-options";
 import { loadAllWalletLedgerTransactions } from "../wallet/wallet-ledger-pages";
-import { dashboardSeedData } from "../dashboard/dashboard-seed-data";
-import { findMemberFromMockData } from "./member-adapter";
 import {
   memberListModelFromApi,
   memberModelFromApi,
   type MemberModel,
   type MemberPageData,
 } from "./member-model";
-
-export function loadMemberDetailFromMock(memberId: string): MemberModel | null {
-  return findMemberFromMockData(dashboardSeedData, memberId);
-}
 
 function reportQuery(memberId: string): AdminReportListQuery {
   return { memberId, limit: 50 };
@@ -35,7 +29,6 @@ export async function loadMemberPageData(
   };
   const page = await adminApiProvider.read.listMembers(query, adminApiRequestOptions(cookieHeader));
   return {
-    source: "api",
     items: page.items.map(memberListModelFromApi),
     nextCursor: page.nextCursor,
   };

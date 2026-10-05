@@ -1,12 +1,9 @@
 import { useEffect, useMemo } from "react";
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
-import { adminApiProvider, isAdminApiEnabled } from "../api/admin-provider";
+import { adminApiProvider } from "../api/admin-provider";
 import { replaceInfiniteItem } from "../data/query-data";
-import { loadAllMembersFromMock, loadMembersFromMock, recordMemberViolationFromMember, removeMemberPenalty, saveMemberNote } from "./member-adapter";
-import { MEMBER_UPDATED_EVENT } from "./member-events";
-import { findMemberFromMock } from "./member-adapter";
-import type { MemberModel, MemberPageData, MemberPenaltyChoice } from "./member-model";
+import type { MemberModel, MemberPageData } from "./member-model";
 import { loadMemberDetailFromApi, loadMemberPageData } from "./member-service";
 
 export const memberBoardQueryKey = ["admin", "members", "board"] as const;
@@ -18,7 +15,6 @@ export function memberDetailQueryKey(memberId: string) {
 function pageFromQueryData(pages: MemberPageData[]): MemberPageData {
   const lastPage = pages.at(-1);
   return {
-    source: lastPage?.source ?? (isAdminApiEnabled() ? "api" : "mock"),
     items: pages.flatMap((page) => page.items),
     nextCursor: lastPage?.nextCursor ?? null,
   };
@@ -26,16 +22,10 @@ function pageFromQueryData(pages: MemberPageData[]): MemberPageData {
 
 export function useMemberBoardQuery(initialData?: MemberPageData) {
   const queryClient = useQueryClient();
-  const apiEnabled = isAdminApiEnabled();
   const query = useInfiniteQuery({
     queryKey: memberBoardQueryKey,
     initialPageParam: null as string | null,
-    queryFn: async ({ pageParam }) => {
-      if (apiEnabled) return loadMemberPageData(undefined, pageParam ?? undefined);
-      return pageParam
-        ? loadMembersFromMock(window.localStorage, pageParam)
-        : loadAllMembersFromMock(window.localStorage);
-    },
+    queryFn: ({ pageParam }) => loadMemberPageData(undefined, pageParam ?? undefined),
     initialData: initialData
       ? { pages: [initialData], pageParams: [null] }
       : undefined,
@@ -47,62 +37,29 @@ export function useMemberBoardQuery(initialData?: MemberPageData) {
 
   const data = useMemo(() => pageFromQueryData(query.data?.pages ?? []), [query.data?.pages]);
 
-  useEffect(() => {
-    const updateMember = (event: Event) => {
-      const model = (event as CustomEvent<MemberModel>).detail;
-      if (!model) return;
-      queryClient.setQueryData<InfiniteData<MemberPageData, string | null>>(memberBoardQueryKey, (current) => replaceInfiniteItem(current, model));
-    };
-    window.addEventListener(MEMBER_UPDATED_EVENT, updateMember);
-    return () => window.removeEventListener(MEMBER_UPDATED_EVENT, updateMember);
-  }, [queryClient]);
-
   return { ...query, data };
 }
 
 export function useMemberDetailQuery(memberId: string, initialModel?: MemberModel | null) {
   const queryClient = useQueryClient();
-  const apiEnabled = isAdminApiEnabled();
   const queryKey = memberDetailQueryKey(memberId);
-  const mockInitialModel = useMemo(() => {
-    if (apiEnabled || initialModel || typeof window === "undefined") return undefined;
-    try {
-      return findMemberFromMock(window.localStorage, memberId) ?? undefined;
-    } catch {
-      return undefined;
-    }
-  }, [apiEnabled, initialModel, memberId]);
-  const resolvedInitialModel = initialModel ?? mockInitialModel;
-  const initialModelIsAuthoritative = initialModel?.source === "api";
   const query = useQuery({
     queryKey,
     queryFn: async () => {
-      const model = apiEnabled
-        ? await loadMemberDetailFromApi(memberId)
-        : findMemberFromMock(localStorage, memberId);
+      const model = await loadMemberDetailFromApi(memberId);
       if (!model) throw new Error("The requested Member was not found.");
       return model;
     },
-    initialData: resolvedInitialModel,
-    staleTime: initialModelIsAuthoritative ? Infinity : 0,
+    initialData: initialModel ?? undefined,
+    staleTime: initialModel ? Infinity : 0,
     gcTime: Infinity,
-    refetchOnMount: !initialModelIsAuthoritative,
+    refetchOnMount: !initialModel,
     refetchOnWindowFocus: false,
   });
 
   useEffect(() => {
-    if (initialModel?.source === "api") queryClient.setQueryData(queryKey, initialModel);
+    if (initialModel) queryClient.setQueryData(queryKey, initialModel);
   }, [initialModel, queryClient, queryKey]);
-
-  useEffect(() => {
-    const updateMember = (event: Event) => {
-      const model = (event as CustomEvent<MemberModel>).detail;
-      if (!model || model.id !== memberId) return;
-      queryClient.setQueryData(queryKey, model);
-    };
-    window.addEventListener(MEMBER_UPDATED_EVENT, updateMember);
-    return () => window.removeEventListener(MEMBER_UPDATED_EVENT, updateMember);
-  }, [memberId, queryClient, queryKey]);
 
   return {
     ...query,
@@ -112,7 +69,6 @@ export function useMemberDetailQuery(memberId: string, initialModel?: MemberMode
 }
 
 export function useMemberTopUpsQuery(memberId: string, enabled: boolean) {
-  const apiEnabled = isAdminApiEnabled();
   return useInfiniteQuery({
     queryKey: ["admin", "members", "detail", memberId, "top-ups"],
     initialPageParam: null as string | null,
@@ -121,47 +77,11 @@ export function useMemberTopUpsQuery(memberId: string, enabled: boolean) {
       limit: 25,
       ...(pageParam ? { cursor: pageParam } : {}),
     }),
-    enabled: apiEnabled && enabled,
+    enabled,
     staleTime: 0,
     refetchOnMount: true,
     refetchOnWindowFocus: false,
     retry: false,
     getNextPageParam: (page) => page.nextCursor ?? undefined,
-  });
-}
-
-export type MemberActionMutationInput =
-  | { type: "record-violation"; memberId: string; reason: string; note: string; penalty: MemberPenaltyChoice | null }
-  | { type: "remove-penalty"; memberId: string; reason: string }
-  | { type: "save-note"; memberId: string; note: string };
-
-export function useMemberActionMutation() {
-  const queryClient = useQueryClient();
-  const apiEnabled = isAdminApiEnabled();
-  return useMutation({
-    mutationKey: ["admin", "members", "action"],
-    mutationFn: async (input: MemberActionMutationInput): Promise<MemberModel> => {
-      if (apiEnabled) throw new Error(input.type === "save-note"
-        ? "Admin notes are not available from the Admin API."
-        : "Member penalty commands are not available from the Admin API.");
-
-      if (input.type === "record-violation") {
-        const result = recordMemberViolationFromMember(localStorage, input.memberId, input.reason, input.note, input.penalty);
-        if (!result) throw new Error("The Member penalty could not be saved.");
-        return result.model;
-      }
-      if (input.type === "remove-penalty") {
-        const result = removeMemberPenalty(localStorage, input.memberId, input.reason);
-        if (!result) throw new Error("The Member penalty could not be removed.");
-        return result.model;
-      }
-      const model = saveMemberNote(localStorage, input.memberId, input.note);
-      if (!model) throw new Error("The Admin note could not be saved.");
-      return model;
-    },
-    onSuccess: (model) => {
-      queryClient.setQueryData(memberDetailQueryKey(model.id), model);
-      queryClient.setQueryData<InfiniteData<MemberPageData, string | null>>(memberBoardQueryKey, (current) => replaceInfiniteItem(current, model));
-    },
   });
 }
