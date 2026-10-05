@@ -202,11 +202,7 @@ export function AdminTopUpsPage({ initialData }: { initialData: TopUpPageData })
   return (
     <main className="admin-route-page grid min-w-0 content-start gap-4" tabIndex={-1}>
       <AdminPageHeader title={translateText("Top-ups")} description={translateText("Review Top-up payments and reconcile a payment with the Provider.")} />
-      {initialData.dataSource === "api" ? <TopUpOperations initialData={initialData} /> : (
-        <Card as="section" className="overflow-hidden">
-          <EmptyState className="border-0 p-[60px_24px]" title={translateText("Top-up tools unavailable")} description={translateText("The Admin API is required to read Top-up data.")} />
-        </Card>
-      )}
+      <TopUpOperations initialData={initialData} />
     </main>
   );
 }

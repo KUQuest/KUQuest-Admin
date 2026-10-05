@@ -1,8 +1,12 @@
+import { cookies } from "next/headers";
+
 import { AdminFinancePage } from "../../../features/admin/finance/finance-page";
-import { loadFinancePageData, loadFinanceRouteContext } from "../../../features/admin/finance/finance-service";
+import { loadFinancePageData } from "../../../features/admin/finance/finance-service";
+import { adminSessionCookieHeader } from "../../../lib/auth/admin-session-policy";
 
 export default async function FinancePage() {
-  const { dataSource, cookieHeader } = await loadFinanceRouteContext();
-  const initialData = await loadFinancePageData(cookieHeader, dataSource);
+  const cookieStore = await cookies();
+  const cookieHeader = adminSessionCookieHeader(cookieStore.getAll());
+  const initialData = await loadFinancePageData(cookieHeader);
   return <AdminFinancePage initialData={initialData} />;
 }
