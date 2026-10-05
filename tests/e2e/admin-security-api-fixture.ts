@@ -45,6 +45,7 @@ const activityLogItems = [
     resultVersion: 2,
     resultTimestamp: "2026-09-15T00:00:00.000Z",
     createdAt: "2026-09-15T00:00:00.000Z",
+    note: "Decision note returned by the Admin API fixture.",
   },
   {
     id: "activity-2",

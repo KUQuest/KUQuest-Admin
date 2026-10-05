@@ -437,7 +437,7 @@ Do not remove UUIDs needed for lookups. Add separate display values.
 
 **UI need:** Activity Log detail shows the Admin actor, human-readable target ID, reason, result version/time, and previous/new state when the action changes state. It also links to the target record.
 
-**Current frontend contract and gaps:** `AdminActivityLog` has `resourceId` only, so the drawer displays that value as “Resource ID”; it has no `resourceDisplayId` or target title. The UI model explicitly calls previous/new state “fixture-only”; the API type does not include these fields. `note` is optional in the UI model but absent from the API type.
+**Current frontend contract and gaps:** `AdminActivityLog` has `resourceId` only, so the drawer displays that value as “Resource ID”; it has no `resourceDisplayId` or target title. The Admin API still does not provide before/after state snapshots. The frontend now accepts an optional `note`, displays it when present, and keeps responses without a note readable; the Admin API must return decision notes when available.
 
 **Requested response shape:** Keep `resourceId` for the link and add `resourceDisplayId` and optionally `resourceTitle` for display. Return before/after values and note when the action has them; use `null` when the action does not change state.
 
