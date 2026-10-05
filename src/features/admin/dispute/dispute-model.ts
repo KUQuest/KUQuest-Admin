@@ -93,15 +93,9 @@ export type DisputeCaseModel = {
   version: number | undefined;
 };
 
-export type DisputeCaseModelSource = "api" | "mock";
-
 export const DISPUTE_CASE_UPDATED_EVENT = "kuquest:dispute-case-updated";
 
 const missingApiValue = "Not provided by the Admin API.";
-
-function missingValueFor(source: DisputeCaseModelSource): string {
-  return source === "mock" ? "Not provided." : missingApiValue;
-}
 
 function asRecord(value: unknown): DisputeCaseRecord | null {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -258,13 +252,12 @@ export function disputeCaseDecisionDetailsForCommand(command: DisputeCaseCommand
 
 export function disputeCaseModelFromRecord(
   value: unknown,
-  source: DisputeCaseModelSource = "mock",
 ): DisputeCaseModel | null {
   if (!isDisputeCaseRecord(value)) return null;
   const record = value;
   const status = disputeCaseStatusFromRecord(record);
   if (!status) return null;
-  const missingValue = missingValueFor(source);
+  const missingValue = missingApiValue;
 
   const id = text(record.id) as string;
   const quest = asRecord(record.quest);
@@ -285,25 +278,19 @@ export function disputeCaseModelFromRecord(
   const filerName = firstReadableText(
     record.filerName,
     personName(record.filer),
-    source === "mock" ? record.reporterName : null,
-    source === "mock" ? "Hirer not provided" : null,
     filerId ? "Member" : null,
   ) ?? missingValue;
   const respondentName = firstReadableText(
     record.respondentName,
     personName(record.respondent),
     personName(record.worker),
-    source === "mock" ? record.workerName : null,
-    source === "mock" ? "Worker not provided" : null,
     respondentId ? "Member" : null,
   ) ?? missingValue;
   const workerName = roleIs(filerRole, "Worker") ? filerName : respondentName;
   const amountAtRiskSatang = positiveInteger(record.amountAtRiskSatang)
-    ?? (source === "mock" ? positiveInteger(record.amountSatang) : null)
-    ?? (source === "mock" && typeof record.amount === "number" ? Math.round(record.amount * 100) : null);
+    ?? null;
   const sharedCapSatang = positiveInteger(record.remainingDisputeCapSatang)
-    ?? positiveInteger(record.remainingFundingReservationSatang)
-    ?? (source === "mock" ? amountAtRiskSatang : null);
+    ?? positiveInteger(record.remainingFundingReservationSatang);
   const resolvedAmountSatang = positiveInteger(record.resolvedAmountSatang);
   const evidenceRefs = stringList(record.evidenceRefs);
   const evidenceLabel = firstText(record.evidence);
@@ -323,8 +310,8 @@ export function disputeCaseModelFromRecord(
     status === "DISPUTE_CASE_RESOLVED" ? "Resolved" : null,
   );
   const submittedAt = formatDate(
-    record.createdAt ?? record.disputeDate,
-    source === "mock" ? firstText(record.disputeDate) ?? "Time not provided" : missingValue,
+    record.createdAt,
+    missingValue,
   );
   const questFailedAt = firstText(record.failedAt, quest?.failedAt);
 
@@ -343,21 +330,21 @@ export function disputeCaseModelFromRecord(
     questState,
     questFailedAt,
     moneyHoldDeadline: sevenDayHoldDeadline(questFailedAt, missingValue),
-    category: firstText(record.category, record.disputeType) ?? (source === "mock" ? "Dispute Case" : missingValue),
+    category: firstText(record.category, record.disputeType) ?? missingValue,
     detail: firstText(record.detail, record.details, record.description)
-      ?? (source === "mock" ? "Review the Quest record and the submitted statements." : missingValue),
+      ?? missingValue,
     filerId,
     filerRole,
     filerName,
     filerHref: filerId ? memberRoutes.detail(filerId) : null,
     filerStatement: firstText(record.filerStatement, record.claim)
-      ?? (source === "mock" ? "The Hirer submitted this Dispute Case for Admin review." : missingValue),
+      ?? missingValue,
     respondentId,
     respondentRole,
     respondentName,
     respondentHref: respondentId ? memberRoutes.detail(respondentId) : null,
     respondentStatement: firstText(record.respondentStatement, record.response)
-      ?? (source === "mock" ? "The Worker statement was not provided in the demo record." : missingValue),
+      ?? missingValue,
     amountAtRiskSatang,
     amountAtRiskLabel: formatSatang(amountAtRiskSatang, missingValue),
     sharedCapSatang,

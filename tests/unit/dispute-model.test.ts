@@ -42,7 +42,7 @@ describe("Dispute Case model", () => {
       reportedMemberStatus: "ACTIVE",
       createdAt: "2026-09-12T12:00:00.000Z",
       version: 3,
-    }, "api");
+    });
 
     expect(model).toMatchObject({
       id: "dispute-internal-42",
@@ -84,7 +84,7 @@ describe("Dispute Case model", () => {
       respondentRole: "Hirer",
       respondentName: "Hirer One",
       amountAtRiskSatang: 100,
-    }, "api");
+    });
 
     expect(model).toMatchObject({ workerId: "member-worker", workerName: "Worker One" });
   });
@@ -96,7 +96,7 @@ describe("Dispute Case model", () => {
       questId: "QST-44",
       questState: "QUEST_FAILED",
       amountSatang: 9000,
-    }, "api");
+    });
 
     expect(model?.amountAtRiskSatang).toBeNull();
     expect(model?.amountAtRiskLabel).toBe("Not provided by the Admin API.");
