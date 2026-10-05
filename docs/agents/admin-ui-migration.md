@@ -21,11 +21,11 @@ The CSS files imported by the Admin layout are still required for these cases:
 - native `<dialog>` positioning, transitions, focus behaviour, and the drawer scrim;
 - dense record tables, sticky keys, sorting states, and responsive table overflow;
 - feature-specific domain layouts for Quest, Dispute Case, Report Case, Conduct Report, Wallet, Payout, and Member detail data;
-- legacy fixture and model helpers that are still required by Mock data and unit-test boundaries;
+- API response fixtures and model helpers used by unit tests;
 - the Overview command centre compatibility view;
 - native form controls and shared focus-visible and touch-target rules.
 
-The retired client-rendered Admin page, Overview clone, legacy record stylesheet, and legacy runtime folder have been removed. Mock fixture storage now uses `src/features/admin/data/admin-demo-data-adapter.ts`. New UI must use the shared primitives and Tailwind utilities first.
+The retired client-rendered Admin page, Overview clone, legacy record stylesheet, legacy runtime folder, and browser Mock data runtime have been removed. API response fixtures remain in test-only files. New UI must use the shared primitives and Tailwind utilities first.
 
 ## CSS audit
 

@@ -709,8 +709,7 @@ The current API does not provide all data required by the Admin UI:
 - Full Reviews.
 - Admin Notes.
 
-These are API contract gaps. The Admin must not fill them with mock data when
-`NEXT_PUBLIC_ADMIN_DATA_SOURCE=api`.
+These are API contract gaps. The Admin must not fill them with local sample data.
 
 ## Acceptance checklist
 
