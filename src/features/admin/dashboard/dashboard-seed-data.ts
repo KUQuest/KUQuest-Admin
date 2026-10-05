@@ -4,7 +4,6 @@ import {
   mockDemoMemberRecord,
   mockDemoMemberSeeds,
 } from "../data/mock-demo-fixtures";
-import { mockDemoPayoutStatusFor } from "../payout/payout-mock-data";
 
 export const dashboardSeedVersion = "dashboard-bootstrap-v4-expanded-mock-fixtures";
 export const previousDashboardSeedVersion = "dashboard-bootstrap-v2-canonical-statuses";
@@ -60,13 +59,22 @@ const demoPayoutStatuses = [
   "CANCELLED",
 ] as const;
 
+function dashboardPayoutStatusFor(index: number): (typeof demoPayoutStatuses)[number] | "PENDING_ADMIN_APPROVAL" {
+  const memberIndex = Math.floor(index / 4);
+  const position = index % 4;
+  if (position === 0 || (position === 1 && memberIndex < 3)) return "PENDING_ADMIN_APPROVAL";
+  if (position === 1) return "SUBMITTED_TO_PROVIDER";
+  if (position === 2) return "PROVIDER_PENDING";
+  return demoPayoutStatuses[memberIndex % demoPayoutStatuses.length];
+}
+
 const dashboardDemoPayoutSeedData = Array.from({ length: MOCK_DEMO_RECORD_COUNT }, (_, index) => {
   const seed = mockDemoMemberSeeds[index];
   // The standalone Payout board has four canonical records plus 196 demo
   // records. Keep the Overview queue count aligned with that board while
   // retaining the existing 200 demo records here for broad dashboard data.
   const status = index < MOCK_DEMO_RECORD_COUNT - 4
-    ? mockDemoPayoutStatusFor(index)
+    ? dashboardPayoutStatusFor(index)
     : demoPayoutStatuses[(index - (MOCK_DEMO_RECORD_COUNT - 4)) % demoPayoutStatuses.length];
   return {
     id: `PAY-${9700 + index}`,
