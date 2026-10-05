@@ -6,6 +6,7 @@ import {
   conductReportsOnly,
   isConductReportActionable,
   isConductReportRecord,
+  conductReportDecisionDetailsForCommand,
 } from "../../src/features/admin/conduct-report/conduct-report-model";
 
 describe("Conduct Report model", () => {
@@ -207,8 +208,26 @@ describe("Conduct Report model", () => {
     expect(isConductReportActionable("CONDUCT_REPORT_DISMISSED")).toBe(false);
   });
 
-  it("maps Conduct Report decisions to the canonical commands", () => {
-    expect(conductReportDecisionFor("no-violation")).toBe("CONDUCT_REPORT_DISMISSED");
+  it("maps dismissal and uphold decisions to their canonical commands", () => {
+    expect(conductReportDecisionFor("dismiss")).toBe("CONDUCT_REPORT_DISMISSED");
     expect(conductReportDecisionFor("confirmed-violation")).toBe("CONDUCT_REPORT_UPHELD");
   });
+  it("maps dismissal reason and uphold to decision details", () => {
+    expect(conductReportDecisionDetailsForCommand({
+      outcome: "CONDUCT_REPORT_DISMISSED",
+      decisionReasonCode: "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE",
+    })).toEqual({
+      label: "Insufficient evidence",
+      decisionReasonCode: "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE",
+      resolution: "Conduct Report dismissed; the evidence did not establish a policy violation.",
+    });
+    expect(conductReportDecisionDetailsForCommand({
+      outcome: "CONDUCT_REPORT_UPHELD",
+    })).toEqual({
+      label: "Violation confirmed",
+      decisionReasonCode: null,
+      resolution: "Violation confirmed; the Member Misconduct ladder was applied.",
+    });
+  });
+
 });

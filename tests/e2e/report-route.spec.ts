@@ -84,13 +84,52 @@ test.describe("Report Case routes", () => {
     await page.getByRole("button", { name: "Close report" }).first().click();
     const dialog = page.locator("dialog.report-decision-dialog");
     await expect(dialog).toBeVisible();
-    await dialog.getByLabel("Reason for this decision").fill("POLICY_REVIEWED");
+    const reasonCode = dialog.getByLabel("Reason code");
+    await expect(reasonCode).toContainText("Select a reason code");
+    await expect(dialog.getByRole("button", { name: "Confirm decision" })).toBeDisabled();
+    const decisionNote = dialog.getByLabel("Admin decision note (optional)");
+    await expect(decisionNote).toHaveAttribute("type", "text");
+    await expect(decisionNote).toHaveAttribute("maxlength", "200");
+    await expect(decisionNote).not.toHaveAttribute("required");
+    await decisionNote.fill("n".repeat(220));
+    expect((await decisionNote.inputValue()).length).toBe(200);
+    await decisionNote.fill("");
+    await reasonCode.click();
+    await expect(page.getByRole("option")).toHaveText(["Policy review", "Safety review"]);
+    await page.getByRole("option", { name: "Policy review", exact: true }).click();
     await dialog.getByRole("button", { name: "Confirm decision" }).click();
 
     await expect(dialog).toBeHidden();
     await expect(page.locator(".report-page-alert .badge")).toHaveText("Dismissed");
   });
 
+  test("requires a reason code for Report Case hide and restore decisions", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/report/RPT-8201");
+    await page.getByLabel("Confirm violation").check();
+    await page.getByRole("button", { name: "Close report", exact: true }).click();
+    const hideDialog = page.locator("dialog.report-decision-dialog");
+    const hideReasonCode = hideDialog.getByLabel("Reason code");
+    const hideNote = hideDialog.getByLabel("Admin decision note (optional)");
+    await expect(hideNote).toHaveAttribute("type", "text");
+    await expect(hideNote).toHaveAttribute("maxlength", "200");
+    await hideReasonCode.click();
+    await expect(page.getByRole("option")).toHaveText(["Policy review", "Safety review"]);
+    await page.getByRole("option", { name: "Safety review", exact: true }).click();
+    await hideDialog.getByRole("button", { name: "Cancel" }).click();
+
+    await page.goto("/report/RPT-8211");
+    await page.getByRole("button", { name: "Restore Message" }).click();
+    const restoreDialog = page.locator("dialog.report-decision-dialog");
+    const restoreReasonCode = restoreDialog.getByLabel("Reason code");
+    const restoreNote = restoreDialog.getByLabel("Admin decision note (optional)");
+    await expect(restoreNote).toHaveAttribute("type", "text");
+    await expect(restoreNote).toHaveAttribute("maxlength", "200");
+    await restoreReasonCode.click();
+    await expect(page.getByRole("option")).toHaveText(["Policy review", "Safety review"]);
+    await page.getByRole("option", { name: "Policy review", exact: true }).click();
+    await restoreDialog.getByRole("button", { name: "Cancel" }).click();
+  });
   test("keeps full-page danger actions readable", async ({ page }) => {
     await signIn(page);
     await page.goto("/report/RPT-8411");

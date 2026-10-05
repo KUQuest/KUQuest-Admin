@@ -286,17 +286,18 @@ test.describe("legacy parity for inputs on mobile", () => {
     await expect(dialog).toHaveCount(0);
   });
 
-  test("Report Case decision reason accepts input on mobile", async ({ page }) => {
+  test("Report Case decision note accepts input on mobile", async ({ page }) => {
     await signIn(page);
     await page.goto("/report/RPT-8201");
     await page.getByRole("radio", { name: /^Confirm violation/ }).check();
     await page.getByRole("button", { name: "Close report" }).first().click();
 
     const dialog = page.locator("dialog.report-decision-dialog");
-    const reason = dialog.getByLabel("Reason for this decision");
-    await reason.fill("The account action was reviewed and recorded.");
-    await expect(reason).toHaveValue("The account action was reviewed and recorded.");
-    await expectResponsiveInput(page, reason);
+    const decisionNote = dialog.getByLabel("Admin decision note (optional)");
+    await decisionNote.fill("The account action was reviewed and recorded.");
+    await expect(decisionNote).toHaveValue("The account action was reviewed and recorded.");
+    await expect(decisionNote).toHaveAttribute("maxlength", "200");
+    await expectResponsiveInput(page, decisionNote);
     await dialog.getByRole("button", { name: "Cancel" }).click();
     await expect(dialog).toHaveCount(0);
   });

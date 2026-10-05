@@ -5,7 +5,15 @@ import { useEffect, useState } from "react";
 import { AdminActionSummary } from "../../../components/admin/admin-action-feedback";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { Button } from "../../../components/ui/button";
-import { conductReportStatusLabel, type ConductReportDecisionChoice, type ConductReportModel } from "./conduct-report-model";
+import { AdminReasonCodeField } from "../admin-reason-code-field";
+import { CONDUCT_REPORT_DISMISS_REASON_CODE_OPTIONS } from "../admin-reason-codes";
+import { AdminDecisionNoteInput, useAdminDecisionNote, type AdminDecisionSubmission } from "../admin-decision-note";
+import {
+  conductReportStatusLabel,
+  type ConductReportDecisionChoice,
+  type ConductReportDecisionReasonCode,
+  type ConductReportModel,
+} from "./conduct-report-model";
 
 
 type DecisionDialogProps = {
@@ -17,17 +25,18 @@ type DecisionDialogProps = {
 
   translateText: (value: string) => string;
   onCancel: () => void;
-  onConfirm: (reason: string) => void;
+  onConfirm: (submission: AdminDecisionSubmission<"decisionReasonCode", ConductReportDecisionReasonCode | null>) => void;
 };
 
 function decisionDialogTitle(
   choice: ConductReportDecisionChoice | null,
   translateText: (value: string) => string,
 ): string {
-  return choice === "confirmed-violation"
-    ? translateText("Confirm violation")
-    : translateText("Close report");
+  if (choice === "confirmed-violation") return translateText("Confirm violation");
+  if (choice === "dismiss") return translateText("Dismiss Conduct Report");
+  return translateText("Close report");
 }
+
 function decisionDialogDescription(
   choice: ConductReportDecisionChoice | null,
   modelId: string,
@@ -50,10 +59,15 @@ export function ConductReportDecisionDialog({
   onCancel,
   onConfirm,
 }: DecisionDialogProps) {
-  const [reason, setReason] = useState("");
+  const [decisionReasonCode, setDecisionReasonCode] = useState<ConductReportDecisionReasonCode | "">("");
+  const {
+    value: decisionNote,
+    setValue: setDecisionNote,
+    decisionReasonText,
+  } = useAdminDecisionNote(open, choice);
 
   useEffect(() => {
-    if (open) setReason("");
+    if (open) setDecisionReasonCode("");
   }, [choice, open]);
 
   if (!open) return null;
@@ -79,9 +93,12 @@ export function ConductReportDecisionDialog({
         method="dialog"
         onSubmit={(event) => {
           event.preventDefault();
-          const value = reason.trim();
-          if (value.length < 8) return;
-          onConfirm(value);
+          const selectedDecisionReasonCode = choice === "dismiss" ? decisionReasonCode : null;
+          if (choice === "dismiss" && !selectedDecisionReasonCode) return;
+          onConfirm({
+            decisionReasonCode: selectedDecisionReasonCode || null,
+            ...(decisionReasonText ? { decisionReasonText } : {}),
+          });
         }}
       >
         <div className="dialog-body p-5">
@@ -99,21 +116,22 @@ export function ConductReportDecisionDialog({
               warning={translateText("Use the Quest, Assignment, and Proof Submission record as the decision evidence.")}
             />
           ) : null}
-          <label htmlFor="conduct-report-decision-reason">
-            {translateText("Reason for this decision")}
-          </label>
-          <textarea
-            id="conduct-report-decision-reason"
-            name="reason"
-            rows={4}
-            minLength={8}
-            maxLength={500}
-            required
-            value={reason}
-            autoFocus
-            aria-invalid={Boolean(error)}
-            onChange={(event) => setReason(event.target.value)}
-            placeholder={translateText("Enter the reason for the Conduct Report decision")}
+          {choice === "dismiss" ? (
+            <AdminReasonCodeField
+              id="conduct-report-decision-reason-code"
+              label="Decision reason code"
+              value={decisionReasonCode}
+              options={CONDUCT_REPORT_DISMISS_REASON_CODE_OPTIONS}
+              onValueChange={setDecisionReasonCode}
+              translateText={translateText}
+              invalid={Boolean(error)}
+            />
+          ) : null}
+          <AdminDecisionNoteInput
+            id="conduct-report-decision-reason-text"
+            value={decisionNote}
+            onChange={setDecisionNote}
+            translateText={translateText}
           />
           {error && <p className="field-error" role="alert">{translateText(error)}</p>}
         </div>
@@ -121,7 +139,7 @@ export function ConductReportDecisionDialog({
           <Button variant="outline" type="button" onClick={onCancel} disabled={busy}>
             {translateText("Cancel")}
           </Button>
-          <Button variant="danger" type="submit" disabled={busy || reason.trim().length < 8}>
+          <Button variant="danger" type="submit" disabled={busy || (choice === "dismiss" && !decisionReasonCode)}>
             {busy ? translateText("Saving…") : translateText("Confirm decision")}
           </Button>
         </div>

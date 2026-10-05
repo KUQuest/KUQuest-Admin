@@ -29,9 +29,10 @@ export type ActivityLogEntry = {
   adminName: string;
   adminInitials: string;
   createdAtTimestamp: number | null;
-  /** Fixture-only fields. The current Admin API does not provide state snapshots yet. */
+  /** Fixture-only state snapshots; the Admin API does not return these yet. */
   previousState?: string | null;
   newState?: string | null;
+  /** Optional note included when the Admin API returns a decision note. */
   note?: string | null;
 };
 

@@ -5,6 +5,10 @@ import { useEffect, useState } from "react";
 import { AdminActionSummary } from "../../../components/admin/admin-action-feedback";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { Button } from "../../../components/ui/button";
+import { AdminReasonCodeField } from "../admin-reason-code-field";
+import { ADMIN_REVIEW_REASON_CODE_OPTIONS } from "../admin-reason-codes";
+import { AdminDecisionNoteInput, useAdminDecisionNote, type AdminDecisionSubmission } from "../admin-decision-note";
+import type { AdminReviewReasonCode } from "../api/admin-api";
 import { type ReportCaseDecisionChoice, type ReportCaseModel } from "./report-model";
 import { reportCaseStatusLabel } from "../domain/rulebook";
 
@@ -16,7 +20,7 @@ type DecisionDialogProps = {
   model: ReportCaseModel;
   translateText: (value: string) => string;
   onCancel: () => void;
-  onConfirm: (reason: string) => void;
+  onConfirm: (submission: AdminDecisionSubmission<"reasonCode", AdminReviewReasonCode>) => void;
 };
 
 function decisionDialogTitle(choice: ReportCaseDecisionChoice | null, translateText: (value: string) => string): string {
@@ -41,10 +45,15 @@ export function ReportDecisionDialog({
   onCancel,
   onConfirm,
 }: DecisionDialogProps) {
-  const [reason, setReason] = useState("");
+  const [reasonCode, setReasonCode] = useState<AdminReviewReasonCode | "">("");
+  const {
+    value: decisionNote,
+    setValue: setDecisionNote,
+    decisionReasonText,
+  } = useAdminDecisionNote(open, choice);
 
   useEffect(() => {
-    if (open) setReason("");
+    if (open) setReasonCode("");
   }, [open, choice]);
 
   if (!open) return null;
@@ -73,9 +82,12 @@ export function ReportDecisionDialog({
         method="dialog"
         onSubmit={(event) => {
           event.preventDefault();
-          const value = reason.trim();
-          if (!value) return;
-          onConfirm(value);
+          const selectedReasonCode = reasonCode;
+          if (!selectedReasonCode) return;
+          onConfirm({
+            reasonCode: selectedReasonCode,
+            ...(decisionReasonText ? { decisionReasonText } : {}),
+          });
         }}
       >
         <div className="dialog-body p-5">
@@ -93,24 +105,26 @@ export function ReportDecisionDialog({
               warning={translateText("Read Message content only through the named Evidence Reference. The evidence read is logged as an Admin Action.")}
             />
           ) : null}
-          <label htmlFor="report-decision-reason">{translateText("Reason for this decision")}</label>
-          <textarea
-            id="report-decision-reason"
-            name="reason"
-            rows={4}
-            maxLength={500}
-            required
-            value={reason}
-            autoFocus
-            aria-invalid={Boolean(error)}
-            onChange={(event) => setReason(event.target.value)}
-            placeholder={translateText("Enter the reason for the Report Case decision")}
+          <AdminReasonCodeField
+            id="report-decision-reason-code"
+            label="Reason code"
+            value={reasonCode}
+            options={ADMIN_REVIEW_REASON_CODE_OPTIONS}
+            onValueChange={setReasonCode}
+            translateText={translateText}
+            invalid={Boolean(error)}
+          />
+          <AdminDecisionNoteInput
+            id="report-decision-reason-text"
+            value={decisionNote}
+            onChange={setDecisionNote}
+            translateText={translateText}
           />
           {error && <p className="field-error" role="alert">{translateText(error)}</p>}
         </div>
         <div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5">
           <Button variant="outline" type="button" onClick={onCancel} disabled={busy}>{translateText("Cancel")}</Button>
-          <Button variant="danger" type="submit" disabled={busy || !reason.trim()}>
+          <Button variant="danger" type="submit" disabled={busy || !reasonCode}>
             {busy ? translateText("Saving…") : translateText("Confirm decision")}
           </Button>
         </div>

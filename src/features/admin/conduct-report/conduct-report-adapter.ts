@@ -7,6 +7,7 @@ import { formatAdminTimestamp } from "../date-format";
 import { findMemberModerationSummaryFromMockData, recordMemberViolationInData } from "../member/member-adapter";
 import {
   conductReportDecisionDetailsForChoice,
+  conductReportDecisionDetailsForCommand,
   conductReportModelFromRecord,
   conductReportStatusFromRecord,
   conductReportsOnly,
@@ -14,6 +15,7 @@ import {
   isConductReportRecord,
   type ConductReportCommand,
   type ConductReportDecisionChoice,
+  type ConductReportDecisionReasonCode,
   type ConductReportModel,
   type ConductReportRecord,
 } from "./conduct-report-model";
@@ -142,7 +144,7 @@ export function saveMockConductReportDecision(
   storage: BrowserStorage,
   reportId: string,
   decision: ConductReportCommand,
-  reason: string,
+  decisionReasonCode: ConductReportDecisionReasonCode | null,
   choice?: ConductReportDecisionChoice,
 ): ConductReportRecord | null {
   const data = loadDashboardData(storage);
@@ -153,31 +155,31 @@ export function saveMockConductReportDecision(
   }
 
   const now = new Date().toISOString();
-  const selectedChoice = choice ?? (decision === "CONDUCT_REPORT_UPHELD" ? "confirmed-violation" : "no-violation");
+  const selectedChoice = choice ?? (decision === "CONDUCT_REPORT_UPHELD" ? "confirmed-violation" : "dismiss");
   const metadata = conductReportDecisionDetailsForChoice(selectedChoice);
-  if (metadata.command !== decision) return null;
+  const decisionDetails = decision === "CONDUCT_REPORT_UPHELD"
+    ? conductReportDecisionDetailsForCommand({ outcome: decision })
+    : decisionReasonCode
+      ? conductReportDecisionDetailsForCommand({ outcome: decision, decisionReasonCode })
+      : null;
+  if (!decisionDetails || metadata.command !== decision) return null;
   report.status = decision;
   report.conductReportStatus = decision;
   report.decision = metadata.choice;
-  report.decisionLabel = metadata.label;
-  report.decisionReasonCode = metadata.reasonCode;
-  report.decisionReason = reason;
+  report.decisionLabel = decisionDetails.label;
+  report.decisionReasonCode = decisionDetails.decisionReasonCode;
   report.resolvedBy = "Admin";
   report.resolutionAt = now;
   report.closedAt = now;
   report.tone = decision === "CONDUCT_REPORT_UPHELD" ? "danger" : "neutral";
-  report.resolution = decision === "CONDUCT_REPORT_UPHELD"
-    ? "Violation confirmed; the Member Misconduct ladder was applied."
-    : metadata.choice === "insufficient-evidence"
-      ? "Conduct Report dismissed; the evidence did not establish a policy violation."
-      : "Conduct Report dismissed; no policy violation found.";
+  report.resolution = decisionDetails.resolution;
   if (typeof report.version === "number") report.version += 1;
 
   if (decision === "CONDUCT_REPORT_UPHELD") {
     const memberResult = recordMemberViolationInData(
       data,
       typeof report.reportedMemberId === "string" ? report.reportedMemberId : "",
-      reason,
+      typeof report.reasonCode === "string" ? report.reasonCode : "",
       "",
       {
         caseId: report.id,

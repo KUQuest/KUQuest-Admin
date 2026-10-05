@@ -12,19 +12,19 @@ export type AdminCommandOptions = {
   expectedVersion?: number;
 };
 
-export type AdminQuestReasonCode = "POLICY_REVIEW" | "SAFETY_REVIEW";
+export type AdminReviewReasonCode = "POLICY_REVIEW" | "SAFETY_REVIEW";
 
 export type QuestHideCommand = AdminCommandOptions & {
   reason: string;
-  reasonCode: AdminQuestReasonCode;
+  reasonCode: AdminReviewReasonCode;
 };
 export type QuestRestoreCommand = AdminCommandOptions & {
   reason: string;
-  reasonCode: AdminQuestReasonCode;
+  reasonCode: AdminReviewReasonCode;
 };
 export type QuestTerminateCommand = AdminCommandOptions & {
   reason: string;
-  reasonCode: AdminQuestReasonCode;
+  reasonCode: AdminReviewReasonCode;
 };
 
 export type DisputeAllocation = {
@@ -75,12 +75,12 @@ export type AdminQuestCommandResult = {
 
 type VersionedAdminCommand = Omit<AdminCommandOptions, "expectedVersion"> & {
   expectedVersion: number;
+  decisionReasonText?: string;
 };
 
 export type ReportCaseDecision = VersionedAdminCommand & {
   outcome: "REPORT_CASE_DISMISSED" | "REPORT_CASE_HIDDEN" | "REPORT_CASE_RESTORED";
-  reason: string;
-  reasonCode: string;
+  reasonCode: AdminReviewReasonCode;
 };
 
 export type AdminReportCommandResult = {
@@ -106,12 +106,10 @@ export type ConductReportDecisionReasonCode =
 export type ConductReportDecision = VersionedAdminCommand & (
   | {
       outcome: "CONDUCT_REPORT_DISMISSED";
-      reason: string;
       decisionReasonCode: ConductReportDecisionReasonCode;
     }
   | {
       outcome: "CONDUCT_REPORT_UPHELD";
-      reason: string;
     }
 );
 

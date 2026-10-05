@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { AdminActionReceipt } from "../../../components/admin/admin-action-feedback";
+import type { AdminDecisionSubmission } from "../admin-decision-note";
 import { formatAdminTimestamp } from "../date-format";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminRecordHeader } from "../../../components/admin/admin-record-header";
@@ -42,7 +43,6 @@ import {
   reportCaseDecisionFor,
   reportCaseModelFromRecord,
   reportCaseModelWithEvidenceSender,
-  reportCaseReasonCodeFor,
   type ReportCaseDecisionChoice,
   type ReportCaseModel,
 } from "./report-model";
@@ -520,7 +520,7 @@ export function ReportCaseDetail({
   const [actionReceipt, setActionReceipt] = useState<{
     action: string;
     status: string;
-    reason: string;
+    reasonCode: string;
     occurredAt: string;
   } | null>(null);
   const decisionMutation = useReportDecisionMutation();
@@ -560,7 +560,10 @@ export function ReportCaseDetail({
     setDialogOpen(true);
   };
 
-  const confirmDecision = async (reason: string) => {
+  const confirmDecision = async ({
+    reasonCode,
+    decisionReasonText,
+  }: AdminDecisionSubmission<"reasonCode", ReportCaseDecision["reasonCode"]>) => {
     if (!selectedChoice) return;
     if (isAdminApiEnabled() && model.version === undefined) {
       setCommandError("The current Report Case version is not available. Reload the Report Case before deciding.");
@@ -570,8 +573,8 @@ export function ReportCaseDetail({
     const decision = reportCaseDecisionFor(selectedChoice);
     const options: ReportCaseDecision = {
       outcome: decision,
-      reason,
-      reasonCode: reportCaseReasonCodeFor(selectedChoice, reason),
+      reasonCode,
+      ...(decisionReasonText ? { decisionReasonText } : {}),
       idempotencyKey: newReportCaseIdempotencyKey(model.id),
       expectedVersion: model.version ?? 1,
     };
@@ -581,7 +584,7 @@ export function ReportCaseDetail({
         reportId: model.id,
         currentModel: model,
         decision,
-        reason,
+        reasonCode,
         options,
         apiEnabled: isAdminApiEnabled(),
       });
@@ -597,7 +600,7 @@ export function ReportCaseDetail({
         setActionReceipt({
           action: decision,
           status: updatedModel.statusLabel,
-          reason,
+          reasonCode,
           occurredAt: new Date().toISOString(),
         });
       }
@@ -622,12 +625,12 @@ export function ReportCaseDetail({
   const content = (
     <>
       <ReportAlert model={model} translateText={translateText} />
-      <ReportCaseSections model={model} translateText={translateText} onOpenEvidence={openEvidence} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} actionReceipt={actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Report Case" resourceId={model.displayId || null} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {actionReceipt.reason}</p>} /> : null} />
+      <ReportCaseSections model={model} translateText={translateText} onOpenEvidence={openEvidence} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} actionReceipt={actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Report Case" resourceId={model.displayId || null} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason code")}: {translateText(actionReceipt.reasonCode)}</p>} /> : null} />
     </>
   );
 
   if (drawer) {
-    return <><DrawerSections model={model} translateText={translateText} onOpenEvidence={openEvidence} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} actionReceipt={actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Report Case" resourceId={model.displayId || null} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {actionReceipt.reason}</p>} /> : null} />{overlays}</>;
+    return <><DrawerSections model={model} translateText={translateText} onOpenEvidence={openEvidence} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} actionReceipt={actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Report Case" resourceId={model.displayId || null} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason code")}: {translateText(actionReceipt.reasonCode)}</p>} /> : null} />{overlays}</>;
   }
 
   return (

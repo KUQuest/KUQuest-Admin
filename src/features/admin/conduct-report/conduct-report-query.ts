@@ -11,7 +11,14 @@ import {
   saveMockConductReportDecision,
 } from "./conduct-report-adapter";
 import { loadConductReportPageData, type ConductReportPageData } from "./conduct-report-service";
-import { CONDUCT_REPORT_UPDATED_EVENT, conductReportModelFromRecord, type ConductReportCommand, type ConductReportDecisionChoice, type ConductReportModel } from "./conduct-report-model";
+import {
+  CONDUCT_REPORT_UPDATED_EVENT,
+  conductReportDecisionDetailsForCommand,
+  conductReportModelFromRecord,
+  type ConductReportCommand,
+  type ConductReportDecisionChoice,
+  type ConductReportModel,
+} from "./conduct-report-model";
 
 export const conductReportBoardQueryKey = ["admin", "conduct-reports", "board"] as const;
 
@@ -24,7 +31,6 @@ export type ConductReportDecisionMutationInput = {
   currentModel: ConductReportModel;
   decision: ConductReportCommand;
   choice: ConductReportDecisionChoice;
-  reason: string;
   options: ConductReportDecision;
   apiEnabled: boolean;
 };
@@ -33,29 +39,27 @@ export function useConductReportDecisionMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationKey: ["admin", "conduct-reports", "decision"],
-    mutationFn: async ({ reportId, currentModel, decision, choice, reason, options, apiEnabled }: ConductReportDecisionMutationInput) => {
-      if (!apiEnabled) return saveMockConductReportDecision(localStorage, reportId, decision, reason, choice);
+    mutationFn: async ({ reportId, currentModel, decision, choice, options, apiEnabled }: ConductReportDecisionMutationInput) => {
+      if (!apiEnabled) {
+        const decisionReasonCode = options.outcome === "CONDUCT_REPORT_DISMISSED"
+          ? options.decisionReasonCode
+          : null;
+        return saveMockConductReportDecision(localStorage, reportId, decision, decisionReasonCode, choice);
+      }
 
       const result = await adminApiProvider.commands.decideConductReport(reportId, options);
       const summary = result.resourceSummary;
       if (summary.kind !== "CONDUCT_REPORT" || summary.id !== reportId || summary.status !== decision) {
         throw new Error("The Admin API returned an invalid Conduct Report decision.");
       }
+      const decisionDetails = conductReportDecisionDetailsForCommand(options);
       return {
         ...currentModel,
         ...summary,
         status: summary.status,
         version: result.resourceVersion,
-        decisionLabel: options.outcome === "CONDUCT_REPORT_UPHELD"
-          ? "Violation confirmed"
-          : options.outcome === "CONDUCT_REPORT_DISMISSED"
-            && options.decisionReasonCode === "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE"
-            ? "Insufficient evidence"
-            : "No violation",
-        decisionReasonCode: options.outcome === "CONDUCT_REPORT_DISMISSED"
-          ? options.decisionReasonCode
-          : null,
-        decisionReason: options.reason,
+        decisionLabel: decisionDetails.label,
+        decisionReasonCode: decisionDetails.decisionReasonCode,
       };
     },
     onSuccess: async (record, { reportId, apiEnabled }) => {

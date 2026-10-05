@@ -28,7 +28,7 @@ export type ReportDecisionMutationInput = {
   reportId: string;
   currentModel: ReportCaseModel;
   decision: ReportCaseCommand;
-  reason: string;
+  reasonCode: ReportCaseDecision["reasonCode"];
   options: ReportCaseDecision;
   apiEnabled: boolean;
 };
@@ -37,8 +37,8 @@ export function useReportDecisionMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationKey: ["admin", "report-cases", "decision"],
-    mutationFn: async ({ reportId, currentModel, decision, reason, options, apiEnabled }: ReportDecisionMutationInput) => {
-      if (!apiEnabled) return saveMockReportDecision(localStorage, reportId, decision, reason);
+    mutationFn: async ({ reportId, currentModel, decision, reasonCode, options, apiEnabled }: ReportDecisionMutationInput) => {
+      if (!apiEnabled) return saveMockReportDecision(localStorage, reportId, decision, reasonCode);
 
       const result = await adminApiProvider.commands.decideReportCase(reportId, options);
       const summary = result.resourceSummary;
@@ -50,7 +50,6 @@ export function useReportDecisionMutation() {
         ...summary,
         status: summary.status,
         version: result.resourceVersion,
-        decisionReason: options.reason,
       };
     },
     onSuccess: (record, { reportId }) => {

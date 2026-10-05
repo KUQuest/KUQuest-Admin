@@ -42,6 +42,14 @@ describe("Activity Log model", () => {
     });
   });
 
+  it("preserves an API decision note and keeps legacy entries without one", () => {
+    const note = "Decision note returned by the Admin API.";
+    const notedEntry = activityLogEntryFromApi({ ...entry, note });
+
+    expect(notedEntry.note).toBe(note);
+    expect(activityLogEntryFromApi(entry).note).toBeUndefined();
+  });
+
   it("formats the API timestamp and keeps a relative time for scanning", () => {
     expect(formatActivityLogTimestamp(entry.createdAt)).toBe("08 Sep 2026 15:00");
     expect(formatActivityLogRelativeTime(entry.createdAt, Date.parse("2026-09-08T10:00:00.000Z"))).toBe("2 hours ago");
