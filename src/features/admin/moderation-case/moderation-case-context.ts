@@ -63,9 +63,9 @@ function stringList(value: unknown): string[] {
 /**
  * Read only factual moderation context supplied by a record.
  *
- * The Admin UI may render this context with mock data today and with an
- * API-compatible read model later. Missing values stay explicit; the view
- * must not infer a Member risk score or invent a moderation decision.
+ * The Admin UI renders the context supplied by the Admin API. Missing values
+ * stay explicit; the view must not infer a Member risk score or invent a
+ * moderation decision.
  */
 export function moderationHistoryFromRecord(value: unknown): ModerationHistorySummary {
   const record = asRecord(value);
