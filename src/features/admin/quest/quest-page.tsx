@@ -24,6 +24,7 @@ import {
   questStatusClass,
   type QuestDetailView,
   type QuestFinanceView,
+  type QuestTimelineView,
 } from "./quest-model";
 import type { QuestDetailPageData } from "./quest-service";
 import { QuestCommandDialog, type QuestCommand, type QuestCommandSubmission } from "./quest-command-dialog";
@@ -245,10 +246,10 @@ function QuestDetailContent({
   const reward = financeQuest?.rewardSatang ?? detail.rewardSatang;
   const platformFee = financeQuest?.platformFeePerWorkerSatang ?? detail.platformFeePerWorkerSatang;
   const statusTimeline = detail.timeline
-    .filter((entry) => entry.status !== null)
+    .filter((entry): entry is QuestTimelineView & { status: string } => typeof entry.status === "string" && entry.status.length > 0)
     .map((entry, index, entries) => {
       const previousStatus = entries[index - 1]?.status;
-      const status = entry.status as string;
+      const status = entry.status;
       const statusLabel = readableValue(status.replace("QUEST_", ""));
       const previousLabel = previousStatus ? readableValue(previousStatus.replace("QUEST_", "")) : null;
       const transition = previousLabel && previousLabel !== statusLabel

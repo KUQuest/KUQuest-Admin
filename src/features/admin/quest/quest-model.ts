@@ -1,5 +1,4 @@
 import type {
-  AdminApiQuestStatus,
   AdminQuest,
   AdminQuestDetail,
   AdminQuestFinance,
@@ -21,7 +20,7 @@ export type QuestMemberView = {
 
 export type QuestTimelineView = {
   event: string;
-  status: AdminApiQuestStatus | null;
+  status: string | null;
   occurredAt: string;
   actorId: string | null;
   reasonCode: string | null;
@@ -386,10 +385,10 @@ export function questDetailViewFromApi(detail: AdminQuestDetail): QuestDetailVie
       createdAt: action.createdAt,
     })),
     timeline: (detail.timeline ?? []).map((entry) => ({
-      event: entry.event,
-      status: entry.status,
-      occurredAt: entry.occurredAt,
-      actorId: entry.actorId,
+      event: "QUEST_STATE_CHANGED",
+      status: entry.toState,
+      occurredAt: entry.changedAt,
+      actorId: entry.actor.id,
       reasonCode: entry.reasonCode,
     })),
     disputeCases: [],

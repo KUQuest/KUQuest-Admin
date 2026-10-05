@@ -86,15 +86,17 @@ function questTimelineFor(quest: AdminQuest): AdminQuestDetail["timeline"] {
   const hasDateRange = Number.isFinite(createdAt) && Number.isFinite(updatedAt) && updatedAt >= createdAt;
   const timelineEnd = hasDateRange ? updatedAt : timelineStart;
   const elapsed = Math.max(0, timelineEnd - timelineStart);
-  const interval = statuses.length > 1 ? Math.max(1, Math.floor(elapsed / (statuses.length - 1))) : 0;
+  const transitionCount = statuses.length - 1;
+  const interval = transitionCount > 0 ? Math.max(1, Math.floor(elapsed / transitionCount)) : 0;
 
-  return statuses.map((status, index) => ({
-    event: index === 0 ? "QUEST_CREATED" : "QUEST_STATUS_CHANGED",
-    status,
-    occurredAt: index === statuses.length - 1 && hasDateRange
+  return statuses.slice(1).map((toState, index) => ({
+    id: `${quest.id}-timeline-${index + 1}`,
+    fromState: statuses[index],
+    toState,
+    changedAt: index === transitionCount - 1 && hasDateRange
       ? quest.updatedAt
-      : new Date(timelineStart + interval * index).toISOString(),
-    actorId: null,
+      : new Date(timelineStart + interval * (index + 1)).toISOString(),
+    actor: { type: "SYSTEM" as const, id: null },
     reasonCode: null,
   }));
 }

@@ -46,10 +46,13 @@ export type AdminQuest = {
 };
 
 export type AdminQuestTimelineEntry = {
-  event: string;
-  status: AdminApiQuestStatus | null;
-  occurredAt: string;
-  actorId: string | null;
+  id: string;
+  fromState: string;
+  toState: string;
+  changedAt: string;
+  actor:
+    | { type: "MEMBER" | "ADMIN"; id: string }
+    | { type: "SYSTEM"; id: null };
   reasonCode: string | null;
 };
 
