@@ -155,10 +155,6 @@ function MemberRecentReports({ model, translateText }: { model: MemberModel; tra
   return <Card as="section" className="user-detail-panel p-[16px_18px]"><CardHeader flush className="user-panel-heading"><h2>{translateText("Recent Reports")}</h2><span className={adminRecordCount}>{model.reports.length}</span></CardHeader>{model.reportsError ? <p className="audit-note">{translateText(model.reportsError)}</p> : model.reports.length ? <div className="user-recent-reports grid">{model.reports.slice(0, 3).map((report) => <Link className="flex items-center justify-between gap-3 border-t border-admin-border py-2.5 text-admin-text no-underline first:border-t-0 hover:[&>span:first-child_strong]:text-admin-accent" key={report.id} href={report.href}><span><strong className="block text-[15px] leading-[1.4]">{report.displayId || translateText(report.kind)}</strong><small className="mt-0.5 block text-[15px] leading-[1.45] text-admin-muted">{translateText(report.category)}</small></span><span className="badge">{translateText(reportCaseStatusLabel(report.status))}</span></Link>)}</div> : <p className="audit-note">{translateText("No reports have been filed against this account.")}</p>}</Card>;
 }
 
-function AdminNotes({ translateText }: { translateText: (value: string) => string }) {
-  return <Card as="section" className="user-detail-panel p-[16px_18px]"><CardHeader flush className="user-panel-heading"><div><h2>{translateText("Admin Notes")}</h2><span className="admin-only-label text-[15px] font-bold text-admin-warning">{translateText("Admin only")}</span></div></CardHeader><p className="audit-note">{translateText("Admin notes are not provided by the Admin API.")}</p></Card>;
-}
-
 function MemberAbout({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
   return (
     <>
@@ -192,7 +188,7 @@ function OverviewTab({ model, translateText, onOpenReviews }: { model: MemberMod
         <Card as="section" className="user-detail-panel p-[16px_18px]"><CardHeader flush><h2>{translateText("Certificates")}</h2></CardHeader><p className="audit-note">{translateText("Certificate detail is not provided by the Admin API.")}</p></Card>
         <MemberReviewPreview model={model} translateText={translateText} onOpenReviews={onOpenReviews} />
       </div>
-      <aside className="grid min-w-0 !grid-cols-1 gap-[18px] max-[900px]:contents"><MemberAccountInfo model={model} translateText={translateText} /><MemberModerationSummary model={model} translateText={translateText} /><MemberRecentReports model={model} translateText={translateText} /><AdminNotes translateText={translateText} /></aside>
+      <aside className="grid min-w-0 !grid-cols-1 gap-[18px] max-[900px]:contents"><MemberAccountInfo model={model} translateText={translateText} /><MemberModerationSummary model={model} translateText={translateText} /><MemberRecentReports model={model} translateText={translateText} /></aside>
     </div>
   );
 }
@@ -525,7 +521,6 @@ function PenaltyHistoryTab({ model, translateText }: { model: MemberModel; trans
           <span className={adminRecordCount}>{model.penaltyHistory.length}</span>
         </CardHeader>
         <MemberModerationTimeline model={model} translateText={translateText} />
-        <AdminNotes translateText={translateText} />
       </div>
     </Card>
   );
