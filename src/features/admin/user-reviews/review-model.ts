@@ -17,27 +17,3 @@ export function filterReviews(reviews: AdminReview[], criteria: ReviewQuery): Ad
     return matchesFilter && matchesRating && (!query || searchable.includes(query));
   });
 }
-
-export function changeReviewVisibility(
-  reviews: AdminReview[],
-  reviewIndex: number,
-): AdminReview[] {
-  return reviews.map((review, index) => {
-    if (index !== reviewIndex) return review;
-    if (review.status === "Hidden") {
-      const { statusBeforeHidden, toneBeforeHidden, ...restored } = review;
-      return {
-        ...restored,
-        status: statusBeforeHidden || "Visible",
-        tone: toneBeforeHidden || "success",
-      };
-    }
-    return {
-      ...review,
-      statusBeforeHidden: review.status,
-      toneBeforeHidden: review.tone,
-      status: "Hidden",
-      tone: "neutral",
-    };
-  });
-}

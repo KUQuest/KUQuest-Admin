@@ -17,12 +17,7 @@ export type AdminAuthPort = Pick<
   "signInEmail" | "getSession" | "signOut"
 >;
 
-export function isAdminApiEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_ADMIN_DATA_SOURCE === "api";
-}
-
-// The live provider is defined now so screens can switch providers without
-// changing their domain contracts. It is not selected by the demo runtime.
+// All Admin reads and commands use the Admin API provider.
 export const adminApiProvider: AdminProvider = {
   auth: adminApi,
   read: adminApiReadPort,
