@@ -10,13 +10,10 @@ import {
   translateAdminText,
   type AdminLanguage,
 } from "../../features/admin/language/admin-language";
-import { isAdminMockEnabled } from "../../lib/auth/admin-auth-mode";
 import { AdminHeader } from "./admin-header";
 import { AdminSidebar } from "./admin-sidebar";
 import { AdminShellProvider } from "./admin-shell-context";
 import { AdminQueryProvider } from "./admin-query-provider";
-import { ADMIN_SESSION_KEY } from "../../features/admin/admin-auth";
-import { ADMIN_MOCK_SESSION_COOKIE } from "../../lib/auth/admin-session-policy";
 
 const ADMIN_LANGUAGE_KEY = "kuquest-admin-language";
 
@@ -27,13 +24,6 @@ type AdminShellProps = {
 
 function identityName(identity: AdminIdentity): string {
   return `${identity.firstName} ${identity.lastName}`.trim() || identity.email;
-}
-
-function hasBrowserMockSession(): boolean {
-  return document.cookie.split(";").some((part) => {
-    const [name, value] = part.trim().split("=", 2);
-    return name === ADMIN_MOCK_SESSION_COOKIE && Boolean(value);
-  });
 }
 
 export function AdminShell({ identity, children }: AdminShellProps) {
@@ -60,15 +50,8 @@ function AdminShellContent({ identity, children }: AdminShellProps) {
   const closeGlobalSearch = useCallback(() => setGlobalSearchOpen(false), []);
   const handleLogout = useCallback(() => {
     const finishLogout = () => {
-      window.localStorage.removeItem(ADMIN_SESSION_KEY);
-      document.cookie = `${ADMIN_MOCK_SESSION_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax`;
       window.location.replace("/login");
     };
-
-    if (isAdminMockEnabled()) {
-      finishLogout();
-      return;
-    }
 
     void adminApiProvider.auth.signOut()
       .catch((error: unknown) => console.error("Admin sign-out failed", error))
@@ -92,11 +75,6 @@ function AdminShellContent({ identity, children }: AdminShellProps) {
       if (cancelled || checking) return;
       checking = true;
       try {
-        if (isAdminMockEnabled()) {
-          if (!hasBrowserMockSession()) window.location.replace("/login");
-          return;
-        }
-
         const session = await adminApiProvider.auth.getSession();
         if (!session && !cancelled) window.location.replace("/login");
       } catch {
