@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
 import type { AdminQuest } from "../../src/features/admin/api/admin-api";
-import { mockQuestDetail, mockQuestFinance, mockQuestSummary } from "../../src/features/admin/quest/quest-mock-data";
+import { mockQuestDetail, mockQuestFinance, mockQuestSummary } from "../fixtures/admin-quest-api-fixtures";
 import {
   formatQuestMoney,
   pageQuestRows,

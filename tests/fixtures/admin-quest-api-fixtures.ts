@@ -5,8 +5,7 @@ import type {
   AdminQuestDetail,
   AdminQuestFinance,
   AdminQuestMember,
-} from "../api/admin-api";
-import { mockDemoMemberSeeds } from "../data/mock-demo-fixtures";
+} from "../../src/features/admin/api/admin-api";
 
 export const MOCK_OPEN_QUEST_ID = "00000000-0000-0000-0000-000000000001";
 export const MOCK_TEAM_QUEST_ID = "00000000-0000-0000-0000-000000000002";
@@ -125,24 +124,15 @@ type DemoQuestMember = {
 };
 
 function demoQuestMemberFor(index: number): DemoQuestMember {
-  const seed = mockDemoMemberSeeds[index];
-  if (seed) {
-    return {
-      id: seed.id,
-      studentId: seed.studentId,
-      firstName: seed.firstName,
-      lastName: seed.lastName,
-      email: seed.email,
-    };
-  }
-
   const sequence = String(index + 1).padStart(3, "0");
+  const firstNames = ["Ari", "Benja", "Chanya", "Dara", "Kanda", "Mali", "Niran", "Pim"];
+  const lastNames = ["Wattanakul", "Ariyawat", "Sukjai", "Chantarat", "Rattanaporn"];
   return {
     id: String(68000200 + index),
     studentId: `651030${String(index + 1).padStart(4, "0")}`,
-    firstName: "Demo",
-    lastName: `Member ${sequence}`,
-    email: `demo.member${sequence}@ku.th`,
+    firstName: firstNames[index % firstNames.length],
+    lastName: `${lastNames[Math.floor(index / firstNames.length) % lastNames.length]} ${sequence}`,
+    email: `quest.fixture${sequence}@ku.th`,
   };
 }
 
@@ -334,7 +324,7 @@ function candidateApplicationsFor(quest: AdminQuest): AdminQuestDetail["candidat
   const displayNumber = Number.parseInt((quest.displayId ?? "").replace(/\D/g, ""), 10);
   return [{
     id: `${quest.id}-application-1`,
-    worker: demoQuestMemberFor(Number.isFinite(displayNumber) ? displayNumber % mockDemoMemberSeeds.length : 80),
+    worker: demoQuestMemberFor(Number.isFinite(displayNumber) ? displayNumber % 200 : 80),
     applicationStatus: "APPLICATION_SELECTED",
     reworkLimit: 0,
     appliedAt: quest.createdAt,
@@ -394,7 +384,7 @@ function singleAssignmentFor(quest: AdminQuest): AdminQuestDetail["assignments"]
 
   const displayNumber = Number.parseInt((quest.displayId ?? "").replace(/\D/g, ""), 10);
   const worker = Number.isFinite(displayNumber)
-    ? demoQuestMemberFor(displayNumber % mockDemoMemberSeeds.length)
+    ? demoQuestMemberFor(displayNumber % 200)
     : assignedWorker;
 
   return [{
