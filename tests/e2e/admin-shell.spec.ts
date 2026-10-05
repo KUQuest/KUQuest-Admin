@@ -257,9 +257,8 @@ test.describe("shared Admin shell", () => {
 
     const decisionDialog = page.getByRole("dialog", { name: "Confirm violation" });
     await expect(decisionDialog).toBeVisible();
-    await decisionDialog.getByLabel("Reason for this decision").fill(
-      "The Quest record confirms the reported conduct violation.",
-    );
+    await expect(decisionDialog.getByLabel("Reason for this decision")).toHaveCount(0);
+    await expect(decisionDialog.getByLabel("Decision reason code")).toHaveCount(0);
     await decisionDialog.getByRole("button", { name: "Confirm decision" }).click();
 
     await expect(decisionDialog).toBeHidden();
@@ -270,6 +269,29 @@ test.describe("shared Admin shell", () => {
     await expect(main.locator('tbody tr[data-conduct-report-status="CONDUCT_REPORT_UPHELD"]')).toHaveCount(10);
   });
 
+  test("uses a controlled reason code when dismissing a Conduct Report", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/conduct-report");
+
+    const row = page.locator('tbody tr[data-conduct-report-id="CND-8301"]');
+    await row.getByRole("button", { name: "Open Conduct Report CND-8301" }).click();
+    const drawer = page.getByRole("dialog", { name: "Conduct Report details" });
+    await drawer.getByLabel("Dismiss Conduct Report").check();
+    await drawer.getByRole("button", { name: "Close report", exact: true }).click();
+
+    const decisionDialog = page.getByRole("dialog", { name: "Dismiss Conduct Report" });
+    const reasonCode = decisionDialog.getByLabel("Decision reason code");
+    await expect(reasonCode.locator("option")).toHaveText([
+      "Select a reason code",
+      "CONDUCT_REPORT_NO_VIOLATION",
+      "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE",
+    ]);
+    await expect(decisionDialog.getByRole("button", { name: "Confirm decision" })).toBeDisabled();
+    await reasonCode.selectOption("CONDUCT_REPORT_INSUFFICIENT_EVIDENCE");
+    await decisionDialog.getByRole("button", { name: "Confirm decision" }).click();
+    await expect(decisionDialog).toBeHidden();
+    await expect(drawer).toContainText("Insufficient evidence");
+  });
   test("shows a count on every table filter tab", async ({ page }) => {
     await signIn(page);
 

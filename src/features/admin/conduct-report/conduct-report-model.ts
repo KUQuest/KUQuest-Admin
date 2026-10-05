@@ -19,10 +19,7 @@ export type ConductReportRecord = {
   [key: string]: unknown;
 };
 
-export type ConductReportDecisionChoice =
-  | "no-violation"
-  | "insufficient-evidence"
-  | "confirmed-violation";
+export type ConductReportDecisionChoice = "dismiss" | "confirmed-violation";
 
 export type ConductReportDecisionReasonCode =
   | "CONDUCT_REPORT_NO_VIOLATION"
@@ -53,26 +50,18 @@ export type ConductReportProofSubmission = {
 };
 
 export const conductReportDecisionMetadata = {
-  "no-violation": {
+  dismiss: {
     command: "CONDUCT_REPORT_DISMISSED",
-    label: "No violation",
-    reasonCode: "CONDUCT_REPORT_NO_VIOLATION",
-  },
-  "insufficient-evidence": {
-    command: "CONDUCT_REPORT_DISMISSED",
-    label: "Insufficient evidence",
-    reasonCode: "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE",
+    label: "Dismiss Conduct Report",
   },
   "confirmed-violation": {
     command: "CONDUCT_REPORT_UPHELD",
     label: "Violation confirmed",
-    reasonCode: null,
   },
 } as const satisfies Record<
   ConductReportDecisionChoice,
-  { command: ConductReportCommand; label: string; reasonCode: ConductReportDecisionReasonCode | null }
+  { command: ConductReportCommand; label: string }
 >;
-
 export type ConductReportModel = {
   id: string;
   displayId: string;
@@ -114,11 +103,6 @@ export type ConductReportModel = {
 
 export const CONDUCT_REPORT_UPDATED_EVENT = "kuquest:conduct-report-updated";
 
-export function conductReportDecisionReasonCodeFor(
-  choice: ConductReportDecisionChoice,
-): ConductReportDecisionReasonCode | null {
-  return conductReportDecisionMetadata[choice].reasonCode;
-}
 
 function asRecord(value: unknown): ConductReportRecord | null {
   return value && typeof value === "object" && !Array.isArray(value)

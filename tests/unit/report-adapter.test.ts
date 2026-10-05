@@ -25,13 +25,13 @@ describe("Report Case mock adapter", () => {
     expect(page.items.every((record) => record.status === "REPORT_CASE_PENDING")).toBe(true);
   });
 
-  it("persists the Report Case reason and canonical command status", () => {
+  it("persists the Report Case command status and reason code", () => {
     const storage = memoryStorage();
     const updated = saveMockReportDecision(
       storage,
       "RPT-8201",
       "REPORT_CASE_HIDDEN",
-      "The evidence confirms a policy violation.",
+      "SAFETY_REVIEW",
     );
 
     expect(updated).toMatchObject({
@@ -39,7 +39,6 @@ describe("Report Case mock adapter", () => {
       status: "REPORT_CASE_HIDDEN",
       reportCaseStatus: "REPORT_CASE_HIDDEN",
       decision: "confirmed-violation",
-      decisionReason: "The evidence confirms a policy violation.",
     });
     expect(loadReportCasesFromMock(storage).items[0]).toMatchObject({
       id: "RPT-8201",
@@ -71,8 +70,8 @@ describe("Report Case mock adapter", () => {
       },
     }));
 
-    const updated = saveMockReportDecision(storage, "RPT-1", "REPORT_CASE_HIDDEN", "Evidence confirms a violation.");
-    saveMockReportDecision(storage, "RPT-1", "REPORT_CASE_HIDDEN", "The same decision must stay idempotent.");
+    const updated = saveMockReportDecision(storage, "RPT-1", "REPORT_CASE_HIDDEN", "SAFETY_REVIEW");
+    saveMockReportDecision(storage, "RPT-1", "REPORT_CASE_HIDDEN", "POLICY_REVIEW");
 
     expect(updated).toMatchObject({
       reportedMemberStatus: "Flag",

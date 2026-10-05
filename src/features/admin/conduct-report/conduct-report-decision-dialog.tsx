@@ -5,7 +5,12 @@ import { useEffect, useState } from "react";
 import { AdminActionSummary } from "../../../components/admin/admin-action-feedback";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { Button } from "../../../components/ui/button";
-import { conductReportStatusLabel, type ConductReportDecisionChoice, type ConductReportModel } from "./conduct-report-model";
+import {
+  conductReportStatusLabel,
+  type ConductReportDecisionChoice,
+  type ConductReportDecisionReasonCode,
+  type ConductReportModel,
+} from "./conduct-report-model";
 
 
 type DecisionDialogProps = {
@@ -17,17 +22,18 @@ type DecisionDialogProps = {
 
   translateText: (value: string) => string;
   onCancel: () => void;
-  onConfirm: (reason: string) => void;
+  onConfirm: (decisionReasonCode: ConductReportDecisionReasonCode | null) => void;
 };
 
 function decisionDialogTitle(
   choice: ConductReportDecisionChoice | null,
   translateText: (value: string) => string,
 ): string {
-  return choice === "confirmed-violation"
-    ? translateText("Confirm violation")
-    : translateText("Close report");
+  if (choice === "confirmed-violation") return translateText("Confirm violation");
+  if (choice === "dismiss") return translateText("Dismiss Conduct Report");
+  return translateText("Close report");
 }
+
 function decisionDialogDescription(
   choice: ConductReportDecisionChoice | null,
   modelId: string,
@@ -50,10 +56,10 @@ export function ConductReportDecisionDialog({
   onCancel,
   onConfirm,
 }: DecisionDialogProps) {
-  const [reason, setReason] = useState("");
+  const [decisionReasonCode, setDecisionReasonCode] = useState<ConductReportDecisionReasonCode | "">("");
 
   useEffect(() => {
-    if (open) setReason("");
+    if (open) setDecisionReasonCode("");
   }, [choice, open]);
 
   if (!open) return null;
@@ -79,9 +85,9 @@ export function ConductReportDecisionDialog({
         method="dialog"
         onSubmit={(event) => {
           event.preventDefault();
-          const value = reason.trim();
-          if (value.length < 8) return;
-          onConfirm(value);
+          const value = choice === "dismiss" ? decisionReasonCode : null;
+          if (choice === "dismiss" && !value) return;
+          onConfirm(value || null);
         }}
       >
         <div className="dialog-body p-5">
@@ -99,29 +105,32 @@ export function ConductReportDecisionDialog({
               warning={translateText("Use the Quest, Assignment, and Proof Submission record as the decision evidence.")}
             />
           ) : null}
-          <label htmlFor="conduct-report-decision-reason">
-            {translateText("Reason for this decision")}
-          </label>
-          <textarea
-            id="conduct-report-decision-reason"
-            name="reason"
-            rows={4}
-            minLength={8}
-            maxLength={500}
-            required
-            value={reason}
-            autoFocus
-            aria-invalid={Boolean(error)}
-            onChange={(event) => setReason(event.target.value)}
-            placeholder={translateText("Enter the reason for the Conduct Report decision")}
-          />
+          {choice === "dismiss" ? (
+            <>
+              <label htmlFor="conduct-report-decision-reason-code">{translateText("Decision reason code")}</label>
+              <select
+                className="w-full rounded-lg border border-admin-border-strong bg-admin-surface px-2.5 py-2 text-lg leading-[1.45] text-admin-text"
+                id="conduct-report-decision-reason-code"
+                name="decisionReasonCode"
+                required
+                value={decisionReasonCode}
+                autoFocus
+                aria-invalid={Boolean(error)}
+                onChange={(event) => setDecisionReasonCode(event.target.value as ConductReportDecisionReasonCode | "")}
+              >
+                <option value="">{translateText("Select a reason code")}</option>
+                <option value="CONDUCT_REPORT_NO_VIOLATION">CONDUCT_REPORT_NO_VIOLATION</option>
+                <option value="CONDUCT_REPORT_INSUFFICIENT_EVIDENCE">CONDUCT_REPORT_INSUFFICIENT_EVIDENCE</option>
+              </select>
+            </>
+          ) : null}
           {error && <p className="field-error" role="alert">{translateText(error)}</p>}
         </div>
         <div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5">
           <Button variant="outline" type="button" onClick={onCancel} disabled={busy}>
             {translateText("Cancel")}
           </Button>
-          <Button variant="danger" type="submit" disabled={busy || reason.trim().length < 8}>
+          <Button variant="danger" type="submit" disabled={busy || (choice === "dismiss" && !decisionReasonCode)}>
             {busy ? translateText("Saving…") : translateText("Confirm decision")}
           </Button>
         </div>

@@ -24,7 +24,6 @@ export type ConductReportDecisionMutationInput = {
   currentModel: ConductReportModel;
   decision: ConductReportCommand;
   choice: ConductReportDecisionChoice;
-  reason: string;
   options: ConductReportDecision;
   apiEnabled: boolean;
 };
@@ -33,8 +32,13 @@ export function useConductReportDecisionMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationKey: ["admin", "conduct-reports", "decision"],
-    mutationFn: async ({ reportId, currentModel, decision, choice, reason, options, apiEnabled }: ConductReportDecisionMutationInput) => {
-      if (!apiEnabled) return saveMockConductReportDecision(localStorage, reportId, decision, reason, choice);
+    mutationFn: async ({ reportId, currentModel, decision, choice, options, apiEnabled }: ConductReportDecisionMutationInput) => {
+      if (!apiEnabled) {
+        const decisionReasonCode = options.outcome === "CONDUCT_REPORT_DISMISSED"
+          ? options.decisionReasonCode
+          : null;
+        return saveMockConductReportDecision(localStorage, reportId, decision, decisionReasonCode, choice);
+      }
 
       const result = await adminApiProvider.commands.decideConductReport(reportId, options);
       const summary = result.resourceSummary;
@@ -48,14 +52,12 @@ export function useConductReportDecisionMutation() {
         version: result.resourceVersion,
         decisionLabel: options.outcome === "CONDUCT_REPORT_UPHELD"
           ? "Violation confirmed"
-          : options.outcome === "CONDUCT_REPORT_DISMISSED"
-            && options.decisionReasonCode === "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE"
+          : options.decisionReasonCode === "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE"
             ? "Insufficient evidence"
             : "No violation",
         decisionReasonCode: options.outcome === "CONDUCT_REPORT_DISMISSED"
           ? options.decisionReasonCode
           : null,
-        decisionReason: options.reason,
       };
     },
     onSuccess: async (record, { reportId, apiEnabled }) => {

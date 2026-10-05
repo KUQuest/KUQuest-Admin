@@ -35,7 +35,8 @@ describe("Conduct Report mock adapter", () => {
       storage,
       "CND-8301",
       "CONDUCT_REPORT_UPHELD",
-      "The Quest record confirms the reported conduct violation.",
+      null,
+      "confirmed-violation",
     );
 
     expect(updated).toMatchObject({
@@ -43,9 +44,9 @@ describe("Conduct Report mock adapter", () => {
       status: "CONDUCT_REPORT_UPHELD",
       conductReportStatus: "CONDUCT_REPORT_UPHELD",
       decision: "confirmed-violation",
-      decisionReason: "The Quest record confirms the reported conduct violation.",
+      reasonCode: "CONDUCT_ABANDONED",
+      decisionReasonCode: null,
     });
-    expect(updated).not.toHaveProperty("reportCaseStatus");
     expect(loadConductReportsFromMock(storage).items[0]).toMatchObject({
       id: "CND-8301",
       status: "CONDUCT_REPORT_UPHELD",
@@ -57,7 +58,8 @@ describe("Conduct Report mock adapter", () => {
       memoryStorage(),
       "RPT-8201",
       "CONDUCT_REPORT_DISMISSED",
-      "This command must stay within the Conduct Report boundary.",
+      "CONDUCT_REPORT_NO_VIOLATION",
+      "dismiss",
     )).toBeNull();
   });
 
@@ -79,13 +81,14 @@ describe("Conduct Report mock adapter", () => {
         reports: [{
           id: "CND-1",
           reportedMemberId: "member-conduct",
+          reasonCode: "CONDUCT_ABANDONED",
           status: "CONDUCT_REPORT_PENDING",
           conductReportStatus: "CONDUCT_REPORT_PENDING",
         }],
       },
     }));
 
-    saveMockConductReportDecision(storage, "CND-1", "CONDUCT_REPORT_UPHELD", "Quest evidence confirms a violation.");
+    saveMockConductReportDecision(storage, "CND-1", "CONDUCT_REPORT_UPHELD", null, "confirmed-violation");
 
     expect(findMemberFromMock(storage, "member-conduct")).toMatchObject({
       memberStatus: "Temp Ban",

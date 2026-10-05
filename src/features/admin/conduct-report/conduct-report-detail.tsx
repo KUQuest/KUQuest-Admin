@@ -44,9 +44,9 @@ import {
   CONDUCT_REPORT_UPDATED_EVENT,
   conductReportReasonLabel,
   conductReportDecisionFor,
-  conductReportDecisionReasonCodeFor,
   conductReportModelFromRecord,
   type ConductReportDecisionChoice,
+  type ConductReportDecisionReasonCode,
   type ConductReportModel,
 } from "./conduct-report-model";
 import { useConductReportDecisionMutation, useConductReportDetailQuery } from "./conduct-report-query";
@@ -359,36 +359,20 @@ function DecisionControls({
       </p>
       <fieldset className="report-decision-options mt-3.5 grid gap-2 border-0 p-0">
         <legend className="visually-hidden">{translateText("Conduct Report decision")}</legend>
-        <div className={`report-decision-option grid w-full grid-cols-[18px_1fr] items-start gap-x-2 gap-y-0.5 rounded-[9px] border border-admin-border bg-admin-surface px-3 py-[11px] text-left transition-colors hover:bg-admin-hover ${selectedChoice === "no-violation" ? "border-admin-accent bg-admin-accent-soft shadow-[0_0_0_1px_var(--accent)]" : ""}`}>
+        <div className={`report-decision-option grid w-full grid-cols-[18px_1fr] items-start gap-x-2 gap-y-0.5 rounded-[9px] border border-admin-border bg-admin-surface px-3 py-[11px] text-left transition-colors hover:bg-admin-hover ${selectedChoice === "dismiss" ? "border-admin-accent bg-admin-accent-soft shadow-[0_0_0_1px_var(--accent)]" : ""}`}>
           <input
             className="mt-0.5"
-            id={`conduct-report-decision-${model.id}-no-violation`}
+            id={`conduct-report-decision-${model.id}-dismiss`}
             type="radio"
             name={`conduct-report-decision-${model.id}`}
-            value="no-violation"
-            data-conduct-report-decision="no-violation"
-            checked={selectedChoice === "no-violation"}
-            onChange={() => onSelect("no-violation")}
+            value="dismiss"
+            data-conduct-report-decision="dismiss"
+            checked={selectedChoice === "dismiss"}
+            onChange={() => onSelect("dismiss")}
           />
-          <label className="grid cursor-pointer gap-0.5" htmlFor={`conduct-report-decision-${model.id}-no-violation`}>
-            <strong className="text-sm leading-[1.35]">{translateText("No violation")}</strong>
+          <label className="grid cursor-pointer gap-0.5" htmlFor={`conduct-report-decision-${model.id}-dismiss`}>
+            <strong className="text-sm leading-[1.35]">{translateText("Dismiss Conduct Report")}</strong>
             <small className="text-[13px] leading-[1.45] text-admin-muted">{translateText("Dismiss the Conduct Report without changing the reported Member status.")}</small>
-          </label>
-        </div>
-        <div className={`report-decision-option grid w-full grid-cols-[18px_1fr] items-start gap-x-2 gap-y-0.5 rounded-[9px] border border-admin-border bg-admin-surface px-3 py-[11px] text-left transition-colors hover:bg-admin-hover ${selectedChoice === "insufficient-evidence" ? "border-admin-accent bg-admin-accent-soft shadow-[0_0_0_1px_var(--accent)]" : ""}`}>
-          <input
-            className="mt-0.5"
-            id={`conduct-report-decision-${model.id}-insufficient-evidence`}
-            type="radio"
-            name={`conduct-report-decision-${model.id}`}
-            value="insufficient-evidence"
-            data-conduct-report-decision="insufficient-evidence"
-            checked={selectedChoice === "insufficient-evidence"}
-            onChange={() => onSelect("insufficient-evidence")}
-          />
-          <label className="grid cursor-pointer gap-0.5" htmlFor={`conduct-report-decision-${model.id}-insufficient-evidence`}>
-            <strong className="text-sm leading-[1.35]">{translateText("Insufficient evidence")}</strong>
-            <small className="text-[13px] leading-[1.45] text-admin-muted">{translateText("Dismiss the Conduct Report because the evidence does not support a decision.")}</small>
           </label>
         </div>
         <div className={`report-decision-option grid w-full grid-cols-[18px_1fr] items-start gap-x-2 gap-y-0.5 rounded-[9px] border border-admin-border bg-admin-surface px-3 py-[11px] text-left transition-colors hover:bg-admin-hover ${selectedChoice === "confirmed-violation" ? "border-admin-accent bg-admin-accent-soft shadow-[0_0_0_1px_var(--accent)]" : ""}`}>
@@ -563,7 +547,7 @@ export function ConductReportDrawer({
   const [actionReceipt, setActionReceipt] = useState<{
     action: string;
     status: string;
-    reason: string;
+    reasonCode: string;
     occurredAt: string;
   } | null>(null);
   const decisionMutation = useConductReportDecisionMutation();
@@ -575,9 +559,9 @@ export function ConductReportDrawer({
   const startDecision = () => {
     if (!reportModel.isActionable) return;
     if (!selectedChoice) {
-      setCommandError("Choose No violation or Confirm violation before closing the Conduct Report.");
+      setCommandError("Choose a Conduct Report decision before closing.");
       window.requestAnimationFrame(() => {
-        document.getElementById(`conduct-report-decision-${reportModel.id}-no-violation`)?.focus();
+        document.getElementById(`conduct-report-decision-${reportModel.id}-dismiss`)?.focus();
       });
       return;
     }
@@ -586,29 +570,35 @@ export function ConductReportDrawer({
     setDialogOpen(true);
   };
 
-  const confirmDecision = async (reason: string) => {
+  const confirmDecision = async (decisionReasonCode: ConductReportDecisionReasonCode | null) => {
     if (!selectedChoice) return;
     if (isAdminApiEnabled() && reportModel.version === undefined) {
       setCommandError("The current Conduct Report version is missing. Reload the report before you decide.");
       return;
     }
-    setCommandError(null);
     const decision = conductReportDecisionFor(selectedChoice);
-    const reasonCode = conductReportDecisionReasonCodeFor(selectedChoice);
-    const options: ConductReportDecision = decision === "CONDUCT_REPORT_DISMISSED"
-      ? {
-          outcome: decision,
-          reason,
-          decisionReasonCode: reasonCode as NonNullable<typeof reasonCode>,
-          expectedVersion: reportModel.version ?? 1,
-          idempotencyKey: newConductReportIdempotencyKey(reportModel.id),
-        }
-      : {
-          outcome: decision,
-          reason,
-          expectedVersion: reportModel.version ?? 1,
-          idempotencyKey: newConductReportIdempotencyKey(reportModel.id),
-        };
+    const commandContext = {
+      expectedVersion: reportModel.version ?? 1,
+      idempotencyKey: newConductReportIdempotencyKey(reportModel.id),
+    };
+    let options: ConductReportDecision;
+    if (decision === "CONDUCT_REPORT_DISMISSED") {
+      if (!decisionReasonCode) {
+        setCommandError("Choose a decision reason code before confirming.");
+        return;
+      }
+      options = {
+        ...commandContext,
+        outcome: decision,
+        decisionReasonCode,
+      };
+    } else {
+      options = {
+        ...commandContext,
+        outcome: decision,
+      };
+    }
+    setCommandError(null);
 
     try {
       const updated = await decisionMutation.mutateAsync({
@@ -616,7 +606,6 @@ export function ConductReportDrawer({
         currentModel: reportModel,
         decision,
         choice: selectedChoice,
-        reason,
         options,
         apiEnabled: isAdminApiEnabled(),
       });
@@ -638,7 +627,9 @@ export function ConductReportDrawer({
         setActionReceipt({
           action: decision,
           status: updatedModel.statusLabel,
-          reason,
+          reasonCode: decision === "CONDUCT_REPORT_UPHELD"
+            ? reportModel.reasonCode ?? ""
+            : decisionReasonCode ?? "",
           occurredAt: new Date().toISOString(),
         });
       }
@@ -660,7 +651,7 @@ export function ConductReportDrawer({
       onStartDecision={startDecision}
       compact={presentation === "drawer"}
       showFullLink={presentation === "drawer"}
-      actionReceipt={actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Conduct Report" resourceId={reportModel.displayId || null} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {actionReceipt.reason}</p>} /> : null}
+      actionReceipt={actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Conduct Report" resourceId={reportModel.displayId || null} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason code")}: {translateText(actionReceipt.reasonCode)}</p>} /> : null}
     />
   );
   const decisionDialog = (

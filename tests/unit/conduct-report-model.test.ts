@@ -207,8 +207,8 @@ describe("Conduct Report model", () => {
     expect(isConductReportActionable("CONDUCT_REPORT_DISMISSED")).toBe(false);
   });
 
-  it("maps Conduct Report decisions to the canonical commands", () => {
-    expect(conductReportDecisionFor("no-violation")).toBe("CONDUCT_REPORT_DISMISSED");
+  it("maps dismissal and uphold decisions to their canonical commands", () => {
+    expect(conductReportDecisionFor("dismiss")).toBe("CONDUCT_REPORT_DISMISSED");
     expect(conductReportDecisionFor("confirmed-violation")).toBe("CONDUCT_REPORT_UPHELD");
   });
 });

@@ -84,13 +84,45 @@ test.describe("Report Case routes", () => {
     await page.getByRole("button", { name: "Close report" }).first().click();
     const dialog = page.locator("dialog.report-decision-dialog");
     await expect(dialog).toBeVisible();
-    await dialog.getByLabel("Reason for this decision").fill("POLICY_REVIEWED");
+    const reasonCode = dialog.getByLabel("Reason code");
+    await expect(reasonCode.locator("option")).toHaveText([
+      "Select a reason code",
+      "POLICY_REVIEW",
+      "SAFETY_REVIEW",
+    ]);
+    await expect(dialog.getByRole("button", { name: "Confirm decision" })).toBeDisabled();
+    await reasonCode.selectOption("POLICY_REVIEW");
     await dialog.getByRole("button", { name: "Confirm decision" }).click();
 
     await expect(dialog).toBeHidden();
     await expect(page.locator(".report-page-alert .badge")).toHaveText("Dismissed");
   });
 
+  test("requires a reason code for Report Case hide and restore decisions", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/report/RPT-8201");
+    await page.getByLabel("Confirm violation").check();
+    await page.getByRole("button", { name: "Close report", exact: true }).click();
+    const hideDialog = page.locator("dialog.report-decision-dialog");
+    const hideReasonCode = hideDialog.getByLabel("Reason code");
+    await expect(hideReasonCode.locator("option")).toHaveText([
+      "Select a reason code",
+      "POLICY_REVIEW",
+      "SAFETY_REVIEW",
+    ]);
+    await hideDialog.getByRole("button", { name: "Cancel" }).click();
+
+    await page.goto("/report/RPT-8211");
+    await page.getByRole("button", { name: "Restore Message" }).click();
+    const restoreDialog = page.locator("dialog.report-decision-dialog");
+    const restoreReasonCode = restoreDialog.getByLabel("Reason code");
+    await expect(restoreReasonCode.locator("option")).toHaveText([
+      "Select a reason code",
+      "POLICY_REVIEW",
+      "SAFETY_REVIEW",
+    ]);
+    await restoreDialog.getByRole("button", { name: "Cancel" }).click();
+  });
   test("keeps full-page danger actions readable", async ({ page }) => {
     await signIn(page);
     await page.goto("/report/RPT-8411");

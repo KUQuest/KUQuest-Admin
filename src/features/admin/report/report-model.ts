@@ -187,14 +187,6 @@ export function reportCaseDecisionFor(
   return reportCaseDecisionMetadata[choice].command;
 }
 
-export function reportCaseReasonCodeFor(
-  choice: ReportCaseDecisionChoice,
-  value: string,
-): string {
-  const normalized = value.trim().toUpperCase();
-  if (/^[A-Z][A-Z0-9_.-]{0,99}$/.test(normalized)) return normalized;
-  return choice === "no-violation" ? "POLICY_REVIEW" : "SAFETY_REVIEW";
-}
 
 export function reportCaseDecisionDetailsForCommand(command: ReportCaseCommand): {
   choice: ReportCaseDecisionChoice;

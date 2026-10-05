@@ -49,7 +49,6 @@ export function createAdminReportApi() {
           },
           body: {
             outcome: options.outcome,
-            reason: options.reason,
             reasonCode: options.reasonCode,
           },
         },
@@ -68,10 +67,9 @@ export function createAdminReportApi() {
           body: options.outcome === "CONDUCT_REPORT_DISMISSED"
             ? {
                 outcome: options.outcome,
-                reason: options.reason,
                 decisionReasonCode: options.decisionReasonCode,
               }
-            : { outcome: options.outcome, reason: options.reason },
+            : { outcome: options.outcome },
         },
       );
     },

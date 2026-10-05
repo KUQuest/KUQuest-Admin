@@ -14,6 +14,7 @@ import {
   isConductReportRecord,
   type ConductReportCommand,
   type ConductReportDecisionChoice,
+  type ConductReportDecisionReasonCode,
   type ConductReportModel,
   type ConductReportRecord,
 } from "./conduct-report-model";
@@ -142,7 +143,7 @@ export function saveMockConductReportDecision(
   storage: BrowserStorage,
   reportId: string,
   decision: ConductReportCommand,
-  reason: string,
+  decisionReasonCode: ConductReportDecisionReasonCode | null,
   choice?: ConductReportDecisionChoice,
 ): ConductReportRecord | null {
   const data = loadDashboardData(storage);
@@ -152,23 +153,27 @@ export function saveMockConductReportDecision(
     return null;
   }
 
+  if (decision === "CONDUCT_REPORT_DISMISSED" && !decisionReasonCode) return null;
   const now = new Date().toISOString();
-  const selectedChoice = choice ?? (decision === "CONDUCT_REPORT_UPHELD" ? "confirmed-violation" : "no-violation");
+  const selectedChoice = choice ?? (decision === "CONDUCT_REPORT_UPHELD" ? "confirmed-violation" : "dismiss");
   const metadata = conductReportDecisionDetailsForChoice(selectedChoice);
   if (metadata.command !== decision) return null;
   report.status = decision;
   report.conductReportStatus = decision;
   report.decision = metadata.choice;
-  report.decisionLabel = metadata.label;
-  report.decisionReasonCode = metadata.reasonCode;
-  report.decisionReason = reason;
+  report.decisionLabel = decision === "CONDUCT_REPORT_UPHELD"
+    ? "Violation confirmed"
+    : decisionReasonCode === "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE"
+      ? "Insufficient evidence"
+      : "No violation";
+  report.decisionReasonCode = decision === "CONDUCT_REPORT_DISMISSED" ? decisionReasonCode : null;
   report.resolvedBy = "Admin";
   report.resolutionAt = now;
   report.closedAt = now;
   report.tone = decision === "CONDUCT_REPORT_UPHELD" ? "danger" : "neutral";
   report.resolution = decision === "CONDUCT_REPORT_UPHELD"
     ? "Violation confirmed; the Member Misconduct ladder was applied."
-    : metadata.choice === "insufficient-evidence"
+    : decisionReasonCode === "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE"
       ? "Conduct Report dismissed; the evidence did not establish a policy violation."
       : "Conduct Report dismissed; no policy violation found.";
   if (typeof report.version === "number") report.version += 1;
@@ -177,7 +182,7 @@ export function saveMockConductReportDecision(
     const memberResult = recordMemberViolationInData(
       data,
       typeof report.reportedMemberId === "string" ? report.reportedMemberId : "",
-      reason,
+      typeof report.reasonCode === "string" ? report.reasonCode : "",
       "",
       {
         caseId: report.id,

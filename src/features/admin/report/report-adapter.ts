@@ -79,7 +79,7 @@ export function saveMockReportDecision(
   storage: BrowserStorage,
   reportId: string,
   decision: ReportCaseCommand,
-  reason: string,
+  reasonCode: string,
 ): ReportCaseRecord | null {
   const data = loadDashboardData(storage);
   const report = reportRecords(data).find((candidate) => candidate.id === reportId);
@@ -92,7 +92,6 @@ export function saveMockReportDecision(
   report.reportCaseStatus = decision;
   report.decision = metadata.choice;
   report.decisionLabel = metadata.label;
-  report.decisionReason = reason;
   report.resolvedBy = "Admin";
   report.resolutionAt = now;
   report.tone = decision === "REPORT_CASE_HIDDEN" ? "danger" : "neutral";
@@ -110,7 +109,7 @@ export function saveMockReportDecision(
     const memberResult = recordMemberViolationInData(
       data,
       typeof report.reportedMemberId === "string" ? report.reportedMemberId : "",
-      reason,
+      reasonCode,
       "",
       {
         caseId: report.id,
