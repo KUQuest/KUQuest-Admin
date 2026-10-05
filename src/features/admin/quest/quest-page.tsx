@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { ApiError } from "../../../lib/api/client";
-import { AdminActionReceipt } from "../../../components/admin/admin-action-feedback";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminRecordHeader } from "../../../components/admin/admin-record-header";
 import { AdminStatusAlert } from "../../../components/admin/admin-status-alert";
@@ -27,10 +26,6 @@ import {
   type QuestFinanceView,
 } from "./quest-model";
 import type { QuestDetailPageData } from "./quest-service";
-import {
-  applyMockQuestOverride,
-  readMockQuestOverride,
-} from "./quest-mock-state";
 import { QuestCommandDialog, type QuestCommand, type QuestCommandSubmission } from "./quest-command-dialog";
 import { useQuestCommandMutation, useQuestOpenDisputeMutation } from "./quest-query";
 
@@ -40,7 +35,6 @@ type QuestDetailPageProps = {
   questId: string;
   presentation?: QuestPresentation;
   initialData: QuestDetailPageData;
-  dataSource: "api" | "mock";
 };
 
 function newIdempotencyKey(action: QuestCommand, questId: string): string {
@@ -634,7 +628,7 @@ function QuestDetailContent({
   );
 }
 
-export function QuestDetailPage({ questId, presentation = "page", initialData, dataSource }: QuestDetailPageProps) {
+export function QuestDetailPage({ questId, presentation = "page", initialData }: QuestDetailPageProps) {
   const router = useRouter();
   const { translateText } = useAdminShell();
   const [detail, setDetail] = useState<QuestDetailView>(initialData.detail);
@@ -644,25 +638,16 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
   const [command, setCommand] = useState<QuestCommand | null>(null);
   const [commandError, setCommandError] = useState<string | null>(null);
   const [disputeError, setDisputeError] = useState<string | null>(null);
-  const [actionReceipt, setActionReceipt] = useState<{
-    action: string;
-    status: string;
-    reason: string;
-    occurredAt: string;
-  } | null>(null);
   const commandMutation = useQuestCommandMutation();
   const openDisputeMutation = useQuestOpenDisputeMutation();
 
   useEffect(() => {
-    const persistedDetail = dataSource === "mock" && typeof window !== "undefined"
-      ? applyMockQuestOverride(initialData.detail, readMockQuestOverride(window.localStorage, initialData.detail.id))
-      : initialData.detail;
-    setDetail(persistedDetail);
+    setDetail(initialData.detail);
     setFinance(initialData.finance);
     setLinkedDisputeId(initialData.linkedDisputeId);
     setDisputeLookupError(initialData.disputeLookupError ?? null);
     setDisputeError(null);
-  }, [initialData, dataSource]);
+  }, [initialData]);
 
   function openCommand(nextCommand: QuestCommand) {
     setCommandError(null);
@@ -693,30 +678,19 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
     if (!detail || !command || command !== submission.command) return;
     setCommandError(null);
     try {
-      const result = await commandMutation.mutateAsync({
+      await commandMutation.mutateAsync({
         detail,
-        dataSource,
         submission,
         idempotencyKey: newIdempotencyKey(submission.command, detail.id),
       });
-      if (result.detail && result.occurredAt) {
-        setDetail(result.detail);
-        setActionReceipt({
-          action: submission.command === "hide" ? "Hide Quest" : submission.command === "restore" ? "Restore Quest" : "Terminate Quest",
-          status: submission.command === "hide" ? "HIDDEN" : submission.command === "restore" ? "DISCOVERABLE" : "QUEST_CANCELLED",
-          reason: result.reason,
-          occurredAt: result.occurredAt,
-        });
-      }
       setCommand(null);
-      if (dataSource === "api") router.refresh();
+      router.refresh();
     } catch (commandErrorValue: unknown) {
       setCommandError(errorMessage(commandErrorValue, "Quest command failed."));
     }
   }
 
-  const receipt = actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Quest" resourceId={detail.displayId} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {translateText(actionReceipt.reason)}</p>} /> : null;
-  const content = <><QuestDetailContent detail={detail} finance={finance} linkedDisputeId={linkedDisputeId} disputeLookupError={disputeLookupError} onCommand={openCommand} onOpenDispute={openDispute} disputePending={openDisputeMutation.isPending} disputeError={disputeError} showFullDetailLink={presentation === "drawer"} recordLayout={presentation === "page"} />{receipt}</>;
+  const content = <QuestDetailContent detail={detail} finance={finance} linkedDisputeId={linkedDisputeId} disputeLookupError={disputeLookupError} onCommand={openCommand} onOpenDispute={openDispute} disputePending={openDisputeMutation.isPending} disputeError={disputeError} showFullDetailLink={presentation === "drawer"} recordLayout={presentation === "page"} />;
 
   if (presentation === "drawer") {
     return (
@@ -724,7 +698,7 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
         <AdminDrawer ariaLabel={translateText("Close Quest detail")} title={detail.title} titleId="quest-drawer-title" subtitle={<>{translateText("Quest")} {detail.displayId || "—"} · {translateText("Quest detail drawer")}</>} className="quest-drawer" openerAttribute="data-quest-drawer-trigger" openerValue={questId} escapeDisabled={Boolean(command)} onClose={closeDrawer}>
           {content}
         </AdminDrawer>
-        {command ? <QuestCommandDialog detail={detail} command={command} dataSource={dataSource} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandMutation.isPending} /> : null}
+        {command ? <QuestCommandDialog detail={detail} command={command} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandMutation.isPending} /> : null}
       </>
     );
   }
@@ -742,7 +716,7 @@ export function QuestDetailPage({ questId, presentation = "page", initialData, d
       <QuestRecordAlert detail={detail} />
       <RecordStatusBar className="quest-record-status-bar" items={[{ id: "status", label: translateText("Status"), value: <Badge state={detail.state} /> }, { id: "participant-mode", label: translateText("Participant mode"), value: translateText(detail.participation === "GROUP" ? "Team" : "Solo") }, { id: "created", label: translateText("Created"), value: formatQuestDate(detail.createdAt) }, { id: "funding-total", label: translateText("Quest Funding Total"), value: formatQuestMoney(finance?.quest.questFundingTotalSatang ?? detail.questFundingTotalSatang) }, { id: "candidates", label: translateText("Candidates"), value: questCandidateCount(detail) }]} />
       <div className="min-w-0">{content}</div>
-      {command ? <QuestCommandDialog detail={detail} command={command} dataSource={dataSource} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandMutation.isPending} /> : null}
+      {command ? <QuestCommandDialog detail={detail} command={command} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandMutation.isPending} /> : null}
     </main>
   );
 }

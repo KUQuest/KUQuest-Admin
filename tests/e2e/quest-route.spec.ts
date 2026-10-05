@@ -5,7 +5,7 @@ import {
   mockQuestDetail as questDetail,
   mockQuestFinance as financeDetail,
   mockQuests as quests,
-} from "../../src/features/admin/quest/quest-mock-data";
+} from "../fixtures/admin-quest-api-fixtures";
 
 const OPEN_QUEST_ID = "00000000-0000-0000-0000-000000000606";
 const TEAM_QUEST_ID = "00000000-0000-0000-0000-000000000631";
