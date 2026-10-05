@@ -152,7 +152,7 @@ export function AdminGlobalSearch({ open, onClose }: AdminGlobalSearchProps) {
   const allResults = useMemo(() => {
     if (data) return overviewSearchResultsFromSearchApi(data.items);
     return [];
-  }, [data, query]);
+  }, [data]);
   const results = useMemo(
     () => kind === "all" ? allResults : allResults.filter((result) => result.kind === kind),
     [allResults, kind],

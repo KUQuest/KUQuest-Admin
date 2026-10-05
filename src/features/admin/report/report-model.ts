@@ -7,7 +7,6 @@ import {
 import {
   isConductReportStatus,
   isReportCaseStatus,
-  reportCaseStatusFor,
   reportCaseStatusLabel,
   type ReportCaseStatus,
 } from "../domain/rulebook";

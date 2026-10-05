@@ -19,8 +19,7 @@ import {
   type WalletStatus,
 } from "../domain/rulebook";
 import type { DashboardActivity } from "../dashboard/dashboard-model";
-import { displayAdminId } from "../display-admin-id";
-import { recordText, timestampValue } from "./overview-values";
+import { timestampValue } from "./overview-values";
 
 export {
   compareOverviewSearchResults,

@@ -1,8 +1,7 @@
 import { useEffect, useMemo } from "react";
-import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { adminApiProvider } from "../api/admin-provider";
-import { replaceInfiniteItem } from "../data/query-data";
 import type { MemberModel, MemberPageData } from "./member-model";
 import { loadMemberDetailFromApi, loadMemberPageData } from "./member-service";
 
@@ -21,7 +20,6 @@ function pageFromQueryData(pages: MemberPageData[]): MemberPageData {
 }
 
 export function useMemberBoardQuery(initialData?: MemberPageData) {
-  const queryClient = useQueryClient();
   const query = useInfiniteQuery({
     queryKey: memberBoardQueryKey,
     initialPageParam: null as string | null,
