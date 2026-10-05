@@ -152,7 +152,27 @@ function MemberModerationSummary({ model, translateText }: { model: MemberModel;
 }
 
 function MemberRecentReports({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
-  return <Card as="section" className="user-detail-panel p-[16px_18px]"><CardHeader flush className="user-panel-heading"><h2>{translateText("Recent Reports")}</h2><span className={adminRecordCount}>{model.reports.length}</span></CardHeader>{model.reportsError ? <p className="audit-note">{translateText(model.reportsError)}</p> : model.reports.length ? <div className="user-recent-reports grid">{model.reports.slice(0, 3).map((report) => <Link className="flex items-center justify-between gap-3 border-t border-admin-border py-2.5 text-admin-text no-underline first:border-t-0 hover:[&>span:first-child_strong]:text-admin-accent" key={report.id} href={report.href}><span><strong className="block text-[15px] leading-[1.4]">{report.displayId || translateText(report.kind)}</strong><small className="mt-0.5 block text-[15px] leading-[1.45] text-admin-muted">{translateText(report.category)}</small></span><span className="badge">{translateText(reportCaseStatusLabel(report.status))}</span></Link>)}</div> : <p className="audit-note">{translateText("No reports have been filed against this account.")}</p>}</Card>;
+  return (
+    <Card as="section" className="user-detail-panel p-[16px_18px]">
+      <CardHeader flush className="user-panel-heading flex items-center justify-between gap-3">
+        <h2>{translateText("Recent Reports")}</h2>
+        <span className={adminRecordCount}>{model.reports.length}</span>
+      </CardHeader>
+      {model.reportsError ? <p className="audit-note">{translateText(model.reportsError)}</p> : model.reports.length ? (
+        <div className="user-recent-reports grid">
+          {model.reports.slice(0, 3).map((report) => (
+            <Link className="flex items-center justify-between gap-3 border-t border-admin-border py-2.5 text-admin-text no-underline first:border-t-0 hover:[&>span:first-child_strong]:text-admin-accent" key={report.id} href={report.href}>
+              <span className="min-w-0">
+                <strong className="block text-[15px] leading-[1.4]">{report.displayId || translateText(report.kind)}</strong>
+                <small className="mt-0.5 block text-[15px] leading-[1.45] text-admin-muted">{translateText(report.category)}</small>
+              </span>
+              <span className="badge shrink-0">{translateText(reportCaseStatusLabel(report.status))}</span>
+            </Link>
+          ))}
+        </div>
+      ) : <p className="audit-note">{translateText("No reports have been filed against this account.")}</p>}
+    </Card>
+  );
 }
 
 function MemberAbout({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
