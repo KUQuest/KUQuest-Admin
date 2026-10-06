@@ -87,6 +87,7 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
             <CardHeader flush className={adminRecordHeader}><h3 id="activity-log-record-heading" className={adminRecordHeading}>{translateText("Activity record")}</h3></CardHeader>
             <div className={adminRecordFacts}>
               <div className={adminRecordFact}><span>{translateText("Timestamp")}</span><strong>{formatActivityLogTimestamp(entry.createdAt)}</strong></div>
+              <div className={adminRecordFact}><span>{translateText("Actor")}</span><strong>{displayValue(entry.adminName)}</strong></div>
               <div className={adminRecordFact}><span>{translateText("Action")}</span><strong>{translateText(activityLogActionLabel(entry.action))}</strong></div>
               <div className={adminRecordFact}><span>{translateText("Resource type")}</span><strong>{translateText(activityLogResourceTypeLabel(entry.resourceType))}</strong></div>
               <div className={adminRecordFact}><span>{translateText("Resource ID")}</span><strong>{displayValue(entry.resourceId)}</strong></div>
@@ -98,7 +99,6 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
           <Card as="section" className={`${adminRecordSection} activity-log-admin-section`} aria-labelledby="activity-log-admin-heading">
             <CardHeader flush className={adminRecordHeader}><h3 id="activity-log-admin-heading" className={adminRecordHeading}>{translateText("Admin")}</h3></CardHeader>
             <div className={adminRecordFacts}>
-              <div className={adminRecordFact}><span>{translateText("Actor")}</span><strong>{displayValue(entry.adminName)}</strong></div>
               <div className={adminRecordFact}><span>{translateText("Admin ID")}</span><strong>{displayValue(entry.adminId)}</strong></div>
               <div className={adminRecordFact}><span>{translateText("Admin first name")}</span><strong>{displayValue(entry.admin.firstName)}</strong></div>
               <div className={adminRecordFact}><span>{translateText("Admin last name")}</span><strong>{displayValue(entry.admin.lastName)}</strong></div>
