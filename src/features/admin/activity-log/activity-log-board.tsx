@@ -89,11 +89,9 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
               <div className={adminRecordFact}><span>{translateText("Timestamp")}</span><strong>{formatActivityLogTimestamp(entry.createdAt)}</strong></div>
               <div className={adminRecordFact}><span>{translateText("Actor")}</span><strong>{displayValue(entry.adminName)}</strong></div>
               <div className={adminRecordFact}><span>{translateText("Action")}</span><strong>{translateText(activityLogActionLabel(entry.action))}</strong></div>
-              <div className={adminRecordFact}><span>{translateText("Resource type")}</span><strong>{translateText(activityLogResourceTypeLabel(entry.resourceType))}</strong></div>
-              <div className={adminRecordFact}><span>{translateText("Resource ID")}</span><strong>{displayValue(entry.resourceId)}</strong></div>
+              <div className={adminRecordFact}><span>{translateText("Event type")}</span><strong>{translateText(activityLogResourceTypeLabel(entry.resourceType))}</strong></div>
+              <div className={adminRecordFact}><span>{translateText("Event ID")}</span><strong>{displayValue(entry.resourceId)}</strong></div>
               <div className={adminRecordFact}><span>{translateText("Reason code")}</span><strong>{translateText(activityLogReasonLabel(entry.reasonCode))}</strong></div>
-              <div className={adminRecordFact}><span>{translateText("Reason catalog version")}</span><strong>{displayValue(entry.reasonCatalogVersion)}</strong></div>
-              <div className={adminRecordFact}><span>{translateText("Activity ID")}</span><strong>{displayValue(entry.id)}</strong></div>
             </div>
           </Card>
           <Card as="section" className={`${adminRecordSection} activity-log-admin-section`} aria-labelledby="activity-log-admin-heading">
