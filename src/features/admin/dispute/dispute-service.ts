@@ -9,7 +9,6 @@ import {
 } from "./dispute-model";
 
 export type DisputeCasePageData = {
-  source: "api" | "mock";
   items: DisputeCaseModel[];
   nextCursor: string | null;
   countsByStatus?: Record<DisputeCaseStatus, number>;
@@ -25,7 +24,7 @@ type DisputeCaseStatusCursors = Partial<Record<DisputeCaseStatus, string>>;
 
 function disputeCaseModels(values: readonly unknown[]): DisputeCaseModel[] {
   return values.flatMap((value) => {
-    const model = disputeCaseModelFromRecord(value, "api");
+    const model = disputeCaseModelFromRecord(value);
     return model ? [model] : [];
   });
 }
@@ -155,11 +154,10 @@ export async function loadDisputeCasePageData(
   }
   const records = pages
     .flatMap(({ page }) => page.items)
-    .filter((dispute) => disputeCaseModelFromRecord(dispute, "api") !== null)
+    .filter((dispute) => disputeCaseModelFromRecord(dispute) !== null)
     .sort((left, right) => timestampValue(record(right)?.createdAt) - timestampValue(record(left)?.createdAt));
   const items = await enrichDisputeCases(records, cookieHeader);
   return {
-    source: "api",
     items: disputeCaseModels(items),
     nextCursor: Object.keys(nextCursors).length ? JSON.stringify(nextCursors) : null,
   };
@@ -173,8 +171,15 @@ export async function loadDisputeCaseDetailFromApi(
     disputeId,
     adminApiRequestOptions(cookieHeader),
   );
-  const model = disputeCaseModelFromRecord(dispute, "api");
+  const model = disputeCaseModelFromRecord(dispute);
   if (model?.id !== disputeId) return null;
   const [enriched] = await enrichDisputeCases([dispute], cookieHeader);
-  return disputeCaseModelFromRecord(enriched, "api");
+  return disputeCaseModelFromRecord(enriched);
+}
+
+export function newDisputeCaseIdempotencyKey(disputeId: string): string {
+  const uuid = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `admin-resolve-dispute-${disputeId}-${uuid}`;
 }

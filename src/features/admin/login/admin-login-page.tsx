@@ -12,9 +12,6 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { adminApiProvider } from "../api/admin-provider";
-import { ADMIN_SESSION_KEY } from "../admin-auth";
-import { isAdminMockEnabled } from "../../../lib/auth/admin-auth-mode";
-import { ADMIN_MOCK_SESSION_COOKIE } from "../../../lib/auth/admin-session-policy";
 import { Button } from "../../../components/ui";
 
 type AdminLanguage = "en" | "th";
@@ -125,23 +122,9 @@ export function AdminLoginPage() {
     setPasswordError(nextPasswordError);
     if (nextEmailError || nextPasswordError) return;
 
-    if (isAdminMockEnabled()) {
-      localStorage.setItem(
-        ADMIN_SESSION_KEY,
-        JSON.stringify({ email: normalizedEmail, signedInAt: new Date().toISOString() }),
-      );
-      document.cookie = `${ADMIN_MOCK_SESSION_COOKIE}=1; Path=/; SameSite=Lax`;
-      window.location.assign("/overview");
-      return;
-    }
-
     setIsSubmitting(true);
     try {
-      const session = await adminApiProvider.auth.signInEmail(normalizedEmail, password);
-      localStorage.setItem(
-        ADMIN_SESSION_KEY,
-        JSON.stringify({ email: session.user.email, signedInAt: new Date().toISOString() }),
-      );
+      await adminApiProvider.auth.signInEmail(normalizedEmail, password);
       window.location.assign("/overview");
     } catch (error: unknown) {
       setFormError(error instanceof Error ? error.message : copy[language].signInFailed);

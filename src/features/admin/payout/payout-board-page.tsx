@@ -2,9 +2,6 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo } from "react";
-
 import { AdminPageHeader } from "../../../components/admin/admin-page-header";
 import { AdminSortableHeader } from "../../../components/admin/admin-sortable-header";
 import { adminBoardCount, adminBoardPagination, adminBoardTable } from "../../../components/admin/admin-record-styles";
@@ -14,24 +11,20 @@ import { payoutRoutes } from "../admin-routes";
 
 import { countBoardTabMatches } from "../data/board-tab-counts";
 import { useAdminBoardReset } from "../data/use-admin-board-reset";
-import { formatPayoutDate, formatPayoutMoney, pagePayoutRows, PAYOUT_BOARD_TABS, payoutMatchesTab, payoutPageCount, searchPayoutRows, sortPayoutRows, type PayoutBoardPageSize, type PayoutBoardRow, type PayoutBoardTab, type PayoutDetailView } from "./payout-model";
-import type { PayoutBoardPageData, PayoutDataSource } from "./payout-service";
-import { applyMockPayoutOverrideToRow, PAYOUT_MOCK_UPDATED_EVENT, payoutMockOverrideFromDetail, readMockPayoutOverrides } from "./payout-mock-state";
+import { formatPayoutDate, formatPayoutMoney, pagePayoutRows, PAYOUT_BOARD_TABS, payoutMatchesTab, payoutPageCount, searchPayoutRows, sortPayoutRows, type PayoutBoardPageSize, type PayoutBoardTab } from "./payout-model";
+import type { PayoutBoardPageData } from "./payout-service";
 import { usePayoutBoardStore } from "./payout-board-store";
 import { usePayoutBoardQuery } from "./payout-query";
 import { PayoutStatusBadge as Badge } from "./payout-status-badge";
 
 export function AdminPayoutPage({
   initialData,
-  dataSource = "mock",
 }: {
   initialData: PayoutBoardPageData;
-  dataSource?: PayoutDataSource;
 }) {
   const router = useRouter();
   const { translateText } = useAdminShell();
-  const queryClient = useQueryClient();
-  const { data: boardData, queryKey } = usePayoutBoardQuery(initialData, dataSource);
+  const { data: boardData } = usePayoutBoardQuery(initialData);
   const {
     query,
     tab,
@@ -49,34 +42,7 @@ export function AdminPayoutPage({
 
   useAdminBoardReset(reset);
 
-  const rows = useMemo(() => {
-    const nextRows = boardData.allRows ?? boardData.rows;
-    if (dataSource !== "mock" || typeof window === "undefined") return nextRows;
-    const overrides = readMockPayoutOverrides(window.localStorage);
-    return nextRows.map((row) => applyMockPayoutOverrideToRow(row, overrides[row.id] ?? null));
-  }, [boardData, dataSource]);
-
-  useEffect(() => {
-    if (dataSource !== "mock") return;
-    const updateRow = (event: Event) => {
-      const nextDetail = (event as CustomEvent<PayoutDetailView>).detail;
-      if (!nextDetail?.id) return;
-      queryClient.setQueryData<PayoutBoardPageData>(queryKey, (current) => {
-        if (!current) return current;
-        const override = payoutMockOverrideFromDetail(nextDetail);
-        const updateRows = (currentRows: PayoutBoardRow[]) => currentRows.map((row) => (
-          row.id === nextDetail.id ? applyMockPayoutOverrideToRow(row, override) : row
-        ));
-        return {
-          ...current,
-          rows: updateRows(current.rows),
-          allRows: current.allRows ? updateRows(current.allRows) : current.allRows,
-        };
-      });
-    };
-    window.addEventListener(PAYOUT_MOCK_UPDATED_EVENT, updateRow);
-    return () => window.removeEventListener(PAYOUT_MOCK_UPDATED_EVENT, updateRow);
-  }, [dataSource, queryClient, queryKey]);
+  const rows = boardData.rows;
 
   const filteredRows = searchPayoutRows(rows, query).filter((row) => payoutMatchesTab(row, tab));
   const tabCounts = countBoardTabMatches(rows, PAYOUT_BOARD_TABS, payoutMatchesTab);

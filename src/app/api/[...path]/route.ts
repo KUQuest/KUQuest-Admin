@@ -29,6 +29,8 @@ async function proxyAdminApi(request: Request, context: AdminApiRouteContext): P
   const headers = new Headers(request.headers);
   headers.delete("host");
   headers.delete("content-length");
+  const cookieHeader = request.headers.get("cookie");
+  if (cookieHeader) headers.set("cookie", cookieHeader);
 
   const hasBody = request.method !== "GET" && request.method !== "HEAD";
   const upstream = await fetch(target, {
@@ -36,6 +38,7 @@ async function proxyAdminApi(request: Request, context: AdminApiRouteContext): P
     headers,
     body: hasBody ? await request.arrayBuffer() : undefined,
     cache: "no-store",
+    credentials: "include",
   });
   const responseHeaders = new Headers(upstream.headers);
   for (const name of hopByHopHeaders) responseHeaders.delete(name);

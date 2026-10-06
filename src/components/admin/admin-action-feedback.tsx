@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
-import { formatAdminTimestamp } from "../../features/admin/date-format";
 import { useAdminShell } from "./admin-shell-context";
-import { Button } from "../ui/button";
 
 export type AdminActionSummaryProps = {
   title: string;
@@ -76,55 +74,5 @@ export function AdminActionSummary({
       </dl>
       {warning ? <p className="admin-action-summary-warning">{warning}</p> : null}
     </section>
-  );
-}
-
-export type AdminActionReceiptProps = {
-  title?: string;
-  action: string;
-  resource: string;
-  resourceId: string | null;
-  status?: string;
-  admin?: string;
-  occurredAt?: string;
-  details?: ReactNode;
-  mock?: boolean;
-  onDismiss?: () => void;
-};
-
-export function AdminActionReceipt({
-  title = "Action recorded",
-  action,
-  resource,
-  resourceId,
-  status = "Recorded",
-  admin = "mock-admin",
-  occurredAt,
-  details,
-  mock = false,
-  onDismiss,
-}: AdminActionReceiptProps) {
-  const { translateText } = useAdminShell();
-  const timestamp = occurredAt ?? new Date().toISOString();
-
-  return (
-    <output className="admin-action-receipt" aria-live="polite">
-      <div className="admin-action-receipt-heading">
-        <span className="admin-action-receipt-icon" aria-hidden="true">✓</span>
-        <div>
-          <strong>{translateText(title)}</strong>
-          {mock ? <small>{translateText("Development fixture")}</small> : null}
-        </div>
-      </div>
-      <dl className="admin-action-receipt-facts">
-        <div><dt>{translateText("Action")}</dt><dd>{translateText(displayState(action))}</dd></div>
-        {resourceId ? <div><dt>{translateText("Resource")}</dt><dd>{translateText(resource)} · {resourceId}</dd></div> : null}
-        <div><dt>{translateText("Result")}</dt><dd>{translateText(displayState(status))}</dd></div>
-        <div><dt>{translateText("Admin")}</dt><dd>{admin}</dd></div>
-        <div><dt>{translateText("Time")}</dt><dd><time dateTime={timestamp}>{formatAdminTimestamp(timestamp)}</time></dd></div>
-      </dl>
-      {details ? <div className="admin-action-receipt-details">{details}</div> : null}
-      {onDismiss ? <Button variant="link" size="sm" type="button" onClick={onDismiss}>{translateText("Dismiss")}</Button> : null}
-    </output>
   );
 }

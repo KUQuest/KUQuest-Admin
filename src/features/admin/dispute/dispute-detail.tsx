@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState, type ReactNode } from "react";
+import { useRef, useState } from "react";
 
-import { AdminActionReceipt } from "../../../components/admin/admin-action-feedback";
 import { formatAdminTimestamp } from "../date-format";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminRecordHeader } from "../../../components/admin/admin-record-header";
@@ -29,12 +28,9 @@ import {
   adminRecordSideFacts,
 } from "../../../components/admin/admin-record-styles";
 import { type AdminDisputeReasonCode, type DisputeResolution } from "../api/admin-api";
-import { isAdminApiEnabled } from "../api/admin-provider";
 import { disputeRoutes, questRoutes } from "../admin-routes";
 import { ModerationCaseWorkspace, ModerationHistoryPanel } from "../moderation-case/moderation-case-workspace";
-import {
-  newDisputeCaseIdempotencyKey,
-} from "./dispute-adapter";
+import { newDisputeCaseIdempotencyKey } from "./dispute-service";
 import { useDisputeBoardStore } from "./dispute-board-store";
 import {
   disputeCaseDecisionFor,
@@ -224,16 +220,16 @@ function DecisionControls({ model, translateText, selectedChoice, commandError, 
   </>;
 }
 
-function FullSections({ model, translateText, onOpenEvidence, selectedChoice, commandError, onSelectChoice, onStartDecision, actionReceipt }: { model: DisputeCaseModel; translateText: (value: string) => string; onOpenEvidence: (reference: string) => void; selectedChoice: DisputeCaseDecisionChoice | null; commandError: string | null; onSelectChoice: (choice: DisputeCaseDecisionChoice) => void; onStartDecision: () => void; actionReceipt?: ReactNode }) {
+function FullSections({ model, translateText, onOpenEvidence, selectedChoice, commandError, onSelectChoice, onStartDecision }: { model: DisputeCaseModel; translateText: (value: string) => string; onOpenEvidence: (reference: string) => void; selectedChoice: DisputeCaseDecisionChoice | null; commandError: string | null; onSelectChoice: (choice: DisputeCaseDecisionChoice) => void; onStartDecision: () => void }) {
   return <>
     <AdminRecordGrid
       primary={<><Overview model={model} translateText={translateText} /><PartyStatements model={model} translateText={translateText} /><EvidenceSection model={model} translateText={translateText} onOpen={onOpenEvidence} /><Timeline model={model} translateText={translateText} /></>}
       side={<><MemberSummary heading={model.filerRole} id={model.filerId} name={model.filerName} href={model.filerHref} translateText={translateText} /><MemberSummary heading={model.respondentRole} id={model.respondentId} name={model.respondentName} href={model.respondentHref} translateText={translateText} /><Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Related Quest")}</h2></CardHeader><div className={adminRecordSideFacts}><div><span>{translateText("Quest")}</span><strong>{model.questTitle}</strong></div><div><span>{translateText("Quest State")}</span><strong>{translateText(questStateLabel(model.questState))}</strong></div><div><span>{translateText("Failed at")}</span><strong>{model.questFailedAt ? formatAdminTimestamp(model.questFailedAt) : translateText("Not provided.")}</strong></div></div><Button asChild variant="outline" className="mt-3 w-full"><a href={model.questHref ?? questRoutes.list()}>{translateText("Open Quest detail")}</a></Button></Card><Card as="section" className={`${adminRecordSection} dispute-decision-panel`}><CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{model.isActionable ? translateText("Dispute decision") : translateText("Recorded outcome")}</h2></CardHeader><DecisionControls model={model} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelect={onSelectChoice} onStart={onStartDecision} /></Card></>}
-    />{actionReceipt}
+    />
   </>;
 }
 
-function DrawerSections({ model, translateText, onOpenEvidence, selectedChoice, commandError, onSelectChoice, onStartDecision, actionReceipt }: { model: DisputeCaseModel; translateText: (value: string) => string; onOpenEvidence: (reference: string) => void; selectedChoice: DisputeCaseDecisionChoice | null; commandError: string | null; onSelectChoice: (choice: DisputeCaseDecisionChoice) => void; onStartDecision: () => void; actionReceipt?: ReactNode }) {
+function DrawerSections({ model, translateText, onOpenEvidence, selectedChoice, commandError, onSelectChoice, onStartDecision }: { model: DisputeCaseModel; translateText: (value: string) => string; onOpenEvidence: (reference: string) => void; selectedChoice: DisputeCaseDecisionChoice | null; commandError: string | null; onSelectChoice: (choice: DisputeCaseDecisionChoice) => void; onStartDecision: () => void }) {
   return <div className="dispute-case-drawer-detail admin-drawer-content-flow grid min-w-0 content-start gap-[18px]"><DisputeAlert model={model} translateText={translateText} /><ModerationCaseWorkspace
     kind="Dispute Case"
     caseId={model.displayId}
@@ -268,7 +264,7 @@ function DrawerSections({ model, translateText, onOpenEvidence, selectedChoice, 
       memberLabel={model.respondentRole}
     />
     <Card as="section" className={`${adminRecordSection} dispute-decision-panel`}><CardHeader flush className={adminRecordHeader}><h3 className={adminRecordHeading}>{model.isActionable ? translateText("Dispute decision") : translateText("Resolution")}</h3></CardHeader><DecisionControls model={model} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelect={onSelectChoice} onStart={onStartDecision} /></Card>
-  </ModerationCaseWorkspace>{actionReceipt}<div className="admin-drawer-actions sticky bottom-[-28px] z-[4] m-[18px_-24px_-28px] flex flex-wrap gap-2 border-t border-admin-border bg-admin-surface/95 px-6 py-3.5 shadow-[0_-6px_18px_rgba(0,0,0,0.09)] [&>*]:min-h-11 [&>*]:flex-[1_1_180px] [&>*]:text-center max-[720px]:bottom-[-24px] max-[720px]:m-[18px_-16px_-24px] max-[720px]:px-4 max-[720px]:[&>*]:basis-full">{model.questHref && <Button asChild size="lg" variant="outline"><Link href={model.questHref}>{translateText("Quest detail")}</Link></Button>}<Button asChild size="lg" variant="primary"><a href={disputeRoutes.detail(model.id)}>{translateText("Open full Dispute Case")}</a></Button></div></div>;
+  </ModerationCaseWorkspace><div className="admin-drawer-actions sticky bottom-[-28px] z-[4] m-[18px_-24px_-28px] flex flex-wrap gap-2 border-t border-admin-border bg-admin-surface/95 px-6 py-3.5 shadow-[0_-6px_18px_rgba(0,0,0,0.09)] [&>*]:min-h-11 [&>*]:flex-[1_1_180px] [&>*]:text-center max-[720px]:bottom-[-24px] max-[720px]:m-[18px_-16px_-24px] max-[720px]:px-4 max-[720px]:[&>*]:basis-full">{model.questHref && <Button asChild size="lg" variant="outline"><Link href={model.questHref}>{translateText("Quest detail")}</Link></Button>}<Button asChild size="lg" variant="primary"><a href={disputeRoutes.detail(model.id)}>{translateText("Open full Dispute Case")}</a></Button></div></div>;
 }
 
 export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = false, onUpdated }: DisputeCaseDetailProps) {
@@ -279,12 +275,6 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
   const [dialogOpen, setDialogOpen] = useState(false);
   const [commandError, setCommandError] = useState<string | null>(null);
   const [evidenceReference, setEvidenceReference] = useState<string | null>(null);
-  const [actionReceipt, setActionReceipt] = useState<{
-    action: string;
-    status: string;
-    reason: string;
-    occurredAt: string;
-  } | null>(null);
   const decisionMutation = useDisputeDecisionMutation();
 
   const model = disputeModel;
@@ -304,7 +294,7 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
     setDialogOpen(true);
   };
 
-  const confirmDecision = async (reason: string) => {
+  const confirmDecision = async () => {
     if (!selectedChoice) return;
     if (model.version === undefined) {
       setCommandError("The current Dispute Case version was not provided.");
@@ -331,9 +321,7 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
       const updatedModel = await decisionMutation.mutateAsync({
         model,
         command,
-        reason,
         options,
-        apiEnabled: isAdminApiEnabled(),
       });
       if (updatedModel.status === "DISPUTE_CASE_RESOLVED") {
         setBoardActiveTab("resolved");
@@ -344,20 +332,11 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
       onUpdated?.(updatedModel);
       setDialogOpen(false);
       setSelectedChoice(null);
-      if (!isAdminApiEnabled()) {
-        setActionReceipt({
-          action: command,
-          status: updatedModel.statusLabel,
-          reason,
-          occurredAt: new Date().toISOString(),
-        });
-      }
     } catch (error: unknown) {
       setCommandError(error instanceof Error ? error.message : "The Dispute Case decision could not be saved.");
     }
   };
 
-  const receipt = actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Dispute Case" resourceId={model.displayId || null} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {actionReceipt.reason}</p>} /> : null;
   const evidenceState: EvidenceState | null = evidenceReference ? {
     reference: evidenceReference,
     value: evidenceQuery.data ?? null,
@@ -365,9 +344,9 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
     loading: evidenceQuery.isPending,
   } : null;
   const overlays = <><DisputeDecisionDialog model={model} open={dialogOpen} choice={selectedChoice} busy={decisionMutation.isPending} error={commandError} translateText={translateText} onCancel={() => { if (!decisionMutation.isPending) { setDialogOpen(false); setCommandError(null); } }} onConfirm={confirmDecision} />{evidenceState && <EvidencePreview state={evidenceState} translateText={translateText} onClose={() => setEvidenceReference(null)} />}</>;
-  const content = <><DisputeAlert model={model} translateText={translateText} /><RecordStatusBar items={[{ id: "status", label: translateText("Status"), value: <span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span> }, { id: "category", label: translateText("Category"), value: translateText(model.category) }, { id: "opened", label: translateText("Opened"), value: model.submittedAt }, { id: "amount-at-risk", label: translateText("Amount at risk"), value: model.amountAtRiskLabel }, { id: "evidence", label: translateText("Evidence"), value: model.evidence.length || translateText("None") }]} /><FullSections model={model} translateText={translateText} onOpenEvidence={openEvidence} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} actionReceipt={receipt} /></>;
+  const content = <><DisputeAlert model={model} translateText={translateText} /><RecordStatusBar items={[{ id: "status", label: translateText("Status"), value: <span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span> }, { id: "category", label: translateText("Category"), value: translateText(model.category) }, { id: "opened", label: translateText("Opened"), value: model.submittedAt }, { id: "amount-at-risk", label: translateText("Amount at risk"), value: model.amountAtRiskLabel }, { id: "evidence", label: translateText("Evidence"), value: model.evidence.length || translateText("None") }]} /><FullSections model={model} translateText={translateText} onOpenEvidence={openEvidence} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} /></>;
 
-  if (drawer) return <><DrawerSections model={model} translateText={translateText} onOpenEvidence={openEvidence} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} actionReceipt={receipt} />{overlays}</>;
+  if (drawer) return <><DrawerSections model={model} translateText={translateText} onOpenEvidence={openEvidence} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} />{overlays}</>;
   return <main className="admin-route-page dispute-case-detail" tabIndex={-1}><AdminRecordHeader breadcrumbHref={disputeRoutes.list()} breadcrumbLabel={translateText("Dispute Cases")} recordId={model.displayId} title={model.title} subtitle={`${translateText(model.category)} · ${translateText("opened")} ${model.submittedAt}`} actions={<Button asChild size="lg" variant="outline"><Link href={disputeRoutes.list()}>{translateText("Back to Dispute Cases")}</Link></Button>} />{content}{overlays}</main>;
 }
 

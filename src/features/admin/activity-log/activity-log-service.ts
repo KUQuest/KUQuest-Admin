@@ -13,7 +13,6 @@ export {
   activityLogCsv,
   activityLogMatchesSearch,
   activityLogEntryMatchesFilters,
-  activityLogFixturePageData,
   activityLogTargetLabel,
   activityTargetHref,
   DEFAULT_ACTIVITY_LOG_FILTERS,
@@ -37,7 +36,6 @@ export async function loadActivityLogPageData(
   };
   const page = await adminApiProvider.read.listActivityLogs(query, adminApiRequestOptions(cookieHeader));
   return {
-    source: "api",
     items: page.items.map(activityLogEntryFromApi),
     nextCursor: page.nextCursor,
   };

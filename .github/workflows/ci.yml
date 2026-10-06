@@ -46,9 +46,6 @@ jobs:
       - name: Unit tests
         run: bun run test
 
-      - name: Admin shell browser tests
-        run: bun run test:e2e:admin-shell
-
       - name: Browser tests
         run: bun run test:e2e
 

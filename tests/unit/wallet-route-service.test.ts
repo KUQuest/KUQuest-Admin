@@ -1,10 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test";
 
-import {
-  mockWalletDetails,
-  mockWalletLedgerTransactions,
-  mockWallets,
-} from "../../src/features/admin/wallet/wallet-mock-data";
+import { adminWalletDetailFixtures, adminWalletFixtures } from "../fixtures/admin-wallet-api-fixtures";
 import {
   loadWalletBoardPageData,
   loadWalletDrawerData,
@@ -27,26 +23,6 @@ afterEach(() => {
 });
 
 describe("Wallet route service boundary", () => {
-  it("loads mock Wallet rows without a browser or API read", async () => {
-    let calls = 0;
-    globalThis.fetch = (async () => {
-      calls += 1;
-      return jsonResponse({ success: true, data: null });
-    }) as unknown as typeof globalThis.fetch;
-
-    const result = await loadWalletBoardPageData(undefined, "mock");
-
-    expect(calls).toBe(0);
-    expect(result.rows.map((row) => row.id)).toEqual([
-      "WAL-1001",
-      "WAL-1002",
-      "WAL-1003",
-      "WAL-1004",
-      "WAL-1005",
-    ]);
-    expect(result.dataSource).toBe("mock");
-  });
-
   it("reads Wallet rows and Finance Overview through the Admin API with the server cookie", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     const requests: Request[] = [];
@@ -61,8 +37,8 @@ describe("Wallet route service boundary", () => {
         return jsonResponse({
           success: true,
           data: url.searchParams.has("cursor")
-            ? { items: [mockWallets[1]], nextCursor: null }
-            : { items: [mockWallets[0]], nextCursor: "wallet-next" },
+            ? { items: [adminWalletFixtures[1]], nextCursor: null }
+            : { items: [adminWalletFixtures[0]], nextCursor: "wallet-next" },
         });
       }
 
@@ -80,7 +56,7 @@ describe("Wallet route service boundary", () => {
       });
     }) as typeof globalThis.fetch;
 
-    const result = await loadWalletBoardPageData("kuquest-admin=session", "api");
+    const result = await loadWalletBoardPageData("kuquest-admin=session");
 
     expect(result.rows.map((row) => row.id)).toEqual(["WAL-1001"]);
     if (result.remainingRows) {
@@ -89,7 +65,6 @@ describe("Wallet route service boundary", () => {
       expect(remaining.error).toBeNull();
     }
     expect(result.summary?.totalCirculatingSatang).toBe(100);
-    expect(result.dataSource).toBe("api");
     expect(requests).toHaveLength(3);
     expect(requests.every((request) => request.headers.get("cookie") === "kuquest-admin=session")).toBe(true);
     expect(cacheModes.every((cache) => cache === "no-store")).toBe(true);
@@ -101,7 +76,7 @@ describe("Wallet route service boundary", () => {
 
   it("keeps the API Wallet board usable when a Wallet has no Member association", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
-    const walletWithoutMember = { ...mockWallets[0], member: null };
+    const walletWithoutMember = { ...adminWalletFixtures[0], member: null };
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = new Request(input, init);
       if (new URL(request.url).pathname === "/api/v1/admin/wallets") {
@@ -121,14 +96,14 @@ describe("Wallet route service boundary", () => {
       });
     }) as unknown as typeof globalThis.fetch;
 
-    const result = await loadWalletBoardPageData("kuquest-admin=session", "api");
+    const result = await loadWalletBoardPageData("kuquest-admin=session");
 
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0]).toMatchObject({
-      id: mockWallets[0]?.id,
+      id: adminWalletFixtures[0]?.id,
       memberAvailable: false,
       memberName: "Member not provided",
-      memberId: mockWallets[0]?.userId,
+      memberId: adminWalletFixtures[0]?.userId,
     });
   });
 
@@ -143,7 +118,7 @@ describe("Wallet route service boundary", () => {
       const url = new URL(request.url);
 
       if (url.pathname === "/api/v1/admin/wallets/WAL-1001") {
-        return jsonResponse({ success: true, data: { wallet: mockWalletDetails[0] } });
+        return jsonResponse({ success: true, data: { wallet: adminWalletDetailFixtures[0] } });
       }
       if (url.pathname === "/api/v1/admin/wallets/WAL-1001/status-history") {
         return jsonResponse({ success: true, data: { history: [] } });
@@ -175,7 +150,7 @@ describe("Wallet route service boundary", () => {
       });
     }) as typeof globalThis.fetch;
 
-    const result = await loadWalletDrawerData("WAL-1001", "kuquest-admin=session", "api");
+    const result = await loadWalletDrawerData("WAL-1001", "kuquest-admin=session");
 
     expect(result.detail.id).toBe("WAL-1001");
     expect(result.history).toEqual([]);
@@ -183,34 +158,6 @@ describe("Wallet route service boundary", () => {
     expect(requests).toHaveLength(3);
     expect(requests.every((request) => request.headers.get("cookie") === "kuquest-admin=session")).toBe(true);
     expect(cacheModes.every((cache) => cache === "no-store")).toBe(true);
-  });
-
-  it("loads committed and sealed mock Ledger Transactions for the Wallet drawer and Statement", async () => {
-    let calls = 0;
-    globalThis.fetch = (async () => {
-      calls += 1;
-      return jsonResponse({ success: true, data: null });
-    }) as unknown as typeof globalThis.fetch;
-
-    const drawer = await loadWalletDrawerData("WAL-1001", undefined, "mock");
-    const generatedDrawer = await loadWalletDrawerData("WAL-1006", undefined, "mock");
-    const statement = await loadWalletStatementPageData("68000100", undefined, "mock");
-
-    expect(calls).toBe(0);
-    expect(mockWalletLedgerTransactions["WAL-1001"]).toHaveLength(5);
-    expect(mockWalletLedgerTransactions["WAL-1001"]?.every((transaction) => transaction.sealedAt !== null)).toBe(true);
-    expect(drawer.ledger).toHaveLength(5);
-    expect(drawer.ledger.map((transaction) => transaction.id)).toEqual([
-      "LEDGER-WAL-1001-01",
-      "LEDGER-WAL-1001-02",
-      "LEDGER-WAL-1001-03",
-      "LEDGER-WAL-1001-04",
-      "LEDGER-WAL-1001-05",
-    ]);
-    expect(drawer.ledger.every((transaction) => transaction.movement.length > 0)).toBe(true);
-    expect(generatedDrawer.ledger).toHaveLength(5);
-    expect(statement.ledger).toHaveLength(5);
-    expect(statement.ledger.map((transaction) => transaction.id)).toEqual(drawer.ledger.map((transaction) => transaction.id.replace("WAL-1001", "WAL-1006")));
   });
 
   it("loads every Ledger page for the full Wallet Statement", async () => {
@@ -224,7 +171,7 @@ describe("Wallet route service boundary", () => {
       const url = new URL(request.url);
 
       if (url.pathname === "/api/v1/admin/wallets") {
-        return jsonResponse({ success: true, data: { items: [mockWallets[0]], nextCursor: null } });
+        return jsonResponse({ success: true, data: { items: [adminWalletFixtures[0]], nextCursor: null } });
       }
       if (url.searchParams.get("cursor") === "ledger-next") {
         return jsonResponse({
@@ -280,7 +227,7 @@ describe("Wallet route service boundary", () => {
       });
     }) as typeof globalThis.fetch;
 
-    const result = await loadWalletStatementPageData("68000000", "kuquest-admin=session", "api");
+    const result = await loadWalletStatementPageData("68000000", "kuquest-admin=session");
 
     expect(result.wallet.id).toBe("WAL-1001");
     expect(result.ledger.map((transaction) => transaction.id)).toEqual([
@@ -315,7 +262,7 @@ describe("Wallet route service boundary", () => {
       });
     }) as typeof globalThis.fetch;
 
-    const result = await verifyWalletProjection("WAL-1001", "kuquest-admin=session", "api");
+    const result = await verifyWalletProjection("WAL-1001", "kuquest-admin=session");
 
     expect(result).toEqual({ matches: false, activityCountMatches: true, projectedTotal: 300, ledgerTotal: 290 });
     expect(requests[0]?.headers.get("cookie")).toBe("kuquest-admin=session");
@@ -334,7 +281,7 @@ describe("Wallet route service boundary", () => {
         if (url.searchParams.get("cursor") === "wallet-next") return morePage;
         return jsonResponse({
           success: true,
-          data: { items: [mockWallets[0]], nextCursor: "wallet-next" },
+          data: { items: [adminWalletFixtures[0]], nextCursor: "wallet-next" },
         });
       }
 
@@ -344,7 +291,7 @@ describe("Wallet route service boundary", () => {
       });
     }) as typeof globalThis.fetch;
 
-    const resultPromise = loadWalletBoardPageData("kuquest-admin=session", "api");
+    const resultPromise = loadWalletBoardPageData("kuquest-admin=session");
     try {
       const result = await Promise.race([
         resultPromise,
@@ -354,7 +301,7 @@ describe("Wallet route service boundary", () => {
       expect(result.rows.map((row) => row.id)).toEqual(["WAL-1001"]);
       expect(result.remainingRows).not.toBeNull();
 
-      releaseMorePage(jsonResponse({ success: true, data: { items: [mockWallets[1]], nextCursor: null } }));
+      releaseMorePage(jsonResponse({ success: true, data: { items: [adminWalletFixtures[1]], nextCursor: null } }));
       await expect(result.remainingRows).resolves.toEqual({
         rows: expect.arrayContaining([expect.objectContaining({ id: "WAL-1002" })]),
         error: null,
@@ -375,7 +322,7 @@ describe("Wallet route service boundary", () => {
         if (url.searchParams.get("cursor") === "wallet-next") {
           return jsonResponse({ success: false, error: { code: "UNAVAILABLE", message: "Wallet page unavailable" } }, 503);
         }
-        return jsonResponse({ success: true, data: { items: [mockWallets[0]], nextCursor: "wallet-next" } });
+        return jsonResponse({ success: true, data: { items: [adminWalletFixtures[0]], nextCursor: "wallet-next" } });
       }
 
       return jsonResponse({
@@ -384,7 +331,7 @@ describe("Wallet route service boundary", () => {
       });
     }) as typeof globalThis.fetch;
 
-    const result = await loadWalletBoardPageData("kuquest-admin=session", "api");
+    const result = await loadWalletBoardPageData("kuquest-admin=session");
     if (!result.remainingRows) throw new Error("Expected a background Wallet page request.");
 
     await expect(result.remainingRows).resolves.toEqual({ rows: [], error: "Some Wallet records could not be loaded." });
@@ -395,12 +342,12 @@ describe("Wallet route service boundary", () => {
     globalThis.fetch = (async (input, init) => {
       const request = new Request(input, init);
       if (new URL(request.url).pathname === "/api/v1/admin/wallets") {
-        return jsonResponse({ success: true, data: { items: [mockWallets[0]], nextCursor: null } });
+        return jsonResponse({ success: true, data: { items: [adminWalletFixtures[0]], nextCursor: null } });
       }
       return jsonResponse({ success: false, error: { code: "UNAVAILABLE", message: "Finance unavailable" } }, 503);
     }) as typeof globalThis.fetch;
 
-    const result = await loadWalletBoardPageData(undefined, "api");
+    const result = await loadWalletBoardPageData();
 
     expect(result.rows).toHaveLength(1);
     expect(result.summary).toBeNull();
@@ -419,7 +366,7 @@ describe("Wallet route service boundary", () => {
       });
     }) as unknown as typeof globalThis.fetch;
 
-    const result = await loadWalletBoardPageData("kuquest-admin=session", "api");
+    const result = await loadWalletBoardPageData("kuquest-admin=session");
 
     expect(result.rows).toEqual([]);
     expect(result.remainingRows).toBeNull();

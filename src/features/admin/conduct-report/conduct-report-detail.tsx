@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 
-import { AdminActionReceipt } from "../../../components/admin/admin-action-feedback";
 import { formatAdminTimestamp } from "../date-format";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminRecordHeader } from "../../../components/admin/admin-record-header";
@@ -13,7 +12,6 @@ import { AdminStatusAlert } from "../../../components/admin/admin-status-alert";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import type { ConductReportDecision } from "../api/admin-api";
 import type { AdminDecisionSubmission } from "../admin-decision-note";
-import { isAdminApiEnabled } from "../api/admin-provider";
 import { Button } from "../../../components/ui/button";
 import { Card, CardContent, CardHeader } from "../../../components/ui/card";
 import { AdminOverviewMeta } from "../../../components/admin/admin-overview-meta";
@@ -36,9 +34,7 @@ import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { RecordStatusBar } from "../../../components/admin/record-status-bar";
 import { ModerationCaseWorkspace, ModerationHistoryPanel } from "../moderation-case/moderation-case-workspace";
 import { hasModerationHistory } from "../moderation-case/moderation-case-context";
-import {
-  newConductReportIdempotencyKey,
-} from "./conduct-report-adapter";
+import { newConductReportIdempotencyKey } from "./conduct-report-service";
 import { useConductReportBoardStore } from "./conduct-report-board-store";
 import { ConductReportDecisionDialog } from "./conduct-report-decision-dialog";
 import {
@@ -416,7 +412,6 @@ function ConductReportDrawerBody({
   onStartDecision,
   compact = true,
   showFullLink = true,
-  actionReceipt,
 }: {
   model: ConductReportModel;
   translateText: (value: string) => string;
@@ -426,7 +421,6 @@ function ConductReportDrawerBody({
   onStartDecision: () => void;
   compact?: boolean;
   showFullLink?: boolean;
-  actionReceipt?: ReactNode;
 }) {
   if (!compact) {
     return (
@@ -455,7 +449,6 @@ function ConductReportDrawerBody({
             </Card>
           </>}
         />
-        {actionReceipt}
       </div>
     );
   }
@@ -506,7 +499,6 @@ function ConductReportDrawerBody({
           />
         </Card>
       </ModerationCaseWorkspace>
-      {actionReceipt}
       {compact && (
         <div className="admin-drawer-actions sticky bottom-[-28px] z-[4] m-[18px_-24px_-28px] flex flex-wrap gap-2 border-t border-admin-border bg-admin-surface/95 px-6 py-3.5 shadow-[0_-6px_18px_rgba(0,0,0,0.09)] [&>*]:min-h-11 [&>*]:flex-[1_1_180px] [&>*]:text-center max-[720px]:bottom-[-24px] max-[720px]:m-[18px_-16px_-24px] max-[720px]:px-4 max-[720px]:[&>*]:basis-full">
           {model.reportedMemberHref && (
@@ -545,12 +537,6 @@ export function ConductReportDrawer({
   const [selectedChoice, setSelectedChoice] = useState<ConductReportDecisionChoice | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [commandError, setCommandError] = useState<string | null>(null);
-  const [actionReceipt, setActionReceipt] = useState<{
-    action: string;
-    status: string;
-    reasonCode: string;
-    occurredAt: string;
-  } | null>(null);
   const decisionMutation = useConductReportDecisionMutation();
 
   useEffect(() => {
@@ -576,7 +562,7 @@ export function ConductReportDrawer({
     decisionReasonText,
   }: AdminDecisionSubmission<"decisionReasonCode", ConductReportDecisionReasonCode | null>) => {
     if (!selectedChoice) return;
-    if (isAdminApiEnabled() && reportModel.version === undefined) {
+    if (reportModel.version === undefined) {
       setCommandError("The current Conduct Report version is missing. Reload the report before you decide.");
       return;
     }
@@ -610,13 +596,11 @@ export function ConductReportDrawer({
         reportId: reportModel.id,
         currentModel: reportModel,
         decision,
-        choice: selectedChoice,
         options,
-        apiEnabled: isAdminApiEnabled(),
       });
       const updatedModel = conductReportModelFromRecord(updated);
       if (!updatedModel || updatedModel.id !== reportModel.id) {
-        throw new Error(isAdminApiEnabled() ? "The Admin API returned an invalid Conduct Report." : "The Conduct Report record is invalid.");
+        throw new Error("The Admin API returned an invalid Conduct Report.");
       }
       setReportModel(updatedModel);
       if (updatedModel.status === "CONDUCT_REPORT_UPHELD") {
@@ -628,16 +612,6 @@ export function ConductReportDrawer({
       onUpdated?.(updatedModel);
       setDialogOpen(false);
       setSelectedChoice(null);
-      if (!isAdminApiEnabled()) {
-        setActionReceipt({
-          action: decision,
-          status: updatedModel.statusLabel,
-          reasonCode: decision === "CONDUCT_REPORT_UPHELD"
-            ? reportModel.reasonCode ?? ""
-            : decisionReasonCode ?? "",
-          occurredAt: new Date().toISOString(),
-        });
-      }
     } catch (error: unknown) {
       setCommandError(error instanceof Error ? error.message : "The Conduct Report decision could not be saved.");
     }
@@ -656,7 +630,6 @@ export function ConductReportDrawer({
       onStartDecision={startDecision}
       compact={presentation === "drawer"}
       showFullLink={presentation === "drawer"}
-      actionReceipt={actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Conduct Report" resourceId={reportModel.displayId || null} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason code")}: {translateText(actionReceipt.reasonCode)}</p>} /> : null}
     />
   );
   const decisionDialog = (

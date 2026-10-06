@@ -6,11 +6,11 @@ import type {
   AdminReportCase,
 } from "../api/admin-api";
 import { formatAdminTimestamp } from "../date-format";
-import type { AdminReview, PersistedAdminData } from "../data/admin-records";
+import type { AdminReview } from "../data/admin-records";
 import {
+  isConductReportStatus,
   memberStatusFor,
   memberStatusLabel,
-  isConductReportStatus,
   walletStatusFor,
   walletStatusLabel,
   type MemberStatus,
@@ -18,17 +18,8 @@ import {
 } from "../domain/rulebook";
 import { statusBadgeClass } from "../status-badge";
 import { displayAdminId } from "../display-admin-id";
-import {
-  conductReportRoutes,
-  memberRoutes,
-  questRoutes,
-  reportRoutes,
-} from "../admin-routes";
-import {
-  balancesFromWallet,
-  transactionFromApi,
-  walletTransactionsFromMock,
-} from "./member-wallet-model";
+import { conductReportRoutes, memberRoutes, reportRoutes } from "../admin-routes";
+import { balancesFromWallet, transactionFromApi } from "./member-wallet-model";
 import type {
   MemberWalletBalances,
   MemberWalletTransaction,
@@ -99,12 +90,6 @@ export type MemberPenaltyHistoryEntry = {
   caseHref?: string;
 };
 
-export type MemberAdminNote = {
-  at: string;
-  by: string;
-  note: string;
-};
-
 export type MemberStats = {
   questsCreatedCount: number;
   questsCompletedAsWorkerCount: number;
@@ -133,7 +118,6 @@ export type MemberModel = {
   createdAt: string;
   lastActiveAt: string;
   memberStatus: MemberStatus | null;
-  memberStatusSource: "mock" | "api" | "NOT_PROVIDED_BY_API";
   walletId: string | null;
   walletStatus: WalletStatus | null;
   walletBalances: MemberWalletBalances | null;
@@ -145,52 +129,18 @@ export type MemberModel = {
   reports: MemberReportEntry[];
   reportsSubmitted: MemberReportEntry[];
   penaltyHistory: MemberPenaltyHistoryEntry[];
-  adminNotes: MemberAdminNote[];
   walletStatement: MemberWalletTransaction[];
   confirmedViolationCount: number | null;
-  newUserExemptionRemaining: number;
-  postBanExemptionRemaining: number;
-  statusReason: string | null;
-  statusAppliedAt: string | null;
-  statusAppliedBy: string | null;
-  redFlagExpiresAt: string | null;
-  banExpiresAt: string | null;
-  source: "api" | "mock";
-  apiError?: string | null;
+  apiError: string | null;
   reportsError: string | null;
   reportsSubmittedError: string | null;
   walletStatementError: string | null;
 };
 
 export type MemberPageData = {
-  source: "api" | "mock";
   items: MemberModel[];
   nextCursor: string | null;
 };
-
-export type MemberActionOutcome = {
-  label: string;
-  walletStatus: WalletStatus;
-  memberStatus: MemberStatus;
-  durationDays: number | null;
-  expiresAt: string | null;
-  exempted: boolean;
-};
-
-export const MEMBER_PENALTY_CHOICES = ["Red Flag", "Temporary ban", "Permanent ban"] as const;
-export type MemberPenaltyChoice = (typeof MEMBER_PENALTY_CHOICES)[number];
-
-export type MockMemberModerationSummary = {
-  id: string;
-  memberStatus: MemberStatus | null;
-  confirmedViolationCount: number | null;
-  moderationHistory: MemberPenaltyHistoryEntry[];
-};
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : null;
-}
 
 function text(value: unknown, fallback = ""): string {
   return typeof value === "string" || typeof value === "number" ? String(value) : fallback;
@@ -198,16 +148,7 @@ function text(value: unknown, fallback = ""): string {
 
 function nullableText(value: unknown): string | null {
   const valueText = text(value).trim();
-  return valueText ? valueText : null;
-}
-
-
-function numberValue(value: unknown, fallback = 0): number {
-  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
-}
-
-function nullableNumber(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
+  return valueText || null;
 }
 
 function dateLabel(value: unknown, fallback = "Not recorded"): string {
@@ -236,274 +177,16 @@ function reportFromApi(report: AdminReportCase): MemberReportEntry {
   };
 }
 
-function reportFromMock(value: unknown): MemberReportEntry | null {
-  const record = asRecord(value);
-  if (!record) return null;
-  const id = nullableText(record.id);
-  const memberId = nullableText(record.reportedMemberId ?? record.reportedUserId);
-  if (!id || !memberId) return null;
-  const status = text(record.status ?? record.reportCaseStatus ?? record.conductReportStatus, "REPORT_CASE_PENDING");
-  const kind = isConductReportStatus(status) ? "Conduct Report" : "Report Case";
-  return {
-    id,
-    displayId: displayAdminId(record.displayId, id) ?? "",
-    category: text(record.category ?? record.reportType ?? record.reasonCode, "Report Case"),
-    detail: text(record.details ?? record.description ?? record.detail, "No report detail was provided."),
-    reporterId: nullableText(record.reporterId),
-    reporterName: text(record.reporterName, "Reporter not provided"),
-    status,
-    reportedAt: dateLabel(record.reportedAt ?? record.createdAt),
-    href: kind === "Conduct Report" ? conductReportRoutes.detail(id) : reportRoutes.detail(id),
-    kind,
-  };
-}
-
-function questFromMock(value: unknown, memberTitle: string): MemberQuestHistoryEntry | null {
-  const record = asRecord(value);
-  if (!record) return null;
-  const id = nullableText(record.id);
-  const title = nullableText(record.title);
-  if (!id || !title) return null;
-  return {
-    id,
-    displayId: displayAdminId(record.displayId, id) ?? "",
-    title,
-    status: text(record.questState ?? record.status, "QUEST_OPEN"),
-    role: text(record.person) === memberTitle ? "Hirer" : "Worker",
-    amountSatang: nullableNumber(record.amountSatang) ?? (typeof record.amount === "number" ? Math.round(record.amount * 100) : null),
-    createdAt: dateLabel(record.createdAt ?? record.activityAt ?? record.age),
-    href: questRoutes.detail(id),
-  };
-}
-
-function reviewFromMock(value: unknown): AdminReview | null {
-  const record = asRecord(value);
-  if (!record) return null;
-  const reviewer = nullableText(record.reviewer);
-  if (!reviewer) return null;
-  const status = record.status === "Hidden" || record.status === "Reported" ? record.status : "Visible";
-  const tone = record.tone === "warning" || record.tone === "neutral" ? record.tone : "success";
-  return {
-    reviewer,
-    rating: Math.max(1, Math.min(5, Math.round(numberValue(record.rating, 5)))),
-    review: text(record.review),
-    date: text(record.date, "Date not recorded"),
-    reports: Math.max(0, Math.round(numberValue(record.reports))),
-    status,
-    tone,
-    ...(record.statusBeforeHidden === "Visible" || record.statusBeforeHidden === "Reported" ? { statusBeforeHidden: record.statusBeforeHidden } : {}),
-    ...(record.toneBeforeHidden === "success" || record.toneBeforeHidden === "warning" || record.toneBeforeHidden === "neutral" ? { toneBeforeHidden: record.toneBeforeHidden } : {}),
-  };
-}
-
-function generatedReviews(index: number): AdminReview[] {
-  const reviewers = ["Amara Ariyawat", "Benja Ariyawat", "Chayut Boonprasert", "Darin Intharawong", "Fah Lertwiroj", "Gunn Maneewan"];
-  const comments = [
-    "Clear updates and dependable delivery throughout the Quest.",
-    "The final work was accurate and easy for the team to use.",
-    "Thoughtful questions helped clarify the project early.",
-    "Well prepared, responsive, and professional from start to finish.",
-  ];
-  return Array.from({ length: 9 }, (_, reviewIndex) => {
-    const reported = reviewIndex === 4 && index % 2 === 0;
-    return {
-      reviewer: reviewers[(index + reviewIndex) % reviewers.length],
-      rating: 3 + ((index + reviewIndex) % 3),
-      review: comments[reviewIndex % comments.length],
-      date: `${reviewIndex + 1} ${reviewIndex === 0 ? "week" : "month"}${reviewIndex === 0 ? "" : "s"} ago`,
-      reports: reported ? 1 : 0,
-      status: reported ? "Reported" : "Visible",
-      tone: reported ? "warning" : "success",
-    };
-  });
-}
-
-type MemberMockModerationFixture = {
-  history: readonly MemberPenaltyHistoryEntry[];
-  notes: readonly MemberAdminNote[];
-};
-
-const memberMockModerationFixtures: Readonly<Record<string, MemberMockModerationFixture>> = {
-  "68000000": {
-    history: [
-      {
-        event: "Conduct Report dismissed",
-        at: "27 Aug 2026 11:47",
-        by: "Admin",
-        reason: "The Quest record did not confirm a conduct violation.",
-        outcome: "No violation",
-        caseId: "CND-8303",
-        caseType: "Conduct Report",
-        caseHref: conductReportRoutes.detail("CND-8303"),
-      },
-      {
-        event: "Red Flag expired",
-        at: "26 Aug 2026 09:00",
-        by: "System",
-        reason: "The 7-day Red Flag duration ended.",
-        previousStatus: "Flag",
-        newStatus: "Normal",
-        outcome: "Red Flag expired",
-        durationDays: 7,
-        expiresAt: "26 Aug 2026 09:00",
-      },
-      {
-        event: "Red Flag applied",
-        at: "19 Aug 2026 09:00",
-        by: "Admin",
-        reason: "First confirmed Misconduct violation in the fixture scenario.",
-        newStatus: "Flag",
-        outcome: "7-day Red Flag",
-        durationDays: 7,
-        expiresAt: "26 Aug 2026 09:00",
-      },
-      {
-        event: "Account created",
-        at: "12 Aug 2026 09:00",
-        by: "System",
-        reason: "Member registration completed.",
-      },
-    ],
-    notes: [
-      {
-        at: "27 Aug 2026 12:05",
-        by: "Admin",
-        note: "Reviewed the Quest record after the Conduct Report. No policy action was required.",
-      },
-    ],
-  },
-  "68000020": {
-    history: [
-      {
-        event: "Report Case received",
-        at: "27 Aug 2026 08:40",
-        by: "System",
-        reason: "Harassment or abuse report is waiting for Admin review.",
-        outcome: "Pending review",
-        caseId: "RPT-8201",
-        caseType: "Report Case",
-        caseHref: reportRoutes.detail("RPT-8201"),
-      },
-      {
-        event: "Account created",
-        at: "15 Aug 2026 10:15",
-        by: "System",
-        reason: "Member registration completed.",
-      },
-    ],
-    notes: [
-      {
-        at: "27 Aug 2026 09:00",
-        by: "Admin",
-        note: "Keep the Report Case open until the Evidence Reference is reviewed.",
-      },
-    ],
-  },
-  "68000040": {
-    history: [
-      {
-        event: "Permanent Member Ban applied",
-        at: "27 Aug 2026 16:47",
-        by: "Admin",
-        reason: "The Conduct Report was upheld from the Quest record.",
-        newStatus: "Perm Ban",
-        outcome: "Permanent Member Ban",
-        caseId: "CND-8302",
-        caseType: "Conduct Report",
-        caseHref: conductReportRoutes.detail("CND-8302"),
-      },
-      {
-        event: "Conduct Report upheld",
-        at: "27 Aug 2026 16:30",
-        by: "Admin",
-        reason: "The Quest record confirmed the reported conduct violation.",
-        outcome: "Violation confirmed",
-        caseId: "CND-8302",
-        caseType: "Conduct Report",
-        caseHref: conductReportRoutes.detail("CND-8302"),
-      },
-      {
-        event: "Temporary Member Ban applied",
-        at: "20 Aug 2026 16:47",
-        by: "Admin",
-        reason: "Second confirmed Misconduct violation in the fixture scenario.",
-        newStatus: "Temp Ban",
-        outcome: "7-day temporary Member Ban",
-        durationDays: 7,
-        expiresAt: "27 Aug 2026 16:47",
-      },
-      {
-        event: "Account created",
-        at: "18 Aug 2026 14:00",
-        by: "System",
-        reason: "Member registration completed.",
-      },
-    ],
-    notes: [
-      {
-        at: "27 Aug 2026 16:50",
-        by: "Admin",
-        note: "Permanent Member Ban is linked to the upheld Conduct Report. Wallet status is shown separately.",
-      },
-    ],
-  },
-};
-
-function historyFromMock(record: Record<string, unknown>, createdAt: string, memberId: string): MemberPenaltyHistoryEntry[] {
-  const value = record.moderationHistory;
-  const history = Array.isArray(value) ? value.flatMap((entry): MemberPenaltyHistoryEntry[] => {
-    const item = asRecord(entry);
-    if (!item) return [];
-    return [{
-      event: text(item.event, "Moderation event"),
-      at: text(item.at, "Date not recorded"),
-      by: text(item.by, "System"),
-      ...(nullableText(item.reason) ? { reason: nullableText(item.reason) as string } : {}),
-      ...(nullableText(item.previousStatus) ? { previousStatus: nullableText(item.previousStatus) as string } : {}),
-      ...(nullableText(item.newStatus) ? { newStatus: nullableText(item.newStatus) as string } : {}),
-      ...(nullableText(item.outcome) ? { outcome: nullableText(item.outcome) as string } : {}),
-      ...(typeof item.durationDays === "number" ? { durationDays: item.durationDays } : {}),
-      ...(nullableText(item.expiresAt) ? { expiresAt: nullableText(item.expiresAt) as string } : {}),
-      ...(nullableText(item.caseId) ? { caseId: nullableText(item.caseId) as string } : {}),
-      ...(item.caseType === "Report Case" || item.caseType === "Conduct Report" ? { caseType: item.caseType } : {}),
-      ...(nullableText(item.caseHref) ? { caseHref: nullableText(item.caseHref) as string } : {}),
-    }];
-  }) : [];
-  if (history.length) return history;
-  const fixture = memberMockModerationFixtures[memberId];
-  return fixture ? [...fixture.history] : [{ event: "Account created", at: createdAt, by: "System", reason: "Account created." }];
-}
-
-function notesFromMock(record: Record<string, unknown>, memberId: string): MemberAdminNote[] {
-  const notes = Array.isArray(record.adminNotes) ? record.adminNotes.flatMap((entry): MemberAdminNote[] => {
-    const item = asRecord(entry);
-    const note = item ? nullableText(item.note) : null;
-    return note ? [{ at: text(item?.at, "Date not recorded"), by: text(item?.by, "Admin"), note }] : [];
-  }) : [];
-  if (notes.length) return notes;
-  const fixture = memberMockModerationFixtures[memberId];
-  return fixture ? [...fixture.notes] : [];
-}
-
 function baseModelFromListItem(
   member: Omit<AdminMemberListItem, "memberStatus"> & { memberStatus?: AdminMemberListItem["memberStatus"] },
-  source: "api" | "mock",
 ): MemberModel {
-  const displayId = displayAdminId(member.displayId, source === "mock" ? member.id : null);
+  const displayId = displayAdminId(member.displayId);
   const title = `${member.firstName} ${member.lastName}`.trim() || displayId || "Member";
   const wallet = member.wallet;
-  const walletBalances = wallet
-    ? {
-      spendingBalanceSatang: wallet.spendingBalanceSatang,
-      earningsBalanceSatang: wallet.earningsBalanceSatang,
-      fundingReservedSatang: 0,
-      reservedForPayoutsSatang: 0,
-    }
-    : null;
   return {
     id: member.id,
     displayId,
-    studentId: nullableText(member.studentId) ?? (source === "api" ? "Not provided by the Admin API" : null),
+    studentId: nullableText(member.studentId) ?? "Not provided by the Admin API",
     firstName: member.firstName,
     lastName: member.lastName,
     title,
@@ -516,15 +199,18 @@ function baseModelFromListItem(
     bio: "",
     tags: [],
     createdAt: dateLabel(member.createdAt),
-    lastActiveAt: "Not recorded",
+    lastActiveAt: "Not provided by the Admin API",
     memberStatus: member.memberStatus ? memberStatusFor(member.memberStatus) : null,
-    memberStatusSource: member.memberStatus ? "api" : source === "mock" ? "mock" : "NOT_PROVIDED_BY_API",
     walletId: wallet?.id ?? null,
     walletStatus: wallet?.walletStatus ?? null,
-    walletBalances,
+    walletBalances: wallet ? {
+      spendingBalanceSatang: wallet.spendingBalanceSatang,
+      earningsBalanceSatang: wallet.earningsBalanceSatang,
+      fundingReservedSatang: 0,
+      reservedForPayoutsSatang: 0,
+    } : null,
     walletProjectionMatchesLedger: null,
     reviews: [],
-    quests: [],
     stats: {
       questsCreatedCount: 0,
       questsCompletedAsWorkerCount: 0,
@@ -534,29 +220,22 @@ function baseModelFromListItem(
       totalEarnedSatang: 0,
       totalPaidOutSatang: 0,
     },
+    quests: [],
     payouts: [],
     reports: [],
     reportsSubmitted: [],
-    penaltyHistory: source === "api" ? [] : [{ event: "Account created", at: dateLabel(member.createdAt), by: "System", reason: "Account created." }],
-    adminNotes: [],
+    penaltyHistory: [],
     walletStatement: [],
+    confirmedViolationCount: null,
+    apiError: null,
     reportsError: null,
-    reportsSubmittedError: source === "api" ? "Member reports submitted are not provided by the Admin API." : null,
+    reportsSubmittedError: "Member reports submitted are not provided by the Admin API.",
     walletStatementError: null,
-    confirmedViolationCount: source === "api" ? null : 0,
-    newUserExemptionRemaining: 0,
-    postBanExemptionRemaining: 0,
-    statusReason: null,
-    statusAppliedAt: null,
-    statusAppliedBy: null,
-    redFlagExpiresAt: null,
-    banExpiresAt: null,
-    source,
   };
 }
 
 export function memberListModelFromApi(member: AdminMemberListItem): MemberModel {
-  return baseModelFromListItem(member, "api");
+  return baseModelFromListItem(member);
 }
 
 export function memberModelFromApi(
@@ -569,271 +248,29 @@ export function memberModelFromApi(
   const member = detail.member;
   const listItem: AdminMemberListItem = {
     ...member,
-    wallet: detail.wallet
-      ? {
-        id: detail.wallet.id,
-        walletStatus: detail.wallet.walletStatus,
-        spendingBalanceSatang: detail.wallet.spendingBalanceSatang,
-        earningsBalanceSatang: detail.wallet.earningsBalanceSatang,
-        totalBalanceSatang: detail.wallet.totalBalanceSatang,
-      }
-      : null,
+    wallet: detail.wallet ? {
+      id: detail.wallet.id,
+      walletStatus: detail.wallet.walletStatus,
+      spendingBalanceSatang: detail.wallet.spendingBalanceSatang,
+      earningsBalanceSatang: detail.wallet.earningsBalanceSatang,
+      totalBalanceSatang: detail.wallet.totalBalanceSatang,
+    } : null,
   };
-  const base = baseModelFromListItem(listItem, "api");
+  const base = baseModelFromListItem(listItem);
   const wallet = finance?.wallet ?? detail.wallet;
-  const walletId = wallet?.id ?? null;
-  const reviews: AdminReview[] = [];
-  const reportEntries = reports.map(reportFromApi);
   return {
     ...base,
     bio: member.bio ?? "",
-    walletId,
+    walletId: wallet?.id ?? null,
     walletStatus: wallet ? walletStatusFor(wallet.walletStatus) : null,
     walletBalances: balancesFromWallet(wallet),
     walletProjectionMatchesLedger: wallet?.projectionMatchesLedger ?? null,
-    reports: reportEntries,
-    reportsSubmitted: [],
+    reports: reports.map(reportFromApi),
     walletStatement: ledger.map(transactionFromApi),
-    reviews,
-    quests: [],
     stats: detail.stats,
-    confirmedViolationCount: null,
-    newUserExemptionRemaining: 0,
-    postBanExemptionRemaining: 0,
     apiError: errors.finance ?? (finance ? null : "Member finance is not available from the Admin API."),
     reportsError: errors.reports ?? null,
-    reportsSubmittedError: "Member reports submitted are not provided by the Admin API.",
     walletStatementError: errors.ledger ?? null,
-  };
-}
-
-export function memberModelFromMockRecord(
-  value: unknown,
-  data: PersistedAdminData,
-  options: { summaryOnly?: boolean } = {},
-): MemberModel | null {
-  const record = asRecord(value);
-  const id = nullableText(record?.id);
-  if (!record || !id) return null;
-  const title = displayAdminId(record.title) ? text(record.title) : "Member";
-  const [firstName = title, ...lastNameParts] = title.split(/\s+/);
-  const lastName = lastNameParts.join(" ");
-  const index = Math.max(0, data.collections.users.findIndex((candidate) => candidate.id === id));
-  const parity = {
-    "68000000": { memberStatus: "Normal" as const, walletStatus: "ACTIVE" as const },
-    "68000020": { memberStatus: "Flag" as const, walletStatus: "ACTIVE" as const },
-    "68000040": { memberStatus: "Perm Ban" as const, walletStatus: "FROZEN" as const },
-  }[id];
-  const hasStoredModerationState = typeof record.memberStatus === "string"
-    || record.penalty !== undefined
-    || typeof record.confirmedViolationCount === "number";
-  const memberStatus = typeof record.memberStatus === "string"
-    ? memberStatusFor(record.memberStatus)
-    : parity?.memberStatus ?? memberStatusFor(record.memberStatus);
-  const walletStatus = hasStoredModerationState
-    ? walletStatusFor(record.walletStatus ?? record.status)
-    : parity?.walletStatus ?? walletStatusFor(record.walletStatus ?? record.status);
-  const studentId = nullableText(record.studentId);
-  const displayId = displayAdminId(record.displayId, id);
-  const createdAt = text(record.accountCreatedAt ?? record.createdAt, "Not recorded");
-  const walletId = nullableText(record.walletId) ?? `WAL-${id}`;
-  const academicProfile = {
-    faculty: nullableText(record.faculty) ?? (index % 2 === 0 ? "Engineering" : "Management Sciences"),
-    department: nullableText(record.department) ?? (index % 2 === 0 ? "Computer Engineering" : "Business Administration"),
-    occupation: nullableText(record.occupation) ?? "Student",
-  };
-  if (options.summaryOnly) {
-    const summary = baseModelFromListItem({
-      id,
-      displayId,
-      email: text(record.person, displayAdminId(id) ? `${id}@ku.th` : "Email not provided"),
-      firstName,
-      lastName,
-      studentId,
-      telephone: nullableText(record.telephone),
-      academicYear: nullableNumber(record.academicYear),
-      faculty: academicProfile.faculty,
-      department: academicProfile.department,
-      occupation: academicProfile.occupation,
-      wallet: walletStatus
-        ? {
-          id: walletId,
-          walletStatus,
-          spendingBalanceSatang: numberValue(record.walletSpendingBalanceSatang),
-          earningsBalanceSatang: numberValue(record.walletEarningsBalanceSatang),
-          totalBalanceSatang: numberValue(record.walletSpendingBalanceSatang) + numberValue(record.walletEarningsBalanceSatang),
-        }
-        : null,
-      createdAt,
-    }, "mock");
-    return {
-      ...summary,
-      title,
-      bio: text(record.about, "KuQuest participant contributing to university marketplace projects."),
-      tags: Array.isArray(record.tags) ? record.tags.filter((tag): tag is string => typeof tag === "string") : ["University", "Marketplace"],
-      lastActiveAt: text(record.lastActiveAt, "Not recorded"),
-      memberStatus,
-      memberStatusSource: "mock",
-      walletId,
-      walletStatus,
-      walletBalances: {
-        spendingBalanceSatang: numberValue(record.walletSpendingBalanceSatang, 120000 + index * 10000),
-        earningsBalanceSatang: numberValue(record.walletEarningsBalanceSatang, 80000 + index * 5000),
-        fundingReservedSatang: numberValue(record.walletFundingReservedSatang, 25000 + index * 1000),
-        reservedForPayoutsSatang: numberValue(record.walletReservedForPayoutsSatang, 10000 + index * 500),
-      },
-      walletProjectionMatchesLedger: true,
-      confirmedViolationCount: Math.max(0, Math.round(numberValue(record.confirmedViolationCount,
-        memberStatus === "Flag" ? 1 : memberStatus === "Temp Ban" ? 2 : memberStatus === "Perm Ban" ? 3 : 0,
-      ))),
-      source: "mock",
-    };
-  }
-  const rawReviews = Array.isArray(record.reviews)
-    ? record.reviews.flatMap((review) => {
-      const model = reviewFromMock(review);
-      return model ? [model] : [];
-    })
-    : [];
-  const reviews = rawReviews.length ? rawReviews : generatedReviews(index);
-  const userCount = Math.max(1, data.collections.users.length);
-  const linkedQuests = data.collections.quests.filter((quest) => {
-    const questRecord = asRecord(quest);
-    return [questRecord?.memberId, questRecord?.userId, questRecord?.hirerId, questRecord?.workerId].some((candidateId) => candidateId === id);
-  });
-  const questValues = linkedQuests.length
-    ? linkedQuests
-    : data.collections.quests.filter((_, questIndex) => questIndex % userCount === index % userCount);
-  const quests = questValues.flatMap((quest) => {
-    const model = questFromMock(quest, title);
-    return model ? [model] : [];
-  });
-  const reports = data.collections.reports.flatMap((report) => {
-    const model = reportFromMock(report);
-    return model && (asRecord(report)?.reportedMemberId ?? asRecord(report)?.reportedUserId) === id ? [model] : [];
-  });
-  const reportsSubmitted = data.collections.reports.flatMap((report) => {
-    const model = reportFromMock(report);
-    return model && asRecord(report)?.reporterId === id ? [model] : [];
-  });
-  const balances: MemberWalletBalances = {
-    spendingBalanceSatang: numberValue(record.walletSpendingBalanceSatang, 120000 + index * 10000),
-    earningsBalanceSatang: numberValue(record.walletEarningsBalanceSatang, 80000 + index * 5000),
-    fundingReservedSatang: numberValue(record.walletFundingReservedSatang, 25000 + index * 1000),
-    reservedForPayoutsSatang: numberValue(record.walletReservedForPayoutsSatang, 10000 + index * 500),
-  };
-  const rawHistory = historyFromMock(record, createdAt, id);
-  const confirmedViolationCount = Math.max(
-    0,
-    Math.round(numberValue(record.confirmedViolationCount,
-      memberStatus === "Flag" ? 1 : memberStatus === "Temp Ban" ? 2 : memberStatus === "Perm Ban" ? 3 : 0,
-    )),
-  );
-  const newUserExemptionRemaining = Math.max(0, Math.round(numberValue(record.newUserExemptionRemaining, id === "68000020" ? 10 : 0)));
-  const postBanExemptionRemaining = Math.max(0, Math.round(numberValue(record.postBanExemptionRemaining)));
-  const payouts = data.collections.payouts.flatMap((payout) => {
-    const payoutRecord = asRecord(payout);
-    if (!payoutRecord || text(payoutRecord.title) !== title) return [];
-    return [{
-      id: text(payoutRecord.id, `PAY-${id}`),
-      status: text(payoutRecord.payoutStatus ?? payoutRecord.status, "PENDING_ADMIN_APPROVAL"),
-      amountSatang: nullableNumber(payoutRecord.amountSatang) ?? (typeof payoutRecord.amount === "number" ? Math.round(payoutRecord.amount * 100) : null),
-      createdAt: dateLabel(payoutRecord.createdAt ?? payoutRecord.requestedAt),
-    }];
-  });
-  const stats: MemberStats = {
-    questsCreatedCount: quests.filter((quest) => quest.role === "Hirer").length,
-    questsCompletedAsWorkerCount: quests.filter((quest) => quest.role === "Worker" && quest.status === "QUEST_COMPLETED").length,
-    reviewsReceivedCount: reviews.length,
-    averageRating: reviews.length ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length : null,
-    payoutsCount: payouts.length,
-    totalEarnedSatang: quests.filter((quest) => quest.role === "Worker").reduce((sum, quest) => sum + (quest.amountSatang || 0), 0),
-    totalPaidOutSatang: payouts.reduce((sum, payout) => sum + (payout.amountSatang || 0), 0),
-  };
-  const penalty = asRecord(record.penalty);
-  const statusReason = nullableText(record.statusReason ?? penalty?.reason);
-  const statusAppliedAt = nullableText(record.statusAppliedAt ?? penalty?.recordedAt);
-  const statusAppliedBy = nullableText(record.statusAppliedBy ?? penalty?.appliedBy);
-  const walletStatement = Array.isArray(record.walletStatement)
-    ? record.walletStatement.flatMap((transaction) => {
-      const item = asRecord(transaction);
-      if (!item || !item.id) return [];
-      return [{
-        id: text(item.id),
-        businessReference: nullableText(item.businessReference) ?? undefined,
-        eventType: text(item.eventType, "ADJUSTMENT"),
-        description: nullableText(item.description),
-        createdAt: text(item.createdAt, new Date().toISOString()),
-        sealedAt: nullableText(item.sealedAt),
-        postings: Array.isArray(item.postings) ? item.postings.flatMap((posting) => {
-          const entry = asRecord(posting);
-          if (!entry) return [];
-          return [{ accountType: text(entry.accountType), walletId: nullableText(entry.walletId), amountSatang: numberValue(entry.amountSatang) }];
-        }) : [],
-      }];
-    })
-    : walletTransactionsFromMock(walletId);
-  return {
-    id,
-    displayId,
-    studentId,
-    firstName,
-    lastName,
-    title,
-    email: text(record.person, `${firstName.toLowerCase()}.${lastName.toLowerCase()}@ku.th`),
-    telephone: nullableText(record.telephone),
-    academicYear: nullableNumber(record.academicYear),
-    faculty: academicProfile.faculty,
-    department: academicProfile.department,
-    occupation: academicProfile.occupation,
-    bio: text(record.about, "KuQuest participant contributing to university marketplace projects."),
-    tags: Array.isArray(record.tags) ? record.tags.filter((tag): tag is string => typeof tag === "string") : ["University", "Marketplace"],
-    createdAt,
-    lastActiveAt: text(record.lastActiveAt, "Not recorded"),
-    memberStatus,
-    memberStatusSource: "mock",
-    walletId,
-    walletStatus,
-    walletBalances: balances,
-    walletProjectionMatchesLedger: true,
-    reviews,
-    stats,
-    quests,
-    payouts,
-    reports,
-    reportsSubmitted,
-    penaltyHistory: rawHistory,
-    adminNotes: notesFromMock(record, id),
-    walletStatement,
-    reportsError: null,
-    reportsSubmittedError: null,
-    walletStatementError: null,
-    confirmedViolationCount,
-    newUserExemptionRemaining,
-    postBanExemptionRemaining,
-    statusReason,
-    statusAppliedAt,
-    statusAppliedBy,
-    redFlagExpiresAt: nullableText(record.redFlagExpiresAt),
-    banExpiresAt: nullableText(record.banExpiresAt),
-    source: "mock",
-  };
-}
-
-export function mockMemberModerationSummaryFromRecord(
-  value: unknown,
-  data: PersistedAdminData,
-): MockMemberModerationSummary | null {
-  const record = asRecord(value);
-  const id = nullableText(record?.id);
-  if (!record || !id) return null;
-  const member = memberModelFromMockRecord(record, data, { summaryOnly: true });
-  if (!member) return null;
-  return {
-    id,
-    memberStatus: member.memberStatus,
-    confirmedViolationCount: member.confirmedViolationCount,
-    moderationHistory: historyFromMock(record, member.createdAt, id),
   };
 }
 
@@ -860,34 +297,6 @@ export function memberTabFrom(value: string | null | undefined): MemberTab {
 export function memberTabHref(memberId: string, tab: MemberTab): string {
   const path = memberRoutes.detail(memberId);
   return tab === "overview" ? path : `${path}?tab=${encodeURIComponent(tab)}`;
-}
-
-export function nextPenaltyFor(model: MemberModel): MemberActionOutcome {
-  const violationNumber = (model.confirmedViolationCount ?? 0) + 1;
-  const hasExemption = model.newUserExemptionRemaining > 0 || model.postBanExemptionRemaining > 0;
-  if (hasExemption) {
-    return {
-      label: "Red Flag exempted",
-      walletStatus: model.walletStatus === "FROZEN" ? "ACTIVE" : model.walletStatus ?? "ACTIVE",
-      memberStatus: "Normal",
-      durationDays: null,
-      expiresAt: null,
-      exempted: true,
-    };
-  }
-  if (violationNumber === 1) return { label: "Red Flag", walletStatus: "ACTIVE", memberStatus: "Flag", durationDays: 7, expiresAt: null, exempted: false };
-  if (violationNumber === 2) return { label: "Temporary ban", walletStatus: "FROZEN", memberStatus: "Temp Ban", durationDays: 7, expiresAt: null, exempted: false };
-  return { label: "Permanent ban", walletStatus: "FROZEN", memberStatus: "Perm Ban", durationDays: null, expiresAt: null, exempted: false };
-}
-
-export function memberPenaltyForChoice(model: MemberModel, choice: MemberPenaltyChoice): MemberActionOutcome {
-  if (choice === "Red Flag") {
-    return { label: choice, walletStatus: model.walletStatus ?? "ACTIVE", memberStatus: "Flag", durationDays: 7, expiresAt: null, exempted: false };
-  }
-  if (choice === "Temporary ban") {
-    return { label: choice, walletStatus: "FROZEN", memberStatus: "Temp Ban", durationDays: 7, expiresAt: null, exempted: false };
-  }
-  return { label: choice, walletStatus: "FROZEN", memberStatus: "Perm Ban", durationDays: null, expiresAt: null, exempted: false };
 }
 
 export function reportRouteForMember(memberId: string): string {

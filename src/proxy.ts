@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-import { requiresAdminSessionBoundary } from "./lib/auth/admin-auth-mode";
 import { canonicalRouteForLegacyUrl, isAdminProtectedPath } from "./lib/auth/admin-routing";
 import { hasAdminSessionCookie } from "./lib/auth/admin-session-policy";
 
@@ -31,7 +30,7 @@ function loginRedirect(request: NextRequest): NextResponse {
 export function proxy(request: NextRequest): NextResponse {
   const hasSessionCookie = hasAdminSessionCookie(request.cookies.getAll());
 
-  if (requiresAdminSessionBoundary() && isAdminProtectedPath(request.nextUrl.pathname) && !hasSessionCookie) {
+  if (isAdminProtectedPath(request.nextUrl.pathname) && !hasSessionCookie) {
     return loginRedirect(request);
   }
 

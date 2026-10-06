@@ -1,41 +1,71 @@
 import { describe, expect, it } from "bun:test";
-import {
-  ADMIN_DEMO_DATA_KEY,
-  type BrowserStorage,
-} from "../../src/features/admin/data/admin-demo-data-adapter";
-import { recordMemberViolation, recordMemberViolationFromMember, recordMemberViolationFromMemberInData, recordMemberViolationInData, removeMemberPenalty } from "../../src/features/admin/member/member-adapter";
 
-import type { AdminMemberDetail } from "../../src/features/admin/api/admin-api";
+import type { AdminLedgerTransaction, AdminMemberDetail } from "../../src/features/admin/api/admin-api";
 import {
   memberModelFromApi,
-  memberModelFromMockRecord,
   memberTabFrom,
   memberTabHref,
   walletStatementRows,
 } from "../../src/features/admin/member/member-model";
-import type { PersistedAdminData } from "../../src/features/admin/data/admin-records";
 
-function mockData(): PersistedAdminData {
+function memberDetail(): AdminMemberDetail {
   return {
-    version: "test",
-    collections: {
-      users: [],
-      quests: [
-        { id: "QST-1", title: "Review campus map", status: "QUEST_COMPLETED", amount: 100 },
-      ],
-      payouts: [],
-      disputes: [],
-      reports: [
-        {
-          id: "RPT-1",
-          reportedMemberId: "member-1",
-          reporterId: "member-2",
-          reporterName: "Reporter",
-          category: "Harassment",
-          status: "REPORT_CASE_PENDING",
-        },
-      ],
+    member: {
+      id: "member-api-1",
+      email: "member@ku.th",
+      firstName: "Ari",
+      lastName: "Member",
+      studentId: "68000001",
+      telephone: null,
+      academicYear: 2,
+      faculty: "Engineering",
+      department: "Computer Engineering",
+      occupation: "Student",
+      memberStatus: "NORMAL",
+      bio: "About Ari",
+      createdAt: "2026-09-01T00:00:00.000Z",
     },
+    wallet: {
+      id: "wallet-1",
+      walletStatus: "FROZEN",
+      spendingBalanceSatang: 150,
+      earningsBalanceSatang: 0,
+      fundingReservedSatang: 0,
+      reservedForPayoutsSatang: 0,
+      totalBalanceSatang: 150,
+      projectionMatchesLedger: true,
+    },
+    stats: {
+      questsCreatedCount: 1,
+      questsCompletedAsWorkerCount: 2,
+      reviewsReceivedCount: 3,
+      averageRating: 4.5,
+      payoutsCount: 1,
+      totalEarnedSatang: 200,
+      totalPaidOutSatang: 100,
+    },
+  };
+}
+
+function ledgerTransaction(id: string, eventType: "PAYOUT" | "TOP_UP", createdAt: string, amountSatang: number): AdminLedgerTransaction {
+  return {
+    id,
+    businessReference: `${eventType}-${id}`,
+    eventType,
+    description: eventType,
+    createdByUserId: null,
+    correctionOfTransactionId: null,
+    createdAt,
+    sealedAt: createdAt,
+    isBalanced: true,
+    postings: [{
+      id: `${id}-posting`,
+      accountId: "spending-account",
+      accountType: "SPENDING",
+      walletId: "wallet-1",
+      amountSatang,
+      member: null,
+    }],
   };
 }
 
@@ -48,382 +78,23 @@ describe("Member route model", () => {
     expect(memberTabHref("member/1", "wallet-statement")).toBe("/member/member%2F1?tab=wallet-statement");
   });
 
-  it("keeps mock Member profile sections and Wallet Statement filters available", () => {
-    const data = mockData();
-    data.collections.users.push({
-      id: "member-1",
-      title: "Ari Member",
-      person: "ari@ku.th",
-      memberStatus: "Flag",
-      walletStatus: "ACTIVE",
-      walletSpendingBalanceSatang: 10000,
-      walletEarningsBalanceSatang: 5000,
-    });
-    const model = memberModelFromMockRecord(data.collections.users[0], data);
-    expect(model).not.toBeNull();
-    expect(model).toMatchObject({
-      id: "member-1",
-      memberStatus: "Flag",
-      walletStatus: "ACTIVE",
-    });
-    expect(model?.quests[0]?.href).toBe("/quest/QST-1");
-    expect(model?.reports[0]?.href).toBe("/report/RPT-1");
-    expect(model?.walletStatement).toHaveLength(50);
-    expect(walletStatementRows(model!, { eventType: "TOP_UP", from: "", to: "" }, 25)).toHaveLength(11);
-  });
-
-  it("provides deterministic mock moderation history, notes, and related case links", () => {
-    const data = mockData();
-    data.collections.users.push({
-      id: "68000020",
-      title: "Amara Ariyawat",
-      person: "amara@ku.th",
-    });
-    data.collections.reports.push({
-      id: "RPT-SUBMITTED",
-      reportedMemberId: "member-1",
-      reporterId: "68000020",
-      reporterName: "Amara Ariyawat",
-      category: "Harassment",
-      status: "REPORT_CASE_PENDING",
-    });
-
-    const model = memberModelFromMockRecord(data.collections.users[0], data);
-
-    expect(model?.source).toBe("mock");
-    expect(model?.penaltyHistory[0]).toMatchObject({
-      event: "Report Case received",
-      caseId: "RPT-8201",
-      caseType: "Report Case",
-      caseHref: "/report/RPT-8201",
-    });
-    expect(model?.adminNotes[0]?.note).toContain("Evidence Reference");
-    expect(model?.reportsSubmitted[0]).toMatchObject({
-      id: "RPT-SUBMITTED",
-      kind: "Report Case",
-    });
-    expect(model?.reportsSubmittedError).toBeNull();
-  });
-
-  it("keeps the complete Ledger balance when filtering displayed rows", () => {
-    const data = mockData();
-    data.collections.users.push({
-      id: "member-1",
-      title: "Ari Member",
-      person: "ari@ku.th",
-      walletStatus: "ACTIVE",
-      walletSpendingBalanceSatang: 150,
-      walletEarningsBalanceSatang: 0,
-      walletFundingReservedSatang: 0,
-      walletReservedForPayoutsSatang: 0,
-      walletStatement: [
-        {
-          id: "ledger-old",
-          eventType: "PAYOUT",
-          description: "Payout",
-          createdAt: "2026-09-01T00:00:00.000Z",
-          sealedAt: "2026-09-01T00:00:00.000Z",
-          postings: [{ accountType: "SPENDING", walletId: "WAL-member-1", amountSatang: 100 }],
-        },
-        {
-          id: "ledger-new",
-          eventType: "TOP_UP",
-          description: "Top-up",
-          createdAt: "2026-09-02T00:00:00.000Z",
-          sealedAt: "2026-09-02T00:00:00.000Z",
-          postings: [{ accountType: "SPENDING", walletId: "WAL-member-1", amountSatang: 50 }],
-        },
-      ],
-    });
-    const model = memberModelFromMockRecord(data.collections.users[0], data);
-
-    const rows = walletStatementRows(model!, { eventType: "PAYOUT", from: "2026-09-01", to: "2026-09-01" }, 25);
-
-    expect(rows.map((row) => row.transaction.id)).toEqual(["ledger-old"]);
-    expect(rows[0]?.resultingWalletBalanceSatang).toBe(100);
-  });
-
-  it("uses Ledger Transaction ID order when timestamps are equal", () => {
-    const data = mockData();
-    data.collections.users.push({
-      id: "member-1",
-      title: "Ari Member",
-      person: "ari@ku.th",
-      walletStatus: "ACTIVE",
-      walletSpendingBalanceSatang: 150,
-      walletEarningsBalanceSatang: 0,
-      walletFundingReservedSatang: 0,
-      walletReservedForPayoutsSatang: 0,
-      walletStatement: [
-        {
-          id: "ledger-a",
-          eventType: "PAYOUT",
-          description: "Payout",
-          createdAt: "2026-09-01T00:00:00.000Z",
-          sealedAt: "2026-09-01T00:00:00.000Z",
-          postings: [{ accountType: "SPENDING", walletId: "WAL-member-1", amountSatang: 100 }],
-        },
-        {
-          id: "ledger-b",
-          eventType: "TOP_UP",
-          description: "Top-up",
-          createdAt: "2026-09-01T00:00:00.000Z",
-          sealedAt: "2026-09-01T00:00:00.000Z",
-          postings: [{ accountType: "SPENDING", walletId: "WAL-member-1", amountSatang: 50 }],
-        },
-      ],
-    });
-    const model = memberModelFromMockRecord(data.collections.users[0], data);
-
-    const rows = walletStatementRows(model!, { eventType: "PAYOUT", from: "", to: "" }, 25);
-
-    expect(rows[0]?.resultingWalletBalanceSatang).toBe(100);
-  });
-
-  it("uses Admin API Member status instead of inferring it from Wallet status", () => {
-    const detail: AdminMemberDetail = {
-      member: {
-        id: "member-api-1",
-        email: "member@ku.th",
-        firstName: "Ari",
-        lastName: "Member",
-        studentId: "68000001",
-        telephone: null,
-        academicYear: 2,
-        faculty: "Engineering",
-        department: "Computer Engineering",
-        occupation: "Student",
-        memberStatus: "NORMAL",
-        bio: "About Ari",
-        createdAt: "2026-09-01T00:00:00.000Z",
-      },
-      wallet: {
-        id: "wallet-1",
-        walletStatus: "FROZEN",
-        spendingBalanceSatang: 100,
-        earningsBalanceSatang: 200,
-        fundingReservedSatang: 300,
-        reservedForPayoutsSatang: 400,
-        totalBalanceSatang: 1000,
-        projectionMatchesLedger: true,
-      },
-      stats: {
-        questsCreatedCount: 1,
-        questsCompletedAsWorkerCount: 2,
-        reviewsReceivedCount: 3,
-        averageRating: 4.5,
-        payoutsCount: 1,
-        totalEarnedSatang: 200,
-        totalPaidOutSatang: 100,
-      },
-    };
-    const model = memberModelFromApi(detail);
+  it("uses Admin API Member and Wallet status as separate values", () => {
+    const model = memberModelFromApi(memberDetail());
     expect(model.memberStatus).toBe("Normal");
     expect(model.walletStatus).toBe("FROZEN");
-    expect(model.memberStatusSource).toBe("api");
-    expect(model.reportsSubmitted).toEqual([]);
+    expect(model.walletBalances).toMatchObject({ spendingBalanceSatang: 150 });
+    expect(model.confirmedViolationCount).toBeNull();
     expect(model.reportsSubmittedError).toContain("not provided by the Admin API");
   });
-  it("applies PC-12 Red Flag exemptions before the misconduct ladder", () => {
-    const data = mockData();
-    data.collections.users.push({
-      id: "member-exempt",
-      title: "Exempt Member",
-      person: "exempt@ku.th",
-      memberStatus: "Normal",
-      walletStatus: "ACTIVE",
-      newUserExemptionRemaining: 1,
-    });
-    const values: Record<string, string> = {
-      [ADMIN_DEMO_DATA_KEY]: JSON.stringify(data),
-    };
-    const storage: BrowserStorage = {
-      getItem: (key) => values[key] ?? null,
-      setItem: (key, value) => {
-        values[key] = value;
-      },
-    };
-    const result = recordMemberViolation(storage, "member-exempt", "The evidence confirms a policy violation.");
-    expect(result?.outcome.exempted).toBe(true);
-    expect(result?.outcome.label).toBe("Red Flag exempted");
-    expect(result?.model.memberStatus).toBe("Normal");
-    expect(result?.model.confirmedViolationCount).toBe(1);
-    expect(result?.model.newUserExemptionRemaining).toBe(0);
-  });
 
-  it("lets the Member action select a penalty and restores the prior state on removal", () => {
-    const data = mockData();
-    data.collections.users.push({
-      id: "member-manual-penalty",
-      title: "Manual Penalty Member",
-      person: "manual@ku.th",
-      memberStatus: "Normal",
-      walletStatus: "ACTIVE",
-      confirmedViolationCount: 10,
-      newUserExemptionRemaining: 0,
-      postBanExemptionRemaining: 0,
-    });
-    const values: Record<string, string> = {
-      [ADMIN_DEMO_DATA_KEY]: JSON.stringify(data),
-    };
-    const storage: BrowserStorage = {
-      getItem: (key) => values[key] ?? null,
-      setItem: (key, value) => {
-        values[key] = value;
-      },
-    };
+  it("keeps the full Ledger balance when filtering displayed rows", () => {
+    const model = memberModelFromApi(memberDetail(), null, [], [
+      ledgerTransaction("ledger-old", "PAYOUT", "2026-09-01T00:00:00.000Z", 100),
+      ledgerTransaction("ledger-new", "TOP_UP", "2026-09-02T00:00:00.000Z", 50),
+    ]);
 
-    const result = recordMemberViolationFromMember(
-      storage,
-      "member-manual-penalty",
-      "The evidence confirms a policy violation.",
-      "",
-      "Red Flag",
-    );
-
-    expect(result?.outcome.label).toBe("Red Flag");
-    expect(result?.model.confirmedViolationCount).toBe(11);
-    expect(result?.model.memberStatus).toBe("Flag");
-    expect(result?.model.walletStatus).toBe("ACTIVE");
-    expect(result?.model.newUserExemptionRemaining).toBe(0);
-
-    const removed = removeMemberPenalty(storage, "member-manual-penalty", "The penalty decision was corrected.");
-    expect(removed?.model.confirmedViolationCount).toBe(10);
-    expect(removed?.model.memberStatus).toBe("Normal");
-    expect(removed?.model.walletStatus).toBe("ACTIVE");
-  });
-
-  it("applies a selected permanent ban and freezes the Wallet", () => {
-    const data = mockData();
-    data.collections.users.push({
-      id: "member-manual-permanent-ban",
-      title: "Manual Ban Member",
-      person: "ban@ku.th",
-      memberStatus: "Normal",
-      walletStatus: "ACTIVE",
-      confirmedViolationCount: 0,
-    });
-
-    const result = recordMemberViolationFromMemberInData(
-      data,
-      "member-manual-permanent-ban",
-      "The evidence confirms a policy violation.",
-      "",
-      "Permanent ban",
-    );
-
-    expect(result?.outcome.label).toBe("Permanent ban");
-    expect(result?.outcome.durationDays).toBeNull();
-    expect(result?.model.confirmedViolationCount).toBe(1);
-    expect(result?.model.memberStatus).toBe("Perm Ban");
-    expect(result?.model.walletStatus).toBe("FROZEN");
-  });
-
-  it("keeps case-triggered violation recording on the automatic ladder", () => {
-    const data = mockData();
-    data.collections.users.push({
-      id: "member-automatic-penalty",
-      title: "Automatic Penalty Member",
-      person: "automatic@ku.th",
-      memberStatus: "Normal",
-      walletStatus: "ACTIVE",
-      confirmedViolationCount: 0,
-    });
-
-    const result = recordMemberViolationInData(
-      data,
-      "member-automatic-penalty",
-      "The evidence confirms a policy violation.",
-    );
-
-    expect(result?.outcome.label).toBe("Red Flag");
-    expect(result?.model.memberStatus).toBe("Flag");
-  });
-
-  it("requires a penalty choice for a non-exempt Member action", () => {
-    const data = mockData();
-    data.collections.users.push({
-      id: "member-manual-choice-required",
-      title: "Manual Choice Member",
-      person: "choice@ku.th",
-      memberStatus: "Normal",
-      walletStatus: "ACTIVE",
-      confirmedViolationCount: 0,
-    });
-
-    expect(() => recordMemberViolationFromMember(
-      {
-        getItem: (key) => key === ADMIN_DEMO_DATA_KEY ? JSON.stringify(data) : null,
-        setItem: () => undefined,
-      },
-      "member-manual-choice-required",
-      "The evidence confirms a policy violation.",
-      "",
-      null,
-    )).toThrow("Select a penalty to apply.");
-  });
-
-  it("does not allow a manual penalty choice during an active exemption", () => {
-    const data = mockData();
-    data.collections.users.push({
-      id: "member-manual-exempt",
-      title: "Exempt Member",
-      person: "exempt@ku.th",
-      memberStatus: "Normal",
-      walletStatus: "ACTIVE",
-      newUserExemptionRemaining: 1,
-    });
-
-    expect(() => recordMemberViolationFromMember(
-      {
-        getItem: (key) => key === ADMIN_DEMO_DATA_KEY ? JSON.stringify(data) : null,
-        setItem: () => undefined,
-      },
-      "member-manual-exempt",
-      "The evidence confirms a policy violation.",
-      "",
-      "Permanent ban",
-    )).toThrow("This violation is exempt. No penalty can be selected.");
-  });
-  it("removes one active Mock penalty and keeps a reversal history entry", () => {
-    const data = mockData();
-    data.collections.users.push({
-      id: "member-penalty",
-      title: "Penalty Member",
-      person: "penalty@ku.th",
-      memberStatus: "Temp Ban",
-      walletStatus: "FROZEN",
-      confirmedViolationCount: 2,
-      penalty: {
-        label: "Temporary ban",
-        reason: "Repeated policy violations.",
-        recordedAt: "2026-09-10T09:00:00.000Z",
-        appliedBy: "Admin",
-        durationDays: 7,
-      },
-    });
-    const values: Record<string, string> = {
-      [ADMIN_DEMO_DATA_KEY]: JSON.stringify(data),
-    };
-    const storage: BrowserStorage = {
-      getItem: (key) => values[key] ?? null,
-      setItem: (key, value) => {
-        values[key] = value;
-      },
-    };
-
-    const result = removeMemberPenalty(storage, "member-penalty", "The original decision was corrected.");
-
-    expect(result?.previousStatus).toBe("Temp Ban");
-    expect(result?.nextStatus).toBe("Flag");
-    expect(result?.model.confirmedViolationCount).toBe(1);
-    expect(result?.model.memberStatus).toBe("Flag");
-    expect(result?.model.walletStatus).toBe("ACTIVE");
-    expect(result?.model.penaltyHistory[0]).toMatchObject({
-      event: "Member penalty removed",
-      reason: "The original decision was corrected.",
-      previousStatus: "Temp Ban",
-      newStatus: "Flag",
-    });
+    const rows = walletStatementRows(model, { eventType: "PAYOUT", from: "2026-09-01", to: "2026-09-01" }, 25);
+    expect(rows.map((row) => row.transaction.id)).toEqual(["ledger-old"]);
+    expect(rows[0]?.resultingWalletBalanceSatang).toBe(100);
   });
 });

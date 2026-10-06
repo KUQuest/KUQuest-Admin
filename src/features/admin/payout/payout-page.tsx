@@ -11,7 +11,6 @@ import {
 
 import { ApiError } from "../../../lib/api/client";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
-import { AdminActionReceipt } from "../../../components/admin/admin-action-feedback";
 import { AdminRecordHeader } from "../../../components/admin/admin-record-header";
 import { AdminStatusAlert } from "../../../components/admin/admin-status-alert";
 import { AdminRecordFact as Fact } from "../../../components/admin/admin-record-fields";
@@ -29,14 +28,7 @@ import {
   payoutStatusClass,
   type PayoutDetailView,
 } from "./payout-model";
-import type {
-  PayoutDataSource,
-  PayoutDetailPageData,
-} from "./payout-service";
-import {
-  applyMockPayoutOverride,
-  readMockPayoutOverride,
-} from "./payout-mock-state";
+import type { PayoutDetailPageData } from "./payout-service";
 import { PayoutStatusBadge as Badge } from "./payout-status-badge";
 import { PayoutCommandDialog, type PayoutCommand, type PayoutCommandSubmission } from "./payout-command-dialog";
 import { usePayoutCommandMutation, usePayoutReconcileMutation } from "./payout-query";
@@ -86,20 +78,17 @@ function PayoutDecisionActions({
   onCommand,
   onReconcile,
   reconcilePending,
-  showReconcileAction,
   size = "md",
 }: {
   detail: PayoutDetailView;
   onCommand: (command: PayoutCommand) => void;
   onReconcile: () => void;
   reconcilePending: boolean;
-  showReconcileAction: boolean;
   size?: ButtonSize;
 }) {
   const { translateText } = useAdminShell();
   const canDecide = detail.status === "PENDING_ADMIN_APPROVAL";
-  const canReconcile = showReconcileAction
-    && ["SUBMITTED_TO_PROVIDER", "PROVIDER_PENDING", "FAILED"].includes(detail.status);
+  const canReconcile = ["SUBMITTED_TO_PROVIDER", "PROVIDER_PENDING", "FAILED"].includes(detail.status);
 
   if (canDecide) {
     return <>
@@ -145,10 +134,8 @@ function PayoutDetailContent({
   reconcileError,
   reconcileNotice,
   reconcilePending,
-  showReconcileAction,
   showFullDetailLink,
   fullDetail,
-  actionReceipt,
   renderDecisionActions,
 }: {
   detail: PayoutDetailView;
@@ -157,21 +144,13 @@ function PayoutDetailContent({
   reconcileError: string | null;
   reconcileNotice: string | null;
   reconcilePending: boolean;
-  showReconcileAction: boolean;
   showFullDetailLink: boolean;
   fullDetail: boolean;
-  actionReceipt?: {
-    action: string;
-    status: string;
-    reason: string | null;
-    occurredAt: string;
-  } | null;
   renderDecisionActions: boolean;
 }) {
   const { translateText } = useAdminShell();
   const canDecide = detail.status === "PENDING_ADMIN_APPROVAL";
-  const canReconcile = showReconcileAction
-    && ["SUBMITTED_TO_PROVIDER", "PROVIDER_PENDING", "FAILED"].includes(detail.status);
+  const canReconcile = ["SUBMITTED_TO_PROVIDER", "PROVIDER_PENDING", "FAILED"].includes(detail.status);
   const outcomeReason = payoutOutcomeReason(detail);
   const showDecisionContext = !canDecide && !canReconcile;
   const fullSectionClass = fullDetail ? "!p-[18px] border border-admin-border rounded-admin-md bg-admin-surface shadow-admin-card [&_h3]:mb-[14px]" : "";
@@ -248,20 +227,6 @@ function PayoutDetailContent({
     </Card>
   ) : null;
 
-  const actionReceiptView = actionReceipt ? (
-    <div className="col-span-full">
-      <AdminActionReceipt
-        action={actionReceipt.action}
-        resource="Payout"
-        resourceId={displayAdminId(detail.displayId, detail.id)}
-        status={actionReceipt.status}
-        occurredAt={actionReceipt.occurredAt}
-        mock
-        details={actionReceipt.reason ? <p>{translateText("Reason")}: {actionReceipt.reason}</p> : undefined}
-      />
-    </div>
-  ) : null;
-
   const payoutDecisionSection = canDecide || canReconcile ? (
     <Section title={translateText(renderDecisionActions ? "Admin decision" : "Decision context")} className={`payout-decision-section ${fullSectionClass}`}>
       <p>{canDecide
@@ -273,7 +238,6 @@ function PayoutDetailContent({
           onCommand={onCommand}
           onReconcile={onReconcile}
           reconcilePending={reconcilePending}
-          showReconcileAction={showReconcileAction}
           size="lg"
         />
       </div> : null}
@@ -296,7 +260,6 @@ function PayoutDetailContent({
           {payoutDecisionContextSection}
           {payoutDecisionSection}
         </div>
-        {actionReceiptView}
       </> : <>
         {payoutAmountsSection}
         {payoutDestinationSection}
@@ -304,7 +267,6 @@ function PayoutDetailContent({
         {payoutDecisionContextSection}
         {payoutHistorySection}
         {payoutOutcomeSection}
-        {actionReceiptView}
         {payoutDecisionSection}
       </>}
       {showFullDetailLink ? <UiButton asChild variant="outline" className="payout-full-detail-link justify-self-start"><a href={payoutRoutes.detail(detail.id)}>{translateText("Full Payout detail")}</a></UiButton> : null}
@@ -314,25 +276,17 @@ function PayoutDetailContent({
 
 export function AdminPayoutDetailPage({
   data,
-  dataSource,
   presentation = "page",
 }: {
   data: PayoutDetailPageData;
-  dataSource: PayoutDataSource;
   presentation?: PayoutPresentation;
 }) {
   const router = useRouter();
   const { translateText } = useAdminShell();
-  const [detail, setDetail] = useState(data.detail);
+  const detail = data.detail;
   const [command, setCommand] = useState<PayoutCommand | null>(null);
   const [commandIdempotencyKey, setCommandIdempotencyKey] = useState<string | null>(null);
   const [commandError, setCommandError] = useState<string | null>(null);
-  const [actionReceipt, setActionReceipt] = useState<{
-    action: string;
-    status: string;
-    reason: string | null;
-    occurredAt: string;
-  } | null>(null);
   const [reconcileError, setReconcileError] = useState<string | null>(null);
   const [reconcileNotice, setReconcileNotice] = useState<string | null>(null);
   const commandMutation = usePayoutCommandMutation();
@@ -343,43 +297,28 @@ export function AdminPayoutDetailPage({
   }, [router]);
 
   useEffect(() => {
-    const persistedDetail = dataSource === "mock" && typeof window !== "undefined"
-      ? applyMockPayoutOverride(data.detail, readMockPayoutOverride(window.localStorage, data.detail.id))
-      : data.detail;
-    setDetail(persistedDetail);
     setCommand(null);
     setCommandIdempotencyKey(null);
     setCommandError(null);
-    setActionReceipt(null);
     setReconcileError(null);
     setReconcileNotice(null);
-  }, [data, dataSource]);
+  }, [data]);
 
   async function submitCommand(submission: PayoutCommandSubmission) {
     setCommandError(null);
     try {
-      const result = await commandMutation.mutateAsync({
+      await commandMutation.mutateAsync({
         detail,
-        dataSource,
         submission,
         idempotencyKey: commandIdempotencyKey ?? newIdempotencyKey(submission.command, detail.id),
       });
-      if (result.detail && result.occurredAt) {
-        setDetail(result.detail);
-        setActionReceipt({
-          action: submission.command === "approve" ? "Approve Payout" : "Reject Payout",
-          status: payoutStatusLabel(result.detail.status),
-          reason: result.reason,
-          occurredAt: result.occurredAt,
-        });
-      }
       setCommand(null);
       setCommandIdempotencyKey(null);
-      if (presentation === "drawer" && dataSource === "api") {
+      if (presentation === "drawer") {
         closeDrawer();
         window.setTimeout(() => router.refresh(), 0);
       }
-      else if (dataSource === "api") router.refresh();
+      else router.refresh();
     } catch (error) {
       setCommandError(errorMessage(error));
     }
@@ -389,8 +328,8 @@ export function AdminPayoutDetailPage({
     setReconcileError(null);
     setReconcileNotice(null);
     try {
-      await reconcileMutation.mutateAsync({ payoutId: detail.id, dataSource });
-      if (dataSource === "api") router.refresh();
+      await reconcileMutation.mutateAsync(detail.id);
+      router.refresh();
       setReconcileNotice(`${translateText("Payout for")} ${detail.student.name} ${translateText("was reconciled with the Provider.")}`);
     } catch (error) {
       setReconcileError(errorMessage(error));
@@ -404,10 +343,8 @@ export function AdminPayoutDetailPage({
     reconcileError={reconcileError}
     reconcileNotice={reconcileNotice}
     reconcilePending={reconcileMutation.isPending}
-    showReconcileAction={dataSource === "api"}
     showFullDetailLink={false}
     fullDetail={presentation === "page"}
-    actionReceipt={actionReceipt}
     renderDecisionActions
   />;
 

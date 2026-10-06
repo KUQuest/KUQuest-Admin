@@ -41,7 +41,7 @@ const SelectContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
 >(({ className, children, position = "popper", ...props }, ref) => (
   <SelectPrimitive.Portal>
-    <SelectPrimitive.Content ref={ref} data-slot="select-content" position={position} className={cn("relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-admin-sm border border-admin-border bg-admin-surface text-admin-text shadow-admin", position === "popper" && "translate-y-1", className)} {...props}>
+    <SelectPrimitive.Content ref={ref} data-slot="select-content" position={position} className={cn("relative z-[110] max-h-96 min-w-[8rem] overflow-hidden rounded-admin-sm border border-admin-border bg-admin-surface text-admin-text shadow-admin", position === "popper" && "translate-y-1", className)} {...props}>
       <SelectScrollUpButton />
       <SelectPrimitive.Viewport className={cn("p-1", position === "popper" && "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]")}>
         {children}

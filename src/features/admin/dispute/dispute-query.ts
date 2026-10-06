@@ -1,17 +1,10 @@
 import { useEffect, useMemo } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
-import { adminApiProvider, isAdminApiEnabled } from "../api/admin-provider";
-import type { DisputeResolution } from "../api/admin-api";
+import { adminApiProvider } from "../api/admin-provider";
+import type { AdminDisputeEvidence, DisputeResolution } from "../api/admin-api";
 import { replaceInfiniteItem } from "../data/query-data";
-import {
-  findDisputeCaseFromMock,
-  loadAllDisputeCasesFromMock,
-  loadDisputeCasesFromMock,
-  saveMockDisputeDecision,
-} from "./dispute-adapter";
 import { loadDisputeCaseDetailFromApi, loadDisputeCasePageData, type DisputeCasePageData } from "./dispute-service";
-import type { AdminDisputeEvidence } from "../api/admin-api";
 import { DISPUTE_CASE_UPDATED_EVENT, disputeCaseModelFromRecord, type DisputeCaseCommand, type DisputeCaseModel } from "./dispute-model";
 
 export const disputeBoardQueryKey = ["admin", "dispute-cases", "board"] as const;
@@ -27,38 +20,28 @@ export function disputeEvidenceQueryKey(disputeId: string, reference: string | n
 export type DisputeDecisionMutationInput = {
   model: DisputeCaseModel;
   command: DisputeCaseCommand;
-  reason: string;
   options: DisputeResolution;
-  apiEnabled: boolean;
 };
 
 export function useDisputeDecisionMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationKey: ["admin", "dispute-cases", "decision"],
-    mutationFn: async ({ model, command, reason, options, apiEnabled }: DisputeDecisionMutationInput) => {
-      let updatedRecord: Record<string, unknown> | null;
-      let resourceVersion: number | undefined;
-      if (apiEnabled) {
-        const result = await adminApiProvider.commands.resolveDispute(model.id, options);
-        updatedRecord = result.resourceSummary;
-        resourceVersion = result.resourceVersion;
-      } else {
-        updatedRecord = saveMockDisputeDecision(localStorage, model.id, command, reason, options);
-        resourceVersion = typeof updatedRecord?.version === "number" ? updatedRecord.version : undefined;
-      }
+    mutationFn: async ({ model, command, options }: DisputeDecisionMutationInput) => {
+      const result = await adminApiProvider.commands.resolveDispute(model.id, options);
       const updatedModel = disputeCaseModelFromRecord({
         ...model,
-        ...updatedRecord,
+        ...result.resourceSummary,
         status: command,
         disputeCaseStatus: command,
-        decisionReason: reason,
         ...(command === "DISPUTE_CASE_RESOLVED"
           ? { resolvedWorkerId: model.workerId, resolvedAmountSatang: options.amountSatang }
           : { resolvedWorkerId: null, resolvedAmountSatang: null }),
-        ...(resourceVersion !== undefined && { version: resourceVersion }),
-      }, apiEnabled ? "api" : "mock");
-      if (!updatedModel || updatedModel.id !== model.id) throw new Error(apiEnabled ? "The Admin API returned an invalid Dispute Case." : "The Dispute Case record is invalid.");
+        ...(result.resourceVersion !== undefined && { version: result.resourceVersion }),
+      });
+      if (!updatedModel || updatedModel.id !== model.id) {
+        throw new Error("The Admin API returned an invalid Dispute Case.");
+      }
       return updatedModel;
     },
     onSuccess: (model) => {
@@ -68,13 +51,10 @@ export function useDisputeDecisionMutation() {
   });
 }
 
-function pageFromQueryData(
-  pages: DisputeCasePageData[],
-): DisputeCasePageData {
+function pageFromQueryData(pages: DisputeCasePageData[]): DisputeCasePageData {
   const firstPage = pages[0];
   const lastPage = pages.at(-1);
   return {
-    source: lastPage?.source ?? (isAdminApiEnabled() ? "api" : "mock"),
     items: pages.flatMap((page) => page.items),
     nextCursor: lastPage?.nextCursor ?? null,
     ...(firstPage?.countsByStatus ? { countsByStatus: firstPage.countsByStatus } : {}),
@@ -83,16 +63,10 @@ function pageFromQueryData(
 
 export function useDisputeBoardQuery(initialData?: DisputeCasePageData) {
   const queryClient = useQueryClient();
-  const apiEnabled = isAdminApiEnabled();
   const query = useInfiniteQuery({
     queryKey: disputeBoardQueryKey,
     initialPageParam: null as string | null,
-    queryFn: async ({ pageParam }) => {
-      if (apiEnabled) return loadDisputeCasePageData(undefined, pageParam ?? undefined);
-      return pageParam
-        ? loadDisputeCasesFromMock(window.localStorage, pageParam)
-        : loadAllDisputeCasesFromMock(window.localStorage);
-    },
+    queryFn: ({ pageParam }) => loadDisputeCasePageData(undefined, pageParam ?? undefined),
     initialData: initialData
       ? { pages: [initialData], pageParams: [null] }
       : undefined,
@@ -112,27 +86,19 @@ export function useDisputeBoardQuery(initialData?: DisputeCasePageData) {
     };
     window.addEventListener(DISPUTE_CASE_UPDATED_EVENT, updateRecord);
     return () => window.removeEventListener(DISPUTE_CASE_UPDATED_EVENT, updateRecord);
-  }, [query.data, queryClient]);
+  }, [queryClient]);
 
   return { ...query, data };
 }
 
 export function useDisputeDetailQuery(disputeId: string, initialModel?: DisputeCaseModel | null) {
   const queryClient = useQueryClient();
-  const apiEnabled = isAdminApiEnabled();
   const queryKey = disputeDetailQueryKey(disputeId);
   const query = useQuery({
     queryKey,
     queryFn: async () => {
-      if (apiEnabled) {
-        const model = await loadDisputeCaseDetailFromApi(disputeId);
-        if (!model) throw new Error("The Dispute Case was not found.");
-        return model;
-      }
-
-      const record = findDisputeCaseFromMock(localStorage, disputeId);
-      const model = disputeCaseModelFromRecord(record, "mock");
-      if (!model || model.id !== disputeId) throw new Error("The Dispute Case was not found.");
+      const model = await loadDisputeCaseDetailFromApi(disputeId);
+      if (!model) throw new Error("The Dispute Case was not found.");
       return model;
     },
     initialData: initialModel ?? undefined,
@@ -160,14 +126,13 @@ export function useDisputeDetailQuery(disputeId: string, initialModel?: DisputeC
 }
 
 export function useDisputeEvidenceQuery(disputeId: string, reference: string | null) {
-  const apiEnabled = isAdminApiEnabled();
-  return useQuery<AdminDisputeEvidence | { evidenceRef: string }>({
+  return useQuery<AdminDisputeEvidence>({
     queryKey: disputeEvidenceQueryKey(disputeId, reference),
-    queryFn: async () => {
+    queryFn: () => {
       if (!reference) throw new Error("Evidence Reference was not provided.");
-      return apiEnabled
-        ? adminApiProvider.read.getDisputeEvidence(disputeId, { idempotencyKey: `admin-read-dispute-evidence-${disputeId}-${reference}` })
-        : { evidenceRef: reference };
+      return adminApiProvider.read.getDisputeEvidence(disputeId, {
+        idempotencyKey: `admin-read-dispute-evidence-${disputeId}-${reference}`,
+      });
     },
     enabled: Boolean(reference),
     staleTime: Infinity,

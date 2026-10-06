@@ -33,7 +33,7 @@ describe("Activity Log route service", () => {
 
     expect(request?.url).toBe("https://api.example.test/api/v1/admin/activity-log?limit=50&sort=newest");
     expect(request?.headers.get("cookie")).toBe("kuquest-admin=server-session");
-    expect(page).toEqual({ source: "api", items: [], nextCursor: "next-page" });
+    expect(page).toEqual({ items: [], nextCursor: "next-page" });
     expect(DEFAULT_ACTIVITY_LOG_FILTERS).toEqual({
       action: "",
       resourceType: "",

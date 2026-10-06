@@ -1,92 +1,58 @@
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { adminApiProvider } from "../api/admin-provider";
-import type {
-  PayoutBoardPageData,
-  PayoutDataSource,
-} from "./payout-service";
-import { applyMockPayoutDecision, PAYOUT_MOCK_UPDATED_EVENT, payoutMockOverrideFromDetail, saveMockPayoutOverride } from "./payout-mock-state";
-import { type PayoutCommand, type PayoutCommandSubmission } from "./payout-command-dialog";
+import { loadPayoutBoardPageData, type PayoutBoardPageData } from "./payout-service";
+import type { PayoutCommandSubmission } from "./payout-command-dialog";
 import type { PayoutDetailView } from "./payout-model";
 
-export function payoutBoardQueryKey(dataSource: PayoutDataSource) {
-  return ["admin", "payouts", "board", dataSource] as const;
-}
+export const payoutBoardQueryKey = ["admin", "payouts", "board"] as const;
 
 export type PayoutCommandMutationInput = {
   detail: PayoutDetailView;
-  dataSource: PayoutDataSource;
   submission: PayoutCommandSubmission;
   idempotencyKey: string;
-};
-
-export type PayoutCommandMutationResult = {
-  detail: PayoutDetailView | null;
-  command: PayoutCommand;
-  reason: string | null;
-  occurredAt: string | null;
 };
 
 export function usePayoutCommandMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationKey: ["admin", "payouts", "command"],
-    mutationFn: async ({ detail, dataSource, submission, idempotencyKey }: PayoutCommandMutationInput): Promise<PayoutCommandMutationResult> => {
+    mutationFn: async ({ detail, submission, idempotencyKey }: PayoutCommandMutationInput): Promise<void> => {
       const options = {
         idempotencyKey,
         expectedVersion: detail.version,
       };
-      if (dataSource === "api") {
-        if (submission.command === "approve") {
-          await adminApiProvider.commands.approvePayout(detail.id, {
-            ...options,
-            reasonCode: submission.reasonCode,
-            reason: submission.reason,
-          });
-        } else {
-          await adminApiProvider.commands.rejectPayout(detail.id, {
-            ...options,
-            reasonCode: submission.reasonCode,
-            reason: submission.reason,
-          });
-        }
-        return { detail: null, command: submission.command, reason: submission.reason, occurredAt: null };
+      if (submission.command === "approve") {
+        await adminApiProvider.commands.approvePayout(detail.id, {
+          ...options,
+          reasonCode: submission.reasonCode,
+          reason: submission.reason,
+        });
+      } else {
+        await adminApiProvider.commands.rejectPayout(detail.id, {
+          ...options,
+          reasonCode: submission.reasonCode,
+          reason: submission.reason,
+        });
       }
-      const decisionReason = submission.reason;
-      const decisionReasonCode = submission.command === "reject" ? submission.reasonCode : null;
-      const occurredAt = new Date().toISOString();
-      const nextDetail = applyMockPayoutDecision(detail, submission.command, decisionReason, occurredAt, decisionReasonCode);
-      if (typeof window !== "undefined") {
-        saveMockPayoutOverride(window.localStorage, { id: nextDetail.id, ...payoutMockOverrideFromDetail(nextDetail) });
-        window.dispatchEvent(new CustomEvent(PAYOUT_MOCK_UPDATED_EVENT, { detail: nextDetail }));
-      }
-      return { detail: nextDetail, command: submission.command, reason: decisionReason, occurredAt };
     },
-    onSuccess: (_result, { dataSource }) => {
-      if (dataSource === "api") void queryClient.invalidateQueries({ queryKey: payoutBoardQueryKey(dataSource) });
-    },
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: payoutBoardQueryKey }),
   });
 }
 
 export function usePayoutReconcileMutation() {
   return useMutation({
     mutationKey: ["admin", "payouts", "reconcile"],
-    mutationFn: async ({ payoutId, dataSource }: { payoutId: string; dataSource: PayoutDataSource }) => {
-      if (dataSource === "api") await adminApiProvider.commands.reconcilePayout(payoutId);
-    },
+    mutationFn: (payoutId: string) => adminApiProvider.commands.reconcilePayout(payoutId),
   });
 }
 
-export function usePayoutBoardQuery(
-  initialData: PayoutBoardPageData,
-  dataSource: PayoutDataSource,
-) {
+export function usePayoutBoardQuery(initialData: PayoutBoardPageData) {
   const queryClient = useQueryClient();
-  const queryKey = useMemo(() => payoutBoardQueryKey(dataSource), [dataSource]);
   const query = useQuery({
-    queryKey,
-    queryFn: async () => initialData,
+    queryKey: payoutBoardQueryKey,
+    queryFn: () => loadPayoutBoardPageData(),
     initialData,
     staleTime: Infinity,
     gcTime: Infinity,
@@ -94,8 +60,8 @@ export function usePayoutBoardQuery(
   });
 
   useEffect(() => {
-    queryClient.setQueryData(queryKey, initialData);
-  }, [initialData, queryClient, queryKey]);
+    queryClient.setQueryData(payoutBoardQueryKey, initialData);
+  }, [initialData, queryClient]);
 
-  return { ...query, queryKey };
+  return { ...query, queryKey: payoutBoardQueryKey };
 }

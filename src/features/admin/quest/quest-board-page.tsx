@@ -26,12 +26,12 @@ import {
 } from "./quest-model";
 import { useQuestBoardStore } from "./quest-board-store";
 import { useQuestBoardQuery } from "./quest-query";
-import type { QuestBoardPageData, QuestDataSource } from "./quest-service";
+import type { QuestBoardPageData } from "./quest-service";
 
-export function AdminQuestPage({ initialData, dataSource = "api" }: { initialData: QuestBoardPageData; dataSource?: QuestDataSource }) {
+export function AdminQuestPage({ initialData }: { initialData: QuestBoardPageData }) {
   const router = useRouter();
   const { translateText } = useAdminShell();
-  const { data, isPending, error } = useQuestBoardQuery(initialData, dataSource);
+  const { data, isPending, error } = useQuestBoardQuery(initialData);
   const {
     search,
     tab,

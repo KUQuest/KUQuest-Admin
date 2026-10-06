@@ -15,14 +15,6 @@ import {
   type QuestDetailView,
   type QuestFinanceView,
 } from "./quest-model";
-import {
-  mockQuestDetailForId,
-  mockQuestFinance,
-  mockAllQuests,
-} from "./quest-mock-data";
-
-export type QuestDataSource = "api" | "mock";
-
 export type QuestBoardPageData = {
   rows: QuestBoardRow[];
 };
@@ -72,10 +64,7 @@ async function resolveApiQuestId(
 
 export async function loadQuestBoardPageData(
   cookieHeader?: string,
-  dataSource: QuestDataSource = "api",
 ): Promise<QuestBoardPageData> {
-  if (dataSource === "mock") return { rows: questRowsFromApi(mockAllQuests) };
-
   const options = apiRequestOptions(cookieHeader);
   const quests: AdminQuest[] = [];
   let cursor: string | undefined;
@@ -97,21 +86,7 @@ export async function loadQuestBoardPageData(
 export async function loadQuestDetailPageData(
   questId: string,
   cookieHeader: string,
-  dataSource: QuestDataSource = "api",
 ): Promise<QuestDetailPageData | null> {
-  if (dataSource === "mock") {
-    const apiDetail = mockQuestDetailForId(questId);
-    if (!apiDetail) return null;
-    const detail = questDetailViewFromApi(apiDetail);
-    detail.disputeCases = questDisputeCasesFromApi(apiDetail.disputeCases);
-    return {
-      detail,
-      finance: questFinanceViewFromApi(mockQuestFinance(apiDetail)),
-      linkedDisputeId: detail.disputeCases[0]?.id ?? null,
-      disputeLookupError: null,
-    };
-  }
-
   const options = apiRequestOptions(cookieHeader);
   const apiQuest = await resolveApiQuestId(questId, options);
   const [detailResult, financeResult] = await Promise.allSettled([

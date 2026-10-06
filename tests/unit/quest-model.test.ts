@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
 import type { AdminQuest } from "../../src/features/admin/api/admin-api";
-import { mockQuestDetail, mockQuestFinance, mockQuestSummary } from "../../src/features/admin/quest/quest-mock-data";
+import { mockQuestDetail, mockQuestFinance, mockQuestSummary } from "../fixtures/admin-quest-api-fixtures";
 import {
   formatQuestMoney,
   pageQuestRows,
@@ -80,17 +80,24 @@ describe("Quest route model", () => {
     const apiDetail = {
       ...mockQuestDetail(mockQuestSummary({ id: "quest-uuid-1", displayId: "QST-1" })),
       timeline: [{
-        event: "QUEST_STATUS_CHANGED",
-        status: "QUEST_FAILED" as const,
-        occurredAt: "2026-09-02T01:00:00.000Z",
-        actorId: "admin-uuid-1",
+        id: "timeline-entry-1",
+        fromState: "QUEST_IN_PROGRESS",
+        toState: "QUEST_FAILED",
+        changedAt: "2026-09-02T01:00:00.000Z",
+        actor: { type: "ADMIN" as const, id: "admin-uuid-1" },
         reasonCode: "WORK_NOT_COMPLETED",
       }],
     };
 
     const detail = questDetailViewFromApi(apiDetail);
 
-    expect(detail.timeline[0]).toEqual(apiDetail.timeline[0]);
+    expect(detail.timeline[0]).toEqual({
+      event: "QUEST_STATE_CHANGED",
+      status: "QUEST_FAILED",
+      occurredAt: "2026-09-02T01:00:00.000Z",
+      actorId: "admin-uuid-1",
+      reasonCode: "WORK_NOT_COMPLETED",
+    });
     expect(detail.images).toEqual(apiDetail.images ?? []);
     expect(detail.hirer.memberId).toBe("00000000-0000-0000-0000-000000000010");
     expect(detail.hirer.studentId).toBe("6599900015");
