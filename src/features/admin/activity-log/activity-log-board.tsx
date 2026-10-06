@@ -73,6 +73,12 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
       subtitle={translateText(activityLogActionLabel(entry.action))}
       className="activity-log-dialog"
       onClose={onClose}
+      actions={
+        <>
+          {targetHref ? <Button variant="primary" className="min-w-0" type="button" onClick={() => onOpenTarget(entry)}>{translateText("View linked detail")}</Button> : null}
+          <Button variant="outline" type="button" onClick={onClose}>{translateText("Close")}</Button>
+        </>
+      }
     >
         <div className="activity-log-detail admin-drawer-content-flow grid min-w-0 content-start gap-[18px]">
           <div className="drawer-title m-0 pb-1">
@@ -98,10 +104,6 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
             <p className="activity-log-missing-context m-0 text-[15px] leading-[1.45] text-admin-muted">{translateText("Before and after state are not included in this record.")}</p>
             {entry.note ? <p className="activity-log-note m-0 mt-3 grid gap-1 rounded-admin-sm bg-admin-soft p-2.5 text-[15px] leading-[1.45] text-admin-muted"><strong className="text-[17px] leading-[1.4] text-admin-text">{translateText("Admin note")}</strong>{entry.note}</p> : null}
           </Card>
-          <div className="admin-drawer-actions sticky bottom-[-28px] z-[4] m-[18px_-24px_-28px] flex flex-wrap gap-2 border-t border-admin-border bg-admin-surface/95 px-6 py-3.5 shadow-[0_-6px_18px_rgba(0,0,0,0.09)] [&>*]:min-h-11 [&>*]:flex-[1_1_180px] [&>*]:text-center max-[720px]:bottom-[-24px] max-[720px]:m-[18px_-16px_-24px] max-[720px]:px-4 max-[720px]:[&>*]:basis-full">
-            {targetHref ? <Button variant="primary" className="min-w-0 flex-[1.35]" type="button" onClick={() => onOpenTarget(entry)}>{translateText("View linked detail")}</Button> : null}
-            <Button variant="outline" type="button" onClick={onClose}>{translateText("Close")}</Button>
-          </div>
         </div>
     </AdminDrawer>
   );
