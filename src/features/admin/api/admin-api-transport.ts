@@ -88,11 +88,13 @@ export function disputeCommandHeaders(options: DisputeResolution): HeadersInit {
 
 export function disputeCommandBody(options: DisputeResolution): Pick<
   DisputeResolution,
-  "outcome" | "reasonCode" | "workerId" | "amountSatang"
+  "outcome" | "reasonCode" | "decisionReasonText" | "workerId" | "amountSatang"
 > {
+  const decisionReasonText = options.decisionReasonText?.trim();
   return {
     outcome: options.outcome,
     reasonCode: options.reasonCode,
+    ...(decisionReasonText ? { decisionReasonText } : {}),
     ...(options.workerId ? { workerId: options.workerId } : {}),
     ...(options.amountSatang !== undefined ? { amountSatang: options.amountSatang } : {}),
   };

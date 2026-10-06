@@ -560,7 +560,7 @@ export function ConductReportDrawer({
   const confirmDecision = async ({
     decisionReasonCode,
     decisionReasonText,
-  }: AdminDecisionSubmission<"decisionReasonCode", ConductReportDecisionReasonCode | null>) => {
+  }: AdminDecisionSubmission<"decisionReasonCode", ConductReportDecisionReasonCode>) => {
     if (!selectedChoice) return;
     if (reportModel.version === undefined) {
       setCommandError("The current Conduct Report version is missing. Reload the report before you decide.");
@@ -572,23 +572,15 @@ export function ConductReportDrawer({
       idempotencyKey: newConductReportIdempotencyKey(reportModel.id),
       ...(decisionReasonText ? { decisionReasonText } : {}),
     };
-    let options: ConductReportDecision;
-    if (decision === "CONDUCT_REPORT_DISMISSED") {
-      if (!decisionReasonCode) {
-        setCommandError("Choose a decision reason code before confirming.");
-        return;
-      }
-      options = {
-        ...commandContext,
-        outcome: decision,
-        decisionReasonCode,
-      };
-    } else {
-      options = {
-        ...commandContext,
-        outcome: decision,
-      };
+    if (!decisionReasonCode) {
+      setCommandError("Choose a decision reason code before confirming.");
+      return;
     }
+    const options: ConductReportDecision = {
+      ...commandContext,
+      outcome: decision,
+      decisionReasonCode,
+    };
     setCommandError(null);
 
     try {

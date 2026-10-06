@@ -13,6 +13,7 @@ import {
 } from "../domain/rulebook";
 import { statusBadgeClass } from "../status-badge";
 import { displayAdminId } from "../display-admin-id";
+import type { ConductReportDecisionReasonCode } from "../api/admin-api";
 
 export type ConductReportRecord = {
   id: string;
@@ -21,9 +22,7 @@ export type ConductReportRecord = {
 
 export type ConductReportDecisionChoice = "dismiss" | "confirmed-violation";
 
-export type ConductReportDecisionReasonCode =
-  | "CONDUCT_REPORT_NO_VIOLATION"
-  | "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE";
+export type { ConductReportDecisionReasonCode } from "../api/admin-api";
 
 export type ConductReportCommand =
   | "CONDUCT_REPORT_DISMISSED"
@@ -217,26 +216,36 @@ export function conductReportDecisionDetailsForChoice(choice: ConductReportDecis
 export function conductReportDecisionDetailsForCommand(
   command:
     | {
-        outcome: "CONDUCT_REPORT_DISMISSED";
+        outcome: "CONDUCT_REPORT_DISMISSED" | "CONDUCT_REPORT_UPHELD";
         decisionReasonCode: ConductReportDecisionReasonCode;
-      }
-    | { outcome: "CONDUCT_REPORT_UPHELD" },
+      },
 ) {
+  const labels: Record<ConductReportDecisionReasonCode, string> = {
+    CONDUCT_REPORT_NO_VIOLATION: "No violation",
+    CONDUCT_REPORT_INSUFFICIENT_EVIDENCE: "Insufficient evidence",
+    CONDUCT_REPORT_QUEST_RECORD_DISPROVES_CLAIM: "Quest record disproves the claim",
+    CONDUCT_REPORT_OUTSIDE_RULEBOOK_SCOPE: "Outside Rulebook scope",
+    CONDUCT_REPORT_QUEST_RECORD_CONFIRMS_VIOLATION: "Quest record confirms a violation",
+    CONDUCT_REPORT_PROOF_RECORD_CONFIRMS_VIOLATION: "Proof Submission confirms a violation",
+    CONDUCT_REPORT_CHAT_CONTEXT_CORROBORATES_VIOLATION: "Chat context corroborates a violation",
+  };
   if (command.outcome === "CONDUCT_REPORT_UPHELD") {
     return {
-      label: "Violation confirmed",
-      decisionReasonCode: null,
+      label: labels[command.decisionReasonCode],
+      decisionReasonCode: command.decisionReasonCode,
       resolution: "Violation confirmed; the Member Misconduct ladder was applied.",
     };
   }
 
   const insufficientEvidence = command.decisionReasonCode === "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE";
   return {
-    label: insufficientEvidence ? "Insufficient evidence" : "No violation",
+    label: labels[command.decisionReasonCode],
     decisionReasonCode: command.decisionReasonCode,
     resolution: insufficientEvidence
       ? "Conduct Report dismissed; the evidence did not establish a policy violation."
-      : "Conduct Report dismissed; no policy violation found.",
+      : command.decisionReasonCode === "CONDUCT_REPORT_NO_VIOLATION"
+        ? "Conduct Report dismissed; no policy violation found."
+        : `Conduct Report dismissed; ${labels[command.decisionReasonCode].toLowerCase()}.`,
   };
 }
 

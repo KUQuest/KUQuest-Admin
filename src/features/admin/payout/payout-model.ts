@@ -93,6 +93,7 @@ export type PayoutDetailView = {
     actorAdminId: string | null;
     source: string;
     reason: string | null;
+    reasonCode?: string | null;
     occurredAt: string;
   }>;
 };
@@ -229,6 +230,7 @@ export function payoutDetailViewFromApi(
       actorAdminId: entry.actorAdminId,
       source: entry.source,
       reason: entry.reason,
+      reasonCode: entry.reasonCode,
       occurredAt: entry.occurredAt,
     })),
   };

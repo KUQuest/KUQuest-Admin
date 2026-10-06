@@ -223,9 +223,10 @@ describe("Conduct Report model", () => {
     });
     expect(conductReportDecisionDetailsForCommand({
       outcome: "CONDUCT_REPORT_UPHELD",
+      decisionReasonCode: "CONDUCT_REPORT_PROOF_RECORD_CONFIRMS_VIOLATION",
     })).toEqual({
-      label: "Violation confirmed",
-      decisionReasonCode: null,
+      label: "Proof Submission confirms a violation",
+      decisionReasonCode: "CONDUCT_REPORT_PROOF_RECORD_CONFIRMS_VIOLATION",
       resolution: "Violation confirmed; the Member Misconduct ladder was applied.",
     });
   });

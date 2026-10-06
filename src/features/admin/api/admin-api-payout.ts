@@ -22,6 +22,11 @@ import type {
   PayoutRejection,
 } from "./admin-api";
 
+function decisionReasonTextFields(value: string | undefined) {
+  const decisionReasonText = value?.trim();
+  return decisionReasonText ? { decisionReasonText } : {};
+}
+
 export function createAdminPayoutApi() {
   return {
     listPayouts(
@@ -61,7 +66,7 @@ export function createAdminPayoutApi() {
           method: "POST",
           headers: payoutCommandHeaders(options),
           body: {
-            ...(options.reason !== undefined ? { reason: options.reason } : {}),
+            ...decisionReasonTextFields(options.decisionReasonText),
             reasonCode: options.reasonCode,
           },
         },
@@ -75,7 +80,7 @@ export function createAdminPayoutApi() {
           method: "POST",
           headers: payoutCommandHeaders(options),
           body: {
-            ...(options.reason !== undefined ? { reason: options.reason } : {}),
+            ...decisionReasonTextFields(options.decisionReasonText),
             reasonCode: options.reasonCode,
           },
         },

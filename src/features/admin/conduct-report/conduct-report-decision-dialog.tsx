@@ -6,7 +6,7 @@ import { AdminActionSummary } from "../../../components/admin/admin-action-feedb
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { Button } from "../../../components/ui/button";
 import { AdminReasonCodeField } from "../admin-reason-code-field";
-import { CONDUCT_REPORT_DISMISS_REASON_CODE_OPTIONS } from "../admin-reason-codes";
+import { CONDUCT_REPORT_REASON_CODE_OPTIONS } from "../admin-reason-codes";
 import { AdminDecisionNoteInput, useAdminDecisionNote, type AdminDecisionSubmission } from "../admin-decision-note";
 import {
   conductReportStatusLabel,
@@ -25,7 +25,7 @@ type DecisionDialogProps = {
 
   translateText: (value: string) => string;
   onCancel: () => void;
-  onConfirm: (submission: AdminDecisionSubmission<"decisionReasonCode", ConductReportDecisionReasonCode | null>) => void;
+  onConfirm: (submission: AdminDecisionSubmission<"decisionReasonCode", ConductReportDecisionReasonCode>) => void;
 };
 
 function decisionDialogTitle(
@@ -79,6 +79,10 @@ export function ConductReportDecisionDialog({
   const effect = choice === "confirmed-violation"
     ? "The Conduct Report is upheld and a permanent Misconduct strike is recorded. There is no restore path."
     : "The Conduct Report closes. No Misconduct strike or Member status change is made.";
+  const reasonCodeOptions = choice === "confirmed-violation"
+    ? CONDUCT_REPORT_REASON_CODE_OPTIONS.CONDUCT_REPORT_UPHELD
+    : CONDUCT_REPORT_REASON_CODE_OPTIONS.CONDUCT_REPORT_DISMISSED;
+  const hasValidReasonCode = reasonCodeOptions.some(({ value }) => value === decisionReasonCode);
 
   return (
     <AdminModalPortal open={open} onClose={onCancel}>
@@ -93,10 +97,10 @@ export function ConductReportDecisionDialog({
         method="dialog"
         onSubmit={(event) => {
           event.preventDefault();
-          const selectedDecisionReasonCode = choice === "dismiss" ? decisionReasonCode : null;
-          if (choice === "dismiss" && !selectedDecisionReasonCode) return;
+          const selectedDecisionReasonCode = decisionReasonCode;
+          if (!hasValidReasonCode || !selectedDecisionReasonCode) return;
           onConfirm({
-            decisionReasonCode: selectedDecisionReasonCode || null,
+            decisionReasonCode: selectedDecisionReasonCode,
             ...(decisionReasonText ? { decisionReasonText } : {}),
           });
         }}
@@ -116,12 +120,12 @@ export function ConductReportDecisionDialog({
               warning={translateText("Use the Quest, Assignment, and Proof Submission record as the decision evidence.")}
             />
           ) : null}
-          {choice === "dismiss" ? (
+          {choice ? (
             <AdminReasonCodeField
               id="conduct-report-decision-reason-code"
               label="Decision reason code"
               value={decisionReasonCode}
-              options={CONDUCT_REPORT_DISMISS_REASON_CODE_OPTIONS}
+              options={reasonCodeOptions}
               onValueChange={setDecisionReasonCode}
               translateText={translateText}
               invalid={Boolean(error)}
@@ -139,7 +143,7 @@ export function ConductReportDecisionDialog({
           <Button variant="outline" type="button" onClick={onCancel} disabled={busy}>
             {translateText("Cancel")}
           </Button>
-          <Button variant="danger" type="submit" disabled={busy || (choice === "dismiss" && !decisionReasonCode)}>
+          <Button variant="danger" type="submit" disabled={busy || !hasValidReasonCode}>
             {busy ? translateText("Saving…") : translateText("Confirm decision")}
           </Button>
         </div>
