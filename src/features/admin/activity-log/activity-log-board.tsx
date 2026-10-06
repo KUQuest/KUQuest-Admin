@@ -92,6 +92,7 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
             <CardHeader flush className={adminRecordHeader}><h3 id="activity-log-record-heading" className={adminRecordHeading}>{translateText("Activity record")}</h3></CardHeader>
             <div className={adminRecordFacts}>
               <div className={adminRecordFact}><span>{translateText("Timestamp")}</span><strong>{formatActivityLogTimestamp(entry.createdAt)}</strong></div>
+              <div className={adminRecordFact}><span>{translateText("Activity ID")}</span><strong className="break-all">{entry.id}</strong></div>
               <div className={adminRecordFact}><span>{translateText("Actor")}</span><strong>{displayValue(entry.adminName)}</strong></div>
               <div className={adminRecordFact}><span>{translateText("Action")}</span><strong>{translateText(activityLogActionLabel(entry.action))}</strong></div>
               <div className={adminRecordFact}><span>{translateText("Event type")}</span><strong>{translateText(activityLogResourceTypeLabel(entry.resourceType))}</strong></div>

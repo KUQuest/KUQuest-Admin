@@ -165,6 +165,7 @@ export const thaiTranslations: Record<string, string> = {
   Details: "รายละเอียด",
   "View activity details": "ดูรายละเอียดกิจกรรม",
   "Activity log entry": "รายการบันทึกกิจกรรม",
+  "Activity ID": "รหัสกิจกรรม",
   "Reason code": "รหัสเหตุผล",
   "Decision reason code": "รหัสเหตุผลการตัดสินใจ",
   "Dismiss Conduct Report": "ยกเลิก Conduct Report",
