@@ -1,10 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import {
-  mockAllWallets,
-  mockWalletLedgerTransactions,
-  mockWallets,
-} from "../../src/features/admin/wallet/wallet-mock-data";
+import { adminWalletFixtures } from "../fixtures/admin-wallet-api-fixtures";
 import {
   pageWalletRows,
   searchWalletRows,
@@ -49,9 +45,9 @@ describe("Wallet route model", () => {
 
   it("maps Wallet DTOs to a separate view model and keeps the API balance", () => {
     const wallet = {
-      ...mockWallets[0],
+      ...adminWalletFixtures[0],
       balances: {
-        ...mockWallets[0].balances,
+        ...adminWalletFixtures[0].balances,
         totalBalanceSatang: 12345,
       },
     };
@@ -73,7 +69,7 @@ describe("Wallet route model", () => {
 
   it("keeps Wallet rows usable when the API omits the Member association", () => {
     const wallet = {
-      ...mockWallets[0],
+      ...adminWalletFixtures[0],
       id: "WAL-MISSING-MEMBER",
       userId: "member-orphan",
       member: null,
@@ -89,19 +85,8 @@ describe("Wallet route model", () => {
     });
   });
 
-  it("provides the latest transaction date for every Mock Wallet with a statement", () => {
-    const walletsWithSealedStatements = mockAllWallets.filter((wallet) => (
-      mockWalletLedgerTransactions[wallet.id] ?? []
-    ).some((transaction) => transaction.sealedAt !== null));
-
-    expect(walletsWithSealedStatements.length).toBe(mockAllWallets.length);
-    expect(walletsWithSealedStatements.every((wallet) => Boolean(wallet.latestTransactionAt))).toBe(true);
-    expect(mockAllWallets.find((wallet) => wallet.id === "WAL-1006")?.latestTransactionAt)
-      .toBe("2026-09-01T06:00:00.000Z");
-  });
-
   it("keeps Wallet status tabs separate from Member status values", () => {
-    const rows = mockWallets.map(walletRowFromApi);
+    const rows = adminWalletFixtures.map(walletRowFromApi);
     const frozen = rows.filter((row) => walletMatchesTab(row, "FROZEN"));
 
     expect(frozen.map((row) => row.status)).toEqual(["FROZEN"]);
@@ -115,7 +100,7 @@ describe("Wallet route model", () => {
   });
 
   it("searches Wallet and Member identifiers and paginates sorted rows", () => {
-    const rows = mockWallets.map(walletRowFromApi);
+    const rows = adminWalletFixtures.map(walletRowFromApi);
     const searched = searchWalletRows(rows, "68000040");
     const sorted = sortWalletRows(rows, "balance", "descending");
 
@@ -145,7 +130,7 @@ describe("Wallet route model", () => {
 
   it("maps Wallet drawer detail, history, and sealed Ledger Transactions", () => {
     const wallet = {
-      ...mockWallets[0],
+      ...adminWalletFixtures[0],
       projectionMatchesLedger: false,
     };
     const detail = walletDetailFromApi(wallet);

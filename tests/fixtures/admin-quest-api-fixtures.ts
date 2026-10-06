@@ -5,8 +5,7 @@ import type {
   AdminQuestDetail,
   AdminQuestFinance,
   AdminQuestMember,
-} from "../api/admin-api";
-import { mockDemoMemberSeeds } from "../data/mock-demo-fixtures";
+} from "../../src/features/admin/api/admin-api";
 
 export const MOCK_OPEN_QUEST_ID = "00000000-0000-0000-0000-000000000001";
 export const MOCK_TEAM_QUEST_ID = "00000000-0000-0000-0000-000000000002";
@@ -87,15 +86,17 @@ function questTimelineFor(quest: AdminQuest): AdminQuestDetail["timeline"] {
   const hasDateRange = Number.isFinite(createdAt) && Number.isFinite(updatedAt) && updatedAt >= createdAt;
   const timelineEnd = hasDateRange ? updatedAt : timelineStart;
   const elapsed = Math.max(0, timelineEnd - timelineStart);
-  const interval = statuses.length > 1 ? Math.max(1, Math.floor(elapsed / (statuses.length - 1))) : 0;
+  const transitionCount = statuses.length - 1;
+  const interval = transitionCount > 0 ? Math.max(1, Math.floor(elapsed / transitionCount)) : 0;
 
-  return statuses.map((status, index) => ({
-    event: index === 0 ? "QUEST_CREATED" : "QUEST_STATUS_CHANGED",
-    status,
-    occurredAt: index === statuses.length - 1 && hasDateRange
+  return statuses.slice(1).map((toState, index) => ({
+    id: `${quest.id}-timeline-${index + 1}`,
+    fromState: statuses[index],
+    toState,
+    changedAt: index === transitionCount - 1 && hasDateRange
       ? quest.updatedAt
-      : new Date(timelineStart + interval * index).toISOString(),
-    actorId: null,
+      : new Date(timelineStart + interval * (index + 1)).toISOString(),
+    actor: { type: "SYSTEM" as const, id: null },
     reasonCode: null,
   }));
 }
@@ -125,24 +126,15 @@ type DemoQuestMember = {
 };
 
 function demoQuestMemberFor(index: number): DemoQuestMember {
-  const seed = mockDemoMemberSeeds[index];
-  if (seed) {
-    return {
-      id: seed.id,
-      studentId: seed.studentId,
-      firstName: seed.firstName,
-      lastName: seed.lastName,
-      email: seed.email,
-    };
-  }
-
   const sequence = String(index + 1).padStart(3, "0");
+  const firstNames = ["Ari", "Benja", "Chanya", "Dara", "Kanda", "Mali", "Niran", "Pim"];
+  const lastNames = ["Wattanakul", "Ariyawat", "Sukjai", "Chantarat", "Rattanaporn"];
   return {
     id: String(68000200 + index),
     studentId: `651030${String(index + 1).padStart(4, "0")}`,
-    firstName: "Demo",
-    lastName: `Member ${sequence}`,
-    email: `demo.member${sequence}@ku.th`,
+    firstName: firstNames[index % firstNames.length],
+    lastName: `${lastNames[Math.floor(index / firstNames.length) % lastNames.length]} ${sequence}`,
+    email: `quest.fixture${sequence}@ku.th`,
   };
 }
 
@@ -334,7 +326,7 @@ function candidateApplicationsFor(quest: AdminQuest): AdminQuestDetail["candidat
   const displayNumber = Number.parseInt((quest.displayId ?? "").replace(/\D/g, ""), 10);
   return [{
     id: `${quest.id}-application-1`,
-    worker: demoQuestMemberFor(Number.isFinite(displayNumber) ? displayNumber % mockDemoMemberSeeds.length : 80),
+    worker: demoQuestMemberFor(Number.isFinite(displayNumber) ? displayNumber % 200 : 80),
     applicationStatus: "APPLICATION_SELECTED",
     reworkLimit: 0,
     appliedAt: quest.createdAt,
@@ -394,7 +386,7 @@ function singleAssignmentFor(quest: AdminQuest): AdminQuestDetail["assignments"]
 
   const displayNumber = Number.parseInt((quest.displayId ?? "").replace(/\D/g, ""), 10);
   const worker = Number.isFinite(displayNumber)
-    ? demoQuestMemberFor(displayNumber % mockDemoMemberSeeds.length)
+    ? demoQuestMemberFor(displayNumber % 200)
     : assignedWorker;
 
   return [{

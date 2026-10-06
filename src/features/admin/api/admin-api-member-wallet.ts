@@ -117,10 +117,13 @@ export function createAdminMemberWalletApi() {
       );
     },
 
-    rebuildWalletProjection(walletId: string): Promise<AdminWalletStatusResult> {
+    rebuildWalletProjection(
+      walletId: string,
+      options: AdminApiRequestOptions = {},
+    ): Promise<AdminWalletStatusResult> {
       return apiRequest<AdminWalletStatusResult>(
         `/api/v1/admin/wallets/${encode(walletId)}/rebuild-projection`,
-        { method: "POST" },
+        { method: "POST", ...options },
       );
     },
   };

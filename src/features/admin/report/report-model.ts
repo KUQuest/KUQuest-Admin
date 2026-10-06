@@ -7,7 +7,6 @@ import {
 import {
   isConductReportStatus,
   isReportCaseStatus,
-  reportCaseStatusFor,
   reportCaseStatusLabel,
   type ReportCaseStatus,
 } from "../domain/rulebook";
@@ -61,10 +60,12 @@ export type ReportCaseModel = {
   source: "Message";
   reportedMemberId: string;
   reportedMemberDisplayId: string | null;
+  reportedMemberStudentId: string | null;
   reportedMemberName: string;
   reportedMemberHref: string | null;
   reporterId: string | null;
   reporterDisplayId: string | null;
+  reporterStudentId: string | null;
   reporterName: string;
   reporterHref: string | null;
   relatedQuestId: string | null;
@@ -158,13 +159,6 @@ export function reportCaseStatusFromRecord(value: unknown): ReportCaseStatus | n
   if (isReportCaseStatus(record.reportCaseStatus)) return record.reportCaseStatus;
   if (isReportCaseStatus(record.status)) return record.status;
 
-  // The demo adapter can contain older Report Case rows. Only an explicit
-  // reportCaseStatus field may use the legacy Closed value.
-  if (record.reportCaseStatus === "Closed") {
-    const status = reportCaseStatusFor(record.reportCaseStatus, record.decision);
-    return isReportCaseStatus(status) ? status : null;
-  }
-
   return null;
 }
 
@@ -187,14 +181,6 @@ export function reportCaseDecisionFor(
   return reportCaseDecisionMetadata[choice].command;
 }
 
-export function reportCaseReasonCodeFor(
-  choice: ReportCaseDecisionChoice,
-  value: string,
-): string {
-  const normalized = value.trim().toUpperCase();
-  if (/^[A-Z][A-Z0-9_.-]{0,99}$/.test(normalized)) return normalized;
-  return choice === "no-violation" ? "POLICY_REVIEW" : "SAFETY_REVIEW";
-}
 
 export function reportCaseDecisionDetailsForCommand(command: ReportCaseCommand): {
   choice: ReportCaseDecisionChoice;
@@ -283,10 +269,12 @@ export function reportCaseModelFromRecord(value: unknown): ReportCaseModel | nul
     source: "Message",
     reportedMemberId,
     reportedMemberDisplayId: displayAdminId(record.reportedMemberDisplayId, reportedMember?.displayId),
+    reportedMemberStudentId: firstText(reportedMember?.studentId),
     reportedMemberName,
     reportedMemberHref: reportedMemberId ? memberRoutes.detail(reportedMemberId) : null,
     reporterId,
     reporterDisplayId: displayAdminId(record.reporterDisplayId, reporter?.displayId),
+    reporterStudentId: firstText(reporter?.studentId),
     reporterName,
     reporterHref: reporterId ? memberRoutes.detail(reporterId) : null,
     relatedQuestId,

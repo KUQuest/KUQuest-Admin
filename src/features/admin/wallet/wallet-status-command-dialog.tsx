@@ -10,13 +10,6 @@ import { walletStatusLabel, type WalletStatus } from "../domain/rulebook";
 import type { WalletBoardRow } from "./wallet-model";
 
 export type WalletStatusTarget = Exclude<WalletStatus, "CLOSED">;
-export type WalletStatusFixture = "success" | "error" | "stale-version";
-
-const WALLET_STATUS_FIXTURE_OPTIONS: Array<{ value: WalletStatusFixture; label: string }> = [
-  { value: "success", label: "Success" },
-  { value: "error", label: "Command error" },
-  { value: "stale-version", label: "Stale Wallet version" },
-];
 
 export function walletStatusTargets(status: WalletStatus): WalletStatusTarget[] {
   if (status === "CLOSED") return [];
@@ -51,12 +44,6 @@ function walletStatusTransitionCopy(status: WalletStatusTarget): string[] {
   ];
 }
 
-export function walletStatusFixtureError(fixture: WalletStatusFixture): string | null {
-  if (fixture === "error") return "Mock Wallet status command failed. No status was changed.";
-  if (fixture === "stale-version") return "Wallet status is stale. Refresh this Wallet before trying again. No status was changed.";
-  return null;
-}
-
 export function WalletStatusCommandDialog({
   row,
   targetStatus,
@@ -64,20 +51,17 @@ export function WalletStatusCommandDialog({
   onSubmit,
   error,
   pending,
-  showFixture,
 }: {
   row: WalletBoardRow;
   targetStatus: WalletStatusTarget;
   onCancel: () => void;
-  onSubmit: (reason: string, fixture: WalletStatusFixture) => void;
+  onSubmit: (reason: string) => void;
   error: string | null;
   pending: boolean;
-  showFixture: boolean;
 }) {
   const { translateText } = useAdminShell();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [reason, setReason] = useState("");
-  const [fixture, setFixture] = useState<WalletStatusFixture>("success");
   const [validationError, setValidationError] = useState<string | null>(null);
   const transitionCopy = walletStatusTransitionCopy(targetStatus);
   const actionLabel = walletStatusActionLabel(targetStatus);
@@ -105,7 +89,7 @@ export function WalletStatusCommandDialog({
       return;
     }
     setValidationError(null);
-    onSubmit(trimmedReason, fixture);
+    onSubmit(trimmedReason);
   }
 
   return <AdminModalPortal open onClose={onCancel}><dialog ref={dialogRef} open className="dispute-decision-dialog wallet-status-command-dialog" aria-labelledby="wallet-status-command-title" aria-modal="true" tabIndex={-1}>
@@ -126,11 +110,6 @@ export function WalletStatusCommandDialog({
         <label htmlFor="wallet-status-reason">{translateText("Reason for this decision")}</label>
         <textarea id="wallet-status-reason" name="reason" rows={4} minLength={1} maxLength={500} required value={reason} aria-invalid={validationError ? "true" : undefined} aria-describedby={validationError ? "wallet-status-reason-error" : undefined} onChange={(event) => { setReason(event.target.value); setValidationError(null); }} autoFocus />
         <div className="mt-1.5 flex justify-between gap-3 text-[15px] leading-[1.4] text-admin-muted"><span>{translateText("This reason is part of the Wallet status history. It does not change the Member Ban ladder.")}</span><span>{reason.length}/500</span></div>
-        {showFixture ? <label className="wallet-fixture-field" htmlFor="wallet-status-fixture">{translateText("Mock response fixture")} <span className="text-xs font-medium">{translateText("Development only")}</span>
-          <select id="wallet-status-fixture" value={fixture} onChange={(event) => setFixture(event.target.value as WalletStatusFixture)}>
-            {WALLET_STATUS_FIXTURE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{translateText(option.label)}</option>)}
-          </select>
-        </label> : null}
         {validationError || error ? <p id="wallet-status-reason-error" className="field-error" role="alert">{translateText(validationError ?? error ?? "")}</p> : null}
       </div>
       <div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5">

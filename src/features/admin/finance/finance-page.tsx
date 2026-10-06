@@ -4,7 +4,7 @@
 import { useState, type FormEvent } from "react";
 
 import { AdminPageHeader } from "../../../components/admin/admin-page-header";
-import { Button, Card, CardHeader, EmptyState } from "../../../components/ui";
+import { Button, Card, CardHeader } from "../../../components/ui";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { formatAdminTimestamp } from "../date-format";
 import { displayAdminId } from "../display-admin-id";
@@ -129,10 +129,8 @@ export function AdminFinancePage({ initialData }: { initialData: FinancePageData
   return (
     <main className="admin-route-page grid min-w-0 content-start gap-4" tabIndex={-1}>
       <AdminPageHeader title={translateText("Finance")} description={translateText("Review Money Policy and Provider Event operations.")} />
-      {initialData.dataSource === "api" ? <>
-        <PolicyValues initialData={initialData} />
-        <ProviderEventRetry />
-      </> : <Card as="section" className="overflow-hidden"><EmptyState className="border-0 p-[60px_24px]" title={translateText("Finance tools unavailable")} description={translateText("The Admin API is required to read Money Policy data.")} /></Card>}
+      <PolicyValues initialData={initialData} />
+      <ProviderEventRetry />
     </main>
   );
 }

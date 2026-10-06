@@ -22,8 +22,6 @@ import { formatTopUpPaymentMethod, TopUpDetailDrawer } from "../finance/top-up-d
 import { TOP_UP_BOARD_TABS } from "../finance/top-ups-board-model";
 import { statusBadgeClass } from "../status-badge";
 import { filterReviews } from "../user-reviews/review-model";
-import { MEMBER_UPDATED_EVENT } from "./member-board";
-import { NoteDialog, PenaltyDialog, RemovePenaltyDialog } from "./member-action-dialogs";
 import { formatWalletMovementAmount, walletBusinessReferenceLabel, walletCompartmentLabel, walletEventTypeLabel } from "../wallet/wallet-model";
 import { formatWalletStatementDateInput, parseWalletStatementDateInput } from "./member-wallet-model";
 import {
@@ -33,15 +31,13 @@ import {
   memberStatusClass,
   memberStatusText,
   memberTabHref,
-  nextPenaltyFor,
   walletStatusClass,
   walletStatusText,
   walletStatementRows,
-  type MemberPenaltyChoice,
   type MemberModel,
   type MemberTab,
 } from "./member-model";
-import { useMemberActionMutation, useMemberDetailQuery, useMemberTopUpsQuery } from "./member-query";
+import { useMemberDetailQuery, useMemberTopUpsQuery } from "./member-query";
 
 function initials(model: MemberModel): string {
   return `${model.firstName.charAt(0)}${model.lastName.charAt(0)}`.toUpperCase() || "M";
@@ -54,7 +50,7 @@ function averageRating(model: MemberModel): string {
 }
 
 function reviewCount(model: MemberModel): number {
-  return model.source === "api" ? model.stats.reviewsReceivedCount : model.reviews.length;
+  return model.stats.reviewsReceivedCount;
 }
 
 function reviewStatusLabel(status: string): string {
@@ -97,21 +93,24 @@ function latestWalletTransactionAt(model: MemberModel): string | null {
 function MemberSummary({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
   return (
     <Card as="section" className="mb-[18px] p-[18px]">
-      <div className="grid !grid-cols-[minmax(250px,1.35fr)_minmax(300px,1fr)] items-center gap-5 max-[1100px]:!grid-cols-[minmax(250px,1fr)_minmax(270px,1fr)] max-[600px]:!grid-cols-1">
+      <div className="grid !grid-cols-[minmax(250px,1.35fr)_minmax(300px,1fr)] items-start gap-5 max-[1100px]:!grid-cols-[minmax(250px,1fr)_minmax(270px,1fr)] max-[600px]:!grid-cols-1">
         <div className="user-summary-identity flex min-w-0 items-start gap-3.5">
           <span className="user-profile-avatar grid size-[58px] shrink-0 place-items-center rounded-full bg-admin-avatar text-xl font-bold text-admin-accent-strong">{initials(model)}</span>
           <div>
-            <div className="user-summary-name flex flex-wrap items-center gap-2"><h2 className="mb-0 text-[22px] leading-[1.3]">{model.title}</h2>{statusBadge(model, translateText)}</div>
+            <h2 className="mb-0 text-[22px] leading-[1.3]">{model.title}</h2>
             <p className="m-0 block text-[15px] leading-[1.45] text-admin-muted">{model.faculty || translateText("Academic profile not recorded")}</p>
             <p className="m-0 block text-[15px] leading-[1.45] text-admin-muted">Kasetsart University</p>
             <a className="mt-[3px] block text-[15px] leading-[1.45] text-admin-accent no-underline hover:underline" href={`mailto:${model.email}`}>{model.email}</a>
             <div className="user-detail-tags mt-2.5 flex flex-wrap items-center gap-1.5">{model.tags.map((tag) => <span className="rounded-full border border-admin-border px-2 py-[3px] text-[13px] text-admin-muted" key={tag}>{tag}</span>)}</div>
           </div>
         </div>
-        <div className="grid !grid-cols-3 border-l border-admin-border max-[600px]:border-l-0 max-[600px]:border-t max-[600px]:pt-3">
-          <div className="grid min-w-0 !grid-cols-1 gap-0.5 border-r border-admin-border px-3 last:border-r-0 max-[600px]:px-2"><strong className="text-lg">{averageRating(model)}</strong><span className="text-admin-muted text-[var(--member-font-meta)] leading-[1.4]">{translateText("Rating")}</span></div>
-          <div className="grid min-w-0 !grid-cols-1 gap-0.5 border-r border-admin-border px-3 last:border-r-0 max-[600px]:px-2"><strong className="text-lg">{reviewCount(model)}</strong><span className="text-admin-muted text-[var(--member-font-meta)] leading-[1.4]">{translateText("Reviews")}</span></div>
-          <div className="grid min-w-0 !grid-cols-1 gap-0.5 border-r border-admin-border px-3 last:border-r-0 max-[600px]:px-2"><strong className="text-lg">{completedQuestCount(model)}</strong><span className="text-admin-muted text-[var(--member-font-meta)] leading-[1.4]">{translateText("Completed quests")}</span></div>
+        <div className="grid min-w-0 gap-3">
+          <div className="flex justify-end">{statusBadge(model, translateText)}</div>
+          <div className="grid !grid-cols-3 border-l border-admin-border max-[600px]:border-l-0 max-[600px]:border-t max-[600px]:pt-3">
+            <div className="grid min-w-0 !grid-cols-1 gap-0.5 border-r border-admin-border px-3 last:border-r-0 max-[600px]:px-2"><strong className="text-lg">{averageRating(model)}</strong><span className="text-admin-muted text-[var(--member-font-meta)] leading-[1.4]">{translateText("Rating")}</span></div>
+            <div className="grid min-w-0 !grid-cols-1 gap-0.5 border-r border-admin-border px-3 last:border-r-0 max-[600px]:px-2"><strong className="text-lg">{reviewCount(model)}</strong><span className="text-admin-muted text-[var(--member-font-meta)] leading-[1.4]">{translateText("Reviews")}</span></div>
+            <div className="grid min-w-0 !grid-cols-1 gap-0.5 border-r border-admin-border px-3 last:border-r-0 max-[600px]:px-2"><strong className="text-lg">{completedQuestCount(model)}</strong><span className="text-admin-muted text-[var(--member-font-meta)] leading-[1.4]">{translateText("Completed quests")}</span></div>
+          </div>
         </div>
       </div>
     </Card>
@@ -126,42 +125,52 @@ function MemberAccountInfo({ model, translateText }: { model: MemberModel; trans
     ["Current Wallet Balance", model.walletBalances ? formatMoneySatang(currentWalletBalance(model.walletBalances)) : "—"],
     ["Latest Wallet Transaction Date", latestTransactionAt ? formatWalletDate(latestTransactionAt) : "—"],
     ["Email", model.email],
-    ["Email verified", model.source === "api" ? translateText("Not provided by the Admin API") : translateText("Yes")],
     ["Created", model.createdAt],
     ["Role", model.occupation ? translateText(model.occupation) : translateText("Student")],
-    ["University", model.source === "api" ? translateText("Not provided by the Admin API") : "Kasetsart University"],
     ["Faculty", model.faculty || translateText("Not recorded")],
   ];
   return <Card as="section" className="user-detail-panel p-[16px_18px]"><CardHeader flush><h2>{translateText("Account Information")}</h2></CardHeader><dl className="user-facts m-0 grid gap-0">{facts.map(([label, value]) => <div className="flex justify-between gap-3 border-t border-admin-border py-2 first:border-t-0 first:pt-0" key={label}><dt className="text-sm text-admin-muted">{translateText(label)}</dt><dd className="m-0 text-right text-sm font-semibold">{value}</dd></div>)}</dl></Card>;
 }
 
-function MemberModerationSummary({ model, translateText, onRecordViolation }: { model: MemberModel; translateText: (value: string) => string; onRecordViolation: () => void }) {
-  const nextOutcome = model.confirmedViolationCount === null ? null : nextPenaltyFor(model);
+function MemberModerationSummary({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
   const activeWarnings = model.memberStatus === "Flag" ? 1 : 0;
   const suspensions = model.memberStatus === "Temp Ban" || model.memberStatus === "Perm Ban" ? 1 : 0;
-  const expiresAt = model.banExpiresAt || model.redFlagExpiresAt;
-  const canRecord = model.source === "mock"
-    && model.confirmedViolationCount !== null
-    && !["FROZEN", "SUSPENDED", "CLOSED"].includes(model.walletStatus || "");
   return (
     <Card as="section" className="user-detail-panel p-[16px_18px]">
       <CardHeader flush><h2>{translateText("Moderation Summary")}</h2></CardHeader>
-      <div className="user-counter-list mb-3.5 grid grid-cols-4 border-y border-admin-border max-[600px]:grid-cols-2"><div className="grid gap-[3px] border-r border-admin-border px-2 py-[9px] max-[600px]:odd:border-b max-[600px]:even:border-r-0"><strong className="text-xl">{model.reports.length}</strong><span className="text-xs text-admin-muted">{translateText("Reports received")}</span></div><div className="grid gap-[3px] border-r border-admin-border px-2 py-[9px] max-[600px]:odd:border-b max-[600px]:even:border-r-0"><strong className="text-xl">{model.confirmedViolationCount === null ? translateText("Not provided by the Admin API") : model.confirmedViolationCount}</strong><span className="text-xs text-admin-muted">{translateText("Confirmed violations")}</span></div><div className="grid gap-[3px] border-r border-admin-border px-2 py-[9px] max-[600px]:odd:border-b max-[600px]:even:border-r-0"><strong className="text-xl">{activeWarnings}</strong><span className="text-xs text-admin-muted">{translateText("Active Red Flags")}</span></div><div className="grid gap-[3px] px-2 py-[9px]"><strong className="text-xl">{suspensions}</strong><span className="text-xs text-admin-muted">{translateText("Suspensions")}</span></div></div>
-      <p className="audit-note">{translateText("Next outcome:")} <strong>{nextOutcome ? `${translateText(nextOutcome.label)}${nextOutcome.durationDays ? ` · ${nextOutcome.durationDays} ${translateText("days")}` : ""}` : translateText("Not provided by the Admin API")}</strong>{expiresAt ? ` · ${translateText("Expires")} ${formatAdminTimestamp(expiresAt, "Asia/Bangkok")}` : ""}.</p>
-      {model.statusReason && <p className="audit-note">{translateText("Reason")}: {model.statusReason}</p>}
-      {canRecord && <Button variant="primary" type="button" onClick={onRecordViolation}>{translateText("Record violation")}</Button>}
+      <div className="user-counter-list mb-3.5 grid grid-cols-2 border-y border-admin-border">
+        <div className="grid content-start gap-[3px] border-r border-b border-admin-border px-2 py-[9px]"><strong className="text-xl">{model.reports.length}</strong><span className="text-xs text-admin-muted">{translateText("Reports received")}</span></div>
+        <div className="grid content-start gap-[3px] border-b border-admin-border px-2 py-[9px]"><strong className="text-xl">{model.confirmedViolationCount === null ? translateText("Not provided by the Admin API") : model.confirmedViolationCount}</strong><span className="text-xs text-admin-muted">{translateText("Confirmed violations")}</span></div>
+        <div className="grid content-start gap-[3px] border-r border-admin-border px-2 py-[9px]"><strong className="text-xl">{activeWarnings}</strong><span className="text-xs text-admin-muted">{translateText("Active Red Flags")}</span></div>
+        <div className="grid content-start gap-[3px] px-2 py-[9px]"><strong className="text-xl">{suspensions}</strong><span className="text-xs text-admin-muted">{translateText("Suspensions")}</span></div>
+      </div>
+      <p className="audit-note">{translateText("Member penalty history and confirmed-violation counts are not provided by the Admin API.")}</p>
     </Card>
   );
 }
 
 function MemberRecentReports({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
-  return <Card as="section" className="user-detail-panel p-[16px_18px]"><CardHeader flush className="user-panel-heading"><h2>{translateText("Recent Reports")}</h2><span className={adminRecordCount}>{model.reports.length}</span></CardHeader>{model.reportsError ? <p className="audit-note">{translateText(model.reportsError)}</p> : model.reports.length ? <div className="user-recent-reports grid">{model.reports.slice(0, 3).map((report) => <Link className="flex items-center justify-between gap-3 border-t border-admin-border py-2.5 text-admin-text no-underline first:border-t-0 hover:[&>span:first-child_strong]:text-admin-accent" key={report.id} href={report.href}><span><strong className="block text-[15px] leading-[1.4]">{report.displayId || translateText(report.kind)}</strong><small className="mt-0.5 block text-[15px] leading-[1.45] text-admin-muted">{translateText(report.category)}</small></span><span className="badge">{translateText(reportCaseStatusLabel(report.status))}</span></Link>)}</div> : <p className="audit-note">{translateText("No reports have been filed against this account.")}</p>}</Card>;
-}
-
-function AdminNotes({ model, translateText, onAddNote, limit }: { model: MemberModel; translateText: (value: string) => string; onAddNote: () => void; limit?: number }) {
-  const unavailable = model.source === "api";
-  const visibleNotes = typeof limit === "number" ? model.adminNotes.slice(0, limit) : model.adminNotes;
-  return <Card as="section" className="user-detail-panel p-[16px_18px]"><CardHeader flush className="user-panel-heading"><div><h2>{translateText("Admin Notes")}</h2><span className="admin-only-label text-[15px] font-bold text-admin-warning">{unavailable ? translateText("Admin only") : translateText("Fixture data · Admin only")}</span></div>{!unavailable && <Button variant="link" size="sm" type="button" onClick={onAddNote}>{translateText("Add note")}</Button>}</CardHeader>{unavailable ? <p className="audit-note">{translateText("Admin notes are not provided by the Admin API.")} {translateText("The API integration is not available in this build.")}</p> : visibleNotes.length ? <div className="user-admin-notes mb-3 grid gap-[9px]">{visibleNotes.map((note) => <article className="border-b border-admin-border pb-[9px]" key={`${note.at}-${note.note}`}><strong className="block text-[17px] leading-[1.4]">{note.at}</strong><small className="block text-[15px] leading-[1.45] text-admin-muted">{displayAdminId(note.by) ?? translateText("Admin")}</small><p className="mt-1.5 text-[15px] leading-[1.45]">{note.note}</p></article>)}</div> : <p className="audit-note">{translateText("No internal notes recorded.")}</p>}</Card>;
+  return (
+    <Card as="section" className="user-detail-panel p-[16px_18px]">
+      <CardHeader flush className="user-panel-heading flex items-center justify-between gap-3">
+        <h2>{translateText("Recent Reports")}</h2>
+        <span className={adminRecordCount}>{model.reports.length}</span>
+      </CardHeader>
+      {model.reportsError ? <p className="audit-note">{translateText(model.reportsError)}</p> : model.reports.length ? (
+        <div className="user-recent-reports grid">
+          {model.reports.slice(0, 3).map((report) => (
+            <Link className="flex items-center justify-between gap-3 border-t border-admin-border py-2.5 text-admin-text no-underline first:border-t-0 hover:[&>span:first-child_strong]:text-admin-accent" key={report.id} href={report.href}>
+              <span className="min-w-0">
+                <strong className="block text-[15px] leading-[1.4]">{report.displayId || translateText(report.kind)}</strong>
+                <small className="mt-0.5 block text-[15px] leading-[1.45] text-admin-muted">{translateText(report.category)}</small>
+              </span>
+              <span className="badge shrink-0">{translateText(reportCaseStatusLabel(report.status))}</span>
+            </Link>
+          ))}
+        </div>
+      ) : <p className="audit-note">{translateText("No reports have been filed against this account.")}</p>}
+    </Card>
+  );
 }
 
 function MemberAbout({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
@@ -170,34 +179,34 @@ function MemberAbout({ model, translateText }: { model: MemberModel; translateTe
       <Card as="section" className="user-detail-panel p-[16px_18px]"><CardHeader flush><h2>{translateText("About Me")}</h2></CardHeader><p className="user-about-copy m-0 leading-[1.6] text-admin-muted">{model.bio || translateText("No profile description is available.")}</p></Card>
       <Card as="section" className="user-detail-panel p-[16px_18px]">
         <CardHeader flush><h2>{translateText("Experience")}</h2></CardHeader>
-        {model.source === "api" ? <p className="audit-note">{translateText("Experience detail is not provided by the Admin API.")}</p> : <div className="user-simple-list grid"><article className="border-t border-admin-border py-[11px] first:border-t-0 first:pt-0"><strong className="block text-[17px] leading-[1.4]">{translateText("University marketplace participant")}</strong><span className="mt-0.5 block text-[15px] leading-[1.45] text-admin-muted">KuQuest · {model.createdAt}</span><p className="mt-[7px] text-[15px] leading-[1.45]">{translateText("Contributes reliable research, documentation, and project support through KuQuest.")}</p></article></div>}
+        <p className="audit-note">{translateText("Experience detail is not provided by the Admin API.")}</p>
       </Card>
     </>
   );
 }
 
-function MemberPayoutPreview({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
-  const payoutCount = model.source === "api" ? model.stats.payoutsCount : model.payouts.length;
+function MemberPayoutPreview({ model, translateText, className = "user-detail-panel p-[16px_18px]" }: { model: MemberModel; translateText: (value: string) => string; className?: string }) {
+  const payoutCount = model.stats.payoutsCount;
   const total = model.payouts.length
     ? model.payouts.reduce((sum, payout) => sum + (payout.amountSatang || 0), 0)
     : model.stats.totalPaidOutSatang;
-  return <Card as="section" className="user-detail-panel p-[16px_18px]"><CardHeader flush className="user-panel-heading"><div><h2>{translateText("Payouts")}</h2><p>{translateText("Payout records associated with this Member.")}</p></div><span className={adminRecordCount}>{payoutCount}</span></CardHeader><div className="user-payout-stat-list mb-3 grid grid-cols-4 border-y border-admin-border max-[600px]:grid-cols-2"><div className="grid gap-[3px] border-r border-admin-border px-2 py-[9px] max-[600px]:odd:border-b max-[600px]:even:border-r-0"><strong className="text-[17px]">{payoutCount}</strong><span className="text-xs text-admin-muted">{translateText("Payouts")}</span></div><div className="grid gap-[3px] px-2 py-[9px]"><strong className="text-[17px]">{formatMoneySatang(total)}</strong><span className="text-xs text-admin-muted">{translateText("Total paid out")}</span></div></div>{model.payouts.length ? <div className="user-payout-list grid">{model.payouts.map((payout) => <div className="user-payout-row flex w-full items-center justify-between gap-3 border-0 border-t border-admin-border bg-transparent py-2.5 text-left text-admin-text first:border-t-0" key={payout.id}><span className="user-payout-primary grid min-w-0 gap-0.5"><strong className="text-[17px] leading-[1.4]">{displayAdminId(payout.id) || translateText("Payout")}</strong><small className="overflow-hidden text-ellipsis whitespace-nowrap text-[15px] leading-[1.45] text-admin-muted">{payout.createdAt}</small></span><span className="user-payout-secondary grid shrink-0 justify-items-end gap-0.5"><strong className="text-[17px] leading-[1.4]">{payout.amountSatang === null ? "—" : formatMoneySatang(payout.amountSatang)}</strong><small className="text-[15px] leading-[1.45] text-admin-muted">{translateText(payoutStatusLabel(payout.status))}</small></span></div>)}</div> : <p className="audit-note">{payoutCount ? translateText("Payout detail is not provided by the Admin API.") : translateText("No Payout records are available.")}</p>}</Card>;
+  return <Card as="section" className={className}><CardHeader flush className="user-panel-heading flex items-start justify-between gap-3"><div className="min-w-0"><h2>{translateText("Payouts")}</h2><p>{translateText("Payout records associated with this Member.")}</p></div><span className={`${adminRecordCount} shrink-0`}>{payoutCount}</span></CardHeader><div className="user-payout-stat-list mb-3 grid grid-cols-2 border-y border-admin-border"><div className="grid gap-[3px] border-r border-admin-border px-2 py-[9px]"><strong className="text-[17px]">{payoutCount}</strong><span className="text-xs text-admin-muted">{translateText("Payouts")}</span></div><div className="grid gap-[3px] px-2 py-[9px]"><strong className="text-[17px]">{formatMoneySatang(total)}</strong><span className="text-xs text-admin-muted">{translateText("Total paid out")}</span></div></div>{model.payouts.length ? <div className="user-payout-list grid">{model.payouts.map((payout) => <div className="user-payout-row flex w-full items-center justify-between gap-3 border-0 border-t border-admin-border bg-transparent py-2.5 text-left text-admin-text first:border-t-0" key={payout.id}><span className="user-payout-primary grid min-w-0 gap-0.5"><strong className="text-[17px] leading-[1.4]">{displayAdminId(payout.id) || translateText("Payout")}</strong><small className="overflow-hidden text-ellipsis whitespace-nowrap text-[15px] leading-[1.45] text-admin-muted">{payout.createdAt}</small></span><span className="user-payout-secondary grid shrink-0 justify-items-end gap-0.5"><strong className="text-[17px] leading-[1.4]">{payout.amountSatang === null ? "—" : formatMoneySatang(payout.amountSatang)}</strong><small className="text-[15px] leading-[1.45] text-admin-muted">{translateText(payoutStatusLabel(payout.status))}</small></span></div>)}</div> : <p className="audit-note">{payoutCount ? translateText("Payout detail is not provided by the Admin API.") : translateText("No Payout records are available.")}</p>}</Card>;
 }
 
 function MemberReviewPreview({ model, translateText, onOpenReviews }: { model: MemberModel; translateText: (value: string) => string; onOpenReviews: () => void }) {
   return <Card as="section" className="user-detail-panel p-[16px_18px]"><CardHeader flush className="user-panel-heading"><div><h2>{translateText("Reviews")}</h2><div className="flex flex-wrap items-baseline gap-2 text-[15px] text-admin-muted"><strong className="text-[17px] text-admin-text">{averageRating(model)} ★</strong><span className="text-base">({reviewCount(model)})</span></div></div><Button variant="link" size="sm" type="button" onClick={onOpenReviews}>{translateText("View all")}</Button></CardHeader><div className="user-review-preview grid">{model.reviews.slice(0, 5).map((review) => <div className="flex items-center justify-between gap-3 border-t border-admin-border py-2.5 first:border-t-0" key={`${review.reviewer}-${review.date}`}><span><strong className="block text-[17px] leading-[1.4]">{review.reviewer}</strong><small className="mt-0.5 block text-[15px] leading-[1.45] text-admin-muted">{"★".repeat(review.rating)} · {review.date}</small></span><span className="badge">{translateText(reviewStatusLabel(review.status))}</span></div>)}</div></Card>;
 }
 
-function OverviewTab({ model, translateText, onRecordViolation, onAddNote, onOpenReviews }: { model: MemberModel; translateText: (value: string) => string; onRecordViolation: () => void; onAddNote: () => void; onOpenReviews: () => void }) {
+function OverviewTab({ model, translateText, onOpenReviews }: { model: MemberModel; translateText: (value: string) => string; onOpenReviews: () => void }) {
   return (
     <div className="grid !grid-cols-[minmax(0,1.6fr)_minmax(280px,0.72fr)] items-start gap-[18px] max-[900px]:!grid-cols-1">
       <div className="grid min-w-0 !grid-cols-1 gap-[18px] max-[900px]:contents">
         <MemberAbout model={model} translateText={translateText} />
         <MemberPayoutPreview model={model} translateText={translateText} />
-        <Card as="section" className="user-detail-panel p-[16px_18px]"><CardHeader flush><h2>{translateText("Certificates")}</h2></CardHeader>{model.source === "api" ? <p className="audit-note">{translateText("Certificate detail is not provided by the Admin API.")}</p> : <div className="user-certificate-list"><div className="border-t border-admin-border py-[11px] first:border-t-0 first:pt-0"><strong className="block text-[17px] leading-[1.4]">{translateText("University marketplace orientation")}</strong><span className="mt-0.5 block text-[15px] leading-[1.45] text-admin-muted">KuQuest · {model.createdAt}</span></div></div>}</Card>
+        <Card as="section" className="user-detail-panel p-[16px_18px]"><CardHeader flush><h2>{translateText("Certificates")}</h2></CardHeader><p className="audit-note">{translateText("Certificate detail is not provided by the Admin API.")}</p></Card>
         <MemberReviewPreview model={model} translateText={translateText} onOpenReviews={onOpenReviews} />
       </div>
-      <aside className="grid min-w-0 !grid-cols-1 gap-[18px] max-[900px]:contents"><MemberAccountInfo model={model} translateText={translateText} /><MemberModerationSummary model={model} translateText={translateText} onRecordViolation={onRecordViolation} /><MemberRecentReports model={model} translateText={translateText} /><AdminNotes model={model} translateText={translateText} onAddNote={onAddNote} /></aside>
+      <aside className="grid min-w-0 !grid-cols-1 gap-[18px] max-[900px]:contents"><MemberAccountInfo model={model} translateText={translateText} /><MemberModerationSummary model={model} translateText={translateText} /><MemberRecentReports model={model} translateText={translateText} /></aside>
     </div>
   );
 }
@@ -208,11 +217,11 @@ function ActivityTab({ model, translateText }: { model: MemberModel; translateTe
 }
 
 function PayoutsTab({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
-  return <Card as="section" className="user-detail-panel user-tab-panel col-span-full min-w-0 p-[16px_18px]"><CardHeader flush><h2>{translateText("Payouts")}</h2></CardHeader><MemberPayoutPreview model={model} translateText={translateText} /></Card>;
+  return <MemberPayoutPreview model={model} translateText={translateText} className="user-detail-panel user-tab-panel col-span-full min-w-0 p-[16px_18px]" />;
 }
 
 function MemberTopUpsTab({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
-  const topUpQuery = useMemberTopUpsQuery(model.id, model.source === "api");
+  const topUpQuery = useMemberTopUpsQuery(model.id, true);
   const topUps = useMemo(
     () => topUpQuery.data?.pages.flatMap((page) => page.items) ?? [],
     [topUpQuery.data?.pages],
@@ -232,11 +241,10 @@ function MemberTopUpsTab({ model, translateText }: { model: MemberModel; transla
         <div><h2>{translateText("Top-ups")}</h2><p>{translateText("Top-up records for this Member.")}</p></div>
         <span className={adminRecordCount}>{topUps.length} {translateText("shown")}</span>
       </CardHeader>
-      {model.source !== "api" ? <EmptyState title={translateText("Top-up data unavailable")} description={translateText("The Admin API is required to read Top-up records.")} /> : null}
-      {model.source === "api" && topUpQuery.isPending ? <p className="audit-note" aria-live="polite">{translateText("Loading Top-ups…")}</p> : null}
-      {model.source === "api" && error && !topUps.length ? <div className="m-3 rounded-admin-sm border border-admin-danger bg-admin-danger-soft p-3 text-sm" role="alert">{translateText(error)} <Button variant="outline" size="sm" type="button" onClick={() => { void topUpQuery.refetch(); }}>{translateText("Try again")}</Button></div> : null}
-      {model.source === "api" && !topUpQuery.isPending && !error && !topUps.length ? <EmptyState title={translateText("No Top-ups found")} description={translateText("This Member has no Top-up records.")} /> : null}
-      {model.source === "api" && topUps.length ? <>
+      {topUpQuery.isPending ? <p className="audit-note" aria-live="polite">{translateText("Loading Top-ups…")}</p> : null}
+      {error && !topUps.length ? <div className="m-3 rounded-admin-sm border border-admin-danger bg-admin-danger-soft p-3 text-sm" role="alert">{translateText(error)} <Button variant="outline" size="sm" type="button" onClick={() => { void topUpQuery.refetch(); }}>{translateText("Try again")}</Button></div> : null}
+      {!topUpQuery.isPending && !error && !topUps.length ? <EmptyState title={translateText("No Top-ups found")} description={translateText("This Member has no Top-up records.")} /> : null}
+      {topUps.length ? <>
         {error ? <p className="field-error" role="alert">{translateText(error)}</p> : null}
         <p className="mb-2 hidden rounded-[7px] border border-admin-border bg-admin-soft px-2.5 py-2 text-[15px] leading-[1.4] text-admin-muted max-[600px]:block">{translateText("On narrow screens, scroll horizontally to view all Top-up columns.")}</p>
         <div className="min-w-0 overflow-x-auto [scrollbar-gutter:stable] max-[600px]:[overscroll-behavior-inline:contain]" role="region" aria-label={translateText("Member Top-ups table")}>
@@ -413,7 +421,7 @@ function WalletStatementTab({ model, translateText }: { model: MemberModel; tran
           </div>
         </div>
       ) : <p className="audit-note">{translateText("No sealed Ledger Transactions match these filters.")}</p>}
-      {model.source === "api" && model.apiError && <p className="audit-note">{translateText(model.apiError)}</p>}
+      {model.apiError && <p className="audit-note">{translateText(model.apiError)}</p>}
       {filteredRows.length > rows.length && <Button variant="outline" type="button" onClick={() => setVisibleCount((count) => count + 25)}>{translateText("Load more")}</Button>}
     </Card>
   );
@@ -432,7 +440,7 @@ function ReviewsTab({
     () => filterReviews(model.reviews, { query, filter: "all", rating }),
     [model.reviews, query, rating],
   );
-  if (model.source === "api" && model.stats.reviewsReceivedCount > 0 && !model.reviews.length) {
+  if (model.stats.reviewsReceivedCount > 0 && !model.reviews.length) {
     return <Card as="section" className="user-detail-panel user-tab-panel col-span-full min-w-0 p-[16px_18px]"><CardHeader flush><h2>{translateText("Reviews")}</h2></CardHeader><p className="audit-note">{translateText("Review detail is not provided by the Admin API.")}</p></Card>;
   }
 
@@ -482,45 +490,44 @@ function ReportsTable({ reports, translateText }: { reports: MemberModel["report
 function ReportsTab({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
   return (
     <Card as="section" className="user-detail-panel user-tab-panel col-span-full min-w-0 p-[16px_18px]">
-      <div className="user-reports-tab-content">
-        <CardHeader flush className="user-panel-heading">
-          <div>
+      <div className="user-reports-tab-content grid gap-4">
+        <CardHeader flush className="user-panel-heading flex items-start justify-between gap-3">
+          <div className="min-w-0">
             <h2>{translateText("Reports and Conduct Reports")}</h2>
             <p>{translateText("Cases received against this Member and cases submitted by this Member.")}</p>
           </div>
-          <span className={adminRecordCount}>{model.reports.length + model.reportsSubmitted.length}</span>
+          <span className={`${adminRecordCount} shrink-0`}>{model.reports.length + model.reportsSubmitted.length}</span>
         </CardHeader>
-        <Card as="section" className="user-detail-panel p-[16px_18px]">
-          <CardHeader flush className="user-panel-heading">
-            <div>
+        <section className="min-w-0 border-t border-admin-border pt-4">
+          <CardHeader flush className="user-panel-heading flex items-start justify-between gap-3">
+            <div className="min-w-0">
               <h3>{translateText("Reports received")}</h3>
               <p>{translateText("Report Cases and Conduct Reports filed against this Member.")}</p>
             </div>
-            <span className={adminRecordCount}>{model.reports.length}</span>
+            <span className={`${adminRecordCount} shrink-0`}>{model.reports.length}</span>
           </CardHeader>
           {model.reportsError ? <p className="audit-note">{translateText(model.reportsError)}</p> : <ReportsTable reports={model.reports} translateText={translateText} />}
-        </Card>
-        <Card as="section" className="user-detail-panel p-[16px_18px]">
-          <CardHeader flush className="user-panel-heading">
-            <div>
+        </section>
+        <section className="min-w-0 border-t border-admin-border pt-4">
+          <CardHeader flush className="user-panel-heading flex items-start justify-between gap-3">
+            <div className="min-w-0">
               <h3>{translateText("Reports submitted")}</h3>
               <p>{translateText("Cases submitted by this Member about another Member or Quest.")}</p>
             </div>
-            <span className={adminRecordCount}>{model.reportsSubmitted.length}</span>
+            <span className={`${adminRecordCount} shrink-0`}>{model.reportsSubmitted.length}</span>
           </CardHeader>
-          {model.reportsSubmittedError ? <p className="audit-note">{translateText(model.reportsSubmittedError)} {translateText("This data is shown only in the mock UI.")}</p> : <ReportsTable reports={model.reportsSubmitted} translateText={translateText} />}
-        </Card>
+          {model.reportsSubmittedError ? <p className="audit-note">{translateText(model.reportsSubmittedError)}</p> : <ReportsTable reports={model.reportsSubmitted} translateText={translateText} />}
+        </section>
       </div>
     </Card>
   );
 }
 
 function MemberModerationTimeline({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
-  const unavailable = model.source === "api" && !model.penaltyHistory.length;
-  return unavailable ? <p className="audit-note">{translateText("Penalty history is not provided by the Admin API.")} {translateText("The API integration is not available in this build.")}</p> : model.penaltyHistory.length ? <div className="mt-2 grid gap-0" data-member-moderation-history><p className="audit-note">{model.source === "mock" ? translateText("Fixture data for UI review. It is not a server record.") : translateText("Moderation history provided by the Admin API.")}</p>{model.penaltyHistory.map((entry) => <article className="border-t border-admin-border py-4 first:pt-3.5 last:pb-0" key={`${entry.at}-${entry.event}-${entry.caseId || entry.outcome || "event"}`}><strong className="mb-1.5 block text-[17px] leading-[1.4]">{translateText(entry.event)}</strong><span className="mt-1.5 block text-[15px] leading-[1.45] text-admin-muted">{formatAdminTimestamp(entry.at, "Asia/Bangkok")} · {translateText("by")} {displayAdminId(entry.by) ?? translateText("Admin")}</span>{entry.reason && <p className="mt-[9px] text-[15px] leading-[1.5]">{entry.reason}</p>}{(entry.previousStatus || entry.newStatus || entry.outcome || entry.durationDays || entry.expiresAt) && <p className="mt-[9px] text-[15px] leading-[1.5]">{entry.previousStatus && `${translateText("Previous status")}: ${translateText(entry.previousStatus)}`}{entry.previousStatus && entry.newStatus ? " · " : ""}{entry.newStatus && `${translateText("New status")}: ${translateText(entry.newStatus)}`}{(entry.previousStatus || entry.newStatus) && entry.outcome ? " · " : ""}{entry.outcome && `${translateText("Outcome")}: ${translateText(entry.outcome)}`}{entry.durationDays ? ` · ${entry.durationDays} ${translateText("days")}` : ""}{entry.expiresAt ? ` · ${translateText("Expires")} ${formatAdminTimestamp(entry.expiresAt, "Asia/Bangkok")}` : ""}</p>}{displayAdminId(entry.caseId) && <p className="mt-[9px] text-[15px] leading-[1.5]"><span>{translateText(entry.caseType || "Related case")}:</span> {entry.caseHref ? <Link href={entry.caseHref} aria-label={`${translateText("Open related case")} ${displayAdminId(entry.caseId)}`}>{displayAdminId(entry.caseId)}</Link> : <strong>{displayAdminId(entry.caseId)}</strong>}</p>}</article>)}</div> : <p className="audit-note">{translateText("No moderation events are recorded for this Member.")}</p>;
+  return model.penaltyHistory.length ? <div className="mt-2 grid gap-0" data-member-moderation-history><p className="audit-note">{translateText("Moderation history provided by the Admin API.")}</p>{model.penaltyHistory.map((entry) => <article className="border-t border-admin-border py-4 first:pt-3.5 last:pb-0" key={`${entry.at}-${entry.event}-${entry.caseId || entry.outcome || "event"}`}><strong className="mb-1.5 block text-[17px] leading-[1.4]">{translateText(entry.event)}</strong><span className="mt-1.5 block text-[15px] leading-[1.45] text-admin-muted">{formatAdminTimestamp(entry.at, "Asia/Bangkok")} · {translateText("by")} {displayAdminId(entry.by) ?? translateText("Admin")}</span>{entry.reason && <p className="mt-[9px] text-[15px] leading-[1.5]">{entry.reason}</p>}{(entry.previousStatus || entry.newStatus || entry.outcome || entry.durationDays || entry.expiresAt) && <p className="mt-[9px] text-[15px] leading-[1.5]">{entry.previousStatus && `${translateText("Previous status")}: ${translateText(entry.previousStatus)}`}{entry.previousStatus && entry.newStatus ? " · " : ""}{entry.newStatus && `${translateText("New status")}: ${translateText(entry.newStatus)}`}{(entry.previousStatus || entry.newStatus) && entry.outcome ? " · " : ""}{entry.outcome && `${translateText("Outcome")}: ${translateText(entry.outcome)}`}{entry.durationDays ? ` · ${entry.durationDays} ${translateText("days")}` : ""}{entry.expiresAt ? ` · ${translateText("Expires")} ${formatAdminTimestamp(entry.expiresAt, "Asia/Bangkok")}` : ""}</p>}{displayAdminId(entry.caseId) && <p className="mt-[9px] text-[15px] leading-[1.5]"><span>{translateText(entry.caseType || "Related case")}:</span> {entry.caseHref ? <Link href={entry.caseHref} aria-label={`${translateText("Open related case")} ${displayAdminId(entry.caseId)}`}>{displayAdminId(entry.caseId)}</Link> : <strong>{displayAdminId(entry.caseId)}</strong>}</p>}</article>)}</div> : <p className="audit-note">{translateText("Penalty history is not provided by the Admin API.")}</p>;
 }
 
-function PenaltyHistoryTab({ model, translateText, onAddNote }: { model: MemberModel; translateText: (value: string) => string; onAddNote: () => void }) {
+function PenaltyHistoryTab({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
   return (
     <Card as="section" className="user-detail-panel user-tab-panel col-span-full min-w-0 p-[16px_18px]">
       <div className="user-reports-tab-content">
@@ -532,7 +539,6 @@ function PenaltyHistoryTab({ model, translateText, onAddNote }: { model: MemberM
           <span className={adminRecordCount}>{model.penaltyHistory.length}</span>
         </CardHeader>
         <MemberModerationTimeline model={model} translateText={translateText} />
-        <AdminNotes model={model} translateText={translateText} onAddNote={onAddNote} />
       </div>
     </Card>
   );
@@ -553,14 +559,7 @@ function DetailTabs({ model, activeTab, translateText }: { model: MemberModel; a
   })}</nav>;
 }
 
-function DrawerContent({ model, translateText, onRecordViolation, onRemovePenalty }: { model: MemberModel; translateText: (value: string) => string; onRecordViolation: () => void; onRemovePenalty: () => void }) {
-  const canRecord = model.source === "mock"
-    && model.confirmedViolationCount !== null
-    && !["FROZEN", "SUSPENDED", "CLOSED"].includes(model.walletStatus || "");
-  const canRemovePenalty = model.source === "mock"
-    && model.confirmedViolationCount !== null
-    && model.confirmedViolationCount > 0
-    && model.memberStatus !== "Normal";
+function DrawerContent({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
   const latestTransactionAt = latestWalletTransactionAt(model);
   return (
     <div className="user-drawer-detail admin-drawer-content-flow grid min-w-0 content-start gap-[18px]">
@@ -597,7 +596,7 @@ function DrawerContent({ model, translateText, onRecordViolation, onRemovePenalt
         <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Activity summary")}</h2></CardHeader>
         <div className="user-activity-list grid gap-3"><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Completed quests")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{completedQuestCount(model)}</strong></div><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Reports received")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{model.reports.length}</strong></div></div>
       </Card>
-      <div className="admin-drawer-actions sticky bottom-[-28px] z-[4] m-[18px_-24px_-28px] flex flex-wrap gap-2 border-t border-admin-border bg-admin-surface/95 px-6 py-3.5 shadow-[0_-6px_18px_rgba(0,0,0,0.09)] [&>*]:min-h-11 [&>*]:flex-[1_1_180px] [&>*]:text-center max-[720px]:bottom-[-24px] max-[720px]:m-[18px_-16px_-24px] max-[720px]:px-4 max-[720px]:[&>*]:basis-full">{canRecord && <Button variant="primary" type="button" onClick={onRecordViolation}>{translateText("Record violation")}</Button>}{canRemovePenalty && <Button variant="danger" type="button" onClick={onRemovePenalty}>{translateText("Remove penalty")}</Button>}<Button asChild variant="outline"><a href={memberRoutes.detail(model.id)}>{translateText("See full Member profile")}</a></Button></div>
+      <div className="admin-drawer-actions sticky bottom-[-28px] z-[4] m-[18px_-24px_-28px] flex flex-wrap gap-2 border-t border-admin-border bg-admin-surface/95 px-6 py-3.5 shadow-[0_-6px_18px_rgba(0,0,0,0.09)] [&>*]:min-h-11 [&>*]:flex-[1_1_180px] [&>*]:text-center max-[720px]:bottom-[-24px] max-[720px]:m-[18px_-16px_-24px] max-[720px]:px-4 max-[720px]:[&>*]:basis-full"><Button asChild variant="outline"><a href={memberRoutes.detail(model.id)}>{translateText("See full Member profile")}</a></Button></div>
     </div>
   );
 }
@@ -606,66 +605,17 @@ export function MemberDetail({ memberId, initialModel = null, initialTab = "over
   const { translateText } = useAdminShell();
   const router = useRouter();
   const { data: model, isPending, error } = useMemberDetailQuery(memberId, initialModel);
-  const actionMutation = useMemberActionMutation();
   const [activeTab, setActiveTab] = useState<MemberTab>(initialTab);
-  const [penaltyOpen, setPenaltyOpen] = useState(false);
-  const [removePenaltyOpen, setRemovePenaltyOpen] = useState(false);
-  const [noteOpen, setNoteOpen] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const actionBusy = actionMutation.isPending;
 
   useEffect(() => setActiveTab(initialTab), [initialTab]);
-
-  const updateModel = (nextModel: MemberModel | null) => {
-    if (!nextModel) return;
-    window.dispatchEvent(new CustomEvent(MEMBER_UPDATED_EVENT, { detail: nextModel }));
-  };
-
-  const confirmPenalty = async (reason: string, note: string, penalty: MemberPenaltyChoice | null) => {
-    if (!model) return;
-    setActionError(null);
-    try {
-      const nextModel = await actionMutation.mutateAsync({ type: "record-violation", memberId: model.id, reason, note, penalty });
-      updateModel(nextModel);
-      setPenaltyOpen(false);
-    } catch (commandError) {
-      setActionError(commandError instanceof Error ? commandError.message : "The Member penalty could not be saved.");
-    }
-  };
-
-  const removePenalty = async (reason: string) => {
-    if (!model) return;
-    setActionError(null);
-    try {
-      const nextModel = await actionMutation.mutateAsync({ type: "remove-penalty", memberId: model.id, reason });
-      updateModel(nextModel);
-      setRemovePenaltyOpen(false);
-    } catch (commandError) {
-      setActionError(commandError instanceof Error ? commandError.message : "The Member penalty could not be removed.");
-    }
-  };
-
-  const saveNote = async (note: string) => {
-    if (!model) return;
-    setActionError(null);
-    try {
-      const nextModel = await actionMutation.mutateAsync({ type: "save-note", memberId: model.id, note });
-      updateModel(nextModel);
-      setNoteOpen(false);
-    } catch (commandError) {
-      setActionError(commandError instanceof Error ? commandError.message : "The Admin note could not be saved.");
-    }
-  };
 
   if (isPending && !model) return <AdminLoading message={translateText("Loading Member…")} />;
   if (!model) {
     return <main className={drawer ? "drawer-body" : "admin-feedback"}><Card as="section" className="overflow-hidden"><CardHeader><h1 className="text-lg font-semibold">{translateText("Member not found")}</h1></CardHeader><CardContent className="space-y-4"><p>{translateText(error instanceof Error ? error.message : "No Member record matches this identifier.")}</p>{!drawer && <Button asChild variant="primary"><Link href={memberRoutes.list()}>{translateText("Return to Members")}</Link></Button>}</CardContent></Card></main>;
   }
 
-  const overlays = <><PenaltyDialog model={model} open={penaltyOpen} busy={actionBusy} error={actionError} translateText={translateText} onCancel={() => { if (!actionBusy) { setPenaltyOpen(false); setActionError(null); } }} onConfirm={confirmPenalty} /><RemovePenaltyDialog model={model} open={removePenaltyOpen} busy={actionBusy} error={actionError} translateText={translateText} onCancel={() => { if (!actionBusy) { setRemovePenaltyOpen(false); setActionError(null); } }} onConfirm={removePenalty} /><NoteDialog model={model} open={noteOpen} busy={actionBusy} error={actionError} translateText={translateText} onCancel={() => { if (!actionBusy) { setNoteOpen(false); setActionError(null); } }} onConfirm={saveNote} /></>;
-
   if (drawer) {
-    return <>{overlays}<DrawerContent model={model} translateText={translateText} onRecordViolation={() => { setActionError(null); setPenaltyOpen(true); }} onRemovePenalty={() => { setActionError(null); setRemovePenaltyOpen(true); }} /></>;
+    return <DrawerContent model={model} translateText={translateText} />;
   }
 
   const tabContent = activeTab === "activity"
@@ -681,10 +631,10 @@ export function MemberDetail({ memberId, initialModel = null, initialTab = "over
           : activeTab === "reports"
             ? <ReportsTab model={model} translateText={translateText} />
             : activeTab === "penalty-history"
-              ? <PenaltyHistoryTab model={model} translateText={translateText} onAddNote={() => { setActionError(null); setNoteOpen(true); }} />
-              : <OverviewTab model={model} translateText={translateText} onRecordViolation={() => { setActionError(null); setPenaltyOpen(true); }} onAddNote={() => { setActionError(null); setNoteOpen(true); }} onOpenReviews={() => router.push(memberTabHref(model.id, "reviews"))} />;
+              ? <PenaltyHistoryTab model={model} translateText={translateText} />
+              : <OverviewTab model={model} translateText={translateText} onOpenReviews={() => router.push(memberTabHref(model.id, "reviews"))} />;
 
-  return <>{overlays}<main className="admin-route-page user-detail-page" tabIndex={-1}><div className="user-detail-breadcrumb mb-4 flex items-center gap-2 text-sm text-admin-muted"><Link className="text-admin-accent hover:underline" href={memberRoutes.list()}>{translateText("Members")}</Link><span aria-hidden="true">›</span><span>{model.title}</span></div><AdminPageHeader title={model.title} description={translateText("Review Member information, activity, Top-ups, Payouts, and penalty history.")} /><div className="mb-5">{model.source === "mock" && <p className="audit-note" data-member-fixture>{translateText("Mock data for UI review. It is not a server record.")}</p>}</div><MemberSummary model={model} translateText={translateText} /><DetailTabs model={model} activeTab={activeTab} translateText={translateText} />{tabContent}</main></>;
+  return <main className="admin-route-page user-detail-page" tabIndex={-1}><div className="user-detail-breadcrumb mb-4 flex items-center gap-2 text-sm text-admin-muted"><Link className="text-admin-accent hover:underline" href={memberRoutes.list()}>{translateText("Members")}</Link><span aria-hidden="true">›</span><span>{model.title}</span></div><AdminPageHeader title={model.title} description={translateText("Review Member information, activity, Top-ups, Payouts, and penalty history.")} /><MemberSummary model={model} translateText={translateText} /><DetailTabs model={model} activeTab={activeTab} translateText={translateText} />{tabContent}</main>;
 }
 
 export function MemberDrawer({ memberId, initialModel, onClose }: { memberId: string; initialModel?: MemberModel | null; onClose: () => void }) {

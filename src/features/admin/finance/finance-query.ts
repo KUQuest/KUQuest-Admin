@@ -20,7 +20,7 @@ export function useFinancePolicyQuery(initialData: FinancePageData) {
       currentPolicy: initialData.currentPolicy,
       policyRevisions: initialData.policyRevisions,
     },
-    enabled: initialData.dataSource === "api",
+    enabled: true,
     staleTime: 0,
     refetchOnMount: true,
     refetchOnWindowFocus: false,
@@ -39,7 +39,7 @@ export function useFinanceTopUpQuery(initialData: TopUpPageData) {
     initialData: initialData.topUpPage
       ? { pages: [initialData.topUpPage], pageParams: [null] }
       : undefined,
-    enabled: initialData.dataSource === "api",
+    enabled: true,
     staleTime: 0,
     refetchOnMount: true,
     refetchOnWindowFocus: false,

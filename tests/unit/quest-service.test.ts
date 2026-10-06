@@ -4,7 +4,7 @@ import {
   loadQuestBoardPageData,
   loadQuestDetailPageData,
 } from "../../src/features/admin/quest/quest-service";
-import { mockQuestDetail, mockQuestFinance, mockQuestSummary } from "../../src/features/admin/quest/quest-mock-data";
+import { mockQuestDetail, mockQuestFinance, mockQuestSummary } from "../fixtures/admin-quest-api-fixtures";
 
 const originalFetch = globalThis.fetch;
 
@@ -14,31 +14,6 @@ afterEach(() => {
 });
 
 describe("Quest route service", () => {
-  it("loads mock Quest data through the Server Component service", async () => {
-    globalThis.fetch = (async () => {
-      throw new Error("The mock Quest route must not fetch from the browser API.");
-    }) as unknown as typeof globalThis.fetch;
-
-    const result = await loadQuestBoardPageData("", "mock");
-
-    expect(result.rows.some((row) => row.displayId === "QST-12011" && row.title === "Demo Quest 01")).toBe(true);
-  });
-
-  it("includes a failed Quest linked from a Dispute Case in the mock Quest board", async () => {
-    const result = await loadQuestBoardPageData("", "mock");
-
-    expect(result.rows.find((row) => row.displayId === "QST-12001")).toMatchObject({
-      displayId: "QST-12001",
-      state: "QUEST_FAILED",
-    });
-  });
-
-  it("loads the linked Dispute Case into a mock failed Quest detail", async () => {
-    const result = await loadQuestDetailPageData("QST-12001", "", "mock");
-
-    expect(result?.linkedDisputeId).toBe("DSP-5201");
-  });
-
   it("loads Quest detail data through the Admin API with the incoming Admin cookie", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     const requests: Request[] = [];

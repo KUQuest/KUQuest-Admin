@@ -1,17 +1,10 @@
 import { useEffect, useMemo } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
-import { adminApiProvider, isAdminApiEnabled } from "../api/admin-provider";
-import type { ReportCaseDecision } from "../api/admin-api";
+import { adminApiProvider } from "../api/admin-provider";
+import type { AdminEvidence, ReportCaseDecision } from "../api/admin-api";
 import { replaceInfiniteItem } from "../data/query-data";
-import {
-  findReportCaseFromMock,
-  loadAllReportCasesFromMock,
-  loadReportCasesFromMock,
-  saveMockReportDecision,
-} from "./report-adapter";
 import { loadReportCasePageData, type ReportCasePageData } from "./report-service";
-import type { AdminEvidence } from "../api/admin-api";
 import { REPORT_CASE_UPDATED_EVENT, reportCaseModelFromRecord, type ReportCaseCommand, type ReportCaseModel } from "./report-model";
 
 export const reportBoardQueryKey = ["admin", "report-cases", "board"] as const;
@@ -28,18 +21,14 @@ export type ReportDecisionMutationInput = {
   reportId: string;
   currentModel: ReportCaseModel;
   decision: ReportCaseCommand;
-  reason: string;
   options: ReportCaseDecision;
-  apiEnabled: boolean;
 };
 
 export function useReportDecisionMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationKey: ["admin", "report-cases", "decision"],
-    mutationFn: async ({ reportId, currentModel, decision, reason, options, apiEnabled }: ReportDecisionMutationInput) => {
-      if (!apiEnabled) return saveMockReportDecision(localStorage, reportId, decision, reason);
-
+    mutationFn: async ({ reportId, currentModel, decision, options }: ReportDecisionMutationInput) => {
       const result = await adminApiProvider.commands.decideReportCase(reportId, options);
       const summary = result.resourceSummary;
       if (summary.kind !== "REPORT_CASE" || summary.id !== reportId || summary.status !== decision) {
@@ -50,7 +39,6 @@ export function useReportDecisionMutation() {
         ...summary,
         status: summary.status,
         version: result.resourceVersion,
-        decisionReason: options.reason,
       };
     },
     onSuccess: (record, { reportId }) => {
@@ -65,7 +53,6 @@ export function useReportDecisionMutation() {
 function pageFromQueryData(pages: ReportCasePageData[]): ReportCasePageData {
   const lastPage = pages.at(-1);
   return {
-    source: lastPage?.source ?? (isAdminApiEnabled() ? "api" : "mock"),
     items: pages.flatMap((page) => page.items),
     nextCursor: lastPage?.nextCursor ?? null,
   };
@@ -73,16 +60,10 @@ function pageFromQueryData(pages: ReportCasePageData[]): ReportCasePageData {
 
 export function useReportBoardQuery(initialData?: ReportCasePageData) {
   const queryClient = useQueryClient();
-  const apiEnabled = isAdminApiEnabled();
   const query = useInfiniteQuery({
     queryKey: reportBoardQueryKey,
     initialPageParam: null as string | null,
-    queryFn: async ({ pageParam }) => {
-      if (apiEnabled) return loadReportCasePageData(undefined, pageParam ?? undefined);
-      return pageParam
-        ? loadReportCasesFromMock(window.localStorage, pageParam)
-        : loadAllReportCasesFromMock(window.localStorage);
-    },
+    queryFn: ({ pageParam }) => loadReportCasePageData(undefined, pageParam ?? undefined),
     initialData: initialData
       ? { pages: [initialData], pageParams: [null] }
       : undefined,
@@ -109,15 +90,11 @@ export function useReportBoardQuery(initialData?: ReportCasePageData) {
 
 export function useReportDetailQuery(reportId: string, initialModel?: ReportCaseModel | null) {
   const queryClient = useQueryClient();
-  const apiEnabled = isAdminApiEnabled();
   const queryKey = useMemo(() => reportDetailQueryKey(reportId), [reportId]);
   const query = useQuery({
     queryKey,
     queryFn: async () => {
-      const record = apiEnabled
-        ? await adminApiProvider.read.getReport(reportId)
-        : findReportCaseFromMock(localStorage, reportId);
-      const model = reportCaseModelFromRecord(record);
+      const model = reportCaseModelFromRecord(await adminApiProvider.read.getReport(reportId));
       if (!model || model.id !== reportId) throw new Error("The Report Case was not found.");
       return model;
     },
@@ -146,12 +123,10 @@ export function useReportDetailQuery(reportId: string, initialModel?: ReportCase
 }
 
 export function useReportEvidenceQuery(reference: string | null) {
-  const apiEnabled = isAdminApiEnabled();
   return useQuery<AdminEvidence>({
     queryKey: reportEvidenceQueryKey(reference),
-    queryFn: async () => {
+    queryFn: () => {
       if (!reference) throw new Error("Evidence Reference was not provided.");
-      if (!apiEnabled) return { evidenceRef: reference };
       const id = typeof globalThis.crypto?.randomUUID === "function"
         ? globalThis.crypto.randomUUID()
         : `${Date.now()}-${Math.random().toString(36).slice(2)}`;

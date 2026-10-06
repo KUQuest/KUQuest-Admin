@@ -27,7 +27,6 @@ import {
   walletStatusActionClass,
   walletStatusActionLabel,
   walletStatusTargets,
-  type WalletStatusFixture,
   type WalletStatusTarget,
 } from "./wallet-status-command-dialog";
 import { WalletStatementTable } from "./wallet-statement-table";
@@ -48,15 +47,7 @@ import {
 } from "./wallet-model";
 import { useWalletBoardStore } from "./wallet-board-store";
 import { useWalletBoardQuery, useWalletDrawerQuery, useWalletProjectionRebuildMutation, useWalletProjectionVerificationMutation, useWalletStatusMutation, walletBoardQueryKey, type WalletBoardQueryData } from "./wallet-query";
-import type { WalletDataSource, WalletBoardPageData } from "./wallet-service";
-
-type WalletStatusReceipt = {
-  id: string;
-  fromStatus: WalletStatus;
-  toStatus: WalletStatus;
-  reason: string;
-  createdAt: string;
-};
+import type { WalletBoardPageData } from "./wallet-service";
 
 function Badge({ status, track = true }: { status: WalletStatus; track?: boolean }) {
   const { translateText } = useAdminShell();
@@ -76,12 +67,10 @@ function SummaryMetric({ label, value }: { label: string; value: number }) {
 function WalletSummary({
   summary,
   error,
-  dataSource,
   onRetry,
 }: {
   summary: WalletFinanceSummary | null;
   error: string | null;
-  dataSource: WalletDataSource;
   onRetry: () => void;
 }) {
   const { translateText } = useAdminShell();
@@ -97,7 +86,7 @@ function WalletSummary({
     </div>
     : null;
 
-  return <Card as="section" className="wallet-funds-summary my-[18px] grid gap-3 bg-admin-soft p-[15px_17px]" aria-labelledby="wallet-summary-heading"><div className="flex items-center justify-between gap-3"><div className="grid gap-[3px]"><strong id="wallet-summary-heading" className="text-lg leading-[1.4] text-admin-text">{translateText("Member Wallet Summary")}</strong><small className="text-[13px] font-medium leading-[1.4] text-admin-muted">{translateText(dataSource === "api" ? "Aggregate values from the Admin API" : "All Wallets · all statuses")}</small></div></div>{content}</Card>;
+  return <Card as="section" className="wallet-funds-summary my-[18px] grid gap-3 bg-admin-soft p-[15px_17px]" aria-labelledby="wallet-summary-heading"><div className="flex items-center justify-between gap-3"><div className="grid gap-[3px]"><strong id="wallet-summary-heading" className="text-lg leading-[1.4] text-admin-text">{translateText("Member Wallet Summary")}</strong><small className="text-[13px] font-medium leading-[1.4] text-admin-muted">{translateText("Aggregate values from the Admin API")}</small></div></div>{content}</Card>;
 }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -113,19 +102,17 @@ function walletStatusIdempotencyKey(walletId: string, status: WalletStatusTarget
 
 function WalletDrawer({
   row,
-  dataSource,
   opener,
   onClose,
   onStatusChanged,
 }: {
   row: WalletBoardRow;
-  dataSource: WalletDataSource;
   opener: HTMLElement | null;
   onClose: () => void;
   onStatusChanged: (walletId: string, nextStatus: WalletStatus) => void;
 }) {
   const { translateText } = useAdminShell();
-  const { data: drawerData, isPending: loading, error, refetch } = useWalletDrawerQuery(row.id, dataSource);
+  const { data: drawerData, isPending: loading, error, refetch } = useWalletDrawerQuery(row.id);
   const verifyMutation = useWalletProjectionVerificationMutation();
   const rebuildMutation = useWalletProjectionRebuildMutation();
   const statusMutation = useWalletStatusMutation();
@@ -137,7 +124,6 @@ function WalletDrawer({
   const [notice, setNotice] = useState<string | null>(null);
   const [statusCommand, setStatusCommand] = useState<WalletStatusTarget | null>(null);
   const [statusCommandError, setStatusCommandError] = useState<string | null>(null);
-  const [statusReceipt, setStatusReceipt] = useState<WalletStatusReceipt | null>(null);
   const actionPending = verifyMutation.isPending ? "verify" : rebuildMutation.isPending ? "rebuild" : null;
   const statusCommandPending = statusMutation.isPending;
 
@@ -145,12 +131,8 @@ function WalletDrawer({
     setActionError(null);
     setNotice(null);
     try {
-      if (dataSource === "api") {
-        const result = await verifyMutation.mutateAsync({ walletId: row.id });
-        setVerification(result);
-      } else if (detail) {
-        setVerification({ matches: detail.projectionMatchesLedger, activityCountMatches: true, projectedTotal: detail.currentBalanceSatang, ledgerTotal: detail.currentBalanceSatang });
-      }
+      const result = await verifyMutation.mutateAsync({ walletId: row.id });
+      setVerification(result);
       setNotice(`Ledger verification completed for ${displayAdminId(row.displayId) ?? row.memberName}.`);
     } catch (verifyError) {
       setActionError(verifyError instanceof Error ? verifyError.message : "Ledger verification failed.");
@@ -161,10 +143,8 @@ function WalletDrawer({
     setActionError(null);
     setNotice(null);
     try {
-      if (dataSource === "api") {
-        await rebuildMutation.mutateAsync({ walletId: row.id });
-        await refetch();
-      }
+      await rebuildMutation.mutateAsync({ walletId: row.id });
+      await refetch();
       setNotice(`Wallet projection rebuilt for ${displayAdminId(row.displayId) ?? row.memberName}.`);
     } catch (rebuildError) {
       setActionError(rebuildError instanceof Error ? rebuildError.message : "Wallet projection rebuild failed.");
@@ -179,28 +159,23 @@ function WalletDrawer({
 
   function openStatusCommand(nextStatus: WalletStatusTarget) {
     setStatusCommandError(null);
-    setStatusReceipt(null);
     setStatusCommand(nextStatus);
   }
 
-  async function submitStatusCommand(reason: string, fixture: WalletStatusFixture) {
+  async function submitStatusCommand(reason: string) {
     if (!detail || !statusCommand) return;
     setStatusCommandError(null);
     setNotice(null);
     try {
-      const result = await statusMutation.mutateAsync({
+      await statusMutation.mutateAsync({
         walletId: row.id,
-        currentStatus: detail.status,
         targetStatus: statusCommand,
         reason,
-        fixture,
-        dataSource,
         idempotencyKey: walletStatusIdempotencyKey(row.id, statusCommand),
       });
-      setStatusReceipt(result.receipt);
       setNotice(`Wallet status changed to ${walletStatusLabel(statusCommand)}.`);
       onStatusChanged(row.id, statusCommand);
-      if (dataSource === "api") await refetch();
+      await refetch();
       setStatusCommand(null);
     } catch (commandError) {
       setStatusCommandError(commandError instanceof Error ? commandError.message : "Wallet status command failed.");
@@ -223,10 +198,8 @@ function WalletDrawer({
     opener={opener}
     onClose={onClose}
     actions={!loading && !error && detail ? <>
-      {dataSource === "api" ? <>
-        <UiButton variant="outline" type="button" disabled={actionPending !== null} onClick={() => { void verifyLedger(); }}>{actionPending === "verify" ? translateText("Verifying…") : translateText("Verify Ledger")}</UiButton>
-        <UiButton variant="primary" type="button" disabled={actionPending !== null} onClick={() => { if (window.confirm(translateText("Rebuild this Wallet projection from the Ledger source of truth?"))) void rebuildProjection(); }}>{actionPending === "rebuild" ? translateText("Rebuilding…") : translateText("Rebuild projection")}</UiButton>
-      </> : null}
+      <UiButton variant="outline" type="button" disabled={actionPending !== null} onClick={() => { void verifyLedger(); }}>{actionPending === "verify" ? translateText("Verifying…") : translateText("Verify Ledger")}</UiButton>
+      <UiButton variant="primary" type="button" disabled={actionPending !== null} onClick={() => { if (window.confirm(translateText("Rebuild this Wallet projection from the Ledger source of truth?"))) void rebuildProjection(); }}>{actionPending === "rebuild" ? translateText("Rebuilding…") : translateText("Rebuild projection")}</UiButton>
       {detail ? <UiButton asChild variant="outline"><a href={memberTabHref(detail.memberId, "wallet-statement")}>{translateText("See Wallet Statement")}</a></UiButton> : null}
       <UiButton variant="outline" type="button" onClick={onClose}>{translateText("Close record")}</UiButton>
     </> : null}
@@ -240,10 +213,9 @@ function WalletDrawer({
             {history.length ? <ol className="timeline">{history.map((entry) => <li key={entry.id}><strong>{entry.fromStatus ? `${translateText(walletStatusLabel(entry.fromStatus))} → ` : ""}{translateText(walletStatusLabel(entry.toStatus))}</strong><time dateTime={entry.createdAt}>{formatWalletDate(entry.createdAt)}</time><span>{entry.reason}</span>{entry.actorAdminId ? <small className="block text-xs text-admin-muted">{entry.actorDisplayName ?? translateText("Admin")}</small> : null}</li>)}</ol> : <p>{translateText("No Wallet status changes are recorded.")}</p>}
           </Section>
           <Section title={translateText("Wallet status action")}>{statusActionContent}</Section>
-          {statusReceipt ? <Card as="section" className="wallet-action-receipt my-[18px] rounded-[10px] border border-admin-success bg-admin-success-soft p-3" aria-label={translateText("Wallet status action receipt")}><CardHeader flush><h3 className="mb-2.5 text-[18px] leading-[1.4]">{translateText("Action receipt")}</h3></CardHeader><div className="wallet-status-preview grid gap-2 rounded-[10px] border border-admin-border bg-admin-surface p-3 text-[17px] leading-[1.4]"><div className="flex items-start justify-between gap-3"><span className="text-admin-muted">{translateText("Action ID")}</span><strong className="max-w-[70%] break-words text-right font-semibold">{statusReceipt.id}</strong></div><div className="flex items-start justify-between gap-3"><span className="text-admin-muted">{translateText("Wallet Status")}</span><strong className="max-w-[70%] break-words text-right font-semibold">{translateText(walletStatusLabel(statusReceipt.fromStatus))} → {translateText(walletStatusLabel(statusReceipt.toStatus))}</strong></div><div className="flex items-start justify-between gap-3"><span className="text-admin-muted">{translateText("Reason")}</span><strong className="max-w-[70%] break-words text-right font-semibold">{statusReceipt.reason}</strong></div><div className="flex items-start justify-between gap-3"><span className="text-admin-muted">{translateText("Recorded")}</span><strong className="max-w-[70%] break-words text-right font-semibold">{formatWalletDate(statusReceipt.createdAt)}</strong></div></div><p className="audit-note mb-0">{translateText("This mock receipt represents the Activity Log event that the API integration will return.")}</p></Card> : null}
           {actionError || notice ? <p className={actionError ? "field-error" : "audit-note"} role={actionError ? "alert" : "status"}>{translateText(actionError ?? notice ?? "")}</p> : null}
         </> : null}
-    {statusCommand && detail ? <WalletStatusCommandDialog row={{ ...row, status: detail.status, statusLabel: walletStatusLabel(detail.status) }} targetStatus={statusCommand} onCancel={cancelStatusCommand} onSubmit={(reason, fixture) => { void submitStatusCommand(reason, fixture); }} error={statusCommandError} pending={statusCommandPending} showFixture={dataSource === "mock"} /> : null}
+    {statusCommand && detail ? <WalletStatusCommandDialog row={{ ...row, status: detail.status, statusLabel: walletStatusLabel(detail.status) }} targetStatus={statusCommand} onCancel={cancelStatusCommand} onSubmit={(reason) => { void submitStatusCommand(reason); }} error={statusCommandError} pending={statusCommandPending} /> : null}
   </AdminDrawer>;
 }
 
@@ -294,7 +266,7 @@ export function AdminWalletPage({ initialData }: { initialData: WalletBoardPageD
   }, []);
 
   const handleStatusChanged = useCallback((walletId: string, nextStatus: WalletStatus) => {
-    queryClient.setQueryData<WalletBoardQueryData>([...walletBoardQueryKey, initialData.dataSource], (current) => current
+    queryClient.setQueryData<WalletBoardQueryData>(walletBoardQueryKey, (current) => current
       ? { ...current, rows: current.rows.map((row) => row.id === walletId
         ? { ...row, status: nextStatus, statusLabel: walletStatusLabel(nextStatus) }
         : row) }
@@ -302,7 +274,7 @@ export function AdminWalletPage({ initialData }: { initialData: WalletBoardPageD
     setSelectedWallet((current) => current?.id === walletId
       ? { ...current, status: nextStatus, statusLabel: walletStatusLabel(nextStatus) }
       : current);
-  }, [initialData.dataSource, queryClient]);
+  }, [queryClient]);
 
   if (initialData.boardError) return <main className="admin-route-page wallet-route-page" tabIndex={-1}>
     <AdminPageHeader title={translateText("Wallets")} description={translateText("Review Wallet status and balances. Wallet detail is not a route in this migration.")} />
@@ -311,7 +283,7 @@ export function AdminWalletPage({ initialData }: { initialData: WalletBoardPageD
         <div><CardTitle>{translateText("Wallets")}</CardTitle><CardDescription>{translateText("Review Wallet status and balances.")}</CardDescription></div>
         <span className={adminBoardCount}>0 {translateText("shown")}</span>
       </CardHeader>
-      <WalletSummary summary={initialData.summary} error={initialData.summaryError} dataSource={initialData.dataSource} onRetry={() => router.refresh()} />
+      <WalletSummary summary={initialData.summary} error={initialData.summaryError} onRetry={() => router.refresh()} />
       <EmptyState role="alert" title={translateText("Records are not available")} description={translateText(initialData.boardError)} action={<UiButton variant="primary" type="button" onClick={() => router.refresh()}>{translateText("Try again")}</UiButton>} />
     </Card>
   </main>;
@@ -329,7 +301,7 @@ export function AdminWalletPage({ initialData }: { initialData: WalletBoardPageD
         <div><CardTitle>{translateText("Wallets")}</CardTitle><CardDescription>{translateText("Review Wallet status and balances.")}</CardDescription></div>
         <span className={adminBoardCount}>{sortedRows.length} {translateText("shown")}</span>
       </CardHeader>
-      <WalletSummary summary={initialData.summary} error={initialData.summaryError} dataSource={initialData.dataSource} onRetry={() => router.refresh()} />
+      <WalletSummary summary={initialData.summary} error={initialData.summaryError} onRetry={() => router.refresh()} />
       <Tabs value={tab} onValueChange={(value) => setTab(value as WalletBoardTab)}>
         <TabsList className="px-3" aria-label={translateText("Wallet status filters")}>
           {WALLET_BOARD_TABS.map((item) => <TabsTrigger key={item.id} value={item.id}>{translateText(item.label)} ({tabCounts.get(item.id) ?? 0})</TabsTrigger>)}
@@ -346,6 +318,6 @@ export function AdminWalletPage({ initialData }: { initialData: WalletBoardPageD
       {!sortedRows.length ? <EmptyState title={translateText("No matching records")} description={search.trim() ? translateText("Clear your search to see more results.") : translateText("There are no records in this view.")} action={<UiButton variant="outline" type="button" onClick={resetView}>{translateText("Reset view")}</UiButton>} /> : <section className="overflow-x-auto wallet-board-table-wrap" aria-label={translateText("Wallets table")}><Table className={`${adminBoardTable} wallet-board-table`}><caption>{translateText("Wallets")}</caption><thead><tr><AdminSortableHeader label={translateText("Student ID")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Member")} sortKey="member" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><th scope="col">{translateText("Email")}</th><AdminSortableHeader label={translateText("Current Wallet Balance")} sortKey="balance" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Latest Wallet Transaction Date")} sortKey="latestTransactionAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Wallet status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Created")} sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr data-wallet-row={row.id} key={row.id} tabIndex={0} aria-label={`${translateText("Open Wallet")} ${row.memberName}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; openWalletDrawer(row, event.currentTarget); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openWalletDrawer(row, event.currentTarget); } }}><td><button className="row-record-button" type="button" data-wallet-drawer-trigger={row.id} aria-label={`${translateText("Open Wallet")} ${row.memberName}`} onClick={(event) => openWalletDrawer(row, event.currentTarget)}>{displayAdminId(row.studentId) ?? "—"}</button><div className="wallet-mobile-key-facts" aria-label={translateText("Wallet summary")}><div><span>{translateText("Current Wallet Balance")}</span><strong>{formatWalletMoney(row.currentBalanceSatang)}</strong></div><div><span>{translateText("Wallet Status")}</span><strong><Badge status={row.status} track={false} /></strong></div><div><span>{translateText("Latest Wallet Transaction Date")}</span><strong>{formatWalletDate(row.latestTransactionAt)}</strong></div></div></td><td>{row.memberAvailable ? <Link className="user-record-link" data-member-link={row.memberId} href={memberTabHref(row.memberId, "overview")} aria-label={`${translateText("Open Member")} ${row.memberName}`}><strong>{row.memberName}</strong></Link> : <strong>{row.memberName}</strong>}</td><td><strong>{row.email}</strong><small>{displayAdminId(row.studentId) ?? translateText("Student ID not provided")}</small></td><td className="money">{formatWalletMoney(row.currentBalanceSatang)}</td><td>{formatWalletDate(row.latestTransactionAt)}</td><td><Badge status={row.status} /></td><td>{formatWalletDate(row.createdAt)}</td></tr>)}</tbody></Table></section>}
       {sortedRows.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Wallets pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className={adminBoardPagination} /> : null}
     </Card>
-    {selectedWallet ? <WalletDrawer row={selectedWallet} dataSource={initialData.dataSource} opener={drawerOpenerRef.current} onClose={closeWalletDrawer} onStatusChanged={handleStatusChanged} /> : null}
+    {selectedWallet ? <WalletDrawer row={selectedWallet} opener={drawerOpenerRef.current} onClose={closeWalletDrawer} onStatusChanged={handleStatusChanged} /> : null}
   </main>;
 }

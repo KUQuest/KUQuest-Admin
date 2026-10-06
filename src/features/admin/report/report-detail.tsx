@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 
-import { AdminActionReceipt } from "../../../components/admin/admin-action-feedback";
+import type { AdminDecisionSubmission } from "../admin-decision-note";
 import { formatAdminTimestamp } from "../date-format";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminRecordHeader } from "../../../components/admin/admin-record-header";
@@ -29,20 +29,16 @@ import {
   adminRecordSideFacts,
 } from "../../../components/admin/admin-record-styles";
 import { type AdminEvidence, type ReportCaseDecision } from "../api/admin-api";
-import { isAdminApiEnabled } from "../api/admin-provider";
 import { reportRoutes } from "../admin-routes";
 import { displayAdminId } from "../display-admin-id";
 import { ModerationCaseWorkspace, ModerationHistoryPanel } from "../moderation-case/moderation-case-workspace";
-import {
-  newReportCaseIdempotencyKey,
-} from "./report-adapter";
+import { newReportCaseIdempotencyKey } from "./report-service";
 import { ReportDecisionDialog } from "./report-decision-dialog";
 import {
   REPORT_CASE_UPDATED_EVENT,
   reportCaseDecisionFor,
   reportCaseModelFromRecord,
   reportCaseModelWithEvidenceSender,
-  reportCaseReasonCodeFor,
   type ReportCaseDecisionChoice,
   type ReportCaseModel,
 } from "./report-model";
@@ -394,7 +390,6 @@ function ReportCaseSections({
   commandError,
   onSelectChoice,
   onStartDecision,
-  actionReceipt,
 }: {
   model: ReportCaseModel;
   translateText: (value: string) => string;
@@ -403,7 +398,6 @@ function ReportCaseSections({
   commandError: string | null;
   onSelectChoice: (choice: ReportCaseDecisionChoice) => void;
   onStartDecision: () => void;
-  actionReceipt?: ReactNode;
 }) {
   const decisionPanel = (
     <DecisionControls
@@ -440,7 +434,6 @@ function ReportCaseSections({
           </Card>
         </>}
       />
-      {actionReceipt}
     </>
   );
 }
@@ -453,7 +446,6 @@ function DrawerSections({
   commandError,
   onSelectChoice,
   onStartDecision,
-  actionReceipt,
 }: {
   model: ReportCaseModel;
   translateText: (value: string) => string;
@@ -462,7 +454,6 @@ function DrawerSections({
   commandError: string | null;
   onSelectChoice: (choice: ReportCaseDecisionChoice) => void;
   onStartDecision: () => void;
-  actionReceipt?: ReactNode;
 }) {
   return (
     <div className="report-case-drawer-detail admin-drawer-content-flow grid min-w-0 content-start gap-[18px]">
@@ -499,7 +490,6 @@ function DrawerSections({
         />
         <Card as="section" className={`${adminRecordSection} report-decision-panel pb-[18px]`}><CardHeader flush className={adminRecordHeader}><h3 className={adminRecordHeading}>{model.isActionable ? translateText("Report decision") : translateText("Resolution")}</h3></CardHeader><DecisionControls model={model} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelect={onSelectChoice} onStart={onStartDecision} /></Card>
       </ModerationCaseWorkspace>
-      {actionReceipt}
       <div className="admin-drawer-actions sticky bottom-[-28px] z-[4] m-[18px_-24px_-28px] flex flex-wrap gap-2 border-t border-admin-border bg-admin-surface/95 px-6 py-3.5 shadow-[0_-6px_18px_rgba(0,0,0,0.09)] [&>*]:min-h-11 [&>*]:flex-[1_1_180px] [&>*]:text-center max-[720px]:bottom-[-24px] max-[720px]:m-[18px_-16px_-24px] max-[720px]:px-4 max-[720px]:[&>*]:basis-full">{model.reportedMemberHref && <Button asChild size="lg" variant="outline"><Link href={model.reportedMemberHref}>{translateText("Member profile")}</Link></Button>}<Button asChild size="lg" variant="primary"><a href={reportRoutes.detail(model.id)}>{translateText("Open full Report Case")}</a></Button></div>
     </div>
   );
@@ -517,12 +507,6 @@ export function ReportCaseDetail({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [commandError, setCommandError] = useState<string | null>(null);
   const [evidenceReference, setEvidenceReference] = useState<string | null>(null);
-  const [actionReceipt, setActionReceipt] = useState<{
-    action: string;
-    status: string;
-    reason: string;
-    occurredAt: string;
-  } | null>(null);
   const decisionMutation = useReportDecisionMutation();
 
   const evidenceQuery = useReportEvidenceQuery(evidenceReference);
@@ -560,9 +544,12 @@ export function ReportCaseDetail({
     setDialogOpen(true);
   };
 
-  const confirmDecision = async (reason: string) => {
+  const confirmDecision = async ({
+    reasonCode,
+    decisionReasonText,
+  }: AdminDecisionSubmission<"reasonCode", ReportCaseDecision["reasonCode"]>) => {
     if (!selectedChoice) return;
-    if (isAdminApiEnabled() && model.version === undefined) {
+    if (model.version === undefined) {
       setCommandError("The current Report Case version is not available. Reload the Report Case before deciding.");
       return;
     }
@@ -570,8 +557,8 @@ export function ReportCaseDetail({
     const decision = reportCaseDecisionFor(selectedChoice);
     const options: ReportCaseDecision = {
       outcome: decision,
-      reason,
-      reasonCode: reportCaseReasonCodeFor(selectedChoice, reason),
+      reasonCode,
+      ...(decisionReasonText ? { decisionReasonText } : {}),
       idempotencyKey: newReportCaseIdempotencyKey(model.id),
       expectedVersion: model.version ?? 1,
     };
@@ -581,26 +568,16 @@ export function ReportCaseDetail({
         reportId: model.id,
         currentModel: model,
         decision,
-        reason,
         options,
-        apiEnabled: isAdminApiEnabled(),
       });
       const updatedModel = reportCaseModelFromRecord(updated);
       if (!updatedModel || updatedModel.id !== model.id) {
-        throw new Error(isAdminApiEnabled() ? "The Admin API returned an invalid Report Case." : "The Report Case record is invalid.");
+        throw new Error("The Admin API returned an invalid Report Case.");
       }
       window.dispatchEvent(new CustomEvent(REPORT_CASE_UPDATED_EVENT, { detail: updatedModel }));
       onUpdated?.(updatedModel);
       setDialogOpen(false);
       setSelectedChoice(null);
-      if (!isAdminApiEnabled()) {
-        setActionReceipt({
-          action: decision,
-          status: updatedModel.statusLabel,
-          reason,
-          occurredAt: new Date().toISOString(),
-        });
-      }
     } catch (error: unknown) {
       setCommandError(error instanceof Error ? error.message : "The Report Case decision could not be saved.");
     }
@@ -622,12 +599,12 @@ export function ReportCaseDetail({
   const content = (
     <>
       <ReportAlert model={model} translateText={translateText} />
-      <ReportCaseSections model={model} translateText={translateText} onOpenEvidence={openEvidence} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} actionReceipt={actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Report Case" resourceId={model.displayId || null} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {actionReceipt.reason}</p>} /> : null} />
+      <ReportCaseSections model={model} translateText={translateText} onOpenEvidence={openEvidence} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} />
     </>
   );
 
   if (drawer) {
-    return <><DrawerSections model={model} translateText={translateText} onOpenEvidence={openEvidence} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} actionReceipt={actionReceipt ? <AdminActionReceipt action={actionReceipt.action} resource="Report Case" resourceId={model.displayId || null} status={actionReceipt.status} occurredAt={actionReceipt.occurredAt} mock details={<p>{translateText("Reason")}: {actionReceipt.reason}</p>} /> : null} />{overlays}</>;
+    return <><DrawerSections model={model} translateText={translateText} onOpenEvidence={openEvidence} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} />{overlays}</>;
   }
 
   return (

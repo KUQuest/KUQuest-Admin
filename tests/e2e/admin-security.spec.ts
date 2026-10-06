@@ -58,9 +58,16 @@ test.describe("Admin session and private-route boundary", () => {
     const detail = page.getByRole("dialog", { name: "Activity log entry" });
     await expect(detail).toBeVisible();
     await expect(detail).toContainText("Policy Review");
+    await expect(detail.locator(".activity-log-note")).toContainText("Decision note returned by the Admin API fixture.");
     await page.keyboard.press("Escape");
     await expect(detail).toHaveCount(0);
     await expect(opener).toBeFocused();
+    const legacyOpener = main.getByRole("button", { name: "View activity details" }).nth(1);
+    await legacyOpener.click();
+    await expect(detail).toBeVisible();
+    await expect(detail.locator(".activity-log-note")).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await expect(detail).toHaveCount(0);
 
     await opener.click();
     await expect(detail).toBeVisible();

@@ -15,6 +15,11 @@ import type {
   ConductReportDecision,
   ReportCaseDecision,
 } from "./admin-api";
+function decisionReasonTextFields(value: string | undefined) {
+  const decisionReasonText = value?.trim();
+  return decisionReasonText ? { decisionReasonText } : {};
+}
+
 
 export function createAdminReportApi() {
   return {
@@ -49,8 +54,8 @@ export function createAdminReportApi() {
           },
           body: {
             outcome: options.outcome,
-            reason: options.reason,
             reasonCode: options.reasonCode,
+            ...decisionReasonTextFields(options.decisionReasonText),
           },
         },
       );
@@ -68,10 +73,13 @@ export function createAdminReportApi() {
           body: options.outcome === "CONDUCT_REPORT_DISMISSED"
             ? {
                 outcome: options.outcome,
-                reason: options.reason,
                 decisionReasonCode: options.decisionReasonCode,
+                ...decisionReasonTextFields(options.decisionReasonText),
               }
-            : { outcome: options.outcome, reason: options.reason },
+            : {
+                outcome: options.outcome,
+                ...decisionReasonTextFields(options.decisionReasonText),
+              },
         },
       );
     },

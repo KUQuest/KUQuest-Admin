@@ -1,11 +1,9 @@
 import { afterEach, describe, expect, it } from "bun:test";
 
 import {
-  ADMIN_MOCK_SESSION_COOKIE,
   adminSessionCookieHeader,
   adminSessionDecision,
   hasAdminSessionCookie,
-  hasMockAdminSessionCookie,
 } from "../../src/lib/auth/admin-session-policy";
 import { getAdminSessionFromApi } from "../../src/lib/auth/admin-session";
 
@@ -34,12 +32,21 @@ describe("Admin session policy", () => {
     );
   });
 
-  it("does not treat the mock adapter cookie as a production Admin session", () => {
-    const cookies = [{ name: ADMIN_MOCK_SESSION_COOKIE, value: "1" }];
+  it("recognizes and forwards a Secure-prefixed Admin session cookie", () => {
+    const cookies = [
+      { name: "__Secure-kuquest-admin.session_token", value: "secure-session-token" },
+    ];
+
+    expect(hasAdminSessionCookie(cookies)).toBe(true);
+    expect(adminSessionCookieHeader(cookies)).toBe(
+      "__Secure-kuquest-admin.session_token=secure-session-token",
+    );
+  });
+
+  it("does not accept the retired local mock-session cookie", () => {
+    const cookies = [{ name: "kuquest-admin.mock-session", value: "1" }];
 
     expect(hasAdminSessionCookie(cookies)).toBe(false);
-    expect(hasAdminSessionCookie(cookies, { includeMock: true })).toBe(true);
-    expect(hasMockAdminSessionCookie(cookies)).toBe(true);
     expect(adminSessionCookieHeader(cookies)).toBe("");
   });
 

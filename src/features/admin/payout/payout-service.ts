@@ -1,7 +1,4 @@
-import { cookies } from "next/headers";
-
 import { ApiError } from "../../../lib/api/client";
-import { adminSessionCookieHeader } from "../../../lib/auth/admin-session-policy";
 import type {
   AdminApiPayoutStatus,
   AdminPayoutDetail,
@@ -10,8 +7,7 @@ import {
   ADMIN_API_PAYOUT_STATUSES,
 } from "../api/admin-api";
 import { adminApiRequestOptions } from "../api/admin-api-request-options";
-import { adminApiProvider, isAdminApiEnabled } from "../api/admin-provider";
-import { mockAllPayoutDetails, mockPayoutDetail } from "./payout-mock-data";
+import { adminApiProvider } from "../api/admin-provider";
 import {
   payoutDetailViewFromApi,
   payoutRowsFromApi,
@@ -19,30 +15,13 @@ import {
   type PayoutDetailView,
 } from "./payout-model";
 
-export type PayoutDataSource = "api" | "mock";
-
 export type PayoutBoardPageData = {
   rows: PayoutBoardRow[];
-  allRows?: PayoutBoardRow[];
 };
 
 export type PayoutDetailPageData = {
   detail: PayoutDetailView;
 };
-
-export async function loadPayoutRouteContext(): Promise<{
-  dataSource: PayoutDataSource;
-  cookieHeader?: string;
-}> {
-  const dataSource = isAdminApiEnabled() ? "api" : "mock";
-  if (dataSource === "mock") return { dataSource };
-
-  const cookieStore = await cookies();
-  return {
-    dataSource,
-    cookieHeader: adminSessionCookieHeader(cookieStore.getAll()),
-  };
-}
 
 async function listAllPayoutsForStatus(
   status: AdminApiPayoutStatus,
@@ -72,48 +51,35 @@ async function listAllPayouts(cookieHeader?: string) {
 }
 
 export async function loadPayoutBoardPageData(
-  cookieHeader: string | undefined,
-  dataSource: PayoutDataSource,
+  cookieHeader?: string,
 ): Promise<PayoutBoardPageData> {
-  const items = dataSource === "mock"
-    ? mockAllPayoutDetails
-    : await listAllPayouts(cookieHeader);
-  const rows = payoutRowsFromApi(items);
-  return dataSource === "mock"
-    ? { rows: payoutRowsFromApi(items.slice(0, 4)), allRows: rows }
-    : { rows };
+  const items = await listAllPayouts(cookieHeader);
+  return { rows: payoutRowsFromApi(items) };
 }
 
 export async function loadPayoutDetailPageData(
   payoutId: string,
-  cookieHeader: string | undefined,
-  dataSource: PayoutDataSource,
+  cookieHeader?: string,
 ): Promise<PayoutDetailPageData | null> {
   let detail: AdminPayoutDetail | null;
-  if (dataSource === "mock") {
-    detail = mockPayoutDetail(payoutId);
-  } else {
-    try {
-      detail = await adminApiProvider.read.getPayout(payoutId, adminApiRequestOptions(cookieHeader));
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 404) return null;
-      throw error;
-    }
-
-    try {
-      const history = await adminApiProvider.read.getPayoutHistory(
-        payoutId,
-        adminApiRequestOptions(cookieHeader),
-      );
-      detail = { ...detail, history };
-    } catch {
-      // The Payout detail response also carries history, so keep that record if
-      // the dedicated history route is temporarily unavailable.
-    }
+  try {
+    detail = await adminApiProvider.read.getPayout(payoutId, adminApiRequestOptions(cookieHeader));
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
   }
 
-  const relatedPayouts = dataSource === "mock"
-    ? mockAllPayoutDetails
-    : await listAllPayouts(cookieHeader);
-  return detail ? { detail: payoutDetailViewFromApi(detail, relatedPayouts) } : null;
+  try {
+    const history = await adminApiProvider.read.getPayoutHistory(
+      payoutId,
+      adminApiRequestOptions(cookieHeader),
+    );
+    detail = { ...detail, history };
+  } catch {
+    // The Payout detail response also carries history, so keep that record if
+    // the dedicated history route is temporarily unavailable.
+  }
+
+  const relatedPayouts = await listAllPayouts(cookieHeader);
+  return { detail: payoutDetailViewFromApi(detail, relatedPayouts) };
 }

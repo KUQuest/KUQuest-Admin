@@ -1,4 +1,3 @@
-import type { PersistedAdminData } from "../data/admin-records";
 import type { AdminSearchResult } from "../api/admin-api";
 import {
   conductReportRoutes,
@@ -12,7 +11,6 @@ import {
 } from "../admin-routes";
 import {
   disputeCaseStatusLabel,
-  isConductReportStatus,
   memberStatusLabel,
   payoutStatusLabel,
   questStateLabel,
@@ -21,9 +19,6 @@ import {
 } from "../domain/rulebook";
 import {
   apiStatusLabel,
-  recordNewestAt,
-  recordStatusLabel,
-  recordText,
   timestampValue,
 } from "./overview-values";
 import {
@@ -31,7 +26,6 @@ import {
   searchResultOrder,
   type AdminSearchResultKind,
 } from "../search/search-descriptors";
-import { hasHiddenQuestOverlay } from "../domain/rulebook";
 import { displayAdminId } from "../display-admin-id";
 
 export type OverviewSearchResult = {
@@ -53,17 +47,6 @@ export type OverviewApiSearchData = {
   reports?: Array<{ id: string; displayId?: string; title: string; reportedMemberId?: string; conduct?: boolean; status?: string; newestAt?: string | number | null }>;
   wallets?: Array<{ id: string; memberId: string; memberName: string; status?: string; newestAt?: string | number | null }>;
 };
-
-const mockMemberStatusById: Record<string, "Normal" | "Flag" | "Perm Ban"> = {
-  "68000000": "Normal",
-  "68000020": "Flag",
-  "68000040": "Perm Ban",
-};
-
-function mockMemberSearchStatus(member: unknown): string {
-  const storedStatus = recordText(member, "memberStatus");
-  return storedStatus ? memberStatusLabel(storedStatus) : mockMemberStatusById[recordText(member, "id")] ?? "Not provided";
-}
 
 function memberName(member: { firstName: string; lastName: string }): string {
   return `${member.firstName} ${member.lastName}`.trim() || "Member";
@@ -88,105 +71,6 @@ function matchingSearchResults(results: OverviewSearchResult[], query: string): 
       .toLowerCase()
       .includes(lowerQuery)
   ))).slice(0, 12);
-}
-
-export function overviewSearchResultsFromMockData(
-  data: PersistedAdminData,
-  query: string,
-): OverviewSearchResult[] {
-  const members = data.collections.users.map((member): OverviewSearchResult => ({
-    kind: "member",
-    id: displayAdminId(recordText(member, "studentId")) ?? "",
-    title: member.title,
-    detail: "Member",
-    status: mockMemberSearchStatus(member),
-    newestAt: recordNewestAt(member, ["updatedAt", "lastActiveAt", "createdAt", "accountCreatedAt"]),
-    href: memberRoutes.detail(member.id),
-    searchText: `${member.id} ${recordText(member, "studentId")}`,
-  }));
-  const quests = data.collections.quests.flatMap((record): OverviewSearchResult[] => {
-    if (record && typeof record === "object" && hasHiddenQuestOverlay(record as { hiddenAt?: unknown; status?: unknown; questState?: unknown })) return [];
-    const id = recordText(record, "id");
-    const displayId = displayAdminId(recordText(record, "displayId"), id) ?? "";
-    const title = recordText(record, "title");
-    return id && title ? [{
-      kind: "quest",
-      id: displayId,
-      title,
-      detail: "Quest",
-      status: recordStatusLabel(record, ["questState", "status"], questStateLabel),
-      newestAt: recordNewestAt(record, ["updatedAt", "createdAt", "startTime"]),
-      href: questRoutes.detail(id),
-      searchText: id,
-    }] : [];
-  });
-  const payouts = data.collections.payouts.flatMap((record): OverviewSearchResult[] => {
-    const id = recordText(record, "id");
-    const title = recordText(record, "title");
-    return id && title ? [{
-      kind: "payout",
-      id: displayAdminId(recordText(record, "displayId"), id) ?? "",
-      title,
-      detail: "Payout",
-      status: recordStatusLabel(record, ["payoutStatus", "status"], payoutStatusLabel),
-      newestAt: recordNewestAt(record, ["updatedAt", "createdAt"]),
-      href: payoutRoutes.detail(id),
-      searchText: id,
-    }] : [];
-  });
-  const disputes = data.collections.disputes.flatMap((record): OverviewSearchResult[] => {
-    const id = displayAdminId(recordText(record, "displayId"), recordText(record, "id")) ?? "";
-    const resourceId = recordText(record, "id");
-    const title = recordText(record, "title") || "Dispute Case";
-    const questId = recordText(record, "questId");
-    return resourceId ? [{
-      kind: "dispute",
-      id,
-      title,
-      detail: "Dispute Case",
-      status: recordStatusLabel(record, ["disputeCaseStatus", "status"], disputeCaseStatusLabel),
-      newestAt: recordNewestAt(record, ["updatedAt", "disputeDate", "createdAt", "failedAt"]),
-      href: disputeRoutes.detail(resourceId),
-      searchText: `${resourceId} ${questId} ${recordText(record, "status")} ${recordText(record, "filerName")}`,
-    }] : [];
-  });
-  const reports = data.collections.reports.flatMap((record): OverviewSearchResult[] => {
-    const resourceId = recordText(record, "id");
-    const id = displayAdminId(recordText(record, "displayId"), resourceId) ?? "";
-    const conduct = isConductReportStatus(recordText(record, "status")) || isConductReportStatus(recordText(record, "conductReportStatus"));
-    const title = recordText(record, conduct ? "reasonCode" : "category") || (conduct ? "Conduct Report" : "Report Case");
-    return resourceId ? [{
-      kind: conduct ? "conduct-report" : "report",
-      id,
-      title,
-      detail: conduct ? "Conduct Report" : "Report Case",
-      status: recordStatusLabel(record, [conduct ? "conductReportStatus" : "reportCaseStatus", "status"], reportCaseStatusLabel),
-      newestAt: recordNewestAt(record, ["updatedAt", "reportedAt", "createdAt", "closedAt"]),
-      href: conduct ? conductReportRoutes.detail(resourceId) : reportRoutes.detail(resourceId),
-      searchText: `${resourceId} ${recordText(record, "reportedMemberId")} ${recordText(record, "reportedUserName")} ${recordText(record, "questId")} ${recordText(record, "details")}`,
-    }] : [];
-  });
-  const wallets = data.collections.users.map((member): OverviewSearchResult => ({
-    kind: "wallet",
-    id: "",
-    title: `${displayAdminId(member.title) ? member.title : "Member"} Wallet`,
-    detail: "Wallet",
-    status: recordStatusLabel(member, ["walletStatus"], walletStatusLabel),
-    newestAt: recordNewestAt(member, ["walletUpdatedAt", "updatedAt", "lastActiveAt", "createdAt"]),
-    href: walletRoutes.list(),
-    searchText: `${member.id} ${recordText(member, "walletStatus")} ${recordText(member, "studentId")}`,
-  }));
-  const activity: OverviewSearchResult = {
-    kind: "activity",
-    id: "ACTIVITY-LOG",
-    title: "Activity Log",
-    detail: "Activity Log",
-    status: "Recorded",
-    newestAt: 0,
-    href: activityRoutes.list(),
-    searchText: "audit administrative action history",
-  };
-  return matchingSearchResults([...members, ...quests, ...payouts, ...disputes, ...reports, ...wallets, activity], query);
 }
 
 export function overviewSearchResultsFromApi(

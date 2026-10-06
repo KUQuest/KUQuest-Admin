@@ -1,4 +1,4 @@
-import { mockWalletFinanceSummary, mockWallets } from "../../src/features/admin/wallet/wallet-mock-data";
+import { adminWalletFinanceSummary, adminWalletFixtures } from "../fixtures/admin-wallet-api-fixtures";
 
 const apiOrigin = process.env.WALLET_ADMIN_ORIGIN ?? "http://localhost:3004";
 const initialWalletFailure = process.env.WALLET_FIXTURE_INITIAL_ERROR === "1";
@@ -55,7 +55,7 @@ const server = Bun.serve({
     }
     if (url.pathname === "/api/v1/admin/finance/overview") {
       return json({ success: true, data: {
-        memberBalancesSummary: mockWalletFinanceSummary,
+        memberBalancesSummary: adminWalletFinanceSummary,
         platformBalances: { revenueSatang: 0, suspenseSatang: 0 },
         volumeLifetime: { totalTopUpDepositedSatang: 0, totalPayoutCompletedSatang: 0, totalPlatformFeesEarnedSatang: 0 },
         integrity: { subledgerBalanced: true, totalPostingsDiscrepancySatang: 0, lastAuditedAt: "2026-09-14T00:00:00.000Z" },
@@ -67,7 +67,7 @@ const server = Bun.serve({
         return json({ success: false, error: { code: "UNAVAILABLE", message: "Wallet page unavailable" } }, 503);
       }
       if (initialWalletFailure) return json({ success: false, error: { code: "UNAVAILABLE", message: "Wallets unavailable" } }, 503);
-      return json({ success: true, data: { items: [mockWallets[0]], nextCursor: "wallet-next" } });
+      return json({ success: true, data: { items: [adminWalletFixtures[0]], nextCursor: "wallet-next" } });
     }
     return json({ success: true, data: {} });
   },

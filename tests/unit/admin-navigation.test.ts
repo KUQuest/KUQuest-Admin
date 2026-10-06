@@ -1,7 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
 import {
-  adminNavigationCountsFromMockData,
   adminNavigationCountsFromOverview,
 } from "../../src/features/admin/admin-navigation";
 
@@ -42,38 +41,5 @@ describe("Admin navigation counts", () => {
     });
   });
 
-  it("counts mock Report Cases and Conduct Reports separately", () => {
-    expect(adminNavigationCountsFromMockData({
-      reports: [
-        { id: "report-1", reportCaseStatus: "REPORT_CASE_PENDING" },
-        { id: "report-2", reportCaseStatus: "REPORT_CASE_HIDDEN" },
-        { id: "conduct-1", conductReportStatus: "CONDUCT_REPORT_PENDING" },
-        { id: "conduct-2", conductReportStatus: "CONDUCT_REPORT_UPHELD" },
-      ],
-    })).toEqual({
-      disputes: 0,
-      payouts: 0,
-      reports: 1,
-      conductReports: 1,
-    });
-  });
 
-  it("counts mock pending Dispute Cases when the API resource is unavailable", () => {
-    expect(adminNavigationCountsFromMockData({
-      disputes: [
-        { id: "dispute-1", disputeCaseStatus: "DISPUTE_CASE_PENDING" },
-        { id: "dispute-2", disputeCaseStatus: "DISPUTE_CASE_RESOLVED" },
-      ],
-      payouts: [
-        { id: "payout-1", payoutStatus: "PENDING_ADMIN_APPROVAL" },
-        { id: "payout-2", payoutStatus: "SUCCEEDED" },
-      ],
-      reports: [],
-    })).toEqual({
-      disputes: 1,
-      payouts: 1,
-      reports: 0,
-      conductReports: 0,
-    });
-  });
 });

@@ -607,7 +607,7 @@ describe("Admin API boundary", () => {
     });
   });
 
-  it("uses the existing Admin Report command boundary for Conduct Reports", async () => {
+  it("sends a Report Case reason code with its optional decision note", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     let request: Request | undefined;
 
@@ -615,25 +615,115 @@ describe("Admin API boundary", () => {
       request = new Request(input, init);
       return jsonResponse({
         success: true,
-        data: { id: "CND-1", status: "CONDUCT_REPORT_UPHELD", reportedMemberId: "member-1" },
+        data: { id: "RPT-1", status: "REPORT_CASE_HIDDEN" },
+      });
+    });
+
+    await adminApi.decideReportCase("RPT-1", {
+      idempotencyKey: "report-case-1",
+      expectedVersion: 2,
+      outcome: "REPORT_CASE_HIDDEN",
+      reasonCode: "SAFETY_REVIEW",
+      decisionReasonText: "Reviewed the named Evidence Reference.",
+    });
+
+    expect(await request?.json()).toEqual({
+      outcome: "REPORT_CASE_HIDDEN",
+      reasonCode: "SAFETY_REVIEW",
+      decisionReasonText: "Reviewed the named Evidence Reference.",
+    });
+  });
+
+  it("sends a Conduct Report dismissal decision code", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    let request: Request | undefined;
+
+    mockFetch(async (input, init) => {
+      request = new Request(input, init);
+      return jsonResponse({
+        success: true,
+        data: { id: "CND-1", status: "CONDUCT_REPORT_DISMISSED" },
       });
     });
 
     await adminApi.decideConductReport("CND-1", {
-      idempotencyKey: "conduct-report-1",
+      idempotencyKey: "conduct-report-dismiss-1",
       expectedVersion: 2,
-      outcome: "CONDUCT_REPORT_UPHELD",
-      reason: "The Quest record confirms the violation.",
+      outcome: "CONDUCT_REPORT_DISMISSED",
+      decisionReasonCode: "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE",
+      decisionReasonText: "The Quest record supports dismissal.",
     });
 
-    expect(request?.url).toBe("https://api.example.test/api/v1/admin/reports/CND-1/decide");
-    expect(request?.method).toBe("POST");
-    expect(request?.headers.get("idempotency-key")).toBe("conduct-report-1");
-    expect(request?.headers.get("if-match")).toBe("2");
+    expect(await request?.json()).toEqual({
+      outcome: "CONDUCT_REPORT_DISMISSED",
+      decisionReasonCode: "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE",
+      decisionReasonText: "The Quest record supports dismissal.",
+    });
+  });
+
+  it("does not send a separate decision code for a Conduct Report uphold", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    let request: Request | undefined;
+
+    mockFetch(async (input, init) => {
+      request = new Request(input, init);
+      return jsonResponse({
+        success: true,
+        data: { id: "CND-1", status: "CONDUCT_REPORT_UPHELD" },
+      });
+    });
+
+    await adminApi.decideConductReport("CND-1", {
+      idempotencyKey: "conduct-report-uphold-1",
+      expectedVersion: 2,
+      outcome: "CONDUCT_REPORT_UPHELD",
+      decisionReasonText: "The filed reason is supported by the Quest record.",
+    });
+
     expect(await request?.json()).toEqual({
       outcome: "CONDUCT_REPORT_UPHELD",
-      reason: "The Quest record confirms the violation.",
+      decisionReasonText: "The filed reason is supported by the Quest record.",
     });
+  });
+
+  it("omits whitespace-only decision notes for every report outcome", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    const bodies: unknown[] = [];
+
+    mockFetch(async (input, init) => {
+      bodies.push(await new Request(input, init).json());
+      return jsonResponse({ success: true, data: { id: "report-1" } });
+    });
+
+    await adminApi.decideReportCase("RPT-1", {
+      idempotencyKey: "report-case-blank-note",
+      expectedVersion: 2,
+      outcome: "REPORT_CASE_RESTORED",
+      reasonCode: "POLICY_REVIEW",
+      decisionReasonText: "   ",
+    });
+    await adminApi.decideConductReport("CND-1", {
+      idempotencyKey: "conduct-dismiss-blank-note",
+      expectedVersion: 2,
+      outcome: "CONDUCT_REPORT_DISMISSED",
+      decisionReasonCode: "CONDUCT_REPORT_NO_VIOLATION",
+      decisionReasonText: " ",
+    });
+    await adminApi.decideConductReport("CND-2", {
+      idempotencyKey: "conduct-uphold-blank-note",
+      expectedVersion: 2,
+      outcome: "CONDUCT_REPORT_UPHELD",
+      decisionReasonText: "",
+    });
+
+    expect(bodies).toEqual([
+      { outcome: "REPORT_CASE_RESTORED", reasonCode: "POLICY_REVIEW" },
+      {
+        outcome: "CONDUCT_REPORT_DISMISSED",
+        decisionReasonCode: "CONDUCT_REPORT_NO_VIOLATION",
+      },
+      { outcome: "CONDUCT_REPORT_UPHELD" },
+    ]);
   });
 
   it("maps an API error envelope to ApiError", async () => {
@@ -701,7 +791,6 @@ describe("Admin API boundary", () => {
       idempotencyKey: "decide-1",
       expectedVersion: 1,
       outcome: "REPORT_CASE_DISMISSED",
-      reason: "No confirmed violation.",
       reasonCode: "POLICY_REVIEW",
     });
     await adminApi.getEvidence("evidence-1", { idempotencyKey: "evidence-read-2" });
