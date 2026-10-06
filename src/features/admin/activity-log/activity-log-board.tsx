@@ -26,7 +26,6 @@ import { sortBoardRows } from "../data/board-sorting";
 import { DEFAULT_ACTIVITY_LOG_FILTERS, type ActivityLogPageData } from "./activity-log-service";
 import { useActivityLogBoardStore, type ActivityLogSortKey } from "./activity-log-board-store";
 import { useActivityLogQuery } from "./activity-log-query";
-import { formatAdminTimestamp } from "../date-format";
 import { displayAdminId } from "../display-admin-id";
 
 export type ActivityLogBoardProps = {
@@ -92,14 +91,6 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
               <div className={adminRecordFact}><span>{translateText("Event type")}</span><strong>{translateText(activityLogResourceTypeLabel(entry.resourceType))}</strong></div>
               <div className={adminRecordFact}><span>{translateText("Event ID")}</span><strong>{displayValue(entry.resourceId)}</strong></div>
               <div className={adminRecordFact}><span>{translateText("Reason code")}</span><strong>{translateText(activityLogReasonLabel(entry.reasonCode))}</strong></div>
-            </div>
-          </Card>
-          <Card as="section" className={`${adminRecordSection} activity-log-result-section`} aria-labelledby="activity-log-result-heading">
-            <CardHeader flush className={adminRecordHeader}><h3 id="activity-log-result-heading" className={adminRecordHeading}>{translateText("Result")}</h3></CardHeader>
-            <div className={adminRecordFacts}>
-              <div className={adminRecordFact}><span>{translateText("Result version")}</span><strong>{displayValue(entry.resultVersion)}</strong></div>
-              <div className={adminRecordFact}><span>{translateText("Result timestamp")}</span><strong>{formatAdminTimestamp(entry.resultTimestamp)}</strong></div>
-              <div className={adminRecordFact}><span>{translateText("Relative time")}</span><strong>{formatActivityLogRelativeTime(entry.createdAt)}</strong></div>
             </div>
           </Card>
           <Card as="section" className={`${adminRecordSection} activity-log-state-section`} aria-labelledby="activity-log-state-heading">

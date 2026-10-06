@@ -172,8 +172,6 @@ export const thaiTranslations: Record<string, string> = {
   "Choose a decision reason code before confirming.": "เลือกรหัสเหตุผลการตัดสินใจก่อนยืนยัน",
   "Admin decision note (optional)": "บันทึกการตัดสินใจของ Admin (ไม่บังคับ)",
   "Event ID": "รหัสเหตุการณ์",
-  "Result version": "เวอร์ชันผลลัพธ์",
-  "Result timestamp": "เวลาผลลัพธ์",
   "Try again": "ลองอีกครั้ง",
   "loaded entries": "รายการที่โหลดแล้ว",
   "Loading more": "กำลังโหลดเพิ่มเติม",
