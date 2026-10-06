@@ -94,14 +94,6 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
               <div className={adminRecordFact}><span>{translateText("Reason code")}</span><strong>{translateText(activityLogReasonLabel(entry.reasonCode))}</strong></div>
             </div>
           </Card>
-          <Card as="section" className={`${adminRecordSection} activity-log-admin-section`} aria-labelledby="activity-log-admin-heading">
-            <CardHeader flush className={adminRecordHeader}><h3 id="activity-log-admin-heading" className={adminRecordHeading}>{translateText("Admin")}</h3></CardHeader>
-            <div className={adminRecordFacts}>
-              <div className={adminRecordFact}><span>{translateText("Admin ID")}</span><strong>{displayValue(entry.adminId)}</strong></div>
-              <div className={adminRecordFact}><span>{translateText("Admin first name")}</span><strong>{displayValue(entry.admin.firstName)}</strong></div>
-              <div className={adminRecordFact}><span>{translateText("Admin last name")}</span><strong>{displayValue(entry.admin.lastName)}</strong></div>
-            </div>
-          </Card>
           <Card as="section" className={`${adminRecordSection} activity-log-result-section`} aria-labelledby="activity-log-result-heading">
             <CardHeader flush className={adminRecordHeader}><h3 id="activity-log-result-heading" className={adminRecordHeading}>{translateText("Result")}</h3></CardHeader>
             <div className={adminRecordFacts}>
