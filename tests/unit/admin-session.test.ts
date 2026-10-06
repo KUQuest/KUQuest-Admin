@@ -32,6 +32,17 @@ describe("Admin session policy", () => {
     );
   });
 
+  it("recognizes and forwards a Secure-prefixed Admin session cookie", () => {
+    const cookies = [
+      { name: "__Secure-kuquest-admin.session_token", value: "secure-session-token" },
+    ];
+
+    expect(hasAdminSessionCookie(cookies)).toBe(true);
+    expect(adminSessionCookieHeader(cookies)).toBe(
+      "__Secure-kuquest-admin.session_token=secure-session-token",
+    );
+  });
+
   it("does not accept the retired local mock-session cookie", () => {
     const cookies = [{ name: "kuquest-admin.mock-session", value: "1" }];
 
