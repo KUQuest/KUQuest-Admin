@@ -38,11 +38,54 @@ export type AdminReportCase = {
   id: string;
   displayId: string;
   status: ReportCaseStatus | ConductReportStatus;
-  reportedMemberId: string;
+  reportedMemberId?: string;
+  reportedUserId?: string;
+  reportedMember?: {
+    id: string;
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    studentId?: string | null;
+    displayId?: string | null;
+  } | null;
+  filer?: {
+    id: string;
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    studentId?: string | null;
+    displayId?: string | null;
+  };
+  reporterEntries?: Array<{
+    reporterMemberId: string;
+    reporter?: {
+      id: string;
+      email?: string;
+      firstName?: string;
+      lastName?: string;
+      studentId?: string | null;
+      displayId?: string | null;
+    };
+    reason?: string;
+    detail?: string | null;
+    createdAt?: string;
+  }>;
+  reason?: string;
+  detail?: string | null;
+  createdAt?: string;
   evidenceRefs?: EvidenceReference[];
   questId?: string;
   version?: number;
   [key: string]: unknown;
+};
+
+export type AdminReportStatusCounts = Record<ReportCaseStatus | ConductReportStatus, number>;
+
+export type AdminReportPage = {
+  items: AdminReportCase[];
+  nextCursor: string | null;
+  totalCount: number;
+  countsByStatus: AdminReportStatusCounts;
 };
 
 export type AdminEvidenceMessage = {

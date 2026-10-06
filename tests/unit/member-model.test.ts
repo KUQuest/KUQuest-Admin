@@ -84,7 +84,12 @@ describe("Member route model", () => {
     expect(model.walletStatus).toBe("FROZEN");
     expect(model.walletBalances).toMatchObject({ spendingBalanceSatang: 150 });
     expect(model.confirmedViolationCount).toBeNull();
-    expect(model.reportsSubmittedError).toContain("not provided by the Admin API");
+    expect(model.reportsSubmitted).toBeNull();
+    expect(model.reportsSubmittedError).toBe("Reports submitted are not available.");
+    expect(model.reportsComplete).toBe(false);
+    expect(model.payouts).toBeNull();
+    expect(model.reviews).toBeNull();
+    expect(model.quests).toBeNull();
   });
 
   it("keeps the full Ledger balance when filtering displayed rows", () => {
