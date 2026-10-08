@@ -20,12 +20,14 @@ import { payoutStatusLabel, questStateLabel, reportCaseStatusLabel } from "../do
 import { formatTopUpPaymentMethod, TopUpDetailDrawer } from "../finance/top-up-detail-drawer";
 import { TOP_UP_BOARD_TABS } from "../finance/top-ups-board-model";
 import { statusBadgeClass } from "../status-badge";
-import { formatWalletMovementAmount, walletCompartmentLabel, walletEventTypeLabel } from "../wallet/wallet-model";
+import { formatWalletMovementAmount, isWalletCompartmentAccountType, walletCompartmentLabel, walletEventTypeLabel } from "../wallet/wallet-model";
 import { formatWalletStatementDateInput, parseWalletStatementDateInput } from "./member-wallet-model";
 import {
   currentWalletBalance,
   formatMoneySatang,
   formatWalletDate,
+  memberQuestHistoryStatusDate,
+  memberQuestHistoryStatusLabel,
   memberStatusClass,
   memberStatusText,
   memberPenaltyHistoryItemKey,
@@ -132,7 +134,7 @@ function walletReadWarningText(model: MemberModel, translateText: (value: string
     return translateText("Member Finance could not be loaded. The Member detail response reports no Wallet.");
   }
   if (state.kind !== "available" || !state.warning) return null;
-  if (state.warning.kind === "contract") return translateText("ข้อมูล Wallet ไม่ตรงตามสัญญา API");
+  if (state.warning.kind === "contract") return translateText("Wallet data conflicts with the API contract.");
   if (state.source === "member-detail") {
     return translateText("Member detail Wallet snapshot is shown because the Finance read failed.");
   }
@@ -146,11 +148,7 @@ function latestWalletTransactionAt(model: MemberModel): string | null {
   return transactions
     .filter((transaction) => transaction.sealedAt !== null
       && transaction.isBalanced
-      && transaction.postings.some((posting) => posting.walletId === walletId
-        && (posting.accountType === "SPENDING"
-          || posting.accountType === "EARNINGS"
-          || posting.accountType === "FUNDING_RESERVED"
-          || posting.accountType === "RESERVED_FOR_PAYOUTS")))
+      && transaction.postings.some((posting) => posting.walletId === walletId && isWalletCompartmentAccountType(posting.accountType)))
     .reduce<string | null>((latest, transaction) => {
       if (!latest || Date.parse(transaction.createdAt) > Date.parse(latest)) return transaction.createdAt;
       return latest;
@@ -163,32 +161,32 @@ function walletBalanceText(
   translateText: (value: string) => string,
   amountSatang: number | undefined,
 ): string {
-  if (model.walletReadState.kind === "absent") return translateText("Member นี้ไม่มี Wallet");
-  if (model.walletReadState.kind === "conflict") return translateText("ข้อมูล Wallet ขัดแย้งกัน");
-  if (model.walletReadState.kind === "contract-error") return translateText("ข้อมูล Wallet ไม่ตรงตามสัญญา API");
-  if (model.walletReadState.kind === "request-error") return translateText("อ่านข้อมูล Wallet ไม่สำเร็จ");
-  if (model.walletReadState.kind === "unavailable") return translateText("ยังไม่ยืนยันข้อมูล Wallet");
-  if (model.walletProjectionMatchesLedger === false) return translateText("ยอด Wallet ไม่ตรงกับ Ledger");
-  if (!model.walletBalances || amountSatang === undefined) return translateText("ยังไม่ยืนยันข้อมูล Wallet");
+  if (model.walletReadState.kind === "absent") return translateText("This Member has no Wallet.");
+  if (model.walletReadState.kind === "conflict") return translateText("Wallet data conflicts.");
+  if (model.walletReadState.kind === "contract-error") return translateText("Wallet data conflicts with the API contract.");
+  if (model.walletReadState.kind === "request-error") return translateText("Member finance could not be loaded.");
+  if (model.walletReadState.kind === "unavailable") return translateText("Wallet data is not verified.");
+  if (model.walletProjectionMatchesLedger === false) return translateText("Wallet balance does not match the Ledger.");
+  if (!model.walletBalances || amountSatang === undefined) return translateText("Wallet data is not verified.");
   return formatMoneySatang(amountSatang);
 }
 
 function latestWalletTransactionLabel(model: MemberModel, translateText: (value: string) => string): string {
   const state = model.walletReadState;
-  if (state.kind === "absent") return translateText("Member นี้ไม่มี Wallet");
-  if (state.kind === "request-error") return translateText("อ่านวันที่ Ledger Transaction ล่าสุดไม่สำเร็จ");
-  if (state.kind === "contract-error") return translateText("ข้อมูล Wallet ไม่ตรงตามสัญญา API");
-  if (state.kind === "conflict") return translateText("ข้อมูล Wallet ขัดแย้งกัน");
-  if (state.kind === "unavailable") return translateText("ยังไม่ยืนยันวันที่ Ledger Transaction ล่าสุด");
+  if (state.kind === "absent") return translateText("This Member has no Wallet.");
+  if (state.kind === "request-error") return translateText("Could not read the latest Ledger Transaction date.");
+  if (state.kind === "contract-error") return translateText("Wallet data conflicts with the API contract.");
+  if (state.kind === "conflict") return translateText("Wallet data conflicts.");
+  if (state.kind === "unavailable") return translateText("Latest Wallet Transaction date is not verified.");
   if (model.walletStatement.error?.kind === "request") {
-    return translateText("อ่านวันที่ Ledger Transaction ล่าสุดไม่สำเร็จ");
+    return translateText("Could not read the latest Ledger Transaction date.");
   }
   if (model.walletStatement.error?.kind === "contract") {
-    return translateText("ข้อมูล Wallet ไม่ตรงตามสัญญา API");
+    return translateText("Wallet data conflicts with the API contract.");
   }
-  if (!model.walletStatement.complete) return translateText("ยังไม่ยืนยันวันที่ Ledger Transaction ล่าสุด");
+  if (!model.walletStatement.complete) return translateText("Latest Wallet Transaction date is not verified.");
   const latest = latestWalletTransactionAt(model);
-  return latest ? formatWalletDate(latest) : translateText("ยังไม่มี Ledger Transaction");
+  return latest ? formatWalletDate(latest) : translateText("No Ledger Transactions yet.");
 }
 
 function MemberSummary({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
@@ -390,7 +388,7 @@ function MemberPayoutPreview({
   const totalText = payoutSummaryMismatch || model.stats.totalPaidOutSatang === null
     ? translateText("Payout data is not verified.")
     : formatMoneySatang(model.stats.totalPaidOutSatang);
-  const payoutContractMessage = "ข้อมูล Payout ไม่ตรงตามสัญญา API";
+  const payoutContractMessage = "Payout data does not match the Admin API contract.";
   const state = collectionStateMessage(
     model.payouts,
     "No Payouts.",
@@ -506,8 +504,8 @@ function ActivityTab({ model, translateText }: { model: MemberModel; translateTe
         <div className="user-quest-history-list grid">
           {history.map((entry) => {
             const quest = entry.quest;
-            const status = entry.assignmentStatus ?? questStateLabel(quest.questStatus);
-            const statusDate = entry.assignmentStatusChangedAt ?? quest.questStatusChangedAt ?? entry.createdAt;
+            const status = memberQuestHistoryStatusLabel(entry);
+            const statusDate = memberQuestHistoryStatusDate(entry);
             return <Link className="user-quest-history-row grid grid-cols-[minmax(0,1fr)_auto] gap-[18px] border-t border-admin-border py-[15px] text-admin-text no-underline first:border-t-0 first:pt-0 hover:text-admin-accent max-[900px]:grid-cols-1 max-[900px]:gap-2.5" key={`${entry.role}:${quest.id}`} href={entry.href}>
               <div className="user-quest-history-primary min-w-0">
                 <div className="user-quest-history-title flex flex-wrap items-baseline gap-[7px]">
@@ -516,8 +514,8 @@ function ActivityTab({ model, translateText }: { model: MemberModel; translateTe
                 </div>
                 <div className="user-quest-history-fields mt-2.5 grid grid-cols-[minmax(120px,.8fr)_minmax(155px,1fr)_minmax(250px,1.7fr)_minmax(115px,.8fr)] gap-3 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
                   <div className="user-quest-history-field grid min-w-0 content-start gap-0.5"><span className="text-[15px] leading-[1.4] text-admin-muted">{translateText("Role")}</span><strong className="text-[17px] leading-[1.4]">{translateText(entry.role)}</strong></div>
-                  <div className="user-quest-history-field grid min-w-0 content-start gap-0.5"><span className="text-[15px] leading-[1.4] text-admin-muted">{translateText("Status")}</span><strong className="text-[17px] leading-[1.4]">{translateText(status)}</strong></div>
-                  <div className="user-quest-history-field grid min-w-0 content-start gap-0.5"><span className="text-[15px] leading-[1.4] text-admin-muted">{translateText("Status date")}</span><strong className="text-[17px] leading-[1.4]">{formatAdminTimestamp(statusDate, "Asia/Bangkok")}</strong></div>
+                  <div className="user-quest-history-field grid min-w-0 content-start gap-0.5"><span className="text-[15px] leading-[1.4] text-admin-muted">{translateText(entry.role === "WORKER" ? "Assignment status" : "Quest status")}</span><strong className="text-[17px] leading-[1.4]">{translateText(status)}</strong></div>
+                  <div className="user-quest-history-field grid min-w-0 content-start gap-0.5"><span className="text-[15px] leading-[1.4] text-admin-muted">{translateText(entry.role === "WORKER" ? "Assignment status date" : "Quest status date")}</span><strong className="text-[17px] leading-[1.4]">{statusDate ? formatAdminTimestamp(statusDate, "Asia/Bangkok") : translateText("Not provided by the Admin API")}</strong></div>
                   {entry.startedAt ? <div className="user-quest-history-field grid min-w-0 content-start gap-0.5"><span className="text-[15px] leading-[1.4] text-admin-muted">{translateText("Started Work")}</span><strong className="text-[17px] leading-[1.4]">{formatAdminTimestamp(entry.startedAt, "Asia/Bangkok")}</strong></div> : null}
                 </div>
                 {entry.relatedMembers.length ? <p className="mb-0 mt-2 text-[15px] text-admin-muted">{entry.relatedMembers.map((related) => `${related.role}: ${related.member.displayId} · ${related.member.firstName} ${related.member.lastName}`).join(" · ")}</p> : null}
@@ -765,7 +763,7 @@ function WalletStatementTab({ model, translateText }: { model: MemberModel; tran
                 </Table>
               </div>
             </div>
-          ) : !hasEligibleTransactions ? <p className="audit-note">{translateText("ยังไม่มี Ledger Transaction")}</p> : <p className="audit-note">{translateText("No sealed Ledger Transactions match these filters.")}</p>}
+          ) : !hasEligibleTransactions ? <p className="audit-note">{translateText("No Ledger Transactions yet.")}</p> : <p className="audit-note">{translateText("No sealed Ledger Transactions match these filters.")}</p>}
           {filteredRows.length > rows.length ? <Button variant="outline" type="button" onClick={() => setVisibleCount((count) => count + 25)}>{translateText("Load more")}</Button> : null}
         </>
       )}

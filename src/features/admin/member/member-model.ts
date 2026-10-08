@@ -16,6 +16,7 @@ import { reportReasonLabel } from "../report/report-model";
 import {
   memberStatusFor,
   memberStatusLabel,
+  questStateLabel,
   walletStatusLabel,
   type MemberStatus,
   type WalletStatus,
@@ -78,6 +79,21 @@ export type MemberWalletReadState =
 export type MemberQuestHistoryEntry = AdminMemberHistoryItem & {
   href: string;
 };
+
+export function memberQuestHistoryStatusLabel(entry: MemberQuestHistoryEntry): string {
+  if (entry.role === "HIRER") return questStateLabel(entry.quest.questStatus);
+  switch (entry.assignmentStatus) {
+    case "ASSIGNMENT_ACTIVE": return "Assignment active";
+    case "ASSIGNMENT_COMPLETED": return "Assignment completed";
+    case "ASSIGNMENT_INCOMPLETE": return "Assignment incomplete";
+    case "ASSIGNMENT_CANCELLED": return "Assignment cancelled";
+    default: return "Not provided by the Admin API";
+  }
+}
+
+export function memberQuestHistoryStatusDate(entry: MemberQuestHistoryEntry): string | null {
+  return entry.role === "HIRER" ? entry.quest.questStatusChangedAt : entry.assignmentStatusChangedAt;
+}
 
 export type MemberReportEntry = {
   id: string;

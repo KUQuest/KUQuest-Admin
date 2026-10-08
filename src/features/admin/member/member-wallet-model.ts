@@ -1,5 +1,6 @@
 import type { AdminLedgerTransaction } from "../api/admin-api";
 import { formatAdminTimestamp } from "../date-format";
+import { isWalletCompartmentAccountType } from "../wallet/wallet-model";
 
 export type MemberWalletBalances = {
   spendingBalanceSatang: number;
@@ -38,14 +39,6 @@ export type MemberWalletStatementSource = {
   walletId: string | null;
   walletBalances: MemberWalletBalances | null;
   walletStatement: MemberWalletTransaction[];
-};
-
-
-const WALLET_ACCOUNT_TYPES: Record<string, true> = {
-  SPENDING: true,
-  EARNINGS: true,
-  FUNDING_RESERVED: true,
-  RESERVED_FOR_PAYOUTS: true,
 };
 
 
@@ -120,7 +113,7 @@ export function walletStatementRows(
     });
   let runningBalances = { ...model.walletBalances };
   const rows = ordered.flatMap((transaction) => {
-    const movement = transaction.postings.filter((posting) => posting.walletId === model.walletId && WALLET_ACCOUNT_TYPES[posting.accountType]);
+    const movement = transaction.postings.filter((posting) => posting.walletId === model.walletId && isWalletCompartmentAccountType(posting.accountType));
     if (!movement.length) return [];
     const resultingBalances = transaction.balanceAfter ? { ...transaction.balanceAfter } : { ...runningBalances };
     const previousBalances = { ...resultingBalances };

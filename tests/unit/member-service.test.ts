@@ -31,6 +31,13 @@ function ledgerTransaction(id: string, createdAt: string) {
       walletId: "WAL-1001",
       amountSatang: 100,
       member: null,
+    }, {
+      id: `posting-${id}-counterpart`,
+      accountId: "platform-account-1001",
+      accountType: "PLATFORM_SUSPENSE",
+      walletId: null,
+      amountSatang: -100,
+      member: null,
     }],
   };
 }

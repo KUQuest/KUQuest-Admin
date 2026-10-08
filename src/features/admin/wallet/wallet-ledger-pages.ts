@@ -1,6 +1,7 @@
 import type { AdminApiRequestOptions } from "../api/admin-api";
 import { adminLedgerTransactionsPageSchema } from "../api/admin-api-types-queries";
 import { adminApiProvider } from "../api/admin-provider";
+import { isWalletCompartmentAccountType } from "./wallet-model";
 
 // Kept free of next/headers so Client Component import chains can use it.
 export class WalletLedgerContractError extends Error {
@@ -10,12 +11,16 @@ export class WalletLedgerContractError extends Error {
   }
 }
 
-const WALLET_ACCOUNT_TYPES: Record<string, true> = {
-  SPENDING: true,
-  EARNINGS: true,
-  FUNDING_RESERVED: true,
-  RESERVED_FOR_PAYOUTS: true,
-};
+function hasBalancedPostings(postings: Array<{ amountSatang: number }>): boolean {
+  if (postings.length < 2) return false;
+  let totalSatang = 0;
+  for (const posting of postings) {
+    if (!Number.isSafeInteger(posting.amountSatang)) return false;
+    totalSatang += posting.amountSatang;
+    if (!Number.isSafeInteger(totalSatang)) return false;
+  }
+  return totalSatang === 0;
+}
 
 export async function loadAllWalletLedgerTransactions(
   walletId: string,
@@ -34,8 +39,9 @@ export async function loadAllWalletLedgerTransactions(
 
     for (const transaction of page.items) {
       if (seenTransactions.has(transaction.id)
-        || !transaction.postings.some((posting) => posting.walletId === walletId && WALLET_ACCOUNT_TYPES[posting.accountType])
-        || (transaction.sealedAt !== null && !transaction.isBalanced)) {
+        || !transaction.postings.some((posting) => posting.walletId === walletId && isWalletCompartmentAccountType(posting.accountType))
+        || !transaction.isBalanced
+        || !hasBalancedPostings(transaction.postings)) {
         throw new WalletLedgerContractError();
       }
       seenTransactions.add(transaction.id);

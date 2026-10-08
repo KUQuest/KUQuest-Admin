@@ -2,12 +2,14 @@ import { describe, expect, it } from "bun:test";
 
 import type { AdminLedgerTransaction, AdminMemberDetail } from "../../src/features/admin/api/admin-api";
 import {
+  memberQuestHistoryStatusDate,
+  memberQuestHistoryStatusLabel,
   memberModelFromApi,
   memberTabFrom,
   memberTabHref,
   walletStatementRows,
 } from "../../src/features/admin/member/member-model";
-import type { MemberApiReadData, MemberCollection } from "../../src/features/admin/member/member-model";
+import type { MemberApiReadData, MemberCollection, MemberQuestHistoryEntry } from "../../src/features/admin/member/member-model";
 
 function memberDetail(): AdminMemberDetail {
   return {
@@ -46,6 +48,26 @@ function memberDetail(): AdminMemberDetail {
       totalEarnedSatang: 200,
       totalPaidOutSatang: 100,
     },
+  };
+}
+
+function questHistoryEntry(role: "HIRER" | "WORKER"): MemberQuestHistoryEntry {
+  return {
+    role,
+    createdAt: "2026-09-01T00:00:00.000Z",
+    assignmentStatus: role === "WORKER" ? "ASSIGNMENT_ACTIVE" : null,
+    startedAt: null,
+    assignmentStatusChangedAt: role === "WORKER" ? "2026-09-03T00:00:00.000Z" : null,
+    quest: {
+      id: "quest-1",
+      displayId: "QST-000001",
+      title: "Quest",
+      questStatus: "QUEST_COMPLETED",
+      createdAt: "2026-09-01T00:00:00.000Z",
+      questStatusChangedAt: "2026-09-04T00:00:00.000Z",
+    },
+    relatedMembers: [],
+    href: "/quest/QST-000001",
   };
 }
 
@@ -104,6 +126,20 @@ function memberReads(ledger: AdminLedgerTransaction[] = []): MemberApiReadData {
 }
 
 describe("Member route model", () => {
+  it("uses the role-specific status and date for Quest history", () => {
+    const worker = {
+      ...questHistoryEntry("WORKER"),
+      assignmentStatus: null,
+      assignmentStatusChangedAt: null,
+    };
+    const hirer = questHistoryEntry("HIRER");
+
+    expect(memberQuestHistoryStatusLabel(worker)).toBe("Not provided by the Admin API");
+    expect(memberQuestHistoryStatusDate(worker)).toBeNull();
+    expect(memberQuestHistoryStatusLabel(hirer)).toBe("Completed");
+    expect(memberQuestHistoryStatusDate(hirer)).toBe("2026-09-04T00:00:00.000Z");
+  });
+
   it("normalizes tabs and uses the canonical Member detail helper", () => {
     expect(memberTabFrom("top-ups")).toBe("top-ups");
     expect(memberTabFrom("wallet-statement")).toBe("wallet-statement");

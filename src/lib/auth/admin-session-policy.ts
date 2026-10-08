@@ -12,10 +12,12 @@ export type AdminSessionIdentityLike = Readonly<{
 export type AdminSessionDecision = "authenticated" | "missing" | "forbidden";
 
 export function isAdminSessionCookieName(name: string): boolean {
-  return name !== "kuquest-admin.mock-session"
-    && (name === ADMIN_SESSION_COOKIE_PREFIX
-      || name.startsWith(`${ADMIN_SESSION_COOKIE_PREFIX}.`)
-      || name.startsWith(`${ADMIN_SESSION_COOKIE_PREFIX}_`));
+  const cookieName = name.startsWith("__Secure-") ? name.slice("__Secure-".length) : name;
+
+  return cookieName !== "kuquest-admin.mock-session"
+    && (cookieName === ADMIN_SESSION_COOKIE_PREFIX
+      || cookieName.startsWith(`${ADMIN_SESSION_COOKIE_PREFIX}.`)
+      || cookieName.startsWith(`${ADMIN_SESSION_COOKIE_PREFIX}_`));
 }
 
 export function hasAdminSessionCookie(

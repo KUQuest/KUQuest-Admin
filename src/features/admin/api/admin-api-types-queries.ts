@@ -78,7 +78,7 @@ export const adminLedgerPostingSchema = z.object({
   accountId: z.string().min(1),
   accountType: z.string(),
   walletId: z.string().min(1).nullable(),
-  amountSatang: z.number().int(),
+  amountSatang: z.number().int().refine(Number.isSafeInteger),
   member: z.object({
     userId: z.string().min(1),
     firstName: z.string(),
