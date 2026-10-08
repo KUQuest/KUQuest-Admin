@@ -79,7 +79,11 @@ async function loadCursorPages<T, Page extends CursorPage<T>>(
     } catch {
       return { items, complete: false, error: messages.failed };
     }
-    if (!page || !Array.isArray(page.items) || (page.nextCursor != null && typeof page.nextCursor !== "string")) {
+    if (
+      !page
+      || !Array.isArray(page.items)
+      || (page.nextCursor !== null && (typeof page.nextCursor !== "string" || page.nextCursor.length === 0))
+    ) {
       return { items, complete: false, error: messages.invalid };
     }
     const pageError = validatePage(page);

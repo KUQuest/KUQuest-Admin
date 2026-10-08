@@ -353,6 +353,29 @@ describe("Member detail service", () => {
     expect(model?.payoutsError).toBeNull();
   });
 
+  it("does not treat an empty or missing Payout cursor as a complete history", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    for (const nextCursor of ["", undefined]) {
+      globalThis.fetch = (async (input, init) => {
+        const request = new Request(input, init);
+        const url = new URL(request.url);
+        if (url.pathname === "/api/v1/admin/members/68000000") return jsonResponse({ success: true, data: memberDetail });
+        if (url.pathname === "/api/v1/admin/reports") return jsonResponse({ success: true, data: reportPage(url.searchParams.get("status") ?? "") });
+        if (url.pathname === "/api/v1/admin/payouts") {
+          return jsonResponse({ success: true, data: nextCursor === undefined ? { items: [] } : { items: [], nextCursor } });
+        }
+        if (url.pathname === "/api/v1/admin/finance/ledger/transactions") return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
+        return jsonResponse({ success: false, error: { code: "UNAVAILABLE", message: "Finance unavailable" } }, 503);
+      }) as typeof globalThis.fetch;
+
+      const model = await loadMemberDetailFromApi("68000000");
+
+      expect(model?.payouts).toBeNull();
+      expect(model?.payoutsComplete).toBe(false);
+      expect(model?.payoutsError).toBe("ข้อมูล Payout ไม่ตรงตามสัญญา API");
+    }
+  });
+
   it("keeps failed Report and Payout reads distinct from unavailable data", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     globalThis.fetch = (async (input, init) => {
