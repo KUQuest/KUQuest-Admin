@@ -162,7 +162,7 @@ async function loadAllMemberReports(
         invalid: "Reports received response is invalid.",
         duplicate: "Reports received response is invalid.",
         stalled: "Reports received pages did not advance.",
-        failed: "Reports received are not available.",
+        failed: "Reports received could not be loaded.",
       },
     );
     if (read.complete && read.items.length !== totalCount) {
@@ -267,7 +267,7 @@ export async function loadMemberDetailFromApi(
         items: [] as AdminReportCase[],
         complete: false,
         totalCount: null,
-        error: "Reports received are not available.",
+        error: "Reports received could not be loaded.",
       };
   const payoutsRead = payoutsResult.status === "fulfilled"
     ? payoutsResult.value

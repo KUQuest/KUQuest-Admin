@@ -353,7 +353,7 @@ describe("Member detail service", () => {
     expect(model?.payoutsError).toBeNull();
   });
 
-  it("keeps unavailable Report and Payout reads as unavailable", async () => {
+  it("keeps failed Report and Payout reads distinct from unavailable data", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     globalThis.fetch = (async (input, init) => {
       const request = new Request(input, init);
@@ -370,7 +370,7 @@ describe("Member detail service", () => {
 
     expect(model?.reports).toEqual([]);
     expect(model?.reportsComplete).toBe(false);
-    expect(model?.reportsError).toBe("Reports received are not available.");
+    expect(model?.reportsError).toBe("Reports received could not be loaded.");
     expect(model?.payouts).toBeNull();
     expect(model?.payoutsComplete).toBe(false);
     expect(model?.payoutsError).toBe("Payout details could not be loaded.");
