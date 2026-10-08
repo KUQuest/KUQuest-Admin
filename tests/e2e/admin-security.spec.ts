@@ -157,7 +157,36 @@ test.describe("Admin session and private-route boundary", () => {
     await addAdminCookie(context, "valid-session");
     const memberId = "00000000-0000-4000-8000-000000000101";
     const effectiveRecordId = "e0c58c66-267a-4a4d-b133-6d78a4a5a101";
-    const requests: { action: string }[] = [];
+    const addedPenaltyRecordId = "d8d415a4-9df2-4bd5-8f8c-83a2b0a1a101";
+    let historyVersionToken = 10;
+    let addedPenaltyHistoryItem: Record<string, unknown> | null = null;
+    let removeReversalHistoryItem: Record<string, unknown> | null = null;
+    const requests: { action: string; expectedVersionToken: number }[] = [];
+
+    await page.route(/\/api\/v1\/admin\/members\/[^/]+\/penalty-history(?:\?.*)?$/, async (route) => {
+      const response = await route.fetch();
+      const payload = await response.json();
+      const history = payload.data;
+      history.versionToken = historyVersionToken;
+      if (addedPenaltyHistoryItem) history.items.unshift(addedPenaltyHistoryItem);
+      if (removeReversalHistoryItem) {
+        const removedPenalty = history.items.find((item: { recordId: string }) => item.recordId === effectiveRecordId);
+        if (removedPenalty) {
+          removedPenalty.isEffective = false;
+          removedPenalty.isEffectiveActiveMisconductPenalty = false;
+          removedPenalty.reversal = {
+            relation: "REVERSED_BY",
+            sequenceNumber: removedPenalty.sequenceNumber,
+            result: "PENALTY_REVERSAL",
+            createdAt: "2026-09-15T08:30:00.000Z",
+          };
+        }
+        history.items.unshift(removeReversalHistoryItem);
+      }
+      history.confirmedMisconductCount = 10 + (addedPenaltyHistoryItem ? 1 : 0);
+      history.totalCount = history.items.length;
+      await route.fulfill({ response, body: JSON.stringify(payload) });
+    });
 
     await page.route(/\/api\/v1\/admin\/members\/[^/]+\/penalty-actions\/(add|remove)$/, async (route) => {
       const request = route.request();
@@ -180,15 +209,27 @@ test.describe("Admin session and private-route boundary", () => {
       }
 
       const action = new URL(request.url()).pathname.endsWith("/add") ? "add" : "remove";
-      requests.push({ action });
+      const requestBody = request.postDataJSON();
+      requests.push({ action, expectedVersionToken: requestBody.expectedVersionToken });
+      if (requestBody.expectedVersionToken !== historyVersionToken) {
+        await route.fulfill({
+          status: 409,
+          contentType: "application/json",
+          headers: corsHeaders,
+          body: JSON.stringify({ success: false, error: { code: "PENALTY_HISTORY_STALE", message: "Penalty History changed." } }),
+        });
+        return;
+      }
+
+      historyVersionToken += 1;
       const command = action === "add"
         ? {
             kind: "ADD",
             outcome: "ADDED",
-            recordId: "d8d415a4-9df2-4bd5-8f8c-83a2b0a1a101",
-            commandRecordId: "d8d415a4-9df2-4bd5-8f8c-83a2b0a1a102",
+            recordId: addedPenaltyRecordId,
+            commandRecordId: addedPenaltyRecordId,
             result: "PENALTY_RED_FLAG",
-            versionToken: 11,
+            versionToken: historyVersionToken,
           }
         : {
             kind: "REMOVE",
@@ -196,8 +237,47 @@ test.describe("Admin session and private-route boundary", () => {
             recordId: effectiveRecordId,
             commandRecordId: "d8d415a4-9df2-4bd5-8f8c-83a2b0a1a103",
             result: "PENALTY_REVERSAL",
-            versionToken: 11,
+            versionToken: historyVersionToken,
           };
+      if (action === "add") {
+        addedPenaltyHistoryItem = {
+          recordId: addedPenaltyRecordId,
+          ladder: "MISCONDUCT",
+          source: "ADMIN",
+          sourceDisplayId: null,
+          sequenceNumber: 11,
+          result: "PENALTY_RED_FLAG",
+          actor: { type: "ADMIN", displayName: "Test Admin" },
+          reasonCode: "MEMBER_PENALTY_VIOLATION_CONFIRMED",
+          adminNote: "Confirmed after review.",
+          createdAt: "2026-09-14T08:30:00.000Z",
+          reviewRating: null,
+          isEffective: true,
+          isEffectiveActiveMisconductPenalty: true,
+          reversal: null,
+          recalculatedFrom: null,
+          replacedBy: null,
+        };
+      } else {
+        removeReversalHistoryItem = {
+          recordId: "d8d415a4-9df2-4bd5-8f8c-83a2b0a1a103",
+          ladder: "MISCONDUCT",
+          source: "ADMIN",
+          sourceDisplayId: null,
+          sequenceNumber: 10,
+          result: "PENALTY_REVERSAL",
+          actor: { type: "ADMIN", displayName: "Test Admin" },
+          reasonCode: "MEMBER_PENALTY_NEW_EVIDENCE",
+          adminNote: "New evidence changes the decision.",
+          createdAt: "2026-09-15T08:30:00.000Z",
+          reviewRating: null,
+          isEffective: false,
+          isEffectiveActiveMisconductPenalty: false,
+          reversal: { relation: "REVERSAL_OF", sequenceNumber: 10, result: "PENALTY_RED_FLAG", createdAt: "2026-09-13T08:30:00.000Z" },
+          recalculatedFrom: null,
+          replacedBy: null,
+        };
+      }
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -245,13 +325,16 @@ test.describe("Admin session and private-route boundary", () => {
     await removeDialog.getByRole("button", { name: "Remove penalty", exact: true }).click();
     const removeRequest = await removeRequestPromise;
     expect(removeRequest.postDataJSON()).toEqual({
-      expectedVersionToken: 10,
+      expectedVersionToken: 11,
       recordId: effectiveRecordId,
       reasonCode: "MEMBER_PENALTY_NEW_EVIDENCE",
       adminNote: "New evidence changes the decision.",
     });
     expect(removeRequest.headers()["idempotency-key"]).toMatch(/^admin-member-penalty-remove-/);
-    expect(requests.map(({ action }) => action)).toEqual(["add", "remove"]);
+    expect(requests).toEqual([
+      { action: "add", expectedVersionToken: 10 },
+      { action: "remove", expectedVersionToken: 11 },
+    ]);
     await expect(main.getByText("Penalty removed", { exact: true })).toBeVisible();
   });
 

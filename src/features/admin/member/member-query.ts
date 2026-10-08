@@ -81,8 +81,8 @@ export function useMemberDetailQuery(memberId: string, initialModel?: MemberMode
   });
 
   useEffect(() => {
-    if (initialModel) queryClient.setQueryData(queryKey, initialModel);
-  }, [initialModel, queryClient, queryKey]);
+    if (initialModel) queryClient.setQueryData(memberDetailQueryKey(memberId), initialModel);
+  }, [initialModel, memberId, queryClient]);
 
   return {
     ...query,
