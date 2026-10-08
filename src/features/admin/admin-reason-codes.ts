@@ -57,7 +57,7 @@ export const CONDUCT_REPORT_REASON_CODE_OPTIONS = {
   CONDUCT_REPORT_UPHELD: [
     { value: "CONDUCT_REPORT_QUEST_RECORD_CONFIRMS_VIOLATION", label: "Quest record confirms a violation" },
     { value: "CONDUCT_REPORT_PROOF_RECORD_CONFIRMS_VIOLATION", label: "Proof Submission confirms a violation" },
-    { value: "CONDUCT_REPORT_CHAT_CONTEXT_CORROBORATES_VIOLATION", label: "Chat context corroborates a violation" },
+    { value: "CONDUCT_REPORT_CHAT_CONTEXT_CORROBORATES_VIOLATION", label: "Chat context supports a violation" },
   ] satisfies readonly { value: ConductReportUpholdReasonCode; label: string }[],
 } as const;
 

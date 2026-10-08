@@ -227,7 +227,7 @@ export function conductReportDecisionDetailsForCommand(
     CONDUCT_REPORT_OUTSIDE_RULEBOOK_SCOPE: "Outside Rulebook scope",
     CONDUCT_REPORT_QUEST_RECORD_CONFIRMS_VIOLATION: "Quest record confirms a violation",
     CONDUCT_REPORT_PROOF_RECORD_CONFIRMS_VIOLATION: "Proof Submission confirms a violation",
-    CONDUCT_REPORT_CHAT_CONTEXT_CORROBORATES_VIOLATION: "Chat context corroborates a violation",
+    CONDUCT_REPORT_CHAT_CONTEXT_CORROBORATES_VIOLATION: "Chat context supports a violation",
   };
   if (command.outcome === "CONDUCT_REPORT_UPHELD") {
     return {

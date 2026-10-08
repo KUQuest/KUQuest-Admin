@@ -1,5 +1,6 @@
 import { apiRequest } from "../../../lib/api/client";
 import {
+  decisionReasonTextFields,
   encode,
   payoutCommandHeaders,
   queryString,
@@ -21,11 +22,6 @@ import type {
   PayoutApproval,
   PayoutRejection,
 } from "./admin-api";
-
-function decisionReasonTextFields(value: string | undefined) {
-  const decisionReasonText = value?.trim();
-  return decisionReasonText ? { decisionReasonText } : {};
-}
 
 export function createAdminPayoutApi() {
   return {

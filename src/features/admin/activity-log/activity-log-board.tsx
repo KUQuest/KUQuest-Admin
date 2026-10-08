@@ -95,8 +95,8 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
               <div className={adminRecordFact}><span>{translateText("Activity ID")}</span><strong className="break-all">{entry.id}</strong></div>
               <div className={adminRecordFact}><span>{translateText("Actor")}</span><strong>{displayValue(entry.adminName)}</strong></div>
               <div className={adminRecordFact}><span>{translateText("Action")}</span><strong>{translateText(activityLogActionLabel(entry.action))}</strong></div>
-              <div className={adminRecordFact}><span>{translateText("Event type")}</span><strong>{translateText(activityLogResourceTypeLabel(entry.resourceType))}</strong></div>
-              <div className={adminRecordFact}><span>{translateText("Event ID")}</span><strong>{displayValue(entry.resourceId)}</strong></div>
+              <div className={adminRecordFact}><span>{translateText("Resource type")}</span><strong>{translateText(activityLogResourceTypeLabel(entry.resourceType))}</strong></div>
+              <div className={adminRecordFact}><span>{translateText("Resource Display ID")}</span><strong>{displayValue(displayAdminId(entry.resourceDisplayId))}</strong></div>
               <div className={adminRecordFact}><span>{translateText("Reason code")}</span><strong>{translateText(activityLogReasonLabel(entry.reasonCode))}</strong></div>
             </div>
           </Card>

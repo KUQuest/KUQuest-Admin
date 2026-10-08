@@ -1,5 +1,6 @@
 import { apiRequest } from "../../../lib/api/client";
 import {
+  decisionReasonTextFields,
   encode,
   queryString,
 } from "./admin-api-transport";
@@ -15,11 +16,6 @@ import type {
   ConductReportDecision,
   ReportCaseDecision,
 } from "./admin-api";
-function decisionReasonTextFields(value: string | undefined) {
-  const decisionReasonText = value?.trim();
-  return decisionReasonText ? { decisionReasonText } : {};
-}
-
 
 export function createAdminReportApi() {
   return {
