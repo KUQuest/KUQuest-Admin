@@ -1,5 +1,6 @@
 import type { AdminLedgerTransaction } from "../api/admin-api";
 import { formatAdminTimestamp } from "../date-format";
+import { isWalletCompartmentAccountType } from "../wallet/wallet-model";
 
 export type MemberWalletBalances = {
   spendingBalanceSatang: number;
@@ -16,15 +17,16 @@ export type MemberWalletPosting = {
 
 export type MemberWalletTransaction = {
   id: string;
+  displayReference: string;
   businessReference?: string;
   eventType: string;
   description: string | null;
   createdAt: string;
   sealedAt: string | null;
+  isBalanced: boolean;
   postings: MemberWalletPosting[];
   balanceAfter?: MemberWalletBalances;
 };
-
 export type MemberWalletStatementRow = {
   transaction: MemberWalletTransaction;
   signedAmountSatang: number;
@@ -39,46 +41,17 @@ export type MemberWalletStatementSource = {
   walletStatement: MemberWalletTransaction[];
 };
 
-const WALLET_ACCOUNT_TYPES: Record<string, true> = {
-  SPENDING: true,
-  EARNINGS: true,
-  FUNDING_RESERVED: true,
-  RESERVED_FOR_PAYOUTS: true,
-};
-
-export function isNonnegativeSafeInteger(value: unknown): value is number {
-  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
-}
-
-export function balancesFromWallet(wallet: {
-  spendingBalanceSatang: number;
-  earningsBalanceSatang: number;
-  fundingReservedSatang?: number;
-  reservedForPayoutsSatang?: number;
-} | null | undefined): MemberWalletBalances | null {
-  if (!wallet) return null;
-  if (
-    !isNonnegativeSafeInteger(wallet.spendingBalanceSatang)
-    || !isNonnegativeSafeInteger(wallet.earningsBalanceSatang)
-    || !isNonnegativeSafeInteger(wallet.fundingReservedSatang)
-    || !isNonnegativeSafeInteger(wallet.reservedForPayoutsSatang)
-  ) return null;
-  return {
-    spendingBalanceSatang: wallet.spendingBalanceSatang,
-    earningsBalanceSatang: wallet.earningsBalanceSatang,
-    fundingReservedSatang: wallet.fundingReservedSatang,
-    reservedForPayoutsSatang: wallet.reservedForPayoutsSatang,
-  };
-}
 
 export function transactionFromApi(transaction: AdminLedgerTransaction): MemberWalletTransaction {
   return {
     id: transaction.id,
+    displayReference: transaction.displayReference,
     businessReference: transaction.businessReference,
     eventType: transaction.eventType,
     description: transaction.description,
     createdAt: transaction.createdAt,
     sealedAt: transaction.sealedAt,
+    isBalanced: transaction.isBalanced,
     postings: transaction.postings.map((posting) => ({
       accountType: posting.accountType,
       walletId: posting.walletId,
@@ -87,8 +60,7 @@ export function transactionFromApi(transaction: AdminLedgerTransaction): MemberW
   };
 }
 
-export function currentWalletBalance(balances: MemberWalletBalances | null): number {
-  if (!balances) return 0;
+export function currentWalletBalance(balances: MemberWalletBalances): number {
   return balances.spendingBalanceSatang
     + balances.earningsBalanceSatang
     + balances.fundingReservedSatang
@@ -134,14 +106,14 @@ export function walletStatementRows(
   const to = dateBoundary(filters.to, true);
   if (!model.walletId || !model.walletBalances) return [];
   const ordered = model.walletStatement
-    .filter((transaction) => transaction.sealedAt)
+    .filter((transaction) => transaction.sealedAt && transaction.isBalanced)
     .toSorted((first, second) => {
       const dateDifference = Date.parse(second.createdAt) - Date.parse(first.createdAt);
       return dateDifference || second.id.localeCompare(first.id);
     });
   let runningBalances = { ...model.walletBalances };
   const rows = ordered.flatMap((transaction) => {
-    const movement = transaction.postings.filter((posting) => posting.walletId === model.walletId && WALLET_ACCOUNT_TYPES[posting.accountType]);
+    const movement = transaction.postings.filter((posting) => posting.walletId === model.walletId && isWalletCompartmentAccountType(posting.accountType));
     if (!movement.length) return [];
     const resultingBalances = transaction.balanceAfter ? { ...transaction.balanceAfter } : { ...runningBalances };
     const previousBalances = { ...resultingBalances };

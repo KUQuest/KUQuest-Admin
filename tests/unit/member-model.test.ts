@@ -1,19 +1,21 @@
 import { describe, expect, it } from "bun:test";
 
-import type { AdminLedgerTransaction, AdminMemberDetail, AdminMemberFinance, AdminMemberListItem } from "../../src/features/admin/api/admin-api";
-import { pendingPayoutApiFixture } from "../fixtures/admin-payout-api-fixtures";
+import type { AdminLedgerTransaction, AdminMemberDetail } from "../../src/features/admin/api/admin-api";
 import {
-  memberListModelFromApi,
+  memberQuestHistoryStatusDate,
+  memberQuestHistoryStatusLabel,
   memberModelFromApi,
   memberTabFrom,
   memberTabHref,
   walletStatementRows,
 } from "../../src/features/admin/member/member-model";
+import type { MemberApiReadData, MemberCollection, MemberQuestHistoryEntry } from "../../src/features/admin/member/member-model";
 
 function memberDetail(): AdminMemberDetail {
   return {
     member: {
       id: "member-api-1",
+      displayId: "MEM-000001",
       email: "member@ku.th",
       firstName: "Ari",
       lastName: "Member",
@@ -49,9 +51,30 @@ function memberDetail(): AdminMemberDetail {
   };
 }
 
+function questHistoryEntry(role: "HIRER" | "WORKER"): MemberQuestHistoryEntry {
+  return {
+    role,
+    createdAt: "2026-09-01T00:00:00.000Z",
+    assignmentStatus: role === "WORKER" ? "ASSIGNMENT_ACTIVE" : null,
+    startedAt: null,
+    assignmentStatusChangedAt: role === "WORKER" ? "2026-09-03T00:00:00.000Z" : null,
+    quest: {
+      id: "quest-1",
+      displayId: "QST-000001",
+      title: "Quest",
+      questStatus: "QUEST_COMPLETED",
+      createdAt: "2026-09-01T00:00:00.000Z",
+      questStatusChangedAt: "2026-09-04T00:00:00.000Z",
+    },
+    relatedMembers: [],
+    href: "/quest/QST-000001",
+  };
+}
+
 function ledgerTransaction(id: string, eventType: "PAYOUT" | "TOP_UP", createdAt: string, amountSatang: number): AdminLedgerTransaction {
   return {
     id,
+    displayReference: `LED-${id}`,
     businessReference: `${eventType}-${id}`,
     eventType,
     description: eventType,
@@ -67,18 +90,56 @@ function ledgerTransaction(id: string, eventType: "PAYOUT" | "TOP_UP", createdAt
       walletId: "wallet-1",
       amountSatang,
       member: null,
-    }, {
-      id: `${id}-platform-posting`,
-      accountId: "platform-account",
-      accountType: "PLATFORM_SUSPENSE",
-      walletId: null,
-      amountSatang: -amountSatang,
-      member: null,
     }],
   };
 }
 
+function unavailableCollection<T>(): MemberCollection<T> {
+  return { items: null, totalCount: null, complete: false, error: null };
+}
+
+function memberReads(ledger: AdminLedgerTransaction[] = []): MemberApiReadData {
+  return {
+    walletReadState: { kind: "available", source: "member-detail", warning: null },
+    walletId: "wallet-1",
+    walletStatus: "FROZEN",
+    walletBalances: {
+      spendingBalanceSatang: 150,
+      earningsBalanceSatang: 0,
+      fundingReservedSatang: 0,
+      reservedForPayoutsSatang: 0,
+    },
+    walletProjectionMatchesLedger: true,
+    walletStatement: { items: ledger, totalCount: null, complete: true, error: null },
+    collections: {
+      profileTags: unavailableCollection(),
+      workExperiences: unavailableCollection(),
+      certificates: unavailableCollection(),
+      questHistory: unavailableCollection(),
+      reviews: unavailableCollection(),
+      reportsReceived: unavailableCollection(),
+      reportsSubmitted: unavailableCollection(),
+      payouts: unavailableCollection(),
+      penaltyHistory: { ...unavailableCollection(), summary: null },
+    },
+  };
+}
+
 describe("Member route model", () => {
+  it("uses the role-specific status and date for Quest history", () => {
+    const worker = {
+      ...questHistoryEntry("WORKER"),
+      assignmentStatus: null,
+      assignmentStatusChangedAt: null,
+    };
+    const hirer = questHistoryEntry("HIRER");
+
+    expect(memberQuestHistoryStatusLabel(worker)).toBe("Not provided by the Admin API");
+    expect(memberQuestHistoryStatusDate(worker)).toBeNull();
+    expect(memberQuestHistoryStatusLabel(hirer)).toBe("Completed");
+    expect(memberQuestHistoryStatusDate(hirer)).toBe("2026-09-04T00:00:00.000Z");
+  });
+
   it("normalizes tabs and uses the canonical Member detail helper", () => {
     expect(memberTabFrom("top-ups")).toBe("top-ups");
     expect(memberTabFrom("wallet-statement")).toBe("wallet-statement");
@@ -87,93 +148,57 @@ describe("Member route model", () => {
     expect(memberTabHref("member/1", "wallet-statement")).toBe("/member/member%2F1?tab=wallet-statement");
   });
 
-  it("uses Admin API Member and Wallet status as separate values", () => {
-    const model = memberModelFromApi(memberDetail());
+  it("maps Member status and keeps unavailable collections distinct from empty collections", () => {
+    const model = memberModelFromApi(memberDetail(), memberReads());
+
     expect(model.memberStatus).toBe("Normal");
     expect(model.walletStatus).toBe("FROZEN");
     expect(model.walletBalances).toMatchObject({ spendingBalanceSatang: 150 });
-    expect(model.confirmedViolationCount).toBeNull();
-    expect(model.reportsSubmitted).toBeNull();
-    expect(model.reportsSubmittedError).toBe("Reports submitted are not available.");
-    expect(model.reportsComplete).toBe(false);
-    expect(model.payouts).toBeNull();
-    expect(model.reviews).toBeNull();
-    expect(model.quests).toBeNull();
+    expect(model.profileTags).toMatchObject({ items: null, complete: false });
+    expect(model.reportsSubmitted).toMatchObject({ items: null, complete: false });
+    expect(model.payouts).toMatchObject({ items: null, complete: false });
+    expect(model.reviews).toMatchObject({ items: null, complete: false });
+    expect(model.questHistory).toMatchObject({ items: null, complete: false });
   });
 
-  it("keeps the full Ledger balance when filtering displayed rows", () => {
-    const model = memberModelFromApi(memberDetail(), null, [], [
+  it("keeps the current Wallet balance when filtering displayed Ledger rows", () => {
+    const model = memberModelFromApi(memberDetail(), memberReads([
       ledgerTransaction("ledger-old", "PAYOUT", "2026-09-01T00:00:00.000Z", 100),
       ledgerTransaction("ledger-new", "TOP_UP", "2026-09-02T00:00:00.000Z", 50),
-    ]);
+    ]));
 
-    const rows = walletStatementRows(model, { eventType: "PAYOUT", from: "2026-09-01", to: "2026-09-01" }, 25);
+    const rows = walletStatementRows({
+      walletId: model.walletId,
+      walletBalances: model.walletBalances,
+      walletStatement: model.walletStatement.items ?? [],
+    }, { eventType: "PAYOUT", from: "2026-09-01", to: "2026-09-01" }, 25);
     expect(rows.map((row) => row.transaction.id)).toEqual(["ledger-old"]);
     expect(rows[0]?.resultingWalletBalanceSatang).toBe(100);
   });
-
-  it("does not replace a successful null Finance Wallet with Member detail data", () => {
-    const finance: AdminMemberFinance = {
-      member: { userId: "member-api-1", firstName: "Ari", lastName: "Member", studentId: "68000001", email: "member@ku.th" },
-      wallet: null,
-      lifetimeStats: {
-        totalToppedUpSatang: 0,
-        totalEarnedFromQuestsSatang: 0,
-        totalSpentOnQuestsSatang: 0,
-        totalPaidOutSatang: 0,
-        totalEarningsConvertedSatang: 0,
-      },
-      activeFundingReservations: [],
+  it("does not show an unbalanced Ledger Transaction as a verified Wallet Statement row", () => {
+    const unbalanced = {
+      ...ledgerTransaction("ledger-unbalanced", "TOP_UP", "2026-09-03T00:00:00.000Z", 100),
+      isBalanced: false,
     };
+    const model = memberModelFromApi(memberDetail(), memberReads([unbalanced]));
 
-    const model = memberModelFromApi(memberDetail(), finance);
+    const rows = walletStatementRows({
+      walletId: model.walletId,
+      walletBalances: model.walletBalances,
+      walletStatement: model.walletStatement.items ?? [],
+    }, { eventType: "", from: "", to: "" }, 25);
 
-    expect(model.walletId).toBeNull();
-    expect(model.walletBalances).toBeNull();
-    expect(model.walletState).toBe("unverified");
+    expect(rows).toEqual([]);
   });
 
-  it("does not infer missing Wallet compartments from the Member list summary", () => {
-    const detail = memberDetail();
-    const listItem: AdminMemberListItem = {
-      ...detail.member,
-      wallet: {
-        id: "wallet-1",
-        walletStatus: "ACTIVE",
-        spendingBalanceSatang: 150,
-        earningsBalanceSatang: 0,
-        totalBalanceSatang: 150,
-      },
-    };
+  it("keeps the safe Ledger Display Reference on the Member Wallet Statement row", () => {
+    const transaction = Object.assign(
+      ledgerTransaction("ledger-1", "TOP_UP", "2026-09-03T00:00:00.000Z", 100),
+      { displayReference: "LED-000001" },
+    );
+    const model = memberModelFromApi(memberDetail(), memberReads([transaction]));
 
-    const model = memberListModelFromApi(listItem);
-
-    expect(model.walletBalances).toBeNull();
-    expect(model.walletState).toBe("unverified");
-    expect(model.walletSource).toBe("member-list");
+    expect(model.walletStatement.items?.[0]?.displayReference).toBe("LED-000001");
   });
 
-  it("compares complete Payout history with the successful Payout count", () => {
-    const payout = { ...pendingPayoutApiFixture, payoutStatus: "SUCCEEDED" as const };
-    const matchingDetail = memberDetail();
-    matchingDetail.stats.payoutsCount = 1;
-    const matching = memberModelFromApi(matchingDetail, null, [], [], {
-      payouts: [payout],
-      payoutsComplete: true,
-    });
-    const conflictingDetail = memberDetail();
-    conflictingDetail.stats.payoutsCount = 0;
-    const conflict = memberModelFromApi(conflictingDetail, null, [], [], {
-      payouts: [payout],
-      payoutsComplete: true,
-    });
-    const partial = memberModelFromApi(memberDetail(), null, [], [], {
-      payouts: [payout],
-      payoutsComplete: false,
-    });
-
-    expect(matching.payoutSuccessfulCountMatchesHistory).toBe(true);
-    expect(conflict.payoutSuccessfulCountMatchesHistory).toBe(false);
-    expect(partial.payoutSuccessfulCountMatchesHistory).toBeNull();
-  });
 });

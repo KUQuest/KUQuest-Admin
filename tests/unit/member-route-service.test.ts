@@ -19,6 +19,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 const memberDetail: AdminMemberDetail = {
   member: {
     id: "member-1",
+    displayId: "MEM-000001",
     email: "member@ku.th",
     firstName: "Ari",
     lastName: "Member",
@@ -83,6 +84,7 @@ const memberFinance: AdminMemberFinance = {
 function ledgerTransaction(id: string): AdminLedgerTransaction {
   return {
     id,
+    displayReference: `LED-${id}`,
     businessReference: id,
     eventType: "TOP_UP",
     description: "Wallet top-up",
@@ -159,7 +161,7 @@ describe("Member detail route service", () => {
 
     const result = await loadMemberDetailFromApi("member-1", "kuquest-admin=session");
 
-    expect(result?.walletStatement.map((transaction) => transaction.id)).toEqual([
+    expect(result?.walletStatement.items?.map((transaction) => transaction.id)).toEqual([
       "ledger-1",
       "ledger-2",
     ]);

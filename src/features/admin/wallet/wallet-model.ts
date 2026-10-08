@@ -133,6 +133,10 @@ export function walletCompartmentLabel(accountType: string): string {
 
 const walletCompartmentAccountTypes = new Set<string>(WALLET_COMPARTMENT_ACCOUNT_TYPES);
 
+export function isWalletCompartmentAccountType(value: string): value is WalletCompartmentAccountType {
+  return walletCompartmentAccountTypes.has(value);
+}
+
 function walletBalancesFromApi(balances: AdminWallet["balances"]): WalletDetailView["balances"] {
   return {
     spendingBalanceSatang: balances.spendingBalanceSatang,

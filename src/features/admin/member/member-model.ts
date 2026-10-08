@@ -1,27 +1,30 @@
 import type {
-  AdminApiPayoutStatus,
   AdminLedgerTransaction,
+  AdminMemberCertificate,
   AdminMemberDetail,
-  AdminMemberFinance,
+  AdminMemberHistoryItem,
   AdminMemberListItem,
-  AdminPayout,
-  AdminReportCase,
+  AdminMemberPenaltyHistoryItem,
+  AdminMemberPayout,
+  AdminMemberReport,
+  AdminMemberReview,
+  AdminMemberWorkExperience,
 } from "../api/admin-api";
 import { formatAdminTimestamp } from "../date-format";
-import type { AdminReview } from "../data/admin-records";
+import { conductReportReasonLabel } from "../conduct-report/conduct-report-model";
+import { reportReasonLabel } from "../report/report-model";
 import {
-  isConductReportStatus,
   memberStatusFor,
   memberStatusLabel,
-  walletStatusFor,
+  questStateLabel,
   walletStatusLabel,
   type MemberStatus,
   type WalletStatus,
 } from "../domain/rulebook";
 import { statusBadgeClass } from "../status-badge";
 import { displayAdminId } from "../display-admin-id";
-import { conductReportRoutes, memberRoutes, reportRoutes } from "../admin-routes";
-import { balancesFromWallet, isNonnegativeSafeInteger, transactionFromApi } from "./member-wallet-model";
+import { conductReportRoutes, memberRoutes, questRoutes, reportRoutes } from "../admin-routes";
+import { transactionFromApi } from "./member-wallet-model";
 import type {
   MemberWalletBalances,
   MemberWalletTransaction,
@@ -52,41 +55,82 @@ export const MEMBER_TABS = [
 ] as const;
 
 export type MemberTab = (typeof MEMBER_TABS)[number];
+export type MemberCollectionError = {
+  kind: "request" | "contract";
+  message: string;
+};
 
-export type MemberQuestHistoryEntry = {
-  id: string;
-  displayId: string;
-  title: string;
-  status: string;
-  role: "Hirer" | "Worker";
-  amountSatang: number | null;
-  createdAt: string;
+export type MemberCollection<T> = {
+  items: T[] | null;
+  totalCount: number | null;
+  complete: boolean;
+  error: MemberCollectionError | null;
+};
+export type MemberWalletReadState =
+  | { kind: "available"; source: "finance" | "member-detail"; warning: MemberCollectionError | null }
+  | { kind: "absent"; source: "finance" | "member-detail"; warning: MemberCollectionError | null }
+  | { kind: "unavailable" }
+  | { kind: "request-error"; error: MemberCollectionError }
+  | { kind: "contract-error"; error: MemberCollectionError }
+  | { kind: "conflict"; error: MemberCollectionError };
+
+
+
+export type MemberQuestHistoryEntry = AdminMemberHistoryItem & {
   href: string;
 };
+
+export function memberQuestHistoryStatusLabel(entry: MemberQuestHistoryEntry): string {
+  if (entry.role === "HIRER") return questStateLabel(entry.quest.questStatus);
+  switch (entry.assignmentStatus) {
+    case "ASSIGNMENT_ACTIVE": return "Assignment active";
+    case "ASSIGNMENT_COMPLETED": return "Assignment completed";
+    case "ASSIGNMENT_INCOMPLETE": return "Assignment incomplete";
+    case "ASSIGNMENT_CANCELLED": return "Assignment cancelled";
+    default: return "Not provided by the Admin API";
+  }
+}
+
+export function memberQuestHistoryStatusDate(entry: MemberQuestHistoryEntry): string | null {
+  return entry.role === "HIRER" ? entry.quest.questStatusChangedAt : entry.assignmentStatusChangedAt;
+}
 
 export type MemberReportEntry = {
   id: string;
   displayId: string;
+  category: string;
+  detail: string;
+  reporterId: string | null;
+  reporterDisplayId: string | null;
+  reporterName: string;
+  reporterHref: string | null;
+  reportedMemberId: string | null;
+  reportedMemberDisplayId: string | null;
+  reportedMemberName: string | null;
+  reportedMemberHref: string | null;
   questDisplayId: string | null;
+  questTitle: string | null;
+  questHref: string | null;
   status: string;
   reportedAt: string;
   href: string;
   kind: "Report Case" | "Conduct Report";
 };
 
-export type MemberPenaltyHistoryEntry = {
-  event: string;
-  at: string;
-  by: string;
-  reason?: string;
-  previousStatus?: string;
-  newStatus?: string;
-  outcome?: string;
-  durationDays?: number;
-  expiresAt?: string;
-  caseId?: string;
-  caseType?: "Report Case" | "Conduct Report";
-  caseHref?: string;
+export type MemberPenaltyHistoryEntry = AdminMemberPenaltyHistoryItem;
+export function memberPenaltyHistoryItemKey(entry: MemberPenaltyHistoryEntry): string {
+  return `${entry.ladder}:${entry.sequenceNumber}:${entry.result}:${entry.createdAt}`;
+}
+
+
+export type MemberPenaltyHistorySummary = {
+  confirmedMisconductCount: number;
+  effectiveActiveMisconductPenaltyCount: number;
+  reviewLadderRecordCount: number;
+};
+
+export type MemberPenaltyHistoryCollection = MemberCollection<MemberPenaltyHistoryEntry> & {
+  summary: MemberPenaltyHistorySummary | null;
 };
 
 export type MemberStats = {
@@ -102,17 +146,14 @@ export type MemberStats = {
 export type MemberPayoutEntry = {
   id: string;
   displayId: string | null;
-  status: AdminApiPayoutStatus;
-  amountSatang: number | null;
+  memberDisplayId: string | null;
+  memberName: string;
+  status: string;
+  amountSatang: number;
   createdAt: string;
   bankName: string | null;
   maskedDestinationValue: string | null;
 };
-
-export type MemberWalletState = "available" | "absent" | "unavailable" | "conflict" | "invalid" | "unverified";
-export type MemberWalletSource = "finance" | "member-detail" | "member-list" | null;
-export type MemberWalletStatementState = "complete" | "failed" | "invalid" | "incomplete" | "not-applicable";
-export type MemberWalletReadSurface = "wallet" | "latest-date" | "statement";
 
 export type MemberModel = {
   id: string;
@@ -128,36 +169,47 @@ export type MemberModel = {
   department: string | null;
   occupation: string | null;
   bio: string;
-  tags: string[] | null;
+  profileTags: MemberCollection<string>;
+  workExperiences: MemberCollection<AdminMemberWorkExperience>;
+  certificates: MemberCollection<AdminMemberCertificate>;
   createdAt: string;
   lastActiveAt: string;
   memberStatus: MemberStatus | null;
+  walletReadState: MemberWalletReadState;
   walletId: string | null;
   walletStatus: WalletStatus | null;
   walletBalances: MemberWalletBalances | null;
   walletProjectionMatchesLedger: boolean | null;
-  walletState: MemberWalletState;
-  walletSource: MemberWalletSource;
-  walletStatementState: MemberWalletStatementState;
-  walletStatementComplete: boolean;
-  reviews: AdminReview[] | null;
+  reviews: MemberCollection<AdminMemberReview>;
   stats: MemberStats;
-  quests: MemberQuestHistoryEntry[] | null;
-  payouts: MemberPayoutEntry[] | null;
-  payoutsComplete: boolean;
-  payoutsError: string | null;
-  payoutSuccessfulCountMatchesHistory: boolean | null;
-  reports: MemberReportEntry[];
-  reportsComplete: boolean;
-  reportsTotalCount: number | null;
-  reportsSubmitted: MemberReportEntry[] | null;
-  penaltyHistory: MemberPenaltyHistoryEntry[] | null;
-  walletStatement: MemberWalletTransaction[];
-  confirmedViolationCount: number | null;
-  apiError: string | null;
-  reportsError: string | null;
-  reportsSubmittedError: string | null;
-  walletStatementError: string | null;
+  questHistory: MemberCollection<MemberQuestHistoryEntry>;
+  payouts: MemberCollection<MemberPayoutEntry>;
+  reportsReceived: MemberCollection<MemberReportEntry>;
+  reportsSubmitted: MemberCollection<MemberReportEntry>;
+  penaltyHistory: MemberPenaltyHistoryCollection;
+  walletStatement: MemberCollection<MemberWalletTransaction>;
+};
+
+export type MemberApiCollections = {
+  profileTags: MemberCollection<string>;
+  workExperiences: MemberCollection<AdminMemberWorkExperience>;
+  certificates: MemberCollection<AdminMemberCertificate>;
+  questHistory: MemberCollection<AdminMemberHistoryItem>;
+  reviews: MemberCollection<AdminMemberReview>;
+  reportsReceived: MemberCollection<AdminMemberReport>;
+  reportsSubmitted: MemberCollection<AdminMemberReport>;
+  payouts: MemberCollection<AdminMemberPayout>;
+  penaltyHistory: MemberPenaltyHistoryCollection;
+};
+
+export type MemberApiReadData = {
+  walletReadState: MemberWalletReadState;
+  walletId: string | null;
+  walletStatus: WalletStatus | null;
+  walletBalances: MemberWalletBalances | null;
+  walletProjectionMatchesLedger: boolean | null;
+  walletStatement: MemberCollection<AdminLedgerTransaction>;
+  collections: MemberApiCollections;
 };
 
 export type MemberPageData = {
@@ -175,35 +227,9 @@ function nullableText(value: unknown): string | null {
 }
 
 function nonnegativeInteger(value: unknown): number | null {
-  return isNonnegativeSafeInteger(value) ? value : null;
-}
-
-export function memberWalletReadStateMessage(
-  model: Pick<MemberModel, "walletState" | "walletStatementState">,
-  surface: MemberWalletReadSurface,
-): string | null {
-  switch (model.walletState) {
-    case "absent": return "This Member has no Wallet.";
-    case "conflict": return "Wallet data conflicts.";
-    case "invalid": return "Wallet data conflicts with the API contract.";
-    case "unavailable": return "Wallet data is not available.";
-    case "unverified": return "Wallet data is not verified.";
-    case "available": break;
-  }
-  if (surface === "wallet") return null;
-  switch (model.walletStatementState) {
-    case "complete": return null;
-    case "failed": return surface === "latest-date"
-      ? "Could not read the latest Ledger Transaction date."
-      : "Could not read the Wallet Statement.";
-    case "invalid": return surface === "statement"
-      ? "Wallet Statement data does not match the API contract."
-      : "Wallet data conflicts with the API contract.";
-    case "incomplete":
-    case "not-applicable": return surface === "latest-date"
-      ? "Latest Wallet Transaction date is not verified."
-      : "Wallet Statement is not verified.";
-  }
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0
+    ? value
+    : null;
 }
 
 function averageRatingValue(value: unknown): number | null {
@@ -227,36 +253,60 @@ function memberStatsFromApi(value: unknown): MemberStats {
   };
 }
 
-function payoutSuccessfulCountMatchesHistory(
-  stats: MemberStats,
-  payouts: readonly MemberPayoutEntry[] | null,
-  complete: boolean,
-): boolean | null {
-  if (!complete || payouts === null || stats.payoutsCount === null) return null;
-  return payouts.filter((payout) => payout.status === "SUCCEEDED").length === stats.payoutsCount;
-}
-
 function dateLabel(value: unknown, fallback = "Not recorded"): string {
   const raw = text(value).trim();
   if (!raw) return fallback;
   return formatAdminTimestamp(raw, "Asia/Bangkok");
 }
 
-function reportFromApi(
-  report: AdminReportCase,
-  questDisplayIds: ReadonlyMap<string, string>,
-): MemberReportEntry {
-  const isConductReport = isConductReportStatus(report.status);
-  const kind = isConductReport ? "Conduct Report" : "Report Case";
+
+function reportFromApi(report: AdminMemberReport, submittedByMemberId?: string): MemberReportEntry {
+  const reporterEntry = report.kind === "REPORT_CASE"
+    ? submittedByMemberId
+      ? report.reporterEntries.find((entry) => entry.reporterMemberId === submittedByMemberId) ?? null
+      : report.reporterEntries[0] ?? null
+    : null;
+  const reporter = report.kind === "CONDUCT_REPORT" ? report.filer : reporterEntry?.reporter ?? null;
+  const reportedMember = report.reportedMember;
+  const reporterId = report.kind === "CONDUCT_REPORT"
+    ? report.filer.id
+    : reporterEntry?.reporterMemberId ?? null;
+  const reporterName = reporter
+    ? [reporter.firstName, reporter.lastName].filter(Boolean).join(" ")
+    : "";
+  const quest = report.quest;
+  const kind = report.kind === "CONDUCT_REPORT" ? "Conduct Report" : "Report Case";
   return {
     id: report.id,
-    displayId: displayAdminId(report.displayId, report.id) ?? "",
-    questDisplayId: report.questId ? questDisplayIds.get(report.questId) ?? null : null,
+    displayId: displayAdminId(report.displayId) ?? "",
+    category: report.kind === "CONDUCT_REPORT"
+      ? conductReportReasonLabel(report.reason)
+      : reportReasonLabel(reporterEntry?.reason) ?? "Report Case",
+    detail: report.kind === "CONDUCT_REPORT"
+      ? report.detail ?? "No report detail was provided."
+      : reporterEntry?.detail ?? "No report detail was provided.",
+    reporterId,
+    reporterDisplayId: displayAdminId(reporter?.displayId),
+    reporterName: reporterName || (reporterId ? "Member" : "Reporter not provided"),
+    reporterHref: reporterId ? memberRoutes.detail(reporterId) : null,
+    reportedMemberId: reportedMember?.id ?? null,
+    reportedMemberDisplayId: displayAdminId(reportedMember?.displayId),
+    reportedMemberName: reportedMember
+      ? [reportedMember.firstName, reportedMember.lastName].filter(Boolean).join(" ") || null
+      : null,
+    reportedMemberHref: reportedMember?.id ? memberRoutes.detail(reportedMember.id) : null,
+    questDisplayId: displayAdminId(quest?.displayId),
+    questTitle: quest?.title ?? null,
+    questHref: quest?.id ? questRoutes.detail(quest.id) : null,
     status: report.status,
-    reportedAt: dateLabel(report.createdAt),
-    href: kind === "Conduct Report" ? conductReportRoutes.detail(report.id) : reportRoutes.detail(report.id),
+    reportedAt: dateLabel(report.kind === "REPORT_CASE" ? reporterEntry?.createdAt ?? report.createdAt : report.createdAt),
+    href: report.kind === "CONDUCT_REPORT" ? conductReportRoutes.detail(report.id) : reportRoutes.detail(report.id),
     kind,
   };
+}
+
+function unavailableCollection<T>(): MemberCollection<T> {
+  return { items: null, totalCount: null, complete: false, error: null };
 }
 
 function baseModelFromListItem(
@@ -279,19 +329,18 @@ function baseModelFromListItem(
     department: nullableText(member.department),
     occupation: nullableText(member.occupation),
     bio: "",
-    tags: null,
+    profileTags: unavailableCollection(),
+    workExperiences: unavailableCollection(),
+    certificates: unavailableCollection(),
     createdAt: dateLabel(member.createdAt),
     lastActiveAt: "Not provided by the Admin API",
     memberStatus: member.memberStatus ? memberStatusFor(member.memberStatus) : null,
+    walletReadState: { kind: "unavailable" },
     walletId: wallet?.id ?? null,
     walletStatus: wallet?.walletStatus ?? null,
     walletBalances: null,
     walletProjectionMatchesLedger: null,
-    walletState: "unverified",
-    walletSource: wallet ? "member-list" : null,
-    walletStatementState: "not-applicable",
-    walletStatementComplete: false,
-    reviews: null,
+    reviews: unavailableCollection(),
     stats: {
       questsCreatedCount: null,
       questsCompletedAsWorkerCount: null,
@@ -301,22 +350,12 @@ function baseModelFromListItem(
       totalEarnedSatang: null,
       totalPaidOutSatang: null,
     },
-    quests: null,
-    payouts: null,
-    payoutsComplete: false,
-    payoutsError: null,
-    payoutSuccessfulCountMatchesHistory: null,
-    reports: [],
-    reportsComplete: false,
-    reportsTotalCount: null,
-    reportsSubmitted: null,
-    penaltyHistory: null,
-    walletStatement: [],
-    confirmedViolationCount: null,
-    apiError: null,
-    reportsError: null,
-    reportsSubmittedError: "Reports submitted are not available.",
-    walletStatementError: null,
+    questHistory: unavailableCollection(),
+    payouts: unavailableCollection(),
+    reportsReceived: unavailableCollection(),
+    reportsSubmitted: unavailableCollection(),
+    penaltyHistory: { ...unavailableCollection(), summary: null },
+    walletStatement: unavailableCollection(),
   };
 }
 
@@ -324,80 +363,61 @@ export function memberListModelFromApi(member: AdminMemberListItem): MemberModel
   return baseModelFromListItem(member);
 }
 
+function mapMemberCollection<TSource, TTarget>(
+  collection: MemberCollection<TSource>,
+  map: (item: TSource) => TTarget,
+): MemberCollection<TTarget> {
+  return {
+    ...collection,
+    items: collection.items === null ? null : collection.items.map(map),
+  };
+}
+
 export function memberModelFromApi(
   detail: AdminMemberDetail,
-  finance: AdminMemberFinance | null = null,
-  reports: readonly AdminReportCase[] = [],
-  ledger: readonly AdminLedgerTransaction[] = [],
-  memberReads: {
-    finance?: string | null;
-    wallet?: NonNullable<AdminMemberDetail["wallet"]> | NonNullable<AdminMemberFinance["wallet"]> | null;
-    walletState?: MemberWalletState;
-    walletSource?: MemberWalletSource;
-    walletStatementState?: MemberWalletStatementState;
-    walletStatementComplete?: boolean;
-    reports?: string | null;
-    reportsComplete?: boolean;
-    reportsTotalCount?: number | null;
-    ledger?: string | null;
-    payouts?: readonly AdminPayout[];
-    payoutsComplete?: boolean;
-    payoutsError?: string | null;
-    reportQuestDisplayIds?: ReadonlyMap<string, string>;
-  } = {},
+  reads: MemberApiReadData,
 ): MemberModel {
   const member = detail.member;
   const listItem: AdminMemberListItem = {
     ...member,
-    wallet: detail.wallet ? {
-      id: detail.wallet.id,
-      walletStatus: detail.wallet.walletStatus,
-      spendingBalanceSatang: detail.wallet.spendingBalanceSatang,
-      earningsBalanceSatang: detail.wallet.earningsBalanceSatang,
-      totalBalanceSatang: detail.wallet.totalBalanceSatang,
-    } : null,
+    wallet: null,
   };
   const base = baseModelFromListItem(listItem);
-  const wallet = Object.hasOwn(memberReads, "wallet")
-    ? memberReads.wallet ?? null
-    : finance ? finance.wallet ?? null : detail.wallet;
-  const stats = memberStatsFromApi(detail.stats);
-  const payouts = memberReads.payouts
-    ? memberReads.payouts.map((payout) => ({
-        id: payout.id,
-        displayId: nullableText(payout.displayId),
-        status: payout.payoutStatus,
-        amountSatang: payout.principalSatang,
-        createdAt: dateLabel(payout.createdAt),
-        bankName: nullableText(payout.bankName),
-        maskedDestinationValue: nullableText(payout.maskedDestinationValue),
-      }))
-    : null;
-  const payoutsComplete = memberReads.payoutsComplete ?? false;
-  const reportQuestDisplayIds = memberReads.reportQuestDisplayIds ?? new Map<string, string>();
   return {
     ...base,
     bio: member.bio ?? "",
-    walletId: wallet?.id ?? null,
-    walletStatus: wallet ? walletStatusFor(wallet.walletStatus) : null,
-    walletBalances: balancesFromWallet(wallet),
-    walletProjectionMatchesLedger: wallet?.projectionMatchesLedger ?? null,
-    walletState: memberReads.walletState ?? (wallet ? "available" : "unverified"),
-    walletSource: memberReads.walletSource ?? (wallet ? (finance?.wallet ? "finance" : "member-detail") : null),
-    walletStatementState: memberReads.walletStatementState ?? "not-applicable",
-    walletStatementComplete: memberReads.walletStatementComplete ?? false,
-    reports: reports.map((report) => reportFromApi(report, reportQuestDisplayIds)),
-    reportsComplete: memberReads.reportsComplete ?? false,
-    reportsTotalCount: memberReads.reportsTotalCount ?? null,
-    payouts,
-    payoutsComplete,
-    payoutsError: memberReads.payoutsError ?? null,
-    payoutSuccessfulCountMatchesHistory: payoutSuccessfulCountMatchesHistory(stats, payouts, payoutsComplete),
-    walletStatement: ledger.map(transactionFromApi),
-    stats,
-    apiError: memberReads.finance ?? (finance ? null : "Member finance could not be loaded."),
-    reportsError: memberReads.reports ?? null,
-    walletStatementError: memberReads.ledger ?? null,
+    profileTags: reads.collections.profileTags,
+    workExperiences: reads.collections.workExperiences,
+    certificates: reads.collections.certificates,
+    walletReadState: reads.walletReadState,
+    walletId: reads.walletId,
+    walletStatus: reads.walletStatus,
+    walletBalances: reads.walletBalances,
+    walletProjectionMatchesLedger: reads.walletProjectionMatchesLedger,
+    reviews: reads.collections.reviews,
+    stats: memberStatsFromApi(detail.stats),
+    questHistory: mapMemberCollection(reads.collections.questHistory, (item) => ({
+      ...item,
+      href: questRoutes.detail(item.quest.id),
+    })),
+    payouts: mapMemberCollection(reads.collections.payouts, (payout) => ({
+      id: payout.id,
+      displayId: displayAdminId(payout.displayId),
+      memberDisplayId: displayAdminId(payout.student.displayId),
+      memberName: [payout.student.firstName, payout.student.lastName].filter(Boolean).join(" ") || "Member",
+      status: payout.payoutStatus,
+      amountSatang: payout.principalSatang,
+      createdAt: dateLabel(payout.createdAt),
+      bankName: nullableText(payout.bankName),
+      maskedDestinationValue: nullableText(payout.maskedDestinationValue),
+    })),
+    reportsReceived: mapMemberCollection(reads.collections.reportsReceived, reportFromApi),
+    reportsSubmitted: mapMemberCollection(
+      reads.collections.reportsSubmitted,
+      (report) => reportFromApi(report, member.id),
+    ),
+    penaltyHistory: reads.collections.penaltyHistory,
+    walletStatement: mapMemberCollection(reads.walletStatement, transactionFromApi),
   };
 }
 
@@ -411,7 +431,14 @@ export function memberStatusClass(model: MemberModel): string {
 
 export function walletStatusText(model: MemberModel): string {
   if (model.walletStatus) return walletStatusLabel(model.walletStatus);
-  return memberWalletReadStateMessage(model, "wallet") ?? "Wallet data is not verified.";
+  switch (model.walletReadState.kind) {
+    case "absent": return "Member นี้ไม่มี Wallet";
+    case "request-error": return "อ่านข้อมูล Wallet ไม่สำเร็จ";
+    case "contract-error": return "ข้อมูล Wallet ไม่ตรงตามสัญญา API";
+    case "conflict": return "ข้อมูล Wallet ขัดแย้งกัน";
+    case "unavailable": return "ยังไม่ยืนยันข้อมูล Wallet";
+    case "available": return "Wallet status is not provided.";
+  }
 }
 
 export function walletStatusClass(model: MemberModel): string {

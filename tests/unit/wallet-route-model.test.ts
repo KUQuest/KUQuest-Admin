@@ -148,6 +148,7 @@ describe("Wallet route model", () => {
     expect(history[0]?.actorDisplayName).toBe("Nicha P.");
     const ledger = walletLedgerRowsFromApi([{
       id: "ledger-1",
+      displayReference: "LED-000001",
       businessReference: "TOPUP-1",
       eventType: "TOP_UP",
       description: "Wallet credit",
@@ -163,6 +164,7 @@ describe("Wallet route model", () => {
       ],
     }, {
       id: "ledger-2",
+      displayReference: "LED-000002",
       businessReference: "OPEN-1",
       eventType: "TOP_UP",
       description: null,
@@ -174,6 +176,7 @@ describe("Wallet route model", () => {
       postings: [],
     }, {
       id: "ledger-0",
+      displayReference: "LED-000000",
       businessReference: "OLD-1",
       eventType: "TOP_UP",
       description: "Older Wallet credit",
