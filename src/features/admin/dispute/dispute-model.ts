@@ -289,10 +289,23 @@ export function disputeCaseModelFromRecord(
   const questFailedAt = firstText(record.failedAt, record.questFailedAt, quest?.failedAt);
   const filerId = firstText(record.filerUserId, record.filerId);
   const respondentId = firstText(record.respondentUserId, record.respondentId);
-  const filerDisplayId = displayAdminId(record.filerDisplayId, asRecord(record.filer)?.displayId);
-  const respondentDisplayId = displayAdminId(record.respondentDisplayId, asRecord(record.respondent)?.displayId);
+  const questHirerId = firstText(quest?.hirerId, record.hirerId);
+  const questHirerDisplayId = displayAdminId(
+    quest?.hirerDisplayId,
+    asRecord(quest?.hirer)?.displayId,
+  );
   const filerRole = firstText(record.filerRole) ?? "Hirer";
   const respondentRole = firstText(record.respondentRole) ?? "Worker";
+  const filerDisplayId = displayAdminId(
+    record.filerDisplayId,
+    asRecord(record.filer)?.displayId,
+    filerId && filerId === questHirerId ? questHirerDisplayId : null,
+  );
+  const respondentDisplayId = displayAdminId(
+    record.respondentDisplayId,
+    asRecord(record.respondent)?.displayId,
+    respondentId && respondentId === questHirerId ? questHirerDisplayId : null,
+  );
   const workerId = firstText(
     record.resolvedWorkerId,
     record.workerId,

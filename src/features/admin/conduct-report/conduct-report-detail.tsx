@@ -273,7 +273,6 @@ function ConductModerationContext({ model, translateText }: { model: ConductRepo
   const fallback = translateText("Not provided.");
   const actionFallback = translateText(summary.memberRecordAvailable ? "None recorded." : "Not provided.");
   const actionText = summary.previousActions.length ? summary.previousActions.map((action) => translateText(action)).join(" · ") : actionFallback;
-  const noteText = summary.adminNotes.length ? summary.adminNotes.join(" · ") : fallback;
 
   return (
     <Card as="section" className={adminRecordSection}>
@@ -284,7 +283,6 @@ function ConductModerationContext({ model, translateText }: { model: ConductRepo
         <div><dt>{translateText("Confirmed previous violations")}</dt><dd>{summary.confirmedViolationCount ?? fallback}</dd></div>
       </AdminOverviewMeta>
       <div className={adminRecordGroup}><span>{translateText("Previous moderation actions")}</span><p>{actionText}</p></div>
-      <div className={adminRecordGroup}><span>{translateText("Internal Admin notes")}</span><p>{noteText}</p></div>
       <div className={adminRecordGroup}><span>{translateText("Policy boundary")}</span><p>{translateText("Conduct Reports use the Quest record. Work Chat or Candidate Inquiry history may be opened only for this case, with an Admin Action log entry.")}</p></div>
     </Card>
   );
@@ -494,7 +492,6 @@ function ConductReportDrawerBody({
           summary={model.moderationHistory}
           translateText={translateText}
           compact
-          showAdminNotes={false}
           member={{ id: model.reportedMemberId, displayId: model.reportedMemberDisplayId, name: model.reportedMemberName, href: model.reportedMemberHref }}
         />
         <Card as="section" className={`${adminRecordSection} report-decision-panel`}>

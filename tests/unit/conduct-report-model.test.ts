@@ -212,6 +212,7 @@ describe("Conduct Report model", () => {
 
     expect(model).toMatchObject({
       reason: "No show",
+      reasonCode: "CONDUCT_NO_SHOW",
       decisionReasonCode: "CONDUCT_REPORT_PROOF_RECORD_CONFIRMS_VIOLATION",
       decisionReason: "The Proof Submission confirms the reported conduct.",
       decisionAdminName: "Mali Admin",

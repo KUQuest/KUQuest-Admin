@@ -104,6 +104,24 @@ export function activityLogEntryFromApi(entry: AdminActivityLog): ActivityLogEnt
   };
 }
 
+export function activityLogEntryKeys(
+  entries: readonly Pick<ActivityLogEntry, "activityDisplayId" | "id">[],
+): string[] {
+  const usedKeys = new Set<string>();
+  return entries.map((entry, index) => {
+    const identifier = entry.activityDisplayId?.trim() || entry.id?.trim();
+    const baseKey = identifier ? `activity:${identifier}` : `activity:row:${index}`;
+    let key = baseKey;
+    let suffix = 1;
+    while (usedKeys.has(key)) {
+      key = `${baseKey}:${suffix}`;
+      suffix += 1;
+    }
+    usedKeys.add(key);
+    return key;
+  });
+}
+
 function normalizedFilterValue(value: string): string {
   return value.trim().toLowerCase();
 }

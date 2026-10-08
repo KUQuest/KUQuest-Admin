@@ -152,28 +152,9 @@ function EvidenceSection({ evidence, loading, error, translateText, compact = fa
       {error && <p className="field-error" role="alert">{translateText(error)}</p>}
       {!loading && !error && evidence && <div className="grid gap-4">
         {evidence.truncated && <p className="audit-note">{translateText("The Admin API returned a partial Evidence record.")}</p>}
-        <section className="grid gap-2" aria-labelledby="dispute-evidence-quest-heading">
-          <h3 id="dispute-evidence-quest-heading" className="m-0 text-sm font-semibold">{translateText("Quest record")}</h3>
-          <div className={adminRecordFacts}>
-            <div className={adminRecordFact}><span>{translateText("Quest status")}</span><strong>{translateText(questStateLabel(evidence.quest.questStatus))}</strong></div>
-            <div className={adminRecordFact}><span>{translateText("Quest version")}</span><strong>{evidence.quest.version}</strong></div>
-            <div className={adminRecordFact}><span>{translateText("Failed at")}</span><strong>{evidence.quest.failedAt ? formatAdminTimestamp(evidence.quest.failedAt) : translateText("No failure time recorded.")}</strong></div>
-          </div>
-        </section>
-        <section className="grid gap-2" aria-labelledby="dispute-evidence-assignments-heading">
-          <h3 id="dispute-evidence-assignments-heading" className="m-0 text-sm font-semibold">{translateText("Assignments")} ({evidence.assignments.length})</h3>
-          {evidence.assignments.length ? <ol className="m-0 grid list-none gap-2 p-0">{evidence.assignments.map((assignment, index) => <li key={assignment.id} className="grid gap-2 rounded-admin-sm bg-admin-soft p-3">
-            <strong>{translateText("Worker assignment")} {index + 1}</strong>
-            <div className={adminRecordFacts}>
-              <div className={adminRecordFact}><span>{translateText("Assignment status")}</span><strong>{translateText(evidenceStatusLabel(assignment.assignmentStatus))}</strong></div>
-              <div className={adminRecordFact}><span>{translateText("Started at")}</span><strong>{assignment.startedAt ? formatAdminTimestamp(assignment.startedAt) : translateText("Not provided.")}</strong></div>
-              <div className={adminRecordFact}><span>{translateText("Created at")}</span><strong>{formatAdminTimestamp(assignment.createdAt)}</strong></div>
-            </div>
-          </li>)}</ol> : <p className="audit-note">{translateText("No Assignment records were returned.")}</p>}
-        </section>
-        <section className="grid gap-2" aria-labelledby="dispute-evidence-proofs-heading">
+        {evidence.proofSubmissions.length ? <section className="grid gap-2" aria-labelledby="dispute-evidence-proofs-heading">
           <h3 id="dispute-evidence-proofs-heading" className="m-0 text-sm font-semibold">{translateText("Proof Submissions")} ({evidence.proofSubmissions.length})</h3>
-          {evidence.proofSubmissions.length ? <ol className="m-0 grid list-none gap-2 p-0">{evidence.proofSubmissions.map((submission, index) => <li key={submission.id} className="grid gap-2 rounded-admin-sm bg-admin-soft p-3">
+          <ol className="m-0 grid list-none gap-2 p-0">{evidence.proofSubmissions.map((submission, index) => <li key={submission.id} className="grid gap-2 rounded-admin-sm bg-admin-soft p-3">
             <strong>{translateText("Proof Submission")} {index + 1}</strong>
             <div className={adminRecordFacts}>
               <div className={adminRecordFact}><span>{translateText("Submission status")}</span><strong>{translateText(evidenceStatusLabel(submission.submissionStatus))}</strong></div>
@@ -184,8 +165,8 @@ function EvidenceSection({ evidence, loading, error, translateText, compact = fa
               <span>{translateText("File")} {fileIndex + 1} · {file.contentType}</span>
               <span className="text-admin-muted">{evidenceFileSize(file.sizeBytes)}</span>
             </li>)}</ul> : <p className="m-0 text-sm text-admin-muted">{translateText("No files were returned for this Proof Submission.")}</p>}
-          </li>)}</ol> : <p className="audit-note">{translateText("No Proof Submission records were returned.")}</p>}
-        </section>
+          </li>)}</ol>
+        </section> : <p className="audit-note">{translateText("No evidence was given.")}</p>}
       </div>}
     </Card>
   );
@@ -393,7 +374,9 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
     : evidenceError
       ? translateText("Unavailable")
       : evidenceQuery.data
-        ? `${evidenceQuery.data.assignments.length} ${translateText("Assignments")} · ${evidenceQuery.data.proofSubmissions.length} ${translateText("Proof Submissions")}`
+        ? evidenceQuery.data.proofSubmissions.length
+          ? `${evidenceQuery.data.proofSubmissions.length} ${translateText("Proof Submissions")}`
+          : translateText("None")
         : translateText("None");
   const overlays = <DisputeDecisionDialog model={model} open={dialogOpen} choice={selectedChoice} busy={decisionMutation.isPending} error={commandError} translateText={translateText} onCancel={() => { if (!decisionMutation.isPending) { setDialogOpen(false); setCommandError(null); } }} onConfirm={confirmDecision} />;
   const content = <><DisputeAlert model={model} translateText={translateText} /><RecordStatusBar items={[{ id: "status", label: translateText("Status"), value: <span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span> }, { id: "category", label: translateText("Category"), value: translateText(model.category) }, { id: "opened", label: translateText("Opened"), value: model.submittedAt }, { id: "amount-at-risk", label: translateText("Amount at risk"), value: model.amountAtRiskLabel }, { id: "evidence", label: translateText("Evidence"), value: evidenceSummary }]} /><FullSections model={model} evidence={evidenceQuery.data} evidenceLoading={evidenceQuery.isPending} evidenceError={evidenceError} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} /></>;

@@ -330,7 +330,7 @@ export function conductReportModelFromRecord(value: unknown): ConductReportModel
     isActionable: isConductReportActionable(status),
     title: reason,
     reason,
-    reasonCode: firstText(record.reasonCode, record.conductReportReason),
+    reasonCode: firstText(record.reasonCode, record.conductReportReason, record.reason),
     decisionReasonCode,
     decisionAdminName,
     questId,

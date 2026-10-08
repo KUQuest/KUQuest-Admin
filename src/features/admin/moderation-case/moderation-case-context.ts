@@ -4,7 +4,6 @@ export type ModerationHistorySummary = {
   previousReportCount: number | null;
   confirmedViolationCount: number | null;
   previousActions: string[];
-  adminNotes: string[];
 };
 
 export type ModerationCaseRelatedRecord = {
@@ -22,7 +21,6 @@ export function emptyModerationHistory(): ModerationHistorySummary {
     previousReportCount: null,
     confirmedViolationCount: null,
     previousActions: [],
-    adminNotes: [],
   };
 }
 
@@ -84,7 +82,6 @@ export function moderationHistoryFromRecord(value: unknown): ModerationHistorySu
       record?.confirmedViolationCount ?? record?.confirmedReports,
     ),
     previousActions: stringList(record?.previousModerationActions ?? record?.moderationActions),
-    adminNotes: stringList(record?.adminNotes),
   };
 }
 
@@ -93,7 +90,6 @@ export function hasModerationHistory(summary: ModerationHistorySummary): boolean
     summary.currentMemberStatus
       || summary.previousReportCount !== null
       || summary.confirmedViolationCount !== null
-      || summary.previousActions.length
-      || summary.adminNotes.length,
+      || summary.previousActions.length,
   );
 }

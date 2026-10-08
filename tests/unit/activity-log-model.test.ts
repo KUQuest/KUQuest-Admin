@@ -1,9 +1,12 @@
 import { describe, expect, it } from "bun:test";
+import { createElement } from "react";
+import { renderToString } from "react-dom/server";
 
 import type { AdminActivityLog } from "../../src/features/admin/api/admin-api";
 import {
   activityLogCsv,
   activityLogActionLabel,
+  activityLogEntryKeys,
   activityLogTargetLabel,
   activityLogReasonLabel,
   activityLogResourceTypeLabel,
@@ -11,6 +14,7 @@ import {
   activityLogEntryMatchesFilters,
   activityLogMatchesSearch,
   activityTargetHref,
+  type ActivityLogEntry,
   formatActivityLogRelativeTime,
   formatActivityLogTimestamp,
 } from "../../src/features/admin/activity-log/activity-log-model";
@@ -29,6 +33,32 @@ const entry: AdminActivityLog = {
 };
 
 describe("Activity Log model", () => {
+  it("does not render rows with missing or repeated React keys", () => {
+    const entries: Pick<ActivityLogEntry, "activityDisplayId" | "id">[] = [
+      { activityDisplayId: undefined, id: undefined },
+      { activityDisplayId: undefined, id: undefined },
+      { activityDisplayId: "ACT-000001", id: "action-1" },
+      { activityDisplayId: "ACT-000001", id: "action-1" },
+    ];
+    const keys = activityLogEntryKeys(entries);
+    const errors: string[] = [];
+    const originalError = console.error;
+    console.error = (...args: unknown[]) => errors.push(args.map(String).join(" "));
+
+    try {
+      renderToString(createElement("table", null, createElement(
+        "tbody",
+        null,
+        keys.map((key) => createElement("tr", { key })),
+      )));
+    } finally {
+      console.error = originalError;
+    }
+
+    expect(new Set(keys).size).toBe(entries.length);
+    expect(errors).toEqual([]);
+  });
+
   it("keeps the API audit fields and derives the Admin display identity", () => {
     expect(activityLogEntryFromApi(entry)).toEqual({
       ...entry,

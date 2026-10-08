@@ -72,14 +72,12 @@ export function ModerationHistoryPanel({
   compact,
   member,
   memberLabel = "Reported Member",
-  showAdminNotes = true,
 }: {
   summary: ModerationHistorySummary;
   translateText: (value: string) => string;
   compact: boolean;
   member?: { id: string | null; displayId?: string | null; name: string; href: string | null } | null;
   memberLabel?: string;
-  showAdminNotes?: boolean;
 }) {
   const fallback = translateText("Not provided.");
   const panelClass = `${adminRecordSection} moderation-case-history`;
@@ -87,9 +85,6 @@ export function ModerationHistoryPanel({
   const actionText = summary.previousActions.length
     ? summary.previousActions.map((action) => translateText(action)).join(" · ")
     : actionFallback;
-  const noteText = summary.adminNotes.length
-    ? summary.adminNotes.join(" · ")
-    : fallback;
 
   return (
     <Card as="section" className={panelClass}>
@@ -115,10 +110,6 @@ export function ModerationHistoryPanel({
         <span>{translateText("Previous moderation actions")}</span>
         <p>{actionText}</p>
       </div>
-      {showAdminNotes && <div className={adminRecordGroup}>
-        <span>{translateText("Internal Admin notes")}</span>
-        <p>{noteText}</p>
-      </div>}
     </Card>
   );
 }

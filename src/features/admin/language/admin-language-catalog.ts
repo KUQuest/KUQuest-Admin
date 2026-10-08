@@ -92,6 +92,7 @@ export const thaiTranslations: Record<string, string> = {
   "Bounded Evidence Reference": "Evidence Reference แบบจำกัดขอบเขต",
   "Evidence Reference not available": "ไม่มี Evidence Reference",
   "No Evidence Reference was provided.": "ไม่ได้ระบุ Evidence Reference",
+  "No evidence was given.": "ไม่มีการส่งหลักฐาน",
   "Close evidence": "ปิด Evidence",
   "Loading Evidence Reference…": "กำลังโหลด Evidence Reference…",
   "The Admin API did not return bounded Evidence Reference context.": "Admin API ไม่ได้ส่งบริบท Evidence Reference แบบจำกัดขอบเขต",
@@ -601,7 +602,6 @@ export const thaiTranslations: Record<string, string> = {
   "Full Payout detail": "รายละเอียด Payout ฉบับเต็ม",
   "From date": "จากวันที่",
 
-  "Internal Admin notes": "โน้ตภายในของ Admin",
   "Loading Conduct Report…": "กำลังโหลด Conduct Report…",
   "Loading Dispute Case…": "กำลังโหลด Dispute Case…",
   "Loading more records…": "กำลังโหลดรายการเพิ่มเติม…",
