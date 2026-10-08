@@ -63,7 +63,7 @@ function activityLogSortValue(entry: ActivityLogEntry, key: ActivityLogSortKey):
 
 function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailProps) {
   const { translateText } = useAdminShell();
-  const targetHref = activityTargetHref(entry.resourceType, entry.resourceDisplayId ?? entry.resourceId);
+  const targetHref = activityTargetHref(entry.resourceType, entry.resourceId);
   const target = activityLogTargetLabel(entry);
 
   return (
@@ -144,7 +144,7 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
   useAdminBoardReset(reset);
   const closeDetails = useCallback(() => setSelectedEntry(null), []);
   const openLinkedDetail = useCallback((entry: ActivityLogEntry) => {
-    const href = activityTargetHref(entry.resourceType, entry.resourceDisplayId ?? entry.resourceId);
+    const href = activityTargetHref(entry.resourceType, entry.resourceId);
     if (!href) return;
     closeDetails();
     router.push(href, { scroll: false });

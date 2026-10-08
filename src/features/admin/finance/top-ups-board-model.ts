@@ -62,10 +62,6 @@ export function topUpStatusHistoryFromResponse(value: unknown): TopUpStatusHisto
   return { kind: "history", entries };
 }
 
-export function topUpStatusTimeline(entries: readonly TopUpStatusTimelineEntry[]): TopUpStatusTimelineEntry[] {
-  return entries.map((entry) => ({ ...entry }));
-}
-
 export function topUpMatchesTab(topUp: AdminTopUpListItem, tab: TopUpBoardTab): boolean {
   return tab === "all" || topUp.topUpStatus === tab;
 }

@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 
 import type { AdminTopUpListItem } from "../../src/features/admin/api/admin-api";
 import { sortBoardRows } from "../../src/features/admin/data/board-sorting";
-import { searchTopUps, topUpMatchesTab, topUpSortValue, topUpStatusHistoryFromResponse, topUpStatusTimeline } from "../../src/features/admin/finance/top-ups-board-model";
+import { searchTopUps, topUpMatchesTab, topUpSortValue, topUpStatusHistoryFromResponse } from "../../src/features/admin/finance/top-ups-board-model";
 
 function makeTopUp(overrides: Partial<AdminTopUpListItem> = {}): AdminTopUpListItem {
   return {
@@ -62,7 +62,7 @@ describe("Top-up board model", () => {
 
     expect(history.kind).toBe("history");
     if (history.kind !== "history") return;
-    expect(topUpStatusTimeline(history.entries)).toEqual([
+    expect(history.entries).toEqual([
       { id: "history-1", fromStatus: null, toStatus: "PENDING", occurredAt: "2026-10-01T11:00:00.000Z" },
       { id: "history-2", fromStatus: "PENDING", toStatus: "PAID", occurredAt: "2026-10-01T11:05:00.000Z" },
     ]);

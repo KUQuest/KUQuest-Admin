@@ -13,7 +13,7 @@ import { memberRoutes } from "../admin-routes";
 import { formatAdminTimestamp } from "../date-format";
 import { formatMoneySatang } from "../member/member-wallet-model";
 import { statusBadgeClass } from "../status-badge";
-import { topUpDisplayId, topUpStatusHistoryFromResponse, topUpStatusTimeline, TOP_UP_BOARD_TABS } from "./top-ups-board-model";
+import { topUpDisplayId, topUpStatusHistoryFromResponse, TOP_UP_BOARD_TABS } from "./top-ups-board-model";
 import { useFinanceTopUpStatusHistoryQuery } from "./finance-query";
 
 function TopUpDrawerSection({ title, children }: { title: string; children: ReactNode }) {
@@ -70,7 +70,7 @@ export function TopUpDetailDrawer({
       {historyReadback?.kind === "invalid" ? <p className="field-error" role="alert">{translateText("The Top-up status history response is invalid.")}</p> : null}
       {historyReadback?.kind === "empty" ? <p className="audit-note">{translateText("No Top-up status transitions were returned.")}</p> : null}
       {historyReadback?.kind === "history" ? <ol className="grid list-decimal gap-2 pl-7">
-        {topUpStatusTimeline(historyReadback.entries).map((entry) => {
+        {historyReadback.entries.map((entry) => {
           const entryLabel = TOP_UP_BOARD_TABS.find((tab) => tab.id === entry.toStatus)?.label ?? entry.toStatus;
 
           return <li className="grid gap-2 rounded-lg border border-admin-border bg-admin-soft p-2.5" key={entry.id}>
