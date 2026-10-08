@@ -84,10 +84,12 @@ export function formatActivityLogDateInput(value: string): string {
 export function activityLogEntryFromApi(entry: AdminActivityLog): ActivityLogEntry {
   const adminName = `${entry.admin.firstName.trim()} ${entry.admin.lastName.trim()}`.trim();
   const adminInitials = `${entry.admin.firstName.trim().charAt(0)}${entry.admin.lastName.trim().charAt(0)}`.toUpperCase();
+  const note = entry.decisionReasonText ?? entry.note;
 
   const parsedCreatedAt = Date.parse(entry.createdAt);
   return {
     ...entry,
+    ...(note === undefined ? {} : { note }),
     adminId: entry.admin.id,
     adminName,
     adminInitials,

@@ -30,7 +30,7 @@ A **Conduct Report** evaluates how a Member behaved on a Quest, supported by the
 - Every Admin access to chat history during a Conduct Report review logs an immutable **`Admin Action`** entry.
 - Admin resolves a `CONDUCT_REPORT_PENDING` report as:
   - `CONDUCT_REPORT_DISMISSED`: No violation; case closes.
-  - `CONDUCT_REPORT_UPHELD`: Confirms a violation on the **Misconduct ladder** (see [Admin Member Penalty Contract](admin-member-penalty-contract.md)). Permanent strike; no restore path.
+  - `CONDUCT_REPORT_UPHELD`: Confirms a violation on the **Misconduct ladder** (see [Admin Member Penalty Contract](admin-member-penalty-contract.md)). The decision has no appeal or restore path. An Admin may remove its penalty under the Member Penalty Contract; this does not change the upheld decision.
 - Requires a reason and a non-blank `Idempotency-Key`.
 - Decisions are final and create an Audit Record.
 

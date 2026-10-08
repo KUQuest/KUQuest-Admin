@@ -353,6 +353,7 @@ export const thaiTranslations: Record<string, string> = {
   "Quest history": "ประวัติ Quest",
   "Current Wallet Balance": "ยอดคงเหลือ Wallet ปัจจุบัน",
   "Record violation": "บันทึกการละเมิด",
+  "Member penalty commands are not available.": "ยังไม่มีคำสั่งจัดการบทลงโทษของ Member",
   "Confirm violation for Akarin Ariyawat": "ยืนยันการละเมิดของ Akarin Ariyawat",
   "Close penalty form": "ปิดแบบฟอร์มบทลงโทษ",
   "Reason for confirmed violation": "เหตุผลของการยืนยันการละเมิด",
