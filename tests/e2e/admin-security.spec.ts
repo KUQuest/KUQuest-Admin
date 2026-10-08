@@ -133,8 +133,10 @@ test.describe("Admin session and private-route boundary", () => {
     await expect(main.getByText("RPT-000101", { exact: true })).toBeVisible();
     await expect(main.getByText("RPT-000102", { exact: true })).toBeVisible();
     await main.getByRole("link", { name: "Penalty History", exact: true }).click();
-    await expect(main.getByText("PENALTY_RED_FLAG", { exact: true })).toBeVisible();
-    await expect(main.getByText("PENALTY_REVERSAL", { exact: true })).toBeVisible();
+    const penaltyHistory = main.locator("[data-member-moderation-history]");
+    await expect(penaltyHistory.getByText("Red Flag", { exact: true })).toBeVisible();
+    await expect(penaltyHistory.getByText("Penalty reversal", { exact: true })).toBeVisible();
+    await expect(penaltyHistory).not.toContainText(/[A-Z]+_[A-Z]+/);
     await main.getByRole("link", { name: "Wallet Statement", exact: true }).click();
     await expect(main.getByText("LED-000101", { exact: true })).toBeVisible();
 
