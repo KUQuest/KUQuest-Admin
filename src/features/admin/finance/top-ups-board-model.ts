@@ -1,4 +1,4 @@
-import type { AdminApiTopUpStatus, AdminTopUpListItem } from "../api/admin-api";
+import { ADMIN_API_TOP_UP_STATUSES, type AdminApiTopUpStatus, type AdminTopUpListItem, type AdminTopUpStatusHistoryEntry } from "../api/admin-api";
 import { displayAdminId } from "../display-admin-id";
 import { dateSortValue } from "../data/board-sorting";
 
@@ -14,32 +14,64 @@ export type TopUpBoardTab = (typeof TOP_UP_BOARD_TABS)[number]["id"];
 export type TopUpSortKey = "id" | "member" | "creditAmount" | "paymentTotal" | "status" | "createdAt";
 
 export type TopUpStatusTimelineEntry = {
+  id: string;
   fromStatus: AdminApiTopUpStatus | null;
   toStatus: AdminApiTopUpStatus;
-  occurredAt: string | null;
+  occurredAt: string;
 };
+
+export type TopUpStatusHistoryReadback =
+  | { kind: "history"; entries: TopUpStatusTimelineEntry[] }
+  | { kind: "empty" }
+  | { kind: "invalid" };
+
+export type TopUpStatusHistoryState = TopUpStatusHistoryReadback | { kind: "loading" | "unavailable" };
 
 export function topUpDisplayId(topUp: Pick<AdminTopUpListItem, "displayId">): string {
   return displayAdminId(topUp.displayId) ?? "Top-up";
 }
 
-export function topUpStatusTimeline(topUp: AdminTopUpListItem): TopUpStatusTimelineEntry[] {
-  const initialStatus: TopUpStatusTimelineEntry = {
-    fromStatus: null,
-    toStatus: "PENDING",
-    occurredAt: topUp.createdAt,
-  };
+function isTopUpStatus(value: unknown): value is AdminApiTopUpStatus {
+  return typeof value === "string" && ADMIN_API_TOP_UP_STATUSES.includes(value as AdminApiTopUpStatus);
+}
 
-  if (topUp.topUpStatus === "PENDING") return [initialStatus];
+export function topUpStatusHistoryFromResponse(value: unknown): TopUpStatusHistoryReadback {
+  if (!Array.isArray(value)) return { kind: "invalid" };
+  if (!value.length) return { kind: "empty" };
 
-  return [
-    initialStatus,
-    {
-      fromStatus: "PENDING",
-      toStatus: topUp.topUpStatus,
-      occurredAt: topUp.topUpStatus === "PAID" ? topUp.paidAt : null,
-    },
-  ];
+  const entries: TopUpStatusTimelineEntry[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return { kind: "invalid" };
+    const entry = item as Partial<AdminTopUpStatusHistoryEntry>;
+    if (
+      typeof entry.id !== "string"
+      || !isTopUpStatus(entry.toStatus)
+      || (entry.fromStatus !== null && !isTopUpStatus(entry.fromStatus))
+      || !(entry.providerStatus === null || typeof entry.providerStatus === "string")
+      || typeof entry.source !== "string"
+      || !(entry.reason === null || typeof entry.reason === "string")
+      || typeof entry.occurredAt !== "string"
+      || !Number.isFinite(Date.parse(entry.occurredAt))
+    ) return { kind: "invalid" };
+    entries.push({
+      id: entry.id,
+      fromStatus: entry.fromStatus,
+      toStatus: entry.toStatus,
+      occurredAt: entry.occurredAt,
+    });
+  }
+
+  return { kind: "history", entries };
+}
+
+export function topUpStatusHistoryStateFromQuery(query: {
+  isPending: boolean;
+  isError: boolean;
+  data?: unknown;
+}): TopUpStatusHistoryState {
+  if (query.isPending) return { kind: "loading" };
+  if (query.isError) return { kind: "unavailable" };
+  return topUpStatusHistoryFromResponse(query.data);
 }
 
 export function topUpMatchesTab(topUp: AdminTopUpListItem, tab: TopUpBoardTab): boolean {

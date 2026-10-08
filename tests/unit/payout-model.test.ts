@@ -58,8 +58,11 @@ function payoutDetail(overrides: Partial<AdminPayout> = {}): AdminPayoutDetail {
       providerStatus: null,
       actorUserId: "member-1",
       actorAdminId: null,
+      admin: null,
       source: "PAYOUT_REQUEST",
       reason: null,
+      reasonCode: null,
+      decisionReasonText: null,
       occurredAt: "2026-09-14T01:00:00.000Z",
     }],
   };
@@ -153,6 +156,28 @@ describe("Payout route model", () => {
     });
   });
 
+  it("maps decision codes, notes, and safe Admin names from Payout history", () => {
+    const apiDetail = payoutDetail();
+    apiDetail.history = [{
+      ...apiDetail.history[0],
+      fromStatus: "PENDING_ADMIN_APPROVAL",
+      toStatus: "CANCELLED",
+      actorAdminId: "admin-uuid-1",
+      admin: { firstName: "Mali", lastName: "Admin" },
+      reason: "Admin rejected the Payout.",
+      reasonCode: "PAYOUT_INVALID_DESTINATION",
+      decisionReasonText: "The destination did not match the Member details.",
+    }];
+
+    const detail = payoutDetailViewFromApi(apiDetail);
+    expect(detail.history[0]).toMatchObject({
+      adminName: "Mali Admin",
+      reasonCode: "PAYOUT_INVALID_DESTINATION",
+      decisionReasonText: "The destination did not match the Member details.",
+    });
+    expect(detail.history[0].adminName).not.toContain("admin-uuid-1");
+  });
+
   it("only uses a reason from the current terminal status transition", () => {
     const apiDetail = payoutDetail({ payoutStatus: "FAILED" });
     apiDetail.history = [
@@ -164,8 +189,11 @@ describe("Payout route model", () => {
         providerStatus: null,
         actorUserId: null,
         actorAdminId: "admin-1",
+        admin: { firstName: "Ari", lastName: "Admin" },
         source: "ADMIN_APPROVAL",
         reason: "PAYOUT_POLICY_REVIEW",
+        reasonCode: "PAYOUT_DESTINATION_VERIFIED",
+        decisionReasonText: null,
         occurredAt: "2026-09-14T01:05:00.000Z",
       },
       {
@@ -175,8 +203,11 @@ describe("Payout route model", () => {
         providerStatus: null,
         actorUserId: null,
         actorAdminId: null,
+        admin: null,
         source: "PROVIDER_CALLBACK",
         reason: null,
+        reasonCode: null,
+        decisionReasonText: null,
         occurredAt: "2026-09-14T01:10:00.000Z",
       },
     ];

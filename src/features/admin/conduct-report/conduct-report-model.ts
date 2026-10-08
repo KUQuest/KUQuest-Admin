@@ -71,12 +71,15 @@ export type ConductReportModel = {
   title: string;
   reason: string;
   reasonCode: string | null;
+  decisionReasonCode: string | null;
+  decisionAdminName: string | null;
   questId: string | null;
   questDisplayId: string | null;
   questTitle: string;
   questHref: string | null;
   questState: QuestState | null;
   questFailedAt: string | null;
+  questFailedAtWasReturned: boolean;
   questRecord: string | null;
   assignment: ConductReportAssignment | null;
   proofSubmission: ConductReportProofSubmission | null;
@@ -290,6 +293,9 @@ export function conductReportModelFromRecord(value: unknown): ConductReportModel
   );
   const reason = conductReportReasonLabel(reasonValue);
   const quest = asRecord(record.quest) ?? asRecord(record.relatedQuest);
+  const questFailedAtWasReturned = Boolean(quest && Object.hasOwn(quest, "failedAt"))
+    || Object.hasOwn(record, "failedAt")
+    || Object.hasOwn(record, "questFailedAt");
   const questId = firstText(record.questId, record.relatedQuestId, quest?.id);
   const questDisplayId = displayAdminId(record.questDisplayId, quest?.displayId, questId);
   const questTitle = firstText(
@@ -301,11 +307,15 @@ export function conductReportModelFromRecord(value: unknown): ConductReportModel
   const questStateValue = firstText(record.questState, record.questStatus, quest?.questState, quest?.questStatus);
   const questState = questStateValue ? questStateFor(questStateValue) : null;
   const questFailedAt = firstText(record.failedAt, record.questFailedAt, quest?.failedAt);
+  const decision = asRecord(record.decision);
+  const decisionAdmin = asRecord(decision?.admin);
+  const decisionReasonCode = firstText(decision?.reason, record.decisionReasonCode);
+  const decisionAdminName = personName(decisionAdmin);
   const decisionLabel = firstText(
     record.decisionLabel,
     status === "CONDUCT_REPORT_UPHELD" ? "Violation confirmed" : null,
     status === "CONDUCT_REPORT_DISMISSED"
-      && record.decisionReasonCode === "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE"
+      && decisionReasonCode === "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE"
       ? "Insufficient evidence"
       : null,
     status === "CONDUCT_REPORT_DISMISSED" ? "No violation" : null,
@@ -320,13 +330,16 @@ export function conductReportModelFromRecord(value: unknown): ConductReportModel
     isActionable: isConductReportActionable(status),
     title: reason,
     reason,
-    reasonCode: firstText(record.reasonCode, record.conductReportReason),
+    reasonCode: firstText(record.reasonCode, record.conductReportReason, record.reason),
+    decisionReasonCode,
+    decisionAdminName,
     questId,
     questDisplayId,
     questTitle,
     questHref: questId ? questRoutes.detail(questId) : null,
     questState,
     questFailedAt,
+    questFailedAtWasReturned,
     questRecord: firstText(record.questRecord, record.questRecordSummary, record.questEvidence),
     assignment: assignmentRecord
       ? {
@@ -365,10 +378,10 @@ export function conductReportModelFromRecord(value: unknown): ConductReportModel
       ?? "No Conduct Report detail was provided.",
     submittedAt: formatAdminTimestamp(firstText(record.reportedAt, record.submittedAt, record.createdAt) ?? "Time not provided"),
     decisionLabel,
-    decisionReason: firstText(record.decisionReason),
+    decisionReason: firstText(decision?.decisionReasonText, record.decisionReasonText),
     resolution: firstText(record.resolution),
-    resolvedBy: firstText(record.resolvedBy, record.resolvedByAdminId),
-    resolutionAt: firstText(record.resolutionAt, record.resolvedAt),
+    resolvedBy: firstText(decisionAdminName, record.resolvedBy, record.resolvedByAdminId),
+    resolutionAt: firstText(decision?.resolvedAt, record.resolutionAt, record.resolvedAt),
     closedAt: firstText(record.closedAt),
     version: typeof record.version === "number" ? record.version : undefined,
   };

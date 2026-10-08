@@ -4,6 +4,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteD
 import { adminApiProvider } from "../api/admin-provider";
 import type { AdminEvidence, ReportCaseDecision } from "../api/admin-api";
 import { replaceInfiniteItem } from "../data/query-data";
+import { adminDecisionActivityQueryKey } from "../activity-log/activity-log-query";
 import { loadReportCasePageData, type ReportCasePageData } from "./report-service";
 import { REPORT_CASE_UPDATED_EVENT, reportCaseModelFromRecord, type ReportCaseCommand, type ReportCaseModel } from "./report-model";
 
@@ -41,11 +42,12 @@ export function useReportDecisionMutation() {
         version: result.resourceVersion,
       };
     },
-    onSuccess: (record, { reportId }) => {
+    onSuccess: async (record, { reportId }) => {
       const model = reportCaseModelFromRecord(record);
       if (!model || model.id !== reportId) return;
       queryClient.setQueryData(reportDetailQueryKey(reportId), model);
       queryClient.setQueryData<InfiniteData<ReportCasePageData, string | null>>(reportBoardQueryKey, (current) => replaceInfiniteItem(current, model));
+      await queryClient.invalidateQueries({ queryKey: adminDecisionActivityQueryKey("report_case", reportId) });
     },
   });
 }
@@ -99,9 +101,9 @@ export function useReportDetailQuery(reportId: string, initialModel?: ReportCase
       return model;
     },
     initialData: initialModel ?? undefined,
-    staleTime: initialModel ? Infinity : 0,
+    staleTime: 0,
     gcTime: Infinity,
-    refetchOnMount: !initialModel,
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
   });
 

@@ -32,6 +32,7 @@ import { type AdminEvidence, type ReportCaseDecision } from "../api/admin-api";
 import { reportRoutes } from "../admin-routes";
 import { displayAdminId } from "../display-admin-id";
 import { ModerationCaseWorkspace, ModerationHistoryPanel } from "../moderation-case/moderation-case-workspace";
+import { AdminDecisionActivitySection } from "../activity-log/admin-decision-activity-section";
 import { newReportCaseIdempotencyKey } from "./report-service";
 import { ReportDecisionDialog } from "./report-decision-dialog";
 import {
@@ -57,6 +58,12 @@ type EvidenceState = {
   error: string | null;
   loading: boolean;
 };
+
+const REPORT_CASE_DECISION_ACTIVITY_ACTIONS = [
+  "REPORT_CASE_DISMISS",
+  "REPORT_CASE_HIDE",
+  "REPORT_CASE_RESTORE",
+] as const;
 
 function evidenceContext(value: unknown, translateText: (value: string) => string): string {
   if (value === null || value === undefined || value === "") {
@@ -289,7 +296,6 @@ function ResolutionDetails({ model, translateText }: { model: ReportCaseModel; t
   ] as const;
   return (
     <>
-      {model.decisionReason && <div className={adminRecordGroup}><span>{translateText("Reason for decision")}</span><p>{model.decisionReason}</p></div>}
       {details.some(([, value]) => value) && (
         <AdminOverviewMeta className="report-resolution-meta">
           {details.flatMap(([label, value]) => value ? [<div key={label}><dt>{translateText(label)}</dt><dd>{value}</dd></div>] : [])}
@@ -312,7 +318,7 @@ function ReportTimeline({ model, translateText }: { model: ReportCaseModel; tran
       ]
       : [
         { title: "Report submitted", time: formatAdminTimestamp(model.submittedAt), detail: `${model.reporterName} reported ${model.reportedMemberName}` },
-        { title: "Report Case decision recorded", time: model.resolutionAt || model.closedAt ? formatAdminTimestamp(model.resolutionAt ?? model.closedAt) : translateText("Time not provided"), detail: model.decisionReason ?? model.decisionLabel ?? translateText("Record retained for audit.") },
+        { title: "Report Case decision recorded", time: model.resolutionAt || model.closedAt ? formatAdminTimestamp(model.resolutionAt ?? model.closedAt) : translateText("Time not provided"), detail: model.decisionLabel ?? translateText("Record retained for audit.") },
       ];
 
   return (
@@ -418,6 +424,7 @@ function ReportCaseSections({
 
           <EvidenceSection model={model} translateText={translateText} onOpen={onOpenEvidence} />
           <ReportTimeline model={model} translateText={translateText} />
+          {model.status !== "REPORT_CASE_PENDING" ? <AdminDecisionActivitySection resourceType="report_case" resourceId={model.id} actions={REPORT_CASE_DECISION_ACTIVITY_ACTIONS} /> : null}
         </>}
         side={<>
           <MemberSummaryPanel heading="Reported Member" id={model.reportedMemberId} displayId={model.reportedMemberDisplayId} name={model.reportedMemberName} href={model.reportedMemberHref} translateText={translateText} />
@@ -481,6 +488,7 @@ function DrawerSections({
         <ReportOverview model={model} translateText={translateText} compact />
         <EvidenceSection model={model} translateText={translateText} onOpen={onOpenEvidence} compact />
         <RelatedQuestPanel model={model} translateText={translateText} />
+        {model.status !== "REPORT_CASE_PENDING" ? <AdminDecisionActivitySection resourceType="report_case" resourceId={model.id} actions={REPORT_CASE_DECISION_ACTIVITY_ACTIONS} /> : null}
 
         <ModerationHistoryPanel
           summary={model.moderationHistory}

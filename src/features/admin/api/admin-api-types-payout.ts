@@ -42,9 +42,11 @@ export type AdminPayoutHistoryEntry = {
   providerStatus: string | null;
   actorUserId: string | null;
   actorAdminId: string | null;
+  admin: { firstName: string; lastName: string } | null;
   source: string;
   reason: string | null;
-  reasonCode?: string | null;
+  reasonCode: string | null;
+  decisionReasonText: string | null;
   occurredAt: string;
 };
 
@@ -165,6 +167,16 @@ export type AdminTopUpListItem = {
   expiresAt: string;
   paidAt: string | null;
   createdAt: string;
+};
+
+export type AdminTopUpStatusHistoryEntry = {
+  id: string;
+  fromStatus: AdminApiTopUpStatus | null;
+  toStatus: AdminApiTopUpStatus;
+  providerStatus: string | null;
+  source: string;
+  reason: string | null;
+  occurredAt: string;
 };
 
 export type AdminTopUpDetail = {

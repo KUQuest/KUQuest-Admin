@@ -6,6 +6,10 @@ import type { FinancePageData, TopUpPageData } from "./finance-service";
 export const financePolicyQueryKey = ["admin", "finance", "money-policy"] as const;
 export const financeTopUpQueryKey = ["admin", "finance", "top-ups"] as const;
 
+export function financeTopUpStatusHistoryQueryKey(topUpId: string) {
+  return [...financeTopUpQueryKey, "status-history", topUpId] as const;
+}
+
 export function useFinancePolicyQuery(initialData: FinancePageData) {
   return useQuery({
     queryKey: financePolicyQueryKey,
@@ -45,6 +49,17 @@ export function useFinanceTopUpQuery(initialData: TopUpPageData) {
     refetchOnWindowFocus: false,
     retry: false,
     getNextPageParam: (page) => page.nextCursor ?? undefined,
+  });
+}
+
+export function useFinanceTopUpStatusHistoryQuery(topUpId: string) {
+  return useQuery({
+    queryKey: financeTopUpStatusHistoryQueryKey(topUpId),
+    queryFn: () => adminApiProvider.read.getTopUpStatusHistory(topUpId),
+    enabled: Boolean(topUpId),
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+    retry: false,
   });
 }
 

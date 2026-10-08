@@ -58,15 +58,18 @@ export type DisputeCaseModel = {
   questHref: string | null;
   questState: QuestState;
   questFailedAt: string | null;
+  questFailedAtWasReturned: boolean;
   moneyHoldDeadline: string | null;
   category: string;
   detail: string;
   filerId: string | null;
+  filerDisplayId: string | null;
   filerRole: string;
   filerName: string;
   filerHref: string | null;
   filerStatement: string;
   respondentId: string | null;
+  respondentDisplayId: string | null;
   respondentRole: string;
   respondentName: string;
   respondentHref: string | null;
@@ -78,6 +81,7 @@ export type DisputeCaseModel = {
   resolvedAmountSatang: number | null;
   resolvedAmountLabel: string | null;
   workerId: string | null;
+  workerDisplayId: string | null;
   workerName: string;
   workerHref: string | null;
   moderationHistory: ModerationHistorySummary;
@@ -85,6 +89,10 @@ export type DisputeCaseModel = {
   submittedAt: string;
   updatedAt: string | null;
   decisionLabel: string | null;
+  decisionReasonCode: string | null;
+  decisionReasonText: string | null;
+  decisionReasonCodeWasReturned: boolean;
+  decisionReasonTextWasReturned: boolean;
   decisionReason: string | null;
   resolution: string | null;
   resolvedBy: string | null;
@@ -143,6 +151,16 @@ function disputeDecisionLabel(value: unknown): string | null {
       return "Resolved";
     default:
       return text(value);
+  }
+}
+
+function disputeCategoryLabel(value: unknown): string | null {
+  switch (value) {
+    case "PROOF_REVIEW": return "Proof review";
+    case "QUEST_CONDITION": return "Quest Condition";
+    case "PARTIAL_WORK": return "Partial work";
+    case "OTHER": return "Other";
+    default: return firstReadableText(value);
   }
 }
 
@@ -265,10 +283,29 @@ export function disputeCaseModelFromRecord(
   const questTitle = firstReadableText(record.questTitle, quest?.title, record.title) ?? missingValue;
   const questDisplayId = displayAdminId(record.questDisplayId, quest?.displayId, questId);
   const questState = questStateFor(record.questState ?? quest?.questStatus);
+  const questFailedAtWasReturned = Boolean(quest && Object.hasOwn(quest, "failedAt"))
+    || Object.hasOwn(record, "failedAt")
+    || Object.hasOwn(record, "questFailedAt");
+  const questFailedAt = firstText(record.failedAt, record.questFailedAt, quest?.failedAt);
   const filerId = firstText(record.filerUserId, record.filerId);
   const respondentId = firstText(record.respondentUserId, record.respondentId);
+  const questHirerId = firstText(quest?.hirerId, record.hirerId);
+  const questHirerDisplayId = displayAdminId(
+    quest?.hirerDisplayId,
+    asRecord(quest?.hirer)?.displayId,
+  );
   const filerRole = firstText(record.filerRole) ?? "Hirer";
   const respondentRole = firstText(record.respondentRole) ?? "Worker";
+  const filerDisplayId = displayAdminId(
+    record.filerDisplayId,
+    asRecord(record.filer)?.displayId,
+    filerId && filerId === questHirerId ? questHirerDisplayId : null,
+  );
+  const respondentDisplayId = displayAdminId(
+    record.respondentDisplayId,
+    asRecord(record.respondent)?.displayId,
+    respondentId && respondentId === questHirerId ? questHirerDisplayId : null,
+  );
   const workerId = firstText(
     record.resolvedWorkerId,
     record.workerId,
@@ -287,6 +324,7 @@ export function disputeCaseModelFromRecord(
     respondentId ? "Member" : null,
   ) ?? missingValue;
   const workerName = roleIs(filerRole, "Worker") ? filerName : respondentName;
+  const workerDisplayId = roleIs(filerRole, "Worker") ? filerDisplayId : respondentDisplayId;
   const amountAtRiskSatang = positiveInteger(record.amountAtRiskSatang)
     ?? null;
   const sharedCapSatang = positiveInteger(record.remainingDisputeCapSatang)
@@ -313,7 +351,25 @@ export function disputeCaseModelFromRecord(
     record.createdAt,
     missingValue,
   );
-  const questFailedAt = firstText(record.failedAt, quest?.failedAt);
+  const decision = asRecord(record.decision);
+  const decisionReasonCode = firstText(decision?.reasonCode, record.decisionReasonCode);
+  const decisionReasonText = firstText(decision?.decisionReasonText, record.decisionReasonText);
+  const decisionReasonCodeWasReturned = Boolean(decision && Object.hasOwn(decision, "reasonCode"))
+    || Object.hasOwn(record, "decisionReasonCode");
+  const decisionReasonTextWasReturned = Boolean(decision && Object.hasOwn(decision, "decisionReasonText"))
+    || Object.hasOwn(record, "decisionReasonText");
+  const category = Object.hasOwn(record, "category")
+    ? disputeCategoryLabel(record.category) ?? "No category was recorded."
+    : disputeCategoryLabel(record.disputeType) ?? missingValue;
+  const detail = Object.hasOwn(record, "submittedDetail")
+    ? firstText(record.submittedDetail) ?? "No submitted detail was recorded."
+    : firstText(record.detail, record.details, record.description) ?? missingValue;
+  const filerStatement = Object.hasOwn(record, "filerStatement")
+    ? firstText(record.filerStatement) ?? "No filer statement was submitted."
+    : firstText(record.claim) ?? missingValue;
+  const respondentStatement = Object.hasOwn(record, "respondentStatement")
+    ? firstText(record.respondentStatement) ?? "No respondent statement was submitted."
+    : firstText(record.response) ?? missingValue;
 
   return {
     id,
@@ -329,22 +385,22 @@ export function disputeCaseModelFromRecord(
     questHref: questId ? questRoutes.detail(questId) : null,
     questState,
     questFailedAt,
+    questFailedAtWasReturned,
     moneyHoldDeadline: sevenDayHoldDeadline(questFailedAt, missingValue),
-    category: firstText(record.category, record.disputeType) ?? missingValue,
-    detail: firstText(record.detail, record.details, record.description)
-      ?? missingValue,
+    category,
+    detail,
     filerId,
+    filerDisplayId,
     filerRole,
     filerName,
     filerHref: filerId ? memberRoutes.detail(filerId) : null,
-    filerStatement: firstText(record.filerStatement, record.claim)
-      ?? missingValue,
+    filerStatement,
     respondentId,
+    respondentDisplayId,
     respondentRole,
     respondentName,
     respondentHref: respondentId ? memberRoutes.detail(respondentId) : null,
-    respondentStatement: firstText(record.respondentStatement, record.response)
-      ?? missingValue,
+    respondentStatement,
     amountAtRiskSatang,
     amountAtRiskLabel: formatSatang(amountAtRiskSatang, missingValue),
     sharedCapSatang,
@@ -352,6 +408,7 @@ export function disputeCaseModelFromRecord(
     resolvedAmountSatang,
     resolvedAmountLabel: resolvedAmountSatang === null ? null : formatSatang(resolvedAmountSatang, missingValue),
     workerId,
+    workerDisplayId,
     workerName,
     workerHref: workerId ? memberRoutes.detail(workerId) : null,
     moderationHistory: moderationHistoryFromRecord(record),
@@ -359,7 +416,11 @@ export function disputeCaseModelFromRecord(
     submittedAt,
     updatedAt: firstText(record.updatedAt) ? formatDate(record.updatedAt, missingValue) : null,
     decisionLabel,
-    decisionReason: firstText(record.decisionReason, record.reason),
+    decisionReasonCode,
+    decisionReasonText,
+    decisionReasonCodeWasReturned,
+    decisionReasonTextWasReturned,
+    decisionReason: decisionReasonText,
     resolution: firstText(record.resolution),
     resolvedBy: firstReadableText(record.resolvedBy, personName(record.resolvedBy)),
     resolutionAt: firstText(record.resolutionAt, record.resolvedAt)

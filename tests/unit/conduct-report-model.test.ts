@@ -189,6 +189,39 @@ describe("Conduct Report model", () => {
     expect(model?.questHref).toBe("/quest/0d000000-0000-4000-8000-000000000001");
   });
 
+  it("keeps the filed reason separate from the Admin-selected uphold reason", () => {
+    const model = conductReportModelFromRecord({
+      id: "0a000000-0000-4000-8000-000000000052",
+      displayId: "CND-000052",
+      status: "CONDUCT_REPORT_UPHELD",
+      reason: "CONDUCT_NO_SHOW",
+      decision: {
+        reason: "CONDUCT_REPORT_PROOF_RECORD_CONFIRMS_VIOLATION",
+        decisionReasonText: "The Proof Submission confirms the reported conduct.",
+        resolvedAt: "2026-10-08T08:30:00.000Z",
+        admin: { firstName: "Mali", lastName: "Admin" },
+      },
+      quest: {
+        id: "0d000000-0000-4000-8000-000000000052",
+        displayId: "QST-000052",
+        title: "Review campus map labels",
+        questStatus: "QUEST_FAILED",
+        failedAt: null,
+      },
+    });
+
+    expect(model).toMatchObject({
+      reason: "No show",
+      reasonCode: "CONDUCT_NO_SHOW",
+      decisionReasonCode: "CONDUCT_REPORT_PROOF_RECORD_CONFIRMS_VIOLATION",
+      decisionReason: "The Proof Submission confirms the reported conduct.",
+      decisionAdminName: "Mali Admin",
+      resolutionAt: "2026-10-08T08:30:00.000Z",
+      questFailedAt: null,
+      questFailedAtWasReturned: true,
+    });
+  });
+
   it("does not show UUIDs as Member names when the API omits names", () => {
     const model = conductReportModelFromRecord({
       id: "0a000000-0000-4000-8000-000000000001",

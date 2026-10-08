@@ -4,7 +4,6 @@ export type ModerationHistorySummary = {
   previousReportCount: number | null;
   confirmedViolationCount: number | null;
   previousActions: string[];
-  adminNotes: string[];
 };
 
 export type ModerationCaseRelatedRecord = {
@@ -15,6 +14,36 @@ export type ModerationCaseRelatedRecord = {
   state?: string | null;
 };
 
+const moderationActionLabels: Record<string, string> = {
+  REPORT_CASE_DISMISS: "Report Case dismissed",
+  REPORT_CASE_HIDE: "Message hidden",
+  REPORT_CASE_RESTORE: "Message restored",
+  CONDUCT_REPORT_DISMISS: "Conduct Report dismissed",
+  CONDUCT_REPORT_UPHOLD: "Conduct Report upheld",
+};
+
+const moderationMemberStatusLabels: Record<string, string> = {
+  NORMAL: "Normal",
+  RED_FLAG: "Flag",
+  TEMPORARY_BAN: "Temp Ban",
+  PERMANENT_BAN: "Perm Ban",
+};
+
+export function moderationMemberStatusLabel(status: string | null): string | null {
+  return status ? moderationMemberStatusLabels[status] ?? null : null;
+}
+
+export function moderationActionLabel(action: string): string {
+  const label = moderationActionLabels[action];
+  if (label) return label;
+
+  if (!/^[A-Z0-9]+(?:_[A-Z0-9]+)+$/.test(action)) return action;
+  return action
+    .split("_")
+    .map((word) => `${word[0]}${word.slice(1).toLowerCase()}`)
+    .join(" ");
+}
+
 export function emptyModerationHistory(): ModerationHistorySummary {
   return {
     memberRecordAvailable: false,
@@ -22,7 +51,6 @@ export function emptyModerationHistory(): ModerationHistorySummary {
     previousReportCount: null,
     confirmedViolationCount: null,
     previousActions: [],
-    adminNotes: [],
   };
 }
 
@@ -84,7 +112,6 @@ export function moderationHistoryFromRecord(value: unknown): ModerationHistorySu
       record?.confirmedViolationCount ?? record?.confirmedReports,
     ),
     previousActions: stringList(record?.previousModerationActions ?? record?.moderationActions),
-    adminNotes: stringList(record?.adminNotes),
   };
 }
 
@@ -93,7 +120,6 @@ export function hasModerationHistory(summary: ModerationHistorySummary): boolean
     summary.currentMemberStatus
       || summary.previousReportCount !== null
       || summary.confirmedViolationCount !== null
-      || summary.previousActions.length
-      || summary.adminNotes.length,
+      || summary.previousActions.length,
   );
 }

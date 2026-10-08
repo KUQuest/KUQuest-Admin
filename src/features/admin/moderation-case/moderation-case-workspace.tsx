@@ -5,8 +5,13 @@ import type {
   ModerationCaseRelatedRecord,
   ModerationHistorySummary,
 } from "./moderation-case-context";
-import { hasModerationHistory } from "./moderation-case-context";
+import {
+  hasModerationHistory,
+  moderationActionLabel,
+  moderationMemberStatusLabel,
+} from "./moderation-case-context";
 import { questStateLabel } from "../domain/rulebook";
+import { statusBadgeClass } from "../status-badge";
 import { displayAdminId } from "../display-admin-id";
 import { Card, CardHeader } from "../../../components/ui/card";
 import { AdminOverviewMeta } from "../../../components/admin/admin-overview-meta";
@@ -72,24 +77,20 @@ export function ModerationHistoryPanel({
   compact,
   member,
   memberLabel = "Reported Member",
-  showAdminNotes = true,
 }: {
   summary: ModerationHistorySummary;
   translateText: (value: string) => string;
   compact: boolean;
   member?: { id: string | null; displayId?: string | null; name: string; href: string | null } | null;
   memberLabel?: string;
-  showAdminNotes?: boolean;
 }) {
   const fallback = translateText("Not provided.");
   const panelClass = `${adminRecordSection} moderation-case-history`;
   const actionFallback = translateText(summary.memberRecordAvailable ? "None recorded." : "Not provided.");
   const actionText = summary.previousActions.length
-    ? summary.previousActions.map((action) => translateText(action)).join(" · ")
+    ? summary.previousActions.map((action) => translateText(moderationActionLabel(action))).join(" · ")
     : actionFallback;
-  const noteText = summary.adminNotes.length
-    ? summary.adminNotes.join(" · ")
-    : fallback;
+  const memberStatus = moderationMemberStatusLabel(summary.currentMemberStatus);
 
   return (
     <Card as="section" className={panelClass}>
@@ -107,7 +108,7 @@ export function ModerationHistoryPanel({
         </div>
       )}
       <AdminOverviewMeta className="moderation-case-history-grid !grid-cols-2 max-[600px]:!grid-cols-1">
-        <div><dt>{translateText("Current Member status")}</dt><dd>{translateText(displayValue(summary.currentMemberStatus, fallback))}</dd></div>
+        <div><dt>{translateText("Current Member status")}</dt><dd>{memberStatus ? <span className={`badge ${statusBadgeClass(memberStatus)}`}>{translateText(memberStatus)}</span> : fallback}</dd></div>
         <div><dt>{translateText("Previous reports received")}</dt><dd>{displayValue(summary.previousReportCount, fallback)}</dd></div>
         <div><dt>{translateText("Confirmed previous violations")}</dt><dd>{displayValue(summary.confirmedViolationCount, fallback)}</dd></div>
       </AdminOverviewMeta>
@@ -115,10 +116,6 @@ export function ModerationHistoryPanel({
         <span>{translateText("Previous moderation actions")}</span>
         <p>{actionText}</p>
       </div>
-      {showAdminNotes && <div className={adminRecordGroup}>
-        <span>{translateText("Internal Admin notes")}</span>
-        <p>{noteText}</p>
-      </div>}
     </Card>
   );
 }

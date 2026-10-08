@@ -13,8 +13,8 @@ export function disputeDetailQueryKey(disputeId: string) {
   return ["admin", "dispute-cases", "detail", disputeId] as const;
 }
 
-export function disputeEvidenceQueryKey(disputeId: string, reference: string | null) {
-  return ["admin", "dispute-cases", "evidence", disputeId, reference] as const;
+export function disputeEvidenceQueryKey(disputeId: string) {
+  return ["admin", "dispute-cases", "evidence", disputeId] as const;
 }
 
 export type DisputeDecisionMutationInput = {
@@ -34,7 +34,9 @@ export function useDisputeDecisionMutation() {
         ...result.resourceSummary,
         status: command,
         disputeCaseStatus: command,
-        decisionReason: options.decisionReasonText ?? options.reasonCode,
+        decisionReasonCode: options.reasonCode,
+        decisionReasonText: options.decisionReasonText ?? null,
+        decisionReason: options.decisionReasonText ?? null,
         ...(command === "DISPUTE_CASE_RESOLVED"
           ? { resolvedWorkerId: model.workerId, resolvedAmountSatang: options.amountSatang }
           : { resolvedWorkerId: null, resolvedAmountSatang: null }),
@@ -45,9 +47,10 @@ export function useDisputeDecisionMutation() {
       }
       return updatedModel;
     },
-    onSuccess: (model) => {
+    onSuccess: async (model) => {
       queryClient.setQueryData(disputeDetailQueryKey(model.id), model);
       queryClient.setQueryData<InfiniteData<DisputeCasePageData, string | null>>(disputeBoardQueryKey, (current) => replaceInfiniteItem(current, model));
+      await queryClient.invalidateQueries({ queryKey: disputeDetailQueryKey(model.id) });
     },
   });
 }
@@ -103,9 +106,9 @@ export function useDisputeDetailQuery(disputeId: string, initialModel?: DisputeC
       return model;
     },
     initialData: initialModel ?? undefined,
-    staleTime: initialModel ? Infinity : 0,
+    staleTime: 0,
     gcTime: Infinity,
-    refetchOnMount: !initialModel,
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
   });
 
@@ -126,16 +129,15 @@ export function useDisputeDetailQuery(disputeId: string, initialModel?: DisputeC
   return { ...query, data: query.data ?? null, queryKey };
 }
 
-export function useDisputeEvidenceQuery(disputeId: string, reference: string | null) {
+export function useDisputeEvidenceQuery(disputeId: string) {
   return useQuery<AdminDisputeEvidence>({
-    queryKey: disputeEvidenceQueryKey(disputeId, reference),
+    queryKey: disputeEvidenceQueryKey(disputeId),
     queryFn: () => {
-      if (!reference) throw new Error("Evidence Reference was not provided.");
       return adminApiProvider.read.getDisputeEvidence(disputeId, {
-        idempotencyKey: `admin-read-dispute-evidence-${disputeId}-${reference}`,
+        idempotencyKey: `admin-read-dispute-evidence-${disputeId}`,
       });
     },
-    enabled: Boolean(reference),
+    enabled: Boolean(disputeId),
     staleTime: Infinity,
     gcTime: Infinity,
     refetchOnWindowFocus: false,

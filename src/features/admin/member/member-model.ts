@@ -122,6 +122,30 @@ export function memberPenaltyHistoryItemKey(entry: MemberPenaltyHistoryEntry): s
   return `${entry.ladder}:${entry.sequenceNumber}:${entry.result}:${entry.createdAt}`;
 }
 
+const memberPenaltyHistoryLabels: Record<string, string> = {
+  PENALTY_EXEMPT: "Penalty exempted",
+  PENALTY_RED_FLAG: "Red Flag",
+  PENALTY_TEMPORARY_BAN_7_DAYS: "Temporary ban (7 days)",
+  PENALTY_TEMPORARY_BAN_1_MONTH: "Temporary ban (1 month)",
+  PENALTY_PERMANENT_BAN: "Permanent ban",
+  PENALTY_REVERSAL: "Penalty reversal",
+  MISCONDUCT: "Misconduct",
+  REVIEW_AVERAGE: "Review average",
+  REVERSAL_OF: "Reversal of",
+  REVERSED_BY: "Reversed by",
+};
+
+export function memberPenaltyHistoryValueLabel(value: string): string {
+  const normalized = value.trim();
+  const label = memberPenaltyHistoryLabels[normalized];
+  if (label) return label;
+
+  return normalized
+    .replaceAll("_", " ")
+    .toLocaleLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toLocaleUpperCase());
+}
+
 
 export type MemberPenaltyHistorySummary = {
   confirmedMisconductCount: number;

@@ -4,6 +4,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteD
 import { adminApiProvider } from "../api/admin-provider";
 import type { ConductReportDecision } from "../api/admin-api";
 import { replaceInfiniteItem } from "../data/query-data";
+import { adminDecisionActivityQueryKey } from "../activity-log/activity-log-query";
 import { loadConductReportPageData, type ConductReportPageData } from "./conduct-report-service";
 import {
   CONDUCT_REPORT_UPDATED_EVENT,
@@ -51,7 +52,10 @@ export function useConductReportDecisionMutation() {
       if (!model || model.id !== reportId) return;
       queryClient.setQueryData(conductReportDetailQueryKey(reportId), model);
       queryClient.setQueryData<InfiniteData<ConductReportPageData, string | null>>(conductReportBoardQueryKey, (current) => replaceInfiniteItem(current, model));
-      await queryClient.invalidateQueries({ queryKey: conductReportBoardQueryKey, refetchType: "all" });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: conductReportBoardQueryKey, refetchType: "all" }),
+        queryClient.invalidateQueries({ queryKey: adminDecisionActivityQueryKey("conduct_report", reportId) }),
+      ]);
     },
   });
 }
@@ -107,9 +111,9 @@ export function useConductReportDetailQuery(reportId: string, initialModel?: Con
       return model;
     },
     initialData: initialModel ?? undefined,
-    staleTime: initialModel ? Infinity : 0,
+    staleTime: 0,
     gcTime: Infinity,
-    refetchOnMount: !initialModel,
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
   });
 

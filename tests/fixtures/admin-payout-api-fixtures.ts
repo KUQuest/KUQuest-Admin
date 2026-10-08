@@ -37,8 +37,11 @@ export const pendingPayoutApiFixture: AdminPayoutDetail = {
     providerStatus: null,
     actorUserId: "student-pay-9637",
     actorAdminId: null,
+    admin: null,
     source: "PAYOUT_REQUEST",
     reason: null,
+    reasonCode: null,
+    decisionReasonText: null,
     occurredAt: "2026-09-10T03:12:00.000Z",
   }],
 };

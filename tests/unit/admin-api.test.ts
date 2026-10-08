@@ -809,6 +809,7 @@ describe("Admin API boundary", () => {
     await adminApi.reconcilePayout("payout-1");
     await adminApi.retryPayoutProviderEvent("event-1");
     await adminApi.listTopUps({ status: "PENDING", limit: 50, cursor: "top-up-next" });
+    await adminApi.getTopUpStatusHistory("top-up-1");
     await adminApi.reconcileTopUp("top-up-1");
     await adminApi.retryTopUpProviderEvent("top-up-event-1");
     await adminApi.listReports();
@@ -852,6 +853,7 @@ describe("Admin API boundary", () => {
       "/api/v1/admin/payouts/payout-1/reconcile",
       "/api/v1/admin/payouts/events/event-1/retry",
       "/api/v1/admin/top-ups",
+      "/api/v1/admin/top-ups/top-up-1/status-history",
       "/api/v1/admin/top-ups/top-up-1/reconcile",
       "/api/v1/admin/top-ups/events/top-up-event-1/retry",
       "/api/v1/admin/reports",

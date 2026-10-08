@@ -102,6 +102,101 @@ describe("Dispute Case model", () => {
     expect(model?.amountAtRiskLabel).toBe("Not provided by the Admin API.");
   });
 
+  it("maps Dispute Case submission fields, Display IDs, and Admin decision readback", () => {
+    const model = disputeCaseModelFromRecord({
+      id: "dispute-45",
+      displayId: "DSP-000045",
+      status: "DISPUTE_CASE_RESOLVED",
+      questId: "quest-45",
+      filerUserId: "member-filer",
+      filerDisplayId: "MEM-000045",
+      respondentUserId: "member-respondent",
+      respondentDisplayId: "MEM-000046",
+      category: "PARTIAL_WORK",
+      submittedDetail: "The Worker completed part of the task.",
+      filerStatement: "The submitted Proof shows partial completion.",
+      respondentStatement: null,
+      decision: {
+        reasonCode: "DISPUTE_PARTIAL_WORK_EARNED_REWARD",
+        decisionReasonText: "The Admin confirmed a partial reward.",
+      },
+      quest: {
+        id: "quest-45",
+        displayId: "QST-000045",
+        title: "Collect field readings",
+        questStatus: "QUEST_FAILED",
+        failedAt: null,
+      },
+      createdAt: "2026-10-08T08:00:00.000Z",
+    });
+
+    expect(model).toMatchObject({
+      category: "Partial work",
+      detail: "The Worker completed part of the task.",
+      filerDisplayId: "MEM-000045",
+      respondentDisplayId: "MEM-000046",
+      filerStatement: "The submitted Proof shows partial completion.",
+      respondentStatement: "No respondent statement was submitted.",
+      decisionReasonCode: "DISPUTE_PARTIAL_WORK_EARNED_REWARD",
+      decisionReasonText: "The Admin confirmed a partial reward.",
+      decisionReasonCodeWasReturned: true,
+      decisionReasonTextWasReturned: true,
+      questFailedAt: null,
+      questFailedAtWasReturned: true,
+    });
+  });
+
+  it("keeps a missing failedAt field separate from a returned null", () => {
+    const model = disputeCaseModelFromRecord({
+      id: "dispute-46",
+      status: "DISPUTE_CASE_PENDING",
+      questId: "quest-46",
+      quest: { id: "quest-46", questStatus: "QUEST_FAILED" },
+    });
+
+    expect(model?.questFailedAt).toBeNull();
+    expect(model?.questFailedAtWasReturned).toBe(false);
+  });
+
+  it("keeps returned null Dispute fields separate from absent fields", () => {
+    const returnedNull = disputeCaseModelFromRecord({
+      id: "dispute-47",
+      status: "DISPUTE_CASE_DISMISSED",
+      questId: "quest-47",
+      category: null,
+      submittedDetail: null,
+      filerStatement: null,
+      respondentStatement: null,
+      decision: { reasonCode: null, decisionReasonText: null },
+      quest: { id: "quest-47", questStatus: "QUEST_FAILED", failedAt: null },
+    });
+    const absent = disputeCaseModelFromRecord({
+      id: "dispute-48",
+      status: "DISPUTE_CASE_PENDING",
+      questId: "quest-48",
+      quest: { id: "quest-48", questStatus: "QUEST_FAILED" },
+    });
+
+    expect(returnedNull).toMatchObject({
+      category: "No category was recorded.",
+      detail: "No submitted detail was recorded.",
+      filerStatement: "No filer statement was submitted.",
+      respondentStatement: "No respondent statement was submitted.",
+      decisionReasonCodeWasReturned: true,
+      decisionReasonTextWasReturned: true,
+      questFailedAtWasReturned: true,
+    });
+    expect(absent).toMatchObject({
+      category: "Not provided by the Admin API.",
+      detail: "Not provided by the Admin API.",
+      filerStatement: "Not provided by the Admin API.",
+      respondentStatement: "Not provided by the Admin API.",
+      decisionReasonCodeWasReturned: false,
+      decisionReasonTextWasReturned: false,
+      questFailedAtWasReturned: false,
+    });
+  });
+
   it("preserves the financial decision command mapping", () => {
     expect(disputeCaseDecisionFor("dismiss")).toBe("DISPUTE_CASE_DISMISSED");
     expect(disputeCaseDecisionFor("resolve")).toBe("DISPUTE_CASE_RESOLVED");

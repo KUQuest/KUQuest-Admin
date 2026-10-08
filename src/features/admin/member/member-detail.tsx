@@ -31,6 +31,7 @@ import {
   memberStatusClass,
   memberStatusText,
   memberPenaltyHistoryItemKey,
+  memberPenaltyHistoryValueLabel,
   memberTabHref,
   walletStatusClass,
   walletStatusText,
@@ -899,16 +900,17 @@ function ReportsTab({ model, translateText }: { model: MemberModel; translateTex
 function MemberModerationTimeline({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
   const items = model.penaltyHistory.items ?? [];
   const state = collectionStateMessage(model.penaltyHistory, "No Moderation history.", "Moderation history is not available.", translateText);
+  const historyLabel = (value: string) => translateText(memberPenaltyHistoryValueLabel(value));
   return (
     <>
       {items.length ? <div className="mt-2 grid gap-0" data-member-moderation-history>
         <p className="audit-note">{translateText("Moderation history provided by the Admin API.")}</p>
         {items.map((entry) => <article className="border-t border-admin-border py-4 first:pt-3.5 last:pb-0" key={memberPenaltyHistoryItemKey(entry)}>
-          <strong className="mb-1.5 block text-[17px] leading-[1.4]">{translateText(entry.result)}</strong>
+          <strong className="mb-1.5 block text-[17px] leading-[1.4]">{historyLabel(entry.result)}</strong>
           <span className="mt-1.5 block text-[15px] leading-[1.45] text-admin-muted">{formatAdminTimestamp(entry.createdAt, "Asia/Bangkok")} · {translateText("by")} {entry.actor.displayName}</span>
-          <span className="mt-1 block text-[15px] leading-[1.45] text-admin-muted">{translateText(entry.ladder)} · {translateText(entry.source)}{entry.sourceDisplayId ? ` · ${entry.sourceDisplayId}` : ""} · {translateText("Sequence")} {entry.sequenceNumber}</span>
-          <span className="mt-1 block text-[15px] leading-[1.45] text-admin-muted">{translateText(entry.reasonCode)}{entry.reviewRating === null ? "" : ` · ${translateText("Rating")} ${entry.reviewRating}`}</span>
-          {entry.reversal ? <span className="mt-1 block text-[15px] leading-[1.45] text-admin-muted">{translateText(entry.reversal.relation)} · {translateText("Sequence")} {entry.reversal.sequenceNumber} · {formatAdminTimestamp(entry.reversal.createdAt, "Asia/Bangkok")}</span> : null}
+          <span className="mt-1 block text-[15px] leading-[1.45] text-admin-muted">{historyLabel(entry.ladder)} · {historyLabel(entry.source)}{entry.sourceDisplayId ? ` · ${entry.sourceDisplayId}` : ""} · {translateText("Sequence")} {entry.sequenceNumber}</span>
+          <span className="mt-1 block text-[15px] leading-[1.45] text-admin-muted">{historyLabel(entry.reasonCode)}{entry.reviewRating === null ? "" : ` · ${translateText("Rating")} ${entry.reviewRating}`}</span>
+          {entry.reversal ? <span className="mt-1 block text-[15px] leading-[1.45] text-admin-muted">{historyLabel(entry.reversal.relation)} · {translateText("Sequence")} {entry.reversal.sequenceNumber} · {formatAdminTimestamp(entry.reversal.createdAt, "Asia/Bangkok")}</span> : null}
         </article>)}
       </div> : null}
       {state ? <p className="audit-note" role={model.penaltyHistory.error ? "alert" : undefined}>{state}</p> : null}
@@ -983,7 +985,7 @@ function DrawerContent({ model, translateText }: { model: MemberModel; translate
       </Card>
       <Card as="section" className={adminRecordSection}>
         <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Account")}</h2></CardHeader>
-        <div className="user-context-list grid gap-3">
+        <div className="user-context-list grid grid-cols-2 gap-3 max-[600px]:grid-cols-1">
           <div className="grid min-w-0 gap-1"><span className="text-[15px] text-admin-muted">{translateText("Student ID")}</span><strong className="break-words text-[17px]">{model.studentId || "—"}</strong></div>
           <div className="grid min-w-0 gap-1"><span className="text-[15px] text-admin-muted">{translateText("Member ID")}</span><strong className="break-words text-[17px]">{model.displayId || "—"}</strong></div>
           <div className="grid min-w-0 gap-1"><span className="text-[15px] text-admin-muted">{translateText("Created")}</span><strong className="break-words text-[17px]">{model.createdAt}</strong></div>
@@ -991,7 +993,7 @@ function DrawerContent({ model, translateText }: { model: MemberModel; translate
       </Card>
       <Card as="section" className={adminRecordSection}>
         <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Wallet")}</h2></CardHeader>
-        <div className="user-context-list grid gap-3">
+        <div className="user-context-list grid grid-cols-2 gap-3 max-[600px]:grid-cols-1">
           <div className="grid min-w-0 gap-1"><span className="text-[15px] text-admin-muted">{translateText("Wallet Status")}</span><strong className="break-words text-[17px]">{walletBadge(model, translateText)}</strong></div>
           <div className="grid min-w-0 gap-1"><span className="text-[15px] text-admin-muted">{translateText("Current Wallet Balance")}</span><strong className="break-words text-[17px]">{walletBalanceText(model, translateText, balances ? currentWalletBalance(balances) : undefined)}</strong></div>
           {(["spendingBalanceSatang", "earningsBalanceSatang", "fundingReservedSatang", "reservedForPayoutsSatang"] as const).map((field, index) => {
@@ -1004,7 +1006,7 @@ function DrawerContent({ model, translateText }: { model: MemberModel; translate
       </Card>
       <Card as="section" className={adminRecordSection}>
         <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Moderation")}</h2></CardHeader>
-        <div className="user-context-list grid gap-3">
+        <div className="user-context-list grid grid-cols-2 gap-3 max-[600px]:grid-cols-1">
           <div className="grid min-w-0 gap-1"><span className="text-[15px] text-admin-muted">{translateText("Member Status")}</span><strong className="break-words text-[17px]">{statusBadge(model, translateText)}</strong></div>
           <div className="grid min-w-0 gap-1"><span className="text-[15px] text-admin-muted">{translateText("Confirmed violations")}</span><strong className="break-words text-[17px]">{penaltySummary?.confirmedMisconductCount ?? translateText("Confirmed violation count is not available.")}</strong></div>
         </div>
@@ -1016,7 +1018,7 @@ function DrawerContent({ model, translateText }: { model: MemberModel; translate
       </Card>
       <Card as="section" className={adminRecordSection}>
         <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Activity summary")}</h2></CardHeader>
-        <div className="user-activity-list grid gap-3">
+        <div className="user-activity-list grid grid-cols-2 gap-3 max-[600px]:grid-cols-1">
           <div className="grid min-w-0 gap-1"><span className="text-[15px] text-admin-muted">{translateText("Completed quests as Worker")}</span><strong className="break-words text-[17px]">{completedQuestCount(model) ?? translateText("Not provided by the Admin API")}</strong></div>
           <div className="grid min-w-0 gap-1"><span className="text-[15px] text-admin-muted">{translateText("Reports received")}</span><strong className="break-words text-[17px]">{reportsReceivedCountLabel(model, translateText)}</strong></div>
         </div>
