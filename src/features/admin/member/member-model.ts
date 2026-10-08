@@ -1,26 +1,29 @@
 import type {
   AdminLedgerTransaction,
+  AdminMemberCertificate,
   AdminMemberDetail,
-  AdminMemberFinance,
+  AdminMemberHistoryItem,
   AdminMemberListItem,
-  AdminPayout,
-  AdminReportCase,
+  AdminMemberPenaltyHistoryItem,
+  AdminMemberPayout,
+  AdminMemberReport,
+  AdminMemberReview,
+  AdminMemberWorkExperience,
 } from "../api/admin-api";
 import { formatAdminTimestamp } from "../date-format";
-import type { AdminReview } from "../data/admin-records";
+import { conductReportReasonLabel } from "../conduct-report/conduct-report-model";
+import { reportReasonLabel } from "../report/report-model";
 import {
-  isConductReportStatus,
   memberStatusFor,
   memberStatusLabel,
-  walletStatusFor,
   walletStatusLabel,
   type MemberStatus,
   type WalletStatus,
 } from "../domain/rulebook";
 import { statusBadgeClass } from "../status-badge";
 import { displayAdminId } from "../display-admin-id";
-import { conductReportRoutes, memberRoutes, reportRoutes } from "../admin-routes";
-import { balancesFromWallet, transactionFromApi } from "./member-wallet-model";
+import { conductReportRoutes, memberRoutes, questRoutes, reportRoutes } from "../admin-routes";
+import { transactionFromApi } from "./member-wallet-model";
 import type {
   MemberWalletBalances,
   MemberWalletTransaction,
@@ -51,15 +54,28 @@ export const MEMBER_TABS = [
 ] as const;
 
 export type MemberTab = (typeof MEMBER_TABS)[number];
+export type MemberCollectionError = {
+  kind: "request" | "contract";
+  message: string;
+};
 
-export type MemberQuestHistoryEntry = {
-  id: string;
-  displayId: string;
-  title: string;
-  status: string;
-  role: "Hirer" | "Worker";
-  amountSatang: number | null;
-  createdAt: string;
+export type MemberCollection<T> = {
+  items: T[] | null;
+  totalCount: number | null;
+  complete: boolean;
+  error: MemberCollectionError | null;
+};
+export type MemberWalletReadState =
+  | { kind: "available"; source: "finance" | "member-detail"; warning: MemberCollectionError | null }
+  | { kind: "absent"; source: "finance" | "member-detail"; warning: MemberCollectionError | null }
+  | { kind: "unavailable" }
+  | { kind: "request-error"; error: MemberCollectionError }
+  | { kind: "contract-error"; error: MemberCollectionError }
+  | { kind: "conflict"; error: MemberCollectionError };
+
+
+
+export type MemberQuestHistoryEntry = AdminMemberHistoryItem & {
   href: string;
 };
 
@@ -69,26 +85,36 @@ export type MemberReportEntry = {
   category: string;
   detail: string;
   reporterId: string | null;
+  reporterDisplayId: string | null;
   reporterName: string;
+  reporterHref: string | null;
+  reportedMemberId: string | null;
+  reportedMemberDisplayId: string | null;
+  reportedMemberName: string | null;
+  reportedMemberHref: string | null;
+  questDisplayId: string | null;
+  questTitle: string | null;
+  questHref: string | null;
   status: string;
   reportedAt: string;
   href: string;
   kind: "Report Case" | "Conduct Report";
 };
 
-export type MemberPenaltyHistoryEntry = {
-  event: string;
-  at: string;
-  by: string;
-  reason?: string;
-  previousStatus?: string;
-  newStatus?: string;
-  outcome?: string;
-  durationDays?: number;
-  expiresAt?: string;
-  caseId?: string;
-  caseType?: "Report Case" | "Conduct Report";
-  caseHref?: string;
+export type MemberPenaltyHistoryEntry = AdminMemberPenaltyHistoryItem;
+export function memberPenaltyHistoryItemKey(entry: MemberPenaltyHistoryEntry): string {
+  return `${entry.ladder}:${entry.sequenceNumber}:${entry.result}:${entry.createdAt}`;
+}
+
+
+export type MemberPenaltyHistorySummary = {
+  confirmedMisconductCount: number;
+  effectiveActiveMisconductPenaltyCount: number;
+  reviewLadderRecordCount: number;
+};
+
+export type MemberPenaltyHistoryCollection = MemberCollection<MemberPenaltyHistoryEntry> & {
+  summary: MemberPenaltyHistorySummary | null;
 };
 
 export type MemberStats = {
@@ -104,8 +130,10 @@ export type MemberStats = {
 export type MemberPayoutEntry = {
   id: string;
   displayId: string | null;
+  memberDisplayId: string | null;
+  memberName: string;
   status: string;
-  amountSatang: number | null;
+  amountSatang: number;
   createdAt: string;
   bankName: string | null;
   maskedDestinationValue: string | null;
@@ -125,31 +153,47 @@ export type MemberModel = {
   department: string | null;
   occupation: string | null;
   bio: string;
-  tags: string[] | null;
+  profileTags: MemberCollection<string>;
+  workExperiences: MemberCollection<AdminMemberWorkExperience>;
+  certificates: MemberCollection<AdminMemberCertificate>;
   createdAt: string;
   lastActiveAt: string;
   memberStatus: MemberStatus | null;
+  walletReadState: MemberWalletReadState;
   walletId: string | null;
   walletStatus: WalletStatus | null;
   walletBalances: MemberWalletBalances | null;
   walletProjectionMatchesLedger: boolean | null;
-  reviews: AdminReview[] | null;
+  reviews: MemberCollection<AdminMemberReview>;
   stats: MemberStats;
-  quests: MemberQuestHistoryEntry[] | null;
-  payouts: MemberPayoutEntry[] | null;
-  payoutsComplete: boolean;
-  payoutsError: string | null;
-  reports: MemberReportEntry[];
-  reportsComplete: boolean;
-  reportsTotalCount: number | null;
-  reportsSubmitted: MemberReportEntry[] | null;
-  penaltyHistory: MemberPenaltyHistoryEntry[] | null;
-  walletStatement: MemberWalletTransaction[];
-  confirmedViolationCount: number | null;
-  apiError: string | null;
-  reportsError: string | null;
-  reportsSubmittedError: string | null;
-  walletStatementError: string | null;
+  questHistory: MemberCollection<MemberQuestHistoryEntry>;
+  payouts: MemberCollection<MemberPayoutEntry>;
+  reportsReceived: MemberCollection<MemberReportEntry>;
+  reportsSubmitted: MemberCollection<MemberReportEntry>;
+  penaltyHistory: MemberPenaltyHistoryCollection;
+  walletStatement: MemberCollection<MemberWalletTransaction>;
+};
+
+export type MemberApiCollections = {
+  profileTags: MemberCollection<string>;
+  workExperiences: MemberCollection<AdminMemberWorkExperience>;
+  certificates: MemberCollection<AdminMemberCertificate>;
+  questHistory: MemberCollection<AdminMemberHistoryItem>;
+  reviews: MemberCollection<AdminMemberReview>;
+  reportsReceived: MemberCollection<AdminMemberReport>;
+  reportsSubmitted: MemberCollection<AdminMemberReport>;
+  payouts: MemberCollection<AdminMemberPayout>;
+  penaltyHistory: MemberPenaltyHistoryCollection;
+};
+
+export type MemberApiReadData = {
+  walletReadState: MemberWalletReadState;
+  walletId: string | null;
+  walletStatus: WalletStatus | null;
+  walletBalances: MemberWalletBalances | null;
+  walletProjectionMatchesLedger: boolean | null;
+  walletStatement: MemberCollection<AdminLedgerTransaction>;
+  collections: MemberApiCollections;
 };
 
 export type MemberPageData = {
@@ -199,48 +243,54 @@ function dateLabel(value: unknown, fallback = "Not recorded"): string {
   return formatAdminTimestamp(raw, "Asia/Bangkok");
 }
 
-function reportReasonLabel(value: unknown): string {
-  switch (value) {
-    case "REPORT_ABUSIVE_OR_HARASSMENT": return "Harassment or abuse";
-    case "REPORT_SPAM": return "Spam";
-    case "REPORT_INAPPROPRIATE_CONTENT": return "Inappropriate content";
-    case "REPORT_DANGER_OR_THREAT": return "Danger or threat";
-    case "REPORT_OTHER": return "Other";
-    case "CONDUCT_ABANDONED": return "Abandonment";
-    case "CONDUCT_OUT_OF_SCOPE": return "Outside agreed Quest scope";
-    case "CONDUCT_NO_SHOW": return "Worker did not attend";
-    default: return text(value, "Report Case");
-  }
-}
 
-function reportFromApi(report: AdminReportCase): MemberReportEntry {
-  const record = report as Record<string, unknown>;
-  const reporterEntries = Array.isArray(record.reporterEntries) ? record.reporterEntries : [];
-  const reporterEntry = reporterEntries[0] && typeof reporterEntries[0] === "object"
-    ? reporterEntries[0] as Record<string, unknown>
+function reportFromApi(report: AdminMemberReport, submittedByMemberId?: string): MemberReportEntry {
+  const reporterEntry = report.kind === "REPORT_CASE"
+    ? submittedByMemberId
+      ? report.reporterEntries.find((entry) => entry.reporterMemberId === submittedByMemberId) ?? null
+      : report.reporterEntries[0] ?? null
     : null;
-  const reporter = record.filer && typeof record.filer === "object"
-    ? record.filer as Record<string, unknown>
-    : reporterEntry?.reporter && typeof reporterEntry.reporter === "object"
-      ? reporterEntry.reporter as Record<string, unknown>
-      : null;
-  const reporterId = nullableText(record.reporterId ?? record.submittedByUserId ?? record.submittedByMemberId ?? reporterEntry?.reporterMemberId ?? reporter?.id);
-  const reportedAt = dateLabel(record.reportedAt ?? record.submittedAt ?? record.createdAt);
-  const status = text(record.status ?? record.reportCaseStatus ?? record.conductReportStatus, "REPORT_CASE_PENDING");
-  const kind = record.kind === "CONDUCT_REPORT" || isConductReportStatus(status) ? "Conduct Report" : "Report Case";
-  const reporterName = [text(reporter?.firstName), text(reporter?.lastName)].filter(Boolean).join(" ");
+  const reporter = report.kind === "CONDUCT_REPORT" ? report.filer : reporterEntry?.reporter ?? null;
+  const reportedMember = report.reportedMember;
+  const reporterId = report.kind === "CONDUCT_REPORT"
+    ? report.filer.id
+    : reporterEntry?.reporterMemberId ?? null;
+  const reporterName = reporter
+    ? [reporter.firstName, reporter.lastName].filter(Boolean).join(" ")
+    : "";
+  const quest = report.quest;
+  const kind = report.kind === "CONDUCT_REPORT" ? "Conduct Report" : "Report Case";
   return {
     id: report.id,
-    displayId: displayAdminId(record.displayId, report.id) ?? "",
-    category: reportReasonLabel(record.category ?? record.reportType ?? record.reasonCode ?? record.reason ?? reporterEntry?.reason),
-    detail: text(record.details ?? record.description ?? record.detail ?? reporterEntry?.detail, "No report detail was provided."),
+    displayId: displayAdminId(report.displayId) ?? "",
+    category: report.kind === "CONDUCT_REPORT"
+      ? conductReportReasonLabel(report.reason)
+      : reportReasonLabel(reporterEntry?.reason) ?? "Report Case",
+    detail: report.kind === "CONDUCT_REPORT"
+      ? report.detail ?? "No report detail was provided."
+      : reporterEntry?.detail ?? "No report detail was provided.",
     reporterId,
-    reporterName: text(record.reporterName ?? record.submittedByMemberName ?? reporterName, reporterId ? "Member" : "Reporter not provided"),
-    status,
-    reportedAt,
-    href: kind === "Conduct Report" ? conductReportRoutes.detail(report.id) : reportRoutes.detail(report.id),
+    reporterDisplayId: displayAdminId(reporter?.displayId),
+    reporterName: reporterName || (reporterId ? "Member" : "Reporter not provided"),
+    reporterHref: reporterId ? memberRoutes.detail(reporterId) : null,
+    reportedMemberId: reportedMember?.id ?? null,
+    reportedMemberDisplayId: displayAdminId(reportedMember?.displayId),
+    reportedMemberName: reportedMember
+      ? [reportedMember.firstName, reportedMember.lastName].filter(Boolean).join(" ") || null
+      : null,
+    reportedMemberHref: reportedMember?.id ? memberRoutes.detail(reportedMember.id) : null,
+    questDisplayId: displayAdminId(quest?.displayId),
+    questTitle: quest?.title ?? null,
+    questHref: quest?.id ? questRoutes.detail(quest.id) : null,
+    status: report.status,
+    reportedAt: dateLabel(report.kind === "REPORT_CASE" ? reporterEntry?.createdAt ?? report.createdAt : report.createdAt),
+    href: report.kind === "CONDUCT_REPORT" ? conductReportRoutes.detail(report.id) : reportRoutes.detail(report.id),
     kind,
   };
+}
+
+function unavailableCollection<T>(): MemberCollection<T> {
+  return { items: null, totalCount: null, complete: false, error: null };
 }
 
 function baseModelFromListItem(
@@ -263,20 +313,18 @@ function baseModelFromListItem(
     department: nullableText(member.department),
     occupation: nullableText(member.occupation),
     bio: "",
-    tags: null,
+    profileTags: unavailableCollection(),
+    workExperiences: unavailableCollection(),
+    certificates: unavailableCollection(),
     createdAt: dateLabel(member.createdAt),
     lastActiveAt: "Not provided by the Admin API",
     memberStatus: member.memberStatus ? memberStatusFor(member.memberStatus) : null,
+    walletReadState: { kind: "unavailable" },
     walletId: wallet?.id ?? null,
     walletStatus: wallet?.walletStatus ?? null,
-    walletBalances: wallet ? {
-      spendingBalanceSatang: wallet.spendingBalanceSatang,
-      earningsBalanceSatang: wallet.earningsBalanceSatang,
-      fundingReservedSatang: 0,
-      reservedForPayoutsSatang: 0,
-    } : null,
+    walletBalances: null,
     walletProjectionMatchesLedger: null,
-    reviews: null,
+    reviews: unavailableCollection(),
     stats: {
       questsCreatedCount: null,
       questsCompletedAsWorkerCount: null,
@@ -286,21 +334,12 @@ function baseModelFromListItem(
       totalEarnedSatang: null,
       totalPaidOutSatang: null,
     },
-    quests: null,
-    payouts: null,
-    payoutsComplete: false,
-    payoutsError: null,
-    reports: [],
-    reportsComplete: false,
-    reportsTotalCount: null,
-    reportsSubmitted: null,
-    penaltyHistory: null,
-    walletStatement: [],
-    confirmedViolationCount: null,
-    apiError: null,
-    reportsError: null,
-    reportsSubmittedError: "Reports submitted are not available.",
-    walletStatementError: null,
+    questHistory: unavailableCollection(),
+    payouts: unavailableCollection(),
+    reportsReceived: unavailableCollection(),
+    reportsSubmitted: unavailableCollection(),
+    penaltyHistory: { ...unavailableCollection(), summary: null },
+    walletStatement: unavailableCollection(),
   };
 }
 
@@ -308,63 +347,61 @@ export function memberListModelFromApi(member: AdminMemberListItem): MemberModel
   return baseModelFromListItem(member);
 }
 
+function mapMemberCollection<TSource, TTarget>(
+  collection: MemberCollection<TSource>,
+  map: (item: TSource) => TTarget,
+): MemberCollection<TTarget> {
+  return {
+    ...collection,
+    items: collection.items === null ? null : collection.items.map(map),
+  };
+}
+
 export function memberModelFromApi(
   detail: AdminMemberDetail,
-  finance: AdminMemberFinance | null = null,
-  reports: readonly AdminReportCase[] = [],
-  ledger: readonly AdminLedgerTransaction[] = [],
-  errors: {
-    finance?: string | null;
-    reports?: string | null;
-    reportsComplete?: boolean;
-    reportsTotalCount?: number | null;
-    ledger?: string | null;
-    payouts?: readonly AdminPayout[];
-    payoutsComplete?: boolean;
-    payoutsError?: string | null;
-  } = {},
+  reads: MemberApiReadData,
 ): MemberModel {
   const member = detail.member;
   const listItem: AdminMemberListItem = {
     ...member,
-    wallet: detail.wallet ? {
-      id: detail.wallet.id,
-      walletStatus: detail.wallet.walletStatus,
-      spendingBalanceSatang: detail.wallet.spendingBalanceSatang,
-      earningsBalanceSatang: detail.wallet.earningsBalanceSatang,
-      totalBalanceSatang: detail.wallet.totalBalanceSatang,
-    } : null,
+    wallet: null,
   };
   const base = baseModelFromListItem(listItem);
-  const wallet = finance?.wallet ?? detail.wallet;
   return {
     ...base,
     bio: member.bio ?? "",
-    walletId: wallet?.id ?? null,
-    walletStatus: wallet ? walletStatusFor(wallet.walletStatus) : null,
-    walletBalances: balancesFromWallet(wallet),
-    walletProjectionMatchesLedger: wallet?.projectionMatchesLedger ?? null,
-    reports: reports.map(reportFromApi),
-    reportsComplete: errors.reportsComplete ?? false,
-    reportsTotalCount: errors.reportsTotalCount ?? null,
-    payouts: errors.payouts
-      ? errors.payouts.map((payout) => ({
-          id: payout.id,
-          displayId: nullableText(payout.displayId),
-          status: payout.payoutStatus,
-          amountSatang: payout.principalSatang,
-          createdAt: dateLabel(payout.createdAt),
-          bankName: nullableText(payout.bankName),
-          maskedDestinationValue: nullableText(payout.maskedDestinationValue),
-        }))
-      : null,
-    payoutsComplete: errors.payoutsComplete ?? false,
-    payoutsError: errors.payoutsError ?? null,
-    walletStatement: ledger.map(transactionFromApi),
+    profileTags: reads.collections.profileTags,
+    workExperiences: reads.collections.workExperiences,
+    certificates: reads.collections.certificates,
+    walletReadState: reads.walletReadState,
+    walletId: reads.walletId,
+    walletStatus: reads.walletStatus,
+    walletBalances: reads.walletBalances,
+    walletProjectionMatchesLedger: reads.walletProjectionMatchesLedger,
+    reviews: reads.collections.reviews,
     stats: memberStatsFromApi(detail.stats),
-    apiError: errors.finance ?? (finance ? null : "Member finance is not available from the Admin API."),
-    reportsError: errors.reports ?? null,
-    walletStatementError: errors.ledger ?? null,
+    questHistory: mapMemberCollection(reads.collections.questHistory, (item) => ({
+      ...item,
+      href: questRoutes.detail(item.quest.id),
+    })),
+    payouts: mapMemberCollection(reads.collections.payouts, (payout) => ({
+      id: payout.id,
+      displayId: displayAdminId(payout.displayId),
+      memberDisplayId: displayAdminId(payout.student.displayId),
+      memberName: [payout.student.firstName, payout.student.lastName].filter(Boolean).join(" ") || "Member",
+      status: payout.payoutStatus,
+      amountSatang: payout.principalSatang,
+      createdAt: dateLabel(payout.createdAt),
+      bankName: nullableText(payout.bankName),
+      maskedDestinationValue: nullableText(payout.maskedDestinationValue),
+    })),
+    reportsReceived: mapMemberCollection(reads.collections.reportsReceived, reportFromApi),
+    reportsSubmitted: mapMemberCollection(
+      reads.collections.reportsSubmitted,
+      (report) => reportFromApi(report, member.id),
+    ),
+    penaltyHistory: reads.collections.penaltyHistory,
+    walletStatement: mapMemberCollection(reads.walletStatement, transactionFromApi),
   };
 }
 
@@ -377,7 +414,15 @@ export function memberStatusClass(model: MemberModel): string {
 }
 
 export function walletStatusText(model: MemberModel): string {
-  return model.walletStatus ? walletStatusLabel(model.walletStatus) : "No Wallet";
+  if (model.walletStatus) return walletStatusLabel(model.walletStatus);
+  switch (model.walletReadState.kind) {
+    case "absent": return "Member นี้ไม่มี Wallet";
+    case "request-error": return "อ่านข้อมูล Wallet ไม่สำเร็จ";
+    case "contract-error": return "ข้อมูล Wallet ไม่ตรงตามสัญญา API";
+    case "conflict": return "ข้อมูล Wallet ขัดแย้งกัน";
+    case "unavailable": return "ยังไม่ยืนยันข้อมูล Wallet";
+    case "available": return "Wallet status is not provided.";
+  }
 }
 
 export function walletStatusClass(model: MemberModel): string {

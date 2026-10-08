@@ -1,188 +1,215 @@
+import { z } from "zod";
+
 import type {
-  AdminApiPayoutStatus,
+  AdminApiRequestOptions,
+  AdminLedgerTransaction,
   AdminMemberListQuery,
-  AdminPayout,
-  AdminReportCase,
-  AdminReportStatusCounts,
-  AdminReportListQuery,
 } from "../api/admin-api";
-import { ADMIN_API_PAYOUT_STATUSES } from "../api/admin-api";
 import { adminApiProvider } from "../api/admin-provider";
 import { adminApiRequestOptions } from "../api/admin-api-request-options";
-import { CONDUCT_REPORT_STATUSES, REPORT_CASE_STATUSES, type ModerationCaseStatus } from "../domain/rulebook";
-import { loadAllWalletLedgerTransactions } from "../wallet/wallet-ledger-pages";
+import { WALLET_STATUSES } from "../domain/rulebook";
+import { loadAllWalletLedgerTransactions, WalletLedgerContractError } from "../wallet/wallet-ledger-pages";
 import {
   memberListModelFromApi,
   memberModelFromApi,
+  type MemberApiCollections,
+  type MemberApiReadData,
+  type MemberCollection,
+  type MemberCollectionError,
   type MemberModel,
   type MemberPageData,
+  type MemberWalletBalances,
+  type MemberWalletReadState,
 } from "./member-model";
+import { loadMemberProfileCollections } from "./member-profile-service";
 
-function reportQuery(memberId: string, status: ModerationCaseStatus, cursor?: string): AdminReportListQuery {
-  return { memberId, status, limit: 50, ...(cursor ? { cursor } : {}) };
-}
-function errorMessage(reason: unknown, fallback: string): string {
-  return reason instanceof Error ? reason.message : fallback;
-}
+const dateTime = z.string().refine((value) => Number.isFinite(Date.parse(value)));
+const memberDisplayId = z.string().regex(/^MEM-[0-9]{6,}$/);
+const memberStatus = z.enum(["NORMAL", "RED_FLAG", "TEMPORARY_BAN", "PERMANENT_BAN"]);
+const walletStatus = z.enum(WALLET_STATUSES);
+const nonnegativeSatang = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 
-function reportMatchesMemberScope(report: AdminReportCase, memberId: string): boolean {
-  const record = report as Record<string, unknown>;
-  const reportedMember = record.reportedMember && typeof record.reportedMember === "object"
-    ? record.reportedMember as Record<string, unknown>
-    : null;
-  const reportedMemberId = record.reportedMemberId ?? record.reportedUserId ?? reportedMember?.id;
-  return reportedMemberId == null || reportedMemberId === memberId;
-}
+const memberDetailCoreSchema = z.object({
+  member: z.object({
+    id: z.string().min(1),
+    displayId: memberDisplayId,
+    email: z.string(),
+    firstName: z.string(),
+    lastName: z.string(),
+    studentId: z.string().nullable(),
+    telephone: z.string().nullable(),
+    bio: z.string().nullable(),
+    academicYear: z.number().int().nullable(),
+    faculty: z.string().nullable(),
+    department: z.string().nullable(),
+    occupation: z.string().nullable(),
+    memberStatus,
+    createdAt: dateTime,
+  }).passthrough(),
+}).passthrough();
 
-function reportCountsMatch(
-  left: AdminReportStatusCounts,
-  right: AdminReportStatusCounts,
-  statuses: readonly ModerationCaseStatus[],
-): boolean {
-  return statuses.every((status) => left[status] === right[status]);
-}
+const walletSnapshotSchema = z.object({
+  id: z.string().min(1),
+  walletStatus,
+  spendingBalanceSatang: nonnegativeSatang,
+  earningsBalanceSatang: nonnegativeSatang,
+  fundingReservedSatang: nonnegativeSatang,
+  reservedForPayoutsSatang: nonnegativeSatang,
+  projectionMatchesLedger: z.boolean(),
+}).passthrough();
 
-type MemberReportsRead = {
-  items: AdminReportCase[];
-  complete: boolean;
-  totalCount: number | null;
-  error: string | null;
-};
-
-type MemberPayoutsRead = {
-  items: AdminPayout[];
-  complete: boolean;
-  error: string | null;
-};
-
-async function loadAllMemberReports(
-  memberId: string,
-  options: ReturnType<typeof adminApiRequestOptions>,
-): Promise<MemberReportsRead> {
-  const statuses: ModerationCaseStatus[] = [...REPORT_CASE_STATUSES, ...CONDUCT_REPORT_STATUSES];
-  const statusResults = await Promise.all(statuses.map(async (status) => {
-    const items: AdminReportCase[] = [];
-    const seenCursors = new Set<string>();
-    let cursor: string | undefined;
-    let totalCount: number | null = null;
-    let countsByStatus: AdminReportStatusCounts | null = null;
-
-    const result = (complete: boolean, error: string | null) => ({
-      items,
-      complete,
-      totalCount,
-      countsByStatus,
-      error,
+const memberDetailWalletSchema = walletSnapshotSchema.extend({
+  totalBalanceSatang: nonnegativeSatang,
+}).superRefine((wallet, context) => {
+  const compartmentTotal = wallet.spendingBalanceSatang
+    + wallet.earningsBalanceSatang
+    + wallet.fundingReservedSatang
+    + wallet.reservedForPayoutsSatang;
+  if (wallet.totalBalanceSatang !== compartmentTotal) {
+    context.addIssue({
+      code: "custom",
+      path: ["totalBalanceSatang"],
+      message: "Wallet total does not equal its four compartments.",
     });
+  }
+});
 
-    try {
-      while (true) {
-        const page = await adminApiProvider.read.listReports(reportQuery(memberId, status, cursor), options);
-        const pageCounts = page?.countsByStatus;
-        const validCounts = pageCounts && statuses.every((itemStatus) =>
-          Number.isSafeInteger(pageCounts[itemStatus]) && pageCounts[itemStatus] >= 0,
-        );
-        if (!page || !Array.isArray(page.items) || !validCounts || !Number.isSafeInteger(page.totalCount) || page.totalCount < 0 || page.totalCount !== pageCounts[status] || (page.nextCursor != null && typeof page.nextCursor !== "string")) {
-          return result(false, "Reports received response is invalid.");
-        }
+const financeWalletResponseSchema = z.object({
+  member: z.object({ userId: z.string().min(1) }).passthrough(),
+  wallet: walletSnapshotSchema.nullable(),
+}).passthrough();
 
-        if (totalCount !== null && (totalCount !== page.totalCount || !countsByStatus || !reportCountsMatch(countsByStatus, pageCounts, statuses))) {
-          return result(false, "Report counts changed while loading.");
-        }
-        totalCount = page.totalCount;
-        countsByStatus = pageCounts;
+type WalletSnapshot = z.infer<typeof walletSnapshotSchema>;
+type WalletReadResult = {
+  walletReadState: MemberWalletReadState;
+  wallet: WalletSnapshot | null;
+};
 
-        if (page.items.some((item) => item?.status !== status || typeof item?.id !== "string" || !reportMatchesMemberScope(item, memberId))) {
-          return result(false, "Reports received response is invalid.");
-        }
+const requestError = (message: string): MemberCollectionError => ({ kind: "request", message });
+const contractError = (message: string): MemberCollectionError => ({ kind: "contract", message });
 
-        items.push(...page.items);
-        const nextCursor = page.nextCursor ?? undefined;
-        if (!nextCursor) {
-          if (items.length !== totalCount) return result(false, "Reports received pages do not match the API count.");
-          return result(true, null);
-        }
-        if (seenCursors.has(nextCursor)) {
-          return result(false, "Reports received pages did not advance.");
-        }
+function walletReadResult(
+  state: MemberWalletReadState,
+  wallet: WalletSnapshot | null = null,
+): WalletReadResult {
+  return { walletReadState: state, wallet };
+}
 
-        seenCursors.add(nextCursor);
-        cursor = nextCursor;
-      }
-    } catch (error) {
-      return result(false, errorMessage(error, "Reports received are not available."));
+function availableWallet(
+  wallet: WalletSnapshot,
+  source: "finance" | "member-detail",
+  warning: MemberCollectionError | null,
+): WalletReadResult {
+  return walletReadResult({ kind: "available", source, warning }, wallet);
+}
+
+function absentWallet(
+  source: "finance" | "member-detail",
+  warning: MemberCollectionError | null,
+): WalletReadResult {
+  return walletReadResult({ kind: "absent", source, warning });
+}
+
+function invalidWallet(error: MemberCollectionError): WalletReadResult {
+  return walletReadResult({ kind: "contract-error", error });
+}
+
+function conflictingWallet(message: string): WalletReadResult {
+  return walletReadResult({ kind: "conflict", error: contractError(message) });
+}
+
+function resolveMemberWallet(
+  memberId: string,
+  detailWalletValue: unknown,
+  financeResult: PromiseSettledResult<Awaited<ReturnType<typeof adminApiProvider.read.getMemberFinance>>>,
+): WalletReadResult {
+  const detailResult = memberDetailWalletSchema.nullable().safeParse(detailWalletValue);
+  const detailWallet = detailResult.success ? detailResult.data : null;
+  const detailIsInvalid = !detailResult.success;
+  const invalidContract = contractError("Wallet data does not match API contract.");
+  const financeRequestFailure = requestError("Member Finance could not be loaded.");
+
+  if (financeResult.status === "rejected") {
+    if (detailIsInvalid) return invalidWallet(invalidContract);
+    if (detailWallet === null) return absentWallet("member-detail", financeRequestFailure);
+    return availableWallet(detailWallet, "member-detail", financeRequestFailure);
+  }
+
+  const finance = financeWalletResponseSchema.safeParse(financeResult.value);
+  if (!finance.success) return invalidWallet(invalidContract);
+  if (finance.data.member.userId !== memberId) {
+    return conflictingWallet("Wallet data conflicts with the selected Member.");
+  }
+
+  const financeWallet = finance.data.wallet;
+  if (financeWallet === null) {
+    if (detailIsInvalid) return invalidWallet(invalidContract);
+    if (detailWallet !== null) {
+      return conflictingWallet("Finance and Member detail disagree about Wallet existence.");
     }
-  }));
+    return absentWallet("finance", null);
+  }
 
-  const items = statusResults.flatMap((result) => result.items);
-  const countSnapshots = statusResults.flatMap((result) => result.countsByStatus ? [result.countsByStatus] : []);
-  const firstCounts = countSnapshots[0] ?? null;
-  const countsAreStable = firstCounts !== null && countSnapshots.every((counts) =>
-    reportCountsMatch(counts, firstCounts, statuses),
-  );
-  const countError = countSnapshots.length > 0 && !countsAreStable
-    ? "Report counts changed while loading."
-    : null;
-  const errors = statusResults.flatMap((result) => result.error ? [result.error] : []);
-  if (countError) errors.push(countError);
+  if (detailIsInvalid) return availableWallet(financeWallet, "finance", invalidContract);
+  if (detailWallet === null || detailWallet.id !== financeWallet.id) {
+    return conflictingWallet("Finance and Member detail disagree about Wallet identity.");
+  }
+  return availableWallet(financeWallet, "finance", null);
+}
+
+function walletBalances(wallet: WalletSnapshot | null): MemberWalletBalances | null {
+  if (!wallet) return null;
   return {
-    items,
-    complete: statusResults.every((result) => result.complete) && countsAreStable,
-    totalCount: countsAreStable && firstCounts
-      ? statuses.reduce((total, status) => total + firstCounts[status], 0)
-      : null,
-    error: errors.length ? [...new Set(errors)].join(" ") : null,
+    spendingBalanceSatang: wallet.spendingBalanceSatang,
+    earningsBalanceSatang: wallet.earningsBalanceSatang,
+    fundingReservedSatang: wallet.fundingReservedSatang,
+    reservedForPayoutsSatang: wallet.reservedForPayoutsSatang,
   };
 }
 
-async function loadMemberPayouts(
-  memberId: string,
-  options: ReturnType<typeof adminApiRequestOptions>,
-): Promise<MemberPayoutsRead> {
-  const statusResults = await Promise.all(ADMIN_API_PAYOUT_STATUSES.map(async (status: AdminApiPayoutStatus) => {
-    const items: AdminPayout[] = [];
-    const seenCursors = new Set<string>();
-    let cursor: string | undefined;
+function emptyCollection<T>(error: MemberCollectionError): MemberCollection<T> {
+  return { items: null, totalCount: null, complete: false, error };
+}
 
-    try {
-      while (true) {
-        const page = await adminApiProvider.read.listPayouts({
-          userId: memberId,
-          status,
-          limit: 50,
-          ...(cursor ? { cursor } : {}),
-          sort: "newest",
-        }, options);
-        if (!page || !Array.isArray(page.items) || (page.nextCursor != null && typeof page.nextCursor !== "string") || page.items.some((item) => item?.payoutStatus !== status || typeof item?.id !== "string" || item?.student?.id !== memberId || !Number.isFinite(Date.parse(item?.createdAt)))) {
-          return { items, complete: false, error: "Payout response is invalid." };
-        }
-
-        items.push(...page.items);
-        const nextCursor = page.nextCursor ?? undefined;
-        if (!nextCursor) return { items, complete: true, error: null };
-        if (seenCursors.has(nextCursor)) {
-          return { items, complete: false, error: "Payout pages did not advance." };
-        }
-        seenCursors.add(nextCursor);
-        cursor = nextCursor;
-      }
-    } catch (error) {
-      return {
-        items,
-        complete: false,
-        error: errorMessage(error, "Payout details are not available."),
-      };
-    }
-  }));
-
-  const items = statusResults.flatMap((result) => result.items)
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
-  const errors = statusResults.flatMap((result) => result.error ? [result.error] : []);
+function unavailableCollections(error: MemberCollectionError): MemberApiCollections {
   return {
-    items,
-    complete: statusResults.every((result) => result.complete),
-    error: errors.length ? [...new Set(errors)].join(" ") : null,
+    profileTags: emptyCollection(error),
+    workExperiences: emptyCollection(error),
+    certificates: emptyCollection(error),
+    questHistory: emptyCollection(error),
+    reviews: emptyCollection(error),
+    reportsReceived: emptyCollection(error),
+    reportsSubmitted: emptyCollection(error),
+    payouts: emptyCollection(error),
+    penaltyHistory: { ...emptyCollection(error), summary: null },
   };
+}
+
+function walletStatementFailure(error: MemberCollectionError): MemberCollection<AdminLedgerTransaction> {
+  return { items: null, totalCount: null, complete: false, error };
+}
+
+async function loadMemberWalletStatement(
+  walletRead: WalletReadResult,
+  options: AdminApiRequestOptions,
+): Promise<MemberCollection<AdminLedgerTransaction>> {
+  if (walletRead.walletReadState.kind !== "available" || !walletRead.wallet) {
+    const state = walletRead.walletReadState;
+    if (state.kind === "request-error" || state.kind === "contract-error" || state.kind === "conflict") {
+      return walletStatementFailure(state.error);
+    }
+    return { items: null, totalCount: null, complete: false, error: null };
+  }
+
+  try {
+    const items = await loadAllWalletLedgerTransactions(walletRead.wallet.id, options);
+    return { items, totalCount: null, complete: true, error: null };
+  } catch (error) {
+    const failure = error instanceof WalletLedgerContractError
+      ? contractError("Wallet Statement data does not match the Admin API contract.")
+      : requestError("Wallet Statement could not be loaded.");
+    return walletStatementFailure(failure);
+  }
 }
 
 export async function loadMemberPageData(
@@ -206,47 +233,29 @@ export async function loadMemberDetailFromApi(
 ): Promise<MemberModel | null> {
   const options = adminApiRequestOptions(cookieHeader);
   const detail = await adminApiProvider.read.getMember(memberId, options);
-  const [financeResult, reportsResult, payoutsResult] = await Promise.allSettled([
-    adminApiProvider.read.getMemberFinance(memberId, options),
-    loadAllMemberReports(memberId, options),
-    loadMemberPayouts(memberId, options),
-  ]);
-  const finance = financeResult.status === "fulfilled" ? financeResult.value : null;
-  const reportsRead = reportsResult.status === "fulfilled"
-    ? reportsResult.value
-    : {
-        items: [] as AdminReportCase[],
-        complete: false,
-        totalCount: null,
-        error: errorMessage(reportsResult.reason, "Reports received are not available."),
-      };
-  const payoutsRead = payoutsResult.status === "fulfilled"
-    ? payoutsResult.value
-    : {
-        items: [] as AdminPayout[],
-        complete: false,
-        error: errorMessage(payoutsResult.reason, "Payout details are not available."),
-      };
-  const effectiveWallet = finance?.wallet ?? detail.wallet;
-  let ledger: Awaited<ReturnType<typeof loadAllWalletLedgerTransactions>> = [];
-  let ledgerError: unknown = null;
-  if (effectiveWallet) {
-    try {
-      ledger = await loadAllWalletLedgerTransactions(effectiveWallet.id, options);
-    } catch (error) {
-      ledgerError = error;
-    }
+  const detailContract = memberDetailCoreSchema.safeParse(detail);
+  if (!detailContract.success || detailContract.data.member.id !== memberId) {
+    throw new Error("Member detail data does not match the Admin API contract.");
   }
-  const errors = {
-    finance: financeResult.status === "rejected" ? errorMessage(financeResult.reason, "Member finance is not available from the Admin API.") : null,
-    reports: reportsRead.error,
-    reportsComplete: reportsRead.complete,
-    reportsTotalCount: reportsRead.totalCount,
-    payouts: payoutsRead.items.length || payoutsRead.complete ? payoutsRead.items : undefined,
-    payoutsComplete: payoutsRead.complete,
-    payoutsError: payoutsRead.error,
-    ledger: ledgerError ? errorMessage(ledgerError, "Wallet Statement is not available from the Admin API.") : null,
+
+  const [financeResult, collectionsResult] = await Promise.allSettled([
+    adminApiProvider.read.getMemberFinance(memberId, options),
+    loadMemberProfileCollections(memberId, detailContract.data.member.displayId, options),
+  ]);
+  const walletRead = resolveMemberWallet(memberId, detail.wallet, financeResult);
+  const collections = collectionsResult.status === "fulfilled"
+    ? collectionsResult.value
+    : unavailableCollections(requestError("Member profile collections could not be loaded."));
+  const walletStatement = await loadMemberWalletStatement(walletRead, options);
+  const reads: MemberApiReadData = {
+    walletReadState: walletRead.walletReadState,
+    walletId: walletRead.wallet?.id ?? null,
+    walletStatus: walletRead.wallet?.walletStatus ?? null,
+    walletBalances: walletBalances(walletRead.wallet),
+    walletProjectionMatchesLedger: walletRead.wallet?.projectionMatchesLedger ?? null,
+    walletStatement,
+    collections,
   };
-  const model = memberModelFromApi(detail, finance, reportsRead.items, ledger, errors);
+  const model = memberModelFromApi(detail, reads);
   return model.id === memberId ? model : null;
 }

@@ -97,7 +97,9 @@
     ".next-admin-shell/types/**/*.ts",
     ".next-admin-shell/dev/types/**/*.ts",
     ".next-top-up-e2e/types/**/*.ts",
-    ".next-top-up-e2e/dev/types/**/*.ts"
+    ".next-top-up-e2e/dev/types/**/*.ts",
+    ".next-member-smoke/types/**/*.ts",
+    ".next-member-smoke/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

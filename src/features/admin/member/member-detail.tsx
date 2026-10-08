@@ -15,14 +15,12 @@ import { adminRecordCount, adminRecordHeader, adminRecordHeading, adminRecordSec
 import { ADMIN_LEDGER_EVENT_TYPES } from "../api/admin-api";
 import type { AdminTopUpListItem } from "../api/admin-api";
 import { memberRoutes } from "../admin-routes";
-import { displayAdminId } from "../display-admin-id";
 import { formatAdminTimestamp } from "../date-format";
 import { payoutStatusLabel, questStateLabel, reportCaseStatusLabel } from "../domain/rulebook";
 import { formatTopUpPaymentMethod, TopUpDetailDrawer } from "../finance/top-up-detail-drawer";
 import { TOP_UP_BOARD_TABS } from "../finance/top-ups-board-model";
 import { statusBadgeClass } from "../status-badge";
-import { filterReviews } from "../user-reviews/review-model";
-import { formatWalletMovementAmount, walletBusinessReferenceLabel, walletCompartmentLabel, walletEventTypeLabel } from "../wallet/wallet-model";
+import { formatWalletMovementAmount, walletCompartmentLabel, walletEventTypeLabel } from "../wallet/wallet-model";
 import { formatWalletStatementDateInput, parseWalletStatementDateInput } from "./member-wallet-model";
 import {
   currentWalletBalance,
@@ -30,63 +28,94 @@ import {
   formatWalletDate,
   memberStatusClass,
   memberStatusText,
+  memberPenaltyHistoryItemKey,
   memberTabHref,
   walletStatusClass,
   walletStatusText,
   walletStatementRows,
+  type MemberCollection,
   type MemberModel,
+  type MemberReportEntry,
   type MemberTab,
 } from "./member-model";
 import { useMemberDetailQuery, useMemberTopUpsQuery } from "./member-query";
+const emptyReviewRecords: NonNullable<MemberModel["reviews"]["items"]> = [];
+
 
 function initials(model: MemberModel): string {
   return `${model.firstName.charAt(0)}${model.lastName.charAt(0)}`.toUpperCase() || "M";
 }
 
 function averageRating(model: MemberModel): string {
-  if (model.stats.averageRating !== null) return model.stats.averageRating.toFixed(1);
-  return "—";
+  const count = model.stats.reviewsReceivedCount;
+  if (model.stats.averageRating === null
+    || (model.reviews.complete && model.reviews.totalCount !== null && count !== null && model.reviews.totalCount !== count)) {
+    return "—";
+  }
+  return model.stats.averageRating.toFixed(1);
 }
 
 function reviewCount(model: MemberModel): number | null {
-  return model.stats.reviewsReceivedCount;
-}
-
-function reviewStateMessage(model: MemberModel): string {
-  const count = reviewCount(model);
-  if (count === null) return "Review data is not verified.";
-  if (count === 0) return "No Reviews received.";
-  return "Review details are not available.";
-}
-
-function reviewStatusLabel(status: string): string {
-  switch (status) {
-    case "Reported": return "Reported review";
-    case "Hidden": return "Hidden review";
-    case "Visible": return "Visible review";
-    default: return status;
+  const { reviews } = model;
+  const summaryCount = model.stats.reviewsReceivedCount;
+  if (reviews.complete && reviews.totalCount !== null) {
+    return summaryCount === null || summaryCount === reviews.totalCount
+      ? reviews.totalCount
+      : null;
   }
+  return summaryCount;
+}
+
+function reviewStateMessage(model: MemberModel, translateText: (value: string) => string): string {
+  const count = reviewCount(model);
+  const collection = model.reviews;
+  if (collection.error) return translateText(collection.error.message);
+  if (count === 0) return translateText("No Reviews received.");
+  if (count === null) return translateText("Review data is not verified.");
+  if (collection.items === null || !collection.complete) {
+    return translateText("Review details are not available.");
+  }
+  return translateText("Review data is not verified.");
 }
 
 function completedQuestCount(model: MemberModel): number | null {
-  return model.quests !== null
-    ? model.quests.filter((quest) => quest.status === "QUEST_COMPLETED").length
-    : model.stats.questsCompletedAsWorkerCount;
+  return model.stats.questsCompletedAsWorkerCount;
+}
+
+function collectionCountLabel<T>(
+  collection: MemberCollection<T>,
+  translateText: (value: string) => string,
+  unavailableMessage: string,
+  contractMessage?: string,
+): string | number {
+  if (collection.complete && collection.totalCount !== null) return collection.totalCount;
+  if (collection.items?.length) return `${translateText("Records loaded")}: ${collection.items.length}`;
+  if (collection.error) return translateText(collection.error.kind === "contract" && contractMessage ? contractMessage : collection.error.message);
+  return translateText(unavailableMessage);
+}
+
+function collectionStateMessage<T>(
+  collection: MemberCollection<T>,
+  emptyMessage: string,
+  unavailableMessage: string,
+  translateText: (value: string) => string,
+  contractMessage?: string,
+): string | null {
+  if (collection.items?.length) return null;
+  if (collection.error) return translateText(collection.error.kind === "contract" && contractMessage ? contractMessage : collection.error.message);
+  if (collection.items === null || !collection.complete) return translateText(unavailableMessage);
+  return translateText(emptyMessage);
 }
 
 function reportsReceivedCountLabel(
   model: MemberModel,
   translateText: (value: string) => string,
 ): string | number {
-  if (model.reportsTotalCount !== null) return model.reportsTotalCount;
-  if (model.reports.length) return `${translateText("Records loaded")}: ${model.reports.length}`;
-  if (model.reportsComplete) return 0;
-  if (model.reportsError) return translateText("Report count is not verified.");
-  return translateText("Reports received are not available.");
+  return collectionCountLabel(model.reportsReceived, translateText, "Reports received are not available.");
 }
 
 function statusBadge(model: MemberModel, translateText: (value: string) => string) {
-  const label = model.memberStatus ? memberStatusText(model) : "Not provided by the Admin API";
+  const label = memberStatusText(model);
   return model.memberStatus
     ? <span className={`badge ${memberStatusClass(model)}`}>{translateText(label)}</span>
     : <span className="audit-note">{translateText(label)}</span>;
@@ -97,17 +126,79 @@ function walletBadge(model: MemberModel, translateText: (value: string) => strin
     ? <span className={`badge ${walletStatusClass(model)}`}>{translateText(walletStatusText(model))}</span>
     : <span className="audit-note">{translateText(walletStatusText(model))}</span>;
 }
+function walletReadWarningText(model: MemberModel, translateText: (value: string) => string): string | null {
+  const state = model.walletReadState;
+  if (state.kind === "absent" && state.warning?.kind === "request") {
+    return translateText("Member Finance could not be loaded. The Member detail response reports no Wallet.");
+  }
+  if (state.kind !== "available" || !state.warning) return null;
+  if (state.warning.kind === "contract") return translateText("ข้อมูล Wallet ไม่ตรงตามสัญญา API");
+  if (state.source === "member-detail") {
+    return translateText("Member detail Wallet snapshot is shown because the Finance read failed.");
+  }
+  return translateText(state.warning.message);
+}
 
 function latestWalletTransactionAt(model: MemberModel): string | null {
-  return model.walletStatement
-    .filter((transaction) => transaction.sealedAt)
+  const transactions = model.walletStatement.items;
+  const walletId = model.walletId;
+  if (!model.walletStatement.complete || transactions === null || walletId === null) return null;
+  return transactions
+    .filter((transaction) => transaction.sealedAt !== null
+      && transaction.isBalanced
+      && transaction.postings.some((posting) => posting.walletId === walletId
+        && (posting.accountType === "SPENDING"
+          || posting.accountType === "EARNINGS"
+          || posting.accountType === "FUNDING_RESERVED"
+          || posting.accountType === "RESERVED_FOR_PAYOUTS")))
     .reduce<string | null>((latest, transaction) => {
       if (!latest || Date.parse(transaction.createdAt) > Date.parse(latest)) return transaction.createdAt;
       return latest;
     }, null);
 }
 
+
+function walletBalanceText(
+  model: MemberModel,
+  translateText: (value: string) => string,
+  amountSatang: number | undefined,
+): string {
+  if (model.walletReadState.kind === "absent") return translateText("Member นี้ไม่มี Wallet");
+  if (model.walletReadState.kind === "conflict") return translateText("ข้อมูล Wallet ขัดแย้งกัน");
+  if (model.walletReadState.kind === "contract-error") return translateText("ข้อมูล Wallet ไม่ตรงตามสัญญา API");
+  if (model.walletReadState.kind === "request-error") return translateText("อ่านข้อมูล Wallet ไม่สำเร็จ");
+  if (model.walletReadState.kind === "unavailable") return translateText("ยังไม่ยืนยันข้อมูล Wallet");
+  if (model.walletProjectionMatchesLedger === false) return translateText("ยอด Wallet ไม่ตรงกับ Ledger");
+  if (!model.walletBalances || amountSatang === undefined) return translateText("ยังไม่ยืนยันข้อมูล Wallet");
+  return formatMoneySatang(amountSatang);
+}
+
+function latestWalletTransactionLabel(model: MemberModel, translateText: (value: string) => string): string {
+  const state = model.walletReadState;
+  if (state.kind === "absent") return translateText("Member นี้ไม่มี Wallet");
+  if (state.kind === "request-error") return translateText("อ่านวันที่ Ledger Transaction ล่าสุดไม่สำเร็จ");
+  if (state.kind === "contract-error") return translateText("ข้อมูล Wallet ไม่ตรงตามสัญญา API");
+  if (state.kind === "conflict") return translateText("ข้อมูล Wallet ขัดแย้งกัน");
+  if (state.kind === "unavailable") return translateText("ยังไม่ยืนยันวันที่ Ledger Transaction ล่าสุด");
+  if (model.walletStatement.error?.kind === "request") {
+    return translateText("อ่านวันที่ Ledger Transaction ล่าสุดไม่สำเร็จ");
+  }
+  if (model.walletStatement.error?.kind === "contract") {
+    return translateText("ข้อมูล Wallet ไม่ตรงตามสัญญา API");
+  }
+  if (!model.walletStatement.complete) return translateText("ยังไม่ยืนยันวันที่ Ledger Transaction ล่าสุด");
+  const latest = latestWalletTransactionAt(model);
+  return latest ? formatWalletDate(latest) : translateText("ยังไม่มี Ledger Transaction");
+}
+
 function MemberSummary({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
+  const tags = model.profileTags.items ?? [];
+  const tagsState = collectionStateMessage(
+    model.profileTags,
+    "No Profile Tags.",
+    "Profile Tags are not available.",
+    translateText,
+  );
   return (
     <Card as="section" className="mb-[18px] p-[18px]">
       <div className="grid !grid-cols-[minmax(250px,1.35fr)_minmax(300px,1fr)] items-start gap-5 max-[1100px]:!grid-cols-[minmax(250px,1fr)_minmax(270px,1fr)] max-[600px]:!grid-cols-1">
@@ -115,10 +206,14 @@ function MemberSummary({ model, translateText }: { model: MemberModel; translate
           <span className="user-profile-avatar grid size-[58px] shrink-0 place-items-center rounded-full bg-admin-avatar text-xl font-bold text-admin-accent-strong">{initials(model)}</span>
           <div>
             <h2 className="mb-0 text-[22px] leading-[1.3]">{model.title}</h2>
+            {model.displayId ? <p className="m-0 block text-[15px] leading-[1.45] text-admin-muted">{model.displayId}</p> : null}
             <p className="m-0 block text-[15px] leading-[1.45] text-admin-muted">{model.faculty || translateText("Academic profile not recorded")}</p>
             <p className="m-0 block text-[15px] leading-[1.45] text-admin-muted">Kasetsart University</p>
             <a className="mt-[3px] block text-[15px] leading-[1.45] text-admin-accent no-underline hover:underline" href={`mailto:${model.email}`}>{model.email}</a>
-            <div className="user-detail-tags mt-2.5 flex flex-wrap items-center gap-1.5">{model.tags === null ? <span className="text-[13px] text-admin-muted">{translateText("Profile Tags are not available.")}</span> : model.tags.length ? model.tags.map((tag) => <span className="rounded-full border border-admin-border px-2 py-[3px] text-[13px] text-admin-muted" key={tag}>{tag}</span>) : <span className="text-[13px] text-admin-muted">{translateText("No Profile Tags.")}</span>}</div>
+            <div className="user-detail-tags mt-2.5 flex flex-wrap items-center gap-1.5">
+              {tags.map((tag) => <span className="rounded-full border border-admin-border px-2 py-[3px] text-[13px] text-admin-muted" key={tag}>{tag}</span>)}
+              {tagsState ? <span className="text-[13px] text-admin-muted" role={model.profileTags.error ? "alert" : undefined}>{tagsState}</span> : null}
+            </div>
           </div>
         </div>
         <div className="grid min-w-0 gap-3">
@@ -126,7 +221,7 @@ function MemberSummary({ model, translateText }: { model: MemberModel; translate
           <div className="grid !grid-cols-3 border-l border-admin-border max-[600px]:border-l-0 max-[600px]:border-t max-[600px]:pt-3">
             <div className="grid min-w-0 !grid-cols-1 gap-0.5 border-r border-admin-border px-3 last:border-r-0 max-[600px]:px-2"><strong className="text-lg">{averageRating(model)}</strong><span className="text-admin-muted text-[var(--member-font-meta)] leading-[1.4]">{translateText("Rating")}</span></div>
             <div className="grid min-w-0 !grid-cols-1 gap-0.5 border-r border-admin-border px-3 last:border-r-0 max-[600px]:px-2"><strong className="text-lg">{reviewCount(model) ?? translateText("Review data is not verified.")}</strong><span className="text-admin-muted text-[var(--member-font-meta)] leading-[1.4]">{translateText("Reviews")}</span></div>
-            <div className="grid min-w-0 !grid-cols-1 gap-0.5 border-r border-admin-border px-3 last:border-r-0 max-[600px]:px-2"><strong className="text-lg">{completedQuestCount(model) ?? translateText("Not provided by the Admin API")}</strong><span className="text-admin-muted text-[var(--member-font-meta)] leading-[1.4]">{translateText("Completed quests")}</span></div>
+            <div className="grid min-w-0 !grid-cols-1 gap-0.5 border-r border-admin-border px-3 last:border-r-0 max-[600px]:px-2"><strong className="text-lg">{completedQuestCount(model) ?? translateText("Not provided by the Admin API")}</strong><span className="text-admin-muted text-[var(--member-font-meta)] leading-[1.4]">{translateText("Completed quests as Worker")}</span></div>
           </div>
         </div>
       </div>
@@ -135,36 +230,61 @@ function MemberSummary({ model, translateText }: { model: MemberModel; translate
 }
 
 function MemberAccountInfo({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
-  const latestTransactionAt = latestWalletTransactionAt(model);
+  const balances = model.walletBalances;
   const facts: Array<[string, React.ReactNode]> = [
     ["Member status", statusBadge(model, translateText)],
     ["Wallet status", walletBadge(model, translateText)],
-    ["Current Wallet Balance", model.walletBalances ? formatMoneySatang(currentWalletBalance(model.walletBalances)) : "—"],
-    ["Latest Wallet Transaction Date", latestTransactionAt ? formatWalletDate(latestTransactionAt) : "—"],
+    ["Current Wallet Balance", walletBalanceText(model, translateText, balances ? currentWalletBalance(balances) : undefined)],
+    ["Spending Balance", walletBalanceText(model, translateText, balances?.spendingBalanceSatang)],
+    ["Earnings Balance", walletBalanceText(model, translateText, balances?.earningsBalanceSatang)],
+    ["Funding Reserved", walletBalanceText(model, translateText, balances?.fundingReservedSatang)],
+    ["Reserved For Payouts", walletBalanceText(model, translateText, balances?.reservedForPayoutsSatang)],
+    ["Latest Wallet Transaction Date", latestWalletTransactionLabel(model, translateText)],
     ["Email", model.email],
     ["Created", model.createdAt],
     ["Role", model.occupation ? translateText(model.occupation) : translateText("Student")],
     ["Faculty", model.faculty || translateText("Not recorded")],
   ];
-  return <Card as="section" className="user-detail-panel p-[16px_18px]"><CardHeader flush><h2>{translateText("Account Information")}</h2></CardHeader><dl className="user-facts m-0 grid gap-0">{facts.map(([label, value]) => <div className="flex justify-between gap-3 border-t border-admin-border py-2 first:border-t-0 first:pt-0" key={label}><dt className="text-sm text-admin-muted">{translateText(label)}</dt><dd className="m-0 text-right text-sm font-semibold">{value}</dd></div>)}</dl></Card>;
+  const warning = walletReadWarningText(model, translateText);
+  return (
+    <Card as="section" className="user-detail-panel p-[16px_18px]">
+      <CardHeader flush><h2>{translateText("Account Information")}</h2></CardHeader>
+      {warning ? <p className="audit-note" role="alert">{warning}</p> : null}
+      <dl className="user-facts m-0 grid gap-0">{facts.map(([label, value]) => <div className="flex justify-between gap-3 border-t border-admin-border py-2 first:border-t-0 first:pt-0" key={label}><dt className="text-sm text-admin-muted">{translateText(label)}</dt><dd className="m-0 text-right text-sm font-semibold">{value}</dd></div>)}</dl>
+    </Card>
+  );
 }
 
 function MemberModerationSummary({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
+  const summary = model.penaltyHistory.summary;
+  const summaryState = collectionStateMessage(
+    model.penaltyHistory,
+    "Confirmed violation count is not available.",
+    "Confirmed violation count is not available.",
+    translateText,
+  );
   return (
     <Card as="section" className="user-detail-panel p-[16px_18px]">
       <CardHeader flush><h2>{translateText("Moderation Summary")}</h2></CardHeader>
       <div className="user-counter-list mb-3.5 grid grid-cols-2 border-y border-admin-border">
         <div className="grid content-start gap-[3px] border-r border-b border-admin-border px-2 py-[9px]"><strong className="text-xl">{reportsReceivedCountLabel(model, translateText)}</strong><span className="text-xs text-admin-muted">{translateText("Reports received")}</span></div>
-        <div className="grid content-start gap-[3px] border-b border-admin-border px-2 py-[9px]"><strong className="text-xl">{model.confirmedViolationCount === null ? translateText("Confirmed violation count is not available.") : model.confirmedViolationCount}</strong><span className="text-xs text-admin-muted">{translateText("Confirmed violations")}</span></div>
-        <div className="grid content-start gap-[3px] border-r border-admin-border px-2 py-[9px]"><strong className="text-xl">{translateText("Not provided by the Admin API")}</strong><span className="text-xs text-admin-muted">{translateText("Active Red Flags")}</span></div>
-        <div className="grid content-start gap-[3px] px-2 py-[9px]"><strong className="text-xl">{translateText("Not provided by the Admin API")}</strong><span className="text-xs text-admin-muted">{translateText("Suspensions")}</span></div>
+        <div className="grid content-start gap-[3px] border-b border-admin-border px-2 py-[9px]"><strong className="text-xl">{summary?.confirmedMisconductCount ?? translateText("Confirmed violation count is not available.")}</strong><span className="text-xs text-admin-muted">{translateText("Confirmed violations")}</span></div>
+        <div className="grid content-start gap-[3px] border-r border-admin-border px-2 py-[9px]"><strong className="text-xl">{summary?.effectiveActiveMisconductPenaltyCount ?? translateText("Moderation history is not available.")}</strong><span className="text-xs text-admin-muted">{translateText("Effective active misconduct penalties")}</span></div>
+        <div className="grid content-start gap-[3px] px-2 py-[9px]"><strong className="text-xl">{summary?.reviewLadderRecordCount ?? translateText("Moderation history is not available.")}</strong><span className="text-xs text-admin-muted">{translateText("Review ladder records")}</span></div>
       </div>
-      <p className="audit-note">{translateText("Moderation history is not available.")}</p>
+      {model.penaltyHistory.error ? <p className="audit-note" role="alert">{translateText(model.penaltyHistory.error.message)}</p> : summaryState && !summary ? <p className="audit-note">{summaryState}</p> : null}
     </Card>
   );
 }
 
 function MemberRecentReports({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
+  const reports = model.reportsReceived.items ?? [];
+  const state = collectionStateMessage(
+    model.reportsReceived,
+    "No Reports received.",
+    "Reports received are not available.",
+    translateText,
+  );
   return (
     <Card as="section" className="user-detail-panel p-[16px_18px]">
       <CardHeader flush className="user-panel-heading flex items-center justify-between gap-3">
@@ -174,10 +294,9 @@ function MemberRecentReports({ model, translateText }: { model: MemberModel; tra
         </div>
         <span className={adminRecordCount}>{reportsReceivedCountLabel(model, translateText)}</span>
       </CardHeader>
-      {model.reportsError && <p className="audit-note" role="alert">{translateText(model.reportsError)}</p>}
-      {model.reports.length ? (
+      {reports.length ? (
         <div className="user-recent-reports grid">
-          {model.reports.slice(0, 3).map((report) => (
+          {reports.slice(0, 3).map((report) => (
             <Link className="flex items-center justify-between gap-3 border-t border-admin-border py-2.5 text-admin-text no-underline first:border-t-0 hover:[&>span:first-child_strong]:text-admin-accent" key={report.id} href={report.href}>
               <span className="min-w-0">
                 <strong className="block text-[15px] leading-[1.4]">{report.displayId || translateText(report.kind)}</strong>
@@ -187,32 +306,102 @@ function MemberRecentReports({ model, translateText }: { model: MemberModel; tra
             </Link>
           ))}
         </div>
-      ) : model.reportsError ? null : model.reportsComplete ? <p className="audit-note">{translateText("No Reports received.")}</p> : <p className="audit-note">{translateText("Reports received are not available.")}</p>}
+      ) : null}
+      {state ? <p className="audit-note" role={model.reportsReceived.error ? "alert" : undefined}>{state}</p> : null}
+      {reports.length && model.reportsReceived.error ? <p className="audit-note" role="alert">{translateText(model.reportsReceived.error.message)}</p> : null}
     </Card>
   );
 }
 
 function MemberAbout({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
+  const experiences = model.workExperiences.items ?? [];
+  const state = collectionStateMessage(
+    model.workExperiences,
+    "No Work Experience records.",
+    "Work Experience is not available.",
+    translateText,
+  );
   return (
     <>
       <Card as="section" className="user-detail-panel p-[16px_18px]"><CardHeader flush><h2>{translateText("About Me")}</h2></CardHeader><p className="user-about-copy m-0 leading-[1.6] text-admin-muted">{model.bio || translateText("No profile description is available.")}</p></Card>
       <Card as="section" className="user-detail-panel p-[16px_18px]">
-        <CardHeader flush><h2>{translateText("Experience")}</h2></CardHeader>
-        <p className="audit-note">{translateText("Work Experience is not available.")}</p>
+        <CardHeader flush className="user-panel-heading flex items-center justify-between gap-3">
+          <h2>{translateText("Work Experience")}</h2>
+          <span className={adminRecordCount}>{collectionCountLabel(model.workExperiences, translateText, "Work Experience is not available.")}</span>
+        </CardHeader>
+        {experiences.map((experience) => <article className="border-t border-admin-border py-3 first:border-t-0" key={`${experience.title}-${experience.employmentType}-${experience.organization ?? ""}-${experience.startedAt}-${experience.endedAt ?? ""}-${experience.description ?? ""}`}>
+          <strong className="block text-[17px]">{experience.title}</strong>
+          <p className="m-0 text-admin-muted">{translateText(experience.employmentType)}{experience.organization ? ` · ${experience.organization}` : ""}</p>
+          <p className="m-0 text-admin-muted">{experience.startedAt} – {experience.endedAt ?? translateText("Present")}</p>
+          {experience.description ? <p className="mb-0 text-admin-muted">{experience.description}</p> : null}
+        </article>)}
+        {state ? <p className="audit-note" role={model.workExperiences.error ? "alert" : undefined}>{state}</p> : null}
+        {experiences.length > 0 && model.workExperiences.error ? <p className="audit-note" role="alert">{translateText(model.workExperiences.error.message)}</p> : null}
       </Card>
     </>
   );
 }
 
-function MemberPayoutPreview({ model, translateText, className = "user-detail-panel p-[16px_18px]" }: { model: MemberModel; translateText: (value: string) => string; className?: string }) {
-  const payoutCount = model.stats.payoutsCount;
-  const total = model.stats.totalPaidOutSatang;
-  const payoutCountText = payoutCount === null ? translateText("Payout data is not verified.") : payoutCount;
-  const totalText = total === null ? translateText("Payout data is not verified.") : formatMoneySatang(total);
-  const payoutRecords = model.payouts;
-  const recordsLabel = payoutRecords === null
-    ? null
-    : `${translateText("Records loaded")}: ${payoutRecords.length}`;
+function MemberCertificates({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
+  const certificates = model.certificates.items ?? [];
+  const state = collectionStateMessage(
+    model.certificates,
+    "No Certificates.",
+    "Certificates are not available.",
+    translateText,
+  );
+  return (
+    <Card as="section" className="user-detail-panel p-[16px_18px]">
+      <CardHeader flush className="user-panel-heading flex items-center justify-between gap-3">
+        <h2>{translateText("Certificates")}</h2>
+        <span className={adminRecordCount}>{collectionCountLabel(model.certificates, translateText, "Certificates are not available.")}</span>
+      </CardHeader>
+      {certificates.map((certificate) => <article className="border-t border-admin-border py-3 first:border-t-0" key={`${certificate.name}-${certificate.issuer}-${certificate.issuedAt}-${certificate.image?.contentType ?? ""}-${certificate.image?.sizeBytes ?? ""}`}>
+        <strong className="block text-[17px]">{certificate.name}</strong>
+        <p className="m-0 text-admin-muted">{certificate.issuer} · {certificate.issuedAt}</p>
+        {certificate.image ? <small className="text-admin-muted">{certificate.image.contentType} · {certificate.image.sizeBytes} bytes</small> : null}
+      </article>)}
+      {state ? <p className="audit-note" role={model.certificates.error ? "alert" : undefined}>{state}</p> : null}
+      {certificates.length > 0 && model.certificates.error ? <p className="audit-note" role="alert">{translateText(model.certificates.error.message)}</p> : null}
+    </Card>
+  );
+}
+
+function MemberPayoutPreview({
+  model,
+  translateText,
+  className = "user-detail-panel p-[16px_18px]",
+  preview = false,
+}: {
+  model: MemberModel;
+  translateText: (value: string) => string;
+  className?: string;
+  preview?: boolean;
+}) {
+  const payouts = model.payouts.items ?? [];
+  const successfulPayouts = payouts.filter((payout) => payout.status === "SUCCEEDED");
+  const successfulAmountSatang = successfulPayouts.reduce((total, payout) => total + payout.amountSatang, 0);
+  const payoutSummaryMismatch = model.payouts.complete && model.payouts.items !== null
+    && ((model.stats.payoutsCount !== null && model.stats.payoutsCount !== successfulPayouts.length)
+      || (model.stats.totalPaidOutSatang !== null && model.stats.totalPaidOutSatang !== successfulAmountSatang));
+  const payoutCountText = payoutSummaryMismatch || model.stats.payoutsCount === null
+    ? translateText("Payout data is not verified.")
+    : model.stats.payoutsCount;
+  const totalText = payoutSummaryMismatch || model.stats.totalPaidOutSatang === null
+    ? translateText("Payout data is not verified.")
+    : formatMoneySatang(model.stats.totalPaidOutSatang);
+  const payoutContractMessage = "ข้อมูล Payout ไม่ตรงตามสัญญา API";
+  const state = collectionStateMessage(
+    model.payouts,
+    "No Payouts.",
+    "Payout details are not available.",
+    translateText,
+    payoutContractMessage,
+  );
+  const payoutErrorText = model.payouts.error
+    ? translateText(model.payouts.error.kind === "contract" ? payoutContractMessage : model.payouts.error.message)
+    : null;
+  const shownPayouts = preview ? payouts.slice(0, 3) : payouts;
 
   return (
     <Card as="section" className={className}>
@@ -221,44 +410,44 @@ function MemberPayoutPreview({ model, translateText, className = "user-detail-pa
           <h2>{translateText("Payouts")}</h2>
           <p>{translateText("Summary shows successful Payout totals. History shows all statuses.")}</p>
         </div>
-        {recordsLabel !== null && payoutRecords !== null && payoutRecords.length > 0 ? <span className={adminRecordCount}>{recordsLabel}</span> : null}
+        <span className={adminRecordCount}>{collectionCountLabel(model.payouts, translateText, "Payout details are not available.", payoutContractMessage)}</span>
       </CardHeader>
       <div className="user-payout-stat-list mb-3 grid grid-cols-2 border-y border-admin-border">
-        <div className="grid gap-[3px] border-r border-admin-border px-2 py-[9px]">
-          <strong className="text-[17px]">{payoutCountText}</strong>
-          <span className="text-xs text-admin-muted">{translateText("Successful Payouts")}</span>
-        </div>
-        <div className="grid gap-[3px] px-2 py-[9px]">
-          <strong className="text-[17px]">{totalText}</strong>
-          <span className="text-xs text-admin-muted">{translateText("Total paid out")}</span>
-        </div>
+        <div className="grid gap-[3px] border-r border-admin-border px-2 py-[9px]"><strong className="text-[17px]">{payoutCountText}</strong><span className="text-xs text-admin-muted">{translateText("Successful Payouts")}</span></div>
+        <div className="grid gap-[3px] px-2 py-[9px]"><strong className="text-[17px]">{totalText}</strong><span className="text-xs text-admin-muted">{translateText("Total paid out")}</span></div>
       </div>
-      {model.payoutsError ? <p className="audit-note" role="alert">{translateText(model.payoutsError)}</p> : null}
-      {model.payouts === null ? <p className="audit-note">{translateText("Payout details are not available.")}</p> : model.payouts.length ? (
+      {payoutErrorText && payouts.length > 0 ? <p className="audit-note" role="alert">{payoutErrorText}</p> : null}
+      {shownPayouts.length ? (
         <div className="user-payout-list grid">
-          {model.payouts.map((payout) => (
+          {shownPayouts.map((payout) => (
             <div className="user-payout-row flex w-full items-center justify-between gap-3 border-0 border-t border-admin-border bg-transparent py-2.5 text-left text-admin-text first:border-t-0" key={payout.id}>
               <span className="user-payout-primary grid min-w-0 gap-0.5">
-                <strong className="text-[17px] leading-[1.4]">{displayAdminId(payout.displayId, payout.id) || translateText("Payout")}</strong>
+                <strong className="text-[17px] leading-[1.4]">{payout.displayId ?? translateText("Payout")}</strong>
                 <small className="overflow-hidden text-ellipsis whitespace-nowrap text-[15px] leading-[1.45] text-admin-muted">{payout.createdAt}</small>
                 {(payout.bankName || payout.maskedDestinationValue) ? <small className="overflow-hidden text-ellipsis whitespace-nowrap text-[15px] leading-[1.45] text-admin-muted">{[payout.bankName, payout.maskedDestinationValue].filter(Boolean).join(" · ")}</small> : null}
               </span>
               <span className="user-payout-secondary grid shrink-0 justify-items-end gap-0.5">
-                <strong className="text-[17px] leading-[1.4]">{payout.amountSatang === null ? "—" : formatMoneySatang(payout.amountSatang)}</strong>
+                <strong className="text-[17px] leading-[1.4]">{formatMoneySatang(payout.amountSatang)}</strong>
                 <small className="text-[15px] leading-[1.45] text-admin-muted">{translateText(payoutStatusLabel(payout.status))}</small>
               </span>
             </div>
           ))}
         </div>
-      ) : model.payoutsComplete ? <p className="audit-note">{translateText("No Payouts.")}</p> : <p className="audit-note">{translateText("Payout details are not available.")}</p>}
+      ) : null}
+      {state ? <p className="audit-note" role={model.payouts.error ? "alert" : undefined}>{state}</p> : null}
     </Card>
   );
 }
 
 function MemberReviewPreview({ model, translateText, onOpenReviews }: { model: MemberModel; translateText: (value: string) => string; onOpenReviews: () => void }) {
+  const reviews = model.reviews.items ?? [];
   const count = reviewCount(model);
-  const reviews = model.reviews ?? [];
-
+  const state = collectionStateMessage(
+    model.reviews,
+    reviewStateMessage(model, translateText),
+    count === null ? "Review data is not verified." : "Review details are not available.",
+    translateText,
+  );
   return (
     <Card as="section" className="user-detail-panel p-[16px_18px]">
       <CardHeader flush className="user-panel-heading">
@@ -266,22 +455,21 @@ function MemberReviewPreview({ model, translateText, onOpenReviews }: { model: M
           <h2>{translateText("Reviews")}</h2>
           <div className="flex flex-wrap items-baseline gap-2 text-[15px] text-admin-muted">
             <strong className="text-[17px] text-admin-text">{averageRating(model)} ★</strong>
-            <span className="text-base">{count === null ? translateText("Review data is not verified.") : "(" + count + ")"}</span>
+            <span className="text-base">{count === null ? translateText("Review data is not verified.") : `(${count})`}</span>
           </div>
         </div>
+        <span className={adminRecordCount}>{collectionCountLabel(model.reviews, translateText, "Review details are not available.")}</span>
         <Button variant="link" size="sm" type="button" onClick={onOpenReviews}>{translateText("View all")}</Button>
       </CardHeader>
-      <div className="user-review-preview grid">
-        {reviews.length ? reviews.slice(0, 5).map((review) => (
-          <div className="flex items-center justify-between gap-3 border-t border-admin-border py-2.5 first:border-t-0" key={review.reviewer + review.date}>
-            <span>
-              <strong className="block text-[17px] leading-[1.4]">{review.reviewer}</strong>
-              <small className="mt-0.5 block text-[15px] leading-[1.45] text-admin-muted">{"★".repeat(review.rating)} · {review.date}</small>
-            </span>
-            <span className="badge">{translateText(reviewStatusLabel(review.status))}</span>
-          </div>
-        )) : <p className="audit-note">{translateText(reviewStateMessage(model))}</p>}
-      </div>
+      {reviews.slice(0, 5).map((review) => <div className="flex items-center justify-between gap-3 border-t border-admin-border py-2.5 first:border-t-0" key={review.id}>
+        <span>
+          <strong className="block text-[17px] leading-[1.4]">{review.reviewer.name}</strong>
+          <small className="mt-0.5 block text-[15px] leading-[1.45] text-admin-muted">{review.reviewer.displayId} · {"★".repeat(review.rating)} · {formatAdminTimestamp(review.createdAt, "Asia/Bangkok")}</small>
+          <small className="block text-[15px] leading-[1.45] text-admin-muted">{review.quest.displayId} · {review.quest.title}</small>
+        </span>
+      </div>)}
+      {state ? <p className="audit-note" role={model.reviews.error ? "alert" : undefined}>{state}</p> : null}
+      {reviews.length > 0 && model.reviews.error ? <p className="audit-note" role="alert">{translateText(model.reviews.error.message)}</p> : null}
     </Card>
   );
 }
@@ -291,8 +479,8 @@ function OverviewTab({ model, translateText, onOpenReviews }: { model: MemberMod
     <div className="grid !grid-cols-[minmax(0,1.6fr)_minmax(280px,0.72fr)] items-start gap-[18px] max-[900px]:!grid-cols-1">
       <div className="grid min-w-0 !grid-cols-1 gap-[18px] max-[900px]:contents">
         <MemberAbout model={model} translateText={translateText} />
-        <MemberPayoutPreview model={model} translateText={translateText} />
-        <Card as="section" className="user-detail-panel p-[16px_18px]"><CardHeader flush><h2>{translateText("Certificates")}</h2></CardHeader><p className="audit-note">{translateText("Certificates are not available.")}</p></Card>
+        <MemberPayoutPreview model={model} translateText={translateText} preview />
+        <MemberCertificates model={model} translateText={translateText} />
         <MemberReviewPreview model={model} translateText={translateText} onOpenReviews={onOpenReviews} />
       </div>
       <aside className="grid min-w-0 !grid-cols-1 gap-[18px] max-[900px]:contents"><MemberAccountInfo model={model} translateText={translateText} /><MemberModerationSummary model={model} translateText={translateText} /><MemberRecentReports model={model} translateText={translateText} /></aside>
@@ -301,30 +489,45 @@ function OverviewTab({ model, translateText, onOpenReviews }: { model: MemberMod
 }
 
 function ActivityTab({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
-  const quests = model.quests;
+  const history = model.questHistory.items ?? [];
+  const state = collectionStateMessage(
+    model.questHistory,
+    "No Quest history.",
+    "Quest history is not available.",
+    translateText,
+  );
   return (
     <Card as="section" className="user-detail-panel user-tab-panel col-span-full min-w-0 p-[16px_18px]">
       <CardHeader flush className="user-panel-heading">
         <h2>{translateText("Quest history")}</h2>
-        {quests !== null ? <span className={adminRecordCount}>{quests.length}</span> : null}
+        <span className={adminRecordCount}>{collectionCountLabel(model.questHistory, translateText, "Quest history is not available.")}</span>
       </CardHeader>
-      {quests === null ? <p className="audit-note">{translateText("Quest history is not available.")}</p> : quests.length ? (
+      {history.length ? (
         <div className="user-quest-history-list grid">
-          {quests.map((quest) => <Link className="user-quest-history-row grid grid-cols-[minmax(0,1fr)_auto] gap-[18px] border-t border-admin-border py-[15px] text-admin-text no-underline first:border-t-0 first:pt-0 hover:text-admin-accent max-[900px]:grid-cols-1 max-[900px]:gap-2.5" key={quest.id} href={quest.href}>
-            <div className="user-quest-history-primary min-w-0">
-              <div className="user-quest-history-title flex flex-wrap items-baseline gap-[7px]">
-                <strong className="text-[17px] leading-[1.4]">{quest.title}</strong>
-                {quest.displayId ? <span className="text-[15px] leading-[1.4] text-admin-muted">{quest.displayId}</span> : null}
+          {history.map((entry) => {
+            const quest = entry.quest;
+            const status = entry.assignmentStatus ?? questStateLabel(quest.questStatus);
+            const statusDate = entry.assignmentStatusChangedAt ?? quest.questStatusChangedAt ?? entry.createdAt;
+            return <Link className="user-quest-history-row grid grid-cols-[minmax(0,1fr)_auto] gap-[18px] border-t border-admin-border py-[15px] text-admin-text no-underline first:border-t-0 first:pt-0 hover:text-admin-accent max-[900px]:grid-cols-1 max-[900px]:gap-2.5" key={`${entry.role}:${quest.id}`} href={entry.href}>
+              <div className="user-quest-history-primary min-w-0">
+                <div className="user-quest-history-title flex flex-wrap items-baseline gap-[7px]">
+                  <strong className="text-[17px] leading-[1.4]">{quest.title}</strong>
+                  <span className="text-[15px] leading-[1.4] text-admin-muted">{quest.displayId}</span>
+                </div>
+                <div className="user-quest-history-fields mt-2.5 grid grid-cols-[minmax(120px,.8fr)_minmax(155px,1fr)_minmax(250px,1.7fr)_minmax(115px,.8fr)] gap-3 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
+                  <div className="user-quest-history-field grid min-w-0 content-start gap-0.5"><span className="text-[15px] leading-[1.4] text-admin-muted">{translateText("Role")}</span><strong className="text-[17px] leading-[1.4]">{translateText(entry.role)}</strong></div>
+                  <div className="user-quest-history-field grid min-w-0 content-start gap-0.5"><span className="text-[15px] leading-[1.4] text-admin-muted">{translateText("Status")}</span><strong className="text-[17px] leading-[1.4]">{translateText(status)}</strong></div>
+                  <div className="user-quest-history-field grid min-w-0 content-start gap-0.5"><span className="text-[15px] leading-[1.4] text-admin-muted">{translateText("Status date")}</span><strong className="text-[17px] leading-[1.4]">{formatAdminTimestamp(statusDate, "Asia/Bangkok")}</strong></div>
+                  {entry.startedAt ? <div className="user-quest-history-field grid min-w-0 content-start gap-0.5"><span className="text-[15px] leading-[1.4] text-admin-muted">{translateText("Started Work")}</span><strong className="text-[17px] leading-[1.4]">{formatAdminTimestamp(entry.startedAt, "Asia/Bangkok")}</strong></div> : null}
+                </div>
+                {entry.relatedMembers.length ? <p className="mb-0 mt-2 text-[15px] text-admin-muted">{entry.relatedMembers.map((related) => `${related.role}: ${related.member.displayId} · ${related.member.firstName} ${related.member.lastName}`).join(" · ")}</p> : null}
               </div>
-              <div className="user-quest-history-fields mt-2.5 grid grid-cols-[minmax(120px,.8fr)_minmax(155px,1fr)_minmax(250px,1.7fr)_minmax(115px,.8fr)] gap-3 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
-                <div className="user-quest-history-field grid min-w-0 content-start gap-0.5"><span className="text-[15px] leading-[1.4] text-admin-muted">{translateText("Role")}</span><strong className="text-[17px] leading-[1.4]">{translateText(quest.role)}</strong></div>
-                <div className="user-quest-history-field grid min-w-0 content-start gap-0.5"><span className="text-[15px] leading-[1.4] text-admin-muted">{translateText("Status")}</span><strong className="text-[17px] leading-[1.4]">{translateText(questStateLabel(quest.status))}</strong></div>
-                <div className="user-quest-history-field grid min-w-0 content-start gap-0.5"><span className="text-[15px] leading-[1.4] text-admin-muted">{translateText("Created")}</span><strong className="text-[17px] leading-[1.4]">{quest.createdAt}</strong></div>
-              </div>
-            </div>
-          </Link>)}
+            </Link>;
+          })}
         </div>
-      ) : <p className="audit-note">{translateText("No Quest history.")}</p>}
+      ) : null}
+      {state ? <p className="audit-note" role={model.questHistory.error ? "alert" : undefined}>{state}</p> : null}
+      {history.length && model.questHistory.error ? <p className="audit-note" role="alert">{translateText(model.questHistory.error.message)}</p> : null}
     </Card>
   );
 }
@@ -445,14 +648,31 @@ function WalletStatementTab({ model, translateText }: { model: MemberModel; tran
   const [dateInputValues, setDateInputValues] = useState({ from: "", to: "" });
   const [dateInputError, setDateInputError] = useState("");
   const [visibleCount, setVisibleCount] = useState(25);
-  const filteredRows = walletStatementRows(model, filters, model.walletStatement.length);
+  const transactions = model.walletStatement.items ?? [];
+  const walletAvailable = model.walletReadState.kind === "available" && model.walletBalances !== null;
+  const projectionVerified = model.walletProjectionMatchesLedger === true;
+  const displayBalances = walletAvailable && projectionVerified ? model.walletBalances : null;
+  const statementVerified = walletAvailable
+    && projectionVerified
+    && model.walletStatement.complete
+    && model.walletStatement.items !== null;
+  const filteredRows = statementVerified
+    ? walletStatementRows({
+      walletId: model.walletId,
+      walletBalances: model.walletBalances,
+      walletStatement: transactions,
+    }, filters, transactions.length)
+    : [];
   const rows = filteredRows.slice(0, visibleCount);
+  const hasEligibleTransactions = latestWalletTransactionAt(model) !== null;
+
   useEffect(() => {
     setVisibleCount(25);
     setFilters({ eventType: "", from: "", to: "" });
     setDateInputValues({ from: "", to: "" });
     setDateInputError("");
   }, [model.id]);
+
   const handleFromDateChange = (value: string) => {
     setDateInputValues((current) => ({ ...current, from: value }));
     setDateInputError("");
@@ -484,14 +704,23 @@ function WalletStatementTab({ model, translateText }: { model: MemberModel; tran
     });
     setVisibleCount(25);
   };
-  if (model.walletStatementError) {
-    return (
-      <Card as="section" className="user-detail-panel user-tab-panel col-span-full min-w-0 p-[16px_18px]" data-user-wallet-statement>
-        <CardHeader flush><h2>{translateText("Wallet Statement")}</h2></CardHeader>
-        <p className="audit-note">{translateText(model.walletStatementError)}</p>
-      </Card>
-    );
-  }
+
+  const statementError = (() => {
+    const state = model.walletReadState;
+    if (state.kind === "absent") return "Member นี้ไม่มี Wallet";
+    if (state.kind === "request-error") return "อ่าน Wallet Statement ไม่สำเร็จ";
+    if (state.kind === "conflict") return "ข้อมูล Wallet ขัดแย้งกัน";
+    if (state.kind === "contract-error") return "ข้อมูล Wallet ไม่ตรงตามสัญญา API";
+    if (state.kind === "unavailable") return "ยังไม่ยืนยันข้อมูล Wallet Statement";
+    if (model.walletProjectionMatchesLedger === false) return "ยอด Wallet ไม่ตรงกับ Ledger";
+    if (model.walletStatement.error?.kind === "request") return "อ่าน Wallet Statement ไม่สำเร็จ";
+    if (model.walletStatement.error?.kind === "contract") return "ข้อมูล Wallet Statement ไม่ตรงตามสัญญา API";
+    if (!model.walletStatement.complete || model.walletStatement.items === null) {
+      return "ยังไม่ยืนยันข้อมูล Wallet Statement";
+    }
+    return null;
+  })();
+
   return (
     <Card as="section" className="user-detail-panel user-tab-panel col-span-full min-w-0 p-[16px_18px]" data-user-wallet-statement>
       <CardHeader flush className="user-panel-heading">
@@ -500,42 +729,46 @@ function WalletStatementTab({ model, translateText }: { model: MemberModel; tran
           <p>{translateText("Committed and sealed Ledger Transactions affecting this Wallet.")}</p>
         </div>
       </CardHeader>
-      {model.walletBalances ? (
+      {displayBalances ? (
         <div className="wallet-statement-balance-grid mb-3.5 grid grid-cols-4 gap-2.5 max-[720px]:grid-cols-2 max-[420px]:grid-cols-1">
-          <div className="wallet-statement-balance grid min-w-0 gap-[3px] rounded-admin-sm border border-admin-border bg-admin-soft p-2.5"><span className="overflow-hidden text-ellipsis whitespace-nowrap text-[15px] font-semibold leading-[1.4] text-admin-muted">{translateText("Spending Balance")}</span><strong className="text-[17px] leading-[1.4] [font-variant-numeric:tabular-nums]">{formatMoneySatang(model.walletBalances.spendingBalanceSatang)}</strong></div>
-          <div className="wallet-statement-balance grid min-w-0 gap-[3px] rounded-admin-sm border border-admin-border bg-admin-soft p-2.5"><span className="overflow-hidden text-ellipsis whitespace-nowrap text-[15px] font-semibold leading-[1.4] text-admin-muted">{translateText("Earnings Balance")}</span><strong className="text-[17px] leading-[1.4] [font-variant-numeric:tabular-nums]">{formatMoneySatang(model.walletBalances.earningsBalanceSatang)}</strong></div>
-          <div className="wallet-statement-balance grid min-w-0 gap-[3px] rounded-admin-sm border border-admin-border bg-admin-soft p-2.5"><span className="overflow-hidden text-ellipsis whitespace-nowrap text-[15px] font-semibold leading-[1.4] text-admin-muted">{translateText("Funding Reserved")}</span><strong className="text-[17px] leading-[1.4] [font-variant-numeric:tabular-nums]">{formatMoneySatang(model.walletBalances.fundingReservedSatang)}</strong></div>
-          <div className="wallet-statement-balance grid min-w-0 gap-[3px] rounded-admin-sm border border-admin-border bg-admin-soft p-2.5"><span className="overflow-hidden text-ellipsis whitespace-nowrap text-[15px] font-semibold leading-[1.4] text-admin-muted">{translateText("Reserved For Payouts")}</span><strong className="text-[17px] leading-[1.4] [font-variant-numeric:tabular-nums]">{formatMoneySatang(model.walletBalances.reservedForPayoutsSatang)}</strong></div>
+          <div className="wallet-statement-balance grid min-w-0 gap-[3px] rounded-admin-sm border border-admin-border bg-admin-soft p-2.5"><span className="overflow-hidden text-ellipsis whitespace-nowrap text-[15px] font-semibold leading-[1.4] text-admin-muted">{translateText("Spending Balance")}</span><strong className="text-[17px] leading-[1.4] [font-variant-numeric:tabular-nums]">{formatMoneySatang(displayBalances.spendingBalanceSatang)}</strong></div>
+          <div className="wallet-statement-balance grid min-w-0 gap-[3px] rounded-admin-sm border border-admin-border bg-admin-soft p-2.5"><span className="overflow-hidden text-ellipsis whitespace-nowrap text-[15px] font-semibold leading-[1.4] text-admin-muted">{translateText("Earnings Balance")}</span><strong className="text-[17px] leading-[1.4] [font-variant-numeric:tabular-nums]">{formatMoneySatang(displayBalances.earningsBalanceSatang)}</strong></div>
+          <div className="wallet-statement-balance grid min-w-0 gap-[3px] rounded-admin-sm border border-admin-border bg-admin-soft p-2.5"><span className="overflow-hidden text-ellipsis whitespace-nowrap text-[15px] font-semibold leading-[1.4] text-admin-muted">{translateText("Funding Reserved")}</span><strong className="text-[17px] leading-[1.4] [font-variant-numeric:tabular-nums]">{formatMoneySatang(displayBalances.fundingReservedSatang)}</strong></div>
+          <div className="wallet-statement-balance grid min-w-0 gap-[3px] rounded-admin-sm border border-admin-border bg-admin-soft p-2.5"><span className="overflow-hidden text-ellipsis whitespace-nowrap text-[15px] font-semibold leading-[1.4] text-admin-muted">{translateText("Reserved For Payouts")}</span><strong className="text-[17px] leading-[1.4] [font-variant-numeric:tabular-nums]">{formatMoneySatang(displayBalances.reservedForPayoutsSatang)}</strong></div>
         </div>
-      ) : <p className="audit-note">{translateText("No Wallet is linked to this Member.")}</p>}
-      <form className="wallet-statement-filters mb-3.5 grid grid-cols-[minmax(0,1.3fr)_repeat(2,minmax(130px,1fr))_auto] items-end gap-[9px] max-[720px]:grid-cols-2 max-[420px]:grid-cols-1" onSubmit={submit}>
-        <label className="grid gap-1 text-[15px] font-semibold leading-[1.4] text-admin-muted max-[720px]:col-span-full max-[420px]:col-span-1">{translateText("Event type")}<select className="min-h-[35px] w-full rounded-[7px] border border-admin-border-strong bg-admin-surface px-2 text-admin-text" name="eventType" aria-label={translateText("Event type")} defaultValue=""><option value="">{translateText("All event types")}</option>{ADMIN_LEDGER_EVENT_TYPES.map((eventType) => <option key={eventType} value={eventType}>{translateText(walletEventTypeLabel(eventType))}</option>)}</select></label>
-        <WalletStatementDateField name="from" label="From" value={dateInputValues.from} hasError={Boolean(dateInputError)} onChange={handleFromDateChange} translateText={translateText} />
-        <WalletStatementDateField name="to" label="To" value={dateInputValues.to} hasError={Boolean(dateInputError)} onChange={handleToDateChange} translateText={translateText} />
-        <Button className="min-h-[35px]" variant="primary" type="submit">{translateText("Apply filters")}</Button>
-        <Button className="min-h-[35px]" variant="outline" type="button" onClick={clearFilters}>{translateText("Clear")}</Button>
-        {dateInputError ? <p className="col-span-full m-0 text-sm text-admin-danger" id="wallet-statement-date-error" role="alert" aria-live="polite">{dateInputError}</p> : null}
-      </form>
-      {rows.length ? (
-        <div className="wallet-statement-table-block min-w-0">
-          <p className="wallet-statement-scroll-hint mb-2 hidden rounded-[7px] border border-admin-border bg-admin-soft px-2.5 py-2 text-[15px] leading-[1.4] text-admin-muted max-[600px]:block">{translateText("On narrow screens, scroll horizontally to view all Wallet Statement columns.")}</p>
-          <div className="wallet-statement-table-wrap min-w-0 overflow-x-auto [scrollbar-gutter:stable] max-[600px]:[overscroll-behavior-inline:contain]" role="region" aria-label={translateText("Wallet Statement table")}>
-            <Table className="wallet-statement-table min-w-[760px] [&_tbody>tr]:cursor-default [&_tbody>tr>td>strong]:text-xs [&_td.money]:whitespace-nowrap [&_td.wallet-statement-movement]:min-w-[220px] [&_td_small]:mt-[3px]">
-              <caption>{translateText("Wallet Statement")}</caption>
-              <thead><tr><th>{translateText("Date")}</th><th>{translateText("Event type")}</th><th>{translateText("Signed amount")}</th><th>{translateText("Compartment movement")}</th><th>{translateText("Resulting Wallet balance")}</th></tr></thead>
-              <tbody>{rows.map((row) => <tr key={row.transaction.id}>
-                <td><time dateTime={row.transaction.createdAt}>{formatWalletDate(row.transaction.createdAt)}</time><small className="mt-[3px] block text-admin-muted">{row.transaction.description}</small></td>
-                <td><strong>{translateText(walletEventTypeLabel(row.transaction.eventType))}</strong><small className="mt-[3px] block text-admin-muted">{walletBusinessReferenceLabel(row.transaction.businessReference)}</small></td>
-                <td className="money">{formatMoneySatang(row.signedAmountSatang, true)}</td>
-                <td className="wallet-statement-movement">{row.movement.map((movement) => <span className="block" key={movement.accountType}>{translateText(walletCompartmentLabel(movement.accountType))}: {formatWalletMovementAmount(movement.amountSatang)}</span>)}</td>
-                <td className="money">{formatMoneySatang(row.resultingWalletBalanceSatang)}</td>
-              </tr>)}</tbody>
-            </Table>
-          </div>
-        </div>
-      ) : <p className="audit-note">{translateText("No sealed Ledger Transactions match these filters.")}</p>}
-      {model.apiError && <p className="audit-note">{translateText(model.apiError)}</p>}
-      {filteredRows.length > rows.length && <Button variant="outline" type="button" onClick={() => setVisibleCount((count) => count + 25)}>{translateText("Load more")}</Button>}
+      ) : null}
+      {walletReadWarningText(model, translateText) ? <p className="audit-note" role="alert">{walletReadWarningText(model, translateText)}</p> : null}
+      {!statementVerified ? <p className="audit-note" role={model.walletStatement.error || model.walletReadState.kind === "contract-error" || model.walletReadState.kind === "conflict" ? "alert" : undefined}>{translateText(statementError ?? "ยังไม่ยืนยันข้อมูล Wallet Statement")}</p> : (
+        <>
+          <form className="wallet-statement-filters mb-3.5 grid grid-cols-[minmax(0,1.3fr)_repeat(2,minmax(130px,1fr))_auto] items-end gap-[9px] max-[720px]:grid-cols-2 max-[420px]:grid-cols-1" onSubmit={submit}>
+            <label className="grid gap-1 text-[15px] font-semibold leading-[1.4] text-admin-muted max-[720px]:col-span-full max-[420px]:col-span-1">{translateText("Event type")}<select className="min-h-[35px] w-full rounded-[7px] border border-admin-border-strong bg-admin-surface px-2 text-admin-text" name="eventType" aria-label={translateText("Event type")} defaultValue=""><option value="">{translateText("All event types")}</option>{ADMIN_LEDGER_EVENT_TYPES.map((eventType) => <option key={eventType} value={eventType}>{translateText(walletEventTypeLabel(eventType))}</option>)}</select></label>
+            <WalletStatementDateField name="from" label="From" value={dateInputValues.from} hasError={Boolean(dateInputError)} onChange={handleFromDateChange} translateText={translateText} />
+            <WalletStatementDateField name="to" label="To" value={dateInputValues.to} hasError={Boolean(dateInputError)} onChange={handleToDateChange} translateText={translateText} />
+            <Button className="min-h-[35px]" variant="primary" type="submit">{translateText("Apply filters")}</Button>
+            <Button className="min-h-[35px]" variant="outline" type="button" onClick={clearFilters}>{translateText("Clear")}</Button>
+            {dateInputError ? <p className="col-span-full m-0 text-sm text-admin-danger" id="wallet-statement-date-error" role="alert" aria-live="polite">{dateInputError}</p> : null}
+          </form>
+          {rows.length ? (
+            <div className="wallet-statement-table-block min-w-0">
+              <p className="wallet-statement-scroll-hint mb-2 hidden rounded-[7px] border border-admin-border bg-admin-soft px-2.5 py-2 text-[15px] leading-[1.4] text-admin-muted max-[600px]:block">{translateText("On narrow screens, scroll horizontally to view all Wallet Statement columns.")}</p>
+              <div className="wallet-statement-table-wrap min-w-0 overflow-x-auto [scrollbar-gutter:stable] max-[600px]:[overscroll-behavior-inline:contain]" role="region" aria-label={translateText("Wallet Statement table")}>
+                <Table className="wallet-statement-table min-w-[760px] [&_tbody>tr]:cursor-default [&_tbody>tr>td>strong]:text-xs [&_td.money]:whitespace-nowrap [&_td.wallet-statement-movement]:min-w-[220px] [&_td_small]:mt-[3px]">
+                  <caption>{translateText("Wallet Statement")}</caption>
+                  <thead><tr><th>{translateText("Date")}</th><th>{translateText("Event type")}</th><th>{translateText("Signed amount")}</th><th>{translateText("Compartment movement")}</th><th>{translateText("Resulting Wallet balance")}</th></tr></thead>
+                  <tbody>{rows.map((row) => <tr key={row.transaction.id}>
+                    <td><time dateTime={row.transaction.createdAt}>{formatWalletDate(row.transaction.createdAt)}</time><small className="mt-[3px] block text-admin-muted">{row.transaction.description}</small></td>
+                    <td><strong>{translateText(walletEventTypeLabel(row.transaction.eventType))}</strong><small className="mt-[3px] block text-admin-muted">{row.transaction.displayReference}</small></td>
+                    <td className="money">{formatMoneySatang(row.signedAmountSatang, true)}</td>
+                    <td className="wallet-statement-movement">{row.movement.map((movement) => <span className="block" key={movement.accountType}>{translateText(walletCompartmentLabel(movement.accountType))}: {formatWalletMovementAmount(movement.amountSatang)}</span>)}</td>
+                    <td className="money">{formatMoneySatang(row.resultingWalletBalanceSatang)}</td>
+                  </tr>)}</tbody>
+                </Table>
+              </div>
+            </div>
+          ) : !hasEligibleTransactions ? <p className="audit-note">{translateText("ยังไม่มี Ledger Transaction")}</p> : <p className="audit-note">{translateText("No sealed Ledger Transactions match these filters.")}</p>}
+          {filteredRows.length > rows.length ? <Button variant="outline" type="button" onClick={() => setVisibleCount((count) => count + 25)}>{translateText("Load more")}</Button> : null}
+        </>
+      )}
     </Card>
   );
 }
@@ -549,11 +782,23 @@ function ReviewsTab({
 }) {
   const [query, setQuery] = useState("");
   const [rating, setRating] = useState<number | null>(null);
-  const reviews = useMemo(
-    () => model.reviews ? filterReviews(model.reviews, { query, filter: "all", rating }) : [],
-    [model.reviews, query, rating],
-  );
-  const reviewDetailsAvailable = model.reviews !== null;
+  const allReviews = model.reviews.items ?? emptyReviewRecords;
+  const reviewDetailsAvailable = model.reviews.complete && model.reviews.items !== null;
+  const reviews = useMemo(() => {
+    const normalizedQuery = query.trim().toLocaleLowerCase();
+    return allReviews.filter((review) => {
+      if (rating !== null && review.rating !== rating) return false;
+      if (!normalizedQuery) return true;
+      return [
+        review.reviewer.name,
+        review.reviewer.displayId,
+        review.comment ?? "",
+        review.quest.title,
+        review.quest.displayId,
+      ].some((value) => value.toLocaleLowerCase().includes(normalizedQuery));
+    });
+  }, [allReviews, query, rating]);
+  const state = reviews.length ? null : reviewStateMessage(model, translateText);
 
   return (
     <Card as="section" className="user-detail-panel user-tab-panel col-span-full min-w-0 p-[16px_18px]">
@@ -573,32 +818,54 @@ function ReviewsTab({
             </span>
           </div>
         </div>
+        <span className={adminRecordCount}>{collectionCountLabel(model.reviews, translateText, "Review details are not available.")}</span>
       </CardHeader>
       <div className="mb-3 flex items-center justify-between gap-3 max-[600px]:items-stretch max-[600px]:flex-col">
         <div className="inline-search search-field">
-          <input type="search" aria-label={translateText("Search reviews")} placeholder={translateText("Search reviews…")} value={query} onChange={(event) => setQuery(event.target.value)} disabled={!reviewDetailsAvailable} />
+          <input type="search" aria-label={translateText("Search reviews")} placeholder={translateText("Search reviews…")} value={query} onChange={(event) => setQuery(event.currentTarget.value)} disabled={!reviewDetailsAvailable} />
         </div>
       </div>
       <p className="audit-note">{translateText("Review records are read-only. Review Hide or Unhide is not an accepted Admin moderation command.")}</p>
       {reviews.length ? (
         <div className="overflow-x-auto">
-          <Table className="user-detail-table min-w-[760px] [&_tbody>tr]:cursor-default [&_td]:align-top [&_th]:align-middle [&_th]:pt-2 [&_td:nth-child(3)]:max-w-[260px] [&_td:nth-child(3)]:text-admin-muted">
-            <thead><tr><th>{translateText("Reviewer")}</th><th>{translateText("Rating")}</th><th>{translateText("Review")}</th><th>{translateText("Date")}</th></tr></thead>
-            <tbody>{reviews.map((review) => {
-              return <tr key={`${review.reviewer}-${review.date}`}><td>{review.reviewer}</td><td>{"★".repeat(review.rating)}</td><td>{review.review}</td><td>{review.date}</td></tr>;
-            })}</tbody>
+          <Table className="user-detail-table min-w-[900px] [&_tbody>tr]:cursor-default [&_td]:align-top [&_th]:align-middle [&_th]:pt-2">
+            <thead><tr><th>{translateText("Reviewer")}</th><th>{translateText("Rating")}</th><th>{translateText("Review")}</th><th>{translateText("Quest")}</th><th>{translateText("Date")}</th></tr></thead>
+            <tbody>{reviews.map((review) => <tr key={review.id}>
+              <td>{review.reviewer.name}<small className="mt-1 block text-admin-muted">{review.reviewer.displayId}</small></td>
+              <td>{"★".repeat(review.rating)}</td>
+              <td>{review.comment ?? translateText("No review comment.")}</td>
+              <td>{review.quest.title}<small className="mt-1 block text-admin-muted">{review.quest.displayId} · {translateText(questStateLabel(review.quest.questStatus))}</small></td>
+              <td><time dateTime={review.createdAt}>{formatAdminTimestamp(review.createdAt, "Asia/Bangkok")}</time></td>
+            </tr>)}</tbody>
           </Table>
         </div>
-      ) : !reviewDetailsAvailable ? <p className="audit-note">{translateText(reviewStateMessage(model))}</p> : reviewCount(model) === 0 ? <p className="audit-note">{translateText("No Reviews received.")}</p> : <p className="audit-note">{translateText("No reviews match these filters.")}</p>}
+      ) : state ? <p className="audit-note" role={model.reviews.error ? "alert" : undefined}>{state}</p> : <p className="audit-note">{translateText("No reviews match these filters.")}</p>}
+      {reviews.length && model.reviews.error ? <p className="audit-note" role="alert">{translateText(model.reviews.error.message)}</p> : null}
     </Card>
   );
 }
 
-function ReportsTable({ reports, translateText }: { reports: MemberModel["reports"]; translateText: (value: string) => string }) {
-  return <div className="overflow-x-auto"><Table className="user-detail-table min-w-[760px] [&_tbody>tr]:cursor-default [&_td]:align-top [&_th]:align-middle [&_th]:pt-2 [&_td:nth-child(3)]:max-w-[260px] [&_td:nth-child(3)]:text-admin-muted"><thead><tr><th>{translateText("Case")}</th><th>{translateText("Type")}</th><th>{translateText("Reported by")}</th><th>{translateText("Reason")}</th><th>{translateText("Status")}</th><th>{translateText("Reported")}</th></tr></thead><tbody>{reports.map((report) => <tr key={report.id}><td><Link href={report.href}>{report.displayId || translateText(report.kind)}</Link></td><td>{translateText(report.kind)}</td><td>{report.reporterName}</td><td>{report.detail}</td><td>{translateText(reportCaseStatusLabel(report.status))}</td><td>{report.reportedAt}</td></tr>)}</tbody></Table></div>;
+function ReportsTable({ reports, translateText }: { reports: MemberReportEntry[]; translateText: (value: string) => string }) {
+  return <div className="overflow-x-auto"><Table className="user-detail-table min-w-[900px] [&_tbody>tr]:cursor-default [&_td]:align-top [&_th]:align-middle [&_th]:pt-2 [&_td:nth-child(3)]:max-w-[260px] [&_td:nth-child(3)]:text-admin-muted">
+    <thead><tr><th>{translateText("Report")}</th><th>{translateText("Type")}</th><th>{translateText("Reported by")}</th><th>{translateText("Reported Member")}</th><th>{translateText("Quest")}</th><th>{translateText("Reason")}</th><th>{translateText("Status")}</th><th>{translateText("Reported")}</th></tr></thead>
+    <tbody>{reports.map((report) => <tr key={report.id}>
+      <td><Link href={report.href}>{report.displayId || translateText(report.kind)}</Link></td>
+      <td>{translateText(report.kind)}</td>
+      <td>{report.reporterName}{report.reporterDisplayId ? <small className="mt-1 block text-admin-muted">{report.reporterDisplayId}</small> : null}</td>
+      <td>{report.reportedMemberName ?? "—"}{report.reportedMemberDisplayId ? <small className="mt-1 block text-admin-muted">{report.reportedMemberDisplayId}</small> : null}</td>
+      <td>{report.questTitle ?? "—"}{report.questDisplayId ? <small className="mt-1 block text-admin-muted">{report.questDisplayId}</small> : null}</td>
+      <td>{report.detail}</td>
+      <td><span className={`badge ${statusBadgeClass(report.status)}`}>{translateText(reportCaseStatusLabel(report.status))}</span></td>
+      <td>{report.reportedAt}</td>
+    </tr>)}</tbody>
+  </Table></div>;
 }
 
 function ReportsTab({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
+  const received = model.reportsReceived.items ?? [];
+  const submitted = model.reportsSubmitted.items ?? [];
+  const receivedState = collectionStateMessage(model.reportsReceived, "No Reports received.", "Reports received are not available.", translateText);
+  const submittedState = collectionStateMessage(model.reportsSubmitted, "No Reports submitted.", "Reports submitted are not available.", translateText);
   return (
     <Card as="section" className="user-detail-panel user-tab-panel col-span-full min-w-0 p-[16px_18px]">
       <div className="user-reports-tab-content grid gap-4">
@@ -610,23 +877,21 @@ function ReportsTab({ model, translateText }: { model: MemberModel; translateTex
         </CardHeader>
         <section className="min-w-0 border-t border-admin-border pt-4">
           <CardHeader flush className="user-panel-heading flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h3>{translateText("Reports received")}</h3>
-              <p>{translateText("Report Cases and Conduct Reports filed against this Member.")}</p>
-            </div>
+            <div className="min-w-0"><h3>{translateText("Reports received")}</h3><p>{translateText("Report Cases and Conduct Reports filed against this Member.")}</p></div>
             <span className={`${adminRecordCount} shrink-0`}>{reportsReceivedCountLabel(model, translateText)}</span>
           </CardHeader>
-          {model.reports.length ? <><ReportsTable reports={model.reports} translateText={translateText} />{model.reportsError ? <p className="audit-note" role="alert">{translateText(model.reportsError)}</p> : null}</> : model.reportsError ? <p className="audit-note" role="alert">{translateText(model.reportsError)}</p> : model.reportsComplete ? <p className="audit-note">{translateText("No Reports received.")}</p> : <p className="audit-note">{translateText("Reports received are not available.")}</p>}
+          {received.length ? <ReportsTable reports={received} translateText={translateText} /> : null}
+          {receivedState ? <p className="audit-note" role={model.reportsReceived.error ? "alert" : undefined}>{receivedState}</p> : null}
+          {received.length && model.reportsReceived.error ? <p className="audit-note" role="alert">{translateText(model.reportsReceived.error.message)}</p> : null}
         </section>
         <section className="min-w-0 border-t border-admin-border pt-4">
           <CardHeader flush className="user-panel-heading flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h3>{translateText("Reports submitted")}</h3>
-              <p>{translateText("Cases submitted by this Member about another Member or Quest.")}</p>
-            </div>
-            {model.reportsSubmitted !== null ? <span className={`${adminRecordCount} shrink-0`}>{model.reportsSubmitted.length}</span> : null}
+            <div className="min-w-0"><h3>{translateText("Reports submitted")}</h3><p>{translateText("Cases submitted by this Member about another Member or Quest.")}</p></div>
+            <span className={`${adminRecordCount} shrink-0`}>{collectionCountLabel(model.reportsSubmitted, translateText, "Reports submitted are not available.")}</span>
           </CardHeader>
-          {model.reportsSubmitted === null ? <p className="audit-note">{translateText(model.reportsSubmittedError || "Reports submitted are not available.")}</p> : model.reportsSubmitted.length ? <ReportsTable reports={model.reportsSubmitted} translateText={translateText} /> : <p className="audit-note">{translateText("No Reports submitted.")}</p>}
+          {submitted.length ? <ReportsTable reports={submitted} translateText={translateText} /> : null}
+          {submittedState ? <p className="audit-note" role={model.reportsSubmitted.error ? "alert" : undefined}>{submittedState}</p> : null}
+          {submitted.length && model.reportsSubmitted.error ? <p className="audit-note" role="alert">{translateText(model.reportsSubmitted.error.message)}</p> : null}
         </section>
       </div>
     </Card>
@@ -634,7 +899,24 @@ function ReportsTab({ model, translateText }: { model: MemberModel; translateTex
 }
 
 function MemberModerationTimeline({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
-  return model.penaltyHistory === null ? <p className="audit-note">{translateText("Moderation history is not available.")}</p> : model.penaltyHistory.length ? <div className="mt-2 grid gap-0" data-member-moderation-history><p className="audit-note">{translateText("Moderation history provided by the Admin API.")}</p>{model.penaltyHistory.map((entry) => <article className="border-t border-admin-border py-4 first:pt-3.5 last:pb-0" key={`${entry.at}-${entry.event}-${entry.caseId || entry.outcome || "event"}`}><strong className="mb-1.5 block text-[17px] leading-[1.4]">{translateText(entry.event)}</strong><span className="mt-1.5 block text-[15px] leading-[1.45] text-admin-muted">{formatAdminTimestamp(entry.at, "Asia/Bangkok")} · {translateText("by")} {displayAdminId(entry.by) ?? translateText("Admin")}</span>{entry.reason && <p className="mt-[9px] text-[15px] leading-[1.5]">{entry.reason}</p>}{(entry.previousStatus || entry.newStatus || entry.outcome || entry.durationDays || entry.expiresAt) && <p className="mt-[9px] text-[15px] leading-[1.5]">{entry.previousStatus && `${translateText("Previous status")}: ${translateText(entry.previousStatus)}`}{entry.previousStatus && entry.newStatus ? " · " : ""}{entry.newStatus && `${translateText("New status")}: ${translateText(entry.newStatus)}`}{(entry.previousStatus || entry.newStatus) && entry.outcome ? " · " : ""}{entry.outcome && `${translateText("Outcome")}: ${translateText(entry.outcome)}`}{entry.durationDays ? ` · ${entry.durationDays} ${translateText("days")}` : ""}{entry.expiresAt ? ` · ${translateText("Expires")} ${formatAdminTimestamp(entry.expiresAt, "Asia/Bangkok")}` : ""}</p>}{displayAdminId(entry.caseId) && <p className="mt-[9px] text-[15px] leading-[1.5]"><span>{translateText(entry.caseType || "Related case")}:</span> {entry.caseHref ? <Link href={entry.caseHref} aria-label={`${translateText("Open related case")} ${displayAdminId(entry.caseId)}`}>{displayAdminId(entry.caseId)}</Link> : <strong>{displayAdminId(entry.caseId)}</strong>}</p>}</article>)}</div> : <p className="audit-note">{translateText("No moderation history.")}</p>;
+  const items = model.penaltyHistory.items ?? [];
+  const state = collectionStateMessage(model.penaltyHistory, "No Moderation history.", "Moderation history is not available.", translateText);
+  return (
+    <>
+      {items.length ? <div className="mt-2 grid gap-0" data-member-moderation-history>
+        <p className="audit-note">{translateText("Moderation history provided by the Admin API.")}</p>
+        {items.map((entry) => <article className="border-t border-admin-border py-4 first:pt-3.5 last:pb-0" key={memberPenaltyHistoryItemKey(entry)}>
+          <strong className="mb-1.5 block text-[17px] leading-[1.4]">{translateText(entry.result)}</strong>
+          <span className="mt-1.5 block text-[15px] leading-[1.45] text-admin-muted">{formatAdminTimestamp(entry.createdAt, "Asia/Bangkok")} · {translateText("by")} {entry.actor.displayName}</span>
+          <span className="mt-1 block text-[15px] leading-[1.45] text-admin-muted">{translateText(entry.ladder)} · {translateText(entry.source)}{entry.sourceDisplayId ? ` · ${entry.sourceDisplayId}` : ""} · {translateText("Sequence")} {entry.sequenceNumber}</span>
+          <span className="mt-1 block text-[15px] leading-[1.45] text-admin-muted">{translateText(entry.reasonCode)}{entry.reviewRating === null ? "" : ` · ${translateText("Rating")} ${entry.reviewRating}`}</span>
+          {entry.reversal ? <span className="mt-1 block text-[15px] leading-[1.45] text-admin-muted">{translateText(entry.reversal.relation)} · {translateText("Sequence")} {entry.reversal.sequenceNumber} · {formatAdminTimestamp(entry.reversal.createdAt, "Asia/Bangkok")}</span> : null}
+        </article>)}
+      </div> : null}
+      {state ? <p className="audit-note" role={model.penaltyHistory.error ? "alert" : undefined}>{state}</p> : null}
+      {items.length && model.penaltyHistory.error ? <p className="audit-note" role="alert">{translateText(model.penaltyHistory.error.message)}</p> : null}
+    </>
+  );
 }
 
 function PenaltyHistoryTab({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
@@ -644,9 +926,9 @@ function PenaltyHistoryTab({ model, translateText }: { model: MemberModel; trans
         <CardHeader flush className="user-panel-heading">
           <div>
             <h2>{translateText("Moderation History")}</h2>
-            <p>{translateText("Factual Red Flag, Member Ban, Report Case, and Conduct Report events for this Member.")}</p>
+            <p>{translateText("Penalty audit records and outcomes for this Member.")}</p>
           </div>
-          {model.penaltyHistory !== null ? <span className={adminRecordCount}>{model.penaltyHistory.length}</span> : null}
+          <span className={adminRecordCount}>{collectionCountLabel(model.penaltyHistory, translateText, "Moderation history is not available.")}</span>
         </CardHeader>
         <MemberModerationTimeline model={model} translateText={translateText} />
       </div>
@@ -670,7 +952,9 @@ function DetailTabs({ model, activeTab, translateText }: { model: MemberModel; a
 }
 
 function DrawerContent({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
-  const latestTransactionAt = latestWalletTransactionAt(model);
+  const balances = model.walletBalances;
+  const penaltySummary = model.penaltyHistory.summary;
+  const walletWarning = walletReadWarningText(model, translateText);
   return (
     <div className="user-drawer-detail admin-drawer-content-flow grid min-w-0 content-start gap-[18px]">
       <Card as="section" className={`${adminRecordSection} member-drawer-overview`}>
@@ -688,23 +972,42 @@ function DrawerContent({ model, translateText }: { model: MemberModel; translate
       </Card>
       <Card as="section" className={adminRecordSection}>
         <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Account")}</h2></CardHeader>
-        <div className="user-context-list grid gap-3"><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Student ID")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{model.studentId || "—"}</strong></div><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Member ID")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{model.displayId || "—"}</strong></div><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Created")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{model.createdAt}</strong></div></div>
+        <div className="user-context-list grid gap-3">
+          <div className="grid min-w-0 gap-1"><span className="text-[15px] text-admin-muted">{translateText("Student ID")}</span><strong className="break-words text-[17px]">{model.studentId || "—"}</strong></div>
+          <div className="grid min-w-0 gap-1"><span className="text-[15px] text-admin-muted">{translateText("Member ID")}</span><strong className="break-words text-[17px]">{model.displayId || "—"}</strong></div>
+          <div className="grid min-w-0 gap-1"><span className="text-[15px] text-admin-muted">{translateText("Created")}</span><strong className="break-words text-[17px]">{model.createdAt}</strong></div>
+        </div>
       </Card>
       <Card as="section" className={adminRecordSection}>
         <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Wallet")}</h2></CardHeader>
-        <div className="user-context-list grid gap-3"><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Wallet Status")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{walletBadge(model, translateText)}</strong></div><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Current Wallet Balance")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{model.walletBalances ? formatMoneySatang(currentWalletBalance(model.walletBalances)) : "—"}</strong></div><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Latest Wallet Transaction Date")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{latestTransactionAt ? formatWalletDate(latestTransactionAt) : "—"}</strong></div></div>
+        <div className="user-context-list grid gap-3">
+          <div className="grid min-w-0 gap-1"><span className="text-[15px] text-admin-muted">{translateText("Wallet Status")}</span><strong className="break-words text-[17px]">{walletBadge(model, translateText)}</strong></div>
+          <div className="grid min-w-0 gap-1"><span className="text-[15px] text-admin-muted">{translateText("Current Wallet Balance")}</span><strong className="break-words text-[17px]">{walletBalanceText(model, translateText, balances ? currentWalletBalance(balances) : undefined)}</strong></div>
+          {(["spendingBalanceSatang", "earningsBalanceSatang", "fundingReservedSatang", "reservedForPayoutsSatang"] as const).map((field, index) => {
+            const labels = ["Spending Balance", "Earnings Balance", "Funding Reserved", "Reserved For Payouts"] as const;
+            return <div className="grid min-w-0 gap-1" key={field}><span className="text-[15px] text-admin-muted">{translateText(labels[index]!)}</span><strong className="break-words text-[17px]">{walletBalanceText(model, translateText, balances?.[field])}</strong></div>;
+          })}
+          <div className="grid min-w-0 gap-1"><span className="text-[15px] text-admin-muted">{translateText("Latest Wallet Transaction Date")}</span><strong className="break-words text-[17px]">{latestWalletTransactionLabel(model, translateText)}</strong></div>
+        </div>
+        {walletWarning ? <p className="audit-note" role="alert">{walletWarning}</p> : null}
       </Card>
       <Card as="section" className={adminRecordSection}>
         <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Moderation")}</h2></CardHeader>
-        <div className="user-context-list grid gap-3"><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Member Status")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{statusBadge(model, translateText)}</strong></div><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Confirmed violations")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{model.confirmedViolationCount === null ? translateText("Confirmed violation count is not available.") : model.confirmedViolationCount}</strong></div></div>
+        <div className="user-context-list grid gap-3">
+          <div className="grid min-w-0 gap-1"><span className="text-[15px] text-admin-muted">{translateText("Member Status")}</span><strong className="break-words text-[17px]">{statusBadge(model, translateText)}</strong></div>
+          <div className="grid min-w-0 gap-1"><span className="text-[15px] text-admin-muted">{translateText("Confirmed violations")}</span><strong className="break-words text-[17px]">{penaltySummary?.confirmedMisconductCount ?? translateText("Confirmed violation count is not available.")}</strong></div>
+        </div>
       </Card>
       <Card as="section" className={`${adminRecordSection} member-drawer-moderation-history`} data-member-drawer-moderation-history>
-        <CardHeader flush className={`${adminRecordHeader} user-panel-heading`}><h2 className={adminRecordHeading}>{translateText("Moderation History")}</h2>{model.penaltyHistory !== null ? <span className={adminRecordCount}>{model.penaltyHistory.length}</span> : null}</CardHeader>
+        <CardHeader flush className={`${adminRecordHeader} user-panel-heading`}><h2 className={adminRecordHeading}>{translateText("Moderation History")}</h2><span className={adminRecordCount}>{collectionCountLabel(model.penaltyHistory, translateText, "Moderation history is not available.")}</span></CardHeader>
         <MemberModerationTimeline model={model} translateText={translateText} />
       </Card>
       <Card as="section" className={adminRecordSection}>
         <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Activity summary")}</h2></CardHeader>
-        <div className="user-activity-list grid gap-3"><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Completed quests")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{completedQuestCount(model) ?? translateText("Not provided by the Admin API")}</strong></div><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Reports received")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{reportsReceivedCountLabel(model, translateText)}</strong></div></div>
+        <div className="user-activity-list grid gap-3">
+          <div className="grid min-w-0 gap-1"><span className="text-[15px] text-admin-muted">{translateText("Completed quests as Worker")}</span><strong className="break-words text-[17px]">{completedQuestCount(model) ?? translateText("Not provided by the Admin API")}</strong></div>
+          <div className="grid min-w-0 gap-1"><span className="text-[15px] text-admin-muted">{translateText("Reports received")}</span><strong className="break-words text-[17px]">{reportsReceivedCountLabel(model, translateText)}</strong></div>
+        </div>
       </Card>
       <div className="admin-drawer-actions sticky bottom-[-28px] z-[4] m-[18px_-24px_-28px] flex flex-wrap gap-2 border-t border-admin-border bg-admin-surface/95 px-6 py-3.5 shadow-[0_-6px_18px_rgba(0,0,0,0.09)] [&>*]:min-h-11 [&>*]:flex-[1_1_180px] [&>*]:text-center max-[720px]:bottom-[-24px] max-[720px]:m-[18px_-16px_-24px] max-[720px]:px-4 max-[720px]:[&>*]:basis-full"><Button asChild variant="outline"><a href={memberRoutes.detail(model.id)}>{translateText("See full Member profile")}</a></Button></div>
     </div>

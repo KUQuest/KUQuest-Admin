@@ -7,11 +7,11 @@ import {
 import type {
   AdminApiRequestOptions,
   AdminPage,
-  AdminPayout,
   AdminPayoutCommandResult,
   AdminPayoutDetail,
   AdminPayoutHistoryEntry,
   AdminPayoutListQuery,
+  AdminPayoutPage,
   AdminPayoutProviderEventResult,
   AdminPayoutReconcileResult,
   AdminTopUpListItem,
@@ -32,8 +32,8 @@ export function createAdminPayoutApi() {
     listPayouts(
       query: AdminPayoutListQuery = {},
       options: AdminApiRequestOptions = {},
-    ): Promise<AdminPage<AdminPayout>> {
-      return apiRequest<AdminPage<AdminPayout>>(
+    ): Promise<AdminPayoutPage> {
+      return apiRequest<AdminPayoutPage>(
         `/api/v1/admin/payouts${queryString(query)}`,
         { cache: "no-store", ...options },
       );

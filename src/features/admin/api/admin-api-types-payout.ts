@@ -29,6 +29,12 @@ export type AdminPayout = {
   updatedAt: string;
   version: number;
 };
+export type AdminPayoutPage = {
+  items: AdminPayout[];
+  nextCursor: string | null;
+  totalCount: number;
+};
+
 export type AdminPayoutHistoryEntry = {
   id: string;
   fromStatus: AdminApiPayoutStatus | null;

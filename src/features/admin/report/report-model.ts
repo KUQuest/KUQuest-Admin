@@ -131,7 +131,7 @@ function evidenceReferences(value: unknown): string[] {
   });
 }
 
-function reportReasonLabel(value: unknown): string | null {
+export function reportReasonLabel(value: unknown): string | null {
   switch (value) {
     case "REPORT_ABUSIVE_OR_HARASSMENT": return "Harassment or abuse";
     case "REPORT_SPAM": return "Spam";

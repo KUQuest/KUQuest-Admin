@@ -1,6 +1,7 @@
 import { createAdminCoreApi } from "./admin-api-core";
 import { createAdminDisputeApi } from "./admin-api-dispute";
 import { createAdminMemberWalletApi } from "./admin-api-member-wallet";
+import { createAdminMemberProfileApi } from "./admin-api-member-profile";
 import { createAdminPayoutApi } from "./admin-api-payout";
 import { createAdminQuestApi } from "./admin-api-quest";
 import { createAdminReportApi } from "./admin-api-report";
@@ -15,6 +16,7 @@ export const adminApi = {
   ...createAdminPayoutApi(),
   ...createAdminReportApi(),
   ...createAdminMemberWalletApi(),
+  ...createAdminMemberProfileApi(),
 };
 
 export type AdminReadPort = Pick<
@@ -43,6 +45,12 @@ export type AdminReadPort = Pick<
   | "listMembers"
   | "getMember"
   | "getMemberFinance"
+  | "getMemberProfileTags"
+  | "listMemberWorkExperiences"
+  | "listMemberCertificates"
+  | "listMemberHistory"
+  | "listMemberReviews"
+  | "listMemberPenaltyHistory"
   | "listWallets"
   | "listLedgerTransactions"
   | "getWallet"

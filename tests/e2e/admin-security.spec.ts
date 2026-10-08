@@ -112,6 +112,45 @@ test.describe("Admin session and private-route boundary", () => {
     await expect(drawer).toHaveCount(0);
     await expect(row).toBeFocused();
   });
+  test("shows Member-scoped Admin profile records without visible UUIDs", async ({ context, page }) => {
+    await addAdminCookie(context, "valid-session");
+    const memberId = "00000000-0000-4000-8000-000000000101";
+    await page.goto(`/member/${memberId}`);
+    const main = page.locator(".user-detail-page");
+
+    await expect(main.getByText("MEM-000101", { exact: true })).toBeVisible();
+    await expect(main.getByText("Communication", { exact: true })).toBeVisible();
+    await expect(main.getByText("Research Assistant", { exact: true })).toBeVisible();
+    await expect(main.getByText("First Aid", { exact: true })).toBeVisible();
+    await expect(main.getByText("PAY-000101", { exact: true })).toBeVisible();
+    await expect(main.getByText("****1234", { exact: false })).toBeVisible();
+
+    await main.getByRole("link", { name: "Activity", exact: true }).click();
+    await expect(main.getByText("QST-000101", { exact: true })).toBeVisible();
+    await main.getByRole("link", { name: "Reviews", exact: true }).click();
+    await expect(main.getByText("Reviewer One", { exact: false })).toBeVisible();
+    await main.getByRole("link", { name: "Reports", exact: true }).click();
+    await expect(main.getByText("RPT-000101", { exact: true })).toBeVisible();
+    await expect(main.getByText("RPT-000102", { exact: true })).toBeVisible();
+    await main.getByRole("link", { name: "Penalty History", exact: true }).click();
+    await expect(main.getByText("PENALTY_RED_FLAG", { exact: true })).toBeVisible();
+    await expect(main.getByText("PENALTY_REVERSAL", { exact: true })).toBeVisible();
+    await main.getByRole("link", { name: "Wallet Statement", exact: true }).click();
+    await expect(main.getByText("LED-000101", { exact: true })).toBeVisible();
+
+    const visibleText = await page.locator("body").innerText();
+    const internalIds = [
+      memberId,
+      "00000000-0000-4000-8000-000000000201",
+      "00000000-0000-4000-8000-000000000301",
+      "00000000-0000-4000-8000-000000000401",
+      "00000000-0000-4000-8000-000000000501",
+      "00000000-0000-4000-8000-000000000601",
+      "00000000-0000-4000-8000-000000000701",
+    ];
+    for (const id of internalIds) expect(visibleText).not.toContain(id);
+  });
+
   test("covers Activity Log mobile, language, theme, export, and pagination behavior", async ({ context, page }) => {
     await addAdminCookie(context, "valid-session");
     await page.setViewportSize({ width: 390, height: 844 });

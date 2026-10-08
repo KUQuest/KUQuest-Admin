@@ -128,6 +128,7 @@ describe("Wallet route service boundary", () => {
         data: {
           items: [{
             id: "ledger-1001",
+            displayReference: "LED-000001",
             businessReference: "TOPUP-1001",
             eventType: "TOP_UP",
             description: "Wallet top-up",
@@ -179,6 +180,7 @@ describe("Wallet route service boundary", () => {
           data: {
             items: [{
               id: "ledger-1002",
+              displayReference: "LED-000002",
               businessReference: "PAYOUT-1001",
               eventType: "PAYOUT",
               description: "Wallet payout",
@@ -205,6 +207,7 @@ describe("Wallet route service boundary", () => {
         data: {
           items: [{
             id: "ledger-1001",
+            displayReference: "LED-000001",
             businessReference: "TOPUP-1001",
             eventType: "TOP_UP",
             description: "Wallet top-up",
