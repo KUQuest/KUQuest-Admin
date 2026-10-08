@@ -101,6 +101,30 @@ async function loadCursorPages<T, Page extends CursorPage<T>>(
   }
 }
 
+function mergeStatusResults<T>(
+  results: readonly CursorRead<T>[],
+  recordId: (item: T) => string,
+  duplicateError: string,
+): { items: T[]; hasDuplicates: boolean; errors: string[] } {
+  const items: T[] = [];
+  const seenIds = new Set<string>();
+  let hasDuplicates = false;
+  for (const result of results) {
+    for (const item of result.items) {
+      const id = recordId(item);
+      if (seenIds.has(id)) {
+        hasDuplicates = true;
+        continue;
+      }
+      seenIds.add(id);
+      items.push(item);
+    }
+  }
+  const errors = results.flatMap((result) => result.error ? [result.error] : []);
+  if (hasDuplicates) errors.push(duplicateError);
+  return { items, hasDuplicates, errors: [...new Set(errors)] };
+}
+
 async function loadAllMemberReports(
   memberId: string,
   options: ReturnType<typeof adminApiRequestOptions>,
@@ -147,19 +171,7 @@ async function loadAllMemberReports(
     return { ...read, totalCount, countsByStatus };
   }));
 
-  const items: AdminReportCase[] = [];
-  const seenReportIds = new Set<string>();
-  let hasDuplicateReport = false;
-  for (const result of statusResults) {
-    for (const item of result.items) {
-      if (seenReportIds.has(item.id)) {
-        hasDuplicateReport = true;
-        continue;
-      }
-      seenReportIds.add(item.id);
-      items.push(item);
-    }
-  }
+  const merged = mergeStatusResults(statusResults, (item) => item.id, "Reports received response is invalid.");
   const countSnapshots = statusResults.flatMap((result) => result.countsByStatus ? [result.countsByStatus] : []);
   const firstCounts = countSnapshots[0] ?? null;
   const countsAreStable = firstCounts !== null && countSnapshots.every((counts) =>
@@ -168,13 +180,12 @@ async function loadAllMemberReports(
   const countError = countSnapshots.length > 0 && !countsAreStable
     ? "Report counts changed while loading."
     : null;
-  const errors = statusResults.flatMap((result) => result.error ? [result.error] : []);
+  const errors = [...merged.errors];
   if (countError) errors.push(countError);
-  if (hasDuplicateReport) errors.push("Reports received response is invalid.");
   return {
-    items,
-    complete: statusResults.every((result) => result.complete) && countsAreStable && !hasDuplicateReport,
-    totalCount: countsAreStable && firstCounts && !hasDuplicateReport
+    items: merged.items,
+    complete: statusResults.every((result) => result.complete) && countsAreStable && !merged.hasDuplicates,
+    totalCount: countsAreStable && firstCounts && !merged.hasDuplicates
       ? statuses.reduce((total, status) => total + firstCounts[status], 0)
       : null,
     error: errors.length ? [...new Set(errors)].join(" ") : null,
@@ -215,25 +226,11 @@ async function loadMemberPayouts(
     );
   }));
 
-  const items: AdminPayout[] = [];
-  const seenPayoutIds = new Set<string>();
-  let hasDuplicatePayout = false;
-  for (const result of statusResults) {
-    for (const item of result.items) {
-      if (seenPayoutIds.has(item.id)) {
-        hasDuplicatePayout = true;
-        continue;
-      }
-      seenPayoutIds.add(item.id);
-      items.push(item);
-    }
-  }
-  const errors = statusResults.flatMap((result) => result.error ? [result.error] : []);
-  if (hasDuplicatePayout) errors.push("ข้อมูล Payout ไม่ตรงตามสัญญา API");
+  const merged = mergeStatusResults(statusResults, (item) => item.id, "ข้อมูล Payout ไม่ตรงตามสัญญา API");
   return {
-    items: items.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)),
-    complete: statusResults.every((result) => result.complete) && !hasDuplicatePayout,
-    error: errors.length ? [...new Set(errors)].join(" ") : null,
+    items: merged.items.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)),
+    complete: statusResults.every((result) => result.complete) && !merged.hasDuplicates,
+    error: merged.errors.length ? merged.errors.join(" ") : null,
   };
 }
 
