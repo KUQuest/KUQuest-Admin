@@ -181,7 +181,7 @@ function MemberRecentReports({ model, translateText }: { model: MemberModel; tra
             <Link className="flex items-center justify-between gap-3 border-t border-admin-border py-2.5 text-admin-text no-underline first:border-t-0 hover:[&>span:first-child_strong]:text-admin-accent" key={report.id} href={report.href}>
               <span className="min-w-0">
                 <strong className="block text-[15px] leading-[1.4]">{report.displayId || translateText(report.kind)}</strong>
-                <small className="mt-0.5 block text-[15px] leading-[1.45] text-admin-muted">{translateText(report.category)}</small>
+                <small className="mt-0.5 block text-[15px] leading-[1.45] text-admin-muted">{report.questDisplayId ? `${translateText("Quest")}: ${report.questDisplayId}` : translateText("Quest Display ID not available.")}</small>
               </span>
               <span className={`badge shrink-0 ${statusBadgeClass(report.status)}`}>{translateText(reportCaseStatusLabel(report.status))}</span>
             </Link>
@@ -236,7 +236,7 @@ function MemberPayoutPreview({ model, translateText, className = "user-detail-pa
       </div>
       {model.payoutsError ? <p className="audit-note" role="alert">{translateText(model.payoutsError)}</p> : null}
       {payoutSummaryConflict ? <p className="audit-note" role="alert">{translateText("Payout summary and records do not match.")}</p> : null}
-      {model.payouts === null ? <p className="audit-note">{translateText("Payout details are not available.")}</p> : model.payouts.length ? (
+      {model.payouts === null ? model.payoutsError ? null : <p className="audit-note">{translateText("Payout details are not available.")}</p> : model.payouts.length ? (
         <div className="user-payout-list grid">
           {model.payouts.map((payout) => (
             <div className="user-payout-row flex w-full items-center justify-between gap-3 border-0 border-t border-admin-border bg-transparent py-2.5 text-left text-admin-text first:border-t-0" key={payout.id}>
@@ -597,7 +597,7 @@ function ReviewsTab({
 }
 
 function ReportsTable({ reports, translateText }: { reports: MemberModel["reports"]; translateText: (value: string) => string }) {
-  return <div className="overflow-x-auto"><Table className="user-detail-table min-w-[900px] [&_tbody>tr]:cursor-default [&_td]:align-top [&_th]:align-middle [&_th]:pt-2 [&_td:nth-child(3)]:max-w-[260px] [&_td:nth-child(3)]:text-admin-muted"><thead><tr><th>{translateText("Case")}</th><th>{translateText("Type")}</th><th>{translateText("Reported by")}</th><th>{translateText("Quest")}</th><th>{translateText("Reason")}</th><th>{translateText("Status")}</th><th>{translateText("Reported")}</th></tr></thead><tbody>{reports.map((report) => <tr key={report.id}><td><Link href={report.href}>{report.displayId || translateText(report.kind)}</Link></td><td>{translateText(report.kind)}</td><td>{report.reporterName}</td><td>{report.questDisplayId ?? translateText("Quest Display ID not available.")}</td><td>{report.detail}</td><td>{translateText(reportCaseStatusLabel(report.status))}</td><td>{report.reportedAt}</td></tr>)}</tbody></Table></div>;
+  return <div className="overflow-x-auto"><Table className="user-detail-table min-w-[760px] [&_tbody>tr]:cursor-default [&_td]:align-top [&_th]:align-middle [&_th]:pt-2"><thead><tr><th>{translateText("Case")}</th><th>{translateText("Type")}</th><th>{translateText("Quest")}</th><th>{translateText("Status")}</th><th>{translateText("Reported")}</th></tr></thead><tbody>{reports.map((report) => <tr key={report.id}><td><Link href={report.href}>{report.displayId || translateText(report.kind)}</Link></td><td>{translateText(report.kind)}</td><td>{report.questDisplayId ?? translateText("Quest Display ID not available.")}</td><td>{translateText(reportCaseStatusLabel(report.status))}</td><td>{report.reportedAt}</td></tr>)}</tbody></Table></div>;
 }
 
 function ReportsTab({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {

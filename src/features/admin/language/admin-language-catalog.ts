@@ -2,6 +2,7 @@ export const thaiTranslations: Record<string, string> = {
   Overview: "ภาพรวม",
   Quest: "งาน",
   "Quest Display ID not available.": "ไม่มีรหัสแสดงผลของ Quest",
+  "Payout details could not be loaded.": "ไม่สามารถโหลดรายละเอียด Payout ได้",
   Payout: "การจ่ายเงิน",
   Member: "สมาชิก",
   "Dispute Cases": "คดีข้อพิพาท",

@@ -124,7 +124,11 @@ async function loadAllMemberReports(
         }
         totalCount = page.totalCount;
         countsByStatus = pageCounts;
-        if (page.items.some((item) => item?.status !== status || !reportMatchesMemberScope(item, memberId))) {
+        if (page.items.some((item) =>
+          item?.status !== status
+          || (item.questId != null && typeof item.questId !== "string")
+          || !reportMatchesMemberScope(item, memberId)
+        )) {
           return "Reports received response is invalid.";
         }
         return null;
@@ -206,7 +210,7 @@ async function loadMemberPayouts(
         invalid: "ข้อมูล Payout ไม่ตรงตามสัญญา API",
         duplicate: "ข้อมูล Payout ไม่ตรงตามสัญญา API",
         stalled: "Payout pages did not advance.",
-        failed: "Payout details are not available.",
+        failed: "Payout details could not be loaded.",
       },
     );
   }));
@@ -273,7 +277,7 @@ export async function loadMemberDetailFromApi(
     : {
         items: [] as AdminPayout[],
         complete: false,
-        error: "Payout details are not available.",
+        error: "Payout details could not be loaded.",
       };
   const questIds = [...new Set(reportsRead.items.flatMap((report) => report.questId ? [report.questId] : []))];
   const questResults = await Promise.all(questIds.map(async (questId) => {

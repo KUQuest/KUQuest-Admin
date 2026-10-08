@@ -1,4 +1,5 @@
 import type {
+  AdminApiPayoutStatus,
   AdminLedgerTransaction,
   AdminMemberDetail,
   AdminMemberFinance,
@@ -66,9 +67,6 @@ export type MemberQuestHistoryEntry = {
 export type MemberReportEntry = {
   id: string;
   displayId: string;
-  category: string;
-  detail: string;
-  reporterName: string;
   questDisplayId: string | null;
   status: string;
   reportedAt: string;
@@ -104,7 +102,7 @@ export type MemberStats = {
 export type MemberPayoutEntry = {
   id: string;
   displayId: string | null;
-  status: string;
+  status: AdminApiPayoutStatus;
   amountSatang: number | null;
   createdAt: string;
   bankName: string | null;
@@ -215,36 +213,15 @@ function reportFromApi(
 ): MemberReportEntry {
   const isConductReport = isConductReportStatus(report.status);
   const kind = isConductReport ? "Conduct Report" : "Report Case";
-  const reporterNames = isConductReport
-    ? [personName(report.filer)]
-    : (report.reporterEntries ?? []).map((entry) => personName(entry.reporter));
-  const reasonCodes = isConductReport
-    ? [report.reason]
-    : (report.reporterEntries ?? []).map((entry) => entry.reason);
-  const details = isConductReport
-    ? [report.detail]
-    : (report.reporterEntries ?? []).map((entry) => entry.detail);
-  const reporterName = reporterNames.filter((name): name is string => Boolean(name)).join(", ");
-  const category = [...new Set(reasonCodes.filter((reason): reason is string => Boolean(reason?.trim())))].join(", ");
-  const detail = details.filter((value): value is string => Boolean(value?.trim())).join("; ");
   return {
     id: report.id,
     displayId: displayAdminId(report.displayId, report.id) ?? "",
-    category: category || kind,
-    detail: detail || "No report detail was provided.",
-    reporterName: reporterName || "Reporter not provided",
     questDisplayId: report.questId ? questDisplayIds.get(report.questId) ?? null : null,
     status: report.status,
     reportedAt: dateLabel(report.createdAt),
     href: kind === "Conduct Report" ? conductReportRoutes.detail(report.id) : reportRoutes.detail(report.id),
     kind,
   };
-}
-
-function personName(person: { firstName?: string; lastName?: string } | undefined): string | null {
-  if (!person) return null;
-  const name = [person.firstName, person.lastName].filter((part): part is string => Boolean(part?.trim())).join(" ");
-  return name || null;
 }
 
 function baseModelFromListItem(
@@ -318,7 +295,7 @@ export function memberModelFromApi(
   finance: AdminMemberFinance | null = null,
   reports: readonly AdminReportCase[] = [],
   ledger: readonly AdminLedgerTransaction[] = [],
-  errors: {
+  memberReads: {
     finance?: string | null;
     reports?: string | null;
     reportsComplete?: boolean;
@@ -344,8 +321,8 @@ export function memberModelFromApi(
   const base = baseModelFromListItem(listItem);
   const wallet = finance?.wallet ?? detail.wallet;
   const stats = memberStatsFromApi(detail.stats);
-  const payouts = errors.payouts
-    ? errors.payouts.map((payout) => ({
+  const payouts = memberReads.payouts
+    ? memberReads.payouts.map((payout) => ({
         id: payout.id,
         displayId: nullableText(payout.displayId),
         status: payout.payoutStatus,
@@ -355,8 +332,8 @@ export function memberModelFromApi(
         maskedDestinationValue: nullableText(payout.maskedDestinationValue),
       }))
     : null;
-  const payoutsComplete = errors.payoutsComplete ?? false;
-  const reportQuestDisplayIds = errors.reportQuestDisplayIds ?? new Map<string, string>();
+  const payoutsComplete = memberReads.payoutsComplete ?? false;
+  const reportQuestDisplayIds = memberReads.reportQuestDisplayIds ?? new Map<string, string>();
   return {
     ...base,
     bio: member.bio ?? "",
@@ -365,17 +342,17 @@ export function memberModelFromApi(
     walletBalances: balancesFromWallet(wallet),
     walletProjectionMatchesLedger: wallet?.projectionMatchesLedger ?? null,
     reports: reports.map((report) => reportFromApi(report, reportQuestDisplayIds)),
-    reportsComplete: errors.reportsComplete ?? false,
-    reportsTotalCount: errors.reportsTotalCount ?? null,
+    reportsComplete: memberReads.reportsComplete ?? false,
+    reportsTotalCount: memberReads.reportsTotalCount ?? null,
     payouts,
     payoutsComplete,
-    payoutsError: errors.payoutsError ?? null,
+    payoutsError: memberReads.payoutsError ?? null,
     payoutSuccessfulCountMatchesHistory: payoutSuccessfulCountMatchesHistory(stats, payouts, payoutsComplete),
     walletStatement: ledger.map(transactionFromApi),
     stats,
-    apiError: errors.finance ?? (finance ? null : "Member finance is not available from the Admin API."),
-    reportsError: errors.reports ?? null,
-    walletStatementError: errors.ledger ?? null,
+    apiError: memberReads.finance ?? (finance ? null : "Member finance is not available from the Admin API."),
+    reportsError: memberReads.reports ?? null,
+    walletStatementError: memberReads.ledger ?? null,
   };
 }
 
