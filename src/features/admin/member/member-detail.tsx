@@ -917,6 +917,18 @@ function MemberModerationTimeline({ model, translateText }: { model: MemberModel
   );
 }
 
+function MemberPenaltyActions({ translateText }: { translateText: (value: string) => string }) {
+  return (
+    <div className="mt-4 grid gap-3 border-t border-admin-border pt-4">
+      <p className="audit-note">{translateText("Member penalty commands are not available.")}</p>
+      <div className="flex flex-wrap gap-2">
+        <Button disabled variant="primary">{translateText("Record violation")}</Button>
+        <Button disabled variant="outline">{translateText("Remove penalty")}</Button>
+      </div>
+    </div>
+  );
+}
+
 function PenaltyHistoryTab({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
   return (
     <Card as="section" className="user-detail-panel user-tab-panel col-span-full min-w-0 p-[16px_18px]">
@@ -928,6 +940,7 @@ function PenaltyHistoryTab({ model, translateText }: { model: MemberModel; trans
           </div>
           <span className={adminRecordCount}>{collectionCountLabel(model.penaltyHistory, translateText, "Moderation history is not available.")}</span>
         </CardHeader>
+        <MemberPenaltyActions translateText={translateText} />
         <MemberModerationTimeline model={model} translateText={translateText} />
       </div>
     </Card>
@@ -998,6 +1011,7 @@ function DrawerContent({ model, translateText }: { model: MemberModel; translate
       </Card>
       <Card as="section" className={`${adminRecordSection} member-drawer-moderation-history`} data-member-drawer-moderation-history>
         <CardHeader flush className={`${adminRecordHeader} user-panel-heading`}><h2 className={adminRecordHeading}>{translateText("Moderation History")}</h2><span className={adminRecordCount}>{collectionCountLabel(model.penaltyHistory, translateText, "Moderation history is not available.")}</span></CardHeader>
+        <MemberPenaltyActions translateText={translateText} />
         <MemberModerationTimeline model={model} translateText={translateText} />
       </Card>
       <Card as="section" className={adminRecordSection}>

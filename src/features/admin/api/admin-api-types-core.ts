@@ -140,6 +140,8 @@ export type AdminActivityLog = {
   resourceId: string;
   resourceDisplayId?: string;
   reasonCode: string | null;
+  decisionReasonText?: string | null;
+  /** Legacy API field. Current Admin API responses use decisionReasonText. */
   note?: string | null;
   reasonCatalogVersion: number;
   resultVersion: number | null;
