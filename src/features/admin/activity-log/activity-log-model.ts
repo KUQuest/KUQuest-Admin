@@ -13,13 +13,17 @@ import {
 } from "../admin-routes";
 
 export type ActivityLogEntry = {
-  id: string;
+  activityDisplayId?: string;
+  id?: string;
   admin: AdminActivityLog["admin"];
   action: string;
   resourceType: string;
-  resourceId: string;
-  resourceDisplayId?: string;
+  resourceId?: string;
+  resourceDisplayId?: string | null;
+  beforeState?: string | null;
+  afterState?: string | null;
   reasonCode: string | null;
+  decisionReasonText?: string | null;
   reasonCatalogVersion: number | null;
   resultVersion: number | null;
   resultTimestamp: string | null;
@@ -28,7 +32,7 @@ export type ActivityLogEntry = {
   adminName: string;
   adminInitials: string;
   createdAtTimestamp: number | null;
-  /** Optional note included when the Admin API returns a decision note. */
+  /** Display-only alias retained for the Activity Log drawer. */
   note?: string | null;
 };
 
@@ -82,15 +86,18 @@ export function formatActivityLogDateInput(value: string): string {
 }
 
 export function activityLogEntryFromApi(entry: AdminActivityLog): ActivityLogEntry {
-  const adminName = `${entry.admin.firstName.trim()} ${entry.admin.lastName.trim()}`.trim();
-  const adminInitials = `${entry.admin.firstName.trim().charAt(0)}${entry.admin.lastName.trim().charAt(0)}`.toUpperCase();
+  const firstName = entry.admin.firstName.trim();
+  const lastName = entry.admin.lastName.trim();
+  const adminName = `${firstName} ${lastName}`.trim();
+  const adminInitials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   const note = entry.decisionReasonText ?? entry.note;
 
   const parsedCreatedAt = Date.parse(entry.createdAt);
   return {
     ...entry,
+    resourceId: entry.resourceId ?? "",
     ...(note === undefined ? {} : { note }),
-    adminId: entry.admin.id,
+    adminId: entry.admin.id ?? "",
     adminName,
     adminInitials,
     createdAtTimestamp: Number.isFinite(parsedCreatedAt) ? parsedCreatedAt : null,
@@ -107,8 +114,8 @@ export function activityLogEntryMatchesFilters(entry: ActivityLogEntry, filters:
   );
   if (!matches(entry.action, filters.action)) return false;
   if (!matches(entry.resourceType, filters.resourceType)) return false;
-  if (!matches(entry.resourceId, filters.resourceId)) return false;
-  if (!matches(entry.adminId, filters.adminId)) return false;
+  if (!matches(entry.resourceDisplayId ?? entry.resourceId, filters.resourceId)) return false;
+  if (filters.adminId && entry.adminId && !matches(entry.adminId, filters.adminId)) return false;
   const createdTimestamp = timestampValue(entry.createdAt);
   if (filters.fromDate) {
     const from = Date.parse(`${filters.fromDate}T00:00:00+07:00`);
@@ -156,14 +163,15 @@ export function activityLogMatchesSearch(entry: ActivityLogEntry, query: string)
     activityLogTargetLabel(entry) || null,
   ];
   return [
-    entry.id,
+    entry.activityDisplayId ?? entry.id,
     entry.adminName,
-    entry.adminId,
     entry.admin.firstName,
     entry.admin.lastName,
     entry.action,
     entry.resourceType,
-    entry.resourceId,
+    entry.resourceDisplayId ?? entry.resourceId,
+    entry.beforeState,
+    entry.afterState,
     entry.reasonCode,
     entry.reasonCatalogVersion,
     entry.resultVersion,
@@ -241,13 +249,13 @@ export function activityLogCsv(entries: readonly ActivityLogEntry[]): string {
     "note",
   ];
   const rows = entries.map((entry) => [
-    displayAdminId(entry.id) ?? "",
+    displayAdminId(entry.activityDisplayId, entry.id) ?? "",
     entry.createdAt,
     displayAdminId(entry.adminId) ?? "",
     entry.adminName,
     entry.action,
     entry.resourceType,
-    displayAdminId(entry.resourceId) ?? "",
+    displayAdminId(entry.resourceDisplayId, entry.resourceId) ?? "",
     activityLogTargetLabel(entry),
     entry.reasonCode,
     entry.reasonCatalogVersion,
@@ -257,7 +265,7 @@ export function activityLogCsv(entries: readonly ActivityLogEntry[]): string {
   ]);
   return [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n");
 }
-export function activityTargetHref(resourceType: string, resourceId: string): string | null {
+export function activityTargetHref(resourceType: string, resourceId: string | undefined): string | null {
   if (!resourceId) return null;
   switch (resourceType.trim().toUpperCase()) {
     case "DISPUTE_CASE":

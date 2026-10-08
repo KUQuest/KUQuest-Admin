@@ -34,6 +34,8 @@ import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { RecordStatusBar } from "../../../components/admin/record-status-bar";
 import { ModerationCaseWorkspace, ModerationHistoryPanel } from "../moderation-case/moderation-case-workspace";
 import { hasModerationHistory } from "../moderation-case/moderation-case-context";
+import { AdminDecisionActivitySection } from "../activity-log/admin-decision-activity-section";
+import { activityLogValueLabel } from "../activity-log/activity-log-model";
 import { newConductReportIdempotencyKey } from "./conduct-report-service";
 import { useConductReportBoardStore } from "./conduct-report-board-store";
 import { ConductReportDecisionDialog } from "./conduct-report-decision-dialog";
@@ -49,6 +51,18 @@ import {
 import { useConductReportDecisionMutation, useConductReportDetailQuery } from "./conduct-report-query";
 
 type ConductReportPresentation = "drawer" | "page";
+
+const CONDUCT_REPORT_DECISION_ACTIVITY_ACTIONS = [
+  "CONDUCT_REPORT_DISMISS",
+  "CONDUCT_REPORT_UPHOLD",
+] as const;
+
+function conductFailedAtLabel(model: ConductReportModel, translateText: (value: string) => string): string {
+  if (model.questFailedAt) return formatAdminTimestamp(model.questFailedAt);
+  return translateText(model.questFailedAtWasReturned
+    ? "No failure time recorded."
+    : "Failure time was not returned by the Admin API.");
+}
 
 function MemberLink({
   id,
@@ -127,7 +141,7 @@ function ConductReportOverview({
         <div><dt>{translateText("Source")}</dt><dd>{translateText("Quest record")}</dd></div>
         <div><dt>{translateText("Submitted")}</dt><dd>{formatAdminTimestamp(model.submittedAt)}</dd></div>
         <div><dt>{translateText("Evidence")}</dt><dd>{conductEvidenceCount(model) || translateText("None")}</dd></div>
-        <div><dt>{translateText("Reason code")}</dt><dd>{model.reasonCode ? translateText(conductReportReasonLabel(model.reasonCode)) : "—"}</dd></div>
+        <div><dt>{translateText("Filed reason")}</dt><dd>{model.reasonCode ? translateText(conductReportReasonLabel(model.reasonCode)) : "—"}</dd></div>
       </AdminOverviewMeta>
       <div className={adminRecordGroup}>
         <span>{translateText("Submitted detail")}</span>
@@ -221,7 +235,7 @@ function RelatedQuestPanel({
         <div><span>{translateText("Quest")}</span><strong>{model.questTitle}</strong></div>
         <div><span>{translateText("Quest ID")}</span><strong>{model.questDisplayId ?? "—"}</strong></div>
         <div><span>{translateText("Quest State")}</span><strong>{model.questState ? translateText(questStateLabel(model.questState)) : translateText("Not provided.")}</strong></div>
-        <div><span>{translateText("Failed at")}</span><strong>{model.questFailedAt ? formatAdminTimestamp(model.questFailedAt) : translateText("Not provided.")}</strong></div>
+        <div><span>{translateText("Failed at")}</span><strong>{conductFailedAtLabel(model, translateText)}</strong></div>
       </div>
       {model.questHref
         ? <Button asChild variant="outline" className="mt-3 w-full"><Link href={model.questHref}>{translateText("Open Quest detail")}</Link></Button>
@@ -292,12 +306,6 @@ function ResolutionDetails({
 
   return (
     <>
-      {model.decisionReason && (
-        <div className={adminRecordGroup}>
-          <span>{translateText("Reason for decision")}</span>
-          <p>{model.decisionReason}</p>
-        </div>
-      )}
       {details.some(([, value]) => value) && (
         <AdminOverviewMeta className="report-resolution-meta">
           {details.flatMap(([label, value]) => value
@@ -317,7 +325,7 @@ function ConductReportTimeline({ model, translateText }: { model: ConductReportM
     ]
     : [
       { title: "Conduct Report submitted", time: formatAdminTimestamp(model.submittedAt), detail: `${model.reporterName} reported ${model.reportedMemberName}.` },
-      { title: "Conduct Report decision recorded", time: model.resolutionAt || model.closedAt ? formatAdminTimestamp(model.resolutionAt ?? model.closedAt) : translateText("Time not provided"), detail: model.decisionReason ?? model.decisionLabel ?? translateText("Record retained for audit.") },
+      { title: "Conduct Report decision recorded", time: model.resolutionAt || model.closedAt ? formatAdminTimestamp(model.resolutionAt ?? model.closedAt) : translateText("Time not provided"), detail: model.decisionReasonCode ? activityLogValueLabel(model.decisionReasonCode) : model.decisionLabel ?? translateText("Record retained for audit.") },
     ];
 
   return <Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Conduct Report timeline")}</h2></CardHeader><ol className="timeline">{events.map((event) => <li key={`${event.title}-${event.time}`}><strong>{translateText(event.title)}</strong><time>{event.time}</time><span>{translateText(event.detail)}</span></li>)}</ol></Card>;
@@ -430,6 +438,7 @@ function ConductReportDrawerBody({
             <ConductReportOverview model={model} translateText={translateText} />
             <ConductEvidenceSection model={model} translateText={translateText} />
             <ConductReportTimeline model={model} translateText={translateText} />
+            {model.status !== "CONDUCT_REPORT_PENDING" ? <AdminDecisionActivitySection resourceType="conduct_report" resourceId={model.id} actions={CONDUCT_REPORT_DECISION_ACTIVITY_ACTIONS} reasonCode={model.decisionReasonCode} adminName={model.decisionAdminName} /> : null}
           </>}
           side={<>
             <ConductMemberSummaryPanel heading="Reported Member" id={model.reportedMemberId} displayId={model.reportedMemberDisplayId} name={model.reportedMemberName} href={model.reportedMemberHref} translateText={translateText} />
@@ -479,6 +488,7 @@ function ConductReportDrawerBody({
       >
         <ConductReportOverview model={model} translateText={translateText} compact />
         <ConductEvidenceSection model={model} translateText={translateText} compact />
+        {model.status !== "CONDUCT_REPORT_PENDING" ? <AdminDecisionActivitySection resourceType="conduct_report" resourceId={model.id} actions={CONDUCT_REPORT_DECISION_ACTIVITY_ACTIONS} reasonCode={model.decisionReasonCode} adminName={model.decisionAdminName} /> : null}
         <RelatedQuestPanel model={model} translateText={translateText} compact />
         <ModerationHistoryPanel
           summary={model.moderationHistory}

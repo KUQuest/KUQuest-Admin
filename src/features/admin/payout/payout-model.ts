@@ -91,9 +91,11 @@ export type PayoutDetailView = {
     toStatus: PayoutStatus;
     actorUserId: string | null;
     actorAdminId: string | null;
+    adminName: string | null;
     source: string;
     reason: string | null;
     reasonCode?: string | null;
+    decisionReasonText: string | null;
     occurredAt: string;
   }>;
 };
@@ -228,9 +230,13 @@ export function payoutDetailViewFromApi(
       toStatus: payoutStatusFor(entry.toStatus),
       actorUserId: entry.actorUserId,
       actorAdminId: entry.actorAdminId,
+      adminName: entry.admin
+        ? `${entry.admin.firstName} ${entry.admin.lastName}`.trim() || null
+        : null,
       source: entry.source,
       reason: entry.reason,
       reasonCode: entry.reasonCode,
+      decisionReasonText: entry.decisionReasonText,
       occurredAt: entry.occurredAt,
     })),
   };

@@ -17,6 +17,7 @@ import type {
   AdminPayoutReconcileResult,
   AdminTopUpListItem,
   AdminTopUpListQuery,
+  AdminTopUpStatusHistoryEntry,
   AdminTopUpProviderEventResult,
   AdminTopUpReconcileResult,
   PayoutApproval,
@@ -103,6 +104,16 @@ export function createAdminPayoutApi() {
     ): Promise<AdminPage<AdminTopUpListItem>> {
       return apiRequest<AdminPage<AdminTopUpListItem>>(
         `/api/v1/admin/top-ups${queryString(query)}`,
+        { cache: "no-store", ...options },
+      );
+    },
+
+    getTopUpStatusHistory(
+      topUpId: string,
+      options: AdminApiRequestOptions = {},
+    ): Promise<AdminTopUpStatusHistoryEntry[]> {
+      return apiRequest<AdminTopUpStatusHistoryEntry[]>(
+        `/api/v1/admin/top-ups/${encode(topUpId)}/status-history`,
         { cache: "no-store", ...options },
       );
     },

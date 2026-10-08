@@ -38,6 +38,7 @@ export type AdminReadPort = Pick<
   | "reconcilePayout"
   | "retryPayoutProviderEvent"
   | "listTopUps"
+  | "getTopUpStatusHistory"
   | "listReports"
   | "getReport"
   | "getEvidence"

@@ -15,6 +15,17 @@ export type AdminDisputeCase = {
 
 
 export type AdminDisputeCaseDetail = AdminDisputeCase & {
+  category: "PROOF_REVIEW" | "QUEST_CONDITION" | "PARTIAL_WORK" | "OTHER" | null;
+  submittedDetail: string | null;
+  filerStatement: string | null;
+  respondentStatement: string | null;
+  filerDisplayId: string | null;
+  respondentDisplayId: string | null;
+  resolvedWorkerDisplayId: string | null;
+  decision: {
+    reasonCode: string | null;
+    decisionReasonText: string | null;
+  };
   filerUserId: string;
   openedByAdminId: string | null;
   resolvedWorkerId: string | null;
@@ -25,8 +36,10 @@ export type AdminDisputeCaseDetail = AdminDisputeCase & {
   updatedAt: string;
   quest: {
     id: string;
+    displayId: string | null;
     title: string;
     hirerId: string;
+    hirerDisplayId: string | null;
     questStatus: string;
     version: number;
     failedAt: string | null;
@@ -71,6 +84,17 @@ export type AdminReportCase = {
     createdAt?: string;
   }>;
   reason?: string;
+  decision?: {
+    reason?: string | null;
+    decisionReasonText?: string | null;
+    resolvedAt?: string | null;
+    admin?: {
+      id?: string;
+      email?: string;
+      firstName?: string;
+      lastName?: string;
+    } | null;
+  } | null;
   detail?: string | null;
   createdAt?: string;
   evidenceRefs?: EvidenceReference[];

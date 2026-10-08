@@ -15,6 +15,7 @@ import {
   activityLogReasonLabel,
   activityLogResourceTypeLabel,
   activityLogTargetLabel,
+  activityLogValueLabel,
   activityTargetHref,
   formatActivityLogRelativeTime,
   formatActivityLogTimestamp,
@@ -62,7 +63,7 @@ function activityLogSortValue(entry: ActivityLogEntry, key: ActivityLogSortKey):
 
 function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailProps) {
   const { translateText } = useAdminShell();
-  const targetHref = activityTargetHref(entry.resourceType, entry.resourceId);
+  const targetHref = activityTargetHref(entry.resourceType, entry.resourceDisplayId ?? entry.resourceId);
   const target = activityLogTargetLabel(entry);
 
   return (
@@ -92,17 +93,20 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
             <CardHeader flush className={adminRecordHeader}><h3 id="activity-log-record-heading" className={adminRecordHeading}>{translateText("Activity record")}</h3></CardHeader>
             <div className={adminRecordFacts}>
               <div className={adminRecordFact}><span>{translateText("Timestamp")}</span><strong>{formatActivityLogTimestamp(entry.createdAt)}</strong></div>
-              <div className={adminRecordFact}><span>{translateText("Activity ID")}</span><strong className="break-all">{entry.id}</strong></div>
+              <div className={adminRecordFact}><span>{translateText("Activity ID")}</span><strong>{displayValue(entry.activityDisplayId ?? entry.id)}</strong></div>
               <div className={adminRecordFact}><span>{translateText("Actor")}</span><strong>{displayValue(entry.adminName)}</strong></div>
               <div className={adminRecordFact}><span>{translateText("Action")}</span><strong>{translateText(activityLogActionLabel(entry.action))}</strong></div>
-              <div className={adminRecordFact}><span>{translateText("Resource type")}</span><strong>{translateText(activityLogResourceTypeLabel(entry.resourceType))}</strong></div>
-              <div className={adminRecordFact}><span>{translateText("Resource Display ID")}</span><strong>{displayValue(displayAdminId(entry.resourceDisplayId))}</strong></div>
+              <div className={adminRecordFact}><span>{translateText("Event type")}</span><strong>{translateText(activityLogResourceTypeLabel(entry.resourceType))}</strong></div>
+              <div className={adminRecordFact}><span>{translateText("Event ID")}</span><strong>{displayValue(entry.resourceDisplayId ?? entry.resourceId)}</strong></div>
               <div className={adminRecordFact}><span>{translateText("Reason code")}</span><strong>{translateText(activityLogReasonLabel(entry.reasonCode))}</strong></div>
             </div>
           </Card>
           <Card as="section" className={`${adminRecordSection} activity-log-state-section`} aria-labelledby="activity-log-state-heading">
             <CardHeader flush className={adminRecordHeader}><h3 id="activity-log-state-heading" className={adminRecordHeading}>{translateText("State change")}</h3></CardHeader>
-            <p className="activity-log-missing-context m-0 text-[15px] leading-[1.45] text-admin-muted">{translateText("Before and after state are not included in this record.")}</p>
+            <div className={adminRecordFacts}>
+              <div className={adminRecordFact}><span>{translateText("Before")}</span><strong>{translateText(entry.beforeState === null ? "No state summary recorded" : activityLogValueLabel(entry.beforeState))}</strong></div>
+              <div className={adminRecordFact}><span>{translateText("After")}</span><strong>{translateText(entry.afterState === null ? "No state summary recorded" : activityLogValueLabel(entry.afterState))}</strong></div>
+            </div>
             {entry.note ? <p className="activity-log-note m-0 mt-3 grid gap-1 rounded-admin-sm bg-admin-soft p-2.5 text-[15px] leading-[1.45] text-admin-muted"><strong className="text-[17px] leading-[1.4] text-admin-text">{translateText("Admin note")}</strong>{entry.note}</p> : null}
           </Card>
         </div>
@@ -140,7 +144,7 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
   useAdminBoardReset(reset);
   const closeDetails = useCallback(() => setSelectedEntry(null), []);
   const openLinkedDetail = useCallback((entry: ActivityLogEntry) => {
-    const href = activityTargetHref(entry.resourceType, entry.resourceId);
+    const href = activityTargetHref(entry.resourceType, entry.resourceDisplayId ?? entry.resourceId);
     if (!href) return;
     closeDetails();
     router.push(href, { scroll: false });
@@ -200,7 +204,7 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
         {!loadError && !loading && !visibleEntries.length ? <EmptyState className="border-0 rounded-none p-[60px_24px]" title={translateText("No activity recorded")} description={translateText("Administrative activity will appear here as actions are taken.")} /> : null}
         {!loadError && visibleEntries.length ? <div className="overflow-x-auto"><Table className={`${adminBoardTable} min-w-[980px]`}><caption>{translateText("Activity Log records")}</caption><thead><tr><AdminSortableHeader label={translateText("Timestamp")} sortKey="timestamp" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Actor")} sortKey="actor" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Activity")} sortKey="activity" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Target")} sortKey="target" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Reason")} sortKey="reason" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><th className="align-top" scope="col">{translateText("Details")}</th></tr></thead><tbody>{visibleEntries.map((entry) => {
           const target = activityLogTargetLabel(entry);
-          return <tr key={entry.id} tabIndex={0} aria-label={`${translateText("View activity details")}: ${translateText(activityLogActionLabel(entry.action))}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; setSelectedEntry(entry); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedEntry(entry); } }}><td>{entry.createdAt ? <time className="grid gap-0.5 whitespace-nowrap tabular-nums" dateTime={entry.createdAt}>{formatActivityLogTimestamp(entry.createdAt)}<small className="text-xs font-normal text-admin-muted">{formatActivityLogRelativeTime(entry.createdAt)}</small></time> : translateText("Not provided")}</td><td aria-label={`${entry.adminName || translateText("Not provided")} · ${displayValue(entry.adminId)}`}><span className="grid min-w-[150px] grid-cols-[auto_minmax(0,1fr)] items-center gap-2"><span className="avatar" aria-hidden="true">{entry.adminInitials}</span><span className="grid gap-0.5"><strong>{entry.adminName || translateText("Not provided")}</strong><small className="text-xs font-normal text-admin-muted">{displayValue(entry.adminId)}</small></span></span></td><td><strong className="break-words">{translateText(activityLogActionLabel(entry.action))}</strong></td><td><span className="block min-w-0 break-words text-admin-text">{translateText(displayValue(target))}</span></td><td>{translateText(activityLogReasonLabel(entry.reasonCode))}</td><td><Button variant="outline" size="xs" className="whitespace-nowrap" type="button" onClick={() => setSelectedEntry(entry)} aria-label={translateText("View activity details")}>{translateText("View")}</Button></td></tr>;
+          return <tr key={entry.activityDisplayId ?? entry.id} tabIndex={0} aria-label={`${translateText("View activity details")}: ${translateText(activityLogActionLabel(entry.action))}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; setSelectedEntry(entry); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedEntry(entry); } }}><td>{entry.createdAt ? <time className="grid gap-0.5 whitespace-nowrap tabular-nums" dateTime={entry.createdAt}>{formatActivityLogTimestamp(entry.createdAt)}<small className="text-xs font-normal text-admin-muted">{formatActivityLogRelativeTime(entry.createdAt)}</small></time> : translateText("Not provided")}</td><td aria-label={entry.adminName || translateText("Not provided")}><span className="grid min-w-[150px] grid-cols-[auto_minmax(0,1fr)] items-center gap-2"><span className="avatar" aria-hidden="true">{entry.adminInitials}</span><span className="grid gap-0.5"><strong>{entry.adminName || translateText("Not provided")}</strong></span></span></td><td><strong className="break-words">{translateText(activityLogActionLabel(entry.action))}</strong></td><td><span className="block min-w-0 break-words text-admin-text">{translateText(displayValue(target))}</span></td><td>{translateText(activityLogReasonLabel(entry.reasonCode))}</td><td><Button variant="outline" size="xs" className="whitespace-nowrap" type="button" onClick={() => setSelectedEntry(entry)} aria-label={translateText("View activity details")}>{translateText("View")}</Button></td></tr>;
         })}</tbody></Table></div> : null}
         {filteredEntries.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Activity Log pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className={adminBoardPagination} /> : null}
         {paginationError ? <div className="mb-3 flex items-center gap-2.5 rounded-admin-sm border border-admin-danger bg-admin-danger-soft px-3 py-2.5 text-sm text-admin-danger" role="alert"><p className="m-0 flex-1">{translateText(paginationError)}</p><Button variant="outline" type="button" onClick={loadMore}>{translateText("Try again")}</Button></div> : null}

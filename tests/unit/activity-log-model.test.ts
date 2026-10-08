@@ -56,7 +56,8 @@ describe("Activity Log model", () => {
     const view = activityLogEntryFromApi(entry);
 
     expect(activityLogMatchesSearch(view, "policy_review")).toBe(true);
-    expect(activityLogMatchesSearch(view, "admin-1")).toBe(true);
+    expect(activityLogMatchesSearch(view, "YouTube Admin")).toBe(true);
+    expect(activityLogMatchesSearch(view, "admin-1")).toBe(false);
     expect(activityLogMatchesSearch(view, "result-timestamp")).toBe(false);
     expect(activityLogMatchesSearch(view, "2026-09-08T08:00:00.000Z")).toBe(true);
     expect(activityLogMatchesSearch(view, "missing-value")).toBe(false);

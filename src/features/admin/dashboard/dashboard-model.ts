@@ -20,16 +20,19 @@ function activityInitials(entry: AdminActivityLog): string {
 }
 
 export function dashboardActivityFromApi(entry: AdminActivityLog, displayId?: string): DashboardActivity {
+  const targetDisplayId = entry.resourceDisplayId ?? displayId ?? entry.resourceId;
   const activityEntry: ActivityLogEntry = {
     ...entry,
-    resourceId: displayId ?? "",
-    adminId: entry.admin.id,
+    resourceId: entry.resourceId ?? "",
+    ...(entry.resourceDisplayId !== undefined ? {} : targetDisplayId ? { resourceDisplayId: targetDisplayId } : {}),
+    ...(entry.decisionReasonText == null ? {} : { note: entry.decisionReasonText }),
+    adminId: entry.admin.id ?? "",
     adminName: `${entry.admin.firstName.trim()} ${entry.admin.lastName.trim()}`.trim(),
     adminInitials: activityInitials(entry),
     createdAtTimestamp: Date.parse(entry.createdAt) || null,
   };
   return {
-    id: entry.id,
+    id: entry.activityDisplayId ?? entry.id ?? "",
     actor: activityInitials(entry),
     title: activityLogActionLabel(entry.action),
     detail: `${activityLogTargetLabel(activityEntry)}${entry.reasonCode ? ` · ${activityLogReasonLabel(entry.reasonCode)}` : ""}`,

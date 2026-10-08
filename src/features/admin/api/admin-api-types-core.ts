@@ -129,19 +129,23 @@ export type AdminMoneyPolicy = {
 };
 
 export type AdminActivityLog = {
-  id: string;
+  activityDisplayId?: string;
+  /** Older cached Activity Log records can still have this identifier. */
+  id?: string;
   admin: {
-    id: string;
+    id?: string;
     firstName: string;
     lastName: string;
   };
   action: string;
   resourceType: string;
-  resourceId: string;
-  resourceDisplayId?: string;
+  resourceId?: string;
+  resourceDisplayId?: string | null;
+  beforeState?: string | null;
+  afterState?: string | null;
   reasonCode: string | null;
   decisionReasonText?: string | null;
-  /** Legacy API field. Current Admin API responses use decisionReasonText. */
+  /** Older cached Activity Log records used this field for the Admin note. */
   note?: string | null;
   reasonCatalogVersion: number;
   resultVersion: number | null;

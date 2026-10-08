@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 
 import type { AdminTopUpListItem } from "../../src/features/admin/api/admin-api";
 import { sortBoardRows } from "../../src/features/admin/data/board-sorting";
-import { searchTopUps, topUpMatchesTab, topUpSortValue, topUpStatusTimeline } from "../../src/features/admin/finance/top-ups-board-model";
+import { searchTopUps, topUpMatchesTab, topUpSortValue, topUpStatusHistoryFromResponse, topUpStatusTimeline } from "../../src/features/admin/finance/top-ups-board-model";
 
 function makeTopUp(overrides: Partial<AdminTopUpListItem> = {}): AdminTopUpListItem {
   return {
@@ -54,26 +54,31 @@ describe("Top-up board model", () => {
     expect(sorted.map(({ id }) => id)).toEqual(["TOP-001", "TOP-002"]);
   });
 
-  it("shows the initial Pending status and the known Paid status time", () => {
-    const paid = makeTopUp({
-      topUpStatus: "PAID",
-      paidAt: "2026-10-01T11:05:00.000Z",
-    });
+  it("shows Top-up status history returned by the Admin API", () => {
+    const history = topUpStatusHistoryFromResponse([
+      { id: "history-1", fromStatus: null, toStatus: "PENDING", providerStatus: null, source: "QUOTE_CREATED", reason: null, occurredAt: "2026-10-01T11:00:00.000Z" },
+      { id: "history-2", fromStatus: "PENDING", toStatus: "PAID", providerStatus: "SUCCESS", source: "PROVIDER_EVENT", reason: null, occurredAt: "2026-10-01T11:05:00.000Z" },
+    ]);
 
-    expect(topUpStatusTimeline(paid)).toEqual([
-      { fromStatus: null, toStatus: "PENDING", occurredAt: paid.createdAt },
-      { fromStatus: "PENDING", toStatus: "PAID", occurredAt: paid.paidAt },
+    expect(history.kind).toBe("history");
+    if (history.kind !== "history") return;
+    expect(topUpStatusTimeline(history.entries)).toEqual([
+      { id: "history-1", fromStatus: null, toStatus: "PENDING", occurredAt: "2026-10-01T11:00:00.000Z" },
+      { id: "history-2", fromStatus: "PENDING", toStatus: "PAID", occurredAt: "2026-10-01T11:05:00.000Z" },
     ]);
   });
 
-  it("does not use the quote expiry deadline as a status-change time", () => {
-    for (const status of ["EXPIRED", "FAILED"] as const) {
-      const topUp = makeTopUp({ topUpStatus: status });
-
-      expect(topUpStatusTimeline(topUp)).toEqual([
-        { fromStatus: null, toStatus: "PENDING", occurredAt: topUp.createdAt },
-        { fromStatus: "PENDING", toStatus: status, occurredAt: null },
-      ]);
-    }
+  it("keeps empty and invalid Top-up history responses separate", () => {
+    expect(topUpStatusHistoryFromResponse([])).toEqual({ kind: "empty" });
+    expect(topUpStatusHistoryFromResponse(null)).toEqual({ kind: "invalid" });
+    expect(topUpStatusHistoryFromResponse([{
+      id: "history-1",
+      fromStatus: "PENDING",
+      toStatus: "FAILED",
+      providerStatus: null,
+      source: "PROVIDER_EVENT",
+      reason: null,
+      occurredAt: "not-a-time",
+    }])).toEqual({ kind: "invalid" });
   });
 });

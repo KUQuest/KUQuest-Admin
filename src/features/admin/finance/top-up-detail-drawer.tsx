@@ -13,7 +13,8 @@ import { memberRoutes } from "../admin-routes";
 import { formatAdminTimestamp } from "../date-format";
 import { formatMoneySatang } from "../member/member-wallet-model";
 import { statusBadgeClass } from "../status-badge";
-import { topUpDisplayId, topUpStatusTimeline, TOP_UP_BOARD_TABS } from "./top-ups-board-model";
+import { topUpDisplayId, topUpStatusHistoryFromResponse, topUpStatusTimeline, TOP_UP_BOARD_TABS } from "./top-ups-board-model";
+import { useFinanceTopUpStatusHistoryQuery } from "./finance-query";
 
 function TopUpDrawerSection({ title, children }: { title: string; children: ReactNode }) {
   return <Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}><h3 className={adminRecordHeading}>{title}</h3></CardHeader>{children}</Card>;
@@ -36,8 +37,12 @@ export function TopUpDetailDrawer({
   showMemberProfileLink?: boolean;
 }) {
   const { translateText } = useAdminShell();
+  const historyQuery = useFinanceTopUpStatusHistoryQuery(topUp.id);
   const memberName = `${topUp.member.firstName} ${topUp.member.lastName}`.trim();
   const statusLabel = TOP_UP_BOARD_TABS.find((item) => item.id === topUp.topUpStatus)?.label ?? topUp.topUpStatus;
+  const historyReadback = historyQuery.data === undefined
+    ? null
+    : topUpStatusHistoryFromResponse(historyQuery.data);
 
   return <AdminDrawer
     ariaLabel={translateText("Close Top-up detail")}
@@ -56,20 +61,25 @@ export function TopUpDetailDrawer({
       <div className={adminRecordFacts}>
         <Fact label={translateText("Status")}><span className={`badge ${statusBadgeClass(topUp.topUpStatus)}`}>{translateText(statusLabel)}</span></Fact>
         <Fact label={translateText("Created")}>{formatAdminTimestamp(topUp.createdAt)}</Fact>
+        <Fact label={translateText("Expiry deadline")}>{formatAdminTimestamp(topUp.expiresAt)}</Fact>
       </div>
     </TopUpDrawerSection>
     <TopUpDrawerSection title={translateText("Top-up timing")}>
-      <ol className="grid list-decimal gap-2 pl-7">
-        {topUpStatusTimeline(topUp).map((entry) => {
+      {historyQuery.isPending ? <output className="audit-note">{translateText("Loading Top-up status history…")}</output> : null}
+      {historyQuery.isError ? <p className="field-error" role="alert">{translateText("Top-up status history is unavailable.")}</p> : null}
+      {historyReadback?.kind === "invalid" ? <p className="field-error" role="alert">{translateText("The Top-up status history response is invalid.")}</p> : null}
+      {historyReadback?.kind === "empty" ? <p className="audit-note">{translateText("No Top-up status transitions were returned.")}</p> : null}
+      {historyReadback?.kind === "history" ? <ol className="grid list-decimal gap-2 pl-7">
+        {topUpStatusTimeline(historyReadback.entries).map((entry) => {
           const entryLabel = TOP_UP_BOARD_TABS.find((tab) => tab.id === entry.toStatus)?.label ?? entry.toStatus;
 
-          return <li className="grid gap-2 rounded-lg border border-admin-border bg-admin-soft p-2.5" key={entry.toStatus}>
+          return <li className="grid gap-2 rounded-lg border border-admin-border bg-admin-soft p-2.5" key={entry.id}>
             <div className="flex items-start justify-between gap-3"><span className="text-[13px] leading-[1.4] text-admin-muted">{translateText("Status")}</span><strong className="min-w-0 flex-1 text-right text-sm leading-[1.4] [overflow-wrap:anywhere]">{translateText(entryLabel)}</strong></div>
-            <div className="flex items-start justify-between gap-3"><span className="text-[13px] leading-[1.4] text-admin-muted">{translateText("Occurred at")}</span><strong className="min-w-0 flex-1 text-right text-sm leading-[1.4] tabular-nums [overflow-wrap:anywhere]">{entry.occurredAt ? <time dateTime={entry.occurredAt}>{formatAdminTimestamp(entry.occurredAt)}</time> : translateText("Not provided by the Admin API")}</strong></div>
+            <div className="flex items-start justify-between gap-3"><span className="text-[13px] leading-[1.4] text-admin-muted">{translateText("Occurred at")}</span><strong className="min-w-0 flex-1 text-right text-sm leading-[1.4] tabular-nums [overflow-wrap:anywhere]"><time dateTime={entry.occurredAt}>{formatAdminTimestamp(entry.occurredAt)}</time></strong></div>
             {entry.fromStatus ? <div className="flex items-start justify-between gap-3"><span className="text-[13px] leading-[1.4] text-admin-muted">{translateText("Previous status")}</span><strong className="min-w-0 flex-1 text-right text-sm leading-[1.4] [overflow-wrap:anywhere]">{translateText(TOP_UP_BOARD_TABS.find((tab) => tab.id === entry.fromStatus)?.label ?? entry.fromStatus)}</strong></div> : null}
           </li>;
         })}
-      </ol>
+      </ol> : null}
     </TopUpDrawerSection>
     <TopUpDrawerSection title={translateText("Member details")}>
       <div className={adminRecordFacts}>
