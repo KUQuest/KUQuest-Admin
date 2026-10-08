@@ -51,6 +51,11 @@ export function queryString(query: Record<string, string | number | boolean | un
   return encoded ? `?${encoded}` : "";
 }
 
+export function decisionReasonTextFields(value: string | undefined) {
+  const decisionReasonText = value?.trim();
+  return decisionReasonText ? { decisionReasonText } : {};
+}
+
 export function commandHeaders(options: AdminCommandOptions): HeadersInit {
   return { "Idempotency-Key": options.idempotencyKey };
 }
@@ -88,11 +93,13 @@ export function disputeCommandHeaders(options: DisputeResolution): HeadersInit {
 
 export function disputeCommandBody(options: DisputeResolution): Pick<
   DisputeResolution,
-  "outcome" | "reasonCode" | "workerId" | "amountSatang"
+  "outcome" | "reasonCode" | "decisionReasonText" | "workerId" | "amountSatang"
 > {
+  const decisionReasonText = options.decisionReasonText?.trim();
   return {
     outcome: options.outcome,
     reasonCode: options.reasonCode,
+    ...(decisionReasonText ? { decisionReasonText } : {}),
     ...(options.workerId ? { workerId: options.workerId } : {}),
     ...(options.amountSatang !== undefined ? { amountSatang: options.amountSatang } : {}),
   };

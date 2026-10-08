@@ -27,13 +27,13 @@ export function usePayoutCommandMutation() {
         await adminApiProvider.commands.approvePayout(detail.id, {
           ...options,
           reasonCode: submission.reasonCode,
-          reason: submission.reason,
+          decisionReasonText: submission.decisionReasonText,
         });
       } else {
         await adminApiProvider.commands.rejectPayout(detail.id, {
           ...options,
           reasonCode: submission.reasonCode,
-          reason: submission.reason,
+          decisionReasonText: submission.decisionReasonText,
         });
       }
     },

@@ -294,14 +294,16 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
     setDialogOpen(true);
   };
 
-  const confirmDecision = async () => {
+  const confirmDecision = async ({
+    reasonCode,
+    decisionReasonText,
+  }: { reasonCode: AdminDisputeReasonCode; decisionReasonText?: string }) => {
     if (!selectedChoice) return;
     if (model.version === undefined) {
       setCommandError("The current Dispute Case version was not provided.");
       return;
     }
     const command = disputeCaseDecisionFor(selectedChoice);
-    const reasonCode: AdminDisputeReasonCode = command === "DISPUTE_CASE_RESOLVED" ? "DISPUTE_EVIDENCE_REVIEW" : "DISPUTE_POLICY_REVIEW";
     const amountSatang = command === "DISPUTE_CASE_RESOLVED" ? model.sharedCapSatang : null;
     if (command === "DISPUTE_CASE_RESOLVED" && (!model.workerId || amountSatang === null || amountSatang <= 0)) {
       setCommandError("Resolved requires a Worker and a full available Dispute Case amount.");
@@ -311,6 +313,7 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
     const options: DisputeResolution = {
       outcome: command,
       reasonCode,
+      ...(decisionReasonText ? { decisionReasonText } : {}),
       expectedVersion: model.version,
       idempotencyKey: newDisputeCaseIdempotencyKey(model.id),
       ...(command === "DISPUTE_CASE_RESOLVED" && model.workerId && amountSatang !== null

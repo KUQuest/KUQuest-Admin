@@ -393,16 +393,16 @@ describe("Admin API boundary", () => {
     await adminApi.rejectPayout("payout/1", {
       idempotencyKey: "reject-payout-1",
       expectedVersion: 4,
-      reasonCode: "PAYOUT_INVALID_DESTINATION",
-      reason: "The destination account does not match the verified Member details.",
+      reasonCode: "PAYOUT_ACCOUNT_OWNER_MISMATCH",
+      decisionReasonText: "The destination account does not match the verified Member details.",
     });
 
     expect(request?.url).toBe("https://api.example.test/api/v1/admin/payouts/payout%2F1/cancel");
     expect(request?.headers.get("idempotency-key")).toBe("reject-payout-1");
     expect(request?.headers.get("if-match")).toBe("4");
     expect(await request?.json()).toEqual({
-      reasonCode: "PAYOUT_INVALID_DESTINATION",
-      reason: "The destination account does not match the verified Member details.",
+      reasonCode: "PAYOUT_ACCOUNT_OWNER_MISMATCH",
+      decisionReasonText: "The destination account does not match the verified Member details.",
     });
   });
 
@@ -418,20 +418,20 @@ describe("Admin API boundary", () => {
     await adminApi.approvePayout("payout-1", {
       idempotencyKey: "approve-payout-1",
       expectedVersion: 4,
-      reasonCode: "PAYOUT_POLICY_REVIEW",
-      reason: "Destination and balance were verified.",
+      reasonCode: "PAYOUT_DESTINATION_VERIFIED",
+      decisionReasonText: "Destination and balance were verified.",
     });
 
     expect(request?.url).toBe("https://api.example.test/api/v1/admin/payouts/payout-1/approve");
     expect(request?.headers.get("idempotency-key")).toBe("approve-payout-1");
     expect(request?.headers.get("if-match")).toBe("4");
     expect(await request?.json()).toEqual({
-      reason: "Destination and balance were verified.",
-      reasonCode: "PAYOUT_POLICY_REVIEW",
+      decisionReasonText: "Destination and balance were verified.",
+      reasonCode: "PAYOUT_DESTINATION_VERIFIED",
     });
   });
 
-  it("omits the optional free-form reason when approving a Payout", async () => {
+  it("omits the optional Admin decision note when approving a Payout", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     let request: Request | undefined;
 
@@ -443,11 +443,11 @@ describe("Admin API boundary", () => {
     await adminApi.approvePayout("payout-1", {
       idempotencyKey: "approve-payout-1",
       expectedVersion: 4,
-      reasonCode: "PAYOUT_POLICY_REVIEW",
+      reasonCode: "PAYOUT_DESTINATION_VERIFIED",
     });
 
     expect(request?.url).toBe("https://api.example.test/api/v1/admin/payouts/payout-1/approve");
-    expect(await request?.json()).toEqual({ reasonCode: "PAYOUT_POLICY_REVIEW" });
+    expect(await request?.json()).toEqual({ reasonCode: "PAYOUT_DESTINATION_VERIFIED" });
   });
 
   it("sends the Payout reconciliation command", async () => {
@@ -501,7 +501,8 @@ describe("Admin API boundary", () => {
       idempotencyKey: "resolve-case-1",
       expectedVersion: 2,
       outcome: "DISPUTE_CASE_RESOLVED",
-      reasonCode: "DISPUTE_EVIDENCE_REVIEW",
+      reasonCode: "DISPUTE_VALID_PROOF_NOT_APPROVED",
+      decisionReasonText: "The Proof Submission meets the Quest Condition.",
       workerId: "member-1",
       amountSatang: 12501,
     });
@@ -511,7 +512,8 @@ describe("Admin API boundary", () => {
     expect(request?.headers.get("if-match")).toBe("2");
     expect(await request?.json()).toEqual({
       outcome: "DISPUTE_CASE_RESOLVED",
-      reasonCode: "DISPUTE_EVIDENCE_REVIEW",
+      reasonCode: "DISPUTE_VALID_PROOF_NOT_APPROVED",
+      decisionReasonText: "The Proof Submission meets the Quest Condition.",
       workerId: "member-1",
       amountSatang: 12501,
     });
@@ -623,13 +625,13 @@ describe("Admin API boundary", () => {
       idempotencyKey: "report-case-1",
       expectedVersion: 2,
       outcome: "REPORT_CASE_HIDDEN",
-      reasonCode: "SAFETY_REVIEW",
+      reasonCode: "REPORT_HARASSMENT_CONFIRMED",
       decisionReasonText: "Reviewed the named Evidence Reference.",
     });
 
     expect(await request?.json()).toEqual({
       outcome: "REPORT_CASE_HIDDEN",
-      reasonCode: "SAFETY_REVIEW",
+      reasonCode: "REPORT_HARASSMENT_CONFIRMED",
       decisionReasonText: "Reviewed the named Evidence Reference.",
     });
   });
@@ -661,7 +663,7 @@ describe("Admin API boundary", () => {
     });
   });
 
-  it("does not send a separate decision code for a Conduct Report uphold", async () => {
+  it("sends an Admin-selected decision code for a Conduct Report uphold", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     let request: Request | undefined;
 
@@ -677,16 +679,18 @@ describe("Admin API boundary", () => {
       idempotencyKey: "conduct-report-uphold-1",
       expectedVersion: 2,
       outcome: "CONDUCT_REPORT_UPHELD",
+      decisionReasonCode: "CONDUCT_REPORT_PROOF_RECORD_CONFIRMS_VIOLATION",
       decisionReasonText: "The filed reason is supported by the Quest record.",
     });
 
     expect(await request?.json()).toEqual({
       outcome: "CONDUCT_REPORT_UPHELD",
+      decisionReasonCode: "CONDUCT_REPORT_PROOF_RECORD_CONFIRMS_VIOLATION",
       decisionReasonText: "The filed reason is supported by the Quest record.",
     });
   });
 
-  it("omits whitespace-only decision notes for every report outcome", async () => {
+  it("omits blank decision notes from all decision API requests", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     const bodies: unknown[] = [];
 
@@ -699,7 +703,7 @@ describe("Admin API boundary", () => {
       idempotencyKey: "report-case-blank-note",
       expectedVersion: 2,
       outcome: "REPORT_CASE_RESTORED",
-      reasonCode: "POLICY_REVIEW",
+      reasonCode: "REPORT_MESSAGE_COMPLIES_WITH_POLICY",
       decisionReasonText: "   ",
     });
     await adminApi.decideConductReport("CND-1", {
@@ -713,16 +717,38 @@ describe("Admin API boundary", () => {
       idempotencyKey: "conduct-uphold-blank-note",
       expectedVersion: 2,
       outcome: "CONDUCT_REPORT_UPHELD",
+      decisionReasonCode: "CONDUCT_REPORT_CHAT_CONTEXT_CORROBORATES_VIOLATION",
       decisionReasonText: "",
+    });
+    await adminApi.resolveDispute("DSP-1", {
+      idempotencyKey: "dispute-dismiss-blank-note",
+      expectedVersion: 1,
+      outcome: "DISPUTE_CASE_DISMISSED",
+      reasonCode: "DISPUTE_INSUFFICIENT_EVIDENCE",
+      decisionReasonText: " ",
+    });
+    await adminApi.approvePayout("PAY-1", {
+      idempotencyKey: "payout-approve-blank-note",
+      expectedVersion: 1,
+      reasonCode: "PAYOUT_DESTINATION_VERIFIED",
+      decisionReasonText: "  ",
     });
 
     expect(bodies).toEqual([
-      { outcome: "REPORT_CASE_RESTORED", reasonCode: "POLICY_REVIEW" },
+      { outcome: "REPORT_CASE_RESTORED", reasonCode: "REPORT_MESSAGE_COMPLIES_WITH_POLICY" },
       {
         outcome: "CONDUCT_REPORT_DISMISSED",
         decisionReasonCode: "CONDUCT_REPORT_NO_VIOLATION",
       },
-      { outcome: "CONDUCT_REPORT_UPHELD" },
+      {
+        outcome: "CONDUCT_REPORT_UPHELD",
+        decisionReasonCode: "CONDUCT_REPORT_CHAT_CONTEXT_CORROBORATES_VIOLATION",
+      },
+      {
+        outcome: "DISPUTE_CASE_DISMISSED",
+        reasonCode: "DISPUTE_INSUFFICIENT_EVIDENCE",
+      },
+      { reasonCode: "PAYOUT_DESTINATION_VERIFIED" },
     ]);
   });
 
@@ -739,7 +765,7 @@ describe("Admin API boundary", () => {
     await expect(adminApi.approvePayout("payout-1", {
       idempotencyKey: "approve-payout-1",
       expectedVersion: 2,
-      reasonCode: "PAYOUT_POLICY_REVIEW",
+      reasonCode: "PAYOUT_DESTINATION_VERIFIED",
     })).rejects.toMatchObject({
       status: 409,
       code: "PAYOUT_ALREADY_DECIDED",
@@ -774,12 +800,12 @@ describe("Admin API boundary", () => {
     await adminApi.listDisputes();
     await adminApi.getDispute("case-1");
     await adminApi.openDispute("quest-1", { workerId: "worker-1" });
-    await adminApi.resolveDispute("case-1", { idempotencyKey: "resolve-1", expectedVersion: 1, outcome: "DISPUTE_CASE_DISMISSED", reasonCode: "DISPUTE_POLICY_REVIEW" });
+    await adminApi.resolveDispute("case-1", { idempotencyKey: "resolve-1", expectedVersion: 1, outcome: "DISPUTE_CASE_DISMISSED", reasonCode: "DISPUTE_INSUFFICIENT_EVIDENCE" });
     await adminApi.listPayouts();
     await adminApi.getPayout("payout-1");
     await adminApi.getPayoutHistory("payout-1");
-    await adminApi.approvePayout("payout-1", { idempotencyKey: "approve-1", expectedVersion: 1, reasonCode: "PAYOUT_POLICY_REVIEW" });
-    await adminApi.rejectPayout("payout-1", { idempotencyKey: "reject-1", expectedVersion: 1, reasonCode: "PAYOUT_RISK_REVIEW" });
+    await adminApi.approvePayout("payout-1", { idempotencyKey: "approve-1", expectedVersion: 1, reasonCode: "PAYOUT_DESTINATION_VERIFIED" });
+    await adminApi.rejectPayout("payout-1", { idempotencyKey: "reject-1", expectedVersion: 1, reasonCode: "PAYOUT_RISK_REVIEW_FAILED" });
     await adminApi.reconcilePayout("payout-1");
     await adminApi.retryPayoutProviderEvent("event-1");
     await adminApi.listTopUps({ status: "PENDING", limit: 50, cursor: "top-up-next" });
@@ -791,7 +817,7 @@ describe("Admin API boundary", () => {
       idempotencyKey: "decide-1",
       expectedVersion: 1,
       outcome: "REPORT_CASE_DISMISSED",
-      reasonCode: "POLICY_REVIEW",
+      reasonCode: "REPORT_NO_POLICY_VIOLATION",
     });
     await adminApi.getEvidence("evidence-1", { idempotencyKey: "evidence-read-2" });
     await adminApi.listMembers();

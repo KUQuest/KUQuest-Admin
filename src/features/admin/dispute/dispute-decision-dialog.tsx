@@ -1,10 +1,14 @@
 "use client";
 
-import { useEffect, useRef, type RefObject } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 
 import { AdminActionSummary } from "../../../components/admin/admin-action-feedback";
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { Button } from "../../../components/ui/button";
+import { AdminDecisionNoteInput, useAdminDecisionNote } from "../admin-decision-note";
+import { AdminReasonCodeField } from "../admin-reason-code-field";
+import { DISPUTE_CASE_REASON_CODE_OPTIONS } from "../admin-reason-codes";
+import type { AdminDisputeReasonCode } from "../api/admin-api";
 import { disputeCaseStatusLabel } from "../domain/rulebook";
 import type { DisputeCaseDecisionChoice, DisputeCaseModel } from "./dispute-model";
 
@@ -88,9 +92,19 @@ export function DisputeDecisionDialog({
   model: DisputeCaseModel;
   translateText: (value: string) => string;
   onCancel: () => void;
-  onConfirm: () => void;
+  onConfirm: (submission: { reasonCode: AdminDisputeReasonCode; decisionReasonText?: string }) => void;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const [reasonCode, setReasonCode] = useState<AdminDisputeReasonCode | "">("");
+  const {
+    value: decisionNote,
+    setValue: setDecisionNote,
+    decisionReasonText,
+  } = useAdminDecisionNote(open, choice);
+
+  useEffect(() => {
+    if (open) setReasonCode("");
+  }, [choice, open]);
 
   useDisputeModalFocus(dialogRef, open, onCancel);
 
@@ -104,11 +118,15 @@ export function DisputeDecisionDialog({
     ? `${translateText("Transfer the full remaining amount from the Hirer side of the held Funding Reservation to")} ${model.workerName} ${translateText("Earnings Balance")} (${model.sharedCapLabel}).`
     : translateText("Keep the full held amount with the Hirer. No money moves and the Quest remains Failed.");
   const fullAmountUnavailable = choice === "resolve" && (!model.workerId || model.sharedCapSatang === null || model.sharedCapSatang <= 0);
+  const reasonCodeOptions = choice === "resolve"
+    ? DISPUTE_CASE_REASON_CODE_OPTIONS.DISPUTE_CASE_RESOLVED
+    : DISPUTE_CASE_REASON_CODE_OPTIONS.DISPUTE_CASE_DISMISSED;
+  const hasValidReasonCode = reasonCodeOptions.some(({ value }) => value === reasonCode);
 
   return (
     <AdminModalPortal open onClose={onCancel}>
       <dialog ref={dialogRef} open className="dispute-decision-dialog z-[60]" aria-modal="true" aria-labelledby="dispute-decision-title" tabIndex={-1}>
-        <form method="dialog" onSubmit={(event) => { event.preventDefault(); if (fullAmountUnavailable) return; onConfirm(); }}>
+        <form method="dialog" onSubmit={(event) => { event.preventDefault(); if (!reasonCode || !hasValidReasonCode || fullAmountUnavailable) return; onConfirm({ reasonCode, ...(decisionReasonText ? { decisionReasonText } : {}) }); }}>
           <div className="dialog-body p-5">
             <div className="warning-icon grid size-[38px] place-items-center rounded-[10px] bg-admin-danger-soft font-bold text-admin-danger" aria-hidden="true">!</div>
             <h2 id="dispute-decision-title">{title}</h2>
@@ -127,9 +145,24 @@ export function DisputeDecisionDialog({
                 : "Dismiss the Dispute Case. The full held amount stays with the Hirer.")}
             /> : null}
             {choice === "resolve" && <div className="decision-amount-summary mt-4 flex items-baseline justify-between gap-3 rounded-lg border border-admin-border bg-admin-soft px-3 py-2.5"><span className="text-sm text-admin-muted">{translateText("Worker outcome")}</span><strong className="text-right text-base">{translateText("Full remaining amount")} · {model.sharedCapLabel}</strong></div>}
+            {choice ? <AdminReasonCodeField
+              id="dispute-decision-reason-code"
+              label="Reason code"
+              value={reasonCode}
+              options={reasonCodeOptions}
+              onValueChange={setReasonCode}
+              translateText={translateText}
+              invalid={Boolean(error)}
+            /> : null}
+            <AdminDecisionNoteInput
+              id="dispute-decision-reason-text"
+              value={decisionNote}
+              onChange={setDecisionNote}
+              translateText={translateText}
+            />
             {error && <p className="field-error" role="alert">{translateText(error)}</p>}
           </div>
-          <div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5"><Button variant="outline" type="button" onClick={onCancel} disabled={busy}>{translateText("Cancel")}</Button><Button variant="danger" type="submit" disabled={busy || fullAmountUnavailable}>{busy ? translateText("Saving…") : translateText("Confirm decision")}</Button></div>
+          <div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5"><Button variant="outline" type="button" onClick={onCancel} disabled={busy}>{translateText("Cancel")}</Button><Button variant="danger" type="submit" disabled={busy || !hasValidReasonCode || fullAmountUnavailable}>{busy ? translateText("Saving…") : translateText("Confirm decision")}</Button></div>
         </form>
       </dialog>
     </AdminModalPortal>

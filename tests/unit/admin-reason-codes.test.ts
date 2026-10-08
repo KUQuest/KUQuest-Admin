@@ -1,0 +1,82 @@
+import { describe, expect, it } from "bun:test";
+
+import {
+  CONDUCT_REPORT_REASON_CODE_OPTIONS,
+  DISPUTE_CASE_REASON_CODE_OPTIONS,
+  PAYOUT_REASON_CODE_OPTIONS,
+  REPORT_CASE_REASON_CODE_OPTIONS,
+} from "../../src/features/admin/admin-reason-codes";
+
+function values(options: readonly { value: string }[]) {
+  return options.map((option) => option.value);
+}
+
+describe("Admin decision reason code choices", () => {
+  it("shows the Issue 167 Dispute Case codes for each outcome", () => {
+    expect(values(DISPUTE_CASE_REASON_CODE_OPTIONS.DISPUTE_CASE_DISMISSED)).toEqual([
+      "DISPUTE_INSUFFICIENT_EVIDENCE",
+      "DISPUTE_QUEST_RECORD_DOES_NOT_SUPPORT_CLAIM",
+      "DISPUTE_NO_UNFAIR_SETTLEMENT_FOUND",
+      "DISPUTE_WORKER_ALREADY_COMPENSATED",
+    ]);
+    expect(values(DISPUTE_CASE_REASON_CODE_OPTIONS.DISPUTE_CASE_RESOLVED)).toEqual([
+      "DISPUTE_VALID_PROOF_NOT_APPROVED",
+      "DISPUTE_WORKER_MET_QUEST_CONDITION",
+      "DISPUTE_PARTIAL_WORK_EARNED_REWARD",
+    ]);
+  });
+
+  it("shows the Issue 167 Report Case codes for each outcome", () => {
+    expect(values(REPORT_CASE_REASON_CODE_OPTIONS.REPORT_CASE_DISMISSED)).toEqual([
+      "REPORT_NO_POLICY_VIOLATION",
+      "REPORT_INSUFFICIENT_EVIDENCE",
+      "REPORT_CONTEXT_SUPPORTS_MESSAGE",
+    ]);
+    expect(values(REPORT_CASE_REASON_CODE_OPTIONS.REPORT_CASE_HIDDEN)).toEqual([
+      "REPORT_HARASSMENT_CONFIRMED",
+      "REPORT_SPAM_CONFIRMED",
+      "REPORT_THREAT_CONFIRMED",
+      "REPORT_INAPPROPRIATE_CONTENT_CONFIRMED",
+      "REPORT_OTHER_POLICY_VIOLATION_CONFIRMED",
+    ]);
+    expect(values(REPORT_CASE_REASON_CODE_OPTIONS.REPORT_CASE_RESTORED)).toEqual([
+      "REPORT_MESSAGE_COMPLIES_WITH_POLICY",
+      "REPORT_CONTEXT_WAS_MISUNDERSTOOD",
+      "REPORT_NEW_EVIDENCE_OVERTURNS_HIDE",
+    ]);
+  });
+
+  it("keeps Conduct Report Admin codes separate from the Member's filed reasons", () => {
+    expect(values(CONDUCT_REPORT_REASON_CODE_OPTIONS.CONDUCT_REPORT_DISMISSED)).toEqual([
+      "CONDUCT_REPORT_NO_VIOLATION",
+      "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE",
+      "CONDUCT_REPORT_QUEST_RECORD_DISPROVES_CLAIM",
+      "CONDUCT_REPORT_OUTSIDE_RULEBOOK_SCOPE",
+    ]);
+    expect(values(CONDUCT_REPORT_REASON_CODE_OPTIONS.CONDUCT_REPORT_UPHELD)).toEqual([
+      "CONDUCT_REPORT_QUEST_RECORD_CONFIRMS_VIOLATION",
+      "CONDUCT_REPORT_PROOF_RECORD_CONFIRMS_VIOLATION",
+      "CONDUCT_REPORT_CHAT_CONTEXT_CORROBORATES_VIOLATION",
+    ]);
+    expect([
+      ...values(CONDUCT_REPORT_REASON_CODE_OPTIONS.CONDUCT_REPORT_DISMISSED),
+      ...values(CONDUCT_REPORT_REASON_CODE_OPTIONS.CONDUCT_REPORT_UPHELD),
+    ]).not.toContain("CONDUCT_ABANDONED");
+  });
+
+  it("shows different Payout codes for approval and rejection", () => {
+    expect(values(PAYOUT_REASON_CODE_OPTIONS.approve)).toEqual([
+      "PAYOUT_DESTINATION_VERIFIED",
+      "PAYOUT_ACCOUNT_OWNER_MATCHED",
+      "PAYOUT_POLICY_CHECK_PASSED",
+      "PAYOUT_RISK_REVIEW_CLEARED",
+    ]);
+    expect(values(PAYOUT_REASON_CODE_OPTIONS.reject)).toEqual([
+      "PAYOUT_INVALID_DESTINATION",
+      "PAYOUT_ACCOUNT_OWNER_MISMATCH",
+      "PAYOUT_POLICY_CHECK_FAILED",
+      "PAYOUT_RISK_REVIEW_FAILED",
+      "PAYOUT_REQUIRED_INFORMATION_MISSING",
+    ]);
+  });
+});

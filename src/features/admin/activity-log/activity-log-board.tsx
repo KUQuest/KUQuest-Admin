@@ -26,7 +26,6 @@ import { sortBoardRows } from "../data/board-sorting";
 import { DEFAULT_ACTIVITY_LOG_FILTERS, type ActivityLogPageData } from "./activity-log-service";
 import { useActivityLogBoardStore, type ActivityLogSortKey } from "./activity-log-board-store";
 import { useActivityLogQuery } from "./activity-log-query";
-import { formatAdminTimestamp } from "../date-format";
 import { displayAdminId } from "../display-admin-id";
 
 export type ActivityLogBoardProps = {
@@ -74,6 +73,12 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
       subtitle={translateText(activityLogActionLabel(entry.action))}
       className="activity-log-dialog"
       onClose={onClose}
+      actions={
+        <>
+          {targetHref ? <Button variant="primary" className="min-w-0" type="button" onClick={() => onOpenTarget(entry)}>{translateText("View linked detail")}</Button> : null}
+          <Button variant="outline" type="button" onClick={onClose}>{translateText("Close")}</Button>
+        </>
+      }
     >
         <div className="activity-log-detail admin-drawer-content-flow grid min-w-0 content-start gap-[18px]">
           <div className="drawer-title m-0 pb-1">
@@ -87,29 +92,12 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
             <CardHeader flush className={adminRecordHeader}><h3 id="activity-log-record-heading" className={adminRecordHeading}>{translateText("Activity record")}</h3></CardHeader>
             <div className={adminRecordFacts}>
               <div className={adminRecordFact}><span>{translateText("Timestamp")}</span><strong>{formatActivityLogTimestamp(entry.createdAt)}</strong></div>
+              <div className={adminRecordFact}><span>{translateText("Activity ID")}</span><strong className="break-all">{entry.id}</strong></div>
+              <div className={adminRecordFact}><span>{translateText("Actor")}</span><strong>{displayValue(entry.adminName)}</strong></div>
               <div className={adminRecordFact}><span>{translateText("Action")}</span><strong>{translateText(activityLogActionLabel(entry.action))}</strong></div>
               <div className={adminRecordFact}><span>{translateText("Resource type")}</span><strong>{translateText(activityLogResourceTypeLabel(entry.resourceType))}</strong></div>
-              <div className={adminRecordFact}><span>{translateText("Resource ID")}</span><strong>{displayValue(entry.resourceId)}</strong></div>
+              <div className={adminRecordFact}><span>{translateText("Resource Display ID")}</span><strong>{displayValue(displayAdminId(entry.resourceDisplayId))}</strong></div>
               <div className={adminRecordFact}><span>{translateText("Reason code")}</span><strong>{translateText(activityLogReasonLabel(entry.reasonCode))}</strong></div>
-              <div className={adminRecordFact}><span>{translateText("Reason catalog version")}</span><strong>{displayValue(entry.reasonCatalogVersion)}</strong></div>
-              <div className={adminRecordFact}><span>{translateText("Activity ID")}</span><strong>{displayValue(entry.id)}</strong></div>
-            </div>
-          </Card>
-          <Card as="section" className={`${adminRecordSection} activity-log-admin-section`} aria-labelledby="activity-log-admin-heading">
-            <CardHeader flush className={adminRecordHeader}><h3 id="activity-log-admin-heading" className={adminRecordHeading}>{translateText("Admin")}</h3></CardHeader>
-            <div className={adminRecordFacts}>
-              <div className={adminRecordFact}><span>{translateText("Actor")}</span><strong>{displayValue(entry.adminName)}</strong></div>
-              <div className={adminRecordFact}><span>{translateText("Admin ID")}</span><strong>{displayValue(entry.adminId)}</strong></div>
-              <div className={adminRecordFact}><span>{translateText("Admin first name")}</span><strong>{displayValue(entry.admin.firstName)}</strong></div>
-              <div className={adminRecordFact}><span>{translateText("Admin last name")}</span><strong>{displayValue(entry.admin.lastName)}</strong></div>
-            </div>
-          </Card>
-          <Card as="section" className={`${adminRecordSection} activity-log-result-section`} aria-labelledby="activity-log-result-heading">
-            <CardHeader flush className={adminRecordHeader}><h3 id="activity-log-result-heading" className={adminRecordHeading}>{translateText("Result")}</h3></CardHeader>
-            <div className={adminRecordFacts}>
-              <div className={adminRecordFact}><span>{translateText("Result version")}</span><strong>{displayValue(entry.resultVersion)}</strong></div>
-              <div className={adminRecordFact}><span>{translateText("Result timestamp")}</span><strong>{formatAdminTimestamp(entry.resultTimestamp)}</strong></div>
-              <div className={adminRecordFact}><span>{translateText("Relative time")}</span><strong>{formatActivityLogRelativeTime(entry.createdAt)}</strong></div>
             </div>
           </Card>
           <Card as="section" className={`${adminRecordSection} activity-log-state-section`} aria-labelledby="activity-log-state-heading">
@@ -117,10 +105,6 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
             <p className="activity-log-missing-context m-0 text-[15px] leading-[1.45] text-admin-muted">{translateText("Before and after state are not included in this record.")}</p>
             {entry.note ? <p className="activity-log-note m-0 mt-3 grid gap-1 rounded-admin-sm bg-admin-soft p-2.5 text-[15px] leading-[1.45] text-admin-muted"><strong className="text-[17px] leading-[1.4] text-admin-text">{translateText("Admin note")}</strong>{entry.note}</p> : null}
           </Card>
-          <div className="admin-drawer-actions sticky bottom-[-28px] z-[4] m-[18px_-24px_-28px] flex flex-wrap gap-2 border-t border-admin-border bg-admin-surface/95 px-6 py-3.5 shadow-[0_-6px_18px_rgba(0,0,0,0.09)] [&>*]:min-h-11 [&>*]:flex-[1_1_180px] [&>*]:text-center max-[720px]:bottom-[-24px] max-[720px]:m-[18px_-16px_-24px] max-[720px]:px-4 max-[720px]:[&>*]:basis-full">
-            {targetHref ? <Button variant="primary" className="min-w-0 flex-[1.35]" type="button" onClick={() => onOpenTarget(entry)}>{translateText("View linked detail")}</Button> : null}
-            <Button variant="outline" type="button" onClick={onClose}>{translateText("Close")}</Button>
-          </div>
         </div>
     </AdminDrawer>
   );

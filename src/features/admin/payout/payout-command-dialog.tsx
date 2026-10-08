@@ -6,27 +6,16 @@ import { AdminActionSummary } from "../../../components/admin/admin-action-feedb
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { Button as UiButton } from "../../../components/ui";
+import { AdminDecisionNoteInput, useAdminDecisionNote } from "../admin-decision-note";
+import { PAYOUT_REASON_CODE_OPTIONS } from "../admin-reason-codes";
+import type { PayoutApprovalReasonCode, PayoutDecisionReasonCode, PayoutRejectionReasonCode } from "../api/admin-api";
 import { payoutStatusLabel } from "../domain/rulebook";
 import type { PayoutDetailView } from "./payout-model";
 
 export type PayoutCommand = "approve" | "reject";
-export type RejectionReasonCode = "PAYOUT_POLICY_REVIEW" | "PAYOUT_RISK_REVIEW" | "PAYOUT_INVALID_DESTINATION";
-export type PayoutCommandSubmission = {
-  command: PayoutCommand;
-  reasonCode: string;
-  reason: string;
-};
-
-const rejectionReasonCodes: Array<{ value: RejectionReasonCode; label: string }> = [
-  { value: "PAYOUT_POLICY_REVIEW", label: "Policy review" },
-  { value: "PAYOUT_RISK_REVIEW", label: "Risk review" },
-  { value: "PAYOUT_INVALID_DESTINATION", label: "Invalid destination" },
-];
-
-const approvalReasonCodes: Array<{ value: string; label: string }> = [
-  { value: "PAYOUT_POLICY_REVIEW", label: "Policy review" },
-  { value: "PAYOUT_RISK_REVIEW", label: "Risk review" },
-];
+export type PayoutCommandSubmission =
+  | { command: "approve"; reasonCode: PayoutApprovalReasonCode; decisionReasonText?: string }
+  | { command: "reject"; reasonCode: PayoutRejectionReasonCode; decisionReasonText?: string };
 
 export function PayoutCommandDialog({
   detail,
@@ -45,10 +34,21 @@ export function PayoutCommandDialog({
 }) {
   const { translateText } = useAdminShell();
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const [reasonCode, setReasonCode] = useState("");
-  const [reason, setReason] = useState("");
+  const [reasonCode, setReasonCode] = useState<PayoutDecisionReasonCode | "">("");
   const [validationError, setValidationError] = useState<string | null>(null);
-  const submitDisabled = pending || !reasonCode || reason.trim().length < 8;
+  const {
+    value: decisionNote,
+    setValue: setDecisionNote,
+    decisionReasonText,
+  } = useAdminDecisionNote(true, command);
+  const reasonCodeOptions = PAYOUT_REASON_CODE_OPTIONS[command];
+  const hasValidReasonCode = reasonCodeOptions.some(({ value }) => value === reasonCode);
+  const submitDisabled = pending || !hasValidReasonCode;
+
+  useEffect(() => {
+    setReasonCode("");
+    setValidationError(null);
+  }, [command]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -87,16 +87,24 @@ export function PayoutCommandDialog({
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!reasonCode) {
+    if (!hasValidReasonCode) {
       setValidationError("Select a reason code.");
       return;
     }
-    if (reason.trim().length < 8) {
-      setValidationError("Enter at least 8 characters for the decision reason.");
+    setValidationError(null);
+    if (command === "approve") {
+      onSubmit({
+        command,
+        reasonCode: reasonCode as PayoutApprovalReasonCode,
+        ...(decisionReasonText ? { decisionReasonText } : {}),
+      });
       return;
     }
-    setValidationError(null);
-    onSubmit({ command, reasonCode, reason: reason.trim() });
+    onSubmit({
+      command,
+      reasonCode: reasonCode as PayoutRejectionReasonCode,
+      ...(decisionReasonText ? { decisionReasonText } : {}),
+    });
   }
 
   return (
@@ -107,8 +115,8 @@ export function PayoutCommandDialog({
             <div className="warning-icon grid size-[38px] place-items-center rounded-[10px] bg-admin-danger-soft font-bold text-admin-danger" aria-hidden="true">!</div>
             <h2 id="payout-command-title">{translateText(command === "approve" ? "Approve Payout" : "Reject Payout")}</h2>
             <p>{translateText(command === "approve"
-              ? "Review the destination and balance, select the reason code, and enter the reason for approving this Payout."
-              : "Select the reason code and enter the reason for rejecting this Payout.")}</p>
+              ? "Review the destination and balance, then select the reason code for approving this Payout."
+              : "Select the reason code for rejecting this Payout.")}</p>
             <AdminActionSummary
               title={translateText("Before you confirm")}
               affected={`${translateText("Payout")} · ${detail.student.name}`}
@@ -121,14 +129,17 @@ export function PayoutCommandDialog({
               warning={translateText("The API Server remains the authority for the final Payout result.")}
             />
             <label className="grid gap-1 text-[16px] leading-[1.4] font-semibold" htmlFor="payout-reason-code"><span>{translateText("Reason code")} <span aria-hidden="true">*</span></span>
-              <select className="w-full rounded-lg border border-admin-border-strong bg-admin-surface px-2.5 py-2 text-lg leading-[1.45] text-admin-text" id="payout-reason-code" required value={reasonCode} onChange={(event) => { setReasonCode(event.target.value); setValidationError(null); }} autoFocus>
+              <select className="w-full rounded-lg border border-admin-border-strong bg-admin-surface px-2.5 py-2 text-lg leading-[1.45] text-admin-text" id="payout-reason-code" required value={reasonCode} onChange={(event) => { setReasonCode(event.target.value as PayoutDecisionReasonCode); setValidationError(null); }} autoFocus>
                 <option value="">{translateText("Choose a reason")}</option>
-                {(command === "reject" ? rejectionReasonCodes : approvalReasonCodes).map((item) => <option key={item.value} value={item.value}>{translateText(item.label)}</option>)}
+                {reasonCodeOptions.map((item) => <option key={item.value} value={item.value}>{translateText(item.label)}</option>)}
               </select>
             </label>
-            <label htmlFor="payout-reason">{translateText("Reason for this decision")}
-              <textarea id="payout-reason" name="reason" rows={4} minLength={8} maxLength={500} required value={reason} onChange={(event) => { setReason(event.target.value); setValidationError(null); }} placeholder={translateText("Enter the reason for the Payout decision")} />
-            </label>
+            <AdminDecisionNoteInput
+              id="payout-decision-reason-text"
+              value={decisionNote}
+              onChange={(value) => { setDecisionNote(value); setValidationError(null); }}
+              translateText={translateText}
+            />
             {validationError || error ? <p className="field-error" role="alert">{translateText(validationError ?? error ?? "")}</p> : null}
           </div>
           <div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5">

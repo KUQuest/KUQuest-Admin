@@ -32,7 +32,20 @@ export type DisputeAllocation = {
   amountSatang: number;
 };
 
-export type AdminDisputeReasonCode = "DISPUTE_POLICY_REVIEW" | "DISPUTE_EVIDENCE_REVIEW";
+export type AdminDisputeDismissReasonCode =
+  | "DISPUTE_INSUFFICIENT_EVIDENCE"
+  | "DISPUTE_QUEST_RECORD_DOES_NOT_SUPPORT_CLAIM"
+  | "DISPUTE_NO_UNFAIR_SETTLEMENT_FOUND"
+  | "DISPUTE_WORKER_ALREADY_COMPENSATED";
+
+export type AdminDisputeResolveReasonCode =
+  | "DISPUTE_VALID_PROOF_NOT_APPROVED"
+  | "DISPUTE_WORKER_MET_QUEST_CONDITION"
+  | "DISPUTE_PARTIAL_WORK_EARNED_REWARD";
+
+export type AdminDisputeReasonCode =
+  | AdminDisputeDismissReasonCode
+  | AdminDisputeResolveReasonCode;
 
 export type AdminDisputeOpenCommand = {
   workerId: string;
@@ -57,6 +70,7 @@ export type DisputeResolution = Omit<AdminCommandOptions, "expectedVersion"> & {
   expectedVersion: number;
   outcome: "DISPUTE_CASE_DISMISSED" | "DISPUTE_CASE_RESOLVED";
   reasonCode: AdminDisputeReasonCode;
+  decisionReasonText?: string;
   workerId?: string;
   amountSatang?: number;
 };
@@ -80,8 +94,21 @@ type VersionedAdminCommand = Omit<AdminCommandOptions, "expectedVersion"> & {
 
 export type ReportCaseDecision = VersionedAdminCommand & {
   outcome: "REPORT_CASE_DISMISSED" | "REPORT_CASE_HIDDEN" | "REPORT_CASE_RESTORED";
-  reasonCode: AdminReviewReasonCode;
+  reasonCode: ReportCaseDecisionReasonCode;
 };
+
+export type ReportCaseDecisionReasonCode =
+  | "REPORT_NO_POLICY_VIOLATION"
+  | "REPORT_INSUFFICIENT_EVIDENCE"
+  | "REPORT_CONTEXT_SUPPORTS_MESSAGE"
+  | "REPORT_HARASSMENT_CONFIRMED"
+  | "REPORT_SPAM_CONFIRMED"
+  | "REPORT_THREAT_CONFIRMED"
+  | "REPORT_INAPPROPRIATE_CONTENT_CONFIRMED"
+  | "REPORT_OTHER_POLICY_VIOLATION_CONFIRMED"
+  | "REPORT_MESSAGE_COMPLIES_WITH_POLICY"
+  | "REPORT_CONTEXT_WAS_MISUNDERSTOOD"
+  | "REPORT_NEW_EVIDENCE_OVERTURNS_HIDE";
 
 export type AdminReportCommandResult = {
   resourceSummary: {
@@ -99,19 +126,25 @@ export type AdminReportCommandResult = {
   adminActionId: string;
 };
 
-export type ConductReportDecisionReasonCode =
+export type ConductReportDismissReasonCode =
   | "CONDUCT_REPORT_NO_VIOLATION"
-  | "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE";
+  | "CONDUCT_REPORT_INSUFFICIENT_EVIDENCE"
+  | "CONDUCT_REPORT_QUEST_RECORD_DISPROVES_CLAIM"
+  | "CONDUCT_REPORT_OUTSIDE_RULEBOOK_SCOPE";
 
-export type ConductReportDecision = VersionedAdminCommand & (
-  | {
-      outcome: "CONDUCT_REPORT_DISMISSED";
-      decisionReasonCode: ConductReportDecisionReasonCode;
-    }
-  | {
-      outcome: "CONDUCT_REPORT_UPHELD";
-    }
-);
+export type ConductReportUpholdReasonCode =
+  | "CONDUCT_REPORT_QUEST_RECORD_CONFIRMS_VIOLATION"
+  | "CONDUCT_REPORT_PROOF_RECORD_CONFIRMS_VIOLATION"
+  | "CONDUCT_REPORT_CHAT_CONTEXT_CORROBORATES_VIOLATION";
+
+export type ConductReportDecisionReasonCode =
+  | ConductReportDismissReasonCode
+  | ConductReportUpholdReasonCode;
+
+export type ConductReportDecision = VersionedAdminCommand & {
+  outcome: "CONDUCT_REPORT_DISMISSED" | "CONDUCT_REPORT_UPHELD";
+  decisionReasonCode: ConductReportDecisionReasonCode;
+};
 
 export type AdminConductReportCommandResult = {
   resourceSummary: {
@@ -145,14 +178,29 @@ export type WalletStatusCommand = AdminCommandOptions & {
 
 export type PayoutApproval = Omit<AdminCommandOptions, "expectedVersion"> & {
   expectedVersion: number;
-  reason?: string;
-  reasonCode: string;
+  decisionReasonText?: string;
+  reasonCode: PayoutApprovalReasonCode;
 };
 export type PayoutRejection = Omit<AdminCommandOptions, "expectedVersion"> & {
   expectedVersion: number;
-  reason?: string;
-  reasonCode: string;
+  decisionReasonText?: string;
+  reasonCode: PayoutRejectionReasonCode;
 };
+
+export type PayoutApprovalReasonCode =
+  | "PAYOUT_DESTINATION_VERIFIED"
+  | "PAYOUT_ACCOUNT_OWNER_MATCHED"
+  | "PAYOUT_POLICY_CHECK_PASSED"
+  | "PAYOUT_RISK_REVIEW_CLEARED";
+
+export type PayoutRejectionReasonCode =
+  | "PAYOUT_INVALID_DESTINATION"
+  | "PAYOUT_ACCOUNT_OWNER_MISMATCH"
+  | "PAYOUT_POLICY_CHECK_FAILED"
+  | "PAYOUT_RISK_REVIEW_FAILED"
+  | "PAYOUT_REQUIRED_INFORMATION_MISSING";
+
+export type PayoutDecisionReasonCode = PayoutApprovalReasonCode | PayoutRejectionReasonCode;
 
 export type AdminEvent = {
   id?: string;

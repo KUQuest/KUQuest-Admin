@@ -44,6 +44,7 @@ export type AdminPayoutHistoryEntry = {
   actorAdminId: string | null;
   source: string;
   reason: string | null;
+  reasonCode?: string | null;
   occurredAt: string;
 };
 

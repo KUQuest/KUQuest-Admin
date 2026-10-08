@@ -1,5 +1,6 @@
 import { apiRequest } from "../../../lib/api/client";
 import {
+  decisionReasonTextFields,
   encode,
   payoutCommandHeaders,
   queryString,
@@ -61,7 +62,7 @@ export function createAdminPayoutApi() {
           method: "POST",
           headers: payoutCommandHeaders(options),
           body: {
-            ...(options.reason !== undefined ? { reason: options.reason } : {}),
+            ...decisionReasonTextFields(options.decisionReasonText),
             reasonCode: options.reasonCode,
           },
         },
@@ -75,7 +76,7 @@ export function createAdminPayoutApi() {
           method: "POST",
           headers: payoutCommandHeaders(options),
           body: {
-            ...(options.reason !== undefined ? { reason: options.reason } : {}),
+            ...decisionReasonTextFields(options.decisionReasonText),
             reasonCode: options.reasonCode,
           },
         },

@@ -1,5 +1,6 @@
 import { apiRequest } from "../../../lib/api/client";
 import {
+  decisionReasonTextFields,
   encode,
   queryString,
 } from "./admin-api-transport";
@@ -15,11 +16,6 @@ import type {
   ConductReportDecision,
   ReportCaseDecision,
 } from "./admin-api";
-function decisionReasonTextFields(value: string | undefined) {
-  const decisionReasonText = value?.trim();
-  return decisionReasonText ? { decisionReasonText } : {};
-}
-
 
 export function createAdminReportApi() {
   return {
@@ -70,16 +66,11 @@ export function createAdminReportApi() {
             "Idempotency-Key": options.idempotencyKey,
             "If-Match": String(options.expectedVersion),
           },
-          body: options.outcome === "CONDUCT_REPORT_DISMISSED"
-            ? {
-                outcome: options.outcome,
-                decisionReasonCode: options.decisionReasonCode,
-                ...decisionReasonTextFields(options.decisionReasonText),
-              }
-            : {
-                outcome: options.outcome,
-                ...decisionReasonTextFields(options.decisionReasonText),
-              },
+          body: {
+            outcome: options.outcome,
+            decisionReasonCode: options.decisionReasonCode,
+            ...decisionReasonTextFields(options.decisionReasonText),
+          },
         },
       );
     },

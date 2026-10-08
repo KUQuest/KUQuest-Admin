@@ -34,6 +34,7 @@ export function useDisputeDecisionMutation() {
         ...result.resourceSummary,
         status: command,
         disputeCaseStatus: command,
+        decisionReason: options.decisionReasonText ?? options.reasonCode,
         ...(command === "DISPUTE_CASE_RESOLVED"
           ? { resolvedWorkerId: model.workerId, resolvedAmountSatang: options.amountSatang }
           : { resolvedWorkerId: null, resolvedAmountSatang: null }),

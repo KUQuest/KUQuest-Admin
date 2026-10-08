@@ -6,10 +6,10 @@ import { AdminActionSummary } from "../../../components/admin/admin-action-feedb
 import { AdminModalPortal } from "../../../components/admin/admin-modal-portal";
 import { Button } from "../../../components/ui/button";
 import { AdminReasonCodeField } from "../admin-reason-code-field";
-import { ADMIN_REVIEW_REASON_CODE_OPTIONS } from "../admin-reason-codes";
+import { REPORT_CASE_REASON_CODE_OPTIONS } from "../admin-reason-codes";
 import { AdminDecisionNoteInput, useAdminDecisionNote, type AdminDecisionSubmission } from "../admin-decision-note";
-import type { AdminReviewReasonCode } from "../api/admin-api";
-import { type ReportCaseDecisionChoice, type ReportCaseModel } from "./report-model";
+import type { ReportCaseDecisionReasonCode } from "../api/admin-api";
+import { reportCaseDecisionFor, type ReportCaseDecisionChoice, type ReportCaseModel } from "./report-model";
 import { reportCaseStatusLabel } from "../domain/rulebook";
 
 type DecisionDialogProps = {
@@ -20,7 +20,7 @@ type DecisionDialogProps = {
   model: ReportCaseModel;
   translateText: (value: string) => string;
   onCancel: () => void;
-  onConfirm: (submission: AdminDecisionSubmission<"reasonCode", AdminReviewReasonCode>) => void;
+  onConfirm: (submission: AdminDecisionSubmission<"reasonCode", ReportCaseDecisionReasonCode>) => void;
 };
 
 function decisionDialogTitle(choice: ReportCaseDecisionChoice | null, translateText: (value: string) => string): string {
@@ -45,7 +45,7 @@ export function ReportDecisionDialog({
   onCancel,
   onConfirm,
 }: DecisionDialogProps) {
-  const [reasonCode, setReasonCode] = useState<AdminReviewReasonCode | "">("");
+  const [reasonCode, setReasonCode] = useState<ReportCaseDecisionReasonCode | "">("");
   const {
     value: decisionNote,
     setValue: setDecisionNote,
@@ -74,6 +74,10 @@ export function ReportDecisionDialog({
     : choice === "restore"
       ? "The restored record is retained as an immutable decision history."
       : "The decision is retained as an immutable audit record.";
+  const reasonCodeOptions = choice
+    ? REPORT_CASE_REASON_CODE_OPTIONS[reportCaseDecisionFor(choice)]
+    : REPORT_CASE_REASON_CODE_OPTIONS.REPORT_CASE_DISMISSED;
+  const hasValidReasonCode = reasonCodeOptions.some(({ value }) => value === reasonCode);
 
   return (
     <AdminModalPortal open={open} onClose={onCancel}>
@@ -83,7 +87,7 @@ export function ReportDecisionDialog({
         onSubmit={(event) => {
           event.preventDefault();
           const selectedReasonCode = reasonCode;
-          if (!selectedReasonCode) return;
+          if (!hasValidReasonCode || !selectedReasonCode) return;
           onConfirm({
             reasonCode: selectedReasonCode,
             ...(decisionReasonText ? { decisionReasonText } : {}),
@@ -109,7 +113,7 @@ export function ReportDecisionDialog({
             id="report-decision-reason-code"
             label="Reason code"
             value={reasonCode}
-            options={ADMIN_REVIEW_REASON_CODE_OPTIONS}
+            options={reasonCodeOptions}
             onValueChange={setReasonCode}
             translateText={translateText}
             invalid={Boolean(error)}
@@ -124,7 +128,7 @@ export function ReportDecisionDialog({
         </div>
         <div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5">
           <Button variant="outline" type="button" onClick={onCancel} disabled={busy}>{translateText("Cancel")}</Button>
-          <Button variant="danger" type="submit" disabled={busy || !reasonCode}>
+          <Button variant="danger" type="submit" disabled={busy || !hasValidReasonCode}>
             {busy ? translateText("Saving…") : translateText("Confirm decision")}
           </Button>
         </div>
