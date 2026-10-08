@@ -266,8 +266,11 @@ export function activityLogCsv(entries: readonly ActivityLogEntry[]): string {
   return [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n");
 }
 export function activityTargetHref(resourceType: string, resourceId: string | undefined): string | null {
+  const normalizedType = resourceType.trim().toUpperCase();
+  if (normalizedType === "WALLET") return walletRoutes.list();
+  if (normalizedType === "ACTIVITY_LOG") return activityRoutes.list();
   if (!resourceId) return null;
-  switch (resourceType.trim().toUpperCase()) {
+  switch (normalizedType) {
     case "DISPUTE_CASE":
       return disputeRoutes.detail(resourceId);
     case "MEMBER":
@@ -281,10 +284,6 @@ export function activityTargetHref(resourceType: string, resourceId: string | un
       return reportRoutes.detail(resourceId);
     case "CONDUCT_REPORT":
       return conductReportRoutes.detail(resourceId);
-    case "WALLET":
-      return walletRoutes.list();
-    case "ACTIVITY_LOG":
-      return activityRoutes.list();
     default:
       return null;
   }

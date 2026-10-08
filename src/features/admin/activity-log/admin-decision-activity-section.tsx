@@ -10,7 +10,7 @@ import {
   adminRecordSection,
 } from "../../../components/admin/admin-record-styles";
 import { activityLogValueLabel } from "./activity-log-model";
-import { useAdminDecisionActivityQuery } from "./activity-log-query";
+import { decisionActivityStateFromQuery, useAdminDecisionActivityQuery } from "./activity-log-query";
 
 export function AdminDecisionActivitySection({
   resourceType,
@@ -27,13 +27,15 @@ export function AdminDecisionActivitySection({
 }) {
   const { translateText } = useAdminShell();
   const query = useAdminDecisionActivityQuery(resourceType, resourceId, actions);
-  const readback = query.data;
+  const readback = decisionActivityStateFromQuery(query);
+  const loading = readback.kind === "loading";
+  const unavailable = readback.kind === "unavailable";
   const activity = readback?.kind === "found" ? readback.entry : null;
   const effectiveReasonCode = reasonCode ?? activity?.reasonCode ?? null;
   const effectiveAdminName = adminName ?? activity?.adminName ?? null;
-  const reasonFallback = query.isPending
+  const reasonFallback = loading
     ? "Loading the Admin decision record…"
-    : query.isError
+    : unavailable
       ? "The Admin decision record is unavailable."
       : readback?.kind === "invalid"
         ? "The Admin decision record response is invalid."
@@ -42,15 +44,17 @@ export function AdminDecisionActivitySection({
           : readback?.kind === "empty"
             ? "No Admin decision record was returned."
             : "Not available";
-  const adminFallback = query.isPending
+  const adminFallback = loading
     ? "Loading the Admin decision record…"
+    : unavailable
+      ? "The Admin decision record is unavailable."
     : readback?.kind === "found"
       ? "Admin identity was not provided."
       : "Not available";
   const noteValue = activity?.decisionReasonText
-    ?? (query.isPending
+    ?? (loading
       ? translateText("Loading the Admin decision record…")
-      : query.isError
+      : unavailable
         ? translateText("The Admin decision record is unavailable.")
         : readback?.kind === "invalid"
           ? translateText("The Admin decision record response is invalid.")
@@ -79,7 +83,7 @@ export function AdminDecisionActivitySection({
           <strong>{noteValue}</strong>
         </div>
       </div>
-      {query.isError ? <p className="field-error" role="alert">{translateText("The Admin decision record is unavailable.")}</p> : null}
+      {unavailable ? <p className="field-error" role="alert">{translateText("The Admin decision record is unavailable.")}</p> : null}
       {readback?.kind === "invalid" ? <p className="field-error" role="alert">{translateText("The Admin decision record response is invalid.")}</p> : null}
     </Card>
   );

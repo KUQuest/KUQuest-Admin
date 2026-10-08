@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import { decisionActivityFromResponse } from "../../src/features/admin/activity-log/activity-log-query";
+import { decisionActivityFromResponse, decisionActivityStateFromQuery } from "../../src/features/admin/activity-log/activity-log-query";
 
 const actions = ["REPORT_CASE_DISMISS", "REPORT_CASE_HIDE", "REPORT_CASE_RESTORE"];
 
@@ -24,6 +24,12 @@ function activity(overrides: Record<string, unknown> = {}) {
 }
 
 describe("Admin decision Activity readback", () => {
+  it("keeps loading and unavailable requests separate from empty results", () => {
+    expect(decisionActivityStateFromQuery({ isPending: true, isError: false })).toEqual({ kind: "loading" });
+    expect(decisionActivityStateFromQuery({ isPending: false, isError: true })).toEqual({ kind: "unavailable" });
+    expect(decisionActivityStateFromQuery({ isPending: false, isError: false, data: { kind: "empty" } })).toEqual({ kind: "empty" });
+  });
+
   it("maps a matching Admin Action and its optional note", () => {
     expect(decisionActivityFromResponse({ items: [activity()] }, "report_case", actions)).toEqual({
       kind: "found",

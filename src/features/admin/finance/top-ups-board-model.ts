@@ -25,6 +25,8 @@ export type TopUpStatusHistoryReadback =
   | { kind: "empty" }
   | { kind: "invalid" };
 
+export type TopUpStatusHistoryState = TopUpStatusHistoryReadback | { kind: "loading" | "unavailable" };
+
 export function topUpDisplayId(topUp: Pick<AdminTopUpListItem, "displayId">): string {
   return displayAdminId(topUp.displayId) ?? "Top-up";
 }
@@ -60,6 +62,16 @@ export function topUpStatusHistoryFromResponse(value: unknown): TopUpStatusHisto
   }
 
   return { kind: "history", entries };
+}
+
+export function topUpStatusHistoryStateFromQuery(query: {
+  isPending: boolean;
+  isError: boolean;
+  data?: unknown;
+}): TopUpStatusHistoryState {
+  if (query.isPending) return { kind: "loading" };
+  if (query.isError) return { kind: "unavailable" };
+  return topUpStatusHistoryFromResponse(query.data);
 }
 
 export function topUpMatchesTab(topUp: AdminTopUpListItem, tab: TopUpBoardTab): boolean {

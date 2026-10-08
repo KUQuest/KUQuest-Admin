@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 
 import type { AdminTopUpListItem } from "../../src/features/admin/api/admin-api";
 import { sortBoardRows } from "../../src/features/admin/data/board-sorting";
-import { searchTopUps, topUpMatchesTab, topUpSortValue, topUpStatusHistoryFromResponse } from "../../src/features/admin/finance/top-ups-board-model";
+import { searchTopUps, topUpMatchesTab, topUpSortValue, topUpStatusHistoryFromResponse, topUpStatusHistoryStateFromQuery } from "../../src/features/admin/finance/top-ups-board-model";
 
 function makeTopUp(overrides: Partial<AdminTopUpListItem> = {}): AdminTopUpListItem {
   return {
@@ -80,5 +80,11 @@ describe("Top-up board model", () => {
       reason: null,
       occurredAt: "not-a-time",
     }])).toEqual({ kind: "invalid" });
+  });
+
+  it("keeps loading and unavailable Top-up history requests separate from empty history", () => {
+    expect(topUpStatusHistoryStateFromQuery({ isPending: true, isError: false })).toEqual({ kind: "loading" });
+    expect(topUpStatusHistoryStateFromQuery({ isPending: false, isError: true })).toEqual({ kind: "unavailable" });
+    expect(topUpStatusHistoryStateFromQuery({ isPending: false, isError: false, data: [] })).toEqual({ kind: "empty" });
   });
 });

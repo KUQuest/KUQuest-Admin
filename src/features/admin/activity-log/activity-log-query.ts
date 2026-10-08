@@ -20,6 +20,18 @@ export type AdminDecisionActivityReadback =
   | { kind: "empty" }
   | { kind: "invalid" };
 
+export type AdminDecisionActivityState = AdminDecisionActivityReadback | { kind: "loading" | "unavailable" };
+
+export function decisionActivityStateFromQuery(query: {
+  isPending: boolean;
+  isError: boolean;
+  data?: AdminDecisionActivityReadback;
+}): AdminDecisionActivityState {
+  if (query.isPending) return { kind: "loading" };
+  if (query.isError) return { kind: "unavailable" };
+  return query.data ?? { kind: "invalid" };
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }

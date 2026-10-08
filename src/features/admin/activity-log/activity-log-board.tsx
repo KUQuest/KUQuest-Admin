@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminPageHeader } from "../../../components/admin/admin-page-header";
@@ -16,7 +16,6 @@ import {
   activityLogResourceTypeLabel,
   activityLogTargetLabel,
   activityLogValueLabel,
-  activityTargetHref,
   formatActivityLogRelativeTime,
   formatActivityLogTimestamp,
   type ActivityLogEntry,
@@ -24,7 +23,12 @@ import {
 import { pageCount, pageRange, pageRows } from "../data/board-pagination";
 import { useAdminBoardReset } from "../data/use-admin-board-reset";
 import { sortBoardRows } from "../data/board-sorting";
-import { DEFAULT_ACTIVITY_LOG_FILTERS, type ActivityLogPageData } from "./activity-log-service";
+import {
+  canOpenActivityTarget,
+  DEFAULT_ACTIVITY_LOG_FILTERS,
+  resolveActivityTargetHref,
+  type ActivityLogPageData,
+} from "./activity-log-service";
 import { useActivityLogBoardStore, type ActivityLogSortKey } from "./activity-log-board-store";
 import { useActivityLogQuery } from "./activity-log-query";
 import { displayAdminId } from "../display-admin-id";
@@ -38,6 +42,8 @@ type ActivityLogDetailProps = {
   entry: ActivityLogEntry;
   onClose: () => void;
   onOpenTarget: (entry: ActivityLogEntry) => void;
+  openingTarget: boolean;
+  targetOpenError: string | null;
 };
 const EMPTY_ACTIVITY_LOG_ENTRIES: ActivityLogEntry[] = [];
 
@@ -61,9 +67,9 @@ function activityLogSortValue(entry: ActivityLogEntry, key: ActivityLogSortKey):
   }
 }
 
-function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailProps) {
+function ActivityLogDetail({ entry, onClose, onOpenTarget, openingTarget, targetOpenError }: ActivityLogDetailProps) {
   const { translateText } = useAdminShell();
-  const targetHref = activityTargetHref(entry.resourceType, entry.resourceId);
+  const targetCanOpen = canOpenActivityTarget(entry);
   const target = activityLogTargetLabel(entry);
 
   return (
@@ -76,12 +82,13 @@ function ActivityLogDetail({ entry, onClose, onOpenTarget }: ActivityLogDetailPr
       onClose={onClose}
       actions={
         <>
-          {targetHref ? <Button variant="primary" className="min-w-0" type="button" onClick={() => onOpenTarget(entry)}>{translateText("View linked detail")}</Button> : null}
+          {targetCanOpen ? <Button variant="primary" className="min-w-0" type="button" disabled={openingTarget} onClick={() => onOpenTarget(entry)}>{translateText(openingTarget ? "Opening linked record…" : "View linked detail")}</Button> : null}
           <Button variant="outline" type="button" onClick={onClose}>{translateText("Close")}</Button>
         </>
       }
     >
         <div className="activity-log-detail admin-drawer-content-flow grid min-w-0 content-start gap-[18px]">
+          {targetOpenError ? <p className="field-error m-0" role="alert">{translateText(targetOpenError)}</p> : null}
           <div className="drawer-title m-0 pb-1">
             <span className="att-icon neutral" aria-hidden="true">↺</span>
             <div>
@@ -140,14 +147,42 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
   const loadError = queryError ?? initialError ?? null;
   const [paginationError, setPaginationError] = useState<string | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<ActivityLogEntry | null>(null);
+  const targetResolutionIdRef = useRef(0);
+  const [openingTarget, setOpeningTarget] = useState(false);
+  const [targetOpenError, setTargetOpenError] = useState<string | null>(null);
   const loading = query.isPending || query.isFetching;
   useAdminBoardReset(reset);
-  const closeDetails = useCallback(() => setSelectedEntry(null), []);
-  const openLinkedDetail = useCallback((entry: ActivityLogEntry) => {
-    const href = activityTargetHref(entry.resourceType, entry.resourceId);
-    if (!href) return;
-    closeDetails();
-    router.push(href, { scroll: false });
+  const selectEntry = useCallback((entry: ActivityLogEntry) => {
+    targetResolutionIdRef.current += 1;
+    setOpeningTarget(false);
+    setTargetOpenError(null);
+    setSelectedEntry(entry);
+  }, []);
+  const closeDetails = useCallback(() => {
+    targetResolutionIdRef.current += 1;
+    setOpeningTarget(false);
+    setSelectedEntry(null);
+    setTargetOpenError(null);
+  }, []);
+  const openLinkedDetail = useCallback(async (entry: ActivityLogEntry) => {
+    const resolutionId = targetResolutionIdRef.current + 1;
+    targetResolutionIdRef.current = resolutionId;
+    setOpeningTarget(true);
+    setTargetOpenError(null);
+    try {
+      const href = await resolveActivityTargetHref(entry);
+      if (targetResolutionIdRef.current !== resolutionId) return;
+      if (!href) {
+        setTargetOpenError("The linked record was not found.");
+        return;
+      }
+      closeDetails();
+      router.push(href, { scroll: false });
+    } catch {
+      if (targetResolutionIdRef.current === resolutionId) setTargetOpenError("The linked record is unavailable.");
+    } finally {
+      if (targetResolutionIdRef.current === resolutionId) setOpeningTarget(false);
+    }
   }, [closeDetails, router]);
 
   const filteredEntries = useMemo(
@@ -204,13 +239,13 @@ export function ActivityLogBoard({ initialData, initialError }: ActivityLogBoard
         {!loadError && !loading && !visibleEntries.length ? <EmptyState className="border-0 rounded-none p-[60px_24px]" title={translateText("No activity recorded")} description={translateText("Administrative activity will appear here as actions are taken.")} /> : null}
         {!loadError && visibleEntries.length ? <div className="overflow-x-auto"><Table className={`${adminBoardTable} min-w-[980px]`}><caption>{translateText("Activity Log records")}</caption><thead><tr><AdminSortableHeader label={translateText("Timestamp")} sortKey="timestamp" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Actor")} sortKey="actor" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Activity")} sortKey="activity" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Target")} sortKey="target" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Reason")} sortKey="reason" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><th className="align-top" scope="col">{translateText("Details")}</th></tr></thead><tbody>{visibleEntries.map((entry) => {
           const target = activityLogTargetLabel(entry);
-          return <tr key={entry.activityDisplayId ?? entry.id} tabIndex={0} aria-label={`${translateText("View activity details")}: ${translateText(activityLogActionLabel(entry.action))}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; setSelectedEntry(entry); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedEntry(entry); } }}><td>{entry.createdAt ? <time className="grid gap-0.5 whitespace-nowrap tabular-nums" dateTime={entry.createdAt}>{formatActivityLogTimestamp(entry.createdAt)}<small className="text-xs font-normal text-admin-muted">{formatActivityLogRelativeTime(entry.createdAt)}</small></time> : translateText("Not provided")}</td><td aria-label={entry.adminName || translateText("Not provided")}><span className="grid min-w-[150px] grid-cols-[auto_minmax(0,1fr)] items-center gap-2"><span className="avatar" aria-hidden="true">{entry.adminInitials}</span><span className="grid gap-0.5"><strong>{entry.adminName || translateText("Not provided")}</strong></span></span></td><td><strong className="break-words">{translateText(activityLogActionLabel(entry.action))}</strong></td><td><span className="block min-w-0 break-words text-admin-text">{translateText(displayValue(target))}</span></td><td>{translateText(activityLogReasonLabel(entry.reasonCode))}</td><td><Button variant="outline" size="xs" className="whitespace-nowrap" type="button" onClick={() => setSelectedEntry(entry)} aria-label={translateText("View activity details")}>{translateText("View")}</Button></td></tr>;
+          return <tr key={entry.activityDisplayId ?? entry.id} tabIndex={0} aria-label={`${translateText("View activity details")}: ${translateText(activityLogActionLabel(entry.action))}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; selectEntry(entry); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); selectEntry(entry); } }}><td>{entry.createdAt ? <time className="grid gap-0.5 whitespace-nowrap tabular-nums" dateTime={entry.createdAt}>{formatActivityLogTimestamp(entry.createdAt)}<small className="text-xs font-normal text-admin-muted">{formatActivityLogRelativeTime(entry.createdAt)}</small></time> : translateText("Not provided")}</td><td aria-label={entry.adminName || translateText("Not provided")}><span className="grid min-w-[150px] grid-cols-[auto_minmax(0,1fr)] items-center gap-2"><span className="avatar" aria-hidden="true">{entry.adminInitials}</span><span className="grid gap-0.5"><strong>{entry.adminName || translateText("Not provided")}</strong></span></span></td><td><strong className="break-words">{translateText(activityLogActionLabel(entry.action))}</strong></td><td><span className="block min-w-0 break-words text-admin-text">{translateText(displayValue(target))}</span></td><td>{translateText(activityLogReasonLabel(entry.reasonCode))}</td><td><Button variant="outline" size="xs" className="whitespace-nowrap" type="button" onClick={() => selectEntry(entry)} aria-label={translateText("View activity details")}>{translateText("View")}</Button></td></tr>;
         })}</tbody></Table></div> : null}
         {filteredEntries.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Activity Log pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className={adminBoardPagination} /> : null}
         {paginationError ? <div className="mb-3 flex items-center gap-2.5 rounded-admin-sm border border-admin-danger bg-admin-danger-soft px-3 py-2.5 text-sm text-admin-danger" role="alert"><p className="m-0 flex-1">{translateText(paginationError)}</p><Button variant="outline" type="button" onClick={loadMore}>{translateText("Try again")}</Button></div> : null}
         {query.hasNextPage ? <div className="flex justify-center pt-4"><Button variant="outline" type="button" onClick={loadMore} disabled={query.isFetchingNextPage}>{translateText(query.isFetchingNextPage ? "Loading more" : "Load more")}</Button></div> : null}
       </Card>
-      {selectedEntry ? <ActivityLogDetail entry={selectedEntry} onClose={closeDetails} onOpenTarget={openLinkedDetail} /> : null}
+      {selectedEntry ? <ActivityLogDetail entry={selectedEntry} onClose={closeDetails} onOpenTarget={openLinkedDetail} openingTarget={openingTarget} targetOpenError={targetOpenError} /> : null}
     </main>
   );
 }
