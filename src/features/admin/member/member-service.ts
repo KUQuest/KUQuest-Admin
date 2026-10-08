@@ -1,8 +1,10 @@
 import type {
+  AdminPage,
   AdminApiPayoutStatus,
   AdminMemberListQuery,
   AdminPayout,
   AdminReportCase,
+  AdminReportPage,
   AdminReportStatusCounts,
   AdminReportListQuery,
 } from "../api/admin-api";
@@ -10,6 +12,7 @@ import { ADMIN_API_PAYOUT_STATUSES } from "../api/admin-api";
 import { adminApiProvider } from "../api/admin-provider";
 import { adminApiRequestOptions } from "../api/admin-api-request-options";
 import { CONDUCT_REPORT_STATUSES, REPORT_CASE_STATUSES, type ModerationCaseStatus } from "../domain/rulebook";
+import { displayAdminId } from "../display-admin-id";
 import { loadAllWalletLedgerTransactions } from "../wallet/wallet-ledger-pages";
 import {
   memberListModelFromApi,
@@ -21,16 +24,8 @@ import {
 function reportQuery(memberId: string, status: ModerationCaseStatus, cursor?: string): AdminReportListQuery {
   return { memberId, status, limit: 50, ...(cursor ? { cursor } : {}) };
 }
-function errorMessage(reason: unknown, fallback: string): string {
-  return reason instanceof Error ? reason.message : fallback;
-}
-
 function reportMatchesMemberScope(report: AdminReportCase, memberId: string): boolean {
-  const record = report as Record<string, unknown>;
-  const reportedMember = record.reportedMember && typeof record.reportedMember === "object"
-    ? record.reportedMember as Record<string, unknown>
-    : null;
-  const reportedMemberId = record.reportedMemberId ?? record.reportedUserId ?? reportedMember?.id;
+  const reportedMemberId = report.reportedMemberId ?? report.reportedMember?.id;
   return reportedMemberId == null || reportedMemberId === memberId;
 }
 
@@ -55,71 +50,97 @@ type MemberPayoutsRead = {
   error: string | null;
 };
 
+type CursorPage<T> = {
+  items: T[];
+  nextCursor: string | null;
+};
+
+type CursorRead<T> = {
+  items: T[];
+  complete: boolean;
+  error: string | null;
+};
+
+async function loadCursorPages<T, Page extends CursorPage<T>>(
+  readPage: (cursor?: string) => Promise<Page>,
+  validatePage: (page: Page) => string | null,
+  recordId: (item: T) => string | null,
+  messages: { invalid: string; duplicate: string; stalled: string; failed: string },
+): Promise<CursorRead<T>> {
+  const items: T[] = [];
+  const seenCursors = new Set<string>();
+  const seenRecordIds = new Set<string>();
+  let cursor: string | undefined;
+
+  while (true) {
+    let page: Page;
+    try {
+      page = await readPage(cursor);
+    } catch {
+      return { items, complete: false, error: messages.failed };
+    }
+    if (!page || !Array.isArray(page.items) || (page.nextCursor != null && typeof page.nextCursor !== "string")) {
+      return { items, complete: false, error: messages.invalid };
+    }
+    const pageError = validatePage(page);
+    if (pageError) return { items, complete: false, error: pageError };
+
+    for (const item of page.items) {
+      const id = recordId(item);
+      if (!id) return { items, complete: false, error: messages.invalid };
+      if (seenRecordIds.has(id)) return { items, complete: false, error: messages.duplicate };
+      seenRecordIds.add(id);
+    }
+    items.push(...page.items);
+
+    const nextCursor = page.nextCursor ?? undefined;
+    if (!nextCursor) return { items, complete: true, error: null };
+    if (seenCursors.has(nextCursor)) return { items, complete: false, error: messages.stalled };
+    seenCursors.add(nextCursor);
+    cursor = nextCursor;
+  }
+}
+
 async function loadAllMemberReports(
   memberId: string,
   options: ReturnType<typeof adminApiRequestOptions>,
 ): Promise<MemberReportsRead> {
   const statuses: ModerationCaseStatus[] = [...REPORT_CASE_STATUSES, ...CONDUCT_REPORT_STATUSES];
   const statusResults = await Promise.all(statuses.map(async (status) => {
-    const items: AdminReportCase[] = [];
-    const seenCursors = new Set<string>();
-    const seenReportIds = new Set<string>();
-    let cursor: string | undefined;
     let totalCount: number | null = null;
     let countsByStatus: AdminReportStatusCounts | null = null;
-
-    const result = (complete: boolean, error: string | null) => ({
-      items,
-      complete,
-      totalCount,
-      countsByStatus,
-      error,
-    });
-
-    try {
-      while (true) {
-        const page = await adminApiProvider.read.listReports(reportQuery(memberId, status, cursor), options);
-        const pageCounts = page?.countsByStatus;
+    const read = await loadCursorPages<AdminReportCase, AdminReportPage>(
+      (cursor) => adminApiProvider.read.listReports(reportQuery(memberId, status, cursor), options),
+      (page) => {
+        const pageCounts = page.countsByStatus;
         const validCounts = pageCounts && statuses.every((itemStatus) =>
           Number.isSafeInteger(pageCounts[itemStatus]) && pageCounts[itemStatus] >= 0,
         );
-        if (!page || !Array.isArray(page.items) || !validCounts || !Number.isSafeInteger(page.totalCount) || page.totalCount < 0 || page.totalCount !== pageCounts[status] || (page.nextCursor != null && typeof page.nextCursor !== "string")) {
-          return result(false, "Reports received response is invalid.");
+        if (!validCounts || !Number.isSafeInteger(page.totalCount) || page.totalCount < 0 || page.totalCount !== pageCounts[status]) {
+          return "Reports received response is invalid.";
         }
-
         if (totalCount !== null && (totalCount !== page.totalCount || !countsByStatus || !reportCountsMatch(countsByStatus, pageCounts, statuses))) {
-          return result(false, "Report counts changed while loading.");
+          return "Report counts changed while loading.";
         }
         totalCount = page.totalCount;
         countsByStatus = pageCounts;
-
-        if (page.items.some((item) => item?.status !== status || typeof item?.id !== "string" || !item.id.trim() || !reportMatchesMemberScope(item, memberId))) {
-          return result(false, "Reports received response is invalid.");
+        if (page.items.some((item) => item?.status !== status || !reportMatchesMemberScope(item, memberId))) {
+          return "Reports received response is invalid.";
         }
-
-        let hasDuplicateReport = false;
-        for (const item of page.items) {
-          if (seenReportIds.has(item.id)) hasDuplicateReport = true;
-          seenReportIds.add(item.id);
-        }
-        if (hasDuplicateReport) return result(false, "Reports received response is invalid.");
-
-        items.push(...page.items);
-        const nextCursor = page.nextCursor ?? undefined;
-        if (!nextCursor) {
-          if (items.length !== totalCount) return result(false, "Reports received pages do not match the API count.");
-          return result(true, null);
-        }
-        if (seenCursors.has(nextCursor)) {
-          return result(false, "Reports received pages did not advance.");
-        }
-
-        seenCursors.add(nextCursor);
-        cursor = nextCursor;
-      }
-    } catch (error) {
-      return result(false, errorMessage(error, "Reports received are not available."));
+        return null;
+      },
+      (item) => typeof item?.id === "string" && item.id.trim() ? item.id : null,
+      {
+        invalid: "Reports received response is invalid.",
+        duplicate: "Reports received response is invalid.",
+        stalled: "Reports received pages did not advance.",
+        failed: "Reports received are not available.",
+      },
+    );
+    if (read.complete && read.items.length !== totalCount) {
+      return { ...read, complete: false, totalCount, countsByStatus, error: "Reports received pages do not match the API count." };
     }
+    return { ...read, totalCount, countsByStatus };
   }));
 
   const items: AdminReportCase[] = [];
@@ -161,59 +182,33 @@ async function loadMemberPayouts(
   options: ReturnType<typeof adminApiRequestOptions>,
 ): Promise<MemberPayoutsRead> {
   const statusResults = await Promise.all(ADMIN_API_PAYOUT_STATUSES.map(async (status: AdminApiPayoutStatus) => {
-    const items: AdminPayout[] = [];
-    const seenCursors = new Set<string>();
-    const seenPayoutIds = new Set<string>();
-    let cursor: string | undefined;
-
-    try {
-      while (true) {
-        const page = await adminApiProvider.read.listPayouts({
-          userId: memberId,
-          status,
-          limit: 50,
-          ...(cursor ? { cursor } : {}),
-          sort: "newest",
-        }, options);
-        if (!page || !Array.isArray(page.items) || (page.nextCursor != null && typeof page.nextCursor !== "string") || page.items.some((item) =>
-          item?.payoutStatus !== status
-          || typeof item?.id !== "string"
-          || !item.id.trim()
-          || item?.student?.id !== memberId
-          || !Number.isSafeInteger(item?.principalSatang)
-          || item.principalSatang < 0
-          || typeof item?.createdAt !== "string"
-          || !Number.isFinite(Date.parse(item.createdAt))
-          || typeof item?.bankName !== "string"
-          || typeof item?.maskedDestinationValue !== "string"
-          || (item.displayId != null && typeof item.displayId !== "string")
-        )) {
-          return { items, complete: false, error: "ข้อมูล Payout ไม่ตรงตามสัญญา API" };
-        }
-
-        let hasDuplicatePayout = false;
-        for (const item of page.items) {
-          if (seenPayoutIds.has(item.id)) hasDuplicatePayout = true;
-          seenPayoutIds.add(item.id);
-        }
-        if (hasDuplicatePayout) return { items, complete: false, error: "ข้อมูล Payout ไม่ตรงตามสัญญา API" };
-
-        items.push(...page.items);
-        const nextCursor = page.nextCursor ?? undefined;
-        if (!nextCursor) return { items, complete: true, error: null };
-        if (seenCursors.has(nextCursor)) {
-          return { items, complete: false, error: "Payout pages did not advance." };
-        }
-        seenCursors.add(nextCursor);
-        cursor = nextCursor;
-      }
-    } catch (error) {
-      return {
-        items,
-        complete: false,
-        error: errorMessage(error, "Payout details are not available."),
-      };
-    }
+    return loadCursorPages<AdminPayout, AdminPage<AdminPayout>>(
+      (cursor) => adminApiProvider.read.listPayouts({
+        userId: memberId,
+        status,
+        limit: 50,
+        ...(cursor ? { cursor } : {}),
+        sort: "newest",
+      }, options),
+      (page) => page.items.some((item) =>
+        item?.payoutStatus !== status
+        || item?.student?.id !== memberId
+        || !Number.isSafeInteger(item?.principalSatang)
+        || item.principalSatang < 0
+        || typeof item?.createdAt !== "string"
+        || !Number.isFinite(Date.parse(item.createdAt))
+        || typeof item?.bankName !== "string"
+        || typeof item?.maskedDestinationValue !== "string"
+        || (item.displayId != null && typeof item.displayId !== "string")
+      ) ? "ข้อมูล Payout ไม่ตรงตามสัญญา API" : null,
+      (item) => typeof item?.id === "string" && item.id.trim() ? item.id : null,
+      {
+        invalid: "ข้อมูล Payout ไม่ตรงตามสัญญา API",
+        duplicate: "ข้อมูล Payout ไม่ตรงตามสัญญา API",
+        stalled: "Payout pages did not advance.",
+        failed: "Payout details are not available.",
+      },
+    );
   }));
 
   const items: AdminPayout[] = [];
@@ -271,15 +266,26 @@ export async function loadMemberDetailFromApi(
         items: [] as AdminReportCase[],
         complete: false,
         totalCount: null,
-        error: errorMessage(reportsResult.reason, "Reports received are not available."),
+        error: "Reports received are not available.",
       };
   const payoutsRead = payoutsResult.status === "fulfilled"
     ? payoutsResult.value
     : {
         items: [] as AdminPayout[],
         complete: false,
-        error: errorMessage(payoutsResult.reason, "Payout details are not available."),
+        error: "Payout details are not available.",
       };
+  const questIds = [...new Set(reportsRead.items.flatMap((report) => report.questId ? [report.questId] : []))];
+  const questResults = await Promise.all(questIds.map(async (questId) => {
+    try {
+      const quest = await adminApiProvider.read.getQuest(questId, options);
+      const displayId = displayAdminId(quest.displayId);
+      return displayId ? [questId, displayId] as const : null;
+    } catch {
+      return null;
+    }
+  }));
+  const reportQuestDisplayIds = new Map(questResults.flatMap((result) => result ? [result] : []));
   const effectiveWallet = finance?.wallet ?? detail.wallet;
   let ledger: Awaited<ReturnType<typeof loadAllWalletLedgerTransactions>> = [];
   let ledgerError: unknown = null;
@@ -291,14 +297,15 @@ export async function loadMemberDetailFromApi(
     }
   }
   const errors = {
-    finance: financeResult.status === "rejected" ? errorMessage(financeResult.reason, "Member finance is not available from the Admin API.") : null,
+    finance: financeResult.status === "rejected" ? "Member finance is not available from the Admin API." : null,
     reports: reportsRead.error,
     reportsComplete: reportsRead.complete,
     reportsTotalCount: reportsRead.totalCount,
     payouts: payoutsRead.items.length || payoutsRead.complete ? payoutsRead.items : undefined,
     payoutsComplete: payoutsRead.complete,
     payoutsError: payoutsRead.error,
-    ledger: ledgerError ? errorMessage(ledgerError, "Wallet Statement is not available from the Admin API.") : null,
+    reportQuestDisplayIds,
+    ledger: ledgerError ? "Wallet Statement is not available from the Admin API." : null,
   };
   const model = memberModelFromApi(detail, finance, reportsRead.items, ledger, errors);
   return model.id === memberId ? model : null;

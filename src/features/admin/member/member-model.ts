@@ -68,8 +68,8 @@ export type MemberReportEntry = {
   displayId: string;
   category: string;
   detail: string;
-  reporterId: string | null;
   reporterName: string;
+  questDisplayId: string | null;
   status: string;
   reportedAt: string;
   href: string;
@@ -209,48 +209,42 @@ function dateLabel(value: unknown, fallback = "Not recorded"): string {
   return formatAdminTimestamp(raw, "Asia/Bangkok");
 }
 
-function reportReasonLabel(value: unknown): string {
-  switch (value) {
-    case "REPORT_ABUSIVE_OR_HARASSMENT": return "Harassment or abuse";
-    case "REPORT_SPAM": return "Spam";
-    case "REPORT_INAPPROPRIATE_CONTENT": return "Inappropriate content";
-    case "REPORT_DANGER_OR_THREAT": return "Danger or threat";
-    case "REPORT_OTHER": return "Other";
-    case "CONDUCT_ABANDONED": return "Abandonment";
-    case "CONDUCT_OUT_OF_SCOPE": return "Outside agreed Quest scope";
-    case "CONDUCT_NO_SHOW": return "Worker did not attend";
-    default: return text(value, "Report Case");
-  }
-}
-
-function reportFromApi(report: AdminReportCase): MemberReportEntry {
-  const record = report as Record<string, unknown>;
-  const reporterEntries = Array.isArray(record.reporterEntries) ? record.reporterEntries : [];
-  const reporterEntry = reporterEntries[0] && typeof reporterEntries[0] === "object"
-    ? reporterEntries[0] as Record<string, unknown>
-    : null;
-  const reporter = record.filer && typeof record.filer === "object"
-    ? record.filer as Record<string, unknown>
-    : reporterEntry?.reporter && typeof reporterEntry.reporter === "object"
-      ? reporterEntry.reporter as Record<string, unknown>
-      : null;
-  const reporterId = nullableText(record.reporterId ?? record.submittedByUserId ?? record.submittedByMemberId ?? reporterEntry?.reporterMemberId ?? reporter?.id);
-  const reportedAt = dateLabel(record.reportedAt ?? record.submittedAt ?? record.createdAt);
-  const status = text(record.status ?? record.reportCaseStatus ?? record.conductReportStatus, "REPORT_CASE_PENDING");
-  const kind = record.kind === "CONDUCT_REPORT" || isConductReportStatus(status) ? "Conduct Report" : "Report Case";
-  const reporterName = [text(reporter?.firstName), text(reporter?.lastName)].filter(Boolean).join(" ");
+function reportFromApi(
+  report: AdminReportCase,
+  questDisplayIds: ReadonlyMap<string, string>,
+): MemberReportEntry {
+  const isConductReport = isConductReportStatus(report.status);
+  const kind = isConductReport ? "Conduct Report" : "Report Case";
+  const reporterNames = isConductReport
+    ? [personName(report.filer)]
+    : (report.reporterEntries ?? []).map((entry) => personName(entry.reporter));
+  const reasonCodes = isConductReport
+    ? [report.reason]
+    : (report.reporterEntries ?? []).map((entry) => entry.reason);
+  const details = isConductReport
+    ? [report.detail]
+    : (report.reporterEntries ?? []).map((entry) => entry.detail);
+  const reporterName = reporterNames.filter((name): name is string => Boolean(name)).join(", ");
+  const category = [...new Set(reasonCodes.filter((reason): reason is string => Boolean(reason?.trim())))].join(", ");
+  const detail = details.filter((value): value is string => Boolean(value?.trim())).join("; ");
   return {
     id: report.id,
-    displayId: displayAdminId(record.displayId, report.id) ?? "",
-    category: reportReasonLabel(record.category ?? record.reportType ?? record.reasonCode ?? record.reason ?? reporterEntry?.reason),
-    detail: text(record.details ?? record.description ?? record.detail ?? reporterEntry?.detail, "No report detail was provided."),
-    reporterId,
-    reporterName: text(record.reporterName ?? record.submittedByMemberName ?? reporterName, reporterId ? "Member" : "Reporter not provided"),
-    status,
-    reportedAt,
+    displayId: displayAdminId(report.displayId, report.id) ?? "",
+    category: category || kind,
+    detail: detail || "No report detail was provided.",
+    reporterName: reporterName || "Reporter not provided",
+    questDisplayId: report.questId ? questDisplayIds.get(report.questId) ?? null : null,
+    status: report.status,
+    reportedAt: dateLabel(report.createdAt),
     href: kind === "Conduct Report" ? conductReportRoutes.detail(report.id) : reportRoutes.detail(report.id),
     kind,
   };
+}
+
+function personName(person: { firstName?: string; lastName?: string } | undefined): string | null {
+  if (!person) return null;
+  const name = [person.firstName, person.lastName].filter((part): part is string => Boolean(part?.trim())).join(" ");
+  return name || null;
 }
 
 function baseModelFromListItem(
@@ -333,6 +327,7 @@ export function memberModelFromApi(
     payouts?: readonly AdminPayout[];
     payoutsComplete?: boolean;
     payoutsError?: string | null;
+    reportQuestDisplayIds?: ReadonlyMap<string, string>;
   } = {},
 ): MemberModel {
   const member = detail.member;
@@ -361,6 +356,7 @@ export function memberModelFromApi(
       }))
     : null;
   const payoutsComplete = errors.payoutsComplete ?? false;
+  const reportQuestDisplayIds = errors.reportQuestDisplayIds ?? new Map<string, string>();
   return {
     ...base,
     bio: member.bio ?? "",
@@ -368,7 +364,7 @@ export function memberModelFromApi(
     walletStatus: wallet ? walletStatusFor(wallet.walletStatus) : null,
     walletBalances: balancesFromWallet(wallet),
     walletProjectionMatchesLedger: wallet?.projectionMatchesLedger ?? null,
-    reports: reports.map(reportFromApi),
+    reports: reports.map((report) => reportFromApi(report, reportQuestDisplayIds)),
     reportsComplete: errors.reportsComplete ?? false,
     reportsTotalCount: errors.reportsTotalCount ?? null,
     payouts,

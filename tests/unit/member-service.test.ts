@@ -151,7 +151,15 @@ function reportRecord(id: string, status: (typeof reportStatuses)[number]) {
       reason: "REPORT_SPAM",
       detail: "This message repeats an unrelated advert.",
       createdAt: "2026-09-12T08:30:00.000Z",
+    }, {
+      id: `entry-two-${id}`,
+      reporterMemberId: "68000002",
+      reporter: { ...member, id: "68000002", firstName: "Nida", lastName: "Reporter" },
+      reason: "REPORT_SPAM",
+      detail: "The message includes unrelated promotional content.",
+      createdAt: "2026-09-12T08:30:00.000Z",
     }],
+    questId: "quest-1001",
     createdAt: "2026-09-12T08:30:00.000Z",
   };
 }
@@ -288,6 +296,9 @@ describe("Member detail service", () => {
         }
         return jsonResponse({ success: true, data: reportPage(status ?? "", status === "CONDUCT_REPORT_UPHELD" ? [reportRecord("conduct-1", status)] : [], null, counts) });
       }
+      if (url.pathname === "/api/v1/admin/quests/quest-1001") {
+        return jsonResponse({ success: true, data: { id: "quest-1001", displayId: "QST-1001" } });
+      }
       if (url.pathname === "/api/v1/admin/payouts") {
         const status = url.searchParams.get("status");
         const cursor = url.searchParams.get("cursor");
@@ -310,7 +321,12 @@ describe("Member detail service", () => {
     expect(model?.reports.map((report) => report.id)).toEqual(["report-1", "report-2", "conduct-1"]);
     expect(model?.reportsComplete).toBe(true);
     expect(model?.reportsTotalCount).toBe(3);
-    expect(model?.reports[0]).toMatchObject({ reporterName: "Suda Reporter", category: "Spam", detail: "This message repeats an unrelated advert." });
+    expect(model?.reports[0]).toMatchObject({
+      reporterName: "Suda Reporter, Nida Reporter",
+      category: "REPORT_SPAM",
+      detail: "This message repeats an unrelated advert.; The message includes unrelated promotional content.",
+      questDisplayId: "QST-1001",
+    });
     expect(model?.payouts?.map((payout) => payout.id)).toEqual(["payout-1", "payout-2"]);
     expect(model?.payoutsComplete).toBe(true);
     expect(model?.payoutSuccessfulCountMatchesHistory).toBe(true);
@@ -366,10 +382,10 @@ describe("Member detail service", () => {
 
     expect(model?.reports).toEqual([]);
     expect(model?.reportsComplete).toBe(false);
-    expect(model?.reportsError).toContain("History unavailable");
+    expect(model?.reportsError).toBe("Reports received are not available.");
     expect(model?.payouts).toBeNull();
     expect(model?.payoutsComplete).toBe(false);
-    expect(model?.payoutsError).toContain("History unavailable");
+    expect(model?.payoutsError).toBe("Payout details are not available.");
   });
 
   it("keeps partial and invalid history reads from becoming verified empty results", async () => {
