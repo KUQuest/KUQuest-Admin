@@ -637,6 +637,18 @@ function MemberModerationTimeline({ model, translateText }: { model: MemberModel
   return model.penaltyHistory === null ? <p className="audit-note">{translateText("Moderation history is not available.")}</p> : model.penaltyHistory.length ? <div className="mt-2 grid gap-0" data-member-moderation-history><p className="audit-note">{translateText("Moderation history provided by the Admin API.")}</p>{model.penaltyHistory.map((entry) => <article className="border-t border-admin-border py-4 first:pt-3.5 last:pb-0" key={`${entry.at}-${entry.event}-${entry.caseId || entry.outcome || "event"}`}><strong className="mb-1.5 block text-[17px] leading-[1.4]">{translateText(entry.event)}</strong><span className="mt-1.5 block text-[15px] leading-[1.45] text-admin-muted">{formatAdminTimestamp(entry.at, "Asia/Bangkok")} · {translateText("by")} {displayAdminId(entry.by) ?? translateText("Admin")}</span>{entry.reason && <p className="mt-[9px] text-[15px] leading-[1.5]">{entry.reason}</p>}{(entry.previousStatus || entry.newStatus || entry.outcome || entry.durationDays || entry.expiresAt) && <p className="mt-[9px] text-[15px] leading-[1.5]">{entry.previousStatus && `${translateText("Previous status")}: ${translateText(entry.previousStatus)}`}{entry.previousStatus && entry.newStatus ? " · " : ""}{entry.newStatus && `${translateText("New status")}: ${translateText(entry.newStatus)}`}{(entry.previousStatus || entry.newStatus) && entry.outcome ? " · " : ""}{entry.outcome && `${translateText("Outcome")}: ${translateText(entry.outcome)}`}{entry.durationDays ? ` · ${entry.durationDays} ${translateText("days")}` : ""}{entry.expiresAt ? ` · ${translateText("Expires")} ${formatAdminTimestamp(entry.expiresAt, "Asia/Bangkok")}` : ""}</p>}{displayAdminId(entry.caseId) && <p className="mt-[9px] text-[15px] leading-[1.5]"><span>{translateText(entry.caseType || "Related case")}:</span> {entry.caseHref ? <Link href={entry.caseHref} aria-label={`${translateText("Open related case")} ${displayAdminId(entry.caseId)}`}>{displayAdminId(entry.caseId)}</Link> : <strong>{displayAdminId(entry.caseId)}</strong>}</p>}</article>)}</div> : <p className="audit-note">{translateText("No moderation history.")}</p>;
 }
 
+function MemberPenaltyActions({ translateText }: { translateText: (value: string) => string }) {
+  return (
+    <div className="mt-4 grid gap-3 border-t border-admin-border pt-4">
+      <p className="audit-note">{translateText("Member penalty commands are not available.")}</p>
+      <div className="flex flex-wrap gap-2">
+        <Button disabled variant="primary">{translateText("Record violation")}</Button>
+        <Button disabled variant="outline">{translateText("Remove penalty")}</Button>
+      </div>
+    </div>
+  );
+}
+
 function PenaltyHistoryTab({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
   return (
     <Card as="section" className="user-detail-panel user-tab-panel col-span-full min-w-0 p-[16px_18px]">
@@ -648,6 +660,7 @@ function PenaltyHistoryTab({ model, translateText }: { model: MemberModel; trans
           </div>
           {model.penaltyHistory !== null ? <span className={adminRecordCount}>{model.penaltyHistory.length}</span> : null}
         </CardHeader>
+        <MemberPenaltyActions translateText={translateText} />
         <MemberModerationTimeline model={model} translateText={translateText} />
       </div>
     </Card>
@@ -700,6 +713,7 @@ function DrawerContent({ model, translateText }: { model: MemberModel; translate
       </Card>
       <Card as="section" className={`${adminRecordSection} member-drawer-moderation-history`} data-member-drawer-moderation-history>
         <CardHeader flush className={`${adminRecordHeader} user-panel-heading`}><h2 className={adminRecordHeading}>{translateText("Moderation History")}</h2>{model.penaltyHistory !== null ? <span className={adminRecordCount}>{model.penaltyHistory.length}</span> : null}</CardHeader>
+        <MemberPenaltyActions translateText={translateText} />
         <MemberModerationTimeline model={model} translateText={translateText} />
       </Card>
       <Card as="section" className={adminRecordSection}>

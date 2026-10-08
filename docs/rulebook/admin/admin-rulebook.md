@@ -60,14 +60,14 @@ Follow the context pointer for the Admin branch being planned or implemented:
 | **Quest Hide & Restore** | Independent `hiddenAt`/`hiddenByAdminId` flags across non-terminal Quests, discovery removal only, Push notifications to Hirer, idempotency. | [admin-quest-hide-contract.md](admin-quest-hide-contract.md) |
 | **Wallet Freeze & Suspend** | Setting `FROZEN`/`SUSPENDED` statuses, blocking new commitments while honoring active obligations, discretionary vs auto-ban freeze. | [admin-wallet-freeze-contract.md](admin-wallet-freeze-contract.md) |
 | **Trust & Safety (Messages)** | Message moderation in Work Chat & Candidate Inquiries, Reporter Entries, Evidence References, hiding messages, strike creation, and retention. | [admin-trust-safety-contract.md](admin-trust-safety-contract.md) |
-| **Member Penalty Ladders** | Misconduct ladder (Red Flag 7d, Temp ban 7d, Permanent ban), Review ladder (<3.0 average), `PC-12`/`PC-13` exemptions, strike reversals. | [admin-member-penalty-contract.md](admin-member-penalty-contract.md) |
+| **Member Penalty Ladders** | Misconduct and Review ladders, source-specific case exemptions, direct Admin Add Penalty and Remove Penalty actions, strike reversals. | [admin-member-penalty-contract.md](admin-member-penalty-contract.md) |
 | **Conduct Reports (Quests)** | Quest behavior reports (`CONDUCT_ABANDONED`, `CONDUCT_OUT_OF_SCOPE`, `CONDUCT_NO_SHOW`), filing windows, Quest record evidence, permanent strikes. | [admin-conduct-report-contract.md](admin-conduct-report-contract.md) |
 
 ## Scope boundaries & deferred capabilities
 
 - **Admin managing other Admins**: Enabling or disabling other Admin accounts is out of scope.
 - **Candidate Team member reporting**: A ghosting teammate on `GROUP + CANDIDATE` cannot be reported individually; only the Team Leader carries duties under `CONDUCT_ABANDONED`.
-- **No Conduct Report appeal**: A `CONDUCT_REPORT_UPHELD` decision has no restore path and creates a permanent strike.
+- **No Conduct Report appeal**: A `CONDUCT_REPORT_UPHELD` decision has no appeal or restore path. An Admin may remove its penalty under the Member Penalty Contract, but this does not change the upheld Conduct Report decision.
 - **Insufficient Hirer balance risk**: When a Dispute Case resolves after the 7-day money hold has released funds, insufficient Hirer balance fails the transfer as an accepted operational risk.
 - **Hidden Message retention hold**: A `REPORT_CASE_HIDDEN` case never auto-closes, retaining evidence indefinitely.
 - **Failed Quest Dispute boundary**: Cancelled Quests have no Dispute Case path; Dispute Cases only redirect money from Hirer to Worker.
