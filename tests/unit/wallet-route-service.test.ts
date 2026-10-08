@@ -7,6 +7,7 @@ import {
   loadWalletStatementPageData,
   verifyWalletProjection,
 } from "../../src/features/admin/wallet/wallet-service";
+import { WalletLedgerContractError } from "../../src/features/admin/wallet/wallet-ledger-pages";
 
 const originalFetch = globalThis.fetch;
 
@@ -15,6 +16,10 @@ function jsonResponse(body: unknown, status = 200): Response {
     status,
     headers: { "content-type": "application/json" },
   });
+}
+
+function ledgerPosting(id: string, accountType: string, walletId: string | null, amountSatang: number) {
+  return { id, accountId: `${id}-account`, accountType, walletId, amountSatang, member: null };
 }
 
 afterEach(() => {
@@ -128,6 +133,7 @@ describe("Wallet route service boundary", () => {
         data: {
           items: [{
             id: "ledger-1001",
+            displayReference: "LED-000001",
             businessReference: "TOPUP-1001",
             eventType: "TOP_UP",
             description: "Wallet top-up",
@@ -142,6 +148,13 @@ describe("Wallet route service boundary", () => {
               accountType: "SPENDING",
               walletId: "WAL-1001",
               amountSatang: 100,
+              member: null,
+            }, {
+              id: "posting-1001-counterpart",
+              accountId: "platform-account-1001",
+              accountType: "PLATFORM_SUSPENSE",
+              walletId: null,
+              amountSatang: -100,
               member: null,
             }],
           }],
@@ -179,6 +192,7 @@ describe("Wallet route service boundary", () => {
           data: {
             items: [{
               id: "ledger-1002",
+              displayReference: "LED-000002",
               businessReference: "PAYOUT-1001",
               eventType: "PAYOUT",
               description: "Wallet payout",
@@ -194,6 +208,13 @@ describe("Wallet route service boundary", () => {
                 walletId: "WAL-1001",
                 amountSatang: -50,
                 member: null,
+              }, {
+                id: "posting-1002-counterpart",
+                accountId: "platform-account-1001",
+                accountType: "PLATFORM_SUSPENSE",
+                walletId: null,
+                amountSatang: 50,
+                member: null,
               }],
             }],
             nextCursor: null,
@@ -205,6 +226,7 @@ describe("Wallet route service boundary", () => {
         data: {
           items: [{
             id: "ledger-1001",
+            displayReference: "LED-000001",
             businessReference: "TOPUP-1001",
             eventType: "TOP_UP",
             description: "Wallet top-up",
@@ -219,6 +241,13 @@ describe("Wallet route service boundary", () => {
               accountType: "SPENDING",
               walletId: "WAL-1001",
               amountSatang: 100,
+              member: null,
+            }, {
+              id: "posting-1001-counterpart",
+              accountId: "platform-account-1001",
+              accountType: "PLATFORM_SUSPENSE",
+              walletId: null,
+              amountSatang: -100,
               member: null,
             }],
           }],
@@ -241,6 +270,58 @@ describe("Wallet route service boundary", () => {
     expect(ledgerRequests[1]?.url).toContain("cursor=ledger-next");
     expect(requests.every((request) => request.headers.get("cookie") === "kuquest-admin=session")).toBe(true);
     expect(cacheModes.every((cache) => cache === "no-store")).toBe(true);
+  });
+
+  it("rejects Ledger pages with invalid double-entry postings", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    const maximumSafeAmount = Number.MAX_SAFE_INTEGER;
+    const invalidPostings = [
+      [ledgerPosting("wallet", "SPENDING", "WAL-1001", 100)],
+      [ledgerPosting("wallet", "SPENDING", "WAL-1001", 100), ledgerPosting("counter", "PLATFORM_SUSPENSE", null, -99)],
+      [ledgerPosting("wallet", "SPENDING", "WAL-1001", maximumSafeAmount + 1), ledgerPosting("counter", "PLATFORM_SUSPENSE", null, -(maximumSafeAmount + 1))],
+      [
+        ledgerPosting("wallet", "SPENDING", "WAL-1001", maximumSafeAmount),
+        ledgerPosting("counter-1", "PLATFORM_SUSPENSE", null, maximumSafeAmount),
+        ledgerPosting("counter-2", "PLATFORM_SUSPENSE", null, -maximumSafeAmount),
+        ledgerPosting("counter-3", "PLATFORM_SUSPENSE", null, -maximumSafeAmount),
+      ],
+    ];
+
+    for (const postings of invalidPostings) {
+      globalThis.fetch = (async (input, init) => {
+        const request = new Request(input, init);
+        if (new URL(request.url).pathname === "/api/v1/admin/wallets") {
+          return jsonResponse({ success: true, data: { items: [adminWalletFixtures[0]], nextCursor: null } });
+        }
+        return jsonResponse({
+          success: true,
+          data: {
+            items: [{
+              id: "ledger-invalid",
+              displayReference: "LED-INVALID",
+              businessReference: "TEST",
+              eventType: "TOP_UP",
+              description: null,
+              createdByUserId: null,
+              correctionOfTransactionId: null,
+              createdAt: "2026-09-12T08:30:00.000Z",
+              sealedAt: "2026-09-12T08:30:01.000Z",
+              isBalanced: true,
+              postings,
+            }],
+            nextCursor: null,
+          },
+        });
+      }) as typeof globalThis.fetch;
+
+      let thrown: unknown;
+      try {
+        await loadWalletStatementPageData("68000000", "kuquest-admin=session");
+      } catch (error: unknown) {
+        thrown = error;
+      }
+      expect(thrown).toBeInstanceOf(WalletLedgerContractError);
+    }
   });
 
   it("loads Wallet verification through the service with the server cookie", async () => {

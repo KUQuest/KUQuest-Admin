@@ -65,7 +65,7 @@ export function AdminHeader({
         </svg>
         <span className="truncate max-[600px]:hidden">{translateText("Search all records")}</span>
       </Button>
-      <span className="ml-auto flex items-center gap-1.5 text-xs text-admin-muted max-[600px]:hidden"><i className="size-1.5 rounded-full bg-admin-success" />{pathname}</span>
+      <span className="ml-auto flex items-center gap-1.5 text-xs text-admin-muted max-[600px]:hidden"><i className="size-1.5 rounded-full bg-admin-success" />{translateText("Admin")}</span>
     </header>
   );
 }

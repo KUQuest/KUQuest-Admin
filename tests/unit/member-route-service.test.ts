@@ -19,6 +19,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 const memberDetail: AdminMemberDetail = {
   member: {
     id: "member-1",
+    displayId: "MEM-000001",
     email: "member@ku.th",
     firstName: "Ari",
     lastName: "Member",
@@ -83,6 +84,7 @@ const memberFinance: AdminMemberFinance = {
 function ledgerTransaction(id: string): AdminLedgerTransaction {
   return {
     id,
+    displayReference: `LED-${id}`,
     businessReference: id,
     eventType: "TOP_UP",
     description: "Wallet top-up",
@@ -97,6 +99,13 @@ function ledgerTransaction(id: string): AdminLedgerTransaction {
       accountType: "SPENDING",
       walletId: "wallet-1",
       amountSatang: 100,
+      member: null,
+    }, {
+      id: `${id}-platform-posting`,
+      accountId: "platform-account-1",
+      accountType: "PLATFORM_SUSPENSE",
+      walletId: null,
+      amountSatang: -100,
       member: null,
     }],
   };
@@ -123,7 +132,23 @@ describe("Member detail route service", () => {
         return jsonResponse({ success: true, data: memberFinance });
       }
       if (url.pathname === "/api/v1/admin/reports") {
-        return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
+        return jsonResponse({
+          success: true,
+          data: {
+            items: [],
+            nextCursor: null,
+            totalCount: 0,
+            countsByStatus: {
+              REPORT_CASE_PENDING: 0,
+              REPORT_CASE_DISMISSED: 0,
+              REPORT_CASE_HIDDEN: 0,
+              REPORT_CASE_RESTORED: 0,
+              CONDUCT_REPORT_PENDING: 0,
+              CONDUCT_REPORT_UPHELD: 0,
+              CONDUCT_REPORT_DISMISSED: 0,
+            },
+          },
+        });
       }
       if (url.pathname === "/api/v1/admin/finance/ledger/transactions") {
         return url.searchParams.get("cursor") === "ledger-next"
@@ -136,7 +161,7 @@ describe("Member detail route service", () => {
 
     const result = await loadMemberDetailFromApi("member-1", "kuquest-admin=session");
 
-    expect(result?.walletStatement.map((transaction) => transaction.id)).toEqual([
+    expect(result?.walletStatement.items?.map((transaction) => transaction.id)).toEqual([
       "ledger-1",
       "ledger-2",
     ]);
