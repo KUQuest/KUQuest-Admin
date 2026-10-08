@@ -119,7 +119,7 @@ export type MemberReportEntry = {
 
 export type MemberPenaltyHistoryEntry = AdminMemberPenaltyHistoryItem;
 export function memberPenaltyHistoryItemKey(entry: MemberPenaltyHistoryEntry): string {
-  return `${entry.ladder}:${entry.sequenceNumber}:${entry.result}:${entry.createdAt}`;
+  return entry.recordId;
 }
 
 const memberPenaltyHistoryLabels: Record<string, string> = {
@@ -129,6 +129,16 @@ const memberPenaltyHistoryLabels: Record<string, string> = {
   PENALTY_TEMPORARY_BAN_1_MONTH: "Temporary ban (1 month)",
   PENALTY_PERMANENT_BAN: "Permanent ban",
   PENALTY_REVERSAL: "Penalty reversal",
+  ADMIN_ADJUSTMENT: "Admin adjustment",
+  ADMIN: "Direct Admin action",
+  MEMBER_PENALTY_VIOLATION_CONFIRMED: "Violation confirmed",
+  MEMBER_PENALTY_REPEATED_VIOLATION_CONFIRMED: "Repeated violation confirmed",
+  MEMBER_PENALTY_SAFETY_RISK_CONFIRMED: "Safety risk confirmed",
+  MEMBER_PENALTY_OTHER_VIOLATION_CONFIRMED: "Other confirmed violation",
+  MEMBER_PENALTY_ADMIN_ERROR: "Admin error",
+  MEMBER_PENALTY_NEW_EVIDENCE: "New evidence",
+  MEMBER_PENALTY_POLICY_REVIEW: "Policy review",
+  MEMBER_PENALTY_OTHER_CORRECTION: "Other correction",
   MISCONDUCT: "Misconduct",
   REVIEW_AVERAGE: "Review average",
   REVERSAL_OF: "Reversal of",
@@ -151,6 +161,7 @@ export type MemberPenaltyHistorySummary = {
   confirmedMisconductCount: number;
   effectiveActiveMisconductPenaltyCount: number;
   reviewLadderRecordCount: number;
+  versionToken: number;
 };
 
 export type MemberPenaltyHistoryCollection = MemberCollection<MemberPenaltyHistoryEntry> & {

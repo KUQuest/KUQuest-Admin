@@ -15,6 +15,21 @@ Approved by the Domain Owner on 2026-10-08:
 - **Direct Add Penalty**: The existing **Record violation** action remains the direct Admin action for adding a penalty. The Admin selects a permitted penalty and a reason code. The decision note is optional. Its existing `PC-12`/`PC-13` behavior remains unchanged.
 - **Remove Penalty**: An Admin may remove any effective penalty record from a Member's Penalty History, regardless of source. The Admin selects a reason code; the decision note is optional. Removal adds a linked reversal record and never deletes or edits the original record. It reverses the penalty effect but does not change the source Report Case, Conduct Report, or Review decision. The Member's restrictions and penalty-created Wallet state are recalculated from the remaining effective penalty records. A separate discretionary Wallet Freeze or Wallet Suspend remains in place.
 
+### Approved policy amendment — 2026-10-08 (Admin commands)
+
+Approved by the Domain Owner on 2026-10-08:
+
+- **Direct Add Penalty choices**: The Admin selects the exact permitted Misconduct result: Red Flag, 7-day Member Ban, or permanent Member Ban. The 1-month Review result is not a choice. Existing direct-action exemptions still apply. A direct Admin-selected penalty does not count toward later automatic Misconduct ladder results.
+- **Required reasons**: Add and Remove each require a reason code from their own approved set below. The Admin may also enter an optional decision note of up to 200 characters.
+- **Add reason codes**: `MEMBER_PENALTY_VIOLATION_CONFIRMED`, `MEMBER_PENALTY_REPEATED_VIOLATION_CONFIRMED`, `MEMBER_PENALTY_SAFETY_RISK_CONFIRMED`, and `MEMBER_PENALTY_OTHER_VIOLATION_CONFIRMED`.
+- **Remove reason codes**: `MEMBER_PENALTY_ADMIN_ERROR`, `MEMBER_PENALTY_NEW_EVIDENCE`, `MEMBER_PENALTY_POLICY_REVIEW`, and `MEMBER_PENALTY_OTHER_CORRECTION`.
+- **Effective penalty**: An original, non-exempt penalty record that has not been reversed is effective, even when its timed restriction has expired. An Admin may remove an effective penalty from any source, including Conduct Report and Review.
+- **Recalculated automatic results**: If removing a penalty changes a later automatic ladder result, append a linked reversal for the old result and a linked replacement record for the recalculated result. Keep every record immutable. Direct Admin-selected penalties remain the exact results selected by the Admin.
+- **Version check**: Penalty History returns a version token. Add and Remove commands must send this token. The API rejects a command when the token is stale.
+- **Stable history identity**: Every Penalty History item includes its stable `recordId` UUID. Remove must send the selected item's `recordId`; `sourceDisplayId` identifies the source event and must not be used as the penalty record ID.
+- **Decision note**: The Admin may provide a note of up to 200 characters for Add or Remove. The note is part of immutable Penalty History.
+- **Audit record**: Penalty History is the audit record for these actions. Do not write a separate `AdminAction` record.
+
 ## Two independent ladders
 
 Member penalties operate through two independent ladders. A Member's strike count on one never affects the other.

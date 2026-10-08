@@ -291,13 +291,15 @@ function penaltySummaryFrom(response: AdminMemberPenaltyHistory): MemberPenaltyH
     confirmedMisconductCount: response.confirmedMisconductCount,
     effectiveActiveMisconductPenaltyCount: response.effectiveActiveMisconductPenaltyCount,
     reviewLadderRecordCount: response.reviewLadderRecordCount,
+    versionToken: response.versionToken,
   };
 }
 
 function samePenaltySummary(left: MemberPenaltyHistorySummary, right: MemberPenaltyHistorySummary): boolean {
   return left.confirmedMisconductCount === right.confirmedMisconductCount
     && left.effectiveActiveMisconductPenaltyCount === right.effectiveActiveMisconductPenaltyCount
-    && left.reviewLadderRecordCount === right.reviewLadderRecordCount;
+    && left.reviewLadderRecordCount === right.reviewLadderRecordCount
+    && left.versionToken === right.versionToken;
 }
 
 async function loadMemberPenaltyHistory(

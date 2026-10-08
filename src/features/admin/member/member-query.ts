@@ -1,7 +1,8 @@
 import { useEffect, useMemo } from "react";
-import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { adminApiProvider } from "../api/admin-provider";
+import type { AdminMemberPenaltyAddCommand, AdminMemberPenaltyRemoveCommand } from "../api/admin-api";
 import type { MemberModel, MemberPageData } from "./member-model";
 import { loadMemberDetailFromApi, loadMemberPageData } from "./member-service";
 
@@ -9,6 +10,30 @@ export const memberBoardQueryKey = ["admin", "members", "board"] as const;
 
 export function memberDetailQueryKey(memberId: string) {
   return ["admin", "members", "detail", memberId] as const;
+}
+
+export type MemberPenaltyMutationInput =
+  | { action: "add"; memberId: string; command: AdminMemberPenaltyAddCommand }
+  | { action: "remove"; memberId: string; command: AdminMemberPenaltyRemoveCommand };
+
+export function useMemberPenaltyMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ["admin", "members", "penalty-action"],
+    mutationFn: ({ action, memberId, command }: MemberPenaltyMutationInput) => (
+      action === "add"
+        ? adminApiProvider.commands.addMemberPenalty(memberId, command)
+        : adminApiProvider.commands.removeMemberPenalty(memberId, command)
+    ),
+    onSuccess: async (_result, { memberId }) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: memberDetailQueryKey(memberId) }),
+        queryClient.invalidateQueries({ queryKey: memberBoardQueryKey }),
+        queryClient.invalidateQueries({ queryKey: ["admin", "wallets"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin", "overview"] }),
+      ]);
+    },
+  });
 }
 
 function pageFromQueryData(pages: MemberPageData[]): MemberPageData {
