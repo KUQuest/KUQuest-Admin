@@ -45,12 +45,18 @@ function initials(model: MemberModel): string {
 
 function averageRating(model: MemberModel): string {
   if (model.stats.averageRating !== null) return model.stats.averageRating.toFixed(1);
-  if (!model.reviews.length) return "—";
-  return (model.reviews.reduce((sum, review) => sum + review.rating, 0) / model.reviews.length).toFixed(1);
+  return "—";
 }
 
-function reviewCount(model: MemberModel): number {
+function reviewCount(model: MemberModel): number | null {
   return model.stats.reviewsReceivedCount;
+}
+
+function reviewStateMessage(model: MemberModel): string {
+  const count = reviewCount(model);
+  if (count === null) return "Review data is not verified.";
+  if (count === 0) return "No Reviews received.";
+  return "Review details are not available.";
 }
 
 function reviewStatusLabel(status: string): string {
@@ -62,10 +68,21 @@ function reviewStatusLabel(status: string): string {
   }
 }
 
-function completedQuestCount(model: MemberModel): number {
-  return model.quests.length
+function completedQuestCount(model: MemberModel): number | null {
+  return model.quests !== null
     ? model.quests.filter((quest) => quest.status === "QUEST_COMPLETED").length
     : model.stats.questsCompletedAsWorkerCount;
+}
+
+function reportsReceivedCountLabel(
+  model: MemberModel,
+  translateText: (value: string) => string,
+): string | number {
+  if (model.reportsTotalCount !== null) return model.reportsTotalCount;
+  if (model.reports.length) return `${translateText("Records loaded")}: ${model.reports.length}`;
+  if (model.reportsComplete) return 0;
+  if (model.reportsError) return translateText("Report count is not verified.");
+  return translateText("Reports received are not available.");
 }
 
 function statusBadge(model: MemberModel, translateText: (value: string) => string) {
@@ -101,15 +118,15 @@ function MemberSummary({ model, translateText }: { model: MemberModel; translate
             <p className="m-0 block text-[15px] leading-[1.45] text-admin-muted">{model.faculty || translateText("Academic profile not recorded")}</p>
             <p className="m-0 block text-[15px] leading-[1.45] text-admin-muted">Kasetsart University</p>
             <a className="mt-[3px] block text-[15px] leading-[1.45] text-admin-accent no-underline hover:underline" href={`mailto:${model.email}`}>{model.email}</a>
-            <div className="user-detail-tags mt-2.5 flex flex-wrap items-center gap-1.5">{model.tags.map((tag) => <span className="rounded-full border border-admin-border px-2 py-[3px] text-[13px] text-admin-muted" key={tag}>{tag}</span>)}</div>
+            <div className="user-detail-tags mt-2.5 flex flex-wrap items-center gap-1.5">{model.tags === null ? <span className="text-[13px] text-admin-muted">{translateText("Profile Tags are not available.")}</span> : model.tags.length ? model.tags.map((tag) => <span className="rounded-full border border-admin-border px-2 py-[3px] text-[13px] text-admin-muted" key={tag}>{tag}</span>) : <span className="text-[13px] text-admin-muted">{translateText("No Profile Tags.")}</span>}</div>
           </div>
         </div>
         <div className="grid min-w-0 gap-3">
           <div className="flex justify-end">{statusBadge(model, translateText)}</div>
           <div className="grid !grid-cols-3 border-l border-admin-border max-[600px]:border-l-0 max-[600px]:border-t max-[600px]:pt-3">
             <div className="grid min-w-0 !grid-cols-1 gap-0.5 border-r border-admin-border px-3 last:border-r-0 max-[600px]:px-2"><strong className="text-lg">{averageRating(model)}</strong><span className="text-admin-muted text-[var(--member-font-meta)] leading-[1.4]">{translateText("Rating")}</span></div>
-            <div className="grid min-w-0 !grid-cols-1 gap-0.5 border-r border-admin-border px-3 last:border-r-0 max-[600px]:px-2"><strong className="text-lg">{reviewCount(model)}</strong><span className="text-admin-muted text-[var(--member-font-meta)] leading-[1.4]">{translateText("Reviews")}</span></div>
-            <div className="grid min-w-0 !grid-cols-1 gap-0.5 border-r border-admin-border px-3 last:border-r-0 max-[600px]:px-2"><strong className="text-lg">{completedQuestCount(model)}</strong><span className="text-admin-muted text-[var(--member-font-meta)] leading-[1.4]">{translateText("Completed quests")}</span></div>
+            <div className="grid min-w-0 !grid-cols-1 gap-0.5 border-r border-admin-border px-3 last:border-r-0 max-[600px]:px-2"><strong className="text-lg">{reviewCount(model) ?? translateText("Review data is not verified.")}</strong><span className="text-admin-muted text-[var(--member-font-meta)] leading-[1.4]">{translateText("Reviews")}</span></div>
+            <div className="grid min-w-0 !grid-cols-1 gap-0.5 border-r border-admin-border px-3 last:border-r-0 max-[600px]:px-2"><strong className="text-lg">{completedQuestCount(model) ?? translateText("Not provided by the Admin API")}</strong><span className="text-admin-muted text-[var(--member-font-meta)] leading-[1.4]">{translateText("Completed quests")}</span></div>
           </div>
         </div>
       </div>
@@ -133,18 +150,16 @@ function MemberAccountInfo({ model, translateText }: { model: MemberModel; trans
 }
 
 function MemberModerationSummary({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
-  const activeWarnings = model.memberStatus === "Flag" ? 1 : 0;
-  const suspensions = model.memberStatus === "Temp Ban" || model.memberStatus === "Perm Ban" ? 1 : 0;
   return (
     <Card as="section" className="user-detail-panel p-[16px_18px]">
       <CardHeader flush><h2>{translateText("Moderation Summary")}</h2></CardHeader>
       <div className="user-counter-list mb-3.5 grid grid-cols-2 border-y border-admin-border">
-        <div className="grid content-start gap-[3px] border-r border-b border-admin-border px-2 py-[9px]"><strong className="text-xl">{model.reports.length}</strong><span className="text-xs text-admin-muted">{translateText("Reports received")}</span></div>
-        <div className="grid content-start gap-[3px] border-b border-admin-border px-2 py-[9px]"><strong className="text-xl">{model.confirmedViolationCount === null ? translateText("Not provided by the Admin API") : model.confirmedViolationCount}</strong><span className="text-xs text-admin-muted">{translateText("Confirmed violations")}</span></div>
-        <div className="grid content-start gap-[3px] border-r border-admin-border px-2 py-[9px]"><strong className="text-xl">{activeWarnings}</strong><span className="text-xs text-admin-muted">{translateText("Active Red Flags")}</span></div>
-        <div className="grid content-start gap-[3px] px-2 py-[9px]"><strong className="text-xl">{suspensions}</strong><span className="text-xs text-admin-muted">{translateText("Suspensions")}</span></div>
+        <div className="grid content-start gap-[3px] border-r border-b border-admin-border px-2 py-[9px]"><strong className="text-xl">{reportsReceivedCountLabel(model, translateText)}</strong><span className="text-xs text-admin-muted">{translateText("Reports received")}</span></div>
+        <div className="grid content-start gap-[3px] border-b border-admin-border px-2 py-[9px]"><strong className="text-xl">{model.confirmedViolationCount === null ? translateText("Confirmed violation count is not available.") : model.confirmedViolationCount}</strong><span className="text-xs text-admin-muted">{translateText("Confirmed violations")}</span></div>
+        <div className="grid content-start gap-[3px] border-r border-admin-border px-2 py-[9px]"><strong className="text-xl">{translateText("Not provided by the Admin API")}</strong><span className="text-xs text-admin-muted">{translateText("Active Red Flags")}</span></div>
+        <div className="grid content-start gap-[3px] px-2 py-[9px]"><strong className="text-xl">{translateText("Not provided by the Admin API")}</strong><span className="text-xs text-admin-muted">{translateText("Suspensions")}</span></div>
       </div>
-      <p className="audit-note">{translateText("Member penalty history and confirmed-violation counts are not provided by the Admin API.")}</p>
+      <p className="audit-note">{translateText("Moderation history is not available.")}</p>
     </Card>
   );
 }
@@ -153,10 +168,14 @@ function MemberRecentReports({ model, translateText }: { model: MemberModel; tra
   return (
     <Card as="section" className="user-detail-panel p-[16px_18px]">
       <CardHeader flush className="user-panel-heading flex items-center justify-between gap-3">
-        <h2>{translateText("Recent Reports")}</h2>
-        <span className={adminRecordCount}>{model.reports.length}</span>
+        <div className="min-w-0">
+          <h2>{translateText("Recent Reports")}</h2>
+          <p>{translateText("Report Cases and Conduct Reports filed against this Member.")}</p>
+        </div>
+        <span className={adminRecordCount}>{reportsReceivedCountLabel(model, translateText)}</span>
       </CardHeader>
-      {model.reportsError ? <p className="audit-note">{translateText(model.reportsError)}</p> : model.reports.length ? (
+      {model.reportsError && <p className="audit-note" role="alert">{translateText(model.reportsError)}</p>}
+      {model.reports.length ? (
         <div className="user-recent-reports grid">
           {model.reports.slice(0, 3).map((report) => (
             <Link className="flex items-center justify-between gap-3 border-t border-admin-border py-2.5 text-admin-text no-underline first:border-t-0 hover:[&>span:first-child_strong]:text-admin-accent" key={report.id} href={report.href}>
@@ -164,11 +183,11 @@ function MemberRecentReports({ model, translateText }: { model: MemberModel; tra
                 <strong className="block text-[15px] leading-[1.4]">{report.displayId || translateText(report.kind)}</strong>
                 <small className="mt-0.5 block text-[15px] leading-[1.45] text-admin-muted">{translateText(report.category)}</small>
               </span>
-              <span className="badge shrink-0">{translateText(reportCaseStatusLabel(report.status))}</span>
+              <span className={`badge shrink-0 ${statusBadgeClass(report.status)}`}>{translateText(reportCaseStatusLabel(report.status))}</span>
             </Link>
           ))}
         </div>
-      ) : <p className="audit-note">{translateText("No reports have been filed against this account.")}</p>}
+      ) : model.reportsError ? null : model.reportsComplete ? <p className="audit-note">{translateText("No Reports received.")}</p> : <p className="audit-note">{translateText("Reports received are not available.")}</p>}
     </Card>
   );
 }
@@ -179,7 +198,7 @@ function MemberAbout({ model, translateText }: { model: MemberModel; translateTe
       <Card as="section" className="user-detail-panel p-[16px_18px]"><CardHeader flush><h2>{translateText("About Me")}</h2></CardHeader><p className="user-about-copy m-0 leading-[1.6] text-admin-muted">{model.bio || translateText("No profile description is available.")}</p></Card>
       <Card as="section" className="user-detail-panel p-[16px_18px]">
         <CardHeader flush><h2>{translateText("Experience")}</h2></CardHeader>
-        <p className="audit-note">{translateText("Experience detail is not provided by the Admin API.")}</p>
+        <p className="audit-note">{translateText("Work Experience is not available.")}</p>
       </Card>
     </>
   );
@@ -187,14 +206,86 @@ function MemberAbout({ model, translateText }: { model: MemberModel; translateTe
 
 function MemberPayoutPreview({ model, translateText, className = "user-detail-panel p-[16px_18px]" }: { model: MemberModel; translateText: (value: string) => string; className?: string }) {
   const payoutCount = model.stats.payoutsCount;
-  const total = model.payouts.length
-    ? model.payouts.reduce((sum, payout) => sum + (payout.amountSatang || 0), 0)
-    : model.stats.totalPaidOutSatang;
-  return <Card as="section" className={className}><CardHeader flush className="user-panel-heading flex items-start justify-between gap-3"><div className="min-w-0"><h2>{translateText("Payouts")}</h2><p>{translateText("Payout records associated with this Member.")}</p></div><span className={`${adminRecordCount} shrink-0`}>{payoutCount}</span></CardHeader><div className="user-payout-stat-list mb-3 grid grid-cols-2 border-y border-admin-border"><div className="grid gap-[3px] border-r border-admin-border px-2 py-[9px]"><strong className="text-[17px]">{payoutCount}</strong><span className="text-xs text-admin-muted">{translateText("Payouts")}</span></div><div className="grid gap-[3px] px-2 py-[9px]"><strong className="text-[17px]">{formatMoneySatang(total)}</strong><span className="text-xs text-admin-muted">{translateText("Total paid out")}</span></div></div>{model.payouts.length ? <div className="user-payout-list grid">{model.payouts.map((payout) => <div className="user-payout-row flex w-full items-center justify-between gap-3 border-0 border-t border-admin-border bg-transparent py-2.5 text-left text-admin-text first:border-t-0" key={payout.id}><span className="user-payout-primary grid min-w-0 gap-0.5"><strong className="text-[17px] leading-[1.4]">{displayAdminId(payout.id) || translateText("Payout")}</strong><small className="overflow-hidden text-ellipsis whitespace-nowrap text-[15px] leading-[1.45] text-admin-muted">{payout.createdAt}</small></span><span className="user-payout-secondary grid shrink-0 justify-items-end gap-0.5"><strong className="text-[17px] leading-[1.4]">{payout.amountSatang === null ? "—" : formatMoneySatang(payout.amountSatang)}</strong><small className="text-[15px] leading-[1.45] text-admin-muted">{translateText(payoutStatusLabel(payout.status))}</small></span></div>)}</div> : <p className="audit-note">{payoutCount ? translateText("Payout detail is not provided by the Admin API.") : translateText("No Payout records are available.")}</p>}</Card>;
+  const total = model.stats.totalPaidOutSatang;
+  const payoutCountText = payoutCount === null ? translateText("Payout data is not verified.") : payoutCount;
+  const totalText = total === null ? translateText("Payout data is not verified.") : formatMoneySatang(total);
+  const payoutRecords = model.payouts;
+  const payoutSummaryConflict = model.payoutSuccessfulCountMatchesHistory === false;
+  const recordsLabel = payoutRecords === null
+    ? null
+    : `${translateText("Records loaded")}: ${payoutRecords.length}`;
+
+  return (
+    <Card as="section" className={className}>
+      <CardHeader flush className="user-panel-heading flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2>{translateText("Payouts")}</h2>
+          <p>{translateText("Summary shows successful Payout totals. History shows all statuses.")}</p>
+        </div>
+        {recordsLabel !== null && payoutRecords !== null && payoutRecords.length > 0 ? <span className={adminRecordCount}>{recordsLabel}</span> : null}
+      </CardHeader>
+      <div className="user-payout-stat-list mb-3 grid grid-cols-2 border-y border-admin-border">
+        <div className="grid gap-[3px] border-r border-admin-border px-2 py-[9px]">
+          <strong className="text-[17px]">{payoutCountText}</strong>
+          <span className="text-xs text-admin-muted">{translateText("Successful Payouts")}</span>
+        </div>
+        <div className="grid gap-[3px] px-2 py-[9px]">
+          <strong className="text-[17px]">{totalText}</strong>
+          <span className="text-xs text-admin-muted">{translateText("Total paid out")}</span>
+        </div>
+      </div>
+      {model.payoutsError ? <p className="audit-note" role="alert">{translateText(model.payoutsError)}</p> : null}
+      {payoutSummaryConflict ? <p className="audit-note" role="alert">{translateText("Payout summary and records do not match.")}</p> : null}
+      {model.payouts === null ? <p className="audit-note">{translateText("Payout details are not available.")}</p> : model.payouts.length ? (
+        <div className="user-payout-list grid">
+          {model.payouts.map((payout) => (
+            <div className="user-payout-row flex w-full items-center justify-between gap-3 border-0 border-t border-admin-border bg-transparent py-2.5 text-left text-admin-text first:border-t-0" key={payout.id}>
+              <span className="user-payout-primary grid min-w-0 gap-0.5">
+                <strong className="text-[17px] leading-[1.4]">{displayAdminId(payout.displayId, payout.id) || translateText("Payout")}</strong>
+                <small className="overflow-hidden text-ellipsis whitespace-nowrap text-[15px] leading-[1.45] text-admin-muted">{payout.createdAt}</small>
+                {(payout.bankName || payout.maskedDestinationValue) ? <small className="overflow-hidden text-ellipsis whitespace-nowrap text-[15px] leading-[1.45] text-admin-muted">{[payout.bankName, payout.maskedDestinationValue].filter(Boolean).join(" · ")}</small> : null}
+              </span>
+              <span className="user-payout-secondary grid shrink-0 justify-items-end gap-0.5">
+                <strong className="text-[17px] leading-[1.4]">{payout.amountSatang === null ? "—" : formatMoneySatang(payout.amountSatang)}</strong>
+                <small className="text-[15px] leading-[1.45] text-admin-muted">{translateText(payoutStatusLabel(payout.status))}</small>
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : payoutSummaryConflict ? null : model.payoutsComplete ? <p className="audit-note">{translateText("No Payouts.")}</p> : <p className="audit-note">{translateText("Payout details are not available.")}</p>}
+    </Card>
+  );
 }
 
 function MemberReviewPreview({ model, translateText, onOpenReviews }: { model: MemberModel; translateText: (value: string) => string; onOpenReviews: () => void }) {
-  return <Card as="section" className="user-detail-panel p-[16px_18px]"><CardHeader flush className="user-panel-heading"><div><h2>{translateText("Reviews")}</h2><div className="flex flex-wrap items-baseline gap-2 text-[15px] text-admin-muted"><strong className="text-[17px] text-admin-text">{averageRating(model)} ★</strong><span className="text-base">({reviewCount(model)})</span></div></div><Button variant="link" size="sm" type="button" onClick={onOpenReviews}>{translateText("View all")}</Button></CardHeader><div className="user-review-preview grid">{model.reviews.slice(0, 5).map((review) => <div className="flex items-center justify-between gap-3 border-t border-admin-border py-2.5 first:border-t-0" key={`${review.reviewer}-${review.date}`}><span><strong className="block text-[17px] leading-[1.4]">{review.reviewer}</strong><small className="mt-0.5 block text-[15px] leading-[1.45] text-admin-muted">{"★".repeat(review.rating)} · {review.date}</small></span><span className="badge">{translateText(reviewStatusLabel(review.status))}</span></div>)}</div></Card>;
+  const count = reviewCount(model);
+  const reviews = model.reviews ?? [];
+
+  return (
+    <Card as="section" className="user-detail-panel p-[16px_18px]">
+      <CardHeader flush className="user-panel-heading">
+        <div>
+          <h2>{translateText("Reviews")}</h2>
+          <div className="flex flex-wrap items-baseline gap-2 text-[15px] text-admin-muted">
+            <strong className="text-[17px] text-admin-text">{averageRating(model)} ★</strong>
+            <span className="text-base">{count === null ? translateText("Review data is not verified.") : "(" + count + ")"}</span>
+          </div>
+        </div>
+        <Button variant="link" size="sm" type="button" onClick={onOpenReviews}>{translateText("View all")}</Button>
+      </CardHeader>
+      <div className="user-review-preview grid">
+        {reviews.length ? reviews.slice(0, 5).map((review) => (
+          <div className="flex items-center justify-between gap-3 border-t border-admin-border py-2.5 first:border-t-0" key={review.reviewer + review.date}>
+            <span>
+              <strong className="block text-[17px] leading-[1.4]">{review.reviewer}</strong>
+              <small className="mt-0.5 block text-[15px] leading-[1.45] text-admin-muted">{"★".repeat(review.rating)} · {review.date}</small>
+            </span>
+            <span className="badge">{translateText(reviewStatusLabel(review.status))}</span>
+          </div>
+        )) : <p className="audit-note">{translateText(reviewStateMessage(model))}</p>}
+      </div>
+    </Card>
+  );
 }
 
 function OverviewTab({ model, translateText, onOpenReviews }: { model: MemberModel; translateText: (value: string) => string; onOpenReviews: () => void }) {
@@ -203,7 +294,7 @@ function OverviewTab({ model, translateText, onOpenReviews }: { model: MemberMod
       <div className="grid min-w-0 !grid-cols-1 gap-[18px] max-[900px]:contents">
         <MemberAbout model={model} translateText={translateText} />
         <MemberPayoutPreview model={model} translateText={translateText} />
-        <Card as="section" className="user-detail-panel p-[16px_18px]"><CardHeader flush><h2>{translateText("Certificates")}</h2></CardHeader><p className="audit-note">{translateText("Certificate detail is not provided by the Admin API.")}</p></Card>
+        <Card as="section" className="user-detail-panel p-[16px_18px]"><CardHeader flush><h2>{translateText("Certificates")}</h2></CardHeader><p className="audit-note">{translateText("Certificates are not available.")}</p></Card>
         <MemberReviewPreview model={model} translateText={translateText} onOpenReviews={onOpenReviews} />
       </div>
       <aside className="grid min-w-0 !grid-cols-1 gap-[18px] max-[900px]:contents"><MemberAccountInfo model={model} translateText={translateText} /><MemberModerationSummary model={model} translateText={translateText} /><MemberRecentReports model={model} translateText={translateText} /></aside>
@@ -212,8 +303,32 @@ function OverviewTab({ model, translateText, onOpenReviews }: { model: MemberMod
 }
 
 function ActivityTab({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
-  const completed = completedQuestCount(model);
-  return <Card as="section" className="user-detail-panel user-tab-panel col-span-full min-w-0 p-[16px_18px]"><CardHeader flush className="user-panel-heading"><div><h2>{translateText("Quest history")}</h2><p>{translateText("All connected Quests")} · {completed} {translateText("completed")}</p></div><span className={adminRecordCount}>{model.quests.length}</span></CardHeader>{model.quests.length ? <div className="user-quest-history-list grid">{model.quests.map((quest) => <Link className="user-quest-history-row grid grid-cols-[minmax(0,1fr)_auto] gap-[18px] border-t border-admin-border py-[15px] text-admin-text no-underline first:border-t-0 first:pt-0 hover:text-admin-accent max-[900px]:grid-cols-1 max-[900px]:gap-2.5" key={quest.id} href={quest.href}><div className="user-quest-history-primary min-w-0"><div className="user-quest-history-title flex flex-wrap items-baseline gap-[7px]"><strong className="text-[17px] leading-[1.4]">{quest.title}</strong>{quest.displayId ? <span className="text-[15px] leading-[1.4] text-admin-muted">{quest.displayId}</span> : null}</div><div className="user-quest-history-fields mt-2.5 grid grid-cols-[minmax(120px,.8fr)_minmax(155px,1fr)_minmax(250px,1.7fr)_minmax(115px,.8fr)] gap-3 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1"><div className="user-quest-history-field grid min-w-0 content-start gap-0.5"><span className="text-[15px] leading-[1.4] text-admin-muted">{translateText("Role")}</span><strong className="text-[17px] leading-[1.4]">{translateText(quest.role)}</strong></div><div className="user-quest-history-field grid min-w-0 content-start gap-0.5"><span className="text-[15px] leading-[1.4] text-admin-muted">{translateText("Status")}</span><strong className="text-[17px] leading-[1.4]">{translateText(questStateLabel(quest.status))}</strong></div><div className="user-quest-history-field grid min-w-0 content-start gap-0.5"><span className="text-[15px] leading-[1.4] text-admin-muted">{translateText("Created")}</span><strong className="text-[17px] leading-[1.4]">{quest.createdAt}</strong></div></div></div></Link>)}</div> : <p className="audit-note">{translateText("Quest history is not provided by the Admin API.")}</p>}</Card>;
+  const quests = model.quests;
+  return (
+    <Card as="section" className="user-detail-panel user-tab-panel col-span-full min-w-0 p-[16px_18px]">
+      <CardHeader flush className="user-panel-heading">
+        <h2>{translateText("Quest history")}</h2>
+        {quests !== null ? <span className={adminRecordCount}>{quests.length}</span> : null}
+      </CardHeader>
+      {quests === null ? <p className="audit-note">{translateText("Quest history is not available.")}</p> : quests.length ? (
+        <div className="user-quest-history-list grid">
+          {quests.map((quest) => <Link className="user-quest-history-row grid grid-cols-[minmax(0,1fr)_auto] gap-[18px] border-t border-admin-border py-[15px] text-admin-text no-underline first:border-t-0 first:pt-0 hover:text-admin-accent max-[900px]:grid-cols-1 max-[900px]:gap-2.5" key={quest.id} href={quest.href}>
+            <div className="user-quest-history-primary min-w-0">
+              <div className="user-quest-history-title flex flex-wrap items-baseline gap-[7px]">
+                <strong className="text-[17px] leading-[1.4]">{quest.title}</strong>
+                {quest.displayId ? <span className="text-[15px] leading-[1.4] text-admin-muted">{quest.displayId}</span> : null}
+              </div>
+              <div className="user-quest-history-fields mt-2.5 grid grid-cols-[minmax(120px,.8fr)_minmax(155px,1fr)_minmax(250px,1.7fr)_minmax(115px,.8fr)] gap-3 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
+                <div className="user-quest-history-field grid min-w-0 content-start gap-0.5"><span className="text-[15px] leading-[1.4] text-admin-muted">{translateText("Role")}</span><strong className="text-[17px] leading-[1.4]">{translateText(quest.role)}</strong></div>
+                <div className="user-quest-history-field grid min-w-0 content-start gap-0.5"><span className="text-[15px] leading-[1.4] text-admin-muted">{translateText("Status")}</span><strong className="text-[17px] leading-[1.4]">{translateText(questStateLabel(quest.status))}</strong></div>
+                <div className="user-quest-history-field grid min-w-0 content-start gap-0.5"><span className="text-[15px] leading-[1.4] text-admin-muted">{translateText("Created")}</span><strong className="text-[17px] leading-[1.4]">{quest.createdAt}</strong></div>
+              </div>
+            </div>
+          </Link>)}
+        </div>
+      ) : <p className="audit-note">{translateText("No Quest history.")}</p>}
+    </Card>
+  );
 }
 
 function PayoutsTab({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
@@ -437,12 +552,10 @@ function ReviewsTab({
   const [query, setQuery] = useState("");
   const [rating, setRating] = useState<number | null>(null);
   const reviews = useMemo(
-    () => filterReviews(model.reviews, { query, filter: "all", rating }),
+    () => model.reviews ? filterReviews(model.reviews, { query, filter: "all", rating }) : [],
     [model.reviews, query, rating],
   );
-  if (model.stats.reviewsReceivedCount > 0 && !model.reviews.length) {
-    return <Card as="section" className="user-detail-panel user-tab-panel col-span-full min-w-0 p-[16px_18px]"><CardHeader flush><h2>{translateText("Reviews")}</h2></CardHeader><p className="audit-note">{translateText("Review detail is not provided by the Admin API.")}</p></Card>;
-  }
+  const reviewDetailsAvailable = model.reviews !== null;
 
   return (
     <Card as="section" className="user-detail-panel user-tab-panel col-span-full min-w-0 p-[16px_18px]">
@@ -451,11 +564,11 @@ function ReviewsTab({
           <h2>{translateText("Reviews")}</h2>
           <div className="flex flex-wrap items-baseline gap-2 text-[15px] text-admin-muted">
             <strong className="text-[17px] text-admin-text">{averageRating(model)} ★</strong>
-            <span className="text-base">({reviewCount(model)})</span>
+            <span className="text-base">{reviewCount(model) === null ? translateText("Review data is not verified.") : `(${reviewCount(model)})`}</span>
             <span className="inline-flex flex-wrap gap-2" role="group" aria-label={translateText("Filter reviews by rating")}>
-              <button className="border-0 bg-transparent p-0 text-base text-admin-muted hover:text-admin-accent hover:underline focus-visible:text-admin-accent focus-visible:underline" type="button" aria-pressed={rating === null} onClick={() => setRating(null)}>{translateText("All")}</button>
+              <button className="border-0 bg-transparent p-0 text-base text-admin-muted hover:text-admin-accent hover:underline focus-visible:text-admin-accent focus-visible:underline disabled:cursor-not-allowed disabled:opacity-50" type="button" aria-pressed={rating === null} disabled={!reviewDetailsAvailable} onClick={() => setRating(null)}>{translateText("All")}</button>
               {[5, 4, 3, 2, 1].map((value) => (
-                <button className={`border-0 bg-transparent p-0 text-base text-admin-muted hover:text-admin-accent hover:underline focus-visible:text-admin-accent focus-visible:underline ${rating === value ? "text-admin-accent underline underline-offset-4" : ""}`} type="button" key={value} aria-pressed={rating === value} onClick={() => setRating(rating === value ? null : value)}>
+                <button className={`border-0 bg-transparent p-0 text-base text-admin-muted hover:text-admin-accent hover:underline focus-visible:text-admin-accent focus-visible:underline disabled:cursor-not-allowed disabled:opacity-50 ${rating === value ? "text-admin-accent underline underline-offset-4" : ""}`} type="button" key={value} aria-pressed={rating === value} disabled={!reviewDetailsAvailable} onClick={() => setRating(rating === value ? null : value)}>
                   {value} {translateText("star")}
                 </button>
               ))}
@@ -465,7 +578,7 @@ function ReviewsTab({
       </CardHeader>
       <div className="mb-3 flex items-center justify-between gap-3 max-[600px]:items-stretch max-[600px]:flex-col">
         <div className="inline-search search-field">
-          <input type="search" aria-label={translateText("Search reviews")} placeholder={translateText("Search reviews…")} value={query} onChange={(event) => setQuery(event.target.value)} />
+          <input type="search" aria-label={translateText("Search reviews")} placeholder={translateText("Search reviews…")} value={query} onChange={(event) => setQuery(event.target.value)} disabled={!reviewDetailsAvailable} />
         </div>
       </div>
       <p className="audit-note">{translateText("Review records are read-only. Review Hide or Unhide is not an accepted Admin moderation command.")}</p>
@@ -478,13 +591,13 @@ function ReviewsTab({
             })}</tbody>
           </Table>
         </div>
-      ) : <p className="audit-note">{translateText("No reviews match these filters.")}</p>}
+      ) : !reviewDetailsAvailable ? <p className="audit-note">{translateText(reviewStateMessage(model))}</p> : reviewCount(model) === 0 ? <p className="audit-note">{translateText("No Reviews received.")}</p> : <p className="audit-note">{translateText("No reviews match these filters.")}</p>}
     </Card>
   );
 }
 
 function ReportsTable({ reports, translateText }: { reports: MemberModel["reports"]; translateText: (value: string) => string }) {
-  return reports.length ? <div className="overflow-x-auto"><Table className="user-detail-table min-w-[760px] [&_tbody>tr]:cursor-default [&_td]:align-top [&_th]:align-middle [&_th]:pt-2 [&_td:nth-child(3)]:max-w-[260px] [&_td:nth-child(3)]:text-admin-muted"><thead><tr><th>{translateText("Case")}</th><th>{translateText("Type")}</th><th>{translateText("Reported by")}</th><th>{translateText("Reason")}</th><th>{translateText("Status")}</th><th>{translateText("Reported")}</th></tr></thead><tbody>{reports.map((report) => <tr key={report.id}><td><Link href={report.href}>{report.displayId || translateText(report.kind)}</Link></td><td>{translateText(report.kind)}</td><td>{report.reporterName}</td><td>{report.detail}</td><td>{translateText(reportCaseStatusLabel(report.status))}</td><td>{report.reportedAt}</td></tr>)}</tbody></Table></div> : <p className="audit-note">{translateText("No related cases are available.")}</p>;
+  return <div className="overflow-x-auto"><Table className="user-detail-table min-w-[760px] [&_tbody>tr]:cursor-default [&_td]:align-top [&_th]:align-middle [&_th]:pt-2 [&_td:nth-child(3)]:max-w-[260px] [&_td:nth-child(3)]:text-admin-muted"><thead><tr><th>{translateText("Case")}</th><th>{translateText("Type")}</th><th>{translateText("Reported by")}</th><th>{translateText("Reason")}</th><th>{translateText("Status")}</th><th>{translateText("Reported")}</th></tr></thead><tbody>{reports.map((report) => <tr key={report.id}><td><Link href={report.href}>{report.displayId || translateText(report.kind)}</Link></td><td>{translateText(report.kind)}</td><td>{report.reporterName}</td><td>{report.detail}</td><td>{translateText(reportCaseStatusLabel(report.status))}</td><td>{report.reportedAt}</td></tr>)}</tbody></Table></div>;
 }
 
 function ReportsTab({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
@@ -496,7 +609,6 @@ function ReportsTab({ model, translateText }: { model: MemberModel; translateTex
             <h2>{translateText("Reports and Conduct Reports")}</h2>
             <p>{translateText("Cases received against this Member and cases submitted by this Member.")}</p>
           </div>
-          <span className={`${adminRecordCount} shrink-0`}>{model.reports.length + model.reportsSubmitted.length}</span>
         </CardHeader>
         <section className="min-w-0 border-t border-admin-border pt-4">
           <CardHeader flush className="user-panel-heading flex items-start justify-between gap-3">
@@ -504,9 +616,9 @@ function ReportsTab({ model, translateText }: { model: MemberModel; translateTex
               <h3>{translateText("Reports received")}</h3>
               <p>{translateText("Report Cases and Conduct Reports filed against this Member.")}</p>
             </div>
-            <span className={`${adminRecordCount} shrink-0`}>{model.reports.length}</span>
+            <span className={`${adminRecordCount} shrink-0`}>{reportsReceivedCountLabel(model, translateText)}</span>
           </CardHeader>
-          {model.reportsError ? <p className="audit-note">{translateText(model.reportsError)}</p> : <ReportsTable reports={model.reports} translateText={translateText} />}
+          {model.reports.length ? <><ReportsTable reports={model.reports} translateText={translateText} />{model.reportsError ? <p className="audit-note" role="alert">{translateText(model.reportsError)}</p> : null}</> : model.reportsError ? <p className="audit-note" role="alert">{translateText(model.reportsError)}</p> : model.reportsComplete ? <p className="audit-note">{translateText("No Reports received.")}</p> : <p className="audit-note">{translateText("Reports received are not available.")}</p>}
         </section>
         <section className="min-w-0 border-t border-admin-border pt-4">
           <CardHeader flush className="user-panel-heading flex items-start justify-between gap-3">
@@ -514,9 +626,9 @@ function ReportsTab({ model, translateText }: { model: MemberModel; translateTex
               <h3>{translateText("Reports submitted")}</h3>
               <p>{translateText("Cases submitted by this Member about another Member or Quest.")}</p>
             </div>
-            <span className={`${adminRecordCount} shrink-0`}>{model.reportsSubmitted.length}</span>
+            {model.reportsSubmitted !== null ? <span className={`${adminRecordCount} shrink-0`}>{model.reportsSubmitted.length}</span> : null}
           </CardHeader>
-          {model.reportsSubmittedError ? <p className="audit-note">{translateText(model.reportsSubmittedError)}</p> : <ReportsTable reports={model.reportsSubmitted} translateText={translateText} />}
+          {model.reportsSubmitted === null ? <p className="audit-note">{translateText(model.reportsSubmittedError || "Reports submitted are not available.")}</p> : model.reportsSubmitted.length ? <ReportsTable reports={model.reportsSubmitted} translateText={translateText} /> : <p className="audit-note">{translateText("No Reports submitted.")}</p>}
         </section>
       </div>
     </Card>
@@ -524,7 +636,7 @@ function ReportsTab({ model, translateText }: { model: MemberModel; translateTex
 }
 
 function MemberModerationTimeline({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
-  return model.penaltyHistory.length ? <div className="mt-2 grid gap-0" data-member-moderation-history><p className="audit-note">{translateText("Moderation history provided by the Admin API.")}</p>{model.penaltyHistory.map((entry) => <article className="border-t border-admin-border py-4 first:pt-3.5 last:pb-0" key={`${entry.at}-${entry.event}-${entry.caseId || entry.outcome || "event"}`}><strong className="mb-1.5 block text-[17px] leading-[1.4]">{translateText(entry.event)}</strong><span className="mt-1.5 block text-[15px] leading-[1.45] text-admin-muted">{formatAdminTimestamp(entry.at, "Asia/Bangkok")} · {translateText("by")} {displayAdminId(entry.by) ?? translateText("Admin")}</span>{entry.reason && <p className="mt-[9px] text-[15px] leading-[1.5]">{entry.reason}</p>}{(entry.previousStatus || entry.newStatus || entry.outcome || entry.durationDays || entry.expiresAt) && <p className="mt-[9px] text-[15px] leading-[1.5]">{entry.previousStatus && `${translateText("Previous status")}: ${translateText(entry.previousStatus)}`}{entry.previousStatus && entry.newStatus ? " · " : ""}{entry.newStatus && `${translateText("New status")}: ${translateText(entry.newStatus)}`}{(entry.previousStatus || entry.newStatus) && entry.outcome ? " · " : ""}{entry.outcome && `${translateText("Outcome")}: ${translateText(entry.outcome)}`}{entry.durationDays ? ` · ${entry.durationDays} ${translateText("days")}` : ""}{entry.expiresAt ? ` · ${translateText("Expires")} ${formatAdminTimestamp(entry.expiresAt, "Asia/Bangkok")}` : ""}</p>}{displayAdminId(entry.caseId) && <p className="mt-[9px] text-[15px] leading-[1.5]"><span>{translateText(entry.caseType || "Related case")}:</span> {entry.caseHref ? <Link href={entry.caseHref} aria-label={`${translateText("Open related case")} ${displayAdminId(entry.caseId)}`}>{displayAdminId(entry.caseId)}</Link> : <strong>{displayAdminId(entry.caseId)}</strong>}</p>}</article>)}</div> : <p className="audit-note">{translateText("Penalty history is not provided by the Admin API.")}</p>;
+  return model.penaltyHistory === null ? <p className="audit-note">{translateText("Moderation history is not available.")}</p> : model.penaltyHistory.length ? <div className="mt-2 grid gap-0" data-member-moderation-history><p className="audit-note">{translateText("Moderation history provided by the Admin API.")}</p>{model.penaltyHistory.map((entry) => <article className="border-t border-admin-border py-4 first:pt-3.5 last:pb-0" key={`${entry.at}-${entry.event}-${entry.caseId || entry.outcome || "event"}`}><strong className="mb-1.5 block text-[17px] leading-[1.4]">{translateText(entry.event)}</strong><span className="mt-1.5 block text-[15px] leading-[1.45] text-admin-muted">{formatAdminTimestamp(entry.at, "Asia/Bangkok")} · {translateText("by")} {displayAdminId(entry.by) ?? translateText("Admin")}</span>{entry.reason && <p className="mt-[9px] text-[15px] leading-[1.5]">{entry.reason}</p>}{(entry.previousStatus || entry.newStatus || entry.outcome || entry.durationDays || entry.expiresAt) && <p className="mt-[9px] text-[15px] leading-[1.5]">{entry.previousStatus && `${translateText("Previous status")}: ${translateText(entry.previousStatus)}`}{entry.previousStatus && entry.newStatus ? " · " : ""}{entry.newStatus && `${translateText("New status")}: ${translateText(entry.newStatus)}`}{(entry.previousStatus || entry.newStatus) && entry.outcome ? " · " : ""}{entry.outcome && `${translateText("Outcome")}: ${translateText(entry.outcome)}`}{entry.durationDays ? ` · ${entry.durationDays} ${translateText("days")}` : ""}{entry.expiresAt ? ` · ${translateText("Expires")} ${formatAdminTimestamp(entry.expiresAt, "Asia/Bangkok")}` : ""}</p>}{displayAdminId(entry.caseId) && <p className="mt-[9px] text-[15px] leading-[1.5]"><span>{translateText(entry.caseType || "Related case")}:</span> {entry.caseHref ? <Link href={entry.caseHref} aria-label={`${translateText("Open related case")} ${displayAdminId(entry.caseId)}`}>{displayAdminId(entry.caseId)}</Link> : <strong>{displayAdminId(entry.caseId)}</strong>}</p>}</article>)}</div> : <p className="audit-note">{translateText("No moderation history.")}</p>;
 }
 
 function PenaltyHistoryTab({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
@@ -536,7 +648,7 @@ function PenaltyHistoryTab({ model, translateText }: { model: MemberModel; trans
             <h2>{translateText("Moderation History")}</h2>
             <p>{translateText("Factual Red Flag, Member Ban, Report Case, and Conduct Report events for this Member.")}</p>
           </div>
-          <span className={adminRecordCount}>{model.penaltyHistory.length}</span>
+          {model.penaltyHistory !== null ? <span className={adminRecordCount}>{model.penaltyHistory.length}</span> : null}
         </CardHeader>
         <MemberModerationTimeline model={model} translateText={translateText} />
       </div>
@@ -586,15 +698,15 @@ function DrawerContent({ model, translateText }: { model: MemberModel; translate
       </Card>
       <Card as="section" className={adminRecordSection}>
         <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Moderation")}</h2></CardHeader>
-        <div className="user-context-list grid gap-3"><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Member Status")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{statusBadge(model, translateText)}</strong></div><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Confirmed violations")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{model.confirmedViolationCount === null ? translateText("Not provided by the Admin API") : model.confirmedViolationCount}</strong></div></div>
+        <div className="user-context-list grid gap-3"><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Member Status")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{statusBadge(model, translateText)}</strong></div><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Confirmed violations")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{model.confirmedViolationCount === null ? translateText("Confirmed violation count is not available.") : model.confirmedViolationCount}</strong></div></div>
       </Card>
       <Card as="section" className={`${adminRecordSection} member-drawer-moderation-history`} data-member-drawer-moderation-history>
-        <CardHeader flush className={`${adminRecordHeader} user-panel-heading`}><h2 className={adminRecordHeading}>{translateText("Moderation History")}</h2><span className={adminRecordCount}>{model.penaltyHistory.length}</span></CardHeader>
+        <CardHeader flush className={`${adminRecordHeader} user-panel-heading`}><h2 className={adminRecordHeading}>{translateText("Moderation History")}</h2>{model.penaltyHistory !== null ? <span className={adminRecordCount}>{model.penaltyHistory.length}</span> : null}</CardHeader>
         <MemberModerationTimeline model={model} translateText={translateText} />
       </Card>
       <Card as="section" className={adminRecordSection}>
         <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Activity summary")}</h2></CardHeader>
-        <div className="user-activity-list grid gap-3"><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Completed quests")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{completedQuestCount(model)}</strong></div><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Reports received")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{model.reports.length}</strong></div></div>
+        <div className="user-activity-list grid gap-3"><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Completed quests")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{completedQuestCount(model) ?? translateText("Not provided by the Admin API")}</strong></div><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Reports received")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{reportsReceivedCountLabel(model, translateText)}</strong></div></div>
       </Card>
       <div className="admin-drawer-actions sticky bottom-[-28px] z-[4] m-[18px_-24px_-28px] flex flex-wrap gap-2 border-t border-admin-border bg-admin-surface/95 px-6 py-3.5 shadow-[0_-6px_18px_rgba(0,0,0,0.09)] [&>*]:min-h-11 [&>*]:flex-[1_1_180px] [&>*]:text-center max-[720px]:bottom-[-24px] max-[720px]:m-[18px_-16px_-24px] max-[720px]:px-4 max-[720px]:[&>*]:basis-full"><Button asChild variant="outline"><a href={memberRoutes.detail(model.id)}>{translateText("See full Member profile")}</a></Button></div>
     </div>

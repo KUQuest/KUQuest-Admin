@@ -123,7 +123,23 @@ describe("Member detail route service", () => {
         return jsonResponse({ success: true, data: memberFinance });
       }
       if (url.pathname === "/api/v1/admin/reports") {
-        return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
+        return jsonResponse({
+          success: true,
+          data: {
+            items: [],
+            nextCursor: null,
+            totalCount: 0,
+            countsByStatus: {
+              REPORT_CASE_PENDING: 0,
+              REPORT_CASE_DISMISSED: 0,
+              REPORT_CASE_HIDDEN: 0,
+              REPORT_CASE_RESTORED: 0,
+              CONDUCT_REPORT_PENDING: 0,
+              CONDUCT_REPORT_UPHELD: 0,
+              CONDUCT_REPORT_DISMISSED: 0,
+            },
+          },
+        });
       }
       if (url.pathname === "/api/v1/admin/finance/ledger/transactions") {
         return url.searchParams.get("cursor") === "ledger-next"

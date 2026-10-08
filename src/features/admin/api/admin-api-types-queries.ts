@@ -9,6 +9,7 @@ export type AdminTopUpListQuery = {
 };
 export type AdminPayoutListQuery = {
   status?: AdminApiPayoutStatus;
+  userId?: string;
   limit?: number;
   cursor?: string;
   sort?: "newest" | "oldest";

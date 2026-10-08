@@ -70,6 +70,121 @@ const memberDetail = {
   },
 };
 
+const reportStatuses = [
+  "REPORT_CASE_PENDING",
+  "REPORT_CASE_DISMISSED",
+  "REPORT_CASE_HIDDEN",
+  "REPORT_CASE_RESTORED",
+  "CONDUCT_REPORT_PENDING",
+  "CONDUCT_REPORT_UPHELD",
+  "CONDUCT_REPORT_DISMISSED",
+] as const;
+type ReportStatus = (typeof reportStatuses)[number];
+
+function reportCounts(overrides: Partial<Record<ReportStatus, number>> = {}): Record<ReportStatus, number> {
+  return {
+    REPORT_CASE_PENDING: 0,
+    REPORT_CASE_DISMISSED: 0,
+    REPORT_CASE_HIDDEN: 0,
+    REPORT_CASE_RESTORED: 0,
+    CONDUCT_REPORT_PENDING: 0,
+    CONDUCT_REPORT_UPHELD: 0,
+    CONDUCT_REPORT_DISMISSED: 0,
+    ...overrides,
+  };
+}
+
+function reportPage(
+  status: string,
+  items: unknown[] = [],
+  nextCursor: string | null = null,
+  countsByStatus = reportCounts(),
+) {
+  return {
+    items,
+    nextCursor,
+    totalCount: countsByStatus[status as ReportStatus] ?? 0,
+    countsByStatus,
+  };
+}
+
+const payoutStatuses = [
+  "PENDING_ADMIN_APPROVAL",
+  "SUBMITTED_TO_PROVIDER",
+  "PROVIDER_PENDING",
+  "SUCCEEDED",
+  "FAILED",
+  "CANCELLED",
+] as const;
+
+function reportRecord(id: string, status: (typeof reportStatuses)[number]) {
+  const member = {
+    id: "68000000",
+    email: "akarin.a@ku.th",
+    firstName: "Akarin",
+    lastName: "Ariyawat",
+    studentId: "6810000000",
+  };
+  if (status.startsWith("CONDUCT_REPORT_")) {
+    return {
+      kind: "CONDUCT_REPORT",
+      id,
+      displayId: id,
+      status,
+      filer: { ...member, studentId: null },
+      reportedMember: { ...member, studentId: null },
+      reason: "CONDUCT_ABANDONED",
+      detail: "The Worker did not attend the agreed Quest.",
+      createdAt: "2026-09-12T08:30:00.000Z",
+    };
+  }
+  return {
+    kind: "REPORT_CASE",
+    id,
+    displayId: id,
+    status,
+    reportedMember: member,
+    reporterEntries: [{
+      id: `entry-${id}`,
+      reporterMemberId: "68000001",
+      reporter: { ...member, id: "68000001", firstName: "Suda", lastName: "Reporter" },
+      reason: "REPORT_SPAM",
+      detail: "This message repeats an unrelated advert.",
+      createdAt: "2026-09-12T08:30:00.000Z",
+    }],
+    createdAt: "2026-09-12T08:30:00.000Z",
+  };
+}
+
+function payoutRecord(id: string, payoutStatus: (typeof payoutStatuses)[number]) {
+  return {
+    id,
+    displayId: `PAY-${id}`,
+    student: { id: "68000000", email: "akarin.a@ku.th", firstName: "Akarin", lastName: "Ariyawat" },
+    quoteId: `quote-${id}`,
+    principalSatang: 12500,
+    receiptSatang: 12500,
+    maximumFeeSatang: 0,
+    maximumTaxSatang: 0,
+    maximumDebitSatang: 12500,
+    actualFeeSatang: null,
+    actualTaxSatang: null,
+    actualDebitSatang: null,
+    bankCode: "KBANK",
+    bankName: "Kasikorn Bank",
+    destinationType: "BANK_ACCOUNT",
+    maskedDestinationValue: "xxx-x-xx123-x",
+    maskedRoutingValue: "xxx",
+    providerReference: null,
+    providerStatus: null,
+    payoutStatus,
+    cancellationReasonCode: null,
+    createdAt: "2026-09-12T08:30:00.000Z",
+    updatedAt: "2026-09-12T08:30:00.000Z",
+    version: 1,
+  };
+}
+
 afterEach(() => {
   globalThis.fetch = originalFetch;
   delete process.env.NEXT_PUBLIC_API_URL;
@@ -88,7 +203,7 @@ describe("Member detail service", () => {
         return jsonResponse({ success: true, data: memberDetail });
       }
       if (url.pathname === "/api/v1/admin/reports") {
-        return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
+        return jsonResponse({ success: true, data: reportPage(url.searchParams.get("status") ?? "") });
       }
       if (url.pathname === "/api/v1/admin/finance/ledger/transactions") {
         return jsonResponse({
@@ -127,7 +242,7 @@ describe("Member detail service", () => {
         return jsonResponse({ success: true, data: { wallet: memberDetail.wallet } });
       }
       if (url.pathname === "/api/v1/admin/reports") {
-        return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
+        return jsonResponse({ success: true, data: reportPage(url.searchParams.get("status") ?? "") });
       }
       if (url.pathname === "/api/v1/admin/finance/ledger/transactions") {
         return jsonResponse({
@@ -146,5 +261,196 @@ describe("Member detail service", () => {
     const ledgerRequests = requests.filter((request) => new URL(request.url).pathname.endsWith("/ledger/transactions"));
     expect(ledgerRequests).toHaveLength(1);
     expect(ledgerRequests[0]?.url).toContain("walletId=WAL-1001");
+  });
+
+  it("loads all received Report statuses and all Member Payout status pages", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    const requests: Request[] = [];
+    globalThis.fetch = (async (input, init) => {
+      const request = new Request(input, init);
+      requests.push(request);
+      const url = new URL(request.url);
+
+      if (url.pathname === "/api/v1/admin/members/68000000") {
+        return jsonResponse({ success: true, data: {
+          ...memberDetail,
+          stats: { ...memberDetail.stats, payoutsCount: 2, totalPaidOutSatang: 25000 },
+        } });
+      }
+      if (url.pathname === "/api/v1/admin/reports") {
+        const status = url.searchParams.get("status");
+        const cursor = url.searchParams.get("cursor");
+        const counts = reportCounts({ REPORT_CASE_PENDING: 2, CONDUCT_REPORT_UPHELD: 1 });
+        if (status === "REPORT_CASE_PENDING") {
+          return jsonResponse({ success: true, data: cursor
+            ? reportPage(status, [reportRecord("report-2", status)], null, counts)
+            : reportPage(status, [reportRecord("report-1", status)], "report-next", counts) });
+        }
+        return jsonResponse({ success: true, data: reportPage(status ?? "", status === "CONDUCT_REPORT_UPHELD" ? [reportRecord("conduct-1", status)] : [], null, counts) });
+      }
+      if (url.pathname === "/api/v1/admin/payouts") {
+        const status = url.searchParams.get("status");
+        const cursor = url.searchParams.get("cursor");
+        if (status === "SUCCEEDED") {
+          return jsonResponse({ success: true, data: cursor ? { items: [payoutRecord("payout-2", status)], nextCursor: null } : { items: [payoutRecord("payout-1", status)], nextCursor: "payout-next" } });
+        }
+        return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
+      }
+      if (url.pathname === "/api/v1/finance/members/68000000" || url.pathname === "/api/v1/admin/finance/members/68000000") {
+        return jsonResponse({ success: false, error: { code: "UNAVAILABLE", message: "Finance unavailable" } }, 503);
+      }
+      if (url.pathname === "/api/v1/admin/finance/ledger/transactions") {
+        return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
+      }
+      return jsonResponse({ success: false, error: { code: "UNAVAILABLE", message: "Unexpected request" } }, 503);
+    }) as typeof globalThis.fetch;
+
+    const model = await loadMemberDetailFromApi("68000000");
+
+    expect(model?.reports.map((report) => report.id)).toEqual(["report-1", "report-2", "conduct-1"]);
+    expect(model?.reportsComplete).toBe(true);
+    expect(model?.reportsTotalCount).toBe(3);
+    expect(model?.reports[0]).toMatchObject({ reporterName: "Suda Reporter", category: "Spam", detail: "This message repeats an unrelated advert." });
+    expect(model?.payouts?.map((payout) => payout.id)).toEqual(["payout-1", "payout-2"]);
+    expect(model?.payoutsComplete).toBe(true);
+    expect(model?.payoutSuccessfulCountMatchesHistory).toBe(true);
+    expect(model?.payouts?.[0]?.maskedDestinationValue).toBe("xxx-x-xx123-x");
+
+    const reportRequests = requests.filter((request) => new URL(request.url).pathname === "/api/v1/admin/reports");
+    const payoutRequests = requests.filter((request) => new URL(request.url).pathname === "/api/v1/admin/payouts");
+    expect(new Set(reportRequests.map((request) => new URL(request.url).searchParams.get("status")))).toEqual(new Set(reportStatuses));
+    expect(new Set(payoutRequests.map((request) => new URL(request.url).searchParams.get("status")))).toEqual(new Set(payoutStatuses));
+    expect(reportRequests.every((request) => new URL(request.url).searchParams.get("memberId") === "68000000")).toBe(true);
+    expect(payoutRequests.every((request) => new URL(request.url).searchParams.get("userId") === "68000000")).toBe(true);
+    expect(reportRequests.some((request) => new URL(request.url).searchParams.get("cursor") === "report-next")).toBe(true);
+    expect(payoutRequests.some((request) => new URL(request.url).searchParams.get("cursor") === "payout-next")).toBe(true);
+  });
+
+  it("keeps verified empty Report and Payout histories distinct from unavailable reads", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    globalThis.fetch = (async (input, init) => {
+      const request = new Request(input, init);
+      const url = new URL(request.url);
+      if (url.pathname === "/api/v1/admin/members/68000000") return jsonResponse({ success: true, data: memberDetail });
+      if (url.pathname === "/api/v1/admin/reports") return jsonResponse({ success: true, data: reportPage(url.searchParams.get("status") ?? "") });
+      if (url.pathname === "/api/v1/admin/payouts") return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
+      if (url.pathname === "/api/v1/admin/finance/ledger/transactions") return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
+      return jsonResponse({ success: false, error: { code: "UNAVAILABLE", message: "Finance unavailable" } }, 503);
+    }) as typeof globalThis.fetch;
+
+    const model = await loadMemberDetailFromApi("68000000");
+
+    expect(model?.reports).toEqual([]);
+    expect(model?.reportsComplete).toBe(true);
+    expect(model?.reportsTotalCount).toBe(0);
+    expect(model?.payouts).toEqual([]);
+    expect(model?.payoutsComplete).toBe(true);
+    expect(model?.payoutSuccessfulCountMatchesHistory).toBe(true);
+    expect(model?.payoutsError).toBeNull();
+  });
+
+  it("keeps unavailable Report and Payout reads as unavailable", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    globalThis.fetch = (async (input, init) => {
+      const request = new Request(input, init);
+      const url = new URL(request.url);
+      if (url.pathname === "/api/v1/admin/members/68000000") return jsonResponse({ success: true, data: memberDetail });
+      if (url.pathname === "/api/v1/admin/reports" || url.pathname === "/api/v1/admin/payouts") {
+        return jsonResponse({ success: false, error: { code: "UNAVAILABLE", message: "History unavailable" } }, 503);
+      }
+      if (url.pathname === "/api/v1/admin/finance/ledger/transactions") return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
+      return jsonResponse({ success: false, error: { code: "UNAVAILABLE", message: "Finance unavailable" } }, 503);
+    }) as typeof globalThis.fetch;
+
+    const model = await loadMemberDetailFromApi("68000000");
+
+    expect(model?.reports).toEqual([]);
+    expect(model?.reportsComplete).toBe(false);
+    expect(model?.reportsError).toContain("History unavailable");
+    expect(model?.payouts).toBeNull();
+    expect(model?.payoutsComplete).toBe(false);
+    expect(model?.payoutsError).toContain("History unavailable");
+  });
+
+  it("keeps partial and invalid history reads from becoming verified empty results", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    globalThis.fetch = (async (input, init) => {
+      const request = new Request(input, init);
+      const url = new URL(request.url);
+      if (url.pathname === "/api/v1/admin/members/68000000") return jsonResponse({ success: true, data: memberDetail });
+      if (url.pathname === "/api/v1/admin/reports") {
+        const status = url.searchParams.get("status");
+        const cursor = url.searchParams.get("cursor");
+        const counts = reportCounts({ REPORT_CASE_PENDING: 2, REPORT_CASE_DISMISSED: 1 });
+        if (status === "REPORT_CASE_PENDING") {
+          if (cursor) return jsonResponse({ success: false, error: { code: "UNAVAILABLE", message: "Reports unavailable" } }, 503);
+          return jsonResponse({ success: true, data: reportPage(status, [reportRecord("report-partial", status)], "report-next", counts) });
+        }
+        if (status === "REPORT_CASE_DISMISSED") return jsonResponse({ success: true, data: reportPage(status, [reportRecord("invalid-report", "REPORT_CASE_HIDDEN")], null, counts) });
+        return jsonResponse({ success: true, data: reportPage(status ?? "", [], null, counts) });
+      }
+      if (url.pathname === "/api/v1/admin/payouts") {
+        const status = url.searchParams.get("status");
+        const cursor = url.searchParams.get("cursor");
+        if (status === "SUCCEEDED") {
+          if (cursor) return jsonResponse({ success: false, error: { code: "UNAVAILABLE", message: "Payouts unavailable" } }, 503);
+          return jsonResponse({ success: true, data: { items: [payoutRecord("payout-partial", status)], nextCursor: "payout-next" } });
+        }
+        if (status === "FAILED") return jsonResponse({ success: true, data: { items: [payoutRecord("invalid-payout", "CANCELLED")], nextCursor: null } });
+        return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
+      }
+      if (url.pathname === "/api/v1/admin/finance/ledger/transactions") return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
+      return jsonResponse({ success: false, error: { code: "UNAVAILABLE", message: "Finance unavailable" } }, 503);
+    }) as typeof globalThis.fetch;
+
+    const model = await loadMemberDetailFromApi("68000000");
+
+    expect(model?.reports.map((report) => report.id)).toContain("report-partial");
+    expect(model?.reportsComplete).toBe(false);
+    expect(model?.reportsTotalCount).toBe(3);
+    expect(model?.reportsError).toContain("invalid");
+    expect(model?.payouts?.map((payout) => payout.id)).toContain("payout-partial");
+    expect(model?.payoutsComplete).toBe(false);
+    expect(model?.payoutsError).toContain("ข้อมูล Payout ไม่ตรงตามสัญญา API");
+  });
+
+  it("rejects duplicate records across Member history pages", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    globalThis.fetch = (async (input, init) => {
+      const request = new Request(input, init);
+      const url = new URL(request.url);
+      if (url.pathname === "/api/v1/admin/members/68000000") return jsonResponse({ success: true, data: memberDetail });
+      if (url.pathname === "/api/v1/admin/reports") {
+        const status = url.searchParams.get("status") ?? "";
+        const counts = reportCounts({ REPORT_CASE_PENDING: 2 });
+        return jsonResponse({
+          success: true,
+          data: status === "REPORT_CASE_PENDING"
+            ? reportPage(status, [reportRecord("duplicate-report", status as ReportStatus)], url.searchParams.has("cursor") ? null : "report-next", counts)
+            : reportPage(status, [], null, counts),
+        });
+      }
+      if (url.pathname === "/api/v1/admin/payouts") {
+        const status = url.searchParams.get("status") ?? "";
+        return jsonResponse({
+          success: true,
+          data: status === "SUCCEEDED"
+            ? { items: [payoutRecord("duplicate-payout", status as (typeof payoutStatuses)[number])], nextCursor: url.searchParams.has("cursor") ? null : "payout-next" }
+            : { items: [], nextCursor: null },
+        });
+      }
+      if (url.pathname === "/api/v1/admin/finance/ledger/transactions") return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
+      return jsonResponse({ success: false, error: { code: "UNAVAILABLE", message: "Finance unavailable" } }, 503);
+    }) as typeof globalThis.fetch;
+
+    const model = await loadMemberDetailFromApi("68000000");
+
+    expect(model?.reports.map((report) => report.id)).toEqual(["duplicate-report"]);
+    expect(model?.reportsComplete).toBe(false);
+    expect(model?.reportsTotalCount).toBe(2);
+    expect(model?.reportsError).toContain("invalid");
+    expect(model?.payouts?.map((payout) => payout.id)).toEqual(["duplicate-payout"]);
+    expect(model?.payoutsComplete).toBe(false);
+    expect(model?.payoutsError).toBe("ข้อมูล Payout ไม่ตรงตามสัญญา API");
   });
 });

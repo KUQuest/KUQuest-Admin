@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
 import type { AdminLedgerTransaction, AdminMemberDetail } from "../../src/features/admin/api/admin-api";
+import { pendingPayoutApiFixture } from "../fixtures/admin-payout-api-fixtures";
 import {
   memberModelFromApi,
   memberTabFrom,
@@ -84,7 +85,12 @@ describe("Member route model", () => {
     expect(model.walletStatus).toBe("FROZEN");
     expect(model.walletBalances).toMatchObject({ spendingBalanceSatang: 150 });
     expect(model.confirmedViolationCount).toBeNull();
-    expect(model.reportsSubmittedError).toContain("not provided by the Admin API");
+    expect(model.reportsSubmitted).toBeNull();
+    expect(model.reportsSubmittedError).toBe("Reports submitted are not available.");
+    expect(model.reportsComplete).toBe(false);
+    expect(model.payouts).toBeNull();
+    expect(model.reviews).toBeNull();
+    expect(model.quests).toBeNull();
   });
 
   it("keeps the full Ledger balance when filtering displayed rows", () => {
@@ -96,5 +102,29 @@ describe("Member route model", () => {
     const rows = walletStatementRows(model, { eventType: "PAYOUT", from: "2026-09-01", to: "2026-09-01" }, 25);
     expect(rows.map((row) => row.transaction.id)).toEqual(["ledger-old"]);
     expect(rows[0]?.resultingWalletBalanceSatang).toBe(100);
+  });
+
+  it("compares complete Payout history with the successful Payout count", () => {
+    const payout = { ...pendingPayoutApiFixture, payoutStatus: "SUCCEEDED" as const };
+    const matchingDetail = memberDetail();
+    matchingDetail.stats.payoutsCount = 1;
+    const matching = memberModelFromApi(matchingDetail, null, [], [], {
+      payouts: [payout],
+      payoutsComplete: true,
+    });
+    const conflictingDetail = memberDetail();
+    conflictingDetail.stats.payoutsCount = 0;
+    const conflict = memberModelFromApi(conflictingDetail, null, [], [], {
+      payouts: [payout],
+      payoutsComplete: true,
+    });
+    const partial = memberModelFromApi(memberDetail(), null, [], [], {
+      payouts: [payout],
+      payoutsComplete: false,
+    });
+
+    expect(matching.payoutSuccessfulCountMatchesHistory).toBe(true);
+    expect(conflict.payoutSuccessfulCountMatchesHistory).toBe(false);
+    expect(partial.payoutSuccessfulCountMatchesHistory).toBeNull();
   });
 });
