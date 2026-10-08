@@ -150,18 +150,31 @@ export const adminMemberPenaltyResultSchema = z.enum([
 export type AdminMemberPenaltyResult = z.infer<typeof adminMemberPenaltyResultSchema>;
 
 export const adminMemberPenaltyHistoryItemSchema = z.object({
+  recordId: z.string().uuid(),
   ladder: z.enum(["MISCONDUCT", "REVIEW"]),
-  source: z.enum(["REPORT_CASE", "CONDUCT_REPORT", "REVIEW_AVERAGE"]),
+  source: z.enum(["REPORT_CASE", "CONDUCT_REPORT", "REVIEW_AVERAGE", "ADMIN"]),
   sourceDisplayId: z.string().regex(/^(RPT|CND|QST)-[0-9]{6,}$/).nullable(),
   sequenceNumber: z.number().int().positive(),
   result: adminMemberPenaltyResultSchema,
   actor: z.object({ type: z.enum(["ADMIN", "SYSTEM"]), displayName: z.string() }).passthrough(),
   reasonCode: z.string(),
+  adminNote: z.string().nullable(),
   createdAt: dateTime,
   reviewRating: z.number().int().min(1).max(5).nullable(),
+  isEffective: z.boolean(),
   isEffectiveActiveMisconductPenalty: z.boolean(),
   reversal: z.object({
     relation: z.enum(["REVERSAL_OF", "REVERSED_BY"]),
+    sequenceNumber: z.number().int().positive(),
+    result: adminMemberPenaltyResultSchema,
+    createdAt: dateTime,
+  }).passthrough().nullable(),
+  recalculatedFrom: z.object({
+    sequenceNumber: z.number().int().positive(),
+    result: adminMemberPenaltyResultSchema,
+    createdAt: dateTime,
+  }).passthrough().nullable(),
+  replacedBy: z.object({
     sequenceNumber: z.number().int().positive(),
     result: adminMemberPenaltyResultSchema,
     createdAt: dateTime,
@@ -174,6 +187,7 @@ export const adminMemberPenaltyHistorySchema = z.object({
   confirmedMisconductCount: totalCount,
   effectiveActiveMisconductPenaltyCount: totalCount,
   reviewLadderRecordCount: totalCount,
+  versionToken: totalCount,
   items: z.array(adminMemberPenaltyHistoryItemSchema),
   totalCount,
   nextCursor: cursor,

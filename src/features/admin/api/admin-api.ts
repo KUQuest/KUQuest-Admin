@@ -2,6 +2,7 @@ import { createAdminCoreApi } from "./admin-api-core";
 import { createAdminDisputeApi } from "./admin-api-dispute";
 import { createAdminMemberWalletApi } from "./admin-api-member-wallet";
 import { createAdminMemberProfileApi } from "./admin-api-member-profile";
+import { createAdminMemberPenaltyApi } from "./admin-api-member-penalty";
 import { createAdminPayoutApi } from "./admin-api-payout";
 import { createAdminQuestApi } from "./admin-api-quest";
 import { createAdminReportApi } from "./admin-api-report";
@@ -17,6 +18,7 @@ export const adminApi = {
   ...createAdminReportApi(),
   ...createAdminMemberWalletApi(),
   ...createAdminMemberProfileApi(),
+  ...createAdminMemberPenaltyApi(),
 };
 
 export type AdminReadPort = Pick<
@@ -76,6 +78,8 @@ export type AdminCommandPort = Pick<
   | "decideConductReport"
   | "setWalletStatus"
   | "rebuildWalletProjection"
+  | "addMemberPenalty"
+  | "removeMemberPenalty"
 >;
 
 // These typed ports are the only application boundary required when the live

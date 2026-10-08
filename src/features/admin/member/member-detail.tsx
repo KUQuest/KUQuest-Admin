@@ -22,6 +22,7 @@ import { TOP_UP_BOARD_TABS } from "../finance/top-ups-board-model";
 import { statusBadgeClass } from "../status-badge";
 import { formatWalletMovementAmount, isWalletCompartmentAccountType, walletCompartmentLabel, walletEventTypeLabel } from "../wallet/wallet-model";
 import { formatWalletStatementDateInput, parseWalletStatementDateInput } from "./member-wallet-model";
+import { MemberPenaltyActions } from "./member-penalty-actions";
 import {
   currentWalletBalance,
   formatMoneySatang,
@@ -910,24 +911,15 @@ function MemberModerationTimeline({ model, translateText }: { model: MemberModel
           <span className="mt-1.5 block text-[15px] leading-[1.45] text-admin-muted">{formatAdminTimestamp(entry.createdAt, "Asia/Bangkok")} · {translateText("by")} {entry.actor.displayName}</span>
           <span className="mt-1 block text-[15px] leading-[1.45] text-admin-muted">{historyLabel(entry.ladder)} · {historyLabel(entry.source)}{entry.sourceDisplayId ? ` · ${entry.sourceDisplayId}` : ""} · {translateText("Sequence")} {entry.sequenceNumber}</span>
           <span className="mt-1 block text-[15px] leading-[1.45] text-admin-muted">{historyLabel(entry.reasonCode)}{entry.reviewRating === null ? "" : ` · ${translateText("Rating")} ${entry.reviewRating}`}</span>
+          {entry.adminNote ? <span className="mt-1 block text-[15px] leading-[1.45] text-admin-muted">{translateText("Admin note:")} {entry.adminNote}</span> : null}
           {entry.reversal ? <span className="mt-1 block text-[15px] leading-[1.45] text-admin-muted">{historyLabel(entry.reversal.relation)} · {translateText("Sequence")} {entry.reversal.sequenceNumber} · {formatAdminTimestamp(entry.reversal.createdAt, "Asia/Bangkok")}</span> : null}
+          {entry.recalculatedFrom ? <span className="mt-1 block text-[15px] leading-[1.45] text-admin-muted">{translateText("Recalculated from Penalty History sequence")} {entry.recalculatedFrom.sequenceNumber} · {historyLabel(entry.recalculatedFrom.result)}</span> : null}
+          {entry.replacedBy ? <span className="mt-1 block text-[15px] leading-[1.45] text-admin-muted">{translateText("Penalty History sequence was recalculated as")} {entry.replacedBy.sequenceNumber} · {historyLabel(entry.replacedBy.result)}</span> : null}
         </article>)}
       </div> : null}
       {state ? <p className="audit-note" role={model.penaltyHistory.error ? "alert" : undefined}>{state}</p> : null}
       {items.length && model.penaltyHistory.error ? <p className="audit-note" role="alert">{translateText(model.penaltyHistory.error.message)}</p> : null}
     </>
-  );
-}
-
-function MemberPenaltyActions({ translateText }: { translateText: (value: string) => string }) {
-  return (
-    <div className="mt-4 grid gap-3 border-t border-admin-border pt-4">
-      <p className="audit-note">{translateText("Member penalty commands are not available.")}</p>
-      <div className="flex flex-wrap gap-2">
-        <Button disabled variant="primary">{translateText("Record violation")}</Button>
-        <Button disabled variant="outline">{translateText("Remove penalty")}</Button>
-      </div>
-    </div>
   );
 }
 
@@ -942,7 +934,7 @@ function PenaltyHistoryTab({ model, translateText }: { model: MemberModel; trans
           </div>
           <span className={adminRecordCount}>{collectionCountLabel(model.penaltyHistory, translateText, "Moderation history is not available.")}</span>
         </CardHeader>
-        <MemberPenaltyActions translateText={translateText} />
+        <MemberPenaltyActions model={model} translateText={translateText} />
         <MemberModerationTimeline model={model} translateText={translateText} />
       </div>
     </Card>
@@ -1013,7 +1005,7 @@ function DrawerContent({ model, translateText }: { model: MemberModel; translate
       </Card>
       <Card as="section" className={`${adminRecordSection} member-drawer-moderation-history`} data-member-drawer-moderation-history>
         <CardHeader flush className={`${adminRecordHeader} user-panel-heading`}><h2 className={adminRecordHeading}>{translateText("Moderation History")}</h2><span className={adminRecordCount}>{collectionCountLabel(model.penaltyHistory, translateText, "Moderation history is not available.")}</span></CardHeader>
-        <MemberPenaltyActions translateText={translateText} />
+        <MemberPenaltyActions model={model} translateText={translateText} />
         <MemberModerationTimeline model={model} translateText={translateText} />
       </Card>
       <Card as="section" className={adminRecordSection}>

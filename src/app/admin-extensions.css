@@ -60,6 +60,13 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
   overflow-y: auto;
 }
 
+.admin-modal-layer > dialog.member-penalty-command-dialog > .member-penalty-command-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: inherit;
+}
+
 .admin-modal-layer > dialog.member-action-dialog .dialog-actions {
   flex: 0 0 auto;
 }

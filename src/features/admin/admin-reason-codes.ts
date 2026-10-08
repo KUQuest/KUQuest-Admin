@@ -1,6 +1,8 @@
 import type {
   AdminDisputeDismissReasonCode,
   AdminDisputeResolveReasonCode,
+  AdminMemberPenaltyAddReasonCode,
+  AdminMemberPenaltyRemoveReasonCode,
   ConductReportDismissReasonCode,
   ConductReportUpholdReasonCode,
   PayoutApprovalReasonCode,
@@ -12,6 +14,21 @@ export const ADMIN_REVIEW_REASON_CODE_OPTIONS = [
   { value: "POLICY_REVIEW", label: "Policy review" },
   { value: "SAFETY_REVIEW", label: "Safety review" },
 ] as const;
+
+export const MEMBER_PENALTY_REASON_CODE_OPTIONS = {
+  add: [
+    { value: "MEMBER_PENALTY_VIOLATION_CONFIRMED", label: "Violation confirmed" },
+    { value: "MEMBER_PENALTY_REPEATED_VIOLATION_CONFIRMED", label: "Repeated violation confirmed" },
+    { value: "MEMBER_PENALTY_SAFETY_RISK_CONFIRMED", label: "Safety risk confirmed" },
+    { value: "MEMBER_PENALTY_OTHER_VIOLATION_CONFIRMED", label: "Other confirmed violation" },
+  ] satisfies readonly { value: AdminMemberPenaltyAddReasonCode; label: string }[],
+  remove: [
+    { value: "MEMBER_PENALTY_ADMIN_ERROR", label: "Admin error" },
+    { value: "MEMBER_PENALTY_NEW_EVIDENCE", label: "New evidence" },
+    { value: "MEMBER_PENALTY_POLICY_REVIEW", label: "Policy review" },
+    { value: "MEMBER_PENALTY_OTHER_CORRECTION", label: "Other correction" },
+  ] satisfies readonly { value: AdminMemberPenaltyRemoveReasonCode; label: string }[],
+} as const;
 
 export const DISPUTE_CASE_REASON_CODE_OPTIONS = {
   DISPUTE_CASE_DISMISSED: [

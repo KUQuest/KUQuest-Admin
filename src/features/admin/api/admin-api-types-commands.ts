@@ -12,6 +12,54 @@ export type AdminCommandOptions = {
   expectedVersion?: number;
 };
 
+export type AdminMemberPenaltyAddReasonCode =
+  | "MEMBER_PENALTY_VIOLATION_CONFIRMED"
+  | "MEMBER_PENALTY_REPEATED_VIOLATION_CONFIRMED"
+  | "MEMBER_PENALTY_SAFETY_RISK_CONFIRMED"
+  | "MEMBER_PENALTY_OTHER_VIOLATION_CONFIRMED";
+
+export type AdminMemberPenaltyRemoveReasonCode =
+  | "MEMBER_PENALTY_ADMIN_ERROR"
+  | "MEMBER_PENALTY_NEW_EVIDENCE"
+  | "MEMBER_PENALTY_POLICY_REVIEW"
+  | "MEMBER_PENALTY_OTHER_CORRECTION";
+
+export type AdminMemberPenaltyAddResult =
+  | "PENALTY_RED_FLAG"
+  | "PENALTY_TEMPORARY_BAN_7_DAYS"
+  | "PENALTY_PERMANENT_BAN";
+
+export type AdminMemberPenaltyAddCommand = {
+  idempotencyKey: string;
+  expectedVersionToken: number;
+  result?: AdminMemberPenaltyAddResult;
+  reasonCode: AdminMemberPenaltyAddReasonCode;
+  adminNote?: string;
+};
+
+export type AdminMemberPenaltyRemoveCommand = {
+  idempotencyKey: string;
+  expectedVersionToken: number;
+  recordId: string;
+  reasonCode: AdminMemberPenaltyRemoveReasonCode;
+  adminNote?: string;
+};
+
+export type AdminMemberPenaltyCommandResult = {
+  command: {
+    kind: "ADD" | "REMOVE";
+    outcome: "ADDED" | "EXEMPTED" | "REMOVED";
+    recordId: string;
+    commandRecordId: string;
+    result:
+      | "PENALTY_EXEMPT"
+      | AdminMemberPenaltyAddResult
+      | "PENALTY_TEMPORARY_BAN_1_MONTH"
+      | "PENALTY_REVERSAL";
+    versionToken: number;
+  };
+};
+
 export type AdminReviewReasonCode = "POLICY_REVIEW" | "SAFETY_REVIEW";
 
 export type QuestHideCommand = AdminCommandOptions & {

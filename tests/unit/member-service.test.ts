@@ -545,6 +545,7 @@ describe("Member detail service", () => {
       quest: { displayId: "QST-000001", title: "Completed Quest", questStatus: "QUEST_COMPLETED" },
     });
     const penalty = (reversed: boolean) => ({
+      recordId: reversed ? "a7dcd4ac-3e29-4a52-9d5c-9b6ed4b75c91" : "c4a96ba5-d696-4c69-ad29-ae850d3811ec",
       ladder: "MISCONDUCT",
       source: "REPORT_CASE",
       sourceDisplayId: "RPT-000001",
@@ -552,12 +553,16 @@ describe("Member detail service", () => {
       result: reversed ? "PENALTY_REVERSAL" : "PENALTY_RED_FLAG",
       actor: { type: "ADMIN", displayName: "Admin One" },
       reasonCode: "POLICY_REVIEW",
+      adminNote: null,
       createdAt: reversed ? "2026-09-12T08:30:00.000Z" : "2026-09-11T08:30:00.000Z",
       reviewRating: null,
+      isEffective: !reversed,
       isEffectiveActiveMisconductPenalty: !reversed,
       reversal: reversed
         ? { relation: "REVERSAL_OF", sequenceNumber: 1, result: "PENALTY_RED_FLAG", createdAt: "2026-09-11T08:30:00.000Z" }
         : { relation: "REVERSED_BY", sequenceNumber: 1, result: "PENALTY_REVERSAL", createdAt: "2026-09-12T08:30:00.000Z" },
+      recalculatedFrom: null,
+      replacedBy: null,
     });
 
     globalThis.fetch = (async (input, init) => {
@@ -617,6 +622,7 @@ describe("Member detail service", () => {
           confirmedMisconductCount: 1,
           effectiveActiveMisconductPenaltyCount: 0,
           reviewLadderRecordCount: 0,
+          versionToken: 2,
           items: [penalty(Boolean(cursor))],
           totalCount: 2,
           nextCursor: cursor ? null : "penalty-next",
@@ -665,6 +671,7 @@ describe("Member detail service", () => {
       confirmedMisconductCount: 1,
       effectiveActiveMisconductPenaltyCount: 0,
       reviewLadderRecordCount: 0,
+      versionToken: 2,
     });
     expect(model?.penaltyHistory?.items?.map((item) => item.sequenceNumber)).toEqual([1, 1]);
     expect(model?.penaltyHistory?.items?.map((item) => item.result)).toEqual(["PENALTY_RED_FLAG", "PENALTY_REVERSAL"]);
@@ -741,6 +748,7 @@ describe("Member detail service", () => {
           confirmedMisconductCount: 0,
           effectiveActiveMisconductPenaltyCount: 0,
           reviewLadderRecordCount: 0,
+          versionToken: 0,
           items: [],
           totalCount: 0,
           nextCursor: null,
