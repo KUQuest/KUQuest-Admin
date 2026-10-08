@@ -33,7 +33,12 @@ import { questStatusClass } from "../quest/quest-model";
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { RecordStatusBar } from "../../../components/admin/record-status-bar";
 import { ModerationCaseWorkspace, ModerationHistoryPanel } from "../moderation-case/moderation-case-workspace";
-import { hasModerationHistory } from "../moderation-case/moderation-case-context";
+import {
+  hasModerationHistory,
+  moderationActionLabel,
+  moderationMemberStatusLabel,
+} from "../moderation-case/moderation-case-context";
+import { statusBadgeClass } from "../status-badge";
 import { AdminDecisionActivitySection } from "../activity-log/admin-decision-activity-section";
 import { activityLogValueLabel } from "../activity-log/activity-log-model";
 import { newConductReportIdempotencyKey } from "./conduct-report-service";
@@ -272,13 +277,14 @@ function ConductModerationContext({ model, translateText }: { model: ConductRepo
   const summary = model.moderationHistory;
   const fallback = translateText("Not provided.");
   const actionFallback = translateText(summary.memberRecordAvailable ? "None recorded." : "Not provided.");
-  const actionText = summary.previousActions.length ? summary.previousActions.map((action) => translateText(action)).join(" · ") : actionFallback;
+  const actionText = summary.previousActions.length ? summary.previousActions.map((action) => translateText(moderationActionLabel(action))).join(" · ") : actionFallback;
+  const memberStatus = moderationMemberStatusLabel(summary.currentMemberStatus);
 
   return (
     <Card as="section" className={adminRecordSection}>
       <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Member moderation context")}</h2>{!hasModerationHistory(summary) && <span className={adminRecordCount}>{translateText("Partial")}</span>}</CardHeader>
       <AdminOverviewMeta className="moderation-case-history-grid !grid-cols-2 max-[600px]:!grid-cols-1">
-        <div><dt>{translateText("Current Member status")}</dt><dd>{summary.currentMemberStatus ? translateText(summary.currentMemberStatus) : fallback}</dd></div>
+        <div><dt>{translateText("Current Member status")}</dt><dd>{memberStatus ? <span className={`badge ${statusBadgeClass(memberStatus)}`}>{translateText(memberStatus)}</span> : fallback}</dd></div>
         <div><dt>{translateText("Previous reports received")}</dt><dd>{summary.previousReportCount ?? fallback}</dd></div>
         <div><dt>{translateText("Confirmed previous violations")}</dt><dd>{summary.confirmedViolationCount ?? fallback}</dd></div>
       </AdminOverviewMeta>
