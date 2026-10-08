@@ -46,8 +46,8 @@ const WALLET_ACCOUNT_TYPES: Record<string, true> = {
   RESERVED_FOR_PAYOUTS: true,
 };
 
-function numberValue(value: unknown, fallback = 0): number {
-  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+export function isNonnegativeSafeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 }
 
 export function balancesFromWallet(wallet: {
@@ -57,11 +57,17 @@ export function balancesFromWallet(wallet: {
   reservedForPayoutsSatang?: number;
 } | null | undefined): MemberWalletBalances | null {
   if (!wallet) return null;
+  if (
+    !isNonnegativeSafeInteger(wallet.spendingBalanceSatang)
+    || !isNonnegativeSafeInteger(wallet.earningsBalanceSatang)
+    || !isNonnegativeSafeInteger(wallet.fundingReservedSatang)
+    || !isNonnegativeSafeInteger(wallet.reservedForPayoutsSatang)
+  ) return null;
   return {
-    spendingBalanceSatang: numberValue(wallet.spendingBalanceSatang),
-    earningsBalanceSatang: numberValue(wallet.earningsBalanceSatang),
-    fundingReservedSatang: numberValue(wallet.fundingReservedSatang),
-    reservedForPayoutsSatang: numberValue(wallet.reservedForPayoutsSatang),
+    spendingBalanceSatang: wallet.spendingBalanceSatang,
+    earningsBalanceSatang: wallet.earningsBalanceSatang,
+    fundingReservedSatang: wallet.fundingReservedSatang,
+    reservedForPayoutsSatang: wallet.reservedForPayoutsSatang,
   };
 }
 

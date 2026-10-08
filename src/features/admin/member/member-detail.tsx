@@ -28,6 +28,7 @@ import {
   currentWalletBalance,
   formatMoneySatang,
   formatWalletDate,
+  memberWalletReadStateMessage,
   memberStatusClass,
   memberStatusText,
   memberTabHref,
@@ -99,12 +100,23 @@ function walletBadge(model: MemberModel, translateText: (value: string) => strin
 }
 
 function latestWalletTransactionAt(model: MemberModel): string | null {
-  return model.walletStatement
-    .filter((transaction) => transaction.sealedAt)
-    .reduce<string | null>((latest, transaction) => {
-      if (!latest || Date.parse(transaction.createdAt) > Date.parse(latest)) return transaction.createdAt;
-      return latest;
-    }, null);
+  if (model.walletState !== "available" || model.walletStatementState !== "complete") return null;
+  return walletStatementRows(model, { eventType: "", from: "", to: "" }, model.walletStatement.length)[0]?.transaction.createdAt ?? null;
+}
+
+function latestWalletTransactionDateLabel(model: MemberModel, translateText: (value: string) => string): string {
+  const stateMessage = memberWalletReadStateMessage(model, "latest-date");
+  if (stateMessage) return translateText(stateMessage);
+  const latest = latestWalletTransactionAt(model);
+  return latest ? formatWalletDate(latest) : translateText("No Ledger Transactions yet.");
+}
+
+function walletBalanceLabel(model: MemberModel, translateText: (value: string) => string): string {
+  const stateMessage = memberWalletReadStateMessage(model, "wallet");
+  if (stateMessage) return translateText(stateMessage);
+  if (!model.walletBalances) return translateText("Wallet data is not verified.");
+  if (model.walletProjectionMatchesLedger === false) return translateText("Wallet balance does not match the Ledger.");
+  return formatMoneySatang(currentWalletBalance(model.walletBalances));
 }
 
 function MemberSummary({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
@@ -135,18 +147,17 @@ function MemberSummary({ model, translateText }: { model: MemberModel; translate
 }
 
 function MemberAccountInfo({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
-  const latestTransactionAt = latestWalletTransactionAt(model);
   const facts: Array<[string, React.ReactNode]> = [
     ["Member status", statusBadge(model, translateText)],
     ["Wallet status", walletBadge(model, translateText)],
-    ["Current Wallet Balance", model.walletBalances ? formatMoneySatang(currentWalletBalance(model.walletBalances)) : "—"],
-    ["Latest Wallet Transaction Date", latestTransactionAt ? formatWalletDate(latestTransactionAt) : "—"],
+    ["Current Wallet Balance", walletBalanceLabel(model, translateText)],
+    ["Latest Wallet Transaction Date", latestWalletTransactionDateLabel(model, translateText)],
     ["Email", model.email],
     ["Created", model.createdAt],
     ["Role", model.occupation ? translateText(model.occupation) : translateText("Student")],
     ["Faculty", model.faculty || translateText("Not recorded")],
   ];
-  return <Card as="section" className="user-detail-panel p-[16px_18px]"><CardHeader flush><h2>{translateText("Account Information")}</h2></CardHeader><dl className="user-facts m-0 grid gap-0">{facts.map(([label, value]) => <div className="flex justify-between gap-3 border-t border-admin-border py-2 first:border-t-0 first:pt-0" key={label}><dt className="text-sm text-admin-muted">{translateText(label)}</dt><dd className="m-0 text-right text-sm font-semibold">{value}</dd></div>)}</dl></Card>;
+  return <Card as="section" className="user-detail-panel p-[16px_18px]"><CardHeader flush><h2>{translateText("Account Information")}</h2></CardHeader><dl className="user-facts m-0 grid gap-0">{facts.map(([label, value]) => <div className="flex justify-between gap-3 border-t border-admin-border py-2 first:border-t-0 first:pt-0" key={label}><dt className="text-sm text-admin-muted">{translateText(label)}</dt><dd className="m-0 text-right text-sm font-semibold">{value}</dd></div>)}</dl>{model.walletSource === "member-detail" ? <p className="audit-note">{translateText("Wallet source: Member detail.")}</p> : null}{model.apiError ? <p className="audit-note" role="alert">{translateText(model.apiError)}</p> : null}</Card>;
 }
 
 function MemberModerationSummary({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
@@ -448,7 +459,12 @@ function WalletStatementTab({ model, translateText }: { model: MemberModel; tran
   const [dateInputError, setDateInputError] = useState("");
   const [visibleCount, setVisibleCount] = useState(25);
   const filteredRows = walletStatementRows(model, filters, model.walletStatement.length);
+  const allRows = walletStatementRows(model, { eventType: "", from: "", to: "" }, model.walletStatement.length);
   const rows = filteredRows.slice(0, visibleCount);
+  const statementReady = model.walletState === "available" && model.walletStatementState === "complete";
+  const statementMessage = memberWalletReadStateMessage(model, "statement")
+    ?? model.walletStatementError
+    ?? "Wallet Statement is not verified.";
   useEffect(() => {
     setVisibleCount(25);
     setFilters({ eventType: "", from: "", to: "" });
@@ -486,14 +502,6 @@ function WalletStatementTab({ model, translateText }: { model: MemberModel; tran
     });
     setVisibleCount(25);
   };
-  if (model.walletStatementError) {
-    return (
-      <Card as="section" className="user-detail-panel user-tab-panel col-span-full min-w-0 p-[16px_18px]" data-user-wallet-statement>
-        <CardHeader flush><h2>{translateText("Wallet Statement")}</h2></CardHeader>
-        <p className="audit-note">{translateText(model.walletStatementError)}</p>
-      </Card>
-    );
-  }
   return (
     <Card as="section" className="user-detail-panel user-tab-panel col-span-full min-w-0 p-[16px_18px]" data-user-wallet-statement>
       <CardHeader flush className="user-panel-heading">
@@ -502,14 +510,18 @@ function WalletStatementTab({ model, translateText }: { model: MemberModel; tran
           <p>{translateText("Committed and sealed Ledger Transactions affecting this Wallet.")}</p>
         </div>
       </CardHeader>
-      {model.walletBalances ? (
+      {model.walletProjectionMatchesLedger === false ? <p className="audit-note">{translateText("Wallet balance does not match the Ledger.")}</p> : null}
+      {model.walletSource === "member-detail" ? <p className="audit-note">{translateText("Wallet source: Member detail.")}</p> : null}
+      {model.apiError ? <p className="audit-note" role="alert">{translateText(model.apiError)}</p> : null}
+      {model.walletState === "available" && model.walletBalances ? (
         <div className="wallet-statement-balance-grid mb-3.5 grid grid-cols-4 gap-2.5 max-[720px]:grid-cols-2 max-[420px]:grid-cols-1">
           <div className="wallet-statement-balance grid min-w-0 gap-[3px] rounded-admin-sm border border-admin-border bg-admin-soft p-2.5"><span className="overflow-hidden text-ellipsis whitespace-nowrap text-[15px] font-semibold leading-[1.4] text-admin-muted">{translateText("Spending Balance")}</span><strong className="text-[17px] leading-[1.4] [font-variant-numeric:tabular-nums]">{formatMoneySatang(model.walletBalances.spendingBalanceSatang)}</strong></div>
           <div className="wallet-statement-balance grid min-w-0 gap-[3px] rounded-admin-sm border border-admin-border bg-admin-soft p-2.5"><span className="overflow-hidden text-ellipsis whitespace-nowrap text-[15px] font-semibold leading-[1.4] text-admin-muted">{translateText("Earnings Balance")}</span><strong className="text-[17px] leading-[1.4] [font-variant-numeric:tabular-nums]">{formatMoneySatang(model.walletBalances.earningsBalanceSatang)}</strong></div>
           <div className="wallet-statement-balance grid min-w-0 gap-[3px] rounded-admin-sm border border-admin-border bg-admin-soft p-2.5"><span className="overflow-hidden text-ellipsis whitespace-nowrap text-[15px] font-semibold leading-[1.4] text-admin-muted">{translateText("Funding Reserved")}</span><strong className="text-[17px] leading-[1.4] [font-variant-numeric:tabular-nums]">{formatMoneySatang(model.walletBalances.fundingReservedSatang)}</strong></div>
           <div className="wallet-statement-balance grid min-w-0 gap-[3px] rounded-admin-sm border border-admin-border bg-admin-soft p-2.5"><span className="overflow-hidden text-ellipsis whitespace-nowrap text-[15px] font-semibold leading-[1.4] text-admin-muted">{translateText("Reserved For Payouts")}</span><strong className="text-[17px] leading-[1.4] [font-variant-numeric:tabular-nums]">{formatMoneySatang(model.walletBalances.reservedForPayoutsSatang)}</strong></div>
         </div>
-      ) : <p className="audit-note">{translateText("No Wallet is linked to this Member.")}</p>}
+      ) : null}
+      {statementReady ? <>
       <form className="wallet-statement-filters mb-3.5 grid grid-cols-[minmax(0,1.3fr)_repeat(2,minmax(130px,1fr))_auto] items-end gap-[9px] max-[720px]:grid-cols-2 max-[420px]:grid-cols-1" onSubmit={submit}>
         <label className="grid gap-1 text-[15px] font-semibold leading-[1.4] text-admin-muted max-[720px]:col-span-full max-[420px]:col-span-1">{translateText("Event type")}<select className="min-h-[35px] w-full rounded-[7px] border border-admin-border-strong bg-admin-surface px-2 text-admin-text" name="eventType" aria-label={translateText("Event type")} defaultValue=""><option value="">{translateText("All event types")}</option>{ADMIN_LEDGER_EVENT_TYPES.map((eventType) => <option key={eventType} value={eventType}>{translateText(walletEventTypeLabel(eventType))}</option>)}</select></label>
         <WalletStatementDateField name="from" label="From" value={dateInputValues.from} hasError={Boolean(dateInputError)} onChange={handleFromDateChange} translateText={translateText} />
@@ -530,14 +542,14 @@ function WalletStatementTab({ model, translateText }: { model: MemberModel; tran
                 <td><strong>{translateText(walletEventTypeLabel(row.transaction.eventType))}</strong><small className="mt-[3px] block text-admin-muted">{walletBusinessReferenceLabel(row.transaction.businessReference)}</small></td>
                 <td className="money">{formatMoneySatang(row.signedAmountSatang, true)}</td>
                 <td className="wallet-statement-movement">{row.movement.map((movement) => <span className="block" key={movement.accountType}>{translateText(walletCompartmentLabel(movement.accountType))}: {formatWalletMovementAmount(movement.amountSatang)}</span>)}</td>
-                <td className="money">{formatMoneySatang(row.resultingWalletBalanceSatang)}</td>
+                <td className="money">{model.walletProjectionMatchesLedger === false ? translateText("Wallet balance is not verified.") : formatMoneySatang(row.resultingWalletBalanceSatang)}</td>
               </tr>)}</tbody>
             </Table>
           </div>
         </div>
-      ) : <p className="audit-note">{translateText("No sealed Ledger Transactions match these filters.")}</p>}
-      {model.apiError && <p className="audit-note">{translateText(model.apiError)}</p>}
+      ) : <p className="audit-note">{translateText(allRows.length === 0 ? "No Ledger Transactions yet." : "No sealed Ledger Transactions match these filters.")}</p>}
       {filteredRows.length > rows.length && <Button variant="outline" type="button" onClick={() => setVisibleCount((count) => count + 25)}>{translateText("Load more")}</Button>}
+      </> : <p className="audit-note">{translateText(statementMessage)}</p>}
     </Card>
   );
 }
@@ -672,7 +684,6 @@ function DetailTabs({ model, activeTab, translateText }: { model: MemberModel; a
 }
 
 function DrawerContent({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
-  const latestTransactionAt = latestWalletTransactionAt(model);
   return (
     <div className="user-drawer-detail admin-drawer-content-flow grid min-w-0 content-start gap-[18px]">
       <Card as="section" className={`${adminRecordSection} member-drawer-overview`}>
@@ -694,7 +705,8 @@ function DrawerContent({ model, translateText }: { model: MemberModel; translate
       </Card>
       <Card as="section" className={adminRecordSection}>
         <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Wallet")}</h2></CardHeader>
-        <div className="user-context-list grid gap-3"><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Wallet Status")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{walletBadge(model, translateText)}</strong></div><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Current Wallet Balance")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{model.walletBalances ? formatMoneySatang(currentWalletBalance(model.walletBalances)) : "—"}</strong></div><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Latest Wallet Transaction Date")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{latestTransactionAt ? formatWalletDate(latestTransactionAt) : "—"}</strong></div></div>
+        <div className="user-context-list grid gap-3"><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Wallet Status")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{walletBadge(model, translateText)}</strong></div><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Current Wallet Balance")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{walletBalanceLabel(model, translateText)}</strong></div><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Latest Wallet Transaction Date")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{latestWalletTransactionDateLabel(model, translateText)}</strong></div></div>
+        {model.walletSource === "member-detail" ? <p className="audit-note">{translateText("Wallet source: Member detail.")}</p> : null}{model.apiError ? <p className="audit-note" role="alert">{translateText(model.apiError)}</p> : null}
       </Card>
       <Card as="section" className={adminRecordSection}>
         <CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Moderation")}</h2></CardHeader>

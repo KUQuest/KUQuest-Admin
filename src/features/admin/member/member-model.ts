@@ -21,7 +21,7 @@ import {
 import { statusBadgeClass } from "../status-badge";
 import { displayAdminId } from "../display-admin-id";
 import { conductReportRoutes, memberRoutes, reportRoutes } from "../admin-routes";
-import { balancesFromWallet, transactionFromApi } from "./member-wallet-model";
+import { balancesFromWallet, isNonnegativeSafeInteger, transactionFromApi } from "./member-wallet-model";
 import type {
   MemberWalletBalances,
   MemberWalletTransaction,
@@ -109,6 +109,11 @@ export type MemberPayoutEntry = {
   maskedDestinationValue: string | null;
 };
 
+export type MemberWalletState = "available" | "absent" | "unavailable" | "conflict" | "invalid" | "unverified";
+export type MemberWalletSource = "finance" | "member-detail" | "member-list" | null;
+export type MemberWalletStatementState = "complete" | "failed" | "invalid" | "incomplete" | "not-applicable";
+export type MemberWalletReadSurface = "wallet" | "latest-date" | "statement";
+
 export type MemberModel = {
   id: string;
   displayId: string | null;
@@ -131,6 +136,10 @@ export type MemberModel = {
   walletStatus: WalletStatus | null;
   walletBalances: MemberWalletBalances | null;
   walletProjectionMatchesLedger: boolean | null;
+  walletState: MemberWalletState;
+  walletSource: MemberWalletSource;
+  walletStatementState: MemberWalletStatementState;
+  walletStatementComplete: boolean;
   reviews: AdminReview[] | null;
   stats: MemberStats;
   quests: MemberQuestHistoryEntry[] | null;
@@ -166,9 +175,35 @@ function nullableText(value: unknown): string | null {
 }
 
 function nonnegativeInteger(value: unknown): number | null {
-  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0
-    ? value
-    : null;
+  return isNonnegativeSafeInteger(value) ? value : null;
+}
+
+export function memberWalletReadStateMessage(
+  model: Pick<MemberModel, "walletState" | "walletStatementState">,
+  surface: MemberWalletReadSurface,
+): string | null {
+  switch (model.walletState) {
+    case "absent": return "This Member has no Wallet.";
+    case "conflict": return "Wallet data conflicts.";
+    case "invalid": return "Wallet data conflicts with the API contract.";
+    case "unavailable": return "Wallet data is not available.";
+    case "unverified": return "Wallet data is not verified.";
+    case "available": break;
+  }
+  if (surface === "wallet") return null;
+  switch (model.walletStatementState) {
+    case "complete": return null;
+    case "failed": return surface === "latest-date"
+      ? "Could not read the latest Ledger Transaction date."
+      : "Could not read the Wallet Statement.";
+    case "invalid": return surface === "statement"
+      ? "Wallet Statement data does not match the API contract."
+      : "Wallet data conflicts with the API contract.";
+    case "incomplete":
+    case "not-applicable": return surface === "latest-date"
+      ? "Latest Wallet Transaction date is not verified."
+      : "Wallet Statement is not verified.";
+  }
 }
 
 function averageRatingValue(value: unknown): number | null {
@@ -250,13 +285,12 @@ function baseModelFromListItem(
     memberStatus: member.memberStatus ? memberStatusFor(member.memberStatus) : null,
     walletId: wallet?.id ?? null,
     walletStatus: wallet?.walletStatus ?? null,
-    walletBalances: wallet ? {
-      spendingBalanceSatang: wallet.spendingBalanceSatang,
-      earningsBalanceSatang: wallet.earningsBalanceSatang,
-      fundingReservedSatang: 0,
-      reservedForPayoutsSatang: 0,
-    } : null,
+    walletBalances: null,
     walletProjectionMatchesLedger: null,
+    walletState: "unverified",
+    walletSource: wallet ? "member-list" : null,
+    walletStatementState: "not-applicable",
+    walletStatementComplete: false,
     reviews: null,
     stats: {
       questsCreatedCount: null,
@@ -297,6 +331,11 @@ export function memberModelFromApi(
   ledger: readonly AdminLedgerTransaction[] = [],
   memberReads: {
     finance?: string | null;
+    wallet?: NonNullable<AdminMemberDetail["wallet"]> | NonNullable<AdminMemberFinance["wallet"]> | null;
+    walletState?: MemberWalletState;
+    walletSource?: MemberWalletSource;
+    walletStatementState?: MemberWalletStatementState;
+    walletStatementComplete?: boolean;
     reports?: string | null;
     reportsComplete?: boolean;
     reportsTotalCount?: number | null;
@@ -319,7 +358,9 @@ export function memberModelFromApi(
     } : null,
   };
   const base = baseModelFromListItem(listItem);
-  const wallet = finance?.wallet ?? detail.wallet;
+  const wallet = Object.hasOwn(memberReads, "wallet")
+    ? memberReads.wallet ?? null
+    : finance ? finance.wallet ?? null : detail.wallet;
   const stats = memberStatsFromApi(detail.stats);
   const payouts = memberReads.payouts
     ? memberReads.payouts.map((payout) => ({
@@ -341,6 +382,10 @@ export function memberModelFromApi(
     walletStatus: wallet ? walletStatusFor(wallet.walletStatus) : null,
     walletBalances: balancesFromWallet(wallet),
     walletProjectionMatchesLedger: wallet?.projectionMatchesLedger ?? null,
+    walletState: memberReads.walletState ?? (wallet ? "available" : "unverified"),
+    walletSource: memberReads.walletSource ?? (wallet ? (finance?.wallet ? "finance" : "member-detail") : null),
+    walletStatementState: memberReads.walletStatementState ?? "not-applicable",
+    walletStatementComplete: memberReads.walletStatementComplete ?? false,
     reports: reports.map((report) => reportFromApi(report, reportQuestDisplayIds)),
     reportsComplete: memberReads.reportsComplete ?? false,
     reportsTotalCount: memberReads.reportsTotalCount ?? null,
@@ -350,7 +395,7 @@ export function memberModelFromApi(
     payoutSuccessfulCountMatchesHistory: payoutSuccessfulCountMatchesHistory(stats, payouts, payoutsComplete),
     walletStatement: ledger.map(transactionFromApi),
     stats,
-    apiError: memberReads.finance ?? (finance ? null : "Member finance is not available from the Admin API."),
+    apiError: memberReads.finance ?? (finance ? null : "Member finance could not be loaded."),
     reportsError: memberReads.reports ?? null,
     walletStatementError: memberReads.ledger ?? null,
   };
@@ -365,7 +410,8 @@ export function memberStatusClass(model: MemberModel): string {
 }
 
 export function walletStatusText(model: MemberModel): string {
-  return model.walletStatus ? walletStatusLabel(model.walletStatus) : "No Wallet";
+  if (model.walletStatus) return walletStatusLabel(model.walletStatus);
+  return memberWalletReadStateMessage(model, "wallet") ?? "Wallet data is not verified.";
 }
 
 export function walletStatusClass(model: MemberModel): string {

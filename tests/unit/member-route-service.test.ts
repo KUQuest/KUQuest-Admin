@@ -98,6 +98,13 @@ function ledgerTransaction(id: string): AdminLedgerTransaction {
       walletId: "wallet-1",
       amountSatang: 100,
       member: null,
+    }, {
+      id: `${id}-platform-posting`,
+      accountId: "platform-account-1",
+      accountType: "PLATFORM_SUSPENSE",
+      walletId: null,
+      amountSatang: -100,
+      member: null,
     }],
   };
 }

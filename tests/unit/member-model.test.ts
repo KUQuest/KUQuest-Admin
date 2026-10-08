@@ -1,8 +1,9 @@
 import { describe, expect, it } from "bun:test";
 
-import type { AdminLedgerTransaction, AdminMemberDetail } from "../../src/features/admin/api/admin-api";
+import type { AdminLedgerTransaction, AdminMemberDetail, AdminMemberFinance, AdminMemberListItem } from "../../src/features/admin/api/admin-api";
 import { pendingPayoutApiFixture } from "../fixtures/admin-payout-api-fixtures";
 import {
+  memberListModelFromApi,
   memberModelFromApi,
   memberTabFrom,
   memberTabHref,
@@ -66,6 +67,13 @@ function ledgerTransaction(id: string, eventType: "PAYOUT" | "TOP_UP", createdAt
       walletId: "wallet-1",
       amountSatang,
       member: null,
+    }, {
+      id: `${id}-platform-posting`,
+      accountId: "platform-account",
+      accountType: "PLATFORM_SUSPENSE",
+      walletId: null,
+      amountSatang: -amountSatang,
+      member: null,
     }],
   };
 }
@@ -102,6 +110,47 @@ describe("Member route model", () => {
     const rows = walletStatementRows(model, { eventType: "PAYOUT", from: "2026-09-01", to: "2026-09-01" }, 25);
     expect(rows.map((row) => row.transaction.id)).toEqual(["ledger-old"]);
     expect(rows[0]?.resultingWalletBalanceSatang).toBe(100);
+  });
+
+  it("does not replace a successful null Finance Wallet with Member detail data", () => {
+    const finance: AdminMemberFinance = {
+      member: { userId: "member-api-1", firstName: "Ari", lastName: "Member", studentId: "68000001", email: "member@ku.th" },
+      wallet: null,
+      lifetimeStats: {
+        totalToppedUpSatang: 0,
+        totalEarnedFromQuestsSatang: 0,
+        totalSpentOnQuestsSatang: 0,
+        totalPaidOutSatang: 0,
+        totalEarningsConvertedSatang: 0,
+      },
+      activeFundingReservations: [],
+    };
+
+    const model = memberModelFromApi(memberDetail(), finance);
+
+    expect(model.walletId).toBeNull();
+    expect(model.walletBalances).toBeNull();
+    expect(model.walletState).toBe("unverified");
+  });
+
+  it("does not infer missing Wallet compartments from the Member list summary", () => {
+    const detail = memberDetail();
+    const listItem: AdminMemberListItem = {
+      ...detail.member,
+      wallet: {
+        id: "wallet-1",
+        walletStatus: "ACTIVE",
+        spendingBalanceSatang: 150,
+        earningsBalanceSatang: 0,
+        totalBalanceSatang: 150,
+      },
+    };
+
+    const model = memberListModelFromApi(listItem);
+
+    expect(model.walletBalances).toBeNull();
+    expect(model.walletState).toBe("unverified");
+    expect(model.walletSource).toBe("member-list");
   });
 
   it("compares complete Payout history with the successful Payout count", () => {

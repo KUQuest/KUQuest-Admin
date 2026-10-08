@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test";
 
+import type { AdminLedgerTransaction } from "../../src/features/admin/api/admin-api";
 import { loadMemberDetailFromApi } from "../../src/features/admin/member/member-service";
 import { adminWalletDetailFixtures } from "../fixtures/admin-wallet-api-fixtures";
 
@@ -12,7 +13,7 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
-function ledgerTransaction(id: string, createdAt: string) {
+function ledgerTransaction(id: string, createdAt: string): AdminLedgerTransaction {
   return {
     id,
     businessReference: `REF-${id}`,
@@ -29,6 +30,13 @@ function ledgerTransaction(id: string, createdAt: string) {
       accountType: "SPENDING",
       walletId: "WAL-1001",
       amountSatang: 100,
+      member: null,
+    }, {
+      id: `platform-posting-${id}`,
+      accountId: "platform-account-1001",
+      accountType: "PLATFORM_SUSPENSE",
+      walletId: null,
+      amountSatang: -100,
       member: null,
     }],
   };
@@ -221,6 +229,10 @@ describe("Member detail service", () => {
 
     expect(model?.walletStatement.map((transaction) => transaction.id)).toEqual(["ledger-1001", "ledger-1002"]);
     expect(model?.walletStatementError).toBeNull();
+    expect(model?.walletStatementState).toBe("complete");
+    expect(model?.walletStatementComplete).toBe(true);
+    expect(model?.walletSource).toBe("member-detail");
+    expect(model?.apiError).toBe("Member finance could not be loaded.");
     const ledgerRequests = requests.filter((request) => new URL(request.url).pathname.endsWith("/ledger/transactions"));
     expect(ledgerRequests).toHaveLength(2);
     expect(ledgerRequests[0]?.url).toContain("walletId=WAL-1001");
@@ -240,7 +252,18 @@ describe("Member detail service", () => {
         return jsonResponse({ success: true, data: { ...memberDetail, wallet: null } });
       }
       if (url.pathname === "/api/v1/admin/finance/members/68000000") {
-        return jsonResponse({ success: true, data: { wallet: memberDetail.wallet } });
+        return jsonResponse({ success: true, data: {
+          member: { userId: "68000000", firstName: "Akarin", lastName: "Ariyawat", studentId: "6810000000", email: "akarin.a@ku.th" },
+          wallet: { ...memberDetail.wallet, walletStatus: "ACTIVE" },
+          lifetimeStats: {
+            totalToppedUpSatang: 0,
+            totalEarnedFromQuestsSatang: 0,
+            totalSpentOnQuestsSatang: 0,
+            totalPaidOutSatang: 0,
+            totalEarningsConvertedSatang: 0,
+          },
+          activeFundingReservations: [],
+        } });
       }
       if (url.pathname === "/api/v1/admin/reports") {
         return jsonResponse({ success: true, data: reportPage(url.searchParams.get("status") ?? "") });
@@ -257,11 +280,125 @@ describe("Member detail service", () => {
     const model = await loadMemberDetailFromApi("68000000", "kuquest-admin=session");
 
     expect(model?.walletId).toBe("WAL-1001");
+    expect(model?.walletSource).toBe("finance");
     expect(model?.walletStatement.map((transaction) => transaction.id)).toEqual(["ledger-from-finance"]);
     expect(model?.walletStatementError).toBeNull();
     const ledgerRequests = requests.filter((request) => new URL(request.url).pathname.endsWith("/ledger/transactions"));
     expect(ledgerRequests).toHaveLength(1);
     expect(ledgerRequests[0]?.url).toContain("walletId=WAL-1001");
+  });
+
+  it("does not fall back to a Member detail Wallet when Finance explicitly returns none", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    const ledgerRequests: Request[] = [];
+    globalThis.fetch = (async (input, init) => {
+      const request = new Request(input, init);
+      const url = new URL(request.url);
+      if (url.pathname === "/api/v1/admin/members/68000000") return jsonResponse({ success: true, data: memberDetail });
+      if (url.pathname === "/api/v1/admin/finance/members/68000000") {
+        return jsonResponse({ success: true, data: { member: { userId: "68000000" }, wallet: null } });
+      }
+      if (url.pathname === "/api/v1/admin/reports") return jsonResponse({ success: true, data: reportPage(url.searchParams.get("status") ?? "") });
+      if (url.pathname === "/api/v1/admin/payouts") return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
+      if (url.pathname === "/api/v1/admin/finance/ledger/transactions") {
+        ledgerRequests.push(request);
+        return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
+      }
+      return jsonResponse({ success: false, error: { code: "UNAVAILABLE", message: "Unexpected request" } }, 503);
+    }) as typeof globalThis.fetch;
+
+    const model = await loadMemberDetailFromApi("68000000");
+
+    expect(model?.walletState).toBe("conflict");
+    expect(model?.walletStatus).toBeNull();
+    expect(model?.walletId).toBeNull();
+    expect(model?.walletBalances).toBeNull();
+    expect(ledgerRequests).toHaveLength(0);
+  });
+
+  it("keeps validated Wallet data while distinguishing a failed Ledger read", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    globalThis.fetch = (async (input, init) => {
+      const request = new Request(input, init);
+      const url = new URL(request.url);
+      if (url.pathname === "/api/v1/admin/members/68000000") return jsonResponse({ success: true, data: memberDetail });
+      if (url.pathname === "/api/v1/admin/reports") return jsonResponse({ success: true, data: reportPage(url.searchParams.get("status") ?? "") });
+      if (url.pathname === "/api/v1/admin/payouts") return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
+      if (url.pathname === "/api/v1/admin/finance/ledger/transactions") {
+        return jsonResponse({ success: false, error: { code: "UNAVAILABLE", message: "Ledger unavailable" } }, 503);
+      }
+      return jsonResponse({ success: false, error: { code: "UNAVAILABLE", message: "Finance unavailable" } }, 503);
+    }) as typeof globalThis.fetch;
+
+    const model = await loadMemberDetailFromApi("68000000");
+
+    expect(model?.walletState).toBe("available");
+    expect(model?.walletSource).toBe("member-detail");
+    expect(model?.walletBalances).toEqual({
+      spendingBalanceSatang: 100,
+      earningsBalanceSatang: 0,
+      fundingReservedSatang: 0,
+      reservedForPayoutsSatang: 0,
+    });
+    expect(model?.walletStatementState).toBe("failed");
+    expect(model?.walletStatementComplete).toBe(false);
+    expect(model?.walletStatementError).toBe("Could not read the Wallet Statement.");
+  });
+
+  it("rejects malformed Ledger rows instead of verifying the Wallet Statement", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    globalThis.fetch = (async (input, init) => {
+      const request = new Request(input, init);
+      const url = new URL(request.url);
+      if (url.pathname === "/api/v1/admin/members/68000000") return jsonResponse({ success: true, data: memberDetail });
+      if (url.pathname === "/api/v1/admin/reports") return jsonResponse({ success: true, data: reportPage(url.searchParams.get("status") ?? "") });
+      if (url.pathname === "/api/v1/admin/payouts") return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
+      if (url.pathname === "/api/v1/admin/finance/ledger/transactions") {
+        return jsonResponse({ success: true, data: { items: [{ ...ledgerTransaction("ledger-invalid", "2026-09-12T08:30:00.000Z"), eventType: 42 }], nextCursor: null } });
+      }
+      return jsonResponse({ success: false, error: { code: "UNAVAILABLE", message: "Finance unavailable" } }, 503);
+    }) as typeof globalThis.fetch;
+
+    const model = await loadMemberDetailFromApi("68000000");
+
+    expect(model?.walletStatementState).toBe("invalid");
+    expect(model?.walletStatementComplete).toBe(false);
+    expect(model?.walletStatementError).toBe("Wallet Statement data does not match the API contract.");
+  });
+
+  it("rejects unbalanced Ledger transactions and postings", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    const validTransaction = ledgerTransaction("ledger-balance-check", "2026-09-12T08:30:00.000Z");
+    const malformedTransactions: AdminLedgerTransaction[] = [
+      { ...validTransaction, isBalanced: false },
+      { ...validTransaction, postings: [] },
+      { ...validTransaction, postings: [validTransaction.postings[0]!] },
+      {
+        ...validTransaction,
+        postings: validTransaction.postings.map((posting, index) => index === 1 ? { ...posting, amountSatang: -50 } : posting),
+      },
+    ];
+    let currentTransaction = malformedTransactions[0]!;
+    globalThis.fetch = (async (input, init) => {
+      const request = new Request(input, init);
+      const url = new URL(request.url);
+      if (url.pathname === "/api/v1/admin/members/68000000") return jsonResponse({ success: true, data: memberDetail });
+      if (url.pathname === "/api/v1/admin/reports") return jsonResponse({ success: true, data: reportPage(url.searchParams.get("status") ?? "") });
+      if (url.pathname === "/api/v1/admin/payouts") return jsonResponse({ success: true, data: { items: [], nextCursor: null } });
+      if (url.pathname === "/api/v1/admin/finance/ledger/transactions") {
+        return jsonResponse({ success: true, data: { items: [currentTransaction], nextCursor: null } });
+      }
+      return jsonResponse({ success: false, error: { code: "UNAVAILABLE", message: "Finance unavailable" } }, 503);
+    }) as typeof globalThis.fetch;
+
+    for (const transaction of malformedTransactions) {
+      currentTransaction = transaction;
+      const model = await loadMemberDetailFromApi("68000000");
+
+      expect(model?.walletStatementState).toBe("invalid");
+      expect(model?.walletStatementComplete).toBe(false);
+      expect(model?.walletStatementError).toBe("Wallet Statement data does not match the API contract.");
+    }
   });
 
   it("loads all received Report statuses and all Member Payout status pages", async () => {
@@ -372,7 +509,7 @@ describe("Member detail service", () => {
 
       expect(model?.payouts).toBeNull();
       expect(model?.payoutsComplete).toBe(false);
-      expect(model?.payoutsError).toBe("ข้อมูล Payout ไม่ตรงตามสัญญา API");
+      expect(model?.payoutsError).toBe("Payout data does not match the API contract.");
     }
   });
 
@@ -442,7 +579,7 @@ describe("Member detail service", () => {
     expect(model?.reportsError).toContain("invalid");
     expect(model?.payouts?.map((payout) => payout.id)).toContain("payout-partial");
     expect(model?.payoutsComplete).toBe(false);
-    expect(model?.payoutsError).toContain("ข้อมูล Payout ไม่ตรงตามสัญญา API");
+      expect(model?.payoutsError).toContain("Payout data does not match the API contract.");
   });
 
   it("rejects duplicate records across Member history pages", async () => {
@@ -482,6 +619,6 @@ describe("Member detail service", () => {
     expect(model?.reportsError).toContain("invalid");
     expect(model?.payouts?.map((payout) => payout.id)).toEqual(["duplicate-payout"]);
     expect(model?.payoutsComplete).toBe(false);
-    expect(model?.payoutsError).toBe("ข้อมูล Payout ไม่ตรงตามสัญญา API");
+      expect(model?.payoutsError).toBe("Payout data does not match the API contract.");
   });
 });

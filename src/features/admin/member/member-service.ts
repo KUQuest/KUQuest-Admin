@@ -1,6 +1,9 @@
 import type {
   AdminPage,
   AdminApiPayoutStatus,
+  AdminLedgerTransaction,
+  AdminMemberDetail,
+  AdminMemberFinance,
   AdminMemberListQuery,
   AdminPayout,
   AdminReportCase,
@@ -8,18 +11,108 @@ import type {
   AdminReportStatusCounts,
   AdminReportListQuery,
 } from "../api/admin-api";
-import { ADMIN_API_PAYOUT_STATUSES } from "../api/admin-api";
+import { ADMIN_API_PAYOUT_STATUSES, ADMIN_LEDGER_EVENT_TYPES } from "../api/admin-api";
 import { adminApiProvider } from "../api/admin-provider";
 import { adminApiRequestOptions } from "../api/admin-api-request-options";
-import { CONDUCT_REPORT_STATUSES, REPORT_CASE_STATUSES, type ModerationCaseStatus } from "../domain/rulebook";
+import { CONDUCT_REPORT_STATUSES, isWalletStatus, REPORT_CASE_STATUSES, type ModerationCaseStatus } from "../domain/rulebook";
 import { displayAdminId } from "../display-admin-id";
-import { loadAllWalletLedgerTransactions } from "../wallet/wallet-ledger-pages";
+import { isNonnegativeSafeInteger } from "./member-wallet-model";
 import {
   memberListModelFromApi,
   memberModelFromApi,
   type MemberModel,
   type MemberPageData,
+  type MemberWalletSource,
+  type MemberWalletState,
+  type MemberWalletStatementState,
 } from "./member-model";
+
+type SelectedMemberWallet = NonNullable<AdminMemberDetail["wallet"]> | NonNullable<AdminMemberFinance["wallet"]>;
+
+type MemberWalletResolution = {
+  wallet: SelectedMemberWallet | null;
+  state: MemberWalletState;
+  source: MemberWalletSource;
+};
+
+function validMemberWallet(wallet: unknown): wallet is NonNullable<AdminMemberFinance["wallet"]> {
+  if (!wallet || typeof wallet !== "object" || Array.isArray(wallet)) return false;
+  const candidate = wallet as Record<string, unknown>;
+  return typeof candidate.id === "string"
+    && Boolean(candidate.id.trim())
+    && isWalletStatus(candidate.walletStatus)
+    && typeof candidate.projectionMatchesLedger === "boolean"
+    && [candidate.spendingBalanceSatang, candidate.earningsBalanceSatang, candidate.fundingReservedSatang, candidate.reservedForPayoutsSatang].every(isNonnegativeSafeInteger);
+}
+
+function validMemberDetailWallet(wallet: AdminMemberDetail["wallet"]): wallet is NonNullable<AdminMemberDetail["wallet"]> {
+  if (!validMemberWallet(wallet) || !isNonnegativeSafeInteger(wallet.totalBalanceSatang)) return false;
+  return wallet.totalBalanceSatang === wallet.spendingBalanceSatang
+    + wallet.earningsBalanceSatang
+    + wallet.fundingReservedSatang
+    + wallet.reservedForPayoutsSatang;
+}
+
+function resolveMemberWallet(
+  memberId: string,
+  detail: AdminMemberDetail,
+  financeResult: PromiseSettledResult<AdminMemberFinance>,
+): MemberWalletResolution {
+  if (financeResult.status === "fulfilled") {
+    const finance = financeResult.value;
+    if (!finance?.member || typeof finance.member.userId !== "string" || !finance.member.userId.trim()) {
+      return { wallet: null, state: "invalid", source: null };
+    }
+    if (finance.member.userId !== memberId) {
+      return { wallet: null, state: "conflict", source: null };
+    }
+    if (finance.wallet === null) {
+      if (detail.wallet === null) return { wallet: null, state: "absent", source: "finance" };
+      return detail.wallet ? { wallet: null, state: "conflict", source: null } : { wallet: null, state: "invalid", source: null };
+    }
+    if (!validMemberWallet(finance.wallet)) {
+      return { wallet: null, state: "invalid", source: null };
+    }
+    if (detail.wallet && validMemberDetailWallet(detail.wallet) && detail.wallet.id !== finance.wallet.id) {
+      return { wallet: null, state: "conflict", source: null };
+    }
+    return { wallet: finance.wallet, state: "available", source: "finance" };
+  }
+
+  if (detail.wallet && validMemberDetailWallet(detail.wallet)) {
+    return { wallet: detail.wallet, state: "available", source: "member-detail" };
+  }
+  if (detail.wallet !== null) return { wallet: null, state: "invalid", source: null };
+  return { wallet: null, state: "unavailable", source: null };
+}
+
+function validLedgerTransaction(transaction: AdminLedgerTransaction): boolean {
+  if (!transaction) return false;
+  const postings = transaction.postings;
+  if (!Array.isArray(postings) || postings.length < 2 || transaction.isBalanced !== true) return false;
+  let postingTotal = 0;
+  const validPostings = postings.every((posting) => {
+    if (
+      typeof posting?.accountType !== "string"
+      || !(posting.walletId === null || typeof posting.walletId === "string")
+      || typeof posting.amountSatang !== "number"
+      || !Number.isSafeInteger(posting.amountSatang)
+    ) return false;
+    postingTotal += posting.amountSatang;
+    return Number.isSafeInteger(postingTotal);
+  });
+  return validPostings
+    && postingTotal === 0
+    && typeof transaction.id === "string"
+    && Boolean(transaction.id.trim())
+    && typeof transaction.businessReference === "string"
+    && typeof transaction.eventType === "string"
+    && ADMIN_LEDGER_EVENT_TYPES.includes(transaction.eventType as (typeof ADMIN_LEDGER_EVENT_TYPES)[number])
+    && (transaction.description === null || typeof transaction.description === "string")
+    && typeof transaction.createdAt === "string"
+    && Number.isFinite(Date.parse(transaction.createdAt))
+    && (transaction.sealedAt === null || (typeof transaction.sealedAt === "string" && Number.isFinite(Date.parse(transaction.sealedAt))));
+}
 
 function reportQuery(memberId: string, status: ModerationCaseStatus, cursor?: string): AdminReportListQuery {
   return { memberId, status, limit: 50, ...(cursor ? { cursor } : {}) };
@@ -219,18 +312,18 @@ async function loadMemberPayouts(
         || typeof item?.bankName !== "string"
         || typeof item?.maskedDestinationValue !== "string"
         || (item.displayId != null && typeof item.displayId !== "string")
-      ) ? "ข้อมูล Payout ไม่ตรงตามสัญญา API" : null,
+      ) ? "Payout data does not match the API contract." : null,
       (item) => typeof item?.id === "string" && item.id.trim() ? item.id : null,
       {
-        invalid: "ข้อมูล Payout ไม่ตรงตามสัญญา API",
-        duplicate: "ข้อมูล Payout ไม่ตรงตามสัญญา API",
+        invalid: "Payout data does not match the API contract.",
+        duplicate: "Payout data does not match the API contract.",
         stalled: "Payout pages did not advance.",
         failed: "Payout details could not be loaded.",
       },
     );
   }));
 
-  const merged = mergeStatusResults(statusResults, (item) => item.id, "ข้อมูล Payout ไม่ตรงตามสัญญา API");
+  const merged = mergeStatusResults(statusResults, (item) => item.id, "Payout data does not match the API contract.");
   return {
     items: merged.items.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)),
     complete: statusResults.every((result) => result.complete) && !merged.hasDuplicates,
@@ -265,6 +358,7 @@ export async function loadMemberDetailFromApi(
     loadMemberPayouts(memberId, options),
   ]);
   const finance = financeResult.status === "fulfilled" ? financeResult.value : null;
+  const walletResolution = resolveMemberWallet(memberId, detail, financeResult);
   const reportsRead = reportsResult.status === "fulfilled"
     ? reportsResult.value
     : {
@@ -291,18 +385,35 @@ export async function loadMemberDetailFromApi(
     }
   }));
   const reportQuestDisplayIds = new Map(questResults.flatMap((result) => result ? [result] : []));
-  const effectiveWallet = finance?.wallet ?? detail.wallet;
-  let ledger: Awaited<ReturnType<typeof loadAllWalletLedgerTransactions>> = [];
-  let ledgerError: unknown = null;
-  if (effectiveWallet) {
-    try {
-      ledger = await loadAllWalletLedgerTransactions(effectiveWallet.id, options);
-    } catch (error) {
-      ledgerError = error;
-    }
-  }
-  const errors = {
-    finance: financeResult.status === "rejected" ? "Member finance is not available from the Admin API." : null,
+  const ledgerMessages = {
+    invalid: "Wallet Statement data does not match the API contract.",
+    duplicate: "Wallet Statement data does not match the API contract.",
+    stalled: "Wallet Statement is not verified.",
+    failed: "Could not read the Wallet Statement.",
+  };
+  const ledgerRead = walletResolution.state === "available" && walletResolution.wallet
+    ? await loadCursorPages<AdminLedgerTransaction, AdminPage<AdminLedgerTransaction>>(
+        (cursor) => adminApiProvider.read.listLedgerTransactions({
+          walletId: walletResolution.wallet!.id,
+          limit: 50,
+          ...(cursor ? { cursor } : {}),
+        }, options),
+        (page) => page.items.some((transaction) => !validLedgerTransaction(transaction)) ? ledgerMessages.invalid : null,
+        (transaction) => transaction.id,
+        ledgerMessages,
+      )
+    : { items: [] as AdminLedgerTransaction[], complete: false, error: null };
+  const walletStatementState: MemberWalletStatementState = walletResolution.state !== "available"
+    ? "not-applicable"
+    : ledgerRead.complete
+      ? "complete"
+      : ledgerRead.error === ledgerMessages.failed
+        ? "failed"
+        : ledgerRead.error === ledgerMessages.invalid
+          ? "invalid"
+          : "incomplete";
+  const memberReads = {
+    finance: financeResult.status === "rejected" ? "Member finance could not be loaded." : null,
     reports: reportsRead.error,
     reportsComplete: reportsRead.complete,
     reportsTotalCount: reportsRead.totalCount,
@@ -310,8 +421,13 @@ export async function loadMemberDetailFromApi(
     payoutsComplete: payoutsRead.complete,
     payoutsError: payoutsRead.error,
     reportQuestDisplayIds,
-    ledger: ledgerError ? "Wallet Statement is not available from the Admin API." : null,
+    ledger: ledgerRead.error,
+    wallet: walletResolution.wallet,
+    walletState: walletResolution.state,
+    walletSource: walletResolution.source,
+    walletStatementState,
+    walletStatementComplete: ledgerRead.complete,
   };
-  const model = memberModelFromApi(detail, finance, reportsRead.items, ledger, errors);
+  const model = memberModelFromApi(detail, finance, reportsRead.items, ledgerRead.items, memberReads);
   return model.id === memberId ? model : null;
 }
