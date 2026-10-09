@@ -32,7 +32,7 @@ export type AdminMemberPenaltyAddResult =
 export type AdminMemberPenaltyAddCommand = {
   idempotencyKey: string;
   expectedVersionToken: number;
-  result?: AdminMemberPenaltyAddResult;
+  result: AdminMemberPenaltyAddResult;
   reasonCode: AdminMemberPenaltyAddReasonCode;
   adminNote?: string;
 };
