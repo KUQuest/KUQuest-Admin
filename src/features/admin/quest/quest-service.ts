@@ -34,6 +34,7 @@ function questDisputeCasesFromApi(disputes: AdminDisputeCase[]): QuestDetailView
     id: dispute.id,
     displayId: displayAdminId(dispute.displayId, dispute.id) ?? "",
     questId: dispute.questId,
+    ...(typeof dispute.filerUserId === "string" ? { filerUserId: dispute.filerUserId } : {}),
     status: dispute.status,
     createdAt: typeof dispute.createdAt === "string" ? dispute.createdAt : null,
     updatedAt: typeof dispute.updatedAt === "string" ? dispute.updatedAt : null,

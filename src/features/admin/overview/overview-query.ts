@@ -14,8 +14,6 @@ export function useOverviewQuery(initialData?: OverviewPageData) {
     initialData,
     staleTime: initialData ? Infinity : 0,
     gcTime: Infinity,
-    refetchOnMount: !initialData,
-    refetchOnWindowFocus: false,
   });
 
   useEffect(() => {

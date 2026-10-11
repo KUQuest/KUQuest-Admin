@@ -26,8 +26,6 @@ export function useFinancePolicyQuery(initialData: FinancePageData) {
     },
     enabled: true,
     staleTime: 0,
-    refetchOnMount: true,
-    refetchOnWindowFocus: false,
     retry: false,
   });
 }
@@ -45,8 +43,6 @@ export function useFinanceTopUpQuery(initialData: TopUpPageData) {
       : undefined,
     enabled: true,
     staleTime: 0,
-    refetchOnMount: true,
-    refetchOnWindowFocus: false,
     retry: false,
     getNextPageParam: (page) => page.nextCursor ?? undefined,
   });
@@ -58,7 +54,6 @@ export function useFinanceTopUpStatusHistoryQuery(topUpId: string) {
     queryFn: () => adminApiProvider.read.getTopUpStatusHistory(topUpId),
     enabled: Boolean(topUpId),
     staleTime: 0,
-    refetchOnWindowFocus: false,
     retry: false,
   });
 }

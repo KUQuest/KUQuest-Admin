@@ -80,8 +80,6 @@ export function useConductReportBoardQuery(initialData?: ConductReportPageData) 
       ? { pages: [initialData], pageParams: [null] }
       : undefined,
     staleTime: initialData ? Infinity : 0,
-    refetchOnMount: !initialData,
-    refetchOnWindowFocus: false,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
 
@@ -113,8 +111,6 @@ export function useConductReportDetailQuery(reportId: string, initialModel?: Con
     initialData: initialModel ?? undefined,
     staleTime: 0,
     gcTime: Infinity,
-    refetchOnMount: true,
-    refetchOnWindowFocus: false,
   });
 
   useEffect(() => {

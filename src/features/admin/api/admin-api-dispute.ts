@@ -47,7 +47,11 @@ export function createAdminDisputeApi() {
         `/api/v1/admin/disputes/open/${encode(questId)}`,
         {
           method: "POST",
-          body: { workerId: options.workerId },
+          body: {
+            workerId: options.workerId,
+            category: options.category,
+            submittedDetail: options.submittedDetail,
+          },
         },
       );
     },

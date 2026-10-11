@@ -14,7 +14,6 @@ export function useAdminNavigationCountsQuery() {
     queryFn: async () => adminNavigationCountsFromOverview(await adminApiProvider.read.getOverview()),
     staleTime: 30_000,
     gcTime: Infinity,
-    refetchOnWindowFocus: false,
   });
 
   useEffect(() => {

@@ -3,18 +3,18 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 
 import { ApiError } from "../../../lib/api/client";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminRecordHeader } from "../../../components/admin/admin-record-header";
 import { AdminStatusAlert } from "../../../components/admin/admin-status-alert";
 import { AdminRecordFact as Fact } from "../../../components/admin/admin-record-fields";
-import { RecordStatusBar } from "../../../components/admin/record-status-bar";
 import { adminRecordCount, adminRecordDescription, adminRecordFact, adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSection, adminRecordSideFacts } from "../../../components/admin/admin-record-styles";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { Badge as UiBadge, Button as UiButton, Card, CardContent, CardHeader, CardTitle } from "../../../components/ui";
 import { disputeRoutes, memberRoutes, questRoutes } from "../admin-routes";
+import type { AdminDisputeOpenCommand } from "../api/admin-api-types-commands";
 import { canHideQuest, isQuestTerminal, type QuestState } from "../domain/rulebook";
 import { displayAdminId } from "../display-admin-id";
 import {
@@ -62,6 +62,13 @@ function readableFieldName(value: string): string {
 }
 
 type AdminQuestEditRequest = Extract<QuestDetailView["editHistory"][number], { kind: "EDIT_REQUEST" }>;
+
+const DISPUTE_CATEGORY_OPTIONS: { value: AdminDisputeOpenCommand["category"]; label: string }[] = [
+  { value: "PROOF_REVIEW", label: "Proof review" },
+  { value: "QUEST_CONDITION", label: "Quest Condition" },
+  { value: "PARTIAL_WORK", label: "Partial work" },
+  { value: "OTHER", label: "Other" },
+];
 
 type QuestEditChange = {
   field: string;
@@ -213,7 +220,6 @@ function QuestFinancialSection({
 function QuestDetailContent({
   detail,
   finance,
-  linkedDisputeId,
   disputeLookupError,
   onCommand,
   onOpenDispute,
@@ -224,19 +230,28 @@ function QuestDetailContent({
 }: {
   detail: QuestDetailView;
   finance: QuestFinanceView | null;
-  linkedDisputeId: string | null;
   disputeLookupError: string | null;
   onCommand: (command: QuestCommand) => void;
-  onOpenDispute: (workerId: string) => void;
+  onOpenDispute: (command: AdminDisputeOpenCommand) => void;
   disputePending: boolean;
   disputeError: string | null;
   showFullDetailLink: boolean;
   recordLayout?: boolean;
 }) {
   const { translateText } = useAdminShell();
+  const disputeSectionsId = useId();
   const state = detail.state;
   const hidden = Boolean(detail.hiddenAt);
   const [selectedWorkerId, setSelectedWorkerId] = useState("");
+  const [selectedDisputeCategory, setSelectedDisputeCategory] = useState<AdminDisputeOpenCommand["category"] | "">("");
+  const [submittedDetail, setSubmittedDetail] = useState("");
+  const [disputeFormError, setDisputeFormError] = useState<string | null>(null);
+  useEffect(() => {
+    setSelectedWorkerId("");
+    setSelectedDisputeCategory("");
+    setSubmittedDetail("");
+    setDisputeFormError(null);
+  }, [detail.disputeCases]);
   const financeQuest = finance?.quest;
   const pendingHirerChange = detail.editHistory.find(
     (entry): entry is AdminQuestEditRequest => entry.kind === "EDIT_REQUEST" && entry.requestStatus === "EDIT_REQUEST_PENDING",
@@ -280,64 +295,141 @@ function QuestDetailContent({
   const candidateTeams = hasAcceptedRoster ? [] : detail.candidates.teams;
   const candidateCount = questCandidateCount(detail);
   const sectionVariant = recordLayout ? "record" : "panel";
-  const disputeRiskContent = detail.disputeCases.length ? (
+  const filedWorkerIds = new Set(
+    detail.disputeCases
+      .map((disputeCase) => disputeCase.filerUserId)
+      .filter((filerUserId): filerUserId is string => Boolean(filerUserId)),
+  );
+  const hasCaseWithoutFiler = detail.disputeCases.some((disputeCase) => !disputeCase.filerUserId);
+  const workersWithoutCase = hasCaseWithoutFiler
+    ? []
+    : detail.assignments.filter((assignment) => !filedWorkerIds.has(assignment.worker.id));
+  const disputeRiskContent = state === "QUEST_FAILED" ? (
     <>
-      <p>{translateText(detail.disputeCases.length === 1 ? "A Dispute Case is linked to this Quest." : "Dispute Cases are linked to this Quest.")}</p>
-      <div className="grid gap-2">
-        {detail.disputeCases.map((disputeCase) => (
-          <div className="grid gap-2 rounded-lg border border-admin-border bg-admin-soft p-2.5" key={disputeCase.id}>
-            <div className="flex items-center justify-between gap-3">
-              <strong>{disputeCase.displayId || translateText("Dispute Case")}</strong>
-              <span>{translateText(readableValue(disputeCase.status.replace("DISPUTE_CASE_", "")))}</span>
-            </div>
-            {disputeCase.createdAt ? <small className="text-admin-muted">{translateText("Opened")}: {formatQuestDate(disputeCase.createdAt)}</small> : null}
-            <UiButton asChild variant="primary" className="w-full"><Link href={disputeRoutes.detail(disputeCase.id)}>{translateText("Open Dispute Case")}</Link></UiButton>
+      <section aria-labelledby={`${disputeSectionsId}-linked`} className="grid gap-2">
+        <h3 className="m-0" id={`${disputeSectionsId}-linked`}>{translateText("Linked Dispute Cases")}</h3>
+        {detail.disputeCases.length ? (
+          <div className="grid gap-2">
+            {detail.disputeCases.map((disputeCase) => {
+              const filerAssignment = detail.assignments.find((assignment) => assignment.worker.id === disputeCase.filerUserId);
+              const isHirerFiler = disputeCase.filerUserId === detail.hirer.id;
+              const filerName = isHirerFiler ? questMemberName(detail.hirer) : filerAssignment ? questMemberName(filerAssignment.worker) : null;
+              const filerLabel = isHirerFiler ? translateText("Hirer") : filerAssignment ? translateText("Worker") : null;
+              return (
+                <div className="grid gap-2 rounded-lg border border-admin-border bg-admin-soft p-2.5" key={disputeCase.id}>
+                  <div className="flex items-center justify-between gap-3">
+                    <strong>{disputeCase.displayId || translateText("Dispute Case")}</strong>
+                    <span>{translateText(readableValue(disputeCase.status.replace("DISPUTE_CASE_", "")))}</span>
+                  </div>
+                  {filerName && filerLabel ? <small className="text-admin-muted">{filerLabel}: {filerName}</small> : null}
+                  {disputeCase.createdAt ? <small className="text-admin-muted">{translateText("Opened")}: {formatQuestDate(disputeCase.createdAt)}</small> : null}
+                  <UiButton asChild variant="primary" className="w-full"><Link href={disputeRoutes.detail(disputeCase.id)}>{translateText("Open Dispute Case")}</Link></UiButton>
+                </div>
+              );
+            })}
           </div>
-        ))}
-      </div>
-    </>
-  ) : disputeLookupError ? (
-    <p className="field-error" role="alert">{translateText(disputeLookupError)}</p>
-  ) : linkedDisputeId ? (
-    <>
-      <p>{translateText("A Dispute Case is linked to this Quest.")}</p>
-      <UiButton asChild variant="primary" className="w-full"><Link href={disputeRoutes.detail(linkedDisputeId)}>{translateText("Open Dispute Case")}</Link></UiButton>
-    </>
-  ) : state === "QUEST_FAILED" ? (
-    <>
-      <p className="audit-note">{translateText("This Quest is Failed, but no linked Dispute Case was returned.")}</p>
-      {detail.assignments.length ? (
-        <form
-          className="dispute-open-form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (selectedWorkerId) onOpenDispute(selectedWorkerId);
-          }}
-        >
-          <label htmlFor="quest-dispute-worker">{translateText("Worker")}
-            <select
-              id="quest-dispute-worker"
-              name="workerId"
-              value={selectedWorkerId}
-              onChange={(event) => setSelectedWorkerId(event.target.value)}
-              required
-              disabled={disputePending}
-            >
-              <option value="">{translateText("Select an assigned Worker")}</option>
-              {detail.assignments.map((assignment) => (
-                <option key={assignment.worker.id} value={assignment.worker.id}>
-                  {questMemberName(assignment.worker)}
-                </option>
-              ))}
-            </select>
-          </label>
-          {disputeError ? <p className="field-error" role="alert">{translateText(disputeError)}</p> : null}
-          <UiButton variant="primary" className="dispute-open-submit" type="submit" disabled={disputePending}>
-            {disputePending ? translateText("Opening Dispute Case…") : translateText("Open Dispute Case")}
-          </UiButton>
-          <p className="audit-note">{translateText("Select the assigned Worker for this failed Quest.")}</p>
-        </form>
-      ) : <p className="audit-note">{translateText("No assigned Worker was returned.")}</p>}
+        ) : disputeLookupError ? (
+          <p className="field-error" role="alert">{translateText(disputeLookupError)}</p>
+        ) : <p className="audit-note">{translateText("This Quest is Failed, but no linked Dispute Case was returned.")}</p>}
+      </section>
+      {!disputeLookupError && workersWithoutCase.length ? (
+        <section aria-labelledby={`${disputeSectionsId}-open`} className="grid gap-3 border-t border-admin-border pt-4">
+          <div className="grid gap-1">
+            <h3 className="m-0" id={`${disputeSectionsId}-open`}>
+              {translateText("Open a new Dispute Case")}
+            </h3>
+            <p className="m-0 text-admin-muted">{translateText("Choose an assigned Worker who does not already have a Dispute Case.")}</p>
+          </div>
+          <form
+            className="dispute-open-form grid gap-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const detailText = submittedDetail.trim();
+              if (!detailText) {
+                setDisputeFormError("Submitted detail is required.");
+                return;
+              }
+              if (selectedWorkerId && selectedDisputeCategory) {
+                setDisputeFormError(null);
+                onOpenDispute({
+                  workerId: selectedWorkerId,
+                  category: selectedDisputeCategory,
+                  submittedDetail: detailText,
+                });
+              }
+            }}
+          >
+            <label className="grid gap-1 font-semibold" htmlFor="quest-dispute-worker">
+              <span>{translateText("Worker")} <span aria-hidden="true">*</span></span>
+              <select
+                className="w-full rounded-lg border border-admin-border-strong bg-admin-surface px-2.5 py-2 text-admin-text"
+                id="quest-dispute-worker"
+                name="workerId"
+                value={selectedWorkerId}
+                onChange={(event) => setSelectedWorkerId(event.target.value)}
+                required
+                disabled={disputePending}
+              >
+                <option value="" disabled>{translateText("Select an assigned Worker")}</option>
+                {workersWithoutCase.map((assignment) => (
+                  <option key={assignment.worker.id} value={assignment.worker.id}>
+                    {questMemberName(assignment.worker)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-1 font-semibold" htmlFor="quest-dispute-category">
+              <span>{translateText("Category")} <span aria-hidden="true">*</span></span>
+              <select
+                className="w-full rounded-lg border border-admin-border-strong bg-admin-surface px-2.5 py-2 text-admin-text"
+                id="quest-dispute-category"
+                name="category"
+                value={selectedDisputeCategory}
+                onChange={(event) => {
+                  setSelectedDisputeCategory(event.target.value as AdminDisputeOpenCommand["category"] | "");
+                  setDisputeFormError(null);
+                }}
+                required
+                disabled={disputePending}
+              >
+                <option value="" disabled>{translateText("Select a category")}</option>
+                {DISPUTE_CATEGORY_OPTIONS.map((category) => (
+                  <option key={category.value} value={category.value}>{translateText(category.label)}</option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-1 font-semibold" htmlFor="quest-dispute-submitted-detail">
+              <span>{translateText("Submitted detail")} <span aria-hidden="true">*</span></span>
+              <textarea
+                className="w-full resize-y rounded-lg border border-admin-border-strong bg-admin-surface px-2.5 py-2 text-admin-text"
+                id="quest-dispute-submitted-detail"
+                name="submittedDetail"
+                value={submittedDetail}
+                onChange={(event) => {
+                  setSubmittedDetail(event.target.value);
+                  setDisputeFormError(null);
+                }}
+                required
+                rows={4}
+                disabled={disputePending}
+              />
+              <span className="font-normal text-admin-muted">{translateText("Enter the detail provided by the Worker.")}</span>
+            </label>
+            {disputeFormError || disputeError ? <p className="field-error" role="alert">{translateText(disputeFormError ?? disputeError ?? "")}</p> : null}
+            <UiButton variant="primary" className="dispute-open-submit" type="submit" disabled={disputePending}>
+              {disputePending ? translateText("Opening Dispute Case…") : translateText("Open Dispute Case")}
+            </UiButton>
+          </form>
+        </section>
+      ) : !disputeLookupError ? (
+        <p className="audit-note">
+          {detail.assignments.length === 0
+            ? translateText("No assigned Worker was returned.")
+            : hasCaseWithoutFiler
+              ? translateText("The Admin API did not return the filer for an existing Dispute Case.")
+              : translateText("Each assigned Worker already has a Dispute Case.")}
+        </p>
+      ) : null}
     </>
   ) : <p className="audit-note">{translateText("No linked Dispute Case was returned.")}</p>;
 
@@ -370,6 +462,8 @@ function QuestDetailContent({
           <Fact label={translateText("Participant mode")}>{translateText(detail.participation === "GROUP" ? "Team" : "Solo")}</Fact>
           <Fact label={translateText("Candidate mode")}>{translateText(detail.mode === "FIRST_COME_FIRST_SERVED" ? "First come, first served" : "Candidate")}</Fact>
           <Fact label={translateText("Quest ID")}>{detail.displayId || translateText("Not provided by the Admin API")}</Fact>
+          <Fact label={translateText("Created")}>{formatQuestDate(detail.createdAt)}</Fact>
+          <Fact label={translateText("Candidate numbers")}>{candidateCount}</Fact>
           {!recordLayout ? <div className={adminRecordFact}>
             <span>{translateText("Hirer")}</span>
             <strong>{questMemberName(detail.hirer)}</strong>
@@ -508,8 +602,24 @@ function QuestDetailContent({
           <div className="related-list mt-3">
             {candidateTeams.map((team) => (
               <div className="related-row" key={team.id}>
-                <span><strong>{team.name}</strong><small>{translateText("Candidate Team")} · {translateText(readableValue(team.teamStatus))} · {team.members.length} {translateText(team.members.length === 1 ? "member" : "members")}</small></span>
-                <span>{formatQuestDate(team.createdAt)}</span>
+                <div className="grid w-full gap-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <span><strong>{team.name}</strong><small>{translateText("Candidate Team")} · {translateText(readableValue(team.teamStatus))} · {team.members.length} {translateText(team.members.length === 1 ? "member" : "members")}</small></span>
+                    <span className="shrink-0">{formatQuestDate(team.createdAt)}</span>
+                  </div>
+                  {team.members.length ? (
+                    <div className="grid gap-2 border-l border-admin-border pl-3">
+                      {team.members.map(({ member }) => (
+                        <div className="flex items-center justify-between gap-3" key={member.id}>
+                          <strong>{questMemberName(member)}</strong>
+                          <UiButton asChild variant="outline" size="xs" className="shrink-0">
+                            <Link href={memberRoutes.detail(member.memberId)}>{translateText("See Member profile")}</Link>
+                          </UiButton>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
               </div>
             ))}
           </div>
@@ -519,7 +629,12 @@ function QuestDetailContent({
             {detail.assignments.map((assignment) => (
               <div className="related-row" key={assignment.id}>
                 <span><strong>{questMemberName(assignment.worker)}</strong><small>{translateText("Assignment")} · {translateText(readableValue(assignment.assignmentStatus))}</small></span>
-                <span>{assignment.startedAt ? `${translateText("Started")} ${formatQuestDate(assignment.startedAt)}` : translateText("Not started")}</span>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span>{assignment.startedAt ? `${translateText("Started")} ${formatQuestDate(assignment.startedAt)}` : translateText("Not started")}</span>
+                  <UiButton asChild variant="outline" size="xs">
+                    <Link href={memberRoutes.detail(assignment.worker.memberId)}>{translateText("See Member profile")}</Link>
+                  </UiButton>
+                </div>
               </div>
             ))}
           </div>
@@ -634,7 +749,6 @@ export function QuestDetailPage({ questId, presentation = "page", initialData }:
   const { translateText } = useAdminShell();
   const [detail, setDetail] = useState<QuestDetailView>(initialData.detail);
   const [finance, setFinance] = useState<QuestFinanceView | null>(initialData.finance);
-  const [linkedDisputeId, setLinkedDisputeId] = useState<string | null>(initialData.linkedDisputeId);
   const [disputeLookupError, setDisputeLookupError] = useState<string | null>(initialData.disputeLookupError ?? null);
   const [command, setCommand] = useState<QuestCommand | null>(null);
   const [commandError, setCommandError] = useState<string | null>(null);
@@ -645,7 +759,6 @@ export function QuestDetailPage({ questId, presentation = "page", initialData }:
   useEffect(() => {
     setDetail(initialData.detail);
     setFinance(initialData.finance);
-    setLinkedDisputeId(initialData.linkedDisputeId);
     setDisputeLookupError(initialData.disputeLookupError ?? null);
     setDisputeError(null);
   }, [initialData]);
@@ -659,17 +772,33 @@ export function QuestDetailPage({ questId, presentation = "page", initialData }:
     router.back();
   }
 
-  async function openDispute(workerId: string) {
-    if (linkedDisputeId || disputeLookupError || openDisputeMutation.isPending || detail.state !== "QUEST_FAILED") return;
-    if (!detail.assignments.some((assignment) => assignment.worker.id === workerId)) return;
-    const worker = detail.assignments.find((assignment) => assignment.worker.id === workerId)?.worker;
+  async function openDispute(disputeCommand: AdminDisputeOpenCommand) {
+    if (disputeLookupError || openDisputeMutation.isPending || detail.state !== "QUEST_FAILED") return;
+    if (!detail.assignments.some((assignment) => assignment.worker.id === disputeCommand.workerId)) return;
+    if (detail.disputeCases.some((disputeCase) => disputeCase.filerUserId === disputeCommand.workerId)) return;
+    const worker = detail.assignments.find((assignment) => assignment.worker.id === disputeCommand.workerId)?.worker;
     if (!worker || !window.confirm(`Open a Dispute Case for ${questMemberName(worker)}?`)) return;
 
     setDisputeError(null);
     try {
-      const result = await openDisputeMutation.mutateAsync({ questId: detail.id, workerId });
-      setLinkedDisputeId(result.id);
+      const result = await openDisputeMutation.mutateAsync({ questId: detail.id, ...disputeCommand });
+      setDetail((current) => ({
+        ...current,
+        disputeCases: [
+          ...current.disputeCases.filter((disputeCase) => disputeCase.id !== result.id),
+          {
+            id: result.id,
+            displayId: "",
+            questId: result.questId,
+            filerUserId: result.filerUserId,
+            status: result.status,
+            createdAt: result.createdAt,
+            updatedAt: result.updatedAt,
+          },
+        ],
+      }));
       if (presentation === "drawer") closeDrawer();
+      else router.refresh();
     } catch (openError: unknown) {
       setDisputeError(errorMessage(openError, "Dispute Case could not be opened."));
     }
@@ -691,7 +820,7 @@ export function QuestDetailPage({ questId, presentation = "page", initialData }:
     }
   }
 
-  const content = <QuestDetailContent detail={detail} finance={finance} linkedDisputeId={linkedDisputeId} disputeLookupError={disputeLookupError} onCommand={openCommand} onOpenDispute={openDispute} disputePending={openDisputeMutation.isPending} disputeError={disputeError} showFullDetailLink={presentation === "drawer"} recordLayout={presentation === "page"} />;
+  const content = <QuestDetailContent detail={detail} finance={finance} disputeLookupError={disputeLookupError} onCommand={openCommand} onOpenDispute={openDispute} disputePending={openDisputeMutation.isPending} disputeError={disputeError} showFullDetailLink={presentation === "drawer"} recordLayout={presentation === "page"} />;
 
   if (presentation === "drawer") {
     return (
@@ -711,11 +840,10 @@ export function QuestDetailPage({ questId, presentation = "page", initialData }:
         breadcrumbLabel={translateText("Quests")}
         recordId={detail.displayId || translateText("Not provided by the Admin API")}
         title={detail.title}
-        subtitle={`${translateText(detail.participation === "GROUP" ? "Team" : "Solo")} · ${translateText("created")} ${formatQuestDate(detail.createdAt)}`}
+        subtitle={translateText(detail.participation === "GROUP" ? "Team" : "Solo")}
         actions={<UiButton asChild size="lg" variant="outline"><Link href={questRoutes.list()}>{translateText("Back to Quests")}</Link></UiButton>}
       />
       <QuestRecordAlert detail={detail} />
-      <RecordStatusBar className="quest-record-status-bar" items={[{ id: "status", label: translateText("Status"), value: <Badge state={detail.state} /> }, { id: "participant-mode", label: translateText("Participant mode"), value: translateText(detail.participation === "GROUP" ? "Team" : "Solo") }, { id: "created", label: translateText("Created"), value: formatQuestDate(detail.createdAt) }, { id: "funding-total", label: translateText("Quest Funding Total"), value: formatQuestMoney(finance?.quest.questFundingTotalSatang ?? detail.questFundingTotalSatang) }, { id: "candidates", label: translateText("Candidates"), value: questCandidateCount(detail) }]} />
       <div className="min-w-0">{content}</div>
       {command ? <QuestCommandDialog detail={detail} command={command} onCancel={() => setCommand(null)} onSubmit={submitCommand} error={commandError} pending={commandMutation.isPending} /> : null}
     </main>

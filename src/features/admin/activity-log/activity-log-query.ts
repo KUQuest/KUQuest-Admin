@@ -107,7 +107,6 @@ export function useAdminDecisionActivityQuery(
     },
     enabled: Boolean(resourceId),
     staleTime: 0,
-    refetchOnWindowFocus: false,
     retry: false,
   });
 }
@@ -131,8 +130,6 @@ export function useActivityLogQuery(filters: ActivityLogFilters, initialData?: A
     queryFn: ({ pageParam }) => loadActivityLogPageData(undefined, filters, pageParam ?? undefined),
     initialData: seedQuery && initialData ? { pages: [initialData], pageParams: [null] } : undefined,
     staleTime: seedQuery ? Infinity : 0,
-    refetchOnMount: !seedQuery,
-    refetchOnWindowFocus: false,
     retry: false,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });

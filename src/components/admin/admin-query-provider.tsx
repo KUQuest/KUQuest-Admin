@@ -7,7 +7,8 @@ export function AdminQueryProvider({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: {
       queries: {
-        refetchOnWindowFocus: false,
+        refetchOnMount: "always",
+        refetchOnWindowFocus: "always",
         staleTime: 30_000,
       },
     },
