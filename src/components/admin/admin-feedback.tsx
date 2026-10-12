@@ -3,7 +3,7 @@
 import { useAdminShell } from "./admin-shell-context";
 import { Card, CardContent, CardHeader } from "../ui/card";
 
-export function AdminLoading({ message = "Loading Admin route…" }: { message?: string }) {
+export function AdminLoading({ message = "Loading Data, please wait..." }: { message?: string }) {
   const { translateText } = useAdminShell();
   return (
     <main className="admin-feedback mx-auto w-full max-w-3xl" aria-busy="true">

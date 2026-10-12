@@ -53,7 +53,6 @@ type ReportCaseDetailProps = {
 };
 
 type EvidenceState = {
-  reference: string;
   evidence: AdminEvidence | null;
   error: string | null;
   loading: boolean;
@@ -77,79 +76,108 @@ function evidenceContext(value: unknown, translateText: (value: string) => strin
   }
 }
 
+/* oxlint-disable jsx-a11y/no-redundant-roles */
+// Keep list semantics in Safari when CSS removes the visible list markers.
+function EvidenceTranscript({
+  state,
+  reportedMemberId,
+  translateText,
+}: {
+  state: EvidenceState;
+  reportedMemberId: string;
+  translateText: (value: string) => string;
+}) {
+  if (state.loading) return <p className="report-chat-state">{translateText("Loading Evidence Reference…")}</p>;
+  if (state.error) return <p className="field-error report-chat-state" role="alert">{translateText(state.error)}</p>;
+  if (!state.evidence) return null;
+
+  if (!("messages" in state.evidence)) {
+    return <pre className="report-evidence-context report-chat-fallback">{evidenceContext(state.evidence.context, translateText)}</pre>;
+  }
+  const reportEvidence = state.evidence;
+
+  return (
+    <div className="report-chat-scroll">
+      {reportEvidence.truncated && <p className="audit-note">{translateText("Only nearby Message context is shown.")}</p>}
+      {reportEvidence.messages.length > 0 ? (
+        <ol aria-label={translateText("Message evidence")} className="report-chat-thread" role="list">
+          {reportEvidence.messages.map((message) => {
+            const isReportedMessage = message.id === reportEvidence.reportedMessageId;
+            const isSystemMessage = message.kind === "SYSTEM";
+            const isReportedMember = message.sender?.id === reportedMemberId;
+            const senderName = message.sender
+              ? [message.sender.firstName, message.sender.lastName].filter(Boolean).join(" ") || message.sender.email
+              : isSystemMessage ? translateText("System") : translateText("Member not provided");
+
+            return (
+              <li
+                className={`report-chat-row ${isSystemMessage ? "is-system" : isReportedMember ? "is-reported" : "is-other"}`}
+                key={message.id}
+              >
+                <article className={`report-chat-bubble ${isSystemMessage ? "is-system" : isReportedMember ? "is-reported" : "is-other"}`}>
+                  <header className="report-chat-message-meta">
+                    <div className="min-w-0">
+                      <strong className="report-chat-sender">{senderName}</strong>
+                      {message.sender?.email && <small className="report-chat-email">{message.sender.email}</small>}
+                    </div>
+                    <time dateTime={message.createdAt}>{formatAdminTimestamp(message.createdAt)}</time>
+                  </header>
+                  {isReportedMessage && <span className="report-chat-reported-label">{translateText("Reported Message")}</span>}
+                  {message.contentText
+                    ? <p className="report-chat-message-content">{message.contentText}</p>
+                    : message.systemType
+                      ? <p className="report-chat-message-content">{translateText(message.systemType)}</p>
+                      : <p className="report-chat-message-content is-empty">{translateText("No text content was provided.")}</p>}
+                  {message.attachments.length > 0 && (
+                    <ul className="report-chat-attachments" role="list">
+                      {message.attachments.map((attachment) => (
+                        <li key={attachment.id}>
+                          <strong>{attachment.originalFilename}</strong>
+                          <small>{attachment.mimeType} · {attachment.sizeBytes} bytes</small>
+                          {attachment.url && <a href={attachment.url} rel="noreferrer" target="_blank">{translateText("Open attachment")}</a>}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </article>
+              </li>
+            );
+          })}
+        </ol>
+      ) : <p className="audit-note">{translateText("No Messages were returned for this Evidence Reference.")}</p>}
+      <p className="audit-note report-chat-audit-note">{translateText("Evidence access is recorded as an Admin Action.")}</p>
+    </div>
+  );
+}
+/* oxlint-enable jsx-a11y/no-redundant-roles */
+
 function EvidencePreview({
   state,
+  reportDisplayId,
+  reportedMemberId,
   translateText,
   onClose,
 }: {
   state: EvidenceState;
+  reportDisplayId: string;
+  reportedMemberId: string;
   translateText: (value: string) => string;
   onClose: () => void;
 }) {
-  const evidence = state.evidence;
-  const reportEvidence = evidence && "messages" in evidence ? evidence : null;
-
   return (
     <AdminModalPortal open onClose={onClose}>
       <dialog open className="report-evidence-dialog" aria-modal="true" aria-labelledby="report-evidence-title" tabIndex={-1}>
-      <div className="dialog-body p-5">
-        <div className="sticky top-0 z-[2] flex items-center justify-between border-b border-admin-border bg-admin-surface/95 px-4 py-3 backdrop-blur-sm">
-          <strong id="report-evidence-title">{translateText("Evidence Reference")}</strong>
-          <button className="icon" type="button" aria-label={translateText("Close evidence")} onClick={onClose}><span className="close-lines" /></button>
-        </div>
-        {state.loading && <p>{translateText("Loading Evidence Reference…")}</p>}
-        {state.error && <p className="field-error" role="alert">{translateText(state.error)}</p>}
-        {!state.loading && !state.error && (
-          reportEvidence ? (
-            <div className="grid gap-3">
-              {reportEvidence.truncated && <p className="audit-note">{translateText("Only nearby Message context is shown.")}</p>}
-              {reportEvidence.messages.length > 0 ? (
-                <ol className="grid gap-3">
-                  {reportEvidence.messages.map((message) => {
-                    const isReportedMessage = message.id === reportEvidence.reportedMessageId;
-                    const senderName = message.sender
-                      ? [message.sender.firstName, message.sender.lastName].filter(Boolean).join(" ") || message.sender.email
-                      : message.kind === "SYSTEM" ? translateText("System") : translateText("Member not provided");
-
-                    return (
-                      <li key={message.id} className="rounded-lg border border-admin-border bg-admin-soft p-3">
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                          <div>
-                            <strong className="block">{translateText(isReportedMessage ? "Reported Message" : message.kind === "SYSTEM" ? "System Message" : "Conversation context")}</strong>
-                            <span>{senderName}</span>
-                            {message.sender?.email && <small className="block text-admin-muted">{message.sender.email}</small>}
-                          </div>
-                          <time className="text-sm text-admin-muted" dateTime={message.createdAt}>{formatAdminTimestamp(message.createdAt)}</time>
-                        </div>
-                        {message.contentText
-                          ? <p className="mt-3 whitespace-pre-wrap break-words">{message.contentText}</p>
-                          : message.systemType
-                            ? <p className="mt-3">{translateText(message.systemType)}</p>
-                            : <p className="mt-3 text-admin-muted">{translateText("No text content was provided.")}</p>}
-                        {message.attachments.length > 0 && (
-                          <ul className="mt-3 grid gap-2">
-                            {message.attachments.map((attachment) => (
-                              <li key={attachment.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-admin-border bg-admin-surface px-3 py-2">
-                                <span>
-                                  <strong className="block">{attachment.originalFilename}</strong>
-                                  <small className="text-admin-muted">{attachment.mimeType} · {attachment.sizeBytes} bytes</small>
-                                </span>
-                                {attachment.url && <a className="text-admin-accent hover:underline" href={attachment.url} target="_blank" rel="noreferrer">{translateText("Open attachment")}</a>}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ol>
-              ) : <p className="audit-note">{translateText("No Messages were returned for this Evidence Reference.")}</p>}
-              <p className="audit-note">{translateText("Evidence access is recorded as an Admin Action.")}</p>
+        <div className="dialog-body">
+          <header className="report-chat-header">
+            <div className="min-w-0">
+              <strong id="report-evidence-title">{translateText("Message conversation")}</strong>
+              <small>{translateText("Report Case")} {reportDisplayId} · {translateText("Read-only evidence")}</small>
             </div>
-          ) : <pre className="report-evidence-context max-h-[50vh] overflow-auto rounded-lg bg-admin-soft p-3 text-sm [overflow-wrap:anywhere]">{evidenceContext(evidence && !("messages" in evidence) ? evidence.context : undefined, translateText)}</pre>
-        )}
-        <div className="dialog-actions flex items-center justify-end gap-2 border-t border-admin-border bg-admin-soft px-5 py-3.5"><Button variant="outline" type="button" onClick={onClose}>{translateText("Close")}</Button></div>
-      </div>
+            <button className="icon" type="button" aria-label={translateText("Close evidence")} onClick={onClose}><span className="close-lines" /></button>
+          </header>
+          <EvidenceTranscript state={state} reportedMemberId={reportedMemberId} translateText={translateText} />
+          <div className="dialog-actions"><Button variant="outline" type="button" onClick={onClose}>{translateText("Close")}</Button></div>
+        </div>
       </dialog>
     </AdminModalPortal>
   );
@@ -592,7 +620,6 @@ export function ReportCaseDetail({
   };
 
   const evidenceState: EvidenceState | null = evidenceReference ? {
-    reference: evidenceReference,
     evidence: evidenceQuery.data ?? null,
     error: evidenceQuery.error instanceof Error ? evidenceQuery.error.message : evidenceQuery.error ? "Evidence Reference could not load." : null,
     loading: evidenceQuery.isPending,
@@ -600,7 +627,7 @@ export function ReportCaseDetail({
   const overlays = (
     <>
       <ReportDecisionDialog model={model} open={dialogOpen} choice={selectedChoice} busy={decisionMutation.isPending} error={commandError} translateText={translateText} onCancel={() => { if (!decisionMutation.isPending) { setDialogOpen(false); setCommandError(null); } }} onConfirm={confirmDecision} />
-      {evidenceState && <EvidencePreview state={evidenceState} translateText={translateText} onClose={() => setEvidenceReference(null)} />}
+      {evidenceState && <EvidencePreview state={evidenceState} reportDisplayId={model.displayId} reportedMemberId={model.reportedMemberId} translateText={translateText} onClose={() => setEvidenceReference(null)} />}
     </>
   );
 
