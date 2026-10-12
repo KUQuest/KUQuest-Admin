@@ -13,7 +13,6 @@ import type {
   AdminMemberPenaltyAddResult,
   AdminMemberPenaltyRemoveReasonCode,
 } from "../api/admin-api";
-import { directActionExemption, type DirectActionExemption } from "./member-penalty-exemption";
 import {
   memberPenaltyHistoryItemKey,
   memberPenaltyHistoryValueLabel,
@@ -73,7 +72,6 @@ function penaltyActionIdempotencyKey(action: PenaltyAction, memberId: string): s
 function actionErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.code === "PENALTY_HISTORY_STALE") return "Penalty History changed. Reload it before you try again.";
-    if (error.code === "PENALTY_EXEMPTION_APPLIES") return "A direct-action exemption applies. No penalty was added. Reload Penalty History.";
     if (error.code === "PENALTY_RECORD_NOT_EFFECTIVE") return "This penalty is no longer effective. Reload Penalty History.";
     if (error.code === "PENALTY_RECORD_NOT_FOUND") return "Penalty record was not found. Reload Penalty History.";
     if (error.code === "PENALTY_RESULT_REQUIRED") return "Select a permitted penalty result.";
@@ -86,7 +84,6 @@ function MemberPenaltyActionDialog({
   model,
   effectivePenalties,
   historyComplete,
-  exemption,
   onClose,
   onSuccess,
 }: {
@@ -94,7 +91,6 @@ function MemberPenaltyActionDialog({
   model: MemberModel;
   effectivePenalties: MemberPenaltyHistoryEntry[];
   historyComplete: boolean;
-  exemption: DirectActionExemption;
   onClose: () => void;
   onSuccess: (message: string) => void;
 }) {
@@ -110,7 +106,7 @@ function MemberPenaltyActionDialog({
   const title = translateText(add ? "Record violation" : "Remove penalty");
   const reasons = MEMBER_PENALTY_REASON_CODE_OPTIONS[action];
   const versionToken = model.penaltyHistory.summary?.versionToken;
-  const canSubmitAdd = historyComplete && typeof versionToken === "number" && exemption !== "unknown";
+  const canSubmitAdd = historyComplete && typeof versionToken === "number";
   const canSubmitRemove = historyComplete
     && typeof versionToken === "number"
     && selectedRecordId !== null
@@ -132,16 +128,13 @@ function MemberPenaltyActionDialog({
     const adminNote = typeof rawNote === "string" ? rawNote.trim() : "";
 
     if (add) {
-      if (exemption === "unknown") return;
       const rawResult = formData.get("penaltyResult");
-      const result = exemption === "none"
-        ? ADD_PENALTY_OPTIONS.find((option) => option.value === rawResult)?.value
-        : undefined;
-      if (exemption === "none" && !result) return;
+      const result = ADD_PENALTY_OPTIONS.find((option) => option.value === rawResult)?.value;
+      if (!result) return;
 
       const commandInput = {
         expectedVersionToken: versionToken,
-        ...(result ? { result } : {}),
+        result,
         reasonCode: rawReason as AdminMemberPenaltyAddReasonCode,
         ...(adminNote ? { adminNote } : {}),
       };
@@ -190,7 +183,7 @@ function MemberPenaltyActionDialog({
     } catch (error) {
       setErrorMessage(actionErrorMessage(error));
     }
-  }, [action, add, effectivePenalties, exemption, historyComplete, isPending, model, mutateAsync, onSuccess, reasons, versionToken]);
+  }, [action, add, effectivePenalties, historyComplete, isPending, model, mutateAsync, onSuccess, reasons, versionToken]);
 
   return (
     <AdminModalPortal open onClose={close}>
@@ -204,37 +197,24 @@ function MemberPenaltyActionDialog({
             <section className="grid gap-1 rounded-lg bg-admin-soft p-3" aria-label={translateText("Action details")}>
               <h3 className="m-0 font-semibold">{translateText("Action details")}</h3>
               <p className="m-0">{translateText(add
-                ? "The selected Misconduct result will be recorded as a direct Admin action. It will not count toward later automatic Misconduct ladder results."
+                ? "Every direct Record violation applies the Misconduct result you select. It will not count toward later automatic Misconduct ladder results."
                 : "The selected penalty will be reversed. The API will recalculate later automatic ladder results and current restrictions from the remaining effective history. If a later result changes, the API will append a linked reversal and replacement.")}</p>
-              <p className="m-0">{translateText(add
-                ? "The API checks the direct-action exemptions before it saves the violation."
-                : "The original record will stay in immutable Penalty History with a linked reversal. The source case decision will not change.")}</p>
+              {!add ? <p className="m-0">{translateText("The original record will stay in immutable Penalty History with a linked reversal. The source case decision will not change.")}</p> : null}
             </section>
             {!historyComplete ? <p className="audit-note" role="alert">{translateText("Complete Penalty History is required before you can record a violation or remove a penalty.")}</p> : null}
             {add ? (
-              exemption === "unknown" ? (
-                <p className="audit-note" role="alert">{translateText("Penalty History is not complete. Reload it before you record a violation.")}</p>
-              ) : exemption !== "none" ? (
-                <section className="grid gap-1 rounded-lg border border-admin-border p-3">
-                  <strong>{translateText("No penalty will be applied")}</strong>
-                  <p className="m-0">{translateText(exemption === "PC-12"
-                    ? "The first 10 direct-action violations are exempt. This action will record the violation without adding a penalty."
-                    : "The first 3 direct-action violations after a ban lifts are exempt. This action will record the violation without adding a penalty.")}</p>
-                </section>
-              ) : (
-                <fieldset className="grid gap-2">
-                  <legend className="mb-1 font-semibold">{translateText("Select a Misconduct penalty")} <span aria-hidden="true">*</span></legend>
-                  {ADD_PENALTY_OPTIONS.map((option, index) => (
-                    <label className="report-decision-option grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3 rounded-lg border border-admin-border p-3" aria-label={`${translateText(option.label)}. ${translateText(option.description)}`} htmlFor={`member-penalty-choice-${option.value}`} key={option.value}>
-                      <input className="mt-1" id={`member-penalty-choice-${option.value}`} name="penaltyResult" type="radio" value={option.value} required={index === 0} />
-                      <span className="grid gap-1">
-                        <strong>{translateText(option.label)}</strong>
-                        <small className="text-admin-muted">{translateText(option.description)}</small>
-                      </span>
-                    </label>
-                  ))}
-                </fieldset>
-              )
+              <fieldset className="grid gap-2">
+                <legend className="mb-1 font-semibold">{translateText("Select a Misconduct penalty")} <span aria-hidden="true">*</span></legend>
+                {ADD_PENALTY_OPTIONS.map((option, index) => (
+                  <label className="report-decision-option grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3 rounded-lg border border-admin-border p-3" aria-label={`${translateText(option.label)}. ${translateText(option.description)}`} htmlFor={`member-penalty-choice-${option.value}`} key={option.value}>
+                    <input className="mt-1" id={`member-penalty-choice-${option.value}`} name="penaltyResult" type="radio" value={option.value} required={index === 0} />
+                    <span className="grid gap-1">
+                      <strong>{translateText(option.label)}</strong>
+                      <small className="text-admin-muted">{translateText(option.description)}</small>
+                    </span>
+                  </label>
+                ))}
+              </fieldset>
             ) : (
               <fieldset className="grid gap-2">
                 <legend className="mb-1 font-semibold">{translateText("Select an effective penalty to remove")} <span aria-hidden="true">*</span></legend>
@@ -296,7 +276,6 @@ export function MemberPenaltyActions({ model, translateText }: { model: MemberMo
     && historyItems !== null
     && !model.penaltyHistory.error
     && model.penaltyHistory.summary !== null;
-  const exemption = directActionExemption(model.penaltyHistory, historyComplete);
   const openAdd = useCallback(() => { setSuccessMessage(null); setAction("add"); }, []);
   const openRemove = useCallback(() => { setSuccessMessage(null); setAction("remove"); }, []);
   const closeAction = useCallback(() => setAction(null), []);
@@ -312,7 +291,7 @@ export function MemberPenaltyActions({ model, translateText }: { model: MemberMo
         <Button variant="outline" onClick={openRemove}>{translateText("Remove penalty")}</Button>
       </div>
       {successMessage ? <output className="audit-note block">{translateText(successMessage)}</output> : null}
-      {action ? <MemberPenaltyActionDialog action={action} model={model} effectivePenalties={effectivePenalties} historyComplete={historyComplete} exemption={exemption} onClose={closeAction} onSuccess={finishAction} /> : null}
+      {action ? <MemberPenaltyActionDialog action={action} model={model} effectivePenalties={effectivePenalties} historyComplete={historyComplete} onClose={closeAction} onSuccess={finishAction} /> : null}
     </div>
   );
 }

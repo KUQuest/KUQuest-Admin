@@ -799,7 +799,11 @@ describe("Admin API boundary", () => {
     await adminApi.terminateQuest("quest-1", { idempotencyKey: "terminate-1", expectedVersion: 1, reason: "Policy violation.", reasonCode: "SAFETY_REVIEW" });
     await adminApi.listDisputes();
     await adminApi.getDispute("case-1");
-    await adminApi.openDispute("quest-1", { workerId: "worker-1" });
+    await adminApi.openDispute("quest-1", {
+      workerId: "worker-1",
+      category: "OTHER",
+      submittedDetail: "The Worker submitted a concern.",
+    });
     await adminApi.resolveDispute("case-1", { idempotencyKey: "resolve-1", expectedVersion: 1, outcome: "DISPUTE_CASE_DISMISSED", reasonCode: "DISPUTE_INSUFFICIENT_EVIDENCE" });
     await adminApi.listPayouts();
     await adminApi.getPayout("payout-1");
@@ -895,13 +899,21 @@ describe("Admin API boundary", () => {
       });
     });
 
-    const result = await adminApi.openDispute("quest-1", { workerId: "worker-1" });
+    const result = await adminApi.openDispute("quest-1", {
+      workerId: "worker-1",
+      category: "PROOF_REVIEW",
+      submittedDetail: "The Worker says the submitted proof needs review.",
+    });
 
     expect(result.status).toBe("DISPUTE_CASE_PENDING");
     expect(request?.method).toBe("POST");
     expect(request?.url).toBe("https://api.example.test/api/v1/admin/disputes/open/quest-1");
     expect(request?.headers.get("idempotency-key")).toBeNull();
-    expect(await request?.json()).toEqual({ workerId: "worker-1" });
+    expect(await request?.json()).toEqual({
+      workerId: "worker-1",
+      category: "PROOF_REVIEW",
+      submittedDetail: "The Worker says the submitted proof needs review.",
+    });
   });
 
   it("uses the API Member search query name", async () => {

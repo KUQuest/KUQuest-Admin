@@ -5,7 +5,7 @@ import type {
   WalletStatus,
 } from "../domain/rulebook";
 import type { AdminApiRequestOptions } from "./admin-api-types-core";
-import type { AdminDisputeCase } from "./admin-api-types-dispute";
+import type { AdminDisputeCase, AdminDisputeCategory } from "./admin-api-types-dispute";
 import type { AdminQuest } from "./admin-api-types-quest";
 export type AdminCommandOptions = {
   idempotencyKey: string;
@@ -32,7 +32,7 @@ export type AdminMemberPenaltyAddResult =
 export type AdminMemberPenaltyAddCommand = {
   idempotencyKey: string;
   expectedVersionToken: number;
-  result?: AdminMemberPenaltyAddResult;
+  result: AdminMemberPenaltyAddResult;
   reasonCode: AdminMemberPenaltyAddReasonCode;
   adminNote?: string;
 };
@@ -97,6 +97,8 @@ export type AdminDisputeReasonCode =
 
 export type AdminDisputeOpenCommand = {
   workerId: string;
+  category: AdminDisputeCategory;
+  submittedDetail: string;
 };
 
 export type AdminDisputeOpenResult = {

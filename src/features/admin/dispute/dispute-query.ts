@@ -75,8 +75,6 @@ export function useDisputeBoardQuery(initialData?: DisputeCasePageData) {
       ? { pages: [initialData], pageParams: [null] }
       : undefined,
     staleTime: initialData ? Infinity : 0,
-    refetchOnMount: !initialData,
-    refetchOnWindowFocus: false,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
 
@@ -108,8 +106,6 @@ export function useDisputeDetailQuery(disputeId: string, initialModel?: DisputeC
     initialData: initialModel ?? undefined,
     staleTime: 0,
     gcTime: Infinity,
-    refetchOnMount: true,
-    refetchOnWindowFocus: false,
   });
 
   useEffect(() => {
@@ -140,7 +136,6 @@ export function useDisputeEvidenceQuery(disputeId: string) {
     enabled: Boolean(disputeId),
     staleTime: Infinity,
     gcTime: Infinity,
-    refetchOnWindowFocus: false,
     retry: false,
   });
 }

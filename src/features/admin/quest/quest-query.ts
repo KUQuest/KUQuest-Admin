@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { adminApiProvider } from "../api/admin-provider";
+import type { AdminDisputeOpenCommand } from "../api/admin-api-types-commands";
 import type { QuestBoardPageData } from "./quest-service";
 import { loadQuestBoardPageData } from "./quest-service";
 import type { QuestDetailView } from "./quest-model";
@@ -38,7 +39,7 @@ export function useQuestCommandMutation() {
 export function useQuestOpenDisputeMutation() {
   return useMutation({
     mutationKey: ["admin", "quests", "open-dispute"],
-    mutationFn: ({ questId, workerId }: { questId: string; workerId: string }) => adminApiProvider.commands.openDispute(questId, { workerId }),
+    mutationFn: ({ questId, ...command }: { questId: string } & AdminDisputeOpenCommand) => adminApiProvider.commands.openDispute(questId, command),
   });
 }
 
@@ -49,7 +50,5 @@ export function useQuestBoardQuery(initialData: QuestBoardPageData) {
     initialData,
     staleTime: Infinity,
     gcTime: Infinity,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
   });
 }

@@ -70,8 +70,6 @@ export function useReportBoardQuery(initialData?: ReportCasePageData) {
       ? { pages: [initialData], pageParams: [null] }
       : undefined,
     staleTime: initialData ? Infinity : 0,
-    refetchOnMount: !initialData,
-    refetchOnWindowFocus: false,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
 
@@ -103,8 +101,6 @@ export function useReportDetailQuery(reportId: string, initialModel?: ReportCase
     initialData: initialModel ?? undefined,
     staleTime: 0,
     gcTime: Infinity,
-    refetchOnMount: true,
-    refetchOnWindowFocus: false,
   });
 
   useEffect(() => {
@@ -139,7 +135,6 @@ export function useReportEvidenceQuery(reference: string | null) {
     enabled: Boolean(reference),
     staleTime: Infinity,
     gcTime: Infinity,
-    refetchOnWindowFocus: false,
     retry: false,
   });
 }
