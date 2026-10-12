@@ -92,3 +92,10 @@ export function newConductReportIdempotencyKey(reportId: string): string {
     : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   return `admin-decide-conduct-report-${reportId}-${uuid}`;
 }
+
+export function newConductReportAttachmentRequestKey(reportId: string): string {
+  const uuid = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `admin-read-conduct-report-attachments-${reportId}-${uuid}`;
+}
