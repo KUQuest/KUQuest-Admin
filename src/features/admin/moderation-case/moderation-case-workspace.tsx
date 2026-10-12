@@ -46,7 +46,7 @@ export type ModerationCaseWorkspaceProps = {
   reportedMember?: Person | null;
   reporter?: Person | null;
   relatedRecord?: ModerationCaseRelatedRecord | null;
-  evidenceCount: number;
+  evidenceCount: number | string;
   evidenceLabel?: string;
   financialSummary?: Array<{ label: string; value: string }>;
   moderationHistory?: ModerationHistorySummary;

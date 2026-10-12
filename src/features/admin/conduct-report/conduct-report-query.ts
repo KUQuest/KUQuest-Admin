@@ -2,10 +2,10 @@ import { useEffect, useMemo } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
 import { adminApiProvider } from "../api/admin-provider";
-import type { ConductReportDecision } from "../api/admin-api";
+import type { AdminConductReportAttachments, ConductReportDecision } from "../api/admin-api";
 import { replaceInfiniteItem } from "../data/query-data";
 import { adminDecisionActivityQueryKey } from "../activity-log/activity-log-query";
-import { loadConductReportPageData, type ConductReportPageData } from "./conduct-report-service";
+import { loadConductReportPageData, newConductReportAttachmentRequestKey, type ConductReportPageData } from "./conduct-report-service";
 import {
   CONDUCT_REPORT_UPDATED_EVENT,
   conductReportDecisionDetailsForCommand,
@@ -132,4 +132,19 @@ export function useConductReportDetailQuery(reportId: string, initialModel?: Con
   }, [queryClient, queryKey, reportId]);
 
   return { ...query, data: query.data ?? null, queryKey };
+}
+
+export function useConductReportAttachmentsQuery(reportId: string) {
+  return useQuery<AdminConductReportAttachments>({
+    queryKey: ["admin", "conduct-reports", "attachments", reportId],
+    queryFn: () => adminApiProvider.read.getConductReportAttachments(
+      reportId,
+      newConductReportAttachmentRequestKey(reportId),
+    ),
+    enabled: Boolean(reportId),
+    staleTime: Infinity,
+    gcTime: Infinity,
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
 }

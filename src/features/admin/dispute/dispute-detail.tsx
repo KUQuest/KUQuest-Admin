@@ -134,26 +134,47 @@ function evidenceFileSize(sizeBytes: number): string {
   return `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(size)} ${units[unitIndex]}`;
 }
 
-function EvidenceSection({ evidence, loading, error, translateText, compact = false }: {
+function disputeEvidenceFileCount(evidence: AdminDisputeEvidence | undefined): number | null {
+  const proofs = (evidence as unknown as { proofSubmissions?: unknown } | undefined)?.proofSubmissions;
+  if (!Array.isArray(proofs)) return null;
+  let count = 0;
+  for (const proof of proofs) {
+    if (!proof || typeof proof !== "object" || !Array.isArray((proof as { files?: unknown }).files)) return null;
+    count += (proof as { files: unknown[] }).files.length;
+  }
+  return count;
+}
+
+function EvidenceSection({ evidence, loading, refreshing = false, error, onRefresh, translateText, compact = false }: {
   evidence: AdminDisputeEvidence | undefined;
   loading: boolean;
+  refreshing?: boolean;
   error: string | null;
+  onRefresh?: () => void;
   translateText: (value: string) => string;
   compact?: boolean;
 }) {
-  const fileCount = evidence?.proofSubmissions.reduce((count, submission) => count + submission.files.length, 0) ?? 0;
+  const fileCount = disputeEvidenceFileCount(evidence);
+  const dataError = error ?? (evidence && fileCount === null
+    ? "Evidence data was not returned by the Admin API."
+    : null);
   return (
     <Card as="section" className={adminRecordSection}>
       <CardHeader flush className={adminRecordHeader}>
         {compact ? <h3 className={adminRecordHeading}>{translateText("Evidence")}</h3> : <h2 className={adminRecordHeading}>{translateText("Evidence")}</h2>}
-        <span className={adminRecordCount}>{loading ? "…" : error ? "—" : fileCount}</span>
+        <span className={adminRecordCount}>{loading ? "…" : dataError || fileCount === null ? "—" : fileCount}</span>
       </CardHeader>
       {loading && <output className="audit-note">{translateText("Loading Dispute Case Evidence…")}</output>}
-      {error && <p className="field-error" role="alert">{translateText(error)}</p>}
-      {!loading && !error && evidence && <div className="grid gap-4">
+      {dataError && <p className="field-error" role="alert">{translateText(dataError)}</p>}
+      {!loading && !dataError && !evidence && <p className="field-error" role="alert">{translateText("Evidence data was not returned by the Admin API.")}</p>}
+      {!loading && !dataError && evidence && <div className="grid gap-4">
         {evidence.truncated && <p className="audit-note">{translateText("The Admin API returned a partial Evidence record.")}</p>}
+        {fileCount === 0 && <p className="audit-note">{translateText("No evidence was given.")}</p>}
         {evidence.proofSubmissions.length ? <section className="grid gap-2" aria-labelledby="dispute-evidence-proofs-heading">
-          <h3 id="dispute-evidence-proofs-heading" className="m-0 text-sm font-semibold">{translateText("Proof Submissions")} ({evidence.proofSubmissions.length})</h3>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 id="dispute-evidence-proofs-heading" className="m-0 text-sm font-semibold">{translateText("Proof Submissions")} ({evidence.proofSubmissions.length})</h3>
+            {fileCount !== null && fileCount > 0 && onRefresh && <Button type="button" size="sm" variant="outline" onClick={onRefresh} disabled={refreshing}>{translateText(refreshing ? "Refreshing evidence links…" : "Refresh evidence links")}</Button>}
+          </div>
           <ol className="m-0 grid list-none gap-2 p-0">{evidence.proofSubmissions.map((submission, index) => <li key={submission.id} className="grid gap-2 rounded-admin-sm bg-admin-soft p-3">
             <strong>{translateText("Proof Submission")} {index + 1}</strong>
             <div className={adminRecordFacts}>
@@ -161,12 +182,15 @@ function EvidenceSection({ evidence, loading, error, translateText, compact = fa
               <div className={adminRecordFact}><span>{translateText("Submitted at")}</span><strong>{submission.submittedAt ? formatAdminTimestamp(submission.submittedAt) : translateText("Not provided.")}</strong></div>
               <div className={adminRecordFact}><span>{translateText("Files")}</span><strong>{submission.files.length}</strong></div>
             </div>
-            {submission.files.length ? <ul className="m-0 grid list-none gap-1 border-t border-admin-border pt-2 pl-0">{submission.files.map((file, fileIndex) => <li key={file.fileId} className="flex flex-wrap justify-between gap-x-3 gap-y-1 text-sm">
-              <span>{translateText("File")} {fileIndex + 1} · {file.contentType}</span>
-              <span className="text-admin-muted">{evidenceFileSize(file.sizeBytes)}</span>
+            {submission.files.length ? <ul className="m-0 grid list-none gap-2 border-t border-admin-border pt-2 pl-0">{submission.files.map((file, fileIndex) => <li key={file.fileId} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm">
+              <span>{translateText("File")} {fileIndex + 1} · {file.contentType} · {evidenceFileSize(file.sizeBytes)}</span>
+              {file.url
+                ? <a className="font-medium text-admin-accent underline underline-offset-2" href={file.url} target="_blank" rel="noopener noreferrer">{translateText("Open file")}</a>
+                : <span className="text-admin-muted">{translateText("File link was not returned by the Admin API.")}</span>}
+              {file.urlExpiresAt && <span className="w-full text-xs text-admin-muted">{translateText("Link expires")} {formatAdminTimestamp(file.urlExpiresAt)}</span>}
             </li>)}</ul> : <p className="m-0 text-sm text-admin-muted">{translateText("No files were returned for this Proof Submission.")}</p>}
           </li>)}</ol>
-        </section> : <p className="audit-note">{translateText("No evidence was given.")}</p>}
+        </section> : null}
       </div>}
     </Card>
   );
@@ -247,16 +271,16 @@ function DecisionControls({ model, translateText, selectedChoice, commandError, 
   </>;
 }
 
-function FullSections({ model, evidence, evidenceLoading, evidenceError, translateText, selectedChoice, commandError, onSelectChoice, onStartDecision }: { model: DisputeCaseModel; evidence: AdminDisputeEvidence | undefined; evidenceLoading: boolean; evidenceError: string | null; translateText: (value: string) => string; selectedChoice: DisputeCaseDecisionChoice | null; commandError: string | null; onSelectChoice: (choice: DisputeCaseDecisionChoice) => void; onStartDecision: () => void }) {
+function FullSections({ model, evidence, evidenceLoading, evidenceRefreshing, evidenceError, onRefreshEvidence, translateText, selectedChoice, commandError, onSelectChoice, onStartDecision }: { model: DisputeCaseModel; evidence: AdminDisputeEvidence | undefined; evidenceLoading: boolean; evidenceRefreshing: boolean; evidenceError: string | null; onRefreshEvidence: () => void; translateText: (value: string) => string; selectedChoice: DisputeCaseDecisionChoice | null; commandError: string | null; onSelectChoice: (choice: DisputeCaseDecisionChoice) => void; onStartDecision: () => void }) {
   return <>
     <AdminRecordGrid
-      primary={<><Overview model={model} translateText={translateText} /><PartyStatements model={model} translateText={translateText} /><EvidenceSection evidence={evidence} loading={evidenceLoading} error={evidenceError} translateText={translateText} /><Timeline model={model} translateText={translateText} /></>}
+      primary={<><Overview model={model} translateText={translateText} /><PartyStatements model={model} translateText={translateText} /><EvidenceSection evidence={evidence} loading={evidenceLoading} refreshing={evidenceRefreshing} error={evidenceError} onRefresh={onRefreshEvidence} translateText={translateText} /><Timeline model={model} translateText={translateText} /></>}
       side={<><MemberSummary heading={model.filerRole} id={model.filerId} displayId={model.filerDisplayId} name={model.filerName} href={model.filerHref} translateText={translateText} /><MemberSummary heading={model.respondentRole} id={model.respondentId} displayId={model.respondentDisplayId} name={model.respondentName} href={model.respondentHref} translateText={translateText} /><Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Related Quest")}</h2></CardHeader><div className={adminRecordSideFacts}><div><span>{translateText("Quest")}</span><strong>{model.questTitle}</strong></div><div><span>{translateText("Quest State")}</span><strong>{translateText(questStateLabel(model.questState))}</strong></div><div><span>{translateText("Failed at")}</span><strong>{failedAtLabel(model, translateText)}</strong></div></div><Button asChild variant="outline" className="mt-3 w-full"><a href={model.questHref ?? questRoutes.list()}>{translateText("Open Quest detail")}</a></Button></Card><Card as="section" className={`${adminRecordSection} dispute-decision-panel`}><CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{model.isActionable ? translateText("Dispute decision") : translateText("Recorded outcome")}</h2></CardHeader><DecisionControls model={model} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelect={onSelectChoice} onStart={onStartDecision} /></Card></>}
     />
   </>;
 }
 
-function DrawerSections({ model, evidence, evidenceLoading, evidenceError, translateText, selectedChoice, commandError, onSelectChoice, onStartDecision }: { model: DisputeCaseModel; evidence: AdminDisputeEvidence | undefined; evidenceLoading: boolean; evidenceError: string | null; translateText: (value: string) => string; selectedChoice: DisputeCaseDecisionChoice | null; commandError: string | null; onSelectChoice: (choice: DisputeCaseDecisionChoice) => void; onStartDecision: () => void }) {
+function DrawerSections({ model, evidence, evidenceLoading, evidenceRefreshing, evidenceError, onRefreshEvidence, translateText, selectedChoice, commandError, onSelectChoice, onStartDecision }: { model: DisputeCaseModel; evidence: AdminDisputeEvidence | undefined; evidenceLoading: boolean; evidenceRefreshing: boolean; evidenceError: string | null; onRefreshEvidence: () => void; translateText: (value: string) => string; selectedChoice: DisputeCaseDecisionChoice | null; commandError: string | null; onSelectChoice: (choice: DisputeCaseDecisionChoice) => void; onStartDecision: () => void }) {
   return <div className="dispute-case-drawer-detail admin-drawer-content-flow grid min-w-0 content-start gap-[18px]"><DisputeAlert model={model} translateText={translateText} /><ModerationCaseWorkspace
     kind="Dispute Case"
     caseId={model.displayId}
@@ -268,7 +292,11 @@ function DrawerSections({ model, evidence, evidenceLoading, evidenceError, trans
     reportedMember={{ id: model.workerId, displayId: model.workerDisplayId, name: model.workerName, href: model.workerHref, role: "Worker" }}
     reporter={{ id: model.filerId, displayId: model.filerDisplayId, name: model.filerName, href: model.filerHref, role: model.filerRole }}
     relatedRecord={{ id: model.questId, displayId: model.questDisplayId, title: model.questTitle, href: model.questHref, state: model.questState }}
-    evidenceCount={evidence?.proofSubmissions.length ?? 0}
+    evidenceCount={evidenceLoading
+      ? translateText("Loading")
+      : evidenceError || !evidence || disputeEvidenceFileCount(evidence) === null
+        ? translateText("Unavailable")
+        : disputeEvidenceFileCount(evidence) ?? translateText("Unavailable")}
     financialSummary={[{ label: "Amount at risk", value: model.amountAtRiskLabel }]}
     moderationHistory={model.moderationHistory}
     policyNote="Dispute Cases apply only to Failed Quests. The Funding Reservation remains in place; money can move only Hirer to Worker."
@@ -280,7 +308,7 @@ function DrawerSections({ model, evidence, evidenceLoading, evidenceError, trans
     compact
   >
     <Overview model={model} translateText={translateText} compact />
-    <EvidenceSection evidence={evidence} loading={evidenceLoading} error={evidenceError} translateText={translateText} compact />
+    <EvidenceSection evidence={evidence} loading={evidenceLoading} refreshing={evidenceRefreshing} error={evidenceError} onRefresh={onRefreshEvidence} translateText={translateText} compact />
     <RelatedQuestPanel model={model} translateText={translateText} />
     <PartyStatements model={model} translateText={translateText} compact />
     <ModerationHistoryPanel
@@ -364,24 +392,27 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
     }
   };
 
+  const evidenceFileCount = disputeEvidenceFileCount(evidenceQuery.data);
   const evidenceError = evidenceQuery.error instanceof Error
     ? evidenceQuery.error.message
     : evidenceQuery.error
       ? "Dispute Case Evidence could not load."
-      : null;
+      : evidenceQuery.data && evidenceFileCount === null
+        ? "Evidence data was not returned by the Admin API."
+        : null;
+  const evidenceUnavailable = !evidenceQuery.isPending && !evidenceQuery.data && !evidenceError;
   const evidenceSummary = evidenceQuery.isPending
     ? translateText("Loading")
-    : evidenceError
+    : evidenceError || evidenceUnavailable
       ? translateText("Unavailable")
-      : evidenceQuery.data
-        ? evidenceQuery.data.proofSubmissions.length
-          ? `${evidenceQuery.data.proofSubmissions.length} ${translateText("Proof Submissions")}`
-          : translateText("None")
-        : translateText("None");
+      : evidenceFileCount
+        ? `${evidenceFileCount} ${translateText(evidenceFileCount === 1 ? "file" : "files")}`
+        : translateText("No evidence was given.");
+  const refreshEvidence = () => { void evidenceQuery.refetch(); };
   const overlays = <DisputeDecisionDialog model={model} open={dialogOpen} choice={selectedChoice} busy={decisionMutation.isPending} error={commandError} translateText={translateText} onCancel={() => { if (!decisionMutation.isPending) { setDialogOpen(false); setCommandError(null); } }} onConfirm={confirmDecision} />;
-  const content = <><DisputeAlert model={model} translateText={translateText} /><RecordStatusBar items={[{ id: "status", label: translateText("Status"), value: <span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span> }, { id: "category", label: translateText("Category"), value: translateText(model.category) }, { id: "opened", label: translateText("Opened"), value: model.submittedAt }, { id: "amount-at-risk", label: translateText("Amount at risk"), value: model.amountAtRiskLabel }, { id: "evidence", label: translateText("Evidence"), value: evidenceSummary }]} /><FullSections model={model} evidence={evidenceQuery.data} evidenceLoading={evidenceQuery.isPending} evidenceError={evidenceError} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} /></>;
+  const content = <><DisputeAlert model={model} translateText={translateText} /><RecordStatusBar items={[{ id: "status", label: translateText("Status"), value: <span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span> }, { id: "category", label: translateText("Category"), value: translateText(model.category) }, { id: "opened", label: translateText("Opened"), value: model.submittedAt }, { id: "amount-at-risk", label: translateText("Amount at risk"), value: model.amountAtRiskLabel }, { id: "evidence", label: translateText("Evidence"), value: evidenceSummary }]} /><FullSections model={model} evidence={evidenceQuery.data} evidenceLoading={evidenceQuery.isPending} evidenceRefreshing={evidenceQuery.isRefetching} evidenceError={evidenceError} onRefreshEvidence={refreshEvidence} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} /></>;
 
-  if (drawer) return <><DrawerSections model={model} evidence={evidenceQuery.data} evidenceLoading={evidenceQuery.isPending} evidenceError={evidenceError} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} />{overlays}</>;
+  if (drawer) return <><DrawerSections model={model} evidence={evidenceQuery.data} evidenceLoading={evidenceQuery.isPending} evidenceRefreshing={evidenceQuery.isRefetching} evidenceError={evidenceError} onRefreshEvidence={refreshEvidence} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} />{overlays}</>;
   return <main className="admin-route-page dispute-case-detail" tabIndex={-1}><AdminRecordHeader breadcrumbHref={disputeRoutes.list()} breadcrumbLabel={translateText("Dispute Cases")} recordId={model.displayId} title={model.title} subtitle={`${translateText(model.category)} · ${translateText("opened")} ${model.submittedAt}`} actions={<Button asChild size="lg" variant="outline"><Link href={disputeRoutes.list()}>{translateText("Back to Dispute Cases")}</Link></Button>} />{content}{overlays}</main>;
 }
 
