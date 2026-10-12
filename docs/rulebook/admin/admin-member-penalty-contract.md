@@ -30,6 +30,10 @@ Approved by the Domain Owner on 2026-10-08:
 - **Decision note**: The Admin may provide a note of up to 200 characters for Add or Remove. The note is part of immutable Penalty History.
 - **Audit record**: Penalty History is the audit record for these actions. Do not write a separate `AdminAction` record.
 
+### Approved policy amendment — 2026-10-09
+
+The Domain Owner requires every new direct Admin **Record violation** action to apply the penalty selected by the Admin. `PC-12` and `PC-13` do not exempt this action. This supersedes the earlier direct-action exemption wording. The Report Case and Conduct Report rules remain separate and unchanged. Existing Penalty History records stay unchanged.
+
 ## Two independent ladders
 
 Member penalties operate through two independent ladders. A Member's strike count on one never affects the other.
@@ -42,7 +46,7 @@ Triggered when an Admin confirms a violation:
 - a `REPORT_CASE_HIDDEN` Moderation Decision on a sent Message; or
 - a `CONDUCT_REPORT_UPHELD` decision on a Quest Conduct Report.
 
-These case decisions use the automatic penalty tiers below. A direct Member **Record violation** action uses the Admin-selected tier recorded in its audit entry, unless an exemption applies. A reversal of that direct action restores the Member and Wallet state that existed before the selected penalty.
+These case decisions use the automatic penalty tiers below. A direct Member **Record violation** action always applies the Admin-selected tier recorded in its audit entry. A reversal of that direct action restores the Member and Wallet state that existed before the selected penalty.
 
 ### Penalty tiers
 
@@ -58,7 +62,7 @@ These case decisions use the automatic penalty tiers below. A direct Member **Re
 - **Temporary ban (2nd strike)**: Denies sign-in for 7 days. Auto-freezes Wallet in the same action; auto-restores Wallet to `ACTIVE` upon expiry.
 - **Permanent ban (3rd strike)**: Denies sign-in permanently and auto-freezes Wallet. Read directly from `memberPenaltyRecord`.
 - **Automatic case-decision exemptions**: Only the first confirmed `REPORT_CASE_HIDDEN` decision for a Member is exempt. A `CONDUCT_REPORT_UPHELD` decision is never exempt. No post-ban exemption applies to either case-decision source. The first Report Case exemption remains used if that Report Case is later restored.
-- **Direct Record violation exemptions**: `PC-12` and `PC-13` continue to apply only to the direct Member **Record violation** action as previously approved. `PC-12` exempts the first 10 confirmed violations after account creation; `PC-13` exempts the first 3 confirmed violations after a temporary or permanent ban lifts. Their existing confirmed-violation counts do not change. If an exemption applies, no penalty is added and the Admin cannot select one.
+- **Direct Record violation**: No exemption applies. Each new command requires the Admin to select a permitted result, and the API applies that result. This rule does not change the automatic Report Case exemption or the Conduct Report rule above. Existing `PENALTY_EXEMPT` records stay unchanged.
 - **Remove Penalty eligibility**: An effective penalty record is a non-exempt original penalty record that has not already been reversed. A timed penalty may remain effective in the ladder after its restriction expires.
 - **Reversals**: `REPORT_CASE_RESTORED` reverses the penalty created by its earlier `REPORT_CASE_HIDDEN` decision. An Admin may also remove any effective penalty record through the separate **Remove Penalty** action above. Each reversal is linked to the original `memberPenaltyRecord`; it does not delete the original or change its source decision. A Conduct Report remains upheld even when its penalty is removed. Reversals clear only the effects of the selected penalty and preserve restrictions caused by other effective penalty records.
 - **Assignments during bans**: A banned Member's active Assignments are not force-cancelled. The standard deadline and Start Work rules apply; unfulfilled work fails via standard rules.

@@ -140,6 +140,7 @@ export type QuestDetailView = {
     id: string;
     displayId: string;
     questId: string;
+    filerUserId?: string;
     status: string;
     createdAt: string | null;
     updatedAt?: string | null;

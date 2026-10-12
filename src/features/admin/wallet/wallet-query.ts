@@ -45,8 +45,6 @@ export function useWalletBoardQuery(initialData: WalletBoardPageData) {
     enabled: !initialData.boardError,
     staleTime: 0,
     gcTime: Infinity,
-    refetchOnMount: true,
-    refetchOnWindowFocus: false,
     retry: false,
   });
 }
@@ -58,8 +56,6 @@ export function useWalletDrawerQuery(walletId: string) {
     enabled: Boolean(walletId),
     staleTime: 0,
     gcTime: Infinity,
-    refetchOnMount: true,
-    refetchOnWindowFocus: false,
   });
 }
 

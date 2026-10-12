@@ -32,7 +32,6 @@ export function useOverviewSearchQuery(
     queryFn: () => adminApiProvider.read.searchAdminRecords({ q: debouncedQuery, kind }),
     staleTime: 5_000,
     gcTime: 60_000,
-    refetchOnWindowFocus: false,
   });
 
   return { ...search, isDebouncing };

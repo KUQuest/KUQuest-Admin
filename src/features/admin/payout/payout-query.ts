@@ -56,7 +56,6 @@ export function usePayoutBoardQuery(initialData: PayoutBoardPageData) {
     initialData,
     staleTime: Infinity,
     gcTime: Infinity,
-    refetchOnWindowFocus: false,
   });
 
   useEffect(() => {

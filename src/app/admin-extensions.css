@@ -193,6 +193,235 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
     padding: 14px 20px 20px;
   }
 }
+
+/* Report Case Message evidence uses a read-only chat transcript. */
+.admin-modal-layer > dialog.report-evidence-dialog {
+  width: min(920px, 100%);
+  max-height: min(900px, calc(100dvh - 32px));
+}
+
+.admin-modal-layer > dialog.report-evidence-dialog > .dialog-body {
+  padding: 0;
+}
+
+.report-chat-header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border);
+}
+
+.report-chat-header > div:first-child > strong,
+.report-chat-header > div:first-child > small {
+  display: block;
+}
+
+.report-chat-header > div:first-child > strong {
+  font-size: 19px;
+}
+
+.report-chat-header > div:first-child > small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.report-chat-scroll {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+  padding: 20px 24px;
+  background: var(--soft);
+  overscroll-behavior: contain;
+}
+
+.report-chat-thread {
+  display: grid;
+  gap: 14px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.report-chat-row {
+  display: flex;
+  min-width: 0;
+}
+
+.report-chat-row.is-reported {
+  justify-content: flex-end;
+}
+
+.report-chat-row.is-other {
+  justify-content: flex-start;
+}
+
+.report-chat-row.is-system {
+  justify-content: center;
+}
+
+.report-chat-bubble {
+  width: fit-content;
+  max-width: min(78%, 680px);
+  min-width: min(240px, 100%);
+  padding: 12px 15px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  overflow-wrap: anywhere;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
+}
+
+.report-chat-bubble.is-reported {
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+  border-bottom-right-radius: 5px;
+  background: var(--accent-soft);
+}
+
+.report-chat-bubble.is-other {
+  border-bottom-left-radius: 5px;
+}
+
+.report-chat-bubble.is-system {
+  max-width: 88%;
+  min-width: 0;
+  border-style: dashed;
+  background: color-mix(in srgb, var(--soft) 75%, var(--surface));
+}
+
+.report-chat-message-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.report-chat-message-meta time {
+  flex: 0 0 auto;
+  font-size: 12px;
+}
+
+.report-chat-sender,
+.report-chat-email {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.report-chat-sender {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.report-chat-email {
+  margin-top: 2px;
+}
+
+.report-chat-reported-label {
+  display: inline-flex;
+  margin-top: 9px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.report-chat-message-content {
+  margin: 9px 0 0;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.report-chat-message-content.is-empty {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.report-chat-attachments {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.report-chat-attachments li {
+  display: grid;
+  gap: 3px;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+}
+
+.report-chat-attachments small {
+  color: var(--muted);
+}
+
+.report-chat-attachments a {
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.report-chat-state,
+.report-chat-fallback {
+  flex: 1 1 auto;
+  min-height: 180px;
+  margin: 0;
+  padding: 24px;
+  overflow: auto;
+  background: var(--soft);
+}
+
+.report-chat-fallback {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.report-chat-audit-note {
+  align-self: center;
+  margin: 18px 0 0;
+  text-align: center;
+}
+
+.admin-modal-layer > dialog.report-evidence-dialog .dialog-actions {
+  margin-top: 0;
+  padding: 14px 22px;
+  background: var(--surface);
+}
+
+@media (max-width: 600px) {
+  .admin-modal-layer > dialog.report-evidence-dialog {
+    width: 100%;
+    max-height: calc(100dvh - 24px);
+  }
+
+  .report-chat-header {
+    align-items: flex-start;
+    padding: 15px 16px;
+  }
+
+  .report-chat-scroll {
+    padding: 16px 12px;
+  }
+
+  .report-chat-bubble {
+    max-width: 92%;
+    min-width: min(190px, 100%);
+  }
+}
 .dialog-body textarea[aria-invalid="true"] {
   border-color: var(--danger);
   outline: 3px solid var(--danger-soft);
@@ -689,6 +918,11 @@ dialog.drawer.dispute-case-drawer .field-error {
 .admin-shell .file-row > span:last-child,
 .admin-shell .related-row > span:last-child,
 .admin-shell .timeline small {
+  font-size: var(--admin-font-meta);
+  line-height: 1.4;
+}
+
+.admin-shell .quest-assignment-state {
   font-size: var(--admin-font-meta);
   line-height: 1.4;
 }

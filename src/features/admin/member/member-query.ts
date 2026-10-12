@@ -53,8 +53,6 @@ export function useMemberBoardQuery(initialData?: MemberPageData) {
       ? { pages: [initialData], pageParams: [null] }
       : undefined,
     staleTime: initialData ? Infinity : 0,
-    refetchOnMount: !initialData,
-    refetchOnWindowFocus: false,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
 
@@ -76,8 +74,6 @@ export function useMemberDetailQuery(memberId: string, initialModel?: MemberMode
     initialData: initialModel ?? undefined,
     staleTime: initialModel ? Infinity : 0,
     gcTime: Infinity,
-    refetchOnMount: !initialModel,
-    refetchOnWindowFocus: false,
   });
 
   useEffect(() => {
@@ -102,8 +98,6 @@ export function useMemberTopUpsQuery(memberId: string, enabled: boolean) {
     }),
     enabled,
     staleTime: 0,
-    refetchOnMount: true,
-    refetchOnWindowFocus: false,
     retry: false,
     getNextPageParam: (page) => page.nextCursor ?? undefined,
   });

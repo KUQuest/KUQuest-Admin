@@ -1,8 +1,10 @@
 import type { ConductReportStatus, DisputeCaseStatus, ReportCaseStatus } from "../domain/rulebook";
+export type AdminDisputeCategory = "PROOF_REVIEW" | "QUEST_CONDITION" | "PARTIAL_WORK" | "OTHER";
 export type AdminDisputeCase = {
   id: string;
   displayId: string;
   questId: string;
+  filerUserId?: string;
   status: DisputeCaseStatus;
   workerId?: string;
   amountAtRiskSatang?: number;
@@ -15,7 +17,7 @@ export type AdminDisputeCase = {
 
 
 export type AdminDisputeCaseDetail = AdminDisputeCase & {
-  category: "PROOF_REVIEW" | "QUEST_CONDITION" | "PARTIAL_WORK" | "OTHER" | null;
+  category: AdminDisputeCategory | null;
   submittedDetail: string | null;
   filerStatement: string | null;
   respondentStatement: string | null;
