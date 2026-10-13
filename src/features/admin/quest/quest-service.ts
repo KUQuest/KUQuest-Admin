@@ -2,10 +2,13 @@ import { ApiError } from "../../../lib/api/client";
 import type {
   AdminApiRequestOptions,
   AdminDisputeCase,
+  AdminMemberReview,
   AdminQuest,
 } from "../api/admin-api";
+import { adminMemberReviewsSchema } from "../api/admin-api-types-member-profile";
 import { adminApiProvider } from "../api/admin-provider";
 import { displayAdminId } from "../display-admin-id";
+import { isQuestTerminal } from "../domain/rulebook";
 import { DISPUTE_LOOKUP_UNAVAILABLE_MESSAGE, listDisputeCasesForQuest } from "./quest-dispute";
 import {
   questDetailViewFromApi,
@@ -22,9 +25,79 @@ export type QuestBoardPageData = {
 export type QuestDetailPageData = {
   detail: QuestDetailView;
   finance: QuestFinanceView | null;
+  workerReviews: Record<string, QuestWorkerReviewData>;
   linkedDisputeId: string | null;
   disputeLookupError?: string | null;
 };
+
+export type QuestWorkerReviewData = {
+  reviews: AdminMemberReview[] | null;
+  error: "Review details could not be loaded." | "Review data does not match the Admin API contract." | null;
+};
+
+const reviewPageLimit = 50;
+
+async function loadWorkerReviews(
+  workerId: string,
+  questDisplayId: string,
+  options: AdminApiRequestOptions,
+): Promise<QuestWorkerReviewData> {
+  if (!questDisplayId) {
+    return { reviews: null, error: "Review data does not match the Admin API contract." };
+  }
+
+  const reviews: AdminMemberReview[] = [];
+  const seenCursors = new Set<string>();
+  const seenReviewIds = new Set<string>();
+  let cursor: string | undefined;
+  let totalCount: number | null = null;
+
+  while (true) {
+    try {
+      const result = adminMemberReviewsSchema.safeParse(
+        await adminApiProvider.read.listMemberReviews(
+          workerId,
+          { limit: reviewPageLimit, ...(cursor ? { cursor } : {}) },
+          options,
+        ),
+      );
+      if (!result.success) {
+        return { reviews: null, error: "Review data does not match the Admin API contract." };
+      }
+
+      const page = result.data;
+      if ((totalCount !== null && totalCount !== page.totalCount)
+        || reviews.length + page.items.length > page.totalCount) {
+        return { reviews: null, error: "Review data does not match the Admin API contract." };
+      }
+      for (const review of page.items) {
+        if (seenReviewIds.has(review.id)) {
+          return { reviews: null, error: "Review data does not match the Admin API contract." };
+        }
+        seenReviewIds.add(review.id);
+      }
+      totalCount = page.totalCount;
+      reviews.push(...page.items);
+
+      if (page.nextCursor === null) {
+        if (reviews.length !== totalCount) {
+          return { reviews: null, error: "Review data does not match the Admin API contract." };
+        }
+        return {
+          reviews: reviews.filter((review) => review.quest.displayId === questDisplayId),
+          error: null,
+        };
+      }
+      if (page.items.length === 0 || seenCursors.has(page.nextCursor)) {
+        return { reviews: null, error: "Review data does not match the Admin API contract." };
+      }
+      seenCursors.add(page.nextCursor);
+      cursor = page.nextCursor;
+    } catch {
+      return { reviews: null, error: "Review details could not be loaded." };
+    }
+  }
+}
 
 function apiRequestOptions(cookieHeader?: string): AdminApiRequestOptions {
   return cookieHeader ? { headers: { Cookie: cookieHeader } } : {};
@@ -114,9 +187,21 @@ export async function loadQuestDetailPageData(
     }
   }
   detail.disputeCases = disputeCases;
+  const workerReviews: Record<string, QuestWorkerReviewData> = {};
+  if (isQuestTerminal(detail.state)) {
+    const reviewEntries = await Promise.all(detail.assignments.map(async (assignment) => [
+      assignment.worker.id,
+      await loadWorkerReviews(assignment.worker.id, detail.displayId, options),
+    ] as const));
+    for (const [workerId, reviewData] of reviewEntries) {
+      workerReviews[workerId] = reviewData;
+    }
+  }
+
   return {
     detail,
     finance: financeResult.status === "fulfilled" ? questFinanceViewFromApi(financeResult.value) : null,
+    workerReviews,
     linkedDisputeId: detail.disputeCases[0]?.id ?? null,
     disputeLookupError,
   };

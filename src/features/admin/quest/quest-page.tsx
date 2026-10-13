@@ -26,7 +26,7 @@ import {
   type QuestFinanceView,
   type QuestTimelineView,
 } from "./quest-model";
-import type { QuestDetailPageData } from "./quest-service";
+import type { QuestDetailPageData, QuestWorkerReviewData } from "./quest-service";
 import { QuestCommandDialog, type QuestCommand, type QuestCommandSubmission } from "./quest-command-dialog";
 import { useQuestCommandMutation, useQuestOpenDisputeMutation } from "./quest-query";
 
@@ -169,6 +169,37 @@ function ListEmpty({ children }: { children: ReactNode }) {
   return <div className="rounded-[10px] bg-admin-soft p-3.5"><strong>{typeof children === "string" ? translateText(children) : children}</strong></div>;
 }
 
+function HirerReview({ data, state }: { data: QuestWorkerReviewData | undefined; state: QuestState }) {
+  const { translateText } = useAdminShell();
+  return (
+    <section className="grid gap-2 rounded-lg border border-admin-border bg-admin-soft p-3" aria-label={translateText("Hirer Review")}>
+      <h3 className="m-0 text-sm font-semibold text-admin-text">{translateText("Hirer Review")}</h3>
+      {!isQuestTerminal(state) ? (
+        <p className="m-0 text-sm text-admin-muted">{translateText("A Review is available after the Quest reaches a Terminal State.")}</p>
+      ) : data?.error ? (
+        <p className="m-0 text-sm text-admin-muted" role="alert">{translateText(data.error)}</p>
+      ) : data?.reviews?.length ? (
+        <ul className="m-0 grid list-none gap-2 p-0">
+          {data.reviews.map((review) => (
+            <li className="grid gap-1" key={review.id}>
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                <strong>{review.reviewer.name}</strong>
+                <span className="text-sm text-admin-muted" aria-label={`${review.rating} ${translateText("out of five stars")}`}>
+                  <span aria-hidden="true">{"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}</span> {review.rating}/5
+                </span>
+              </div>
+              <time className="text-sm text-admin-muted" dateTime={review.updatedAt}>{formatQuestDate(review.updatedAt)}</time>
+              <p className="m-0 whitespace-pre-wrap text-sm">{review.comment || translateText("No written comment.")}</p>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="m-0 text-sm text-admin-muted">{translateText("No Hirer Review was returned.")}</p>
+      )}
+    </section>
+  );
+}
+
 function QuestRecordAlert({ detail }: { detail: QuestDetailView }) {
   const { translateText } = useAdminShell();
   const stateLabel = readableValue(detail.state.replace("QUEST_", ""));
@@ -228,6 +259,7 @@ function QuestFinancialSection({
 function QuestDetailContent({
   detail,
   finance,
+  workerReviews,
   disputeLookupError,
   onCommand,
   onOpenDispute,
@@ -238,6 +270,7 @@ function QuestDetailContent({
 }: {
   detail: QuestDetailView;
   finance: QuestFinanceView | null;
+  workerReviews: Record<string, QuestWorkerReviewData>;
   disputeLookupError: string | null;
   onCommand: (command: QuestCommand) => void;
   onOpenDispute: (commands: AdminDisputeOpenCommand[]) => void;
@@ -691,12 +724,17 @@ function QuestDetailContent({
           <div className="related-list mt-3">
             {detail.assignments.map((assignment) => (
               <div className="related-row" key={assignment.id}>
-                <span><strong>{questMemberName(assignment.worker)}</strong><small>{translateText("Assignment")} · {translateText(readableValue(assignment.assignmentStatus))}</small></span>
-                <div className="flex shrink-0 items-center gap-2">
-                  <span className="quest-assignment-state">{assignment.startedAt ? `${translateText("Started")} ${formatQuestDate(assignment.startedAt)}` : translateText("Not started")}</span>
-                  <UiButton asChild variant="outline" size="xs">
-                    <Link href={memberRoutes.detail(assignment.worker.memberId)}>{translateText("See Member profile")}</Link>
-                  </UiButton>
+                <div className="grid w-full min-w-0 gap-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <span><strong>{questMemberName(assignment.worker)}</strong><small>{translateText("Assignment")} · {translateText(readableValue(assignment.assignmentStatus))}</small></span>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="quest-assignment-state">{assignment.startedAt ? `${translateText("Started")} ${formatQuestDate(assignment.startedAt)}` : translateText("Not started")}</span>
+                      <UiButton asChild variant="outline" size="xs">
+                        <Link href={memberRoutes.detail(assignment.worker.memberId)}>{translateText("See Member profile")}</Link>
+                      </UiButton>
+                    </div>
+                  </div>
+                  <HirerReview data={workerReviews[assignment.worker.id]} state={state} />
                 </div>
               </div>
             ))}
@@ -919,7 +957,7 @@ export function QuestDetailPage({ questId, presentation = "page", initialData }:
     }
   }
 
-  const content = <QuestDetailContent detail={detail} finance={finance} disputeLookupError={disputeLookupError} onCommand={openCommand} onOpenDispute={openDispute} disputePending={openingDisputeBatch || openDisputeMutation.isPending} disputeError={disputeError} showFullDetailLink={presentation === "drawer"} recordLayout={presentation === "page"} />;
+  const content = <QuestDetailContent detail={detail} finance={finance} workerReviews={initialData.workerReviews} disputeLookupError={disputeLookupError} onCommand={openCommand} onOpenDispute={openDispute} disputePending={openingDisputeBatch || openDisputeMutation.isPending} disputeError={disputeError} showFullDetailLink={presentation === "drawer"} recordLayout={presentation === "page"} />;
 
   if (presentation === "drawer") {
     return (
