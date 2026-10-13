@@ -6,6 +6,7 @@ import {
 } from "./admin-api-transport";
 import type {
   AdminConductReportCommandResult,
+  AdminConductReportAttachments,
   AdminApiRequestOptions,
   AdminEvidence,
   AdminReportCase,
@@ -70,6 +71,24 @@ export function createAdminReportApi() {
             outcome: options.outcome,
             decisionReasonCode: options.decisionReasonCode,
             ...decisionReasonTextFields(options.decisionReasonText),
+          },
+        },
+      );
+    },
+
+    getConductReportAttachments(
+      reportId: string,
+      idempotencyKey: string,
+      options: AdminApiRequestOptions = {},
+    ): Promise<AdminConductReportAttachments> {
+      return apiRequest<AdminConductReportAttachments>(
+        `/api/v1/admin/reports/${encode(reportId)}/attachments`,
+        {
+          cache: "no-store",
+          ...options,
+          headers: {
+            ...Object.fromEntries(new Headers(options.headers).entries()),
+            "Idempotency-Key": idempotencyKey,
           },
         },
       );

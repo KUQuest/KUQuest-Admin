@@ -6,6 +6,10 @@ Part of the [Admin Rulebook](admin-rulebook.md). Defines accepted policy for Que
 
 A **Conduct Report** evaluates how a Member behaved on a Quest, supported by the **Quest record** (Assignment, Proof Submission, and timestamps). In contrast, a **Report Case** evaluates Message content in Chat (see [Admin Trust & Safety Contract](admin-trust-safety-contract.md)).
 
+Attachment policy approved by the Domain Owner on 2026-10-09.
+
+Conduct Reports may also include up to **5 optional attachments** from the filing Member. The system accepts JPEG, PNG, WebP, PDF, MP4, WebM, and QuickTime files. Each file must be **10 MB or smaller**. These files are separate from the Quest record and Proof Submission. The system retains attachment files until **one year after the Quest becomes Terminal**. Only an Admin who opens that Conduct Report can receive a **15-minute file link**. Each attachment access is recorded as an immutable **Admin Action**. An empty attachment list means the Member gave no attachment.
+
 ## Allowed reasons and relationships
 
 | Filer &rarr; Reported | Reason | When allowed |

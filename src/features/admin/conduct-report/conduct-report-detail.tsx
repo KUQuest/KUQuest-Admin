@@ -10,7 +10,7 @@ import { AdminRecordHeader } from "../../../components/admin/admin-record-header
 import { AdminRecordGrid } from "../../../components/admin/admin-record-grid";
 import { AdminStatusAlert } from "../../../components/admin/admin-status-alert";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
-import type { ConductReportDecision } from "../api/admin-api";
+import type { AdminConductReportAttachment, AdminConductReportAttachments, ConductReportDecision } from "../api/admin-api";
 import type { AdminDecisionSubmission } from "../admin-decision-note";
 import { Button } from "../../../components/ui/button";
 import { Card, CardContent, CardHeader } from "../../../components/ui/card";
@@ -53,7 +53,7 @@ import {
   type ConductReportDecisionReasonCode,
   type ConductReportModel,
 } from "./conduct-report-model";
-import { useConductReportDecisionMutation, useConductReportDetailQuery } from "./conduct-report-query";
+import { useConductReportAttachmentsQuery, useConductReportDecisionMutation, useConductReportDetailQuery } from "./conduct-report-query";
 
 type ConductReportPresentation = "drawer" | "page";
 
@@ -83,12 +83,6 @@ function MemberLink({
   return interactive && href && id ? <Link href={href}>{name}</Link> : <span>{name}</span>;
 }
 
-function conductEvidenceCount(model: ConductReportModel): number {
-  return Number(Boolean(model.questRecord))
-    + Number(Boolean(model.assignment))
-    + Number(Boolean(model.proofSubmission));
-}
-
 function ConductReportAlert({
   model,
   translateText,
@@ -101,7 +95,7 @@ function ConductReportAlert({
       tone={model.isActionable ? "warning" : "success"}
       title={model.isActionable ? translateText("Active Conduct Report — review is required") : translateText("Closed Conduct Report — record retained")}
       description={model.isActionable
-        ? translateText("Review the Quest record and submitted details before deciding this Conduct Report.")
+        ? translateText("Review the Quest record, Proof Submission, and Conduct Report attachments before deciding this Conduct Report.")
         : translateText("This Conduct Report is closed and retained as a read-only audit record.")}
       badge={translateText(model.statusLabel)}
       badgeClassName={model.badgeClass}
@@ -145,7 +139,7 @@ function ConductReportOverview({
         <div><dt>{translateText("Case type")}</dt><dd>{translateText("Conduct Report")}</dd></div>
         <div><dt>{translateText("Source")}</dt><dd>{translateText("Quest record")}</dd></div>
         <div><dt>{translateText("Submitted")}</dt><dd>{formatAdminTimestamp(model.submittedAt)}</dd></div>
-        <div><dt>{translateText("Evidence")}</dt><dd>{conductEvidenceCount(model) || translateText("None")}</dd></div>
+        <div><dt>{translateText("Proof Submission")}</dt><dd>{model.proofSubmission ? translateText("Submitted") : translateText(model.proofSubmissionWasReturned ? "None" : "Not returned by the Admin API.")}</dd></div>
         <div><dt>{translateText("Filed reason")}</dt><dd>{model.reasonCode ? translateText(conductReportReasonLabel(model.reasonCode)) : "—"}</dd></div>
       </AdminOverviewMeta>
       <div className={adminRecordGroup}>
@@ -179,13 +173,10 @@ function ConductEvidenceSection({
   translateText: (value: string) => string;
   compact?: boolean;
 }) {
-  const evidenceCount = conductEvidenceCount(model);
-
   return (
     <Card as="section" className={adminRecordSection}>
       <CardHeader flush className={adminRecordHeader}>
-        {compact ? <h3 className={adminRecordHeading}>{translateText("Evidence")}</h3> : <h2 className={adminRecordHeading}>{translateText("Evidence")}</h2>}
-        <span className={adminRecordCount}>{evidenceCount}</span>
+        {compact ? <h3 className={adminRecordHeading}>{translateText("Quest record")}</h3> : <h2 className={adminRecordHeading}>{translateText("Quest record")}</h2>}
       </CardHeader>
       {model.questRecord && <div className={adminRecordGroup}>
         <span>{translateText("Quest record")}</span>
@@ -215,8 +206,84 @@ function ConductEvidenceSection({
         {model.proofSubmission.content && <div className={`${adminRecordGroup} mt-3`}><span>{translateText("Submitted content")}</span><p>{model.proofSubmission.content}</p></div>}
         {model.proofSubmission.reviewNote && <div className={`${adminRecordGroup} mt-3`}><span>{translateText("Review note")}</span><p>{model.proofSubmission.reviewNote}</p></div>}
       </div>}
-      {!evidenceCount && <p className="audit-note">{translateText("No Quest record evidence was provided.")}</p>}
-      <p className="audit-note">{translateText("Use the Assignment, Proof Submission, and Quest timestamps as the decision evidence.")}</p>
+      {!model.proofSubmission && <p className="audit-note">{translateText(model.proofSubmissionWasReturned ? "No Proof Submission exists for this Assignment." : "Proof Submission data was not returned by the Admin API.")}</p>}
+      <p className="audit-note">{translateText("Assignment and Proof Submission are Quest record context. Member attachments are shown separately.")}</p>
+    </Card>
+  );
+}
+
+function attachmentFileSize(sizeBytes: number): string {
+  if (sizeBytes < 1024) return `${sizeBytes} B`;
+  const units = ["KB", "MB", "GB"];
+  let size = sizeBytes / 1024;
+  let unitIndex = 0;
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex += 1;
+  }
+  return `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(size)} ${units[unitIndex]}`;
+}
+
+function conductAttachmentItems(attachments: AdminConductReportAttachments | undefined): AdminConductReportAttachment[] | null {
+  const rawAttachments = (attachments as unknown as { attachments?: unknown } | undefined)?.attachments;
+  return Array.isArray(rawAttachments)
+    && rawAttachments.every((item) => item && typeof item === "object"
+      && typeof (item as AdminConductReportAttachment).fileId === "string"
+      && typeof (item as AdminConductReportAttachment).contentType === "string"
+      && typeof (item as AdminConductReportAttachment).sizeBytes === "number")
+    ? rawAttachments as AdminConductReportAttachment[]
+    : null;
+}
+
+function ConductAttachmentSection({
+  attachments,
+  loading,
+  refreshing,
+  error,
+  onRefresh,
+  translateText,
+  compact = false,
+}: {
+  attachments: AdminConductReportAttachments | undefined;
+  loading: boolean;
+  refreshing: boolean;
+  error: string | null;
+  onRefresh: () => void;
+  translateText: (value: string) => string;
+  compact?: boolean;
+}) {
+  const attachmentItems = conductAttachmentItems(attachments);
+  const dataError = error ?? (attachments && attachmentItems === null
+    ? "Attachment data was not returned by the Admin API."
+    : null);
+
+  return (
+    <Card as="section" className={adminRecordSection}>
+      <CardHeader flush className={adminRecordHeader}>
+        {compact ? <h3 className={adminRecordHeading}>{translateText("Conduct Report attachments")}</h3> : <h2 className={adminRecordHeading}>{translateText("Conduct Report attachments")}</h2>}
+        <span className={adminRecordCount}>{loading ? "…" : dataError || attachmentItems === null ? "—" : attachmentItems.length}</span>
+      </CardHeader>
+      {loading && <output className="audit-note">{translateText("Loading Conduct Report attachments…")}</output>}
+      {dataError && <p className="field-error" role="alert">{translateText(dataError)}</p>}
+      {!loading && !dataError && !attachments && <p className="field-error" role="alert">{translateText("Attachment data was not returned by the Admin API.")}</p>}
+      {!loading && !dataError && attachments && attachmentItems && (
+        attachmentItems.length === 0
+          ? <p className="audit-note">{translateText("No attachment was given.")}</p>
+          : <div className="grid gap-3">
+            <ul className="m-0 grid list-none gap-2 p-0">
+              {attachmentItems.map((attachment, index) => <li key={attachment.fileId} className="grid gap-2 rounded-admin-sm bg-admin-soft p-3">
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm">
+                  <span>{attachment.originalFilename || `${translateText("File")} ${index + 1}`} · {attachment.contentType} · {attachmentFileSize(attachment.sizeBytes)}</span>
+                  {attachment.url
+                    ? <a className="font-medium text-admin-accent underline underline-offset-2" href={attachment.url} target="_blank" rel="noopener noreferrer">{translateText("Open file")}</a>
+                    : <span className="text-admin-muted">{translateText("File cannot be opened.")}</span>}
+                  {attachment.urlExpiresAt && <span className="w-full text-xs text-admin-muted">{translateText("Link expires")} {formatAdminTimestamp(attachment.urlExpiresAt)}</span>}
+                </div>
+              </li>)}
+            </ul>
+            <div><Button type="button" size="sm" variant="outline" onClick={onRefresh} disabled={refreshing}>{translateText(refreshing ? "Refreshing evidence links…" : "Refresh evidence links")}</Button></div>
+          </div>
+      )}
     </Card>
   );
 }
@@ -417,6 +484,12 @@ function DecisionControls({
 
 function ConductReportDrawerBody({
   model,
+  attachments,
+  attachmentsLoading,
+  attachmentsRefreshing,
+  attachmentsError,
+  attachmentCountLabel,
+  onRefreshAttachments,
   translateText,
   selectedChoice,
   commandError,
@@ -426,6 +499,12 @@ function ConductReportDrawerBody({
   showFullLink = true,
 }: {
   model: ConductReportModel;
+  attachments: AdminConductReportAttachments | undefined;
+  attachmentsLoading: boolean;
+  attachmentsRefreshing: boolean;
+  attachmentsError: string | null;
+  attachmentCountLabel: string | number;
+  onRefreshAttachments: () => void;
   translateText: (value: string) => string;
   selectedChoice: ConductReportDecisionChoice | null;
   commandError: string | null;
@@ -441,6 +520,7 @@ function ConductReportDrawerBody({
           primary={<>
             <ConductReportOverview model={model} translateText={translateText} />
             <ConductEvidenceSection model={model} translateText={translateText} />
+            <ConductAttachmentSection attachments={attachments} loading={attachmentsLoading} refreshing={attachmentsRefreshing} error={attachmentsError} onRefresh={onRefreshAttachments} translateText={translateText} />
             <ConductReportTimeline model={model} translateText={translateText} />
             {model.status !== "CONDUCT_REPORT_PENDING" ? <AdminDecisionActivitySection resourceType="conduct_report" resourceId={model.id} actions={CONDUCT_REPORT_DECISION_ACTIVITY_ACTIONS} reasonCode={model.decisionReasonCode} adminName={model.decisionAdminName} /> : null}
           </>}
@@ -480,10 +560,10 @@ function ConductReportDrawerBody({
         reportedMember={{ id: model.reportedMemberId, displayId: model.reportedMemberDisplayId, name: model.reportedMemberName, href: model.reportedMemberHref, role: "Reported Member" }}
         reporter={{ id: model.reporterId, displayId: model.reporterDisplayId, name: model.reporterName, href: model.reporterHref, role: "Reporting Member" }}
         relatedRecord={model.questId ? { id: model.questId, displayId: model.questDisplayId, title: model.questTitle, href: model.questHref } : null}
-        evidenceCount={conductEvidenceCount(model)}
-        evidenceLabel="Quest record"
+        evidenceCount={attachmentCountLabel}
+        evidenceLabel="Conduct Report attachments"
         moderationHistory={model.moderationHistory}
-        policyNote="Conduct Reports use the Quest record. Work Chat or Candidate Inquiry history may be opened only for this case, with an Admin Action log entry."
+        policyNote="Conduct Reports use the Quest record and separate Member attachments. Work Chat or Candidate Inquiry history may be opened only for this case, with an Admin Action log entry."
         translateText={translateText}
         showDecisionContext={false}
         showModerationHistory={false}
@@ -492,6 +572,7 @@ function ConductReportDrawerBody({
       >
         <ConductReportOverview model={model} translateText={translateText} compact />
         <ConductEvidenceSection model={model} translateText={translateText} compact />
+        <ConductAttachmentSection attachments={attachments} loading={attachmentsLoading} refreshing={attachmentsRefreshing} error={attachmentsError} onRefresh={onRefreshAttachments} translateText={translateText} compact />
         {model.status !== "CONDUCT_REPORT_PENDING" ? <AdminDecisionActivitySection resourceType="conduct_report" resourceId={model.id} actions={CONDUCT_REPORT_DECISION_ACTIVITY_ACTIONS} reasonCode={model.decisionReasonCode} adminName={model.decisionAdminName} /> : null}
         <RelatedQuestPanel model={model} translateText={translateText} compact />
         <ModerationHistoryPanel
@@ -551,6 +632,9 @@ export function ConductReportDrawer({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [commandError, setCommandError] = useState<string | null>(null);
   const decisionMutation = useConductReportDecisionMutation();
+  const attachmentQuery = useConductReportAttachmentsQuery(reportModel.id);
+  const attachmentItems = conductAttachmentItems(attachmentQuery.data);
+  const refreshAttachments = () => { void attachmentQuery.refetch(); };
 
   useEffect(() => {
     setReportModel(model);
@@ -625,6 +709,24 @@ export function ConductReportDrawer({
   const body = (
     <ConductReportDrawerBody
       model={reportModel}
+      attachments={attachmentQuery.data}
+      attachmentsLoading={attachmentQuery.isPending}
+      attachmentsRefreshing={attachmentQuery.isRefetching}
+      attachmentsError={attachmentQuery.error instanceof Error
+        ? attachmentQuery.error.message
+        : attachmentQuery.error
+          ? "Conduct Report attachments could not load."
+          : attachmentQuery.data && attachmentItems === null
+            ? "Attachment data was not returned by the Admin API."
+            : !attachmentQuery.isPending && !attachmentQuery.data
+              ? "Conduct Report attachments could not load."
+              : null}
+      attachmentCountLabel={attachmentQuery.isPending
+        ? translateText("Loading")
+        : attachmentQuery.error || attachmentItems === null
+          ? translateText("Unavailable")
+          : attachmentItems.length}
+      onRefreshAttachments={refreshAttachments}
       translateText={translateText}
       selectedChoice={selectedChoice}
       commandError={commandError}

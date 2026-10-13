@@ -187,6 +187,8 @@ export type AdminDisputeEvidence = {
       contentType: string;
       sizeBytes: number;
       position: number;
+      url: string;
+      urlExpiresAt: string;
     }>;
   }>;
   adminActionId: string;
@@ -194,4 +196,20 @@ export type AdminDisputeEvidence = {
 
 export type AdminDisputeEvidenceRequest = {
   idempotencyKey: string;
+};
+
+export type AdminConductReportAttachment = {
+  fileId: string;
+  originalFilename: string;
+  contentType: string;
+  sizeBytes: number;
+  position: number;
+  url: string | null;
+  urlExpiresAt: string | null;
+};
+
+export type AdminConductReportAttachments = {
+  reportId: string;
+  attachments: AdminConductReportAttachment[];
+  adminActionId: string;
 };

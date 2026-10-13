@@ -43,6 +43,7 @@ export type AdminReadPort = Pick<
   | "getTopUpStatusHistory"
   | "listReports"
   | "getReport"
+  | "getConductReportAttachments"
   | "getEvidence"
   | "getDisputeEvidence"
   | "listMembers"

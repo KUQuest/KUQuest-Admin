@@ -61,7 +61,7 @@ Follow the context pointer for the Admin branch being planned or implemented:
 | **Wallet Freeze & Suspend** | Setting `FROZEN`/`SUSPENDED` statuses, blocking new commitments while honoring active obligations, discretionary vs auto-ban freeze. | [admin-wallet-freeze-contract.md](admin-wallet-freeze-contract.md) |
 | **Trust & Safety (Messages)** | Message moderation in Work Chat & Candidate Inquiries, Reporter Entries, Evidence References, hiding messages, strike creation, and retention. | [admin-trust-safety-contract.md](admin-trust-safety-contract.md) |
 | **Member Penalty Ladders** | Misconduct and Review ladders, source-specific case exemptions, direct Admin Add Penalty and Remove Penalty actions, strike reversals. | [admin-member-penalty-contract.md](admin-member-penalty-contract.md) |
-| **Conduct Reports (Quests)** | Quest behavior reports (`CONDUCT_ABANDONED`, `CONDUCT_OUT_OF_SCOPE`, `CONDUCT_NO_SHOW`), filing windows, Quest record evidence, permanent strikes. | [admin-conduct-report-contract.md](admin-conduct-report-contract.md) |
+| **Conduct Reports (Quests)** | Quest behavior reports (`CONDUCT_ABANDONED`, `CONDUCT_OUT_OF_SCOPE`, `CONDUCT_NO_SHOW`), filing windows, Quest record evidence, optional case-scoped attachments, and permanent strikes. | [admin-conduct-report-contract.md](admin-conduct-report-contract.md) |
 
 ## Scope boundaries & deferred capabilities
 
