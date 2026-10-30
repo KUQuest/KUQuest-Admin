@@ -559,7 +559,7 @@ function QuestDetailContent({
           <Fact label={translateText("Candidate mode")}>{translateText(detail.mode === "FIRST_COME_FIRST_SERVED" ? "First come, first served" : "Candidate")}</Fact>
           <Fact label={translateText("Quest ID")}>{detail.displayId || translateText("Not provided by the Admin API")}</Fact>
           <Fact label={translateText("Created")}>{formatQuestDate(detail.createdAt)}</Fact>
-          <Fact label={translateText("Candidate numbers")}>{candidateCount}</Fact>
+          <Fact label={translateText("Candidate numbers")}>{detail.headcount}</Fact>
           {!recordLayout ? <div className={adminRecordFact}>
             <span>{translateText("Hirer")}</span>
             <strong>{questMemberName(detail.hirer)}</strong>
