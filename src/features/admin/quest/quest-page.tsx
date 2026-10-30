@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { FileText } from "lucide-react";
 import { useEffect, useId, useState, type ReactNode } from "react";
 
 import { ApiError } from "../../../lib/api/client";
@@ -559,7 +560,7 @@ function QuestDetailContent({
           <Fact label={translateText("Candidate mode")}>{translateText(detail.mode === "FIRST_COME_FIRST_SERVED" ? "First come, first served" : "Candidate")}</Fact>
           <Fact label={translateText("Quest ID")}>{detail.displayId || translateText("Not provided by the Admin API")}</Fact>
           <Fact label={translateText("Created")}>{formatQuestDate(detail.createdAt)}</Fact>
-          <Fact label={translateText("Candidate numbers")}>{candidateCount}</Fact>
+          <Fact label={translateText("Candidate numbers")}>{detail.headcount}</Fact>
           {!recordLayout ? <div className={adminRecordFact}>
             <span>{translateText("Hirer")}</span>
             <strong>{questMemberName(detail.hirer)}</strong>
@@ -746,12 +747,42 @@ function QuestDetailContent({
       <Section title="Proof Submissions" count={detail.proofSubmissions.length} variant={sectionVariant}>
         {detail.proofSubmissions.length ? (
           <div className="related-list">
-            {detail.proofSubmissions.map((submission) => (
-              <div className="related-row" key={submission.id}>
-                <span><strong>{submission.worker ? questMemberName(submission.worker) : questMemberName(submission.submittedBy)}</strong><small>{translateText(readableValue(submission.submissionStatus))} · {formatQuestDate(submission.submittedAt)}</small><small>{submission.content || translateText("No proof description.")}</small></span>
-                <span>{submission.files.length} {translateText(submission.files.length === 1 ? "file" : "files")}</span>
-              </div>
-            ))}
+            {detail.proofSubmissions.map((submission) => {
+              const subjectName = submission.team?.name
+                ?? (submission.worker ? questMemberName(submission.worker) : questMemberName(submission.submittedBy));
+              const subjectType = submission.team ? "Candidate Team" : submission.worker ? "Worker" : "Submitted by";
+              return (
+                <article className="related-row items-start" key={submission.id}>
+                  <div className="grid w-full min-w-0 gap-2">
+                    <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+                      <div className="min-w-0">
+                        <strong>{subjectName}</strong>
+                        <small>{translateText(subjectType)} · {translateText(readableValue(submission.submissionStatus))} · {formatQuestDate(submission.submittedAt)}</small>
+                        <small>{translateText("Submitted by")}: {questMemberName(submission.submittedBy)}</small>
+                        <small className="whitespace-pre-wrap break-words">{submission.content || translateText("No proof description.")}</small>
+                        {submission.reviewedAt ? <small>{translateText("Reviewed at")}: {formatQuestDate(submission.reviewedAt)}{submission.reviewedBy ? ` · ${translateText(readableValue(submission.reviewedBy))}` : ""}</small> : null}
+                        {submission.reviewNote ? <small className="whitespace-pre-wrap break-words">{translateText("Review note")}: {submission.reviewNote}</small> : null}
+                      </div>
+                      <span className="shrink-0">{submission.files.length} {translateText(submission.files.length === 1 ? "file" : "files")}</span>
+                    </div>
+                    {submission.files.length ? (
+                      <div className="grid min-w-0 gap-1 border-t border-admin-border pt-2">
+                        {submission.files.map((file) => (
+                          <a className="file-row text-inherit no-underline" href={file.url} key={file.fileId} rel="noreferrer" target="_blank">
+                            <FileText aria-hidden="true" className="h-5 w-5 shrink-0 text-admin-muted" focusable="false" />
+                            <span className="min-w-0">
+                              <strong>{translateText("Proof file")} {file.position + 1}</strong>
+                              <small>{file.contentType} · {file.sizeBytes.toLocaleString()} bytes · {translateText("Link expires")} {formatQuestDate(file.urlExpiresAt)}</small>
+                            </span>
+                            <span>{translateText("Open")}</span>
+                          </a>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                </article>
+              );
+            })}
           </div>
         ) : <ListEmpty>{translateText("No Proof Submissions returned.")}</ListEmpty>}
       </Section>
@@ -917,6 +948,7 @@ export function QuestDetailPage({ questId, presentation = "page", initialData }:
               id: result.id,
               displayId: "",
               questId: result.questId,
+              category: result.category,
               filerUserId: result.filerUserId,
               status: result.status,
               createdAt: result.createdAt,

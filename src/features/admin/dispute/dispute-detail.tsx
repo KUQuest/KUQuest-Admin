@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { ExternalLink } from "lucide-react";
 
 import { formatAdminTimestamp } from "../date-format";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
@@ -51,6 +52,19 @@ type DisputeCaseDetailProps = {
   onUpdated?: (model: DisputeCaseModel) => void;
 };
 
+type DisputeCaseDisplayModel = DisputeCaseModel & { decisionWindowChecking: boolean };
+
+function deadlineHasPassed(model: DisputeCaseModel, now = Date.now()): boolean {
+  const deadline = model.decisionDeadlineAt ? Date.parse(model.decisionDeadlineAt) : Number.NaN;
+  return !Number.isFinite(deadline) || now >= deadline;
+}
+
+function decisionDeadlineLabel(model: DisputeCaseModel, translateText: (value: string) => string): string {
+  return model.decisionDeadlineAt
+    ? formatAdminTimestamp(model.decisionDeadlineAt, "Asia/Bangkok")
+    : translateText("Not provided by the Admin API.");
+}
+
 function MemberLink({
   id,
   name,
@@ -65,14 +79,33 @@ function MemberLink({
   return interactive && href && id ? <Link href={href}>{name}</Link> : <span>{name}</span>;
 }
 
-function DisputeAlert({ model, translateText }: { model: DisputeCaseModel; translateText: (value: string) => string }) {
+function DisputeAlert({ model, translateText }: { model: DisputeCaseDisplayModel; translateText: (value: string) => string }) {
+  const pending = model.status === "DISPUTE_CASE_PENDING";
+  const expired = pending && model.decisionWindowExpired;
+  const deadline = decisionDeadlineLabel(model, translateText);
+  const title = pending
+    ? expired
+      ? translateText("Dispute Case decision deadline passed")
+      : translateText("Active Dispute Case — review is required")
+    : model.automaticDismissal
+      ? translateText("Dispute Case automatically dismissed")
+      : translateText("Closed Dispute Case — record retained");
+  const description = pending
+    ? !model.decisionDeadlineAt
+      ? translateText("The decision deadline was not returned. Admin decisions are unavailable.")
+      : expired
+        ? translateText("The Admin API still returns Pending. No Admin decision can be recorded. Automatic dismissal makes no money movement.")
+        : `${translateText("Record a decision by")} ${deadline}. ${translateText("If no decision is recorded by then, the Admin API will dismiss the case automatically. Automatic dismissal makes no money movement.")}`
+    : model.automaticDismissal
+      ? translateText("The 7-day decision window expired. No money movement was made.")
+      : translateText(model.questState === "QUEST_COMPLETED"
+        ? "This Dispute Case is closed and retained as a read-only audit record. The Quest State remains Completed."
+        : "This Dispute Case is closed and retained as a read-only audit record. The Quest State remains failed.");
   return (
     <AdminStatusAlert
-      tone={model.isActionable ? "danger" : "success"}
-      title={model.isActionable ? translateText("Active Dispute Case — review is required") : translateText("Closed Dispute Case — record retained")}
-      description={model.isActionable
-        ? translateText("The Quest is Failed. Decide whether to dismiss the case or redirect the settlement to the Worker.")
-        : translateText("This Dispute Case is closed and retained as a read-only audit record. The Quest State remains failed.")}
+      tone={pending ? expired ? "warning" : "danger" : "success"}
+      title={title}
+      description={description}
       badge={translateText(model.statusLabel)}
       badgeClassName={model.badgeClass}
       className="dispute-page-alert"
@@ -86,7 +119,7 @@ function Overview({ model, translateText, compact = false }: { model: DisputeCas
       <Card as="section" className={adminRecordSection}>
           <CardHeader flush className={adminRecordHeader}><h3 className={adminRecordHeading}>{translateText("Dispute overview")}</h3></CardHeader>
           <div className={adminRecordFacts}><div className={adminRecordFact}><span>{translateText("Status")}</span><strong><span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span></strong></div><div className={adminRecordFact}><span>{translateText("Category")}</span><strong>{translateText(model.category)}</strong></div><div className={adminRecordFact}><span>{translateText("Amount at risk")}</span><strong>{model.amountAtRiskLabel}</strong></div></div>
-          <AdminOverviewMeta className="moderation-case-context-grid !grid-cols-2 max-[600px]:!grid-cols-1"><div><dt>{translateText("Case")}</dt><dd>{model.displayId}</dd></div><div><dt>{translateText("Case type")}</dt><dd>{translateText("Dispute Case")}</dd></div><div><dt>{translateText("Source")}</dt><dd>{translateText("Quest settlement")}</dd></div><div><dt>{translateText("Submitted")}</dt><dd>{model.submittedAt}</dd></div><div><dt>{translateText("Evidence References")}</dt><dd>{model.evidence.length || translateText("None")}</dd></div></AdminOverviewMeta>
+          <AdminOverviewMeta className="moderation-case-context-grid !grid-cols-2 max-[600px]:!grid-cols-1"><div><dt>{translateText("Case")}</dt><dd>{model.displayId}</dd></div><div><dt>{translateText("Case type")}</dt><dd>{translateText("Dispute Case")}</dd></div><div><dt>{translateText("Source")}</dt><dd>{translateText("Quest settlement")}</dd></div><div><dt>{translateText("Submitted")}</dt><dd>{model.submittedAt}</dd></div><div><dt>{translateText("Decision deadline")}</dt><dd>{decisionDeadlineLabel(model, translateText)}</dd></div><div><dt>{translateText("Evidence References")}</dt><dd>{model.evidence.length || translateText("None")}</dd></div></AdminOverviewMeta>
           <div className={adminRecordGroup}><span>{translateText("Submitted detail")}</span><p>{model.detail}</p></div>
           <div className={adminRecordPartyGrid}><div><span>{translateText(model.filerRole)}</span><strong><MemberLink id={model.filerId} name={model.filerName} href={model.filerHref} interactive={false} /></strong><small>{model.filerDisplayId ?? "—"}</small></div><div><span>{translateText(model.respondentRole)}</span><strong><MemberLink id={model.respondentId} name={model.respondentName} href={model.respondentHref} interactive={false} /></strong><small>{model.respondentDisplayId ?? "—"}</small></div></div>
       </Card>
@@ -101,18 +134,10 @@ function Overview({ model, translateText, compact = false }: { model: DisputeCas
         <div><dt>{translateText("Quest")}</dt><dd><Link href={model.questHref ?? questRoutes.list()}>{model.questTitle}</Link></dd></div>
           <div><dt>{translateText("Quest State")}</dt><dd>{translateText(questStateLabel(model.questState))}</dd></div>
         <div><dt>{translateText("Opened")}</dt><dd>{model.submittedAt}</dd></div>
+        <div><dt>{translateText("Decision deadline")}</dt><dd>{decisionDeadlineLabel(model, translateText)}</dd></div>
       </AdminOverviewMeta>
     </Card>
   );
-}
-
-function PartyStatements({ model, translateText, compact = false }: { model: DisputeCaseModel; translateText: (value: string) => string; compact?: boolean }) {
-  const content = (
-    <>
-      <div className="dispute-statements mt-[18px] grid gap-[14px]"><div className={adminRecordGroup}><span>{translateText(model.filerRole === "Worker" ? "Worker statement" : "Hirer statement")}</span><p>{model.filerStatement}</p></div><div className={adminRecordGroup}><span>{translateText(model.respondentRole === "Hirer" ? "Hirer statement" : "Worker statement")}</span><p>{model.respondentStatement}</p></div></div>
-    </>
-  );
-  return <Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}>{compact ? <h3 className={adminRecordHeading}>{translateText("Statements")}</h3> : <h2 className={adminRecordHeading}>{translateText("Statements")}</h2>}</CardHeader>{content}</Card>;
 }
 
 function evidenceStatusLabel(value: string): string {
@@ -161,9 +186,23 @@ function EvidenceSection({ evidence, loading, error, translateText, compact = fa
               <div className={adminRecordFact}><span>{translateText("Submitted at")}</span><strong>{submission.submittedAt ? formatAdminTimestamp(submission.submittedAt) : translateText("Not provided.")}</strong></div>
               <div className={adminRecordFact}><span>{translateText("Files")}</span><strong>{submission.files.length}</strong></div>
             </div>
-            {submission.files.length ? <ul className="m-0 grid list-none gap-1 border-t border-admin-border pt-2 pl-0">{submission.files.map((file, fileIndex) => <li key={file.fileId} className="flex flex-wrap justify-between gap-x-3 gap-y-1 text-sm">
-              <span>{translateText("File")} {fileIndex + 1} · {file.contentType}</span>
-              <span className="text-admin-muted">{evidenceFileSize(file.sizeBytes)}</span>
+            <div className="grid min-w-0 gap-1 border-t border-admin-border pt-2">
+              <strong className="text-sm">{translateText("Worker Message")}</strong>
+              {submission.workerMessage?.trim()
+                ? <p className="m-0 whitespace-pre-wrap break-words text-sm">{submission.workerMessage}</p>
+                : <p className="m-0 text-sm text-admin-muted">{translateText("No Worker Message was returned for this Proof Submission.")}</p>}
+            </div>
+            {submission.files.length ? <ul className="m-0 grid list-none gap-2 border-t border-admin-border pt-2 pl-0">{submission.files.map((file, fileIndex) => <li key={file.fileId} className="flex flex-wrap items-center justify-between gap-3">
+              <span className="grid min-w-0 gap-0.5">
+                <strong>{translateText("Proof file")} {fileIndex + 1}</strong>
+                <small className="break-words text-admin-muted">{file.contentType} · {evidenceFileSize(file.sizeBytes)} · {translateText("Link expires")} {formatAdminTimestamp(file.urlExpiresAt, "Asia/Bangkok")}</small>
+              </span>
+              <Button asChild variant="primary" size="sm" className="dispute-evidence-open-link shrink-0">
+                <a href={file.url} rel="noreferrer" target="_blank" aria-label={`${translateText("Open file")} ${fileIndex + 1}`}>
+                  <ExternalLink aria-hidden="true" className="size-4" focusable="false" />
+                  {translateText("Open file")}
+                </a>
+              </Button>
             </li>)}</ul> : <p className="m-0 text-sm text-admin-muted">{translateText("No files were returned for this Proof Submission.")}</p>}
           </li>)}</ol>
         </section> : <p className="audit-note">{translateText("No evidence was given.")}</p>}
@@ -172,20 +211,35 @@ function EvidenceSection({ evidence, loading, error, translateText, compact = fa
   );
 }
 
-function Timeline({ model, translateText }: { model: DisputeCaseModel; translateText: (value: string) => string }) {
+function Timeline({ model, translateText }: { model: DisputeCaseDisplayModel; translateText: (value: string) => string }) {
   const events = model.status === "DISPUTE_CASE_PENDING"
     ? [
       { title: "Dispute Case opened", time: model.submittedAt, detail: `${model.filerName} filed the Dispute Case.` },
-      { title: "Awaiting Admin decision", time: translateText("Open"), detail: translateText("The Quest remains Failed while the settlement is held.") },
+      {
+        title: model.decisionWindowExpired ? "Automatic dismissal due" : "Decision deadline",
+        time: decisionDeadlineLabel(model, translateText),
+        detail: model.decisionWindowExpired
+          ? translateText("The Admin API still returns Pending. No decision can be recorded; automatic dismissal makes no money movement.")
+          : translateText("If no Admin decision is recorded by this time, the API dismisses the case without moving money."),
+      },
     ]
     : [
       { title: "Dispute Case opened", time: model.submittedAt, detail: `${model.filerName} filed the Dispute Case.` },
-      { title: "Dispute Case decision recorded", time: model.resolutionAt ?? model.closedAt ?? translateText("Time not provided"), detail: model.decisionReasonCode ? activityLogValueLabel(model.decisionReasonCode) : model.decisionLabel ?? translateText("Record retained for audit.") },
+      {
+        title: model.automaticDismissal ? "Dispute Case automatically dismissed" : "Dispute Case decision recorded",
+        time: model.resolutionAt ?? model.closedAt ?? translateText("Time not provided"),
+        detail: model.automaticDismissal
+          ? translateText("The 7-day decision window expired. No money movement was made.")
+          : model.decisionReasonCode ? activityLogValueLabel(model.decisionReasonCode) : model.decisionLabel ?? translateText("Record retained for audit."),
+      },
     ];
   return <Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Dispute timeline")}</h2></CardHeader><ol className="timeline">{events.map((event) => <li key={`${event.title}-${event.time}`}><strong>{translateText(event.title)}</strong><time>{event.time}</time><span>{translateText(event.detail)}</span></li>)}</ol></Card>;
 }
 
-function DecisionDetails({ model, translateText }: { model: DisputeCaseModel; translateText: (value: string) => string }) {
+function DecisionDetails({ model, translateText }: { model: DisputeCaseDisplayModel; translateText: (value: string) => string }) {
+  if (model.automaticDismissal) {
+    return <div className={adminRecordGroup}><span>{translateText("Decision")}</span><p>{translateText("Automatically dismissed after the 7-day decision window expired. No money movement was made.")}</p><AdminOverviewMeta className="dispute-resolution-meta !grid-cols-2 mt-[14px] max-[700px]:!grid-cols-1"><div><dt>{translateText("Outcome")}</dt><dd>{translateText("Dismissed")}</dd></div><div><dt>{translateText("Resolved by")}</dt><dd>{translateText("System")}</dd></div>{model.resolutionAt && <div><dt>{translateText("Decision recorded")}</dt><dd>{model.resolutionAt}</dd></div>}</AdminOverviewMeta></div>;
+  }
   if (!model.decisionReasonCode && !model.decisionReasonText && !model.resolution && !model.resolvedBy && !model.decisionReasonCodeWasReturned && !model.decisionReasonTextWasReturned) return null;
   const resolvedBy = displayAdminId(model.resolvedBy);
   const reasonCodeLabel = model.decisionReasonCode
@@ -218,18 +272,23 @@ function RelatedQuestPanel({ model, translateText }: { model: DisputeCaseModel; 
         <div><span>{translateText("Quest")}</span><strong>{model.questTitle}</strong></div>
         <div><span>{translateText("Quest ID")}</span><strong>{model.questDisplayId ?? "—"}</strong></div>
         <div><span>{translateText("Quest State")}</span><strong>{translateText(questStateLabel(model.questState))}</strong></div>
-        <div><span>{translateText("Failed at")}</span><strong>{failedAtLabel(model, translateText)}</strong></div>
+        {model.questState === "QUEST_FAILED" && <div><span>{translateText("Failed at")}</span><strong>{failedAtLabel(model, translateText)}</strong></div>}
       </div>
       <Button asChild variant="outline" className="mt-3 w-full"><Link href={model.questHref ?? questRoutes.list()}>{translateText("Open Quest detail")}</Link></Button>
     </Card>
   );
 }
 
-function DecisionControls({ model, translateText, selectedChoice, commandError, onSelect, onStart }: { model: DisputeCaseModel; translateText: (value: string) => string; selectedChoice: DisputeCaseDecisionChoice | null; commandError: string | null; onSelect: (choice: DisputeCaseDecisionChoice) => void; onStart: () => void }) {
+function DecisionControls({ model, translateText, selectedChoice, commandError, onSelect, onStart }: { model: DisputeCaseDisplayModel; translateText: (value: string) => string; selectedChoice: DisputeCaseDecisionChoice | null; commandError: string | null; onSelect: (choice: DisputeCaseDecisionChoice) => void; onStart: () => void }) {
+  if (model.status === "DISPUTE_CASE_PENDING" && model.decisionWindowChecking) return <output className="audit-note">{translateText("Checking the Dispute Case decision deadline…")}</output>;
+  if (model.status === "DISPUTE_CASE_PENDING" && !model.decisionDeadlineAt) return <p className="audit-note">{translateText("The decision deadline was not returned. Admin decisions are unavailable.")}</p>;
+  if (model.status === "DISPUTE_CASE_PENDING" && model.decisionWindowExpired) return <p className="audit-note">{translateText("The decision deadline has passed. The Admin API still returns Pending. No Admin decision can be recorded.")}</p>;
   if (!model.isActionable) return <><p className="audit-note">{translateText("Decision recorded:")} <strong>{translateText(model.decisionLabel ?? model.statusLabel)}</strong>.</p><DecisionDetails model={model} translateText={translateText} /></>;
   const workerAvailable = Boolean(model.workerId);
   return <>
-    <p className="audit-note">{translateText("The Quest remains Failed. Choose who receives the full held amount, then provide a reason.")}</p>
+    <p className="audit-note">{translateText(model.questState === "QUEST_COMPLETED"
+      ? "The Quest is Completed with an incomplete Assignment. Choose who receives the full held amount, then provide a reason."
+      : "The Quest remains Failed. Choose who receives the full held amount, then provide a reason.")}</p>
     <fieldset className="report-decision-options dispute-decision-options mt-3.5 grid gap-2 border-0 p-0">
       <legend className="visually-hidden">{translateText("Dispute Case decision")}</legend>
       <div className={`report-decision-option grid w-full grid-cols-[18px_1fr] items-start gap-x-2 gap-y-0.5 rounded-[9px] border border-admin-border bg-admin-surface px-3 py-[11px] text-left transition-colors hover:bg-admin-hover ${selectedChoice === "dismiss" ? "border-admin-accent bg-admin-accent-soft shadow-[0_0_0_1px_var(--accent)]" : ""}`}>
@@ -247,16 +306,16 @@ function DecisionControls({ model, translateText, selectedChoice, commandError, 
   </>;
 }
 
-function FullSections({ model, evidence, evidenceLoading, evidenceError, translateText, selectedChoice, commandError, onSelectChoice, onStartDecision }: { model: DisputeCaseModel; evidence: AdminDisputeEvidence | undefined; evidenceLoading: boolean; evidenceError: string | null; translateText: (value: string) => string; selectedChoice: DisputeCaseDecisionChoice | null; commandError: string | null; onSelectChoice: (choice: DisputeCaseDecisionChoice) => void; onStartDecision: () => void }) {
+function FullSections({ model, evidence, evidenceLoading, evidenceError, translateText, selectedChoice, commandError, onSelectChoice, onStartDecision }: { model: DisputeCaseDisplayModel; evidence: AdminDisputeEvidence | undefined; evidenceLoading: boolean; evidenceError: string | null; translateText: (value: string) => string; selectedChoice: DisputeCaseDecisionChoice | null; commandError: string | null; onSelectChoice: (choice: DisputeCaseDecisionChoice) => void; onStartDecision: () => void }) {
   return <>
     <AdminRecordGrid
-      primary={<><Overview model={model} translateText={translateText} /><PartyStatements model={model} translateText={translateText} /><EvidenceSection evidence={evidence} loading={evidenceLoading} error={evidenceError} translateText={translateText} /><Timeline model={model} translateText={translateText} /></>}
-      side={<><MemberSummary heading={model.filerRole} id={model.filerId} displayId={model.filerDisplayId} name={model.filerName} href={model.filerHref} translateText={translateText} /><MemberSummary heading={model.respondentRole} id={model.respondentId} displayId={model.respondentDisplayId} name={model.respondentName} href={model.respondentHref} translateText={translateText} /><Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Related Quest")}</h2></CardHeader><div className={adminRecordSideFacts}><div><span>{translateText("Quest")}</span><strong>{model.questTitle}</strong></div><div><span>{translateText("Quest State")}</span><strong>{translateText(questStateLabel(model.questState))}</strong></div><div><span>{translateText("Failed at")}</span><strong>{failedAtLabel(model, translateText)}</strong></div></div><Button asChild variant="outline" className="mt-3 w-full"><a href={model.questHref ?? questRoutes.list()}>{translateText("Open Quest detail")}</a></Button></Card><Card as="section" className={`${adminRecordSection} dispute-decision-panel`}><CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{model.isActionable ? translateText("Dispute decision") : translateText("Recorded outcome")}</h2></CardHeader><DecisionControls model={model} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelect={onSelectChoice} onStart={onStartDecision} /></Card></>}
+      primary={<><Overview model={model} translateText={translateText} /><EvidenceSection evidence={evidence} loading={evidenceLoading} error={evidenceError} translateText={translateText} /><Timeline model={model} translateText={translateText} /></>}
+      side={<><MemberSummary heading={model.filerRole} id={model.filerId} displayId={model.filerDisplayId} name={model.filerName} href={model.filerHref} translateText={translateText} /><MemberSummary heading={model.respondentRole} id={model.respondentId} displayId={model.respondentDisplayId} name={model.respondentName} href={model.respondentHref} translateText={translateText} /><Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Related Quest")}</h2></CardHeader><div className={adminRecordSideFacts}><div><span>{translateText("Quest")}</span><strong>{model.questTitle}</strong></div><div><span>{translateText("Quest State")}</span><strong>{translateText(questStateLabel(model.questState))}</strong></div>{model.questState === "QUEST_FAILED" && <div><span>{translateText("Failed at")}</span><strong>{failedAtLabel(model, translateText)}</strong></div>}</div><Button asChild variant="outline" className="mt-3 w-full"><a href={model.questHref ?? questRoutes.list()}>{translateText("Open Quest detail")}</a></Button></Card><Card as="section" className={`${adminRecordSection} dispute-decision-panel`}><CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{model.isActionable ? translateText("Dispute decision") : translateText("Recorded outcome")}</h2></CardHeader><DecisionControls model={model} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelect={onSelectChoice} onStart={onStartDecision} /></Card></>}
     />
   </>;
 }
 
-function DrawerSections({ model, evidence, evidenceLoading, evidenceError, translateText, selectedChoice, commandError, onSelectChoice, onStartDecision }: { model: DisputeCaseModel; evidence: AdminDisputeEvidence | undefined; evidenceLoading: boolean; evidenceError: string | null; translateText: (value: string) => string; selectedChoice: DisputeCaseDecisionChoice | null; commandError: string | null; onSelectChoice: (choice: DisputeCaseDecisionChoice) => void; onStartDecision: () => void }) {
+function DrawerSections({ model, evidence, evidenceLoading, evidenceError, translateText, selectedChoice, commandError, onSelectChoice, onStartDecision }: { model: DisputeCaseDisplayModel; evidence: AdminDisputeEvidence | undefined; evidenceLoading: boolean; evidenceError: string | null; translateText: (value: string) => string; selectedChoice: DisputeCaseDecisionChoice | null; commandError: string | null; onSelectChoice: (choice: DisputeCaseDecisionChoice) => void; onStartDecision: () => void }) {
   return <div className="dispute-case-drawer-detail admin-drawer-content-flow grid min-w-0 content-start gap-[18px]"><DisputeAlert model={model} translateText={translateText} /><ModerationCaseWorkspace
     kind="Dispute Case"
     caseId={model.displayId}
@@ -271,7 +330,7 @@ function DrawerSections({ model, evidence, evidenceLoading, evidenceError, trans
     evidenceCount={evidence?.proofSubmissions.length ?? 0}
     financialSummary={[{ label: "Amount at risk", value: model.amountAtRiskLabel }]}
     moderationHistory={model.moderationHistory}
-    policyNote="Dispute Cases apply only to Failed Quests. The Funding Reservation remains in place; money can move only Hirer to Worker."
+    policyNote="A Dispute Case can be decided for a Failed Quest or for a completed Group, first-come-first-served Quest with an incomplete Assignment. The Funding Reservation remains in place; money can move only from Hirer to Worker."
     translateText={translateText}
     showCaseMetadata={false}
     showModerationHistory={false}
@@ -282,7 +341,6 @@ function DrawerSections({ model, evidence, evidenceLoading, evidenceError, trans
     <Overview model={model} translateText={translateText} compact />
     <EvidenceSection evidence={evidence} loading={evidenceLoading} error={evidenceError} translateText={translateText} compact />
     <RelatedQuestPanel model={model} translateText={translateText} />
-    <PartyStatements model={model} translateText={translateText} compact />
     <ModerationHistoryPanel
       summary={model.moderationHistory}
       translateText={translateText}
@@ -301,15 +359,59 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
   const [selectedChoice, setSelectedChoice] = useState<DisputeCaseDecisionChoice | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [commandError, setCommandError] = useState<string | null>(null);
+  const [deadlineCheck, setDeadlineCheck] = useState<{ caseId: string; deadlineAt: string | null; expired: boolean } | null>(null);
   const decisionMutation = useDisputeDecisionMutation();
 
-  const model = disputeModel;
-  const evidenceQuery = useDisputeEvidenceQuery(model?.id ?? disputeId);
-  if (isPending && !model) return <AdminLoading message={translateText("Loading Dispute Case…")} />;
-  if (!model) return <main className={drawer ? "drawer-body" : "admin-feedback"}><Card as="section" className="overflow-hidden"><CardHeader><h1 className="text-lg font-semibold">{translateText("Dispute Case not found")}</h1></CardHeader><CardContent className="space-y-4"><p>{translateText(error instanceof Error ? error.message : "The requested Dispute Case was not found.")}</p>{!drawer && <Button asChild variant="primary"><Link href={disputeRoutes.list()}>{translateText("Return to Dispute Cases")}</Link></Button>}</CardContent></Card></main>;
+  const record = disputeModel;
+  const recordId = record?.id;
+  const decisionDeadlineAt = record?.decisionDeadlineAt;
+
+  useEffect(() => {
+    if (!recordId) return;
+    const deadlineAt = decisionDeadlineAt ?? null;
+    const deadline = deadlineAt ? Date.parse(deadlineAt) : Number.NaN;
+    const checkDeadline = () => setDeadlineCheck({
+      caseId: recordId,
+      deadlineAt,
+      expired: !Number.isFinite(deadline) || Date.now() >= deadline,
+    });
+    const initialCheck = window.setTimeout(checkDeadline, 0);
+    const expiryCheck = Number.isFinite(deadline) && deadline > Date.now()
+      ? window.setTimeout(checkDeadline, deadline - Date.now())
+      : null;
+    window.addEventListener("focus", checkDeadline);
+    document.addEventListener("visibilitychange", checkDeadline);
+    return () => {
+      window.clearTimeout(initialCheck);
+      if (expiryCheck !== null) window.clearTimeout(expiryCheck);
+      window.removeEventListener("focus", checkDeadline);
+      document.removeEventListener("visibilitychange", checkDeadline);
+    };
+  }, [recordId, decisionDeadlineAt]);
+
+  const evidenceQuery = useDisputeEvidenceQuery(record?.id ?? disputeId);
+  if (isPending && !record) return <AdminLoading message={translateText("Loading Dispute Case…")} />;
+  if (!record) return <main className={drawer ? "drawer-body" : "admin-feedback"}><Card as="section" className="overflow-hidden"><CardHeader><h1 className="text-lg font-semibold">{translateText("Dispute Case not found")}</h1></CardHeader><CardContent className="space-y-4"><p>{translateText(error instanceof Error ? error.message : "The requested Dispute Case was not found.")}</p>{!drawer && <Button asChild variant="primary"><Link href={disputeRoutes.list()}>{translateText("Return to Dispute Cases")}</Link></Button>}</CardContent></Card></main>;
+
+  const currentDeadlineCheck = deadlineCheck?.caseId === record.id && deadlineCheck.deadlineAt === record.decisionDeadlineAt ? deadlineCheck : null;
+  const decisionWindowExpired = record.decisionWindowExpired || currentDeadlineCheck?.expired === true;
+  const decisionWindowChecking = record.status === "DISPUTE_CASE_PENDING"
+    && !decisionWindowExpired
+    && !currentDeadlineCheck;
+  const model: DisputeCaseDisplayModel = {
+    ...record,
+    decisionWindowExpired,
+    decisionWindowChecking,
+    isActionable: record.isActionable && !decisionWindowExpired && !decisionWindowChecking,
+  };
 
   const startDecision = () => {
-    if (!model.isActionable) return;
+    if (!model.isActionable || deadlineHasPassed(model)) {
+      if (model.status === "DISPUTE_CASE_PENDING") {
+        setDeadlineCheck({ caseId: model.id, deadlineAt: model.decisionDeadlineAt, expired: true });
+      }
+      return;
+    }
     if (!selectedChoice) {
       setCommandError("Choose Dismissed or Resolved before recording the decision.");
       return;
@@ -323,6 +425,12 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
     decisionReasonText,
   }: { reasonCode: AdminDisputeReasonCode; decisionReasonText?: string }) => {
     if (!selectedChoice) return;
+    if (!model.isActionable || deadlineHasPassed(model)) {
+      setDeadlineCheck({ caseId: model.id, deadlineAt: model.decisionDeadlineAt, expired: true });
+      setDialogOpen(false);
+      setSelectedChoice(null);
+      return;
+    }
     if (model.version === undefined) {
       setCommandError("The current Dispute Case version was not provided.");
       return;
@@ -378,7 +486,7 @@ export function DisputeCaseDetail({ disputeId, initialModel = null, drawer = fal
           ? `${evidenceQuery.data.proofSubmissions.length} ${translateText("Proof Submissions")}`
           : translateText("None")
         : translateText("None");
-  const overlays = <DisputeDecisionDialog model={model} open={dialogOpen} choice={selectedChoice} busy={decisionMutation.isPending} error={commandError} translateText={translateText} onCancel={() => { if (!decisionMutation.isPending) { setDialogOpen(false); setCommandError(null); } }} onConfirm={confirmDecision} />;
+  const overlays = <DisputeDecisionDialog model={model} open={dialogOpen && model.isActionable && !deadlineHasPassed(model)} choice={selectedChoice} busy={decisionMutation.isPending} error={commandError} translateText={translateText} onCancel={() => { if (!decisionMutation.isPending) { setDialogOpen(false); setCommandError(null); } }} onConfirm={confirmDecision} />;
   const content = <><DisputeAlert model={model} translateText={translateText} /><RecordStatusBar items={[{ id: "status", label: translateText("Status"), value: <span className={`badge ${model.badgeClass}`}>{translateText(model.statusLabel)}</span> }, { id: "category", label: translateText("Category"), value: translateText(model.category) }, { id: "opened", label: translateText("Opened"), value: model.submittedAt }, { id: "amount-at-risk", label: translateText("Amount at risk"), value: model.amountAtRiskLabel }, { id: "evidence", label: translateText("Evidence"), value: evidenceSummary }]} /><FullSections model={model} evidence={evidenceQuery.data} evidenceLoading={evidenceQuery.isPending} evidenceError={evidenceError} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} /></>;
 
   if (drawer) return <><DrawerSections model={model} evidence={evidenceQuery.data} evidenceLoading={evidenceQuery.isPending} evidenceError={evidenceError} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelectChoice={(choice) => { setSelectedChoice(choice); setCommandError(null); }} onStartDecision={startDecision} />{overlays}</>;

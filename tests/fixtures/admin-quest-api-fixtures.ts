@@ -372,11 +372,14 @@ function teamProofSubmissionsFor(
     reviewNote: approved ? "Team evidence accepted by the Hirer." : rejected ? "Team evidence was not approved." : null,
     submittedAt: quest.updatedAt,
     reviewedAt: approved || rejected ? quest.updatedAt : null,
+    reviewedBy: approved || rejected ? "HIRER" : null,
     files: [{
       fileId: `${quest.id}-proof-file-1`,
       contentType: "image/jpeg",
       sizeBytes: 245_000,
       position: 0,
+      url: `https://files.example.test/${quest.id}-proof-file-1.jpg`,
+      urlExpiresAt: "2026-11-14T10:15:00.000Z",
     }],
   }];
 }
@@ -504,6 +507,7 @@ export function mockQuestDetail(quest: AdminQuest): MockQuestDetail {
         id: displayId,
         displayId,
         questId: quest.id,
+        category: "PROOF_REVIEW",
         status: "DISPUTE_CASE_PENDING",
         createdAt: quest.updatedAt,
         updatedAt: quest.updatedAt,

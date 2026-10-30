@@ -134,8 +134,12 @@ export function useDisputeEvidenceQuery(disputeId: string) {
       });
     },
     enabled: Boolean(disputeId),
-    staleTime: Infinity,
-    gcTime: Infinity,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    refetchInterval: (query) =>
+      query.state.data?.proofSubmissions.some((submission) => submission.files.length > 0)
+        ? 10 * 60 * 1000
+        : false,
     retry: false,
   });
 }

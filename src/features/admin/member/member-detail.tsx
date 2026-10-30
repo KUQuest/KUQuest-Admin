@@ -14,7 +14,7 @@ import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { adminRecordCount, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
 import { ADMIN_LEDGER_EVENT_TYPES } from "../api/admin-api";
 import type { AdminTopUpListItem } from "../api/admin-api";
-import { memberRoutes } from "../admin-routes";
+import { memberRoutes, questRoutes } from "../admin-routes";
 import { formatAdminTimestamp } from "../date-format";
 import { payoutStatusLabel, questStateLabel, reportCaseStatusLabel } from "../domain/rulebook";
 import { formatTopUpPaymentMethod, TopUpDetailDrawer } from "../finance/top-up-detail-drawer";
@@ -470,24 +470,39 @@ function MemberReviewPreview({ model, translateText, onOpenReviews }: { model: M
   );
   return (
     <Card as="section" className="user-detail-panel p-[16px_18px]">
-      <CardHeader flush className="user-panel-heading">
-        <div>
+      <CardHeader flush className="user-panel-heading flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+        <div className="min-w-0">
           <h2>{translateText("Reviews")}</h2>
           <div className="flex flex-wrap items-baseline gap-2 text-[15px] text-admin-muted">
             <strong className="text-[17px] text-admin-text">{averageRating(model)} ★</strong>
             <span className="text-base">{count === null ? translateText("Review data is not verified.") : `(${count})`}</span>
           </div>
         </div>
-        <span className={adminRecordCount}>{collectionCountLabel(model.reviews, translateText, "Review details are not available.")}</span>
-        <Button variant="link" size="sm" type="button" onClick={onOpenReviews}>{translateText("View all")}</Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button variant="link" size="sm" type="button" onClick={onOpenReviews}>{translateText("View all")}</Button>
+        </div>
       </CardHeader>
-      {reviews.slice(0, 5).map((review) => <div className="flex items-center justify-between gap-3 border-t border-admin-border py-2.5 first:border-t-0" key={review.id}>
-        <span>
-          <strong className="block text-[17px] leading-[1.4]">{review.reviewer.name}</strong>
-          <small className="mt-0.5 block text-[15px] leading-[1.45] text-admin-muted">{review.reviewer.displayId} · {"★".repeat(review.rating)} · {formatAdminTimestamp(review.createdAt, "Asia/Bangkok")}</small>
-          <small className="block text-[15px] leading-[1.45] text-admin-muted">{review.quest.displayId} · {review.quest.title}</small>
-        </span>
-      </div>)}
+      {reviews.length ? (
+        // Keyboard users need focus on the scroll region to move across table columns.
+        // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+        <div className="overflow-x-auto" role="region" aria-label={translateText("Reviews table")} tabIndex={0}>
+          <Table className="user-detail-table min-w-[620px] [&_tbody>tr]:cursor-default [&_td]:align-top [&_th]:align-middle [&_th]:pt-2">
+            <caption>{translateText("Reviews")}</caption>
+            <thead><tr>
+              <th scope="col">{translateText("Reviewer")}</th>
+              <th scope="col">{translateText("Rating")}</th>
+              <th scope="col">{translateText("Quest")}</th>
+              <th scope="col">{translateText("Date")}</th>
+            </tr></thead>
+            <tbody>{reviews.slice(0, 5).map((review) => <tr key={review.id}>
+              <td>{review.reviewer.name}<small className="mt-1 block text-admin-muted">{review.reviewer.displayId}</small></td>
+              <td><span role="img" aria-label={`${review.rating} ${translateText("star")}`}>{"★".repeat(review.rating)}</span></td>
+              <td>{review.quest.title}<small className="mt-1 block text-admin-muted">{review.quest.displayId}</small></td>
+              <td className="whitespace-nowrap"><time dateTime={review.createdAt}>{formatAdminTimestamp(review.createdAt, "Asia/Bangkok")}</time></td>
+            </tr>)}</tbody>
+          </Table>
+        </div>
+      ) : null}
       {state ? <p className="audit-note" role={model.reviews.error ? "alert" : undefined}>{state}</p> : null}
       {reviews.length > 0 && model.reviews.error ? <p className="audit-note" role="alert">{translateText(model.reviews.error.message)}</p> : null}
     </Card>
@@ -912,7 +927,10 @@ function ReviewsTab({
     <Card as="section" className="user-detail-panel user-tab-panel col-span-full min-w-0 p-[16px_18px]">
       <CardHeader flush className="user-panel-heading">
         <div>
-          <h2>{translateText("Reviews")}</h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2>{translateText("Reviews")}</h2>
+            <span className={adminRecordCount}>{collectionCountLabel(model.reviews, translateText, "Review details are not available.")}</span>
+          </div>
           <div className="flex flex-wrap items-baseline gap-2 text-[15px] text-admin-muted">
             <strong className="text-[17px] text-admin-text">{averageRating(model)} ★</strong>
             <span className="text-base">{reviewCount(model) === null ? translateText("Review data is not verified.") : `(${reviewCount(model)})`}</span>
@@ -926,14 +944,12 @@ function ReviewsTab({
             </span>
           </div>
         </div>
-        <span className={adminRecordCount}>{collectionCountLabel(model.reviews, translateText, "Review details are not available.")}</span>
       </CardHeader>
       <div className="mb-3 flex items-center justify-between gap-3 max-[600px]:items-stretch max-[600px]:flex-col">
         <div className="inline-search search-field">
           <input type="search" aria-label={translateText("Search reviews")} placeholder={translateText("Search reviews…")} value={query} onChange={(event) => setQuery(event.currentTarget.value)} disabled={!reviewDetailsAvailable} />
         </div>
       </div>
-      <p className="audit-note">{translateText("Review records are read-only. Review Hide or Unhide is not an accepted Admin moderation command.")}</p>
       {reviews.length ? (
         <div className="overflow-x-auto">
           <Table className="user-detail-table min-w-[900px] [&_tbody>tr]:cursor-default [&_td]:align-top [&_th]:align-middle [&_th]:pt-2">
@@ -942,7 +958,7 @@ function ReviewsTab({
               <td>{review.reviewer.name}<small className="mt-1 block text-admin-muted">{review.reviewer.displayId}</small></td>
               <td>{"★".repeat(review.rating)}</td>
               <td>{review.comment ?? translateText("No review comment.")}</td>
-              <td>{review.quest.title}<small className="mt-1 block text-admin-muted">{review.quest.displayId} · {translateText(questStateLabel(review.quest.questStatus))}</small></td>
+              <td><Button asChild variant="link" size="sm" className="min-h-0 p-0 text-left text-base font-medium"><Link href={questRoutes.detail(review.quest.displayId)}>{review.quest.title}</Link></Button><small className="mt-1 block text-admin-muted">{review.quest.displayId} · {translateText(questStateLabel(review.quest.questStatus))}</small></td>
               <td><time dateTime={review.createdAt}>{formatAdminTimestamp(review.createdAt, "Asia/Bangkok")}</time></td>
             </tr>)}</tbody>
           </Table>
@@ -1035,12 +1051,12 @@ function PenaltyHistoryTab({ model, translateText }: { model: MemberModel; trans
   return (
     <Card as="section" className="user-detail-panel user-tab-panel col-span-full min-w-0 p-[16px_18px]">
       <div className="user-reports-tab-content">
-        <CardHeader flush className="user-panel-heading">
-          <div>
+        <CardHeader flush className="user-panel-heading flex items-start justify-between gap-3">
+          <div className="min-w-0">
             <h2>{translateText("Moderation History")}</h2>
             <p>{translateText("Penalty audit records and outcomes for this Member.")}</p>
           </div>
-          <span className={adminRecordCount}>{collectionCountLabel(model.penaltyHistory, translateText, "Moderation history is not available.")}</span>
+          <span className={`${adminRecordCount} shrink-0`}>{collectionCountLabel(model.penaltyHistory, translateText, "Moderation history is not available.")}</span>
         </CardHeader>
         <MemberPenaltyActions model={model} translateText={translateText} />
         <MemberModerationTimeline model={model} translateText={translateText} />

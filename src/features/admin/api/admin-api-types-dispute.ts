@@ -4,6 +4,7 @@ export type AdminDisputeCase = {
   id: string;
   displayId: string;
   questId: string;
+  category: AdminDisputeCategory | null;
   filerUserId?: string;
   status: DisputeCaseStatus;
   workerId?: string;
@@ -17,7 +18,6 @@ export type AdminDisputeCase = {
 
 
 export type AdminDisputeCaseDetail = AdminDisputeCase & {
-  category: AdminDisputeCategory | null;
   submittedDetail: string | null;
   filerStatement: string | null;
   respondentStatement: string | null;
@@ -144,6 +144,7 @@ export type AdminReportCaseEvidence = {
   caseId: string;
   evidenceRefId: string;
   reportedMessageId: string;
+  nextCursor: string | null;
   truncated: boolean;
   messages: AdminEvidenceMessage[];
   adminActionId: string;
@@ -180,10 +181,13 @@ export type AdminDisputeEvidence = {
     workerId: string | null;
     teamId: string | null;
     submittedByUserId: string;
+    workerMessage: string | null;
     submissionStatus: string;
     submittedAt: string | null;
     files: Array<{
       fileId: string;
+      url: string;
+      urlExpiresAt: string;
       contentType: string;
       sizeBytes: number;
       position: number;

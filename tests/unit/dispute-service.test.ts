@@ -75,6 +75,63 @@ describe("Dispute Case service", () => {
     expect(page.nextCursor).toBeNull();
   });
 
+  it("keeps a completed partial Team Quest actionable in the Dispute Case detail", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    const quest = {
+      id: "QST-151",
+      displayId: "QST-000151",
+      title: "tf",
+      questStatus: "QUEST_COMPLETED",
+      mode: "FIRST_COME_FIRST_SERVED",
+      participation: "GROUP",
+      hirer: { id: "hirer-1", firstName: "Hirer", lastName: "One" },
+      assignments: [
+        {
+          id: "assignment-incomplete",
+          worker: { id: "worker-1", firstName: "Worker", lastName: "One" },
+          assignmentStatus: "ASSIGNMENT_INCOMPLETE",
+          startedAt: "2026-10-12T12:10:00.000Z",
+          createdAt: "2026-10-12T12:00:00.000Z",
+        },
+        {
+          id: "assignment-completed",
+          worker: { id: "worker-2", firstName: "Worker", lastName: "Two" },
+          assignmentStatus: "ASSIGNMENT_COMPLETED",
+          startedAt: "2026-10-12T12:10:00.000Z",
+          createdAt: "2026-10-12T12:00:00.000Z",
+        },
+      ],
+    };
+    const dispute = {
+      id: "DSP-151",
+      displayId: "DSP-000014",
+      status: "DISPUTE_CASE_PENDING",
+      questId: "QST-151",
+      filerUserId: "worker-1",
+      respondentUserId: "hirer-1",
+      amountAtRiskSatang: 1000,
+      createdAt: "2026-10-30T12:30:00.000Z",
+      version: 2,
+    };
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith("/admin/quests/QST-151")) {
+        return jsonResponse({ success: true, data: quest });
+      }
+      if (url.pathname.endsWith("/finance/quests/QST-151")) {
+        return jsonResponse({ success: true, data: { reservation: { remainingSatang: 1000 } } });
+      }
+      return jsonResponse({ success: true, data: dispute });
+    }) as unknown as typeof globalThis.fetch;
+
+    await expect(loadDisputeCaseDetailFromApi("DSP-151")).resolves.toMatchObject({
+      status: "DISPUTE_CASE_PENDING",
+      questState: "QUEST_COMPLETED",
+      workerId: "worker-1",
+      isActionable: true,
+    });
+  });
+
   it("loads a direct detail route and rejects a non-Dispute Case response", async () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     const requests: string[] = [];

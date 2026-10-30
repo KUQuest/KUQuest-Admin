@@ -196,8 +196,8 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
 
 /* Report Case Message evidence uses a read-only chat transcript. */
 .admin-modal-layer > dialog.report-evidence-dialog {
-  width: min(920px, 100%);
-  max-height: min(900px, calc(100dvh - 32px));
+  width: min(1120px, 100%);
+  max-height: min(940px, calc(100dvh - 32px));
 }
 
 .admin-modal-layer > dialog.report-evidence-dialog > .dialog-body {
@@ -237,6 +237,8 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
   overflow: auto;
   padding: 20px 24px;
   background: var(--soft);
+  scrollbar-gutter: stable;
+  scroll-behavior: auto;
   overscroll-behavior: contain;
 }
 
@@ -268,7 +270,7 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
 
 .report-chat-bubble {
   width: fit-content;
-  max-width: min(78%, 680px);
+  max-width: min(82%, 760px);
   min-width: min(240px, 100%);
   padding: 12px 15px;
   border: 1px solid var(--border);
@@ -297,16 +299,18 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
 
 .report-chat-message-meta {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 4px 16px;
   color: var(--muted);
   font-size: 13px;
 }
 
 .report-chat-message-meta time {
   flex: 0 0 auto;
-  font-size: 12px;
+  font-size: 13px;
+  white-space: nowrap;
 }
 
 .report-chat-sender,
@@ -317,7 +321,7 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
 
 .report-chat-sender {
   color: var(--text);
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .report-chat-email {
@@ -328,10 +332,11 @@ dialog.drawer.dispute-case-drawer .report-decision-option small {
   display: inline-flex;
   margin-top: 9px;
   padding: 2px 8px;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
   border-radius: 999px;
-  background: var(--surface);
+  background: var(--accent-soft);
   color: var(--accent);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
 }
 
@@ -968,11 +973,15 @@ dialog.drawer.dispute-case-drawer .field-error {
 /* Admin record text should read as part of the current surface, not as a
    second blue/underlined visual system. Keep the native link semantics and
    navigation, but make every non-button link look like surrounding text. */
-.admin-shell a:not(.btn):not([data-slot="button"]),
-.admin-shell a:not(.btn):not([data-slot="button"]):visited,
-.admin-shell a:not(.btn):not([data-slot="button"]):hover {
+.admin-shell a:not(.btn):not([data-slot="button"]):not(.dispute-evidence-open-link),
+.admin-shell a:not(.btn):not([data-slot="button"]):not(.dispute-evidence-open-link):visited,
+.admin-shell a:not(.btn):not([data-slot="button"]):not(.dispute-evidence-open-link):hover {
   color: inherit !important;
   text-decoration: none !important;
+}
+
+.admin-shell a.dispute-evidence-open-link {
+  color: white !important;
 }
 
 .admin-shell a:not(.btn):not([data-slot="button"]):focus-visible {

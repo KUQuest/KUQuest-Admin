@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { AdminDecisionSubmission } from "../admin-decision-note";
 import { formatAdminTimestamp } from "../date-format";
@@ -87,6 +87,16 @@ function EvidenceTranscript({
   reportedMemberId: string;
   translateText: (value: string) => string;
 }) {
+  const reportedMessageRef = useRef<HTMLLIElement>(null);
+
+  useEffect(() => {
+    if (!state.evidence || !("messages" in state.evidence)) return;
+    const frame = window.requestAnimationFrame(() => {
+      reportedMessageRef.current?.scrollIntoView({ block: "center", inline: "nearest" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [state.evidence]);
+
   if (state.loading) return <p className="report-chat-state">{translateText("Loading Evidence Reference…")}</p>;
   if (state.error) return <p className="field-error report-chat-state" role="alert">{translateText(state.error)}</p>;
   if (!state.evidence) return null;
@@ -113,6 +123,7 @@ function EvidenceTranscript({
               <li
                 className={`report-chat-row ${isSystemMessage ? "is-system" : isReportedMember ? "is-reported" : "is-other"}`}
                 key={message.id}
+                ref={isReportedMessage ? reportedMessageRef : undefined}
               >
                 <article className={`report-chat-bubble ${isSystemMessage ? "is-system" : isReportedMember ? "is-reported" : "is-other"}`}>
                   <header className="report-chat-message-meta">

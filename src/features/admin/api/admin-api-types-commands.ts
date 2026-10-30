@@ -104,6 +104,7 @@ export type AdminDisputeOpenCommand = {
 export type AdminDisputeOpenResult = {
   id: string;
   questId: string;
+  category: AdminDisputeCategory | null;
   filerUserId: string;
   openedByAdminId: string | null;
   status: DisputeCaseStatus;
@@ -214,7 +215,7 @@ export type AdminReportDecisionResult =
   | AdminReportCommandResult
   | AdminConductReportCommandResult;
 
-export type AdminReportEvidenceRequestOptions = AdminApiRequestOptions & {
+export type AdminReportEvidenceRequestOptions = AdminApiRequestOptions & Pick<RequestInit, "signal"> & {
   idempotencyKey: string;
   limit?: number;
   cursor?: string;

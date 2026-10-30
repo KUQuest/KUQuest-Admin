@@ -103,7 +103,15 @@ export type QuestDetailView = {
     reviewNote: string | null;
     submittedAt: string;
     reviewedAt: string | null;
-    files: Array<{ fileId: string; contentType: string; sizeBytes: number; position: number }>;
+    reviewedBy: "HIRER" | "AUTO_APPROVE" | null;
+    files: Array<{
+      fileId: string;
+      contentType: string;
+      sizeBytes: number;
+      position: number;
+      url: string;
+      urlExpiresAt: string;
+    }>;
   }>;
   editHistory: Array<
     | {
@@ -338,11 +346,14 @@ export function questDetailViewFromApi(detail: AdminQuestDetail): QuestDetailVie
       reviewNote: submission.reviewNote,
       submittedAt: submission.submittedAt,
       reviewedAt: submission.reviewedAt,
+      reviewedBy: submission.reviewedBy,
       files: submission.files.map((file) => ({
         fileId: file.fileId,
         contentType: file.contentType,
         sizeBytes: file.sizeBytes,
         position: file.position,
+        url: file.url,
+        urlExpiresAt: file.urlExpiresAt,
       })),
     })),
     editHistory: detail.editHistory.map((entry) => entry.kind === "FIELD_EDIT"

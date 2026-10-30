@@ -36,8 +36,22 @@ describe("Admin Rulebook status boundary", () => {
     expect(isQuestTerminal("QUEST_FAILED")).toBe(true);
   });
 
-  it("only resolves a pending Dispute Case on a Failed Quest", () => {
+  it("resolves a pending Dispute Case on a Failed or eligible partial-result Quest", () => {
     expect(canResolveDispute("QUEST_FAILED", "DISPUTE_CASE_PENDING")).toBe(true);
+    const partialResult = {
+      mode: "FIRST_COME_FIRST_SERVED",
+      participation: "GROUP",
+      hasIncompleteAssignment: true,
+    };
+    expect(canResolveDispute("QUEST_COMPLETED", "DISPUTE_CASE_PENDING", partialResult)).toBe(true);
+    expect(canResolveDispute("QUEST_COMPLETED", "DISPUTE_CASE_PENDING", {
+      ...partialResult,
+      mode: "CANDIDATE",
+    })).toBe(false);
+    expect(canResolveDispute("QUEST_COMPLETED", "DISPUTE_CASE_PENDING", {
+      ...partialResult,
+      hasIncompleteAssignment: false,
+    })).toBe(false);
     expect(canResolveDispute("QUEST_CANCELLED", "DISPUTE_CASE_PENDING")).toBe(false);
     expect(canResolveDispute("QUEST_FAILED", "DISPUTE_CASE_RESOLVED")).toBe(false);
   });

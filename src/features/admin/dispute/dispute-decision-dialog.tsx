@@ -116,7 +116,9 @@ export function DisputeDecisionDialog({
   const nextState = choice === "resolve" ? "DISPUTE_CASE_RESOLVED" : "DISPUTE_CASE_DISMISSED";
   const effect = choice === "resolve"
     ? `${translateText("Transfer the full remaining amount from the Hirer side of the held Funding Reservation to")} ${model.workerName} ${translateText("Earnings Balance")} (${model.sharedCapLabel}).`
-    : translateText("Keep the full held amount with the Hirer. No money moves and the Quest remains Failed.");
+    : translateText(model.questState === "QUEST_COMPLETED"
+      ? "Keep the full held amount with the Hirer. No money moves and the Quest remains Completed."
+      : "Keep the full held amount with the Hirer. No money moves and the Quest remains Failed.");
   const fullAmountUnavailable = choice === "resolve" && (!model.workerId || model.sharedCapSatang === null || model.sharedCapSatang <= 0);
   const reasonCodeOptions = choice === "resolve"
     ? DISPUTE_CASE_REASON_CODE_OPTIONS.DISPUTE_CASE_RESOLVED

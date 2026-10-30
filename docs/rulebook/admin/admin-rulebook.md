@@ -56,7 +56,7 @@ Follow the context pointer for the Admin branch being planned or implemented:
 | Branch / Responsibility | Topic and triggers | Sub-contract file |
 | --- | --- | --- |
 | **Payout Approval** | Manual approval queue under `/api/v1/admin/payouts`, masked destination accounts, idempotent approve/reject, provider worker hand-off. | [admin-payout-approval-contract.md](admin-payout-approval-contract.md) |
-| **Dispute Cases** | Reversing `QUEST_FAILED` settlement, 1-day self-file window, 5-day Admin window, 7-day money hold in Funding Reservation, Satang redirection. | [admin-dispute-case-contract.md](admin-dispute-case-contract.md) |
+| **Dispute Cases** | Reversing `QUEST_FAILED` settlement, 1-day self-file window, 5-day Admin window, 7-day money hold, 7-day decision window from case opening, automatic dismissal, Satang redirection. | [admin-dispute-case-contract.md](admin-dispute-case-contract.md) |
 | **Quest Hide & Restore** | Independent `hiddenAt`/`hiddenByAdminId` flags across non-terminal Quests, discovery removal only, Push notifications to Hirer, idempotency. | [admin-quest-hide-contract.md](admin-quest-hide-contract.md) |
 | **Wallet Freeze & Suspend** | Setting `FROZEN`/`SUSPENDED` statuses, blocking new commitments while honoring active obligations, discretionary vs auto-ban freeze. | [admin-wallet-freeze-contract.md](admin-wallet-freeze-contract.md) |
 | **Trust & Safety (Messages)** | Message moderation in Work Chat & Candidate Inquiries, Reporter Entries, Evidence References, hiding messages, strike creation, and retention. | [admin-trust-safety-contract.md](admin-trust-safety-contract.md) |

@@ -42,7 +42,7 @@ describe("Dispute Case model", () => {
       reportedMemberStatus: "ACTIVE",
       createdAt: "2026-09-12T12:00:00.000Z",
       version: 3,
-    });
+    }, Date.parse("2026-09-13T12:00:00.000Z"));
 
     expect(model).toMatchObject({
       id: "dispute-internal-42",
@@ -63,11 +63,75 @@ describe("Dispute Case model", () => {
     expect(model?.moderationHistory.currentMemberStatus).toBe("ACTIVE");
   });
 
-  it("uses canonical status values and only pending failed Quests are actionable", () => {
+  it("uses canonical status values and only eligible pending cases are actionable", () => {
     expect(isDisputeCaseActionable("DISPUTE_CASE_PENDING")).toBe(true);
     expect(isDisputeCaseActionable("DISPUTE_CASE_DISMISSED")).toBe(false);
     expect(isDisputeCaseActionable("DISPUTE_CASE_RESOLVED")).toBe(false);
     expect(disputeCaseModelFromRecord({ id: "DSP-1", status: "DISPUTE_CASE_PENDING", questState: "QUEST_OPEN" })?.isActionable).toBe(false);
+  });
+
+  it("allows a decision for a completed GROUP + FIRST_COME_FIRST_SERVED Quest with an incomplete Assignment", () => {
+    const model = disputeCaseModelFromRecord({
+      id: "DSP-52",
+      displayId: "DSP-52",
+      status: "DISPUTE_CASE_PENDING",
+      questId: "QST-52",
+      createdAt: "2026-10-12T12:00:00.000Z",
+      quest: {
+        id: "QST-52",
+        title: "Team Quest with one incomplete Assignment",
+        questStatus: "QUEST_COMPLETED",
+        mode: "FIRST_COME_FIRST_SERVED",
+        participation: "GROUP",
+        assignments: [
+          { id: "assignment-1", assignmentStatus: "ASSIGNMENT_COMPLETED" },
+          { id: "assignment-2", assignmentStatus: "ASSIGNMENT_INCOMPLETE" },
+        ],
+      },
+    }, Date.parse("2026-10-13T12:00:00.000Z"));
+
+    expect(model).toMatchObject({
+      questState: "QUEST_COMPLETED",
+      isActionable: true,
+    });
+  });
+
+  it("closes the Admin decision window at seven days after the case opens", () => {
+    const model = disputeCaseModelFromRecord({
+      id: "DSP-50",
+      status: "DISPUTE_CASE_PENDING",
+      questState: "QUEST_FAILED",
+      createdAt: "2026-09-12T12:00:00.000Z",
+    }, Date.parse("2026-09-19T12:00:00.000Z"));
+
+    expect(model).toMatchObject({
+      decisionDeadlineAt: "2026-09-19T12:00:00.000Z",
+      decisionWindowExpired: true,
+      isActionable: false,
+    });
+  });
+
+  it("identifies API-confirmed system dismissals", () => {
+    const model = disputeCaseModelFromRecord({
+      id: "DSP-51",
+      status: "DISPUTE_CASE_DISMISSED",
+      resolvedByAdminId: null,
+      createdAt: "2026-09-12T12:00:00.000Z",
+    }, Date.parse("2026-09-13T12:00:00.000Z"));
+
+    expect(model?.automaticDismissal).toBe(true);
+  });
+
+  it("shows the Category returned in a Dispute Case summary", () => {
+    const model = disputeCaseModelFromRecord({
+      id: "DSP-49",
+      displayId: "DSP-000049",
+      status: "DISPUTE_CASE_PENDING",
+      questId: "quest-49",
+      category: "PROOF_REVIEW",
+    });
+
+    expect(model?.category).toBe("Proof review");
   });
 
   it("allocates to the Worker when the Worker is the Filer", () => {

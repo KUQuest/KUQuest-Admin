@@ -79,6 +79,40 @@ function failureFrom(data: unknown): ApiFailure | null {
   };
 }
 
+function fallbackApiErrorMessage(status: number): string {
+  if (status === 401) return "Your Admin Session is not active. Sign in again.";
+  if (status === 403) return "You do not have permission to do this.";
+  if (status === 404) return "The requested record could not be found.";
+  if (status === 409) return "This record changed. Refresh and try again.";
+  if (status >= 500) return "The service is having a problem. Try again later.";
+  return `API request failed with status ${status}`;
+}
+
+function isGenericHttpErrorMessage(message: string): boolean {
+  return [
+    "unauthorized",
+    "forbidden",
+    "access denied",
+    "not authorized",
+    "not found",
+    "conflict",
+    "internal server error",
+    "bad gateway",
+    "service unavailable",
+    "gateway timeout",
+  ].includes(message.trim().toLowerCase().replace(/[.!?]+$/, ""));
+}
+
+function apiErrorMessage(status: number, failure: ApiFailure | null): string {
+  const apiMessage = failure?.error.message;
+  if (status === 401 || status >= 500) return fallbackApiErrorMessage(status);
+  if (status === 403 || status === 404 || status === 409) {
+    if (!apiMessage || isGenericHttpErrorMessage(apiMessage)) return fallbackApiErrorMessage(status);
+  }
+  if (!apiMessage) return fallbackApiErrorMessage(status);
+  return apiMessage;
+}
+
 export class ApiError extends Error {
   public readonly code: string | undefined;
 
@@ -87,7 +121,7 @@ export class ApiError extends Error {
     public readonly data: unknown,
   ) {
     const failure = failureFrom(data);
-    super(failure?.error.message || `API request failed with status ${status}`);
+    super(apiErrorMessage(status, failure));
     this.name = "ApiError";
     this.code = failure?.error.code;
   }

@@ -51,6 +51,9 @@ export type DisputeCaseModel = {
   statusLabel: string;
   badgeClass: string;
   isActionable: boolean;
+  decisionDeadlineAt: string | null;
+  decisionWindowExpired: boolean;
+  automaticDismissal: boolean;
   title: string;
   questId: string;
   questDisplayId: string | null;
@@ -220,6 +223,14 @@ function sevenDayHoldDeadline(value: unknown, fallback = missingApiValue): strin
   return formatDate(new Date(timestamp + 7 * 24 * 60 * 60 * 1000).toISOString(), fallback);
 }
 
+function sevenDayDecisionDeadline(value: unknown): string | null {
+  const raw = text(value);
+  if (!raw) return null;
+  const timestamp = Date.parse(raw);
+  if (Number.isNaN(timestamp)) return null;
+  return new Date(timestamp + 7 * 24 * 60 * 60 * 1000).toISOString();
+}
+
 export function disputeCaseStatusFromRecord(value: unknown): DisputeCaseStatus | null {
   const record = asRecord(value);
   if (!record) return null;
@@ -270,6 +281,7 @@ export function disputeCaseDecisionDetailsForCommand(command: DisputeCaseCommand
 
 export function disputeCaseModelFromRecord(
   value: unknown,
+  now = Date.now(),
 ): DisputeCaseModel | null {
   if (!isDisputeCaseRecord(value)) return null;
   const record = value;
@@ -283,6 +295,10 @@ export function disputeCaseModelFromRecord(
   const questTitle = firstReadableText(record.questTitle, quest?.title, record.title) ?? missingValue;
   const questDisplayId = displayAdminId(record.questDisplayId, quest?.displayId, questId);
   const questState = questStateFor(record.questState ?? quest?.questStatus);
+  const assignments = Array.isArray(quest?.assignments) ? quest.assignments : [];
+  const hasIncompleteAssignment = assignments.some((assignment) =>
+    asRecord(assignment)?.assignmentStatus === "ASSIGNMENT_INCOMPLETE"
+  );
   const questFailedAtWasReturned = Boolean(quest && Object.hasOwn(quest, "failedAt"))
     || Object.hasOwn(record, "failedAt")
     || Object.hasOwn(record, "questFailedAt");
@@ -351,6 +367,12 @@ export function disputeCaseModelFromRecord(
     record.createdAt,
     missingValue,
   );
+  const decisionDeadlineAt = sevenDayDecisionDeadline(record.createdAt);
+  const deadlineTimestamp = decisionDeadlineAt ? Date.parse(decisionDeadlineAt) : Number.NaN;
+  const decisionWindowExpired = !Number.isFinite(deadlineTimestamp) || now >= deadlineTimestamp;
+  const automaticDismissal = status === "DISPUTE_CASE_DISMISSED"
+    && Object.hasOwn(record, "resolvedByAdminId")
+    && record.resolvedByAdminId === null;
   const decision = asRecord(record.decision);
   const decisionReasonCode = firstText(decision?.reasonCode, record.decisionReasonCode);
   const decisionReasonText = firstText(decision?.decisionReasonText, record.decisionReasonText);
@@ -377,7 +399,14 @@ export function disputeCaseModelFromRecord(
     status,
     statusLabel: disputeCaseStatusLabel(status),
     badgeClass: statusBadgeClass(status),
-    isActionable: canResolveDispute(questState, status),
+    isActionable: canResolveDispute(questState, status, {
+      mode: text(quest?.mode),
+      participation: text(quest?.participation),
+      hasIncompleteAssignment,
+    }) && !decisionWindowExpired,
+    decisionDeadlineAt,
+    decisionWindowExpired,
+    automaticDismissal,
     title: questTitle,
     questId,
     questDisplayId,

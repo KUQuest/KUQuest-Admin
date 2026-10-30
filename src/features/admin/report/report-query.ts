@@ -5,7 +5,7 @@ import { adminApiProvider } from "../api/admin-provider";
 import type { AdminEvidence, ReportCaseDecision } from "../api/admin-api";
 import { replaceInfiniteItem } from "../data/query-data";
 import { adminDecisionActivityQueryKey } from "../activity-log/activity-log-query";
-import { loadReportCasePageData, type ReportCasePageData } from "./report-service";
+import { loadReportCasePageData, loadReportEvidence, type ReportCasePageData } from "./report-service";
 import { REPORT_CASE_UPDATED_EVENT, reportCaseModelFromRecord, type ReportCaseCommand, type ReportCaseModel } from "./report-model";
 
 export const reportBoardQueryKey = ["admin", "report-cases", "board"] as const;
@@ -123,14 +123,9 @@ export function useReportDetailQuery(reportId: string, initialModel?: ReportCase
 export function useReportEvidenceQuery(reference: string | null) {
   return useQuery<AdminEvidence>({
     queryKey: reportEvidenceQueryKey(reference),
-    queryFn: () => {
+    queryFn: ({ signal }) => {
       if (!reference) throw new Error("Evidence Reference was not provided.");
-      const id = typeof globalThis.crypto?.randomUUID === "function"
-        ? globalThis.crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      return adminApiProvider.read.getEvidence(reference, {
-        idempotencyKey: `admin-evidence-read-${id}`,
-      });
+      return loadReportEvidence(reference, signal);
     },
     enabled: Boolean(reference),
     staleTime: Infinity,
