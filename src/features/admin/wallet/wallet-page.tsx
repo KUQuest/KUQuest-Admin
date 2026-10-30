@@ -1,0 +1,323 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useCallback,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+
+import { AdminDrawer } from "../../../components/admin/admin-drawer";
+import { AdminPageHeader } from "../../../components/admin/admin-page-header";
+import { AdminSortableHeader } from "../../../components/admin/admin-sortable-header";
+import { AdminRecordFact as Fact } from "../../../components/admin/admin-record-fields";
+import { useAdminShell } from "../../../components/admin/admin-shell-context";
+import { adminBoardCount, adminBoardPagination, adminBoardTable, adminRecordFacts, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
+import { Badge as UiBadge, Button as UiButton, Card, CardDescription, CardHeader, CardTitle, EmptyState, Input, PageSizeControls, Pagination, Table, Tabs, TabsList, TabsTrigger } from "../../../components/ui";
+import { walletStatusLabel, type WalletStatus } from "../domain/rulebook";
+import { countBoardTabMatches } from "../data/board-tab-counts";
+import { useAdminBoardReset } from "../data/use-admin-board-reset";
+import { memberTabHref } from "../member/member-model";
+import { displayAdminId } from "../display-admin-id";
+import {
+  WalletStatusCommandDialog,
+  walletStatusActionClass,
+  walletStatusActionLabel,
+  walletStatusTargets,
+  type WalletStatusTarget,
+} from "./wallet-status-command-dialog";
+import { WalletStatementTable } from "./wallet-statement-table";
+import {
+  formatWalletDate,
+  formatWalletMoney,
+  pageWalletRows,
+  searchWalletRows,
+  sortWalletRows,
+  walletMatchesTab,
+  walletPageCount,
+  walletStatusClass,
+  WALLET_BOARD_TABS,
+  type WalletBoardRow,
+  type WalletBoardTab,
+  type WalletFinanceSummary,
+  type WalletVerificationView,
+} from "./wallet-model";
+import { useWalletBoardStore } from "./wallet-board-store";
+import { useWalletBoardQuery, useWalletDrawerQuery, useWalletProjectionRebuildMutation, useWalletProjectionVerificationMutation, useWalletStatusMutation, walletBoardQueryKey, type WalletBoardQueryData } from "./wallet-query";
+import type { WalletBoardPageData } from "./wallet-service";
+
+function Badge({ status, track = true }: { status: WalletStatus; track?: boolean }) {
+  const { translateText } = useAdminShell();
+  const label = walletStatusLabel(status);
+  return <UiBadge
+    tone="neutral"
+    className={`badge ${walletStatusClass(status)}`}
+    data-wallet-status={track ? status : undefined}
+    title={status === "CLOSED" ? translateText("Closed — terminal Wallet status") : undefined}
+  >{translateText(label)}</UiBadge>;
+}
+
+function SummaryMetric({ label, value }: { label: string; value: number }) {
+  return <div className="grid min-w-0 gap-[3px] rounded-lg border border-admin-border bg-admin-surface p-2.5"><span className="overflow-hidden text-[13px] font-semibold leading-[1.4] text-admin-muted text-ellipsis whitespace-nowrap">{label}</span><strong className="text-[17px] leading-[1.4] tabular-nums text-admin-text">{formatWalletMoney(value)}</strong></div>;
+}
+
+function WalletSummary({
+  summary,
+  error,
+  onRetry,
+}: {
+  summary: WalletFinanceSummary | null;
+  error: string | null;
+  onRetry: () => void;
+}) {
+  const { translateText } = useAdminShell();
+  const content = error
+    ? <EmptyState role="alert" title={translateText("Wallet summary unavailable")} description={translateText(error)} action={<UiButton variant="outline" type="button" onClick={onRetry}>{translateText("Try again")}</UiButton>} />
+    : summary
+    ? <div className="grid grid-cols-5 gap-2.5 max-[900px]:grid-cols-3 max-[600px]:grid-cols-2">
+      <SummaryMetric label={translateText("Spending balance")} value={summary.totalSpendingSatang} />
+      <SummaryMetric label={translateText("Earnings balance")} value={summary.totalEarningsSatang} />
+      <SummaryMetric label={translateText("Funding reserved")} value={summary.totalFundingReservedSatang} />
+      <SummaryMetric label={translateText("Payout reserved")} value={summary.totalPayoutReservedSatang} />
+      <SummaryMetric label={translateText("Total circulating")} value={summary.totalCirculatingSatang} />
+    </div>
+    : null;
+
+  return <Card as="section" className="wallet-funds-summary my-[18px] grid gap-3 bg-admin-soft p-[15px_17px]" aria-labelledby="wallet-summary-heading"><div className="flex items-center justify-between gap-3"><div className="grid gap-[3px]"><strong id="wallet-summary-heading" className="text-lg leading-[1.4] text-admin-text">{translateText("Member Wallet Summary")}</strong><small className="text-[13px] font-medium leading-[1.4] text-admin-muted">{translateText("Aggregate values from the Admin API")}</small></div></div>{content}</Card>;
+}
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return <Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}><h3 className={adminRecordHeading}>{title}</h3></CardHeader>{children}</Card>;
+}
+
+function walletStatusIdempotencyKey(walletId: string, status: WalletStatusTarget): string {
+  const id = typeof globalThis.crypto?.randomUUID === "function"
+    ? globalThis.crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `admin-wallet-status-${walletId}-${status}-${id}`;
+}
+
+function WalletDrawer({
+  row,
+  opener,
+  onClose,
+  onStatusChanged,
+}: {
+  row: WalletBoardRow;
+  opener: HTMLElement | null;
+  onClose: () => void;
+  onStatusChanged: (walletId: string, nextStatus: WalletStatus) => void;
+}) {
+  const { translateText } = useAdminShell();
+  const { data: drawerData, isPending: loading, error, refetch } = useWalletDrawerQuery(row.id);
+  const verifyMutation = useWalletProjectionVerificationMutation();
+  const rebuildMutation = useWalletProjectionRebuildMutation();
+  const statusMutation = useWalletStatusMutation();
+  const detail = drawerData?.detail ? { ...drawerData.detail, status: row.status, statusLabel: walletStatusLabel(row.status) } : null;
+  const history = drawerData?.history ?? [];
+  const ledger = drawerData?.ledger ?? [];
+  const [verification, setVerification] = useState<WalletVerificationView | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [statusCommand, setStatusCommand] = useState<WalletStatusTarget | null>(null);
+  const [statusCommandError, setStatusCommandError] = useState<string | null>(null);
+  const actionPending = verifyMutation.isPending ? "verify" : rebuildMutation.isPending ? "rebuild" : null;
+  const statusCommandPending = statusMutation.isPending;
+
+  async function verifyLedger() {
+    setActionError(null);
+    setNotice(null);
+    try {
+      const result = await verifyMutation.mutateAsync({ walletId: row.id });
+      setVerification(result);
+      setNotice(`Ledger verification completed for ${displayAdminId(row.displayId) ?? row.memberName}.`);
+    } catch (verifyError) {
+      setActionError(verifyError instanceof Error ? verifyError.message : "Ledger verification failed.");
+    }
+  }
+
+  async function rebuildProjection() {
+    setActionError(null);
+    setNotice(null);
+    try {
+      await rebuildMutation.mutateAsync({ walletId: row.id });
+      await refetch();
+      setNotice(`Wallet projection rebuilt for ${displayAdminId(row.displayId) ?? row.memberName}.`);
+    } catch (rebuildError) {
+      setActionError(rebuildError instanceof Error ? rebuildError.message : "Wallet projection rebuild failed.");
+    }
+  }
+
+  const cancelStatusCommand = useCallback(() => {
+    if (statusCommandPending) return;
+    setStatusCommand(null);
+    setStatusCommandError(null);
+  }, [statusCommandPending]);
+
+  function openStatusCommand(nextStatus: WalletStatusTarget) {
+    setStatusCommandError(null);
+    setStatusCommand(nextStatus);
+  }
+
+  async function submitStatusCommand(reason: string) {
+    if (!detail || !statusCommand) return;
+    setStatusCommandError(null);
+    setNotice(null);
+    try {
+      await statusMutation.mutateAsync({
+        walletId: row.id,
+        targetStatus: statusCommand,
+        reason,
+        idempotencyKey: walletStatusIdempotencyKey(row.id, statusCommand),
+      });
+      setNotice(`Wallet status changed to ${walletStatusLabel(statusCommand)}.`);
+      onStatusChanged(row.id, statusCommand);
+      await refetch();
+      setStatusCommand(null);
+    } catch (commandError) {
+      setStatusCommandError(commandError instanceof Error ? commandError.message : "Wallet status command failed.");
+    }
+  }
+
+  const statusActionContent = <>
+        <p>{translateText("Change Wallet Status without changing the Member Ban status. A non-active Wallet blocks new commitments while existing obligations continue.")}</p>
+        {walletStatusTargets(detail?.status ?? row.status).length ? <div className="wallet-status-actions mt-3 flex flex-wrap gap-2 [&_[data-slot=button]]:min-w-[170px] [&_[data-slot=button]]:flex-1" aria-label={translateText("Wallet status actions")}>
+          {walletStatusTargets(detail?.status ?? row.status).map((targetStatus) => <UiButton variant={walletStatusActionClass(targetStatus) === "danger" ? "danger" : "outline"} type="button" key={targetStatus} data-wallet-status-action={targetStatus} onClick={() => openStatusCommand(targetStatus)} disabled={statusCommandPending}>{translateText(walletStatusActionLabel(targetStatus))}</UiButton>)}
+        </div> : <p className="audit-note">{translateText("Closed is terminal. No Wallet status change is available.")}</p>}
+      </>;
+
+  return <AdminDrawer
+    ariaLabel={translateText("Close Wallet detail")}
+    title={displayAdminId(row.displayId) ?? `${row.memberName} Wallet`}
+    titleId="wallet-drawer-title"
+    subtitle={translateText("Wallet detail drawer")}
+    className="wallet-drawer [&>.drawer-body]:grid [&>.drawer-body]:content-start [&>.drawer-body]:gap-3.5 [&>.drawer-body]:!min-w-0 [&>.drawer-body]:!grid-cols-[minmax(0,1fr)] [&>.drawer-body]:!pb-7"
+    opener={opener}
+    onClose={onClose}
+    actions={!loading && !error && detail ? <>
+      <UiButton variant="outline" type="button" disabled={actionPending !== null} onClick={() => { void verifyLedger(); }}>{actionPending === "verify" ? translateText("Verifying…") : translateText("Verify Ledger")}</UiButton>
+      <UiButton variant="primary" type="button" disabled={actionPending !== null} onClick={() => { if (window.confirm(translateText("Rebuild this Wallet projection from the Ledger source of truth?"))) void rebuildProjection(); }}>{actionPending === "rebuild" ? translateText("Rebuilding…") : translateText("Rebuild projection")}</UiButton>
+      {detail ? <UiButton asChild variant="outline"><a href={memberTabHref(detail.memberId, "wallet-statement")}>{translateText("See Wallet Statement")}</a></UiButton> : null}
+      <UiButton variant="outline" type="button" onClick={onClose}>{translateText("Close record")}</UiButton>
+    </> : null}
+  >
+        {loading ? <p aria-live="polite">{translateText("Loading Wallet detail…")}</p> : error ? <EmptyState role="alert" title={translateText("Wallet detail unavailable")} description={translateText(error instanceof Error ? error.message : "Wallet detail is not available.")} action={<UiButton variant="outline" type="button" onClick={() => { void refetch(); }}>{translateText("Try again")}</UiButton>} /> : detail ? <>
+          <Card as="section" className="wallet-record m-0 min-w-0 max-w-full p-[18px]"><div className="drawer-title"><span className="att-icon neutral">W</span><div><h2>{detail.memberName}</h2><p>{detail.email} · {displayAdminId(detail.studentId) ?? translateText("Student ID not provided")}</p></div></div><div className={adminRecordFacts}><Fact label={translateText("Wallet Status")}><Badge status={detail.status} /></Fact><Fact label={translateText("Current Wallet Balance")}>{formatWalletMoney(detail.currentBalanceSatang)}</Fact>{displayAdminId(detail.displayId) ? <Fact label={translateText("Wallet record")}>{displayAdminId(detail.displayId)}</Fact> : null}<Fact label={translateText("Latest Wallet Transaction Date")}>{formatWalletDate(detail.latestTransactionAt)}</Fact></div></Card>
+          <Section title={translateText("Wallet balances")}><div className="wallet-balance-grid grid grid-cols-2 gap-3"><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Spending Balance")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{formatWalletMoney(detail.balances.spendingBalanceSatang)}</strong></div><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Earnings Balance")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{formatWalletMoney(detail.balances.earningsBalanceSatang)}</strong></div><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Funding Reserved")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{formatWalletMoney(detail.balances.fundingReservedSatang)}</strong></div><div className="grid min-w-0 gap-1"><span className="block text-[15px] leading-[1.4] text-admin-muted">{translateText("Reserved For Payouts")}</span><strong className="block min-w-0 break-words text-[17px] font-semibold leading-[1.4]">{formatWalletMoney(detail.balances.reservedForPayoutsSatang)}</strong></div></div></Section>
+          {verification ? <Section title={translateText("Ledger verification")}><p>{translateText(verification.matches ? "Projected balances match the Ledger." : "Projected balances do not match the Ledger.")}</p><div className={adminRecordFacts}><Fact label={translateText("Projected Wallet Balance")}>{formatWalletMoney(verification.projectedTotal)}</Fact><Fact label={translateText("Ledger Wallet Balance")}>{formatWalletMoney(verification.ledgerTotal)}</Fact><Fact label={translateText("Activity count")}>{translateText(verification.activityCountMatches ? "Matches" : "Does not match")}</Fact></div></Section> : null}
+          <Section title={translateText("Wallet Statement")}><p>{translateText("Latest 5 committed and sealed Ledger Transactions, newest first.")}</p><WalletStatementTable transactions={ledger} /></Section>
+          <Section title={translateText("Wallet status history")}>
+            {history.length ? <ol className="timeline">{history.map((entry) => <li key={entry.id}><strong>{entry.fromStatus ? `${translateText(walletStatusLabel(entry.fromStatus))} → ` : ""}{translateText(walletStatusLabel(entry.toStatus))}</strong><time dateTime={entry.createdAt}>{formatWalletDate(entry.createdAt)}</time><span>{entry.reason}</span>{entry.actorAdminId ? <small className="block text-xs text-admin-muted">{entry.actorDisplayName ?? translateText("Admin")}</small> : null}</li>)}</ol> : <p>{translateText("No Wallet status changes are recorded.")}</p>}
+          </Section>
+          <Section title={translateText("Wallet status action")}>{statusActionContent}</Section>
+          {actionError || notice ? <p className={actionError ? "field-error" : "audit-note"} role={actionError ? "alert" : "status"}>{translateText(actionError ?? notice ?? "")}</p> : null}
+        </> : null}
+    {statusCommand && detail ? <WalletStatusCommandDialog row={{ ...row, status: detail.status, statusLabel: walletStatusLabel(detail.status) }} targetStatus={statusCommand} onCancel={cancelStatusCommand} onSubmit={(reason) => { void submitStatusCommand(reason); }} error={statusCommandError} pending={statusCommandPending} /> : null}
+  </AdminDrawer>;
+}
+
+export function AdminWalletPage({ initialData }: { initialData: WalletBoardPageData }) {
+  const router = useRouter();
+  const { translateText } = useAdminShell();
+  const queryClient = useQueryClient();
+  const drawerOpenerRef = useRef<HTMLElement | null>(null);
+  const { data: boardData, isFetching, error: queryError } = useWalletBoardQuery(initialData);
+  const rows = boardData?.rows ?? [];
+  const {
+    search,
+    tab,
+    pageSize,
+    pageNumber,
+    sortKey,
+    sortDirection,
+    setSearch,
+    setTab,
+    setPageSize,
+    setPageNumber,
+    sortBy,
+    reset,
+  } = useWalletBoardStore();
+  const [selectedWallet, setSelectedWallet] = useState<WalletBoardRow | null>(null);
+
+  useAdminBoardReset(reset);
+
+  const filteredRows = searchWalletRows(rows, search).filter((row) => walletMatchesTab(row, tab));
+  const sortedRows = sortWalletRows(filteredRows, sortKey, sortDirection);
+  const totalPages = walletPageCount(sortedRows.length, pageSize);
+  const currentPage = Math.min(pageNumber, Math.max(totalPages, 1));
+  const visibleRows = pageWalletRows(sortedRows, currentPage, pageSize);
+  const pageStart = visibleRows.length ? (pageSize === "all" ? 1 : (currentPage - 1) * pageSize + 1) : 0;
+  const pageEnd = visibleRows.length ? pageStart + visibleRows.length - 1 : 0;
+
+  function resetView() {
+    reset();
+  }
+
+  function openWalletDrawer(row: WalletBoardRow, opener: HTMLElement) {
+    drawerOpenerRef.current = opener;
+    setSelectedWallet(row);
+  }
+
+  const closeWalletDrawer = useCallback(() => {
+    setSelectedWallet(null);
+  }, []);
+
+  const handleStatusChanged = useCallback((walletId: string, nextStatus: WalletStatus) => {
+    queryClient.setQueryData<WalletBoardQueryData>(walletBoardQueryKey, (current) => current
+      ? { ...current, rows: current.rows.map((row) => row.id === walletId
+        ? { ...row, status: nextStatus, statusLabel: walletStatusLabel(nextStatus) }
+        : row) }
+      : current);
+    setSelectedWallet((current) => current?.id === walletId
+      ? { ...current, status: nextStatus, statusLabel: walletStatusLabel(nextStatus) }
+      : current);
+  }, [queryClient]);
+
+  if (initialData.boardError) return <main className="admin-route-page wallet-route-page" tabIndex={-1}>
+    <AdminPageHeader title={translateText("Wallets")} description={translateText("Review Wallet status and balances. Wallet detail is not a route in this migration.")} />
+    <Card as="section" className="overflow-hidden wallet-board" aria-label={translateText("Wallet review board")}>
+      <CardHeader className="flex min-h-[60px] items-center justify-between gap-4">
+        <div><CardTitle>{translateText("Wallets")}</CardTitle><CardDescription>{translateText("Review Wallet status and balances.")}</CardDescription></div>
+        <span className={adminBoardCount}>0 {translateText("shown")}</span>
+      </CardHeader>
+      <WalletSummary summary={initialData.summary} error={initialData.summaryError} onRetry={() => router.refresh()} />
+      <EmptyState role="alert" title={translateText("Records are not available")} description={translateText(initialData.boardError)} action={<UiButton variant="primary" type="button" onClick={() => router.refresh()}>{translateText("Try again")}</UiButton>} />
+    </Card>
+  </main>;
+
+  const resultLabel = !sortedRows.length
+    ? translateText("Showing 0 of 0 results")
+    : pageSize === "all"
+    ? `${translateText("Showing all")} ${sortedRows.length} ${translateText(sortedRows.length === 1 ? "result" : "results")}`
+    : `${translateText("Showing")} ${pageStart}–${pageEnd} ${translateText("of")} ${sortedRows.length} ${translateText(sortedRows.length === 1 ? "result" : "results")}`;
+  const tabCounts = countBoardTabMatches(rows, WALLET_BOARD_TABS, walletMatchesTab);
+  return <main className="admin-route-page wallet-route-page" tabIndex={-1}>
+    <AdminPageHeader title={translateText("Wallets")} description={translateText("Review Wallet status and balances. Wallet detail is not a route in this migration.")} />
+    <Card as="section" className="overflow-hidden wallet-board" aria-label={translateText("Wallet review board")}>
+      <CardHeader className="flex min-h-[60px] items-center justify-between gap-4">
+        <div><CardTitle>{translateText("Wallets")}</CardTitle><CardDescription>{translateText("Review Wallet status and balances.")}</CardDescription></div>
+        <span className={adminBoardCount}>{sortedRows.length} {translateText("shown")}</span>
+      </CardHeader>
+      <WalletSummary summary={initialData.summary} error={initialData.summaryError} onRetry={() => router.refresh()} />
+      <Tabs value={tab} onValueChange={(value) => setTab(value as WalletBoardTab)}>
+        <TabsList className="px-3" aria-label={translateText("Wallet status filters")}>
+          {WALLET_BOARD_TABS.map((item) => <TabsTrigger key={item.id} value={item.id}>{translateText(item.label)} ({tabCounts.get(item.id) ?? 0})</TabsTrigger>)}
+        </TabsList>
+      </Tabs>
+      <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-admin-border px-3 py-2">
+        <label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1 text-sm text-admin-text max-[600px]:basis-full max-[600px]:max-w-none" htmlFor="wallet-search"><span className="visually-hidden">{translateText("Search Wallets")}</span><Input className="h-9 min-h-9 px-3 py-1.5 text-sm" id="wallet-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={translateText("Search Wallets…")} autoComplete="off" /></label>
+        <span className="text-sm text-admin-muted">{translateText("Click a column to sort")}</span>
+        <PageSizeControls value={pageSize} translateText={translateText} onChange={setPageSize} />
+        <span className="ml-auto text-sm text-admin-muted max-[600px]:hidden" aria-live="polite">{translateText(resultLabel)}{isFetching ? ` · ${translateText("Loading more records…")}` : ""}</span>
+      </div>
+      {queryError ? <p className="field-error" role="alert">{translateText(queryError instanceof Error ? queryError.message : "Some Wallet records could not be loaded.")} <UiButton variant="link" size="sm" type="button" onClick={() => router.refresh()}>{translateText("Try again")}</UiButton></p> : null}
+      {initialData.boardError ? <p className="field-error" role="alert">{translateText(initialData.boardError)} <UiButton variant="link" size="sm" type="button" onClick={() => router.refresh()}>{translateText("Try again")}</UiButton></p> : null}
+      {!sortedRows.length ? <EmptyState title={translateText("No matching records")} description={search.trim() ? translateText("Clear your search to see more results.") : translateText("There are no records in this view.")} action={<UiButton variant="outline" type="button" onClick={resetView}>{translateText("Reset view")}</UiButton>} /> : <section className="overflow-x-auto wallet-board-table-wrap" aria-label={translateText("Wallets table")}><Table className={`${adminBoardTable} wallet-board-table`}><caption>{translateText("Wallets")}</caption><thead><tr><AdminSortableHeader label={translateText("Student ID")} sortKey="id" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Member")} sortKey="member" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><th scope="col">{translateText("Email")}</th><AdminSortableHeader label={translateText("Current Wallet Balance")} sortKey="balance" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Latest Wallet Transaction Date")} sortKey="latestTransactionAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Wallet status")} sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /><AdminSortableHeader label={translateText("Created")} sortKey="createdAt" activeKey={sortKey} direction={sortDirection} onSort={sortBy} /></tr></thead><tbody>{visibleRows.map((row) => <tr data-wallet-row={row.id} key={row.id} tabIndex={0} aria-label={`${translateText("Open Wallet")} ${row.memberName}`} onClick={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; openWalletDrawer(row, event.currentTarget); }} onKeyDown={(event) => { if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openWalletDrawer(row, event.currentTarget); } }}><td><button className="row-record-button" type="button" data-wallet-drawer-trigger={row.id} aria-label={`${translateText("Open Wallet")} ${row.memberName}`} onClick={(event) => openWalletDrawer(row, event.currentTarget)}>{displayAdminId(row.studentId) ?? "—"}</button><div className="wallet-mobile-key-facts" aria-label={translateText("Wallet summary")}><div><span>{translateText("Current Wallet Balance")}</span><strong>{formatWalletMoney(row.currentBalanceSatang)}</strong></div><div><span>{translateText("Wallet Status")}</span><strong><Badge status={row.status} track={false} /></strong></div><div><span>{translateText("Latest Wallet Transaction Date")}</span><strong>{formatWalletDate(row.latestTransactionAt)}</strong></div></div></td><td>{row.memberAvailable ? <Link className="user-record-link" data-member-link={row.memberId} href={memberTabHref(row.memberId, "overview")} aria-label={`${translateText("Open Member")} ${row.memberName}`}><strong>{row.memberName}</strong></Link> : <strong>{row.memberName}</strong>}</td><td><strong>{row.email}</strong><small>{displayAdminId(row.studentId) ?? translateText("Student ID not provided")}</small></td><td className="money">{formatWalletMoney(row.currentBalanceSatang)}</td><td>{formatWalletDate(row.latestTransactionAt)}</td><td><Badge status={row.status} /></td><td>{formatWalletDate(row.createdAt)}</td></tr>)}</tbody></Table></section>}
+      {sortedRows.length ? <Pagination page={currentPage} pageCount={totalPages} onPageChange={setPageNumber} ariaLabel={translateText("Wallets pagination")} previousLabel={translateText("Previous")} nextLabel={translateText("Next")} pageLabel={translateText("Page")} ofLabel={translateText("of")} className={adminBoardPagination} /> : null}
+    </Card>
+    {selectedWallet ? <WalletDrawer row={selectedWallet} opener={drawerOpenerRef.current} onClose={closeWalletDrawer} onStatusChanged={handleStatusChanged} /> : null}
+  </main>;
+}

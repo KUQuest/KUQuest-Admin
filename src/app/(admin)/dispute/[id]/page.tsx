@@ -1,0 +1,23 @@
+import type { Metadata } from "next";
+import { cookies } from "next/headers";
+import { notFound } from "next/navigation";
+
+import type { AdminDetailRoutePageProps } from "../../../../components/admin/admin-detail-route";
+import { DisputeCaseDetail } from "../../../../features/admin/dispute/dispute-detail";
+import { loadDisputeCaseDetailFromApi } from "../../../../features/admin/dispute/dispute-service";
+import { displayAdminId } from "../../../../features/admin/display-admin-id";
+import { adminSessionCookieHeader } from "../../../../lib/auth/admin-session-policy";
+
+export async function generateMetadata({ params }: AdminDetailRoutePageProps): Promise<Metadata> {
+  const { id } = await params;
+  const displayId = displayAdminId(id);
+  return { title: displayId ? `Dispute Case ${displayId}` : "Dispute Case" };
+}
+
+export default async function DisputeCasePage({ params }: AdminDetailRoutePageProps) {
+  const { id } = await params;
+  const cookieStore = await cookies();
+  const model = await loadDisputeCaseDetailFromApi(id, adminSessionCookieHeader(cookieStore.getAll()));
+  if (!model) notFound();
+  return <DisputeCaseDetail disputeId={id} initialModel={model} />;
+}

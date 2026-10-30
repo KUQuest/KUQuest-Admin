@@ -1,0 +1,92 @@
+import { createAdminCoreApi } from "./admin-api-core";
+import { createAdminDisputeApi } from "./admin-api-dispute";
+import { createAdminMemberWalletApi } from "./admin-api-member-wallet";
+import { createAdminMemberProfileApi } from "./admin-api-member-profile";
+import { createAdminMemberPenaltyApi } from "./admin-api-member-penalty";
+import { createAdminPayoutApi } from "./admin-api-payout";
+import { createAdminQuestApi } from "./admin-api-quest";
+import { createAdminReportApi } from "./admin-api-report";
+export { subscribeToAdminEvents } from "./admin-api-events";
+
+export * from "./admin-api-types";
+
+export const adminApi = {
+  ...createAdminCoreApi(),
+  ...createAdminQuestApi(),
+  ...createAdminDisputeApi(),
+  ...createAdminPayoutApi(),
+  ...createAdminReportApi(),
+  ...createAdminMemberWalletApi(),
+  ...createAdminMemberProfileApi(),
+  ...createAdminMemberPenaltyApi(),
+};
+
+export type AdminReadPort = Pick<
+  typeof adminApi,
+  | "getOverview"
+  | "getFinanceOverview"
+  | "getCurrentMoneyPolicy"
+  | "listMoneyPolicyRevisions"
+  | "listActivityLogs"
+  | "searchAdminRecords"
+  | "listQuests"
+  | "getQuest"
+  | "getQuestFinance"
+  | "listDisputes"
+  | "getDispute"
+  | "listPayouts"
+  | "getPayout"
+  | "getPayoutHistory"
+  | "reconcilePayout"
+  | "retryPayoutProviderEvent"
+  | "listTopUps"
+  | "getTopUpStatusHistory"
+  | "listReports"
+  | "getReport"
+  | "getEvidence"
+  | "getDisputeEvidence"
+  | "listMembers"
+  | "getMember"
+  | "getMemberFinance"
+  | "getMemberProfileTags"
+  | "listMemberWorkExperiences"
+  | "listMemberCertificates"
+  | "listMemberHistory"
+  | "listMemberReviews"
+  | "listMemberPenaltyHistory"
+  | "listWallets"
+  | "listLedgerTransactions"
+  | "getWallet"
+  | "getWalletStatusHistory"
+  | "verifyWalletProjection"
+>;
+
+export type AdminCommandPort = Pick<
+  typeof adminApi,
+  | "hideQuest"
+  | "restoreQuest"
+  | "terminateQuest"
+  | "openDispute"
+  | "resolveDispute"
+  | "approvePayout"
+  | "rejectPayout"
+  | "reconcilePayout"
+  | "retryPayoutProviderEvent"
+  | "reconcileTopUp"
+  | "retryTopUpProviderEvent"
+  | "decideReportCase"
+  | "decideConductReport"
+  | "setWalletStatus"
+  | "rebuildWalletProjection"
+  | "addMemberPenalty"
+  | "removeMemberPenalty"
+>;
+
+// These typed ports are the only application boundary required when the live
+// Admin API is enabled. They do not make a request until a screen calls them.
+export const adminApiReadPort: AdminReadPort = adminApi;
+export const adminApiCommandPort: AdminCommandPort = adminApi;
+
+export type AdminEventSubscription = {
+  close: () => void;
+};

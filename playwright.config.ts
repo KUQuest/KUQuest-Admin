@@ -1,21 +1,38 @@
 import { defineConfig } from "@playwright/test";
 
+const adminOrigin = process.env.ADMIN_SECURITY_ADMIN_ORIGIN ?? "http://localhost:3006";
+const apiPort = process.env.ADMIN_SECURITY_API_PORT ?? "5002";
+const apiOrigin = `http://localhost:${apiPort}`;
+const adminPort = new URL(adminOrigin).port;
+
 export default defineConfig({
   testDir: "./tests/e2e",
-  fullyParallel: true,
+  testMatch: /admin-security\.spec\.ts/,
+  fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
   reporter: "list",
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: adminOrigin,
     channel: "chrome",
     headless: true,
     trace: "on-first-retry",
   },
-  webServer: {
-    command: "npm run dev",
-    url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-  },
+  webServer: [
+    {
+      command: `bun tests/e2e/admin-security-api-fixture.ts`,
+      url: `${apiOrigin}/health`,
+      name: "Admin security API fixture",
+      stdout: "pipe",
+      reuseExistingServer: false,
+      timeout: 120_000,
+    },
+    {
+      command: `node scripts/run-with-env.mjs NEXT_DIST_DIR=.next-top-up-e2e NEXT_PUBLIC_API_URL=${apiOrigin} -- npm run dev -- --port ${adminPort}`,
+      url: `${adminOrigin}/login`,
+      stdout: "pipe",
+      reuseExistingServer: false,
+      timeout: 120_000,
+    },
+  ],
 });

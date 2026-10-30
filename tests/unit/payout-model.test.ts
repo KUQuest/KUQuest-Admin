@@ -1,0 +1,219 @@
+import { describe, expect, it } from "bun:test";
+
+import type {
+  AdminPayout,
+  AdminPayoutDetail,
+} from "../../src/features/admin/api/admin-api";
+import {
+  payoutDetailViewFromApi,
+  payoutOutcomeReason,
+  payoutRowFromApi,
+  searchPayoutRows,
+  sortPayoutRows,
+  type PayoutDetailView,
+} from "../../src/features/admin/payout/payout-model";
+
+function payout(overrides: Partial<AdminPayout> = {}): AdminPayout {
+  return {
+    id: "PAY-9637",
+    displayId: "PAY-9637",
+    student: {
+      id: "member-1",
+      email: "student@ku.th",
+      firstName: "Ari",
+      lastName: "Wattanakul",
+    },
+    quoteId: "quote-1",
+    principalSatang: 420000,
+    receiptSatang: 415000,
+    maximumFeeSatang: 5000,
+    maximumTaxSatang: 0,
+    maximumDebitSatang: 420000,
+    actualFeeSatang: null,
+    actualTaxSatang: null,
+    actualDebitSatang: null,
+    bankCode: "KBANK",
+    bankName: "Kasikornbank",
+    destinationType: "BANK_ACCOUNT",
+    maskedDestinationValue: "xxx-x-xx123-x",
+    maskedRoutingValue: "xxx",
+    providerReference: null,
+    providerStatus: null,
+    payoutStatus: "PENDING_ADMIN_APPROVAL",
+    cancellationReasonCode: null,
+    createdAt: "2026-09-14T01:00:00.000Z",
+    updatedAt: "2026-09-14T01:00:00.000Z",
+    version: 4,
+    ...overrides,
+  };
+}
+
+function payoutDetail(overrides: Partial<AdminPayout> = {}): AdminPayoutDetail {
+  return {
+    ...payout(overrides),
+    history: [{
+      id: "history-1",
+      fromStatus: null,
+      toStatus: "PENDING_ADMIN_APPROVAL",
+      providerStatus: null,
+      actorUserId: "member-1",
+      actorAdminId: null,
+      admin: null,
+      source: "PAYOUT_REQUEST",
+      reason: null,
+      reasonCode: null,
+      decisionReasonText: null,
+      occurredAt: "2026-09-14T01:00:00.000Z",
+    }],
+  };
+}
+
+describe("Payout route model", () => {
+  it("maps a Payout DTO to safe board and detail view models", () => {
+    const apiPayout = payoutDetail({
+      id: "123e4567-e89b-42d3-a456-426614174000",
+      displayId: "PAY-9637",
+      payoutStatus: "CANCELLED",
+      cancellationReasonCode: "PAYOUT_RISK_REVIEW",
+    });
+
+    const row = payoutRowFromApi(apiPayout);
+    const detail = payoutDetailViewFromApi(apiPayout);
+
+    expect(row).toMatchObject({
+      id: "123e4567-e89b-42d3-a456-426614174000",
+      displayId: "PAY-9637",
+      studentName: "Ari Wattanakul",
+      status: "CANCELLED",
+      principalSatang: 420000,
+      maskedDestinationValue: "xxx-x-xx123-x",
+    });
+    expect(searchPayoutRows([row], "PAY-9637")).toEqual([row]);
+    const earlierPayout = payoutRowFromApi(payout({ displayId: "PAY-9636" }));
+    expect(sortPayoutRows([row, earlierPayout], "id", "ascending").map((item) => item.displayId)).toEqual([
+      "PAY-9636",
+      "PAY-9637",
+    ]);
+    expect(detail).toMatchObject({
+      id: "123e4567-e89b-42d3-a456-426614174000",
+      status: "CANCELLED",
+      amounts: {
+        principalSatang: 420000,
+        receiptSatang: 415000,
+        maximumDebitSatang: 420000,
+      },
+      destination: {
+        bankName: "Kasikornbank",
+        maskedValue: "xxx-x-xx123-x",
+      },
+      history: [{ toStatus: "PENDING_ADMIN_APPROVAL" }],
+    });
+    expect(detail).not.toHaveProperty("payoutStatus");
+    expect(detail).not.toHaveProperty("rawDestination");
+    expect(detail).not.toHaveProperty("providerPayload");
+    expect(detail).not.toBe(apiPayout);
+  });
+
+  it("keeps API-provided actual amounts as null instead of calculating them", () => {
+    const detail: PayoutDetailView = payoutDetailViewFromApi(payoutDetail({
+      actualFeeSatang: null,
+      actualTaxSatang: null,
+      actualDebitSatang: null,
+    }));
+
+    expect(detail.amounts.actualFeeSatang).toBeNull();
+    expect(detail.amounts.actualTaxSatang).toBeNull();
+    expect(detail.amounts.actualDebitSatang).toBeNull();
+  });
+
+  it("maps previous Student Payouts and status decision context", () => {
+    const current = payoutDetail();
+    const previous = payout({
+      id: "PAY-9636",
+      displayId: "PAY-9636",
+      payoutStatus: "SUCCEEDED",
+      createdAt: "2026-09-13T01:00:00.000Z",
+    });
+    const otherStudent = payout({
+      id: "PAY-OTHER",
+      student: { id: "member-2", email: "other@ku.th", firstName: "Other", lastName: "Student" },
+      createdAt: "2026-09-12T01:00:00.000Z",
+    });
+
+    const detail = payoutDetailViewFromApi(current, [previous, otherStudent]);
+
+    expect(detail.previousPayouts).toEqual([{
+      id: "PAY-9636",
+      displayId: "PAY-9636",
+      status: "SUCCEEDED",
+      principalSatang: 420000,
+      createdAt: "2026-09-13T01:00:00.000Z",
+    }]);
+    expect(detail.decisionContext).toEqual({
+      heading: "Why your approval is needed",
+      copy: "This Payout is ready for release, but it cannot move to the bank until an Admin approves it.",
+      next: "Approve Payout → status changes to Sent. Funds are not yet transferred.",
+    });
+  });
+
+  it("maps decision codes, notes, and safe Admin names from Payout history", () => {
+    const apiDetail = payoutDetail();
+    apiDetail.history = [{
+      ...apiDetail.history[0],
+      fromStatus: "PENDING_ADMIN_APPROVAL",
+      toStatus: "CANCELLED",
+      actorAdminId: "admin-uuid-1",
+      admin: { firstName: "Mali", lastName: "Admin" },
+      reason: "Admin rejected the Payout.",
+      reasonCode: "PAYOUT_INVALID_DESTINATION",
+      decisionReasonText: "The destination did not match the Member details.",
+    }];
+
+    const detail = payoutDetailViewFromApi(apiDetail);
+    expect(detail.history[0]).toMatchObject({
+      adminName: "Mali Admin",
+      reasonCode: "PAYOUT_INVALID_DESTINATION",
+      decisionReasonText: "The destination did not match the Member details.",
+    });
+    expect(detail.history[0].adminName).not.toContain("admin-uuid-1");
+  });
+
+  it("only uses a reason from the current terminal status transition", () => {
+    const apiDetail = payoutDetail({ payoutStatus: "FAILED" });
+    apiDetail.history = [
+      ...apiDetail.history,
+      {
+        id: "history-approval",
+        fromStatus: "PENDING_ADMIN_APPROVAL",
+        toStatus: "SUBMITTED_TO_PROVIDER",
+        providerStatus: null,
+        actorUserId: null,
+        actorAdminId: "admin-1",
+        admin: { firstName: "Ari", lastName: "Admin" },
+        source: "ADMIN_APPROVAL",
+        reason: "PAYOUT_POLICY_REVIEW",
+        reasonCode: "PAYOUT_DESTINATION_VERIFIED",
+        decisionReasonText: null,
+        occurredAt: "2026-09-14T01:05:00.000Z",
+      },
+      {
+        id: "history-failure",
+        fromStatus: "SUBMITTED_TO_PROVIDER",
+        toStatus: "FAILED",
+        providerStatus: null,
+        actorUserId: null,
+        actorAdminId: null,
+        admin: null,
+        source: "PROVIDER_CALLBACK",
+        reason: null,
+        reasonCode: null,
+        decisionReasonText: null,
+        occurredAt: "2026-09-14T01:10:00.000Z",
+      },
+    ];
+    const detail = payoutDetailViewFromApi(apiDetail);
+
+    expect(payoutOutcomeReason(detail)).toBeNull();
+  });
+
+});

@@ -1,0 +1,434 @@
+import { memberRoutes, questRoutes } from "../admin-routes";
+import { formatAdminTimestamp } from "../date-format";
+import {
+  moderationHistoryFromRecord,
+  type ModerationHistorySummary,
+} from "../moderation-case/moderation-case-context";
+import {
+  isConductReportStatus,
+  isDisputeCaseStatus,
+  isReportCaseStatus,
+  canResolveDispute,
+  disputeCaseStatusFor,
+  disputeCaseStatusLabel,
+  questStateFor,
+  type DisputeCaseStatus,
+  type QuestState,
+} from "../domain/rulebook";
+import { statusBadgeClass } from "../status-badge";
+import { displayAdminId } from "../display-admin-id";
+
+export type DisputeCaseRecord = {
+  id: string;
+  [key: string]: unknown;
+};
+
+export type DisputeCaseDecisionChoice = "dismiss" | "resolve";
+export type DisputeCaseCommand =
+  | "DISPUTE_CASE_DISMISSED"
+  | "DISPUTE_CASE_RESOLVED";
+
+export const disputeCaseDecisionMetadata = {
+  dismiss: {
+    command: "DISPUTE_CASE_DISMISSED",
+    label: "Dismissed",
+  },
+  resolve: {
+    command: "DISPUTE_CASE_RESOLVED",
+    label: "Resolved",
+  },
+} as const satisfies Record<DisputeCaseDecisionChoice, { command: DisputeCaseCommand; label: string }>;
+
+export type DisputeCaseEvidence = {
+  reference: string | null;
+  label: string;
+};
+
+export type DisputeCaseModel = {
+  id: string;
+  displayId: string;
+  status: DisputeCaseStatus;
+  statusLabel: string;
+  badgeClass: string;
+  isActionable: boolean;
+  title: string;
+  questId: string;
+  questDisplayId: string | null;
+  questTitle: string;
+  questHref: string | null;
+  questState: QuestState;
+  questFailedAt: string | null;
+  questFailedAtWasReturned: boolean;
+  moneyHoldDeadline: string | null;
+  category: string;
+  detail: string;
+  filerId: string | null;
+  filerDisplayId: string | null;
+  filerRole: string;
+  filerName: string;
+  filerHref: string | null;
+  filerStatement: string;
+  respondentId: string | null;
+  respondentDisplayId: string | null;
+  respondentRole: string;
+  respondentName: string;
+  respondentHref: string | null;
+  respondentStatement: string;
+  amountAtRiskSatang: number | null;
+  amountAtRiskLabel: string;
+  sharedCapSatang: number | null;
+  sharedCapLabel: string;
+  resolvedAmountSatang: number | null;
+  resolvedAmountLabel: string | null;
+  workerId: string | null;
+  workerDisplayId: string | null;
+  workerName: string;
+  workerHref: string | null;
+  moderationHistory: ModerationHistorySummary;
+  evidence: DisputeCaseEvidence[];
+  submittedAt: string;
+  updatedAt: string | null;
+  decisionLabel: string | null;
+  decisionReasonCode: string | null;
+  decisionReasonText: string | null;
+  decisionReasonCodeWasReturned: boolean;
+  decisionReasonTextWasReturned: boolean;
+  decisionReason: string | null;
+  resolution: string | null;
+  resolvedBy: string | null;
+  resolutionAt: string | null;
+  closedAt: string | null;
+  version: number | undefined;
+};
+
+export const DISPUTE_CASE_UPDATED_EVENT = "kuquest:dispute-case-updated";
+
+const missingApiValue = "Not provided by the Admin API.";
+
+function asRecord(value: unknown): DisputeCaseRecord | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as DisputeCaseRecord
+    : null;
+}
+
+function text(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed || null;
+}
+
+const uuidPattern = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
+
+function readableText(value: unknown): string | null {
+  const result = text(value);
+  return result && !uuidPattern.test(result) ? result : null;
+}
+
+function firstText(...values: unknown[]): string | null {
+  for (const value of values) {
+    const result = text(value);
+    if (result) return result;
+  }
+  return null;
+}
+
+function firstReadableText(...values: unknown[]): string | null {
+  for (const value of values) {
+    const result = readableText(value);
+    if (result) return result;
+  }
+  return null;
+}
+function disputeDecisionLabel(value: unknown): string | null {
+  switch (text(value)) {
+    case "Hirer wins":
+    case "Hirer retains funds":
+    case "Retained":
+      return "Dismissed";
+    case "Worker wins":
+    case "Worker receives funds":
+    case "Redirected":
+      return "Resolved";
+    default:
+      return text(value);
+  }
+}
+
+function disputeCategoryLabel(value: unknown): string | null {
+  switch (value) {
+    case "PROOF_REVIEW": return "Proof review";
+    case "QUEST_CONDITION": return "Quest Condition";
+    case "PARTIAL_WORK": return "Partial work";
+    case "OTHER": return "Other";
+    default: return firstReadableText(value);
+  }
+}
+
+function personName(value: unknown): string | null {
+  const record = asRecord(value);
+  if (!record) return readableText(value);
+  return firstReadableText(
+    record.name,
+    record.displayName,
+    record.title,
+    [record.firstName, record.lastName]
+      .filter((part): part is string => Boolean(text(part)))
+      .join(" "),
+  );
+}
+
+function stringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    if (typeof entry === "string") return text(entry) ? [entry.trim()] : [];
+    const record = asRecord(entry);
+    const reference = firstText(record?.evidenceRef, record?.reference, record?.id);
+    return reference ? [reference] : [];
+  });
+}
+
+function positiveInteger(value: unknown): number | null {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0
+    ? value
+    : null;
+}
+
+function roleIs(value: unknown, role: "Hirer" | "Worker"): boolean {
+  return text(value)?.toLowerCase() === role.toLowerCase();
+}
+
+function formatSatang(value: number | null, fallback = missingApiValue): string {
+  if (value === null) return fallback;
+  return `฿${(value / 100).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function formatDate(value: unknown, fallback: string): string {
+  const raw = text(value);
+  if (!raw) return fallback;
+  const formatted = formatAdminTimestamp(raw, "Asia/Bangkok");
+  return formatted === "Not provided" ? fallback : formatted;
+}
+
+function sevenDayHoldDeadline(value: unknown, fallback = missingApiValue): string | null {
+  const raw = text(value);
+  if (!raw) return null;
+  const timestamp = Date.parse(raw);
+  if (Number.isNaN(timestamp)) return null;
+  return formatDate(new Date(timestamp + 7 * 24 * 60 * 60 * 1000).toISOString(), fallback);
+}
+
+export function disputeCaseStatusFromRecord(value: unknown): DisputeCaseStatus | null {
+  const record = asRecord(value);
+  if (!record) return null;
+  if (
+    isReportCaseStatus(record.status)
+    || isConductReportStatus(record.status)
+    || isReportCaseStatus(record.disputeCaseStatus)
+    || isConductReportStatus(record.disputeCaseStatus)
+  ) return null;
+
+  if (isDisputeCaseStatus(record.disputeCaseStatus)) return record.disputeCaseStatus;
+  if (isDisputeCaseStatus(record.status)) return record.status;
+  if (record.disputeCaseStatus === "Closed") {
+    return disputeCaseStatusFor(record.disputeCaseStatus);
+  }
+  return null;
+}
+
+export function isDisputeCaseRecord(value: unknown): value is DisputeCaseRecord {
+  const record = asRecord(value);
+  return Boolean(text(record?.id)) && disputeCaseStatusFromRecord(record) !== null;
+}
+
+export function disputeCasesOnly(values: readonly unknown[]): DisputeCaseRecord[] {
+  return values.filter(isDisputeCaseRecord);
+}
+
+export function isDisputeCaseActionable(status: unknown): boolean {
+  return status === "DISPUTE_CASE_PENDING";
+}
+
+export function disputeCaseDecisionFor(choice: DisputeCaseDecisionChoice): DisputeCaseCommand {
+  return disputeCaseDecisionMetadata[choice].command;
+}
+
+export function disputeCaseDecisionDetailsForCommand(command: DisputeCaseCommand): {
+  choice: DisputeCaseDecisionChoice;
+  command: DisputeCaseCommand;
+  label: string;
+} {
+  for (const [choice, metadata] of Object.entries(disputeCaseDecisionMetadata)) {
+    if (metadata.command === command) {
+      return { choice: choice as DisputeCaseDecisionChoice, ...metadata };
+    }
+  }
+  throw new Error(`Unsupported Dispute Case command: ${command}`);
+}
+
+export function disputeCaseModelFromRecord(
+  value: unknown,
+): DisputeCaseModel | null {
+  if (!isDisputeCaseRecord(value)) return null;
+  const record = value;
+  const status = disputeCaseStatusFromRecord(record);
+  if (!status) return null;
+  const missingValue = missingApiValue;
+
+  const id = text(record.id) as string;
+  const quest = asRecord(record.quest);
+  const questId = firstText(record.questId, quest?.id) ?? "";
+  const questTitle = firstReadableText(record.questTitle, quest?.title, record.title) ?? missingValue;
+  const questDisplayId = displayAdminId(record.questDisplayId, quest?.displayId, questId);
+  const questState = questStateFor(record.questState ?? quest?.questStatus);
+  const questFailedAtWasReturned = Boolean(quest && Object.hasOwn(quest, "failedAt"))
+    || Object.hasOwn(record, "failedAt")
+    || Object.hasOwn(record, "questFailedAt");
+  const questFailedAt = firstText(record.failedAt, record.questFailedAt, quest?.failedAt);
+  const filerId = firstText(record.filerUserId, record.filerId);
+  const respondentId = firstText(record.respondentUserId, record.respondentId);
+  const questHirerId = firstText(quest?.hirerId, record.hirerId);
+  const questHirerDisplayId = displayAdminId(
+    quest?.hirerDisplayId,
+    asRecord(quest?.hirer)?.displayId,
+  );
+  const filerRole = firstText(record.filerRole) ?? "Hirer";
+  const respondentRole = firstText(record.respondentRole) ?? "Worker";
+  const filerDisplayId = displayAdminId(
+    record.filerDisplayId,
+    asRecord(record.filer)?.displayId,
+    filerId && filerId === questHirerId ? questHirerDisplayId : null,
+  );
+  const respondentDisplayId = displayAdminId(
+    record.respondentDisplayId,
+    asRecord(record.respondent)?.displayId,
+    respondentId && respondentId === questHirerId ? questHirerDisplayId : null,
+  );
+  const workerId = firstText(
+    record.resolvedWorkerId,
+    record.workerId,
+    roleIs(filerRole, "Worker") ? filerId : null,
+    roleIs(respondentRole, "Worker") ? respondentId : null,
+  );
+  const filerName = firstReadableText(
+    record.filerName,
+    personName(record.filer),
+    filerId ? "Member" : null,
+  ) ?? missingValue;
+  const respondentName = firstReadableText(
+    record.respondentName,
+    personName(record.respondent),
+    personName(record.worker),
+    respondentId ? "Member" : null,
+  ) ?? missingValue;
+  const workerName = roleIs(filerRole, "Worker") ? filerName : respondentName;
+  const workerDisplayId = roleIs(filerRole, "Worker") ? filerDisplayId : respondentDisplayId;
+  const amountAtRiskSatang = positiveInteger(record.amountAtRiskSatang)
+    ?? null;
+  const sharedCapSatang = positiveInteger(record.remainingDisputeCapSatang)
+    ?? positiveInteger(record.remainingFundingReservationSatang);
+  const resolvedAmountSatang = positiveInteger(record.resolvedAmountSatang);
+  const evidenceRefs = stringList(record.evidenceRefs);
+  const evidenceLabel = firstText(record.evidence);
+  const evidence = evidenceRefs.length
+    ? evidenceRefs.map((reference, index) => ({
+      reference,
+      label: evidenceLabel && evidenceRefs.length === 1
+        ? evidenceLabel
+        : `Evidence Reference ${index + 1}`,
+    }))
+    : evidenceLabel
+      ? [{ reference: null, label: evidenceLabel }]
+      : [];
+  const decisionLabel = firstText(
+    disputeDecisionLabel(record.decisionLabel),
+    status === "DISPUTE_CASE_DISMISSED" ? "Dismissed" : null,
+    status === "DISPUTE_CASE_RESOLVED" ? "Resolved" : null,
+  );
+  const submittedAt = formatDate(
+    record.createdAt,
+    missingValue,
+  );
+  const decision = asRecord(record.decision);
+  const decisionReasonCode = firstText(decision?.reasonCode, record.decisionReasonCode);
+  const decisionReasonText = firstText(decision?.decisionReasonText, record.decisionReasonText);
+  const decisionReasonCodeWasReturned = Boolean(decision && Object.hasOwn(decision, "reasonCode"))
+    || Object.hasOwn(record, "decisionReasonCode");
+  const decisionReasonTextWasReturned = Boolean(decision && Object.hasOwn(decision, "decisionReasonText"))
+    || Object.hasOwn(record, "decisionReasonText");
+  const category = Object.hasOwn(record, "category")
+    ? disputeCategoryLabel(record.category) ?? "No category was recorded."
+    : disputeCategoryLabel(record.disputeType) ?? missingValue;
+  const detail = Object.hasOwn(record, "submittedDetail")
+    ? firstText(record.submittedDetail) ?? "No submitted detail was recorded."
+    : firstText(record.detail, record.details, record.description) ?? missingValue;
+  const filerStatement = Object.hasOwn(record, "filerStatement")
+    ? firstText(record.filerStatement) ?? "No filer statement was submitted."
+    : firstText(record.claim) ?? missingValue;
+  const respondentStatement = Object.hasOwn(record, "respondentStatement")
+    ? firstText(record.respondentStatement) ?? "No respondent statement was submitted."
+    : firstText(record.response) ?? missingValue;
+
+  return {
+    id,
+    displayId: displayAdminId(record.displayId, id) ?? "",
+    status,
+    statusLabel: disputeCaseStatusLabel(status),
+    badgeClass: statusBadgeClass(status),
+    isActionable: canResolveDispute(questState, status),
+    title: questTitle,
+    questId,
+    questDisplayId,
+    questTitle,
+    questHref: questId ? questRoutes.detail(questId) : null,
+    questState,
+    questFailedAt,
+    questFailedAtWasReturned,
+    moneyHoldDeadline: sevenDayHoldDeadline(questFailedAt, missingValue),
+    category,
+    detail,
+    filerId,
+    filerDisplayId,
+    filerRole,
+    filerName,
+    filerHref: filerId ? memberRoutes.detail(filerId) : null,
+    filerStatement,
+    respondentId,
+    respondentDisplayId,
+    respondentRole,
+    respondentName,
+    respondentHref: respondentId ? memberRoutes.detail(respondentId) : null,
+    respondentStatement,
+    amountAtRiskSatang,
+    amountAtRiskLabel: formatSatang(amountAtRiskSatang, missingValue),
+    sharedCapSatang,
+    sharedCapLabel: formatSatang(sharedCapSatang, missingValue),
+    resolvedAmountSatang,
+    resolvedAmountLabel: resolvedAmountSatang === null ? null : formatSatang(resolvedAmountSatang, missingValue),
+    workerId,
+    workerDisplayId,
+    workerName,
+    workerHref: workerId ? memberRoutes.detail(workerId) : null,
+    moderationHistory: moderationHistoryFromRecord(record),
+    evidence,
+    submittedAt,
+    updatedAt: firstText(record.updatedAt) ? formatDate(record.updatedAt, missingValue) : null,
+    decisionLabel,
+    decisionReasonCode,
+    decisionReasonText,
+    decisionReasonCodeWasReturned,
+    decisionReasonTextWasReturned,
+    decisionReason: decisionReasonText,
+    resolution: firstText(record.resolution),
+    resolvedBy: firstReadableText(record.resolvedBy, personName(record.resolvedBy)),
+    resolutionAt: firstText(record.resolutionAt, record.resolvedAt)
+      ? formatDate(record.resolutionAt ?? record.resolvedAt, missingValue)
+      : null,
+    closedAt: firstText(record.closedAt)
+      ? formatDate(record.closedAt, missingValue)
+      : null,
+    version: typeof record.version === "number" ? record.version : undefined,
+  };
+}

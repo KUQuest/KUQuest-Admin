@@ -13,9 +13,12 @@
 # testing
 /coverage
 /test-results
+/tmp/
 
 # next.js
 /.next/
+/.next-quest/
+/.next-top-up-e2e/
 /out/
 
 # production
@@ -42,3 +45,4 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+/.next-quest-api/

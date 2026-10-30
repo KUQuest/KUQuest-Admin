@@ -1,0 +1,154 @@
+import type { AdminLedgerTransaction } from "../api/admin-api";
+import { formatAdminTimestamp } from "../date-format";
+import { isWalletCompartmentAccountType } from "../wallet/wallet-model";
+
+export type MemberWalletBalances = {
+  spendingBalanceSatang: number;
+  earningsBalanceSatang: number;
+  fundingReservedSatang: number;
+  reservedForPayoutsSatang: number;
+};
+
+export type MemberWalletPosting = {
+  accountType: string;
+  walletId: string | null;
+  amountSatang: number;
+};
+
+export type MemberWalletTransaction = {
+  id: string;
+  displayReference: string;
+  businessReference?: string;
+  eventType: string;
+  description: string | null;
+  createdAt: string;
+  sealedAt: string | null;
+  isBalanced: boolean;
+  postings: MemberWalletPosting[];
+  balanceAfter?: MemberWalletBalances;
+};
+export type MemberWalletStatementRow = {
+  transaction: MemberWalletTransaction;
+  signedAmountSatang: number;
+  movement: Array<{ accountType: string; amountSatang: number }>;
+  resultingBalances: MemberWalletBalances;
+  resultingWalletBalanceSatang: number;
+};
+
+export type MemberWalletStatementSource = {
+  walletId: string | null;
+  walletBalances: MemberWalletBalances | null;
+  walletStatement: MemberWalletTransaction[];
+};
+
+
+export function transactionFromApi(transaction: AdminLedgerTransaction): MemberWalletTransaction {
+  return {
+    id: transaction.id,
+    displayReference: transaction.displayReference,
+    businessReference: transaction.businessReference,
+    eventType: transaction.eventType,
+    description: transaction.description,
+    createdAt: transaction.createdAt,
+    sealedAt: transaction.sealedAt,
+    isBalanced: transaction.isBalanced,
+    postings: transaction.postings.map((posting) => ({
+      accountType: posting.accountType,
+      walletId: posting.walletId,
+      amountSatang: posting.amountSatang,
+    })),
+  };
+}
+
+export function currentWalletBalance(balances: MemberWalletBalances): number {
+  return balances.spendingBalanceSatang
+    + balances.earningsBalanceSatang
+    + balances.fundingReservedSatang
+    + balances.reservedForPayoutsSatang;
+}
+
+export function parseWalletStatementDateInput(value: string): string | null {
+  const trimmedValue = value.trim();
+  if (!trimmedValue) return "";
+
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(trimmedValue);
+  if (!match) return null;
+
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  if (month < 1 || month > 12) return null;
+
+  const isLeapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [31, isLeapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1];
+  if (day < 1 || day > daysInMonth) return null;
+
+  return `${match[3]}-${match[2]}-${match[1]}`;
+}
+
+export function formatWalletStatementDateInput(value: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : "";
+}
+
+function dateBoundary(value: string, endOfDay: boolean): number | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const timestamp = Date.parse(`${value}${endOfDay ? "T23:59:59.999+07:00" : "T00:00:00.000+07:00"}`);
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+export function walletStatementRows(
+  model: MemberWalletStatementSource,
+  filters: { eventType: string; from: string; to: string },
+  visibleCount: number,
+): MemberWalletStatementRow[] {
+  const from = dateBoundary(filters.from, false);
+  const to = dateBoundary(filters.to, true);
+  if (!model.walletId || !model.walletBalances) return [];
+  const ordered = model.walletStatement
+    .filter((transaction) => transaction.sealedAt && transaction.isBalanced)
+    .toSorted((first, second) => {
+      const dateDifference = Date.parse(second.createdAt) - Date.parse(first.createdAt);
+      return dateDifference || second.id.localeCompare(first.id);
+    });
+  let runningBalances = { ...model.walletBalances };
+  const rows = ordered.flatMap((transaction) => {
+    const movement = transaction.postings.filter((posting) => posting.walletId === model.walletId && isWalletCompartmentAccountType(posting.accountType));
+    if (!movement.length) return [];
+    const resultingBalances = transaction.balanceAfter ? { ...transaction.balanceAfter } : { ...runningBalances };
+    const previousBalances = { ...resultingBalances };
+    for (const posting of movement) {
+      if (posting.accountType === "SPENDING") previousBalances.spendingBalanceSatang -= posting.amountSatang;
+      if (posting.accountType === "EARNINGS") previousBalances.earningsBalanceSatang -= posting.amountSatang;
+      if (posting.accountType === "FUNDING_RESERVED") previousBalances.fundingReservedSatang -= posting.amountSatang;
+      if (posting.accountType === "RESERVED_FOR_PAYOUTS") previousBalances.reservedForPayoutsSatang -= posting.amountSatang;
+    }
+    runningBalances = previousBalances;
+    return [{
+      transaction,
+      signedAmountSatang: movement.reduce((sum, posting) => sum + posting.amountSatang, 0),
+      movement,
+      resultingBalances,
+      resultingWalletBalanceSatang: currentWalletBalance(resultingBalances),
+    }];
+  });
+  return rows
+    .filter(({ transaction }) => !filters.eventType || transaction.eventType === filters.eventType)
+    .filter(({ transaction }) => {
+      const timestamp = Date.parse(transaction.createdAt);
+      return (from === null || timestamp >= from) && (to === null || timestamp <= to);
+    })
+    .slice(0, visibleCount);
+}
+
+export function formatMoneySatang(value: number, signed = false): string {
+  const sign = signed && value < 0 ? "-" : signed && value > 0 ? "+" : "";
+  return `${sign}฿${new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(value) / 100)}`;
+}
+
+export function formatWalletDate(value: string): string {
+  const raw = value.trim();
+  if (!raw) return "Not provided";
+  const formatted = formatAdminTimestamp(raw, "Asia/Bangkok");
+  return formatted === raw && !raw.match(/^\d{1,2}\s+[A-Za-z]{3}\s+\d{4}/) ? "Not provided" : formatted;
+}
