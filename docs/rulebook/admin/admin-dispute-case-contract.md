@@ -25,7 +25,15 @@ A Dispute Case reverses part of the automatic settlement a `QUEST_FAILED` Quest 
 - The hold includes the returning Platform Fee; the reservation is not split.
 - Post-failure Proof approvals settle from this held reservation.
 - The hold releases automatically and unconditionally 7 days after `QUEST_FAILED`.
-- If a Dispute Case resolves after the hold has released, funds come from the Hirer's Spending Balance; if insufficient, the transfer fails.
+- A Dispute Case may still be resolved after the hold releases and before its decision deadline. Funds come from the Hirer's Spending Balance; if the balance is insufficient, the transfer fails.
+
+## 7-Day Dispute Case decision window
+
+- The decision window starts when the Dispute Case opens. It ends 7 days after the case's `createdAt` time. It does not start when the Quest becomes `QUEST_FAILED`.
+- If the case is still `DISPUTE_CASE_PENDING` at the deadline, the Server automatically changes it to `DISPUTE_CASE_DISMISSED`.
+- Automatic dismissal makes no money movement. The Server records an Audit Record with a system actor and a timeout reason.
+- An Admin may resolve or dismiss the case before the deadline. After the deadline, the Server must not accept an Admin decision for that case.
+- The Server must enforce the deadline even if its automatic processing runs late. Only one terminal decision may be recorded.
 
 ## Decision and settlement
 
