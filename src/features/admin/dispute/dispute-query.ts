@@ -4,7 +4,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteD
 import { adminApiProvider } from "../api/admin-provider";
 import type { AdminDisputeEvidence, DisputeResolution } from "../api/admin-api";
 import { replaceInfiniteItem } from "../data/query-data";
-import { loadDisputeCaseDetailFromApi, loadDisputeCasePageData, type DisputeCasePageData } from "./dispute-service";
+import { loadDisputeCaseDetailFromApi, loadDisputeCasePageData, newDisputeEvidenceIdempotencyKey, type DisputeCasePageData } from "./dispute-service";
 import { DISPUTE_CASE_UPDATED_EVENT, disputeCaseModelFromRecord, type DisputeCaseCommand, type DisputeCaseModel } from "./dispute-model";
 
 export const disputeBoardQueryKey = ["admin", "dispute-cases", "board"] as const;
@@ -130,7 +130,7 @@ export function useDisputeEvidenceQuery(disputeId: string) {
     queryKey: disputeEvidenceQueryKey(disputeId),
     queryFn: () => {
       return adminApiProvider.read.getDisputeEvidence(disputeId, {
-        idempotencyKey: `admin-read-dispute-evidence-${disputeId}`,
+        idempotencyKey: newDisputeEvidenceIdempotencyKey(disputeId),
       });
     },
     enabled: Boolean(disputeId),

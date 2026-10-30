@@ -83,6 +83,7 @@ export type ConductReportModel = {
   questRecord: string | null;
   assignment: ConductReportAssignment | null;
   proofSubmission: ConductReportProofSubmission | null;
+  proofSubmissionWasReturned: boolean;
   reportedMemberId: string;
   reportedMemberDisplayId: string | null;
   reportedMemberStudentId: string | null;
@@ -363,6 +364,7 @@ export function conductReportModelFromRecord(value: unknown): ConductReportModel
           reviewedAt: firstText(proofRecord.reviewedAt),
         }
       : null,
+    proofSubmissionWasReturned: Object.hasOwn(record, "proofSubmission"),
     reportedMemberId,
     reportedMemberDisplayId: displayAdminId(record.reportedMemberDisplayId, reportedMember?.displayId),
     reportedMemberStudentId: firstText(reportedMember?.studentId),
