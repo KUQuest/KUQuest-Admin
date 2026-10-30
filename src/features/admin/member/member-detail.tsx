@@ -14,7 +14,7 @@ import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { adminRecordCount, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
 import { ADMIN_LEDGER_EVENT_TYPES } from "../api/admin-api";
 import type { AdminTopUpListItem } from "../api/admin-api";
-import { memberRoutes } from "../admin-routes";
+import { memberRoutes, questRoutes } from "../admin-routes";
 import { formatAdminTimestamp } from "../date-format";
 import { payoutStatusLabel, questStateLabel, reportCaseStatusLabel } from "../domain/rulebook";
 import { formatTopUpPaymentMethod, TopUpDetailDrawer } from "../finance/top-up-detail-drawer";
@@ -926,7 +926,10 @@ function ReviewsTab({
     <Card as="section" className="user-detail-panel user-tab-panel col-span-full min-w-0 p-[16px_18px]">
       <CardHeader flush className="user-panel-heading">
         <div>
-          <h2>{translateText("Reviews")}</h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2>{translateText("Reviews")}</h2>
+            <span className={adminRecordCount}>{collectionCountLabel(model.reviews, translateText, "Review details are not available.")}</span>
+          </div>
           <div className="flex flex-wrap items-baseline gap-2 text-[15px] text-admin-muted">
             <strong className="text-[17px] text-admin-text">{averageRating(model)} ★</strong>
             <span className="text-base">{reviewCount(model) === null ? translateText("Review data is not verified.") : `(${reviewCount(model)})`}</span>
@@ -940,14 +943,12 @@ function ReviewsTab({
             </span>
           </div>
         </div>
-        <span className={adminRecordCount}>{collectionCountLabel(model.reviews, translateText, "Review details are not available.")}</span>
       </CardHeader>
       <div className="mb-3 flex items-center justify-between gap-3 max-[600px]:items-stretch max-[600px]:flex-col">
         <div className="inline-search search-field">
           <input type="search" aria-label={translateText("Search reviews")} placeholder={translateText("Search reviews…")} value={query} onChange={(event) => setQuery(event.currentTarget.value)} disabled={!reviewDetailsAvailable} />
         </div>
       </div>
-      <p className="audit-note">{translateText("Review records are read-only. Review Hide or Unhide is not an accepted Admin moderation command.")}</p>
       {reviews.length ? (
         <div className="overflow-x-auto">
           <Table className="user-detail-table min-w-[900px] [&_tbody>tr]:cursor-default [&_td]:align-top [&_th]:align-middle [&_th]:pt-2">
@@ -956,7 +957,7 @@ function ReviewsTab({
               <td>{review.reviewer.name}<small className="mt-1 block text-admin-muted">{review.reviewer.displayId}</small></td>
               <td>{"★".repeat(review.rating)}</td>
               <td>{review.comment ?? translateText("No review comment.")}</td>
-              <td>{review.quest.title}<small className="mt-1 block text-admin-muted">{review.quest.displayId} · {translateText(questStateLabel(review.quest.questStatus))}</small></td>
+              <td><Button asChild variant="link" size="sm" className="min-h-0 p-0 text-left text-base font-medium"><Link href={questRoutes.detail(review.quest.displayId)}>{review.quest.title}</Link></Button><small className="mt-1 block text-admin-muted">{review.quest.displayId} · {translateText(questStateLabel(review.quest.questStatus))}</small></td>
               <td><time dateTime={review.createdAt}>{formatAdminTimestamp(review.createdAt, "Asia/Bangkok")}</time></td>
             </tr>)}</tbody>
           </Table>
