@@ -103,6 +103,35 @@ describe("Quest route model", () => {
     expect(detail.hirer.studentId).toBe("6599900015");
   });
 
+  it("keeps Team, submitter, review, and file-link details for V1 and V2 Proof Submissions", () => {
+    for (const apiVersion of ["v1", "v2"] as const) {
+      const apiDetail = mockQuestDetail(mockQuestSummary({
+        id: `${apiVersion}-team-quest`,
+        apiVersion,
+        displayId: `QST-${apiVersion.toUpperCase()}`,
+        participation: "GROUP",
+        questStatus: "QUEST_COMPLETED",
+      }));
+      const sourceSubmission = apiDetail.proofSubmissions[0];
+      expect(sourceSubmission).toBeDefined();
+      const detail = questDetailViewFromApi(apiDetail);
+      const submission = detail.proofSubmissions[0];
+
+      expect(submission).toMatchObject({
+        team: sourceSubmission?.team,
+        submittedBy: { id: sourceSubmission?.submittedBy.id },
+        reviewedBy: "HIRER",
+        reviewNote: sourceSubmission?.reviewNote,
+        reviewedAt: sourceSubmission?.reviewedAt,
+        files: sourceSubmission?.files.map((file) => ({
+          fileId: file.fileId,
+          url: file.url,
+          urlExpiresAt: file.urlExpiresAt,
+        })),
+      });
+    }
+  });
+
   it("uses the API Quest id while keeping an optional display id for the board", () => {
     expect(questRowFromApi(quest({ displayId: "QST-1" }))).toMatchObject({
       id: "quest-1",
