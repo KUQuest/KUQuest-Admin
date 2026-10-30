@@ -482,6 +482,8 @@ function MemberReviewPreview({ model, translateText, onOpenReviews }: { model: M
         <Button variant="link" size="sm" type="button" onClick={onOpenReviews}>{translateText("View all")}</Button>
       </CardHeader>
       {reviews.length ? (
+        // Keyboard users need focus on the scroll region to move across table columns.
+        // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
         <div className="overflow-x-auto" role="region" aria-label={translateText("Reviews table")} tabIndex={0}>
           <Table className="user-detail-table min-w-[620px] [&_tbody>tr]:cursor-default [&_td]:align-top [&_th]:align-middle [&_th]:pt-2">
             <caption>{translateText("Reviews")}</caption>
