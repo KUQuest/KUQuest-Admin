@@ -470,16 +470,17 @@ function MemberReviewPreview({ model, translateText, onOpenReviews }: { model: M
   );
   return (
     <Card as="section" className="user-detail-panel p-[16px_18px]">
-      <CardHeader flush className="user-panel-heading">
-        <div>
+      <CardHeader flush className="user-panel-heading flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+        <div className="min-w-0">
           <h2>{translateText("Reviews")}</h2>
           <div className="flex flex-wrap items-baseline gap-2 text-[15px] text-admin-muted">
             <strong className="text-[17px] text-admin-text">{averageRating(model)} ★</strong>
             <span className="text-base">{count === null ? translateText("Review data is not verified.") : `(${count})`}</span>
           </div>
         </div>
-        <span className={adminRecordCount}>{collectionCountLabel(model.reviews, translateText, "Review details are not available.")}</span>
-        <Button variant="link" size="sm" type="button" onClick={onOpenReviews}>{translateText("View all")}</Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button variant="link" size="sm" type="button" onClick={onOpenReviews}>{translateText("View all")}</Button>
+        </div>
       </CardHeader>
       {reviews.length ? (
         // Keyboard users need focus on the scroll region to move across table columns.
