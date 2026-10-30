@@ -194,6 +194,12 @@ function EvidenceSection({ evidence, loading, error, translateText, compact = fa
               <div className={adminRecordFact}><span>{translateText("Submitted at")}</span><strong>{submission.submittedAt ? formatAdminTimestamp(submission.submittedAt) : translateText("Not provided.")}</strong></div>
               <div className={adminRecordFact}><span>{translateText("Files")}</span><strong>{submission.files.length}</strong></div>
             </div>
+            <div className="grid min-w-0 gap-1 border-t border-admin-border pt-2">
+              <strong className="text-sm">{translateText("Worker Message")}</strong>
+              {submission.workerMessage?.trim()
+                ? <p className="m-0 whitespace-pre-wrap break-words text-sm">{submission.workerMessage}</p>
+                : <p className="m-0 text-sm text-admin-muted">{translateText("No Worker Message was returned for this Proof Submission.")}</p>}
+            </div>
             {submission.files.length ? <ul className="m-0 grid list-none gap-1 border-t border-admin-border pt-2 pl-0">{submission.files.map((file, fileIndex) => <li key={file.fileId} className="flex flex-wrap justify-between gap-x-3 gap-y-1 text-sm">
               <span>{translateText("File")} {fileIndex + 1} · {file.contentType}</span>
               <span className="text-admin-muted">{evidenceFileSize(file.sizeBytes)}</span>

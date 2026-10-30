@@ -102,6 +102,8 @@ export const thaiTranslations: Record<string, string> = {
   "Evidence Reference not available": "ไม่มี Evidence Reference",
   "No Evidence Reference was provided.": "ไม่ได้ระบุ Evidence Reference",
   "No evidence was given.": "ไม่มีการส่งหลักฐาน",
+  "Worker Message": "ข้อความจาก Worker",
+  "No Worker Message was returned for this Proof Submission.": "ไม่พบข้อความจาก Worker สำหรับ Proof Submission นี้",
   "Close evidence": "ปิด Evidence",
   "Loading Evidence Reference…": "กำลังโหลด Evidence Reference…",
   "The Admin API did not return bounded Evidence Reference context.": "Admin API ไม่ได้ส่งบริบท Evidence Reference แบบจำกัดขอบเขต",
