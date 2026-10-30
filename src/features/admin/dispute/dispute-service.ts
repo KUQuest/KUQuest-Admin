@@ -110,6 +110,8 @@ async function enrichDisputeCases(
         title: quest.title,
         displayId: displayAdminId(quest.displayId, quest.id),
         questStatus: quest.questStatus,
+        mode: quest.mode,
+        participation: quest.participation,
         hirerId: quest.hirer.id,
         hirer: quest.hirer,
         assignments: quest.assignments,
