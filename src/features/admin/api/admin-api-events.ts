@@ -1,10 +1,38 @@
 import { getApiUrl } from "../../../lib/api/client";
 import type { AdminEvent, AdminEventSubscription } from "./admin-api";
 
-export function subscribeToAdminEvents(
-  onEvent: (event: AdminEvent) => void,
-  onError?: (error: Event) => void,
-): AdminEventSubscription {
+type AdminEventCallbacks = {
+  onEvent: (event: AdminEvent) => void;
+  onOpen?: () => void;
+  onError?: (error: Event) => void;
+};
+
+const adminEventSubjectTypes: readonly AdminEvent["subjectType"][] = [
+  "QUEST",
+  "DISPUTE_CASE",
+  "REPORT_CASE",
+  "CONDUCT_REPORT",
+  "MEMBER",
+  "WALLET",
+  "PAYOUT",
+  "TOP_UP",
+  "ADMIN_ACTIVITY_LOG",
+];
+
+function isAdminEvent(value: unknown): value is AdminEvent {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const event = value as Record<string, unknown>;
+  return event.type === "RESOURCE_UPDATED"
+    && typeof event.subjectId === "string"
+    && event.subjectId.length > 0
+    && adminEventSubjectTypes.includes(event.subjectType as AdminEvent["subjectType"]);
+}
+
+export function subscribeToAdminEvents({
+  onEvent,
+  onOpen,
+  onError,
+}: AdminEventCallbacks): AdminEventSubscription {
   const source = new EventSource(
     `${getApiUrl().replace(/\/$/, "")}/api/v1/admin/events`,
     { withCredentials: true },
@@ -23,12 +51,13 @@ export function subscribeToAdminEvents(
         ? record.data as Record<string, unknown>
         : record;
 
-      if (typeof payload.type === "string") onEvent(payload as AdminEvent);
+      if (isAdminEvent(payload)) onEvent(payload);
     } catch {
       // Ignore malformed invalidation metadata. REST remains authoritative.
     }
   };
 
+  source.addEventListener("open", () => onOpen?.());
   source.addEventListener("message", (event) => {
     handleMessage(event as MessageEvent<string>);
   });

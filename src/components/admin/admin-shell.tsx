@@ -14,6 +14,7 @@ import { AdminHeader } from "./admin-header";
 import { AdminSidebar } from "./admin-sidebar";
 import { AdminShellProvider } from "./admin-shell-context";
 import { AdminQueryProvider } from "./admin-query-provider";
+import { AdminLiveUpdates } from "./admin-live-updates";
 
 const ADMIN_LANGUAGE_KEY = "kuquest-admin-language";
 
@@ -27,7 +28,14 @@ function identityName(identity: AdminIdentity): string {
 }
 
 export function AdminShell({ identity, children }: AdminShellProps) {
-  return <AdminQueryProvider><AdminShellContent identity={identity}>{children}</AdminShellContent></AdminQueryProvider>;
+  return (
+    <AdminQueryProvider>
+      <>
+        <AdminLiveUpdates />
+        <AdminShellContent identity={identity}>{children}</AdminShellContent>
+      </>
+    </AdminQueryProvider>
+  );
 }
 
 function AdminShellContent({ identity, children }: AdminShellProps) {
