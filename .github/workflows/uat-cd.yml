@@ -1,0 +1,368 @@
+name: Frontend UAT CD
+
+# Manual release of the Admin web app to UAT.
+# NEXT_PUBLIC_API_URL is fixed at build time, so UAT builds its own image per commit
+# (tag uat-<sha>) once, and reuses it on later deploys and rollbacks.
+on:
+  workflow_dispatch:
+    inputs:
+      image_sha:
+        description: Full 40-character commit SHA on develop to release
+        required: true
+        type: string
+      operation:
+        description: deploy builds the image if it is missing; rollback only uses an image that already exists
+        required: true
+        type: choice
+        default: deploy
+        options:
+          - deploy
+          - rollback
+
+concurrency:
+  group: frontend-uat
+  cancel-in-progress: false
+
+permissions: {}
+
+env:
+  IMAGE_NAME: ghcr.io/kuquest/kuquest-admin
+  UAT_API_URL: https://uat-api.kubits.org
+
+jobs:
+  provenance:
+    name: Verify commit provenance
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      actions: read
+      contents: read
+
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPOSITORY: ${{ github.repository }}
+      IMAGE_SHA: ${{ inputs.image_sha }}
+      OPERATION: ${{ inputs.operation }}
+
+    steps:
+      - name: Validate inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$IMAGE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo 'image_sha must be a full 40-character lowercase commit SHA.'
+            exit 1
+          fi
+
+          if [[ ! "$OPERATION" =~ ^(deploy|rollback)$ ]]; then
+            echo 'operation must be deploy or rollback.'
+            exit 1
+          fi
+
+      - name: Verify the commit is in this repository and in develop history
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          FOUND=$(gh api "repos/$REPOSITORY/commits/$IMAGE_SHA" --jq .sha)
+          if [ "$FOUND" != "$IMAGE_SHA" ]; then
+            echo "Commit $IMAGE_SHA was not found in $REPOSITORY."
+            exit 1
+          fi
+
+          # compare develop...<sha>: "behind" or "identical" means the commit is an ancestor of develop.
+          RELATION=$(gh api "repos/$REPOSITORY/compare/develop...$IMAGE_SHA" --jq .status)
+          if [ "$RELATION" != 'behind' ] && [ "$RELATION" != 'identical' ]; then
+            echo "Commit $IMAGE_SHA is not reachable from develop (relation: $RELATION)."
+            exit 1
+          fi
+
+      - name: Verify Frontend CI succeeded for this commit on develop
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PASSED=$(gh api \
+            "repos/$REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$IMAGE_SHA&branch=develop&event=push&status=completed&per_page=20" \
+            --jq "[.workflow_runs[] | select(.head_sha == \"$IMAGE_SHA\" and .head_branch == \"develop\" and .event == \"push\" and .conclusion == \"success\")] | length")
+
+          if [ "$PASSED" -lt 1 ]; then
+            echo "No successful Frontend CI push run on develop was found for $IMAGE_SHA."
+            exit 1
+          fi
+
+  build:
+    name: Build UAT image
+
+    needs: provenance
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    env:
+      IMAGE_SHA: ${{ inputs.image_sha }}
+      OPERATION: ${{ inputs.operation }}
+
+    steps:
+      - name: Check whether the UAT image already exists
+        id: image
+        shell: bash
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+
+          REGISTRY_TOKEN=$(curl --silent --max-time 20 \
+            --user "$GHCR_USER:$GHCR_TOKEN" \
+            'https://ghcr.io/token?service=ghcr.io&scope=repository:kuquest/kuquest-admin:pull' |
+            sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+
+          STATUS=$(curl --silent --output /dev/null --max-time 20 --write-out '%{http_code}' \
+            --head \
+            --header "Authorization: Bearer $REGISTRY_TOKEN" \
+            --header 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json, application/vnd.docker.distribution.manifest.list.v2+json' \
+            "https://ghcr.io/v2/kuquest/kuquest-admin/manifests/uat-$IMAGE_SHA")
+
+          if [ "$STATUS" = '200' ]; then
+            echo "Image uat-$IMAGE_SHA already exists; it is reused."
+            echo 'exists=true' >> "$GITHUB_OUTPUT"
+          elif [ "$OPERATION" = 'rollback' ]; then
+            echo "Rollback needs an existing image, but uat-$IMAGE_SHA was not found (HTTP $STATUS)."
+            exit 1
+          else
+            echo 'exists=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout validated commit
+        if: steps.image.outputs.exists == 'false'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.image_sha }}
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        if: steps.image.outputs.exists == 'false'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: steps.image.outputs.exists == 'false'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push UAT image
+        if: steps.image.outputs.exists == 'false'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ env.UAT_API_URL }}
+          tags: ${{ env.IMAGE_NAME }}:uat-${{ inputs.image_sha }}
+          cache-from: type=gha,scope=admin-uat
+          cache-to: type=gha,mode=max,scope=admin-uat
+
+  deploy:
+    name: Deploy UAT Admin
+
+    needs: build
+
+    runs-on:
+      - self-hosted
+      - linux
+      - deploy-uat
+
+    environment: uat
+
+    permissions:
+      contents: read
+      packages: read
+
+    env:
+      IMAGE_SHA: ${{ inputs.image_sha }}
+      OPERATION: ${{ inputs.operation }}
+      UAT_SERVER: ${{ vars.UAT_SERVER }}
+      UAT_PUBLIC_URL: ${{ vars.UAT_PUBLIC_URL }}
+
+    steps:
+      - name: Validate inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$IMAGE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo 'image_sha must be a full 40-character lowercase commit SHA.'
+            exit 1
+          fi
+
+          if [[ ! "$UAT_SERVER" =~ ^[A-Za-z0-9.-]+$ ]]; then
+            echo 'GitHub variable UAT_SERVER is missing or not a plain host name or IP address.'
+            exit 1
+          fi
+
+      # The ops script and Compose file are the ones released with the image.
+      - name: Checkout deployment files
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.image_sha }}
+          persist-credentials: false
+
+      - name: Prepare SSH credentials
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.UAT_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.UAT_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$SSH_PRIVATE_KEY" ]; then
+            echo "Missing GitHub secret: UAT_SSH_KEY"
+            exit 1
+          fi
+
+          if [ -z "$SSH_KNOWN_HOSTS" ]; then
+            echo "Missing GitHub secret: UAT_KNOWN_HOSTS"
+            exit 1
+          fi
+
+          umask 077
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$RUNNER_TEMP/uat_key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$RUNNER_TEMP/uat_known_hosts"
+
+      - name: Upload Compose file
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ssh \
+            -i "$RUNNER_TEMP/uat_key" \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$RUNNER_TEMP/uat_known_hosts" \
+            deploy@"$UAT_SERVER" \
+            'set -e
+             TEMP_FILE=$(mktemp /opt/admin/compose.yaml.XXXXXX)
+             cat > "$TEMP_FILE"
+             chmod 644 "$TEMP_FILE"
+             mv "$TEMP_FILE" /opt/admin/compose.yaml' \
+            < deploy/uat/compose.yaml
+
+      - name: Log UAT server into GHCR
+        shell: bash
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$GHCR_USER" =~ ^[A-Za-z0-9-]+(\[bot\])?$ ]]; then
+            echo 'Unexpected GitHub actor name.'
+            exit 1
+          fi
+
+          printf '%s' "$GHCR_TOKEN" |
+            ssh \
+              -i "$RUNNER_TEMP/uat_key" \
+              -o BatchMode=yes \
+              -o StrictHostKeyChecking=yes \
+              -o UserKnownHostsFile="$RUNNER_TEMP/uat_known_hosts" \
+              deploy@"$UAT_SERVER" \
+              "docker login ghcr.io -u '$GHCR_USER' --password-stdin"
+
+      - name: Deploy the exact image
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ssh \
+            -i "$RUNNER_TEMP/uat_key" \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$RUNNER_TEMP/uat_known_hosts" \
+            deploy@"$UAT_SERVER" \
+            "APP_IMAGE='${IMAGE_NAME}:uat-${IMAGE_SHA}' bash -s -- '${OPERATION}'" \
+            < scripts/uat-operations.sh
+
+      - name: Verify the deployed image and server-side health
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          DEPLOYED=$(ssh \
+            -i "$RUNNER_TEMP/uat_key" \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$RUNNER_TEMP/uat_known_hosts" \
+            deploy@"$UAT_SERVER" \
+            'docker inspect --format "{{.Config.Image}} {{.State.Health.Status}}" kuquest-uat-admin &&
+             curl --fail --silent --show-error --max-time 10 http://127.0.0.1:3000/healthz >/dev/null')
+
+          echo "Container: $DEPLOYED"
+
+          if [ "$DEPLOYED" != "${IMAGE_NAME}:uat-${IMAGE_SHA} healthy" ]; then
+            echo 'The running container is not the requested image, or is not healthy.'
+            exit 1
+          fi
+
+      - name: Smoke test the public health endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "$UAT_PUBLIC_URL" ]; then
+            echo 'UAT_PUBLIC_URL is not set; skipping the public health check.'
+            exit 0
+          fi
+
+          for ATTEMPT in $(seq 1 10); do
+            if curl --fail --silent --show-error --max-time 10 "$UAT_PUBLIC_URL/healthz" |
+              grep --quiet '"success":true'; then
+              echo "Public health check passed on attempt $ATTEMPT."
+              exit 0
+            fi
+            sleep 6
+          done
+
+          echo "Public health check failed: $UAT_PUBLIC_URL/healthz"
+          exit 1
+
+      - name: Report deployed image
+        if: success()
+        shell: bash
+        run: |
+          {
+            echo "### UAT ${OPERATION} succeeded"
+            echo ''
+            echo "- Image: \`${IMAGE_NAME}:uat-${IMAGE_SHA}\`"
+            echo "- Server: \`${UAT_SERVER}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove GHCR login from the UAT server
+        if: always()
+        shell: bash
+        run: |
+          if [ -f "$RUNNER_TEMP/uat_key" ]; then
+            ssh \
+              -i "$RUNNER_TEMP/uat_key" \
+              -o BatchMode=yes \
+              -o StrictHostKeyChecking=yes \
+              -o UserKnownHostsFile="$RUNNER_TEMP/uat_known_hosts" \
+              deploy@"$UAT_SERVER" \
+              'docker logout ghcr.io' >/dev/null 2>&1 || true
+          fi
+
+      - name: Clean temporary secret files
+        if: always()
+        shell: bash
+        run: |
+          rm -f \
+            "$RUNNER_TEMP/uat_key" \
+            "$RUNNER_TEMP/uat_known_hosts"
