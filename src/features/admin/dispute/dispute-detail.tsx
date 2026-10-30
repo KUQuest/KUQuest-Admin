@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { ExternalLink } from "lucide-react";
 
 import { formatAdminTimestamp } from "../date-format";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
@@ -200,14 +201,17 @@ function EvidenceSection({ evidence, loading, error, translateText, compact = fa
                 ? <p className="m-0 whitespace-pre-wrap break-words text-sm">{submission.workerMessage}</p>
                 : <p className="m-0 text-sm text-admin-muted">{translateText("No Worker Message was returned for this Proof Submission.")}</p>}
             </div>
-            {submission.files.length ? <ul className="m-0 grid list-none gap-1 border-t border-admin-border pt-2 pl-0">{submission.files.map((file, fileIndex) => <li key={file.fileId}>
-              <a className="file-row text-inherit no-underline" href={file.url} rel="noreferrer" target="_blank">
-                <span className="min-w-0">
-                  <strong>{translateText("Proof file")} {fileIndex + 1}</strong>
-                  <small>{file.contentType} · {evidenceFileSize(file.sizeBytes)} · {translateText("Link expires")} {formatAdminTimestamp(file.urlExpiresAt, "Asia/Bangkok")}</small>
-                </span>
-                <span>{translateText("Open")}</span>
-              </a>
+            {submission.files.length ? <ul className="m-0 grid list-none gap-2 border-t border-admin-border pt-2 pl-0">{submission.files.map((file, fileIndex) => <li key={file.fileId} className="flex flex-wrap items-center justify-between gap-3">
+              <span className="grid min-w-0 gap-0.5">
+                <strong>{translateText("Proof file")} {fileIndex + 1}</strong>
+                <small className="break-words text-admin-muted">{file.contentType} · {evidenceFileSize(file.sizeBytes)} · {translateText("Link expires")} {formatAdminTimestamp(file.urlExpiresAt, "Asia/Bangkok")}</small>
+              </span>
+              <Button asChild variant="primary" size="sm" className="shrink-0">
+                <a href={file.url} rel="noreferrer" target="_blank" aria-label={`${translateText("Open file")} ${fileIndex + 1}`}>
+                  <ExternalLink aria-hidden="true" className="size-4" focusable="false" />
+                  {translateText("Open file")}
+                </a>
+              </Button>
             </li>)}</ul> : <p className="m-0 text-sm text-admin-muted">{translateText("No files were returned for this Proof Submission.")}</p>}
           </li>)}</ol>
         </section> : <p className="audit-note">{translateText("No evidence was given.")}</p>}

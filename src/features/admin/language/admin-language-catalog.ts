@@ -816,6 +816,7 @@ export const thaiTranslations: Record<string, string> = {
   "No Candidates, Candidate Teams, or Assignments returned.": "ไม่พบผู้สมัคร ทีมผู้สมัคร หรือการมอบหมาย",
   "No Proof Submissions returned.": "ไม่พบ Proof Submission",
   "Proof file": "ไฟล์หลักฐาน",
+  "Open file": "เปิดไฟล์",
   "Reviewed at": "ตรวจสอบเมื่อ",
   "Review note": "หมายเหตุการตรวจสอบ",
   "No Quest edits returned.": "ไม่พบการแก้ไข Quest",
