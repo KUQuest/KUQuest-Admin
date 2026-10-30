@@ -140,15 +140,6 @@ function Overview({ model, translateText, compact = false }: { model: DisputeCas
   );
 }
 
-function PartyStatements({ model, translateText, compact = false }: { model: DisputeCaseModel; translateText: (value: string) => string; compact?: boolean }) {
-  const content = (
-    <>
-      <div className="dispute-statements mt-[18px] grid gap-[14px]"><div className={adminRecordGroup}><span>{translateText(model.filerRole === "Worker" ? "Worker statement" : "Hirer statement")}</span><p>{model.filerStatement}</p></div><div className={adminRecordGroup}><span>{translateText(model.respondentRole === "Hirer" ? "Hirer statement" : "Worker statement")}</span><p>{model.respondentStatement}</p></div></div>
-    </>
-  );
-  return <Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}>{compact ? <h3 className={adminRecordHeading}>{translateText("Statements")}</h3> : <h2 className={adminRecordHeading}>{translateText("Statements")}</h2>}</CardHeader>{content}</Card>;
-}
-
 function evidenceStatusLabel(value: string): string {
   return value.trim()
     .replaceAll("_", " ")
@@ -318,7 +309,7 @@ function DecisionControls({ model, translateText, selectedChoice, commandError, 
 function FullSections({ model, evidence, evidenceLoading, evidenceError, translateText, selectedChoice, commandError, onSelectChoice, onStartDecision }: { model: DisputeCaseDisplayModel; evidence: AdminDisputeEvidence | undefined; evidenceLoading: boolean; evidenceError: string | null; translateText: (value: string) => string; selectedChoice: DisputeCaseDecisionChoice | null; commandError: string | null; onSelectChoice: (choice: DisputeCaseDecisionChoice) => void; onStartDecision: () => void }) {
   return <>
     <AdminRecordGrid
-      primary={<><Overview model={model} translateText={translateText} /><PartyStatements model={model} translateText={translateText} /><EvidenceSection evidence={evidence} loading={evidenceLoading} error={evidenceError} translateText={translateText} /><Timeline model={model} translateText={translateText} /></>}
+      primary={<><Overview model={model} translateText={translateText} /><EvidenceSection evidence={evidence} loading={evidenceLoading} error={evidenceError} translateText={translateText} /><Timeline model={model} translateText={translateText} /></>}
       side={<><MemberSummary heading={model.filerRole} id={model.filerId} displayId={model.filerDisplayId} name={model.filerName} href={model.filerHref} translateText={translateText} /><MemberSummary heading={model.respondentRole} id={model.respondentId} displayId={model.respondentDisplayId} name={model.respondentName} href={model.respondentHref} translateText={translateText} /><Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Related Quest")}</h2></CardHeader><div className={adminRecordSideFacts}><div><span>{translateText("Quest")}</span><strong>{model.questTitle}</strong></div><div><span>{translateText("Quest State")}</span><strong>{translateText(questStateLabel(model.questState))}</strong></div>{model.questState === "QUEST_FAILED" && <div><span>{translateText("Failed at")}</span><strong>{failedAtLabel(model, translateText)}</strong></div>}</div><Button asChild variant="outline" className="mt-3 w-full"><a href={model.questHref ?? questRoutes.list()}>{translateText("Open Quest detail")}</a></Button></Card><Card as="section" className={`${adminRecordSection} dispute-decision-panel`}><CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{model.isActionable ? translateText("Dispute decision") : translateText("Recorded outcome")}</h2></CardHeader><DecisionControls model={model} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelect={onSelectChoice} onStart={onStartDecision} /></Card></>}
     />
   </>;
@@ -350,7 +341,6 @@ function DrawerSections({ model, evidence, evidenceLoading, evidenceError, trans
     <Overview model={model} translateText={translateText} compact />
     <EvidenceSection evidence={evidence} loading={evidenceLoading} error={evidenceError} translateText={translateText} compact />
     <RelatedQuestPanel model={model} translateText={translateText} />
-    <PartyStatements model={model} translateText={translateText} compact />
     <ModerationHistoryPanel
       summary={model.moderationHistory}
       translateText={translateText}
