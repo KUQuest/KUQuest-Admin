@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from "bun:test";
 import {
   loadReportCaseDetailFromApi,
   loadReportCasePageData,
+  loadReportEvidence,
 } from "../../src/features/admin/report/report-service";
 
 const originalFetch = globalThis.fetch;
@@ -77,5 +78,55 @@ describe("Report Case service", () => {
     })) as unknown as typeof globalThis.fetch;
 
     await expect(loadReportCaseDetailFromApi("CND-1")).resolves.toBeNull();
+  });
+
+  it("loads every Report Case Evidence page in chronological order", async () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
+    const requests: Request[] = [];
+    const messages = [
+      { id: "message-1", sequence: 1 },
+      { id: "message-2", sequence: 2 },
+      { id: "message-3", sequence: 3 },
+    ];
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = new Request(input, init);
+      requests.push(request);
+      const hasCursor = new URL(request.url).searchParams.has("cursor");
+      const pageMessages = hasCursor ? messages.slice(2) : messages.slice(0, 2);
+      return jsonResponse({
+        success: true,
+        data: {
+          caseId: "case-1",
+          evidenceRefId: "evidence-1",
+          reportedMessageId: "message-2",
+          nextCursor: hasCursor ? null : "next-page",
+          truncated: !hasCursor,
+          messages: pageMessages,
+          adminActionId: hasCursor ? "action-2" : "action-1",
+        },
+      });
+    }) as unknown as typeof globalThis.fetch;
+
+    const controller = new AbortController();
+    const evidence = await loadReportEvidence("evidence-1", controller.signal);
+
+    expect("messages" in evidence).toBe(true);
+    if (!("messages" in evidence)) throw new Error("Report Case Evidence was not returned.");
+    expect(evidence.messages.map(({ id }) => id)).toEqual([
+      "message-1",
+      "message-2",
+      "message-3",
+    ]);
+    expect(evidence.reportedMessageId).toBe("message-2");
+    expect(evidence.nextCursor).toBeNull();
+    expect(evidence.truncated).toBe(false);
+    expect(requests.map((request) => new URL(request.url).searchParams.get("cursor"))).toEqual([
+      null,
+      "next-page",
+    ]);
+    expect(requests.every((request) => new URL(request.url).searchParams.get("limit") === "50")).toBe(true);
+    expect(requests[0]?.headers.get("idempotency-key")).not.toBe(
+      requests[1]?.headers.get("idempotency-key"),
+    );
   });
 });
