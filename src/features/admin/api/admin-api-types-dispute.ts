@@ -181,10 +181,13 @@ export type AdminDisputeEvidence = {
     workerId: string | null;
     teamId: string | null;
     submittedByUserId: string;
+    workerMessage: string | null;
     submissionStatus: string;
     submittedAt: string | null;
     files: Array<{
       fileId: string;
+      url: string;
+      urlExpiresAt: string;
       contentType: string;
       sizeBytes: number;
       position: number;
