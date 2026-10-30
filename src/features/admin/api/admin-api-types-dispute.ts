@@ -144,6 +144,7 @@ export type AdminReportCaseEvidence = {
   caseId: string;
   evidenceRefId: string;
   reportedMessageId: string;
+  nextCursor: string | null;
   truncated: boolean;
   messages: AdminEvidenceMessage[];
   adminActionId: string;

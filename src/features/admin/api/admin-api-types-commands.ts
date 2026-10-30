@@ -215,7 +215,7 @@ export type AdminReportDecisionResult =
   | AdminReportCommandResult
   | AdminConductReportCommandResult;
 
-export type AdminReportEvidenceRequestOptions = AdminApiRequestOptions & {
+export type AdminReportEvidenceRequestOptions = AdminApiRequestOptions & Pick<RequestInit, "signal"> & {
   idempotencyKey: string;
   limit?: number;
   cursor?: string;
