@@ -42,7 +42,7 @@ describe("Dispute Case model", () => {
       reportedMemberStatus: "ACTIVE",
       createdAt: "2026-09-12T12:00:00.000Z",
       version: 3,
-    });
+    }, Date.parse("2026-09-13T12:00:00.000Z"));
 
     expect(model).toMatchObject({
       id: "dispute-internal-42",
@@ -68,6 +68,32 @@ describe("Dispute Case model", () => {
     expect(isDisputeCaseActionable("DISPUTE_CASE_DISMISSED")).toBe(false);
     expect(isDisputeCaseActionable("DISPUTE_CASE_RESOLVED")).toBe(false);
     expect(disputeCaseModelFromRecord({ id: "DSP-1", status: "DISPUTE_CASE_PENDING", questState: "QUEST_OPEN" })?.isActionable).toBe(false);
+  });
+
+  it("closes the Admin decision window at seven days after the case opens", () => {
+    const model = disputeCaseModelFromRecord({
+      id: "DSP-50",
+      status: "DISPUTE_CASE_PENDING",
+      questState: "QUEST_FAILED",
+      createdAt: "2026-09-12T12:00:00.000Z",
+    }, Date.parse("2026-09-19T12:00:00.000Z"));
+
+    expect(model).toMatchObject({
+      decisionDeadlineAt: "2026-09-19T12:00:00.000Z",
+      decisionWindowExpired: true,
+      isActionable: false,
+    });
+  });
+
+  it("identifies API-confirmed system dismissals", () => {
+    const model = disputeCaseModelFromRecord({
+      id: "DSP-51",
+      status: "DISPUTE_CASE_DISMISSED",
+      resolvedByAdminId: null,
+      createdAt: "2026-09-12T12:00:00.000Z",
+    }, Date.parse("2026-09-13T12:00:00.000Z"));
+
+    expect(model?.automaticDismissal).toBe(true);
   });
 
   it("shows the Category returned in a Dispute Case summary", () => {

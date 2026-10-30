@@ -29,17 +29,30 @@ sent, that payment always falls inside the 7-day hold.
 
 The hold releases automatically and unconditionally at 7 days, whether or
 not a Dispute Case for that Quest is still `DISPUTE_CASE_PENDING`. A
-Dispute Case decided after the hold releases can still redirect funds if
-the Hirer's Spending Balance happens to have enough at that time; if not,
-the transfer fails. This is a deliberate simplicity trade-off: extending
-the hold for every still-open case avoids that failure mode, but adds an
-unbounded hold duration tied to Admin response time.
+Dispute Case resolved after the hold releases and before its decision
+deadline can still redirect funds if the Hirer's Spending Balance has
+enough at that time; if not, the transfer fails. This is a deliberate
+simplicity trade-off: extending the hold for every still-open case avoids
+that failure mode, but adds a hold duration tied to the case decision
+window.
+
+### Policy amendment — 2026-10-30
+
+- A pending Dispute Case is automatically dismissed 7 days after the case
+  opens. The deadline starts at the case's `createdAt` time, not when the
+  Quest becomes `QUEST_FAILED`.
+- Automatic dismissal uses `DISPUTE_CASE_DISMISSED`, makes no money
+  movement, and creates an Audit Record for the timeout.
+- An Admin may resolve a case after the Funding Reservation hold releases,
+  until the case's 7-day decision deadline. After that deadline, the Server
+  must not accept an Admin decision.
 
 To keep that trade-off honest, both windows for opening a Dispute Case close
 before the hold does. Self-filing is capped at 1 day, and an Admin may open a
 case on a Worker's behalf up to 5 days. Every case therefore has at least 2
-days of held money in which to be decided, so an unresolved case at day 7 is
-expected to be rare.
+days of held money before the hold releases. An Admin may decide a pending
+case for up to 7 days after it opens. A case that remains pending at its
+decision deadline is automatically dismissed.
 
 The code this decision needs — keeping the reservation `ACTIVE` and
 releasing it at day 7 — is listed in `docs/reconciliation/admin-reconciliation.md`
