@@ -1,0 +1,36 @@
+name: kuquest-uat-admin
+
+services:
+  admin:
+    container_name: kuquest-uat-admin
+    image: ${APP_IMAGE:?APP_IMAGE is required}
+    restart: unless-stopped
+    init: true
+    ports:
+      - '0.0.0.0:3000:3000'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/healthz').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      start_period: 10s
+      retries: 4
+    stop_grace_period: 15s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /app/.next/cache:size=128m,uid=1000,gid=1000
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
