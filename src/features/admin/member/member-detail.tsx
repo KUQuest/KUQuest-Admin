@@ -4,12 +4,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarDays } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from "react";
 
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminPageHeader } from "../../../components/admin/admin-page-header";
-import { Button, Card, CardContent, CardHeader, EmptyState, Table } from "../../../components/ui";
+import { Button, Card, CardContent, CardHeader, EmptyState, Input, Table } from "../../../components/ui";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { adminRecordCount, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
 import { ADMIN_LEDGER_EVENT_TYPES } from "../api/admin-api";
@@ -490,6 +490,35 @@ function OverviewTab({ model, translateText, onOpenReviews }: { model: MemberMod
 
 function ActivityTab({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
   const history = model.questHistory.items ?? [];
+  const [historyQuery, setHistoryQuery] = useState("");
+  const updateHistoryQuery = useCallback((event: ChangeEvent<HTMLInputElement>) => setHistoryQuery(event.currentTarget.value), []);
+  const normalizedHistoryQuery = historyQuery.trim().toLocaleLowerCase();
+  const filteredHistory = normalizedHistoryQuery
+    ? history.filter((entry) => {
+      const status = memberQuestHistoryStatusLabel(entry);
+      const searchableValues = [
+        entry.quest.title,
+        entry.quest.displayId,
+        entry.role,
+        translateText(entry.role),
+        status,
+        translateText(status),
+        entry.assignmentStatus,
+        entry.quest.questStatus,
+        entry.quest.questStatusChangedAt ? formatAdminTimestamp(entry.quest.questStatusChangedAt, "Asia/Bangkok") : "",
+        entry.assignmentStatusChangedAt ? formatAdminTimestamp(entry.assignmentStatusChangedAt, "Asia/Bangkok") : "",
+        entry.startedAt ? formatAdminTimestamp(entry.startedAt, "Asia/Bangkok") : "",
+        ...entry.relatedMembers.flatMap((related) => [
+          related.role,
+          translateText(related.role),
+          related.member.displayId,
+          related.member.firstName,
+          related.member.lastName,
+        ]),
+      ];
+      return searchableValues.some((value) => value?.toLocaleLowerCase().includes(normalizedHistoryQuery));
+    })
+    : history;
   const state = collectionStateMessage(
     model.questHistory,
     "No Quest history.",
@@ -498,33 +527,60 @@ function ActivityTab({ model, translateText }: { model: MemberModel; translateTe
   );
   return (
     <Card as="section" className="user-detail-panel user-tab-panel col-span-full min-w-0 p-[16px_18px]">
-      <CardHeader flush className="user-panel-heading">
+      <CardHeader flush className="user-panel-heading flex items-center justify-between gap-3">
         <h2>{translateText("Quest history")}</h2>
         <span className={adminRecordCount}>{collectionCountLabel(model.questHistory, translateText, "Quest history is not available.")}</span>
       </CardHeader>
       {history.length ? (
-        <div className="user-quest-history-list grid">
-          {history.map((entry) => {
-            const quest = entry.quest;
-            const status = memberQuestHistoryStatusLabel(entry);
-            const statusDate = memberQuestHistoryStatusDate(entry);
-            return <Link className="user-quest-history-row grid grid-cols-[minmax(0,1fr)_auto] gap-[18px] border-t border-admin-border py-[15px] text-admin-text no-underline first:border-t-0 first:pt-0 hover:text-admin-accent max-[900px]:grid-cols-1 max-[900px]:gap-2.5" key={`${entry.role}:${quest.id}`} href={entry.href}>
-              <div className="user-quest-history-primary min-w-0">
-                <div className="user-quest-history-title flex flex-wrap items-baseline gap-[7px]">
-                  <strong className="text-[17px] leading-[1.4]">{quest.title}</strong>
-                  <span className="text-[15px] leading-[1.4] text-admin-muted">{quest.displayId}</span>
-                </div>
-                <div className="user-quest-history-fields mt-2.5 grid grid-cols-[minmax(120px,.8fr)_minmax(155px,1fr)_minmax(250px,1.7fr)_minmax(115px,.8fr)] gap-3 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
-                  <div className="user-quest-history-field grid min-w-0 content-start gap-0.5"><span className="text-[15px] leading-[1.4] text-admin-muted">{translateText("Role")}</span><strong className="text-[17px] leading-[1.4]">{translateText(entry.role)}</strong></div>
-                  <div className="user-quest-history-field grid min-w-0 content-start gap-0.5"><span className="text-[15px] leading-[1.4] text-admin-muted">{translateText(entry.role === "WORKER" ? "Assignment status" : "Quest status")}</span><strong className="text-[17px] leading-[1.4]">{translateText(status)}</strong></div>
-                  <div className="user-quest-history-field grid min-w-0 content-start gap-0.5"><span className="text-[15px] leading-[1.4] text-admin-muted">{translateText(entry.role === "WORKER" ? "Assignment status date" : "Quest status date")}</span><strong className="text-[17px] leading-[1.4]">{statusDate ? formatAdminTimestamp(statusDate, "Asia/Bangkok") : translateText("Not provided by the Admin API")}</strong></div>
-                  {entry.startedAt ? <div className="user-quest-history-field grid min-w-0 content-start gap-0.5"><span className="text-[15px] leading-[1.4] text-admin-muted">{translateText("Started Work")}</span><strong className="text-[17px] leading-[1.4]">{formatAdminTimestamp(entry.startedAt, "Asia/Bangkok")}</strong></div> : null}
-                </div>
-                {entry.relatedMembers.length ? <p className="mb-0 mt-2 text-[15px] text-admin-muted">{entry.relatedMembers.map((related) => `${related.role}: ${related.member.displayId} · ${related.member.firstName} ${related.member.lastName}`).join(" · ")}</p> : null}
-              </div>
-            </Link>;
-          })}
-        </div>
+        <>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-admin-border pb-4">
+            <label className="min-w-0 max-w-[520px] flex-1" htmlFor="member-quest-history-search">
+              <span className="visually-hidden">{translateText("Search Quest history")}</span>
+              <Input
+                className="h-10 min-h-10 px-3 py-2 text-sm"
+                id="member-quest-history-search"
+                type="search"
+                placeholder={translateText("Search Quest history by title, ID, status, role, or Member")}
+                value={historyQuery}
+                onChange={updateHistoryQuery}
+                autoComplete="off"
+                autoCapitalize="none"
+                spellCheck={false}
+              />
+            </label>
+            {normalizedHistoryQuery ? <span className="text-sm text-admin-muted" role="status" aria-live="polite">{filteredHistory.length} {translateText(filteredHistory.length === 1 ? "matching record" : "matching records")}</span> : null}
+          </div>
+          {filteredHistory.length ? <>
+            <p className="mb-2 hidden rounded-[7px] border border-admin-border bg-admin-soft px-2.5 py-2 text-sm text-admin-muted max-[1100px]:block">{translateText("On narrow screens, scroll horizontally to view all Quest history columns.")}</p>
+            <div className="min-w-0 overflow-x-auto [scrollbar-gutter:stable] max-[600px]:[overscroll-behavior-inline:contain]" role="region" aria-label={translateText("Member Quest history table")}>
+              <Table className="min-w-[1100px] [&_td]:align-middle [&_td_small]:mt-[3px]">
+                <caption>{translateText("Quest history for this Member")}</caption>
+                <thead><tr>
+                  <th className="min-w-[280px]">{translateText("Quest")}</th>
+                  <th>{translateText("Role")}</th>
+                  <th>{translateText("Quest / Assignment status")}</th>
+                  <th>{translateText("Status date")}</th>
+                  <th>{translateText("Started Work")}</th>
+                  <th className="min-w-[240px]">{translateText("Related Members")}</th>
+                </tr></thead>
+                <tbody>{filteredHistory.map((entry) => {
+                  const quest = entry.quest;
+                  const status = memberQuestHistoryStatusLabel(entry);
+                  const statusDate = memberQuestHistoryStatusDate(entry);
+                  const relatedMembers = entry.relatedMembers.map((related) => `${translateText(related.role)}: ${related.member.displayId} · ${related.member.firstName} ${related.member.lastName}`).join(" · ");
+                  return <tr key={`${entry.role}:${quest.id}`}>
+                    <td><Link className="font-semibold text-admin-text no-underline hover:text-admin-accent" href={entry.href}>{quest.title}</Link><small>{quest.displayId}</small></td>
+                    <td>{translateText(entry.role)}</td>
+                    <td><span className="visually-hidden">{translateText(entry.role === "WORKER" ? "Assignment status" : "Quest status")}: </span>{translateText(status)}</td>
+                    <td>{statusDate ? formatAdminTimestamp(statusDate, "Asia/Bangkok") : translateText("Not provided by the Admin API")}</td>
+                    <td>{entry.startedAt ? formatAdminTimestamp(entry.startedAt, "Asia/Bangkok") : "—"}</td>
+                    <td>{relatedMembers || "—"}</td>
+                  </tr>;
+                })}</tbody>
+              </Table>
+            </div>
+          </> : <p className="audit-note" role="status">{translateText("No Quest history matches your search.")}</p>}
+        </>
       ) : null}
       {state ? <p className="audit-note" role={model.questHistory.error ? "alert" : undefined}>{state}</p> : null}
       {history.length && model.questHistory.error ? <p className="audit-note" role="alert">{translateText(model.questHistory.error.message)}</p> : null}
