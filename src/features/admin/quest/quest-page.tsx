@@ -917,6 +917,7 @@ export function QuestDetailPage({ questId, presentation = "page", initialData }:
               id: result.id,
               displayId: "",
               questId: result.questId,
+              category: result.category,
               filerUserId: result.filerUserId,
               status: result.status,
               createdAt: result.createdAt,
