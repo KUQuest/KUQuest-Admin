@@ -1024,7 +1024,7 @@ describe("Admin API boundary", () => {
 
       constructor(
         readonly url: string,
-        readonly init: EventSourceInit,
+        readonly init?: EventSourceInit,
       ) {
         FakeEventSource.instance = this;
       }
@@ -1100,8 +1100,8 @@ describe("Admin API boundary", () => {
     subscription.close();
     queryClient.clear();
 
-    expect(FakeEventSource.instance.url).toBe("https://api.example.test/api/v1/admin/events");
-    expect(FakeEventSource.instance.init).toEqual({ withCredentials: true });
+    expect(FakeEventSource.instance.url).toBe("/api/v1/admin/events");
+    expect(FakeEventSource.instance.init).toBeUndefined();
     expect(openCount).toBe(2);
     expect(received).toEqual([{
       type: "RESOURCE_UPDATED",

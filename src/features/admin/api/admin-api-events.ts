@@ -1,4 +1,3 @@
-import { getApiUrl } from "../../../lib/api/client";
 import { ADMIN_EVENT_SUBJECT_TYPES } from "./admin-api-types-commands";
 import type { AdminEvent, AdminEventSubscription } from "./admin-api";
 
@@ -26,10 +25,8 @@ export function subscribeToAdminEvents({
   onOpen,
   onError,
 }: AdminEventCallbacks): AdminEventSubscription {
-  const source = new EventSource(
-    `${getApiUrl().replace(/\/$/, "")}/api/v1/admin/events`,
-    { withCredentials: true },
-  );
+  // Same-origin through the Admin API proxy: the Admin Session cookie belongs to the Admin host.
+  const source = new EventSource("/api/v1/admin/events");
 
   const handleMessage = (event: MessageEvent<string>): void => {
     try {

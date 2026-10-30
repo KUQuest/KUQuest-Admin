@@ -39,6 +39,8 @@ async function proxyAdminApi(request: Request, context: AdminApiRouteContext): P
     body: hasBody ? await request.arrayBuffer() : undefined,
     cache: "no-store",
     credentials: "include",
+    // Close the upstream request (including the Admin event stream) when the browser disconnects.
+    signal: request.signal,
   });
   const responseHeaders = new Headers(upstream.headers);
   for (const name of hopByHopHeaders) responseHeaders.delete(name);
