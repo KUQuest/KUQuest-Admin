@@ -12,6 +12,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { adminApiProvider } from "../api/admin-provider";
+import { ApiError } from "../../../lib/api/client";
 import { Button } from "../../../components/ui";
 
 type AdminLanguage = "en" | "th";
@@ -28,7 +29,7 @@ const copy = {
     emailHelp: "Only @ku.th accounts can access this console.",
     emailError: "Enter a valid Kasetsart University email ending in @ku.th.",
     passwordError: "Enter a password with at least 8 characters.",
-    signInFailed: "Admin sign-in failed. Try again.",
+    signInFailed: "Login failed. Check your email and password, then try again.",
     passwordPlaceholder: "Enter your password",
     brandAria: "KuQuest admin sign in",
     show: "Show",
@@ -127,7 +128,13 @@ export function AdminLoginPage() {
       await adminApiProvider.auth.signInEmail(normalizedEmail, password);
       window.location.assign("/overview");
     } catch (error: unknown) {
-      setFormError(error instanceof Error ? error.message : copy[language].signInFailed);
+      if (error instanceof ApiError && error.status === 401) {
+        setFormError(copy[language].signInFailed);
+      } else if (error instanceof Error) {
+        setFormError(error.message);
+      } else {
+        setFormError(copy[language].signInFailed);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -144,7 +151,7 @@ export function AdminLoginPage() {
           <h1 className="m-0 text-[26px] leading-[1.25] tracking-[-.025em] text-admin-success" id="login-title">{text.signInToAdmin}</h1>
           <p className="mt-2 max-w-[38ch] text-admin-muted">{text.accessCopy}</p>
         </div>
-        <form className="grid gap-2" noValidate onSubmit={submit}>
+        <form className="grid gap-2" method="post" noValidate onSubmit={submit}>
           <label className="text-sm font-semibold" htmlFor="admin-email">{text.email}</label>
           <input
             id="admin-email"
