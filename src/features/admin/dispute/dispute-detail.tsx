@@ -200,9 +200,14 @@ function EvidenceSection({ evidence, loading, error, translateText, compact = fa
                 ? <p className="m-0 whitespace-pre-wrap break-words text-sm">{submission.workerMessage}</p>
                 : <p className="m-0 text-sm text-admin-muted">{translateText("No Worker Message was returned for this Proof Submission.")}</p>}
             </div>
-            {submission.files.length ? <ul className="m-0 grid list-none gap-1 border-t border-admin-border pt-2 pl-0">{submission.files.map((file, fileIndex) => <li key={file.fileId} className="flex flex-wrap justify-between gap-x-3 gap-y-1 text-sm">
-              <span>{translateText("File")} {fileIndex + 1} · {file.contentType}</span>
-              <span className="text-admin-muted">{evidenceFileSize(file.sizeBytes)}</span>
+            {submission.files.length ? <ul className="m-0 grid list-none gap-1 border-t border-admin-border pt-2 pl-0">{submission.files.map((file, fileIndex) => <li key={file.fileId}>
+              <a className="file-row text-inherit no-underline" href={file.url} rel="noreferrer" target="_blank">
+                <span className="min-w-0">
+                  <strong>{translateText("Proof file")} {fileIndex + 1}</strong>
+                  <small>{file.contentType} · {evidenceFileSize(file.sizeBytes)} · {translateText("Link expires")} {formatAdminTimestamp(file.urlExpiresAt, "Asia/Bangkok")}</small>
+                </span>
+                <span>{translateText("Open")}</span>
+              </a>
             </li>)}</ul> : <p className="m-0 text-sm text-admin-muted">{translateText("No files were returned for this Proof Submission.")}</p>}
           </li>)}</ol>
         </section> : <p className="audit-note">{translateText("No evidence was given.")}</p>}

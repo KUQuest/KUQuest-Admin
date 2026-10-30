@@ -186,6 +186,8 @@ export type AdminDisputeEvidence = {
     submittedAt: string | null;
     files: Array<{
       fileId: string;
+      url: string;
+      urlExpiresAt: string;
       contentType: string;
       sizeBytes: number;
       position: number;
