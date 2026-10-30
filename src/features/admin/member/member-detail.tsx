@@ -481,13 +481,25 @@ function MemberReviewPreview({ model, translateText, onOpenReviews }: { model: M
         <span className={adminRecordCount}>{collectionCountLabel(model.reviews, translateText, "Review details are not available.")}</span>
         <Button variant="link" size="sm" type="button" onClick={onOpenReviews}>{translateText("View all")}</Button>
       </CardHeader>
-      {reviews.slice(0, 5).map((review) => <div className="flex items-center justify-between gap-3 border-t border-admin-border py-2.5 first:border-t-0" key={review.id}>
-        <span>
-          <strong className="block text-[17px] leading-[1.4]">{review.reviewer.name}</strong>
-          <small className="mt-0.5 block text-[15px] leading-[1.45] text-admin-muted">{review.reviewer.displayId} · {"★".repeat(review.rating)} · {formatAdminTimestamp(review.createdAt, "Asia/Bangkok")}</small>
-          <small className="block text-[15px] leading-[1.45] text-admin-muted">{review.quest.displayId} · {review.quest.title}</small>
-        </span>
-      </div>)}
+      {reviews.length ? (
+        <div className="overflow-x-auto" role="region" aria-label={translateText("Reviews table")} tabIndex={0}>
+          <Table className="user-detail-table min-w-[620px] [&_tbody>tr]:cursor-default [&_td]:align-top [&_th]:align-middle [&_th]:pt-2">
+            <caption>{translateText("Reviews")}</caption>
+            <thead><tr>
+              <th scope="col">{translateText("Reviewer")}</th>
+              <th scope="col">{translateText("Rating")}</th>
+              <th scope="col">{translateText("Quest")}</th>
+              <th scope="col">{translateText("Date")}</th>
+            </tr></thead>
+            <tbody>{reviews.slice(0, 5).map((review) => <tr key={review.id}>
+              <td>{review.reviewer.name}<small className="mt-1 block text-admin-muted">{review.reviewer.displayId}</small></td>
+              <td><span role="img" aria-label={`${review.rating} ${translateText("star")}`}>{"★".repeat(review.rating)}</span></td>
+              <td>{review.quest.title}<small className="mt-1 block text-admin-muted">{review.quest.displayId}</small></td>
+              <td className="whitespace-nowrap"><time dateTime={review.createdAt}>{formatAdminTimestamp(review.createdAt, "Asia/Bangkok")}</time></td>
+            </tr>)}</tbody>
+          </Table>
+        </div>
+      ) : null}
       {state ? <p className="audit-note" role={model.reviews.error ? "alert" : undefined}>{state}</p> : null}
       {reviews.length > 0 && model.reviews.error ? <p className="audit-note" role="alert">{translateText(model.reviews.error.message)}</p> : null}
     </Card>
