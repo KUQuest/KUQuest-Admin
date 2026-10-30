@@ -1050,12 +1050,12 @@ function PenaltyHistoryTab({ model, translateText }: { model: MemberModel; trans
   return (
     <Card as="section" className="user-detail-panel user-tab-panel col-span-full min-w-0 p-[16px_18px]">
       <div className="user-reports-tab-content">
-        <CardHeader flush className="user-panel-heading">
-          <div>
+        <CardHeader flush className="user-panel-heading flex items-start justify-between gap-3">
+          <div className="min-w-0">
             <h2>{translateText("Moderation History")}</h2>
             <p>{translateText("Penalty audit records and outcomes for this Member.")}</p>
           </div>
-          <span className={adminRecordCount}>{collectionCountLabel(model.penaltyHistory, translateText, "Moderation history is not available.")}</span>
+          <span className={`${adminRecordCount} shrink-0`}>{collectionCountLabel(model.penaltyHistory, translateText, "Moderation history is not available.")}</span>
         </CardHeader>
         <MemberPenaltyActions model={model} translateText={translateText} />
         <MemberModerationTimeline model={model} translateText={translateText} />
