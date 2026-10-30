@@ -70,6 +70,18 @@ describe("Dispute Case model", () => {
     expect(disputeCaseModelFromRecord({ id: "DSP-1", status: "DISPUTE_CASE_PENDING", questState: "QUEST_OPEN" })?.isActionable).toBe(false);
   });
 
+  it("shows the Category returned in a Dispute Case summary", () => {
+    const model = disputeCaseModelFromRecord({
+      id: "DSP-49",
+      displayId: "DSP-000049",
+      status: "DISPUTE_CASE_PENDING",
+      questId: "quest-49",
+      category: "PROOF_REVIEW",
+    });
+
+    expect(model?.category).toBe("Proof review");
+  });
+
   it("allocates to the Worker when the Worker is the Filer", () => {
     const model = disputeCaseModelFromRecord({
       id: "DSP-43",

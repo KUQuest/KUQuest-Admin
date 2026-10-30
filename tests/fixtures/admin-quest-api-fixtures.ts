@@ -504,6 +504,7 @@ export function mockQuestDetail(quest: AdminQuest): MockQuestDetail {
         id: displayId,
         displayId,
         questId: quest.id,
+        category: "PROOF_REVIEW",
         status: "DISPUTE_CASE_PENDING",
         createdAt: quest.updatedAt,
         updatedAt: quest.updatedAt,

@@ -104,6 +104,7 @@ export type AdminDisputeOpenCommand = {
 export type AdminDisputeOpenResult = {
   id: string;
   questId: string;
+  category: AdminDisputeCategory | null;
   filerUserId: string;
   openedByAdminId: string | null;
   status: DisputeCaseStatus;

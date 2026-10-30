@@ -4,6 +4,7 @@ export type AdminDisputeCase = {
   id: string;
   displayId: string;
   questId: string;
+  category: AdminDisputeCategory | null;
   filerUserId?: string;
   status: DisputeCaseStatus;
   workerId?: string;
@@ -17,7 +18,6 @@ export type AdminDisputeCase = {
 
 
 export type AdminDisputeCaseDetail = AdminDisputeCase & {
-  category: AdminDisputeCategory | null;
   submittedDetail: string | null;
   filerStatement: string | null;
   respondentStatement: string | null;
