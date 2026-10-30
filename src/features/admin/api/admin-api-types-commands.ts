@@ -252,13 +252,19 @@ export type PayoutRejectionReasonCode =
 
 export type PayoutDecisionReasonCode = PayoutApprovalReasonCode | PayoutRejectionReasonCode;
 
+export type AdminEventSubjectType =
+  | "QUEST"
+  | "DISPUTE_CASE"
+  | "REPORT_CASE"
+  | "CONDUCT_REPORT"
+  | "MEMBER"
+  | "WALLET"
+  | "PAYOUT"
+  | "TOP_UP"
+  | "ADMIN_ACTIVITY_LOG";
+
 export type AdminEvent = {
-  id?: string;
-  type: string;
-  subjectType?: string;
-  subjectId?: string;
-  state?: string;
-  version?: number;
-  queueImpact?: string[];
-  occurredAt?: string;
+  type: "RESOURCE_UPDATED";
+  subjectType: AdminEventSubjectType;
+  subjectId: string;
 };
