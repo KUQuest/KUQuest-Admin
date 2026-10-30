@@ -131,8 +131,18 @@ export function canHideQuest(state: QuestState): boolean {
 export function canResolveDispute(
   questState: QuestState,
   caseStatus: DisputeCaseStatus,
+  context: {
+    mode?: string | null;
+    participation?: string | null;
+    hasIncompleteAssignment?: boolean;
+  } = {},
 ): boolean {
-  return questState === "QUEST_FAILED" && caseStatus === "DISPUTE_CASE_PENDING";
+  if (caseStatus !== "DISPUTE_CASE_PENDING") return false;
+  if (questState === "QUEST_FAILED") return true;
+  return questState === "QUEST_COMPLETED"
+    && context.mode === "FIRST_COME_FIRST_SERVED"
+    && context.participation === "GROUP"
+    && context.hasIncompleteAssignment === true;
 }
 
 export function questStateFor(value: unknown): QuestState {

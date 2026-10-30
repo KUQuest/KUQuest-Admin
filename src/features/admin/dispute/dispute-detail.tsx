@@ -97,7 +97,9 @@ function DisputeAlert({ model, translateText }: { model: DisputeCaseDisplayModel
         : `${translateText("Record a decision by")} ${deadline}. ${translateText("If no decision is recorded by then, the Admin API will dismiss the case automatically. Automatic dismissal makes no money movement.")}`
     : model.automaticDismissal
       ? translateText("The 7-day decision window expired. No money movement was made.")
-      : translateText("This Dispute Case is closed and retained as a read-only audit record. The Quest State remains failed.");
+      : translateText(model.questState === "QUEST_COMPLETED"
+        ? "This Dispute Case is closed and retained as a read-only audit record. The Quest State remains Completed."
+        : "This Dispute Case is closed and retained as a read-only audit record. The Quest State remains failed.");
   return (
     <AdminStatusAlert
       tone={pending ? expired ? "warning" : "danger" : "success"}
@@ -264,7 +266,7 @@ function RelatedQuestPanel({ model, translateText }: { model: DisputeCaseModel; 
         <div><span>{translateText("Quest")}</span><strong>{model.questTitle}</strong></div>
         <div><span>{translateText("Quest ID")}</span><strong>{model.questDisplayId ?? "—"}</strong></div>
         <div><span>{translateText("Quest State")}</span><strong>{translateText(questStateLabel(model.questState))}</strong></div>
-        <div><span>{translateText("Failed at")}</span><strong>{failedAtLabel(model, translateText)}</strong></div>
+        {model.questState === "QUEST_FAILED" && <div><span>{translateText("Failed at")}</span><strong>{failedAtLabel(model, translateText)}</strong></div>}
       </div>
       <Button asChild variant="outline" className="mt-3 w-full"><Link href={model.questHref ?? questRoutes.list()}>{translateText("Open Quest detail")}</Link></Button>
     </Card>
@@ -278,7 +280,9 @@ function DecisionControls({ model, translateText, selectedChoice, commandError, 
   if (!model.isActionable) return <><p className="audit-note">{translateText("Decision recorded:")} <strong>{translateText(model.decisionLabel ?? model.statusLabel)}</strong>.</p><DecisionDetails model={model} translateText={translateText} /></>;
   const workerAvailable = Boolean(model.workerId);
   return <>
-    <p className="audit-note">{translateText("The Quest remains Failed. Choose who receives the full held amount, then provide a reason.")}</p>
+    <p className="audit-note">{translateText(model.questState === "QUEST_COMPLETED"
+      ? "The Quest is Completed with an incomplete Assignment. Choose who receives the full held amount, then provide a reason."
+      : "The Quest remains Failed. Choose who receives the full held amount, then provide a reason.")}</p>
     <fieldset className="report-decision-options dispute-decision-options mt-3.5 grid gap-2 border-0 p-0">
       <legend className="visually-hidden">{translateText("Dispute Case decision")}</legend>
       <div className={`report-decision-option grid w-full grid-cols-[18px_1fr] items-start gap-x-2 gap-y-0.5 rounded-[9px] border border-admin-border bg-admin-surface px-3 py-[11px] text-left transition-colors hover:bg-admin-hover ${selectedChoice === "dismiss" ? "border-admin-accent bg-admin-accent-soft shadow-[0_0_0_1px_var(--accent)]" : ""}`}>
@@ -300,7 +304,7 @@ function FullSections({ model, evidence, evidenceLoading, evidenceError, transla
   return <>
     <AdminRecordGrid
       primary={<><Overview model={model} translateText={translateText} /><PartyStatements model={model} translateText={translateText} /><EvidenceSection evidence={evidence} loading={evidenceLoading} error={evidenceError} translateText={translateText} /><Timeline model={model} translateText={translateText} /></>}
-      side={<><MemberSummary heading={model.filerRole} id={model.filerId} displayId={model.filerDisplayId} name={model.filerName} href={model.filerHref} translateText={translateText} /><MemberSummary heading={model.respondentRole} id={model.respondentId} displayId={model.respondentDisplayId} name={model.respondentName} href={model.respondentHref} translateText={translateText} /><Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Related Quest")}</h2></CardHeader><div className={adminRecordSideFacts}><div><span>{translateText("Quest")}</span><strong>{model.questTitle}</strong></div><div><span>{translateText("Quest State")}</span><strong>{translateText(questStateLabel(model.questState))}</strong></div><div><span>{translateText("Failed at")}</span><strong>{failedAtLabel(model, translateText)}</strong></div></div><Button asChild variant="outline" className="mt-3 w-full"><a href={model.questHref ?? questRoutes.list()}>{translateText("Open Quest detail")}</a></Button></Card><Card as="section" className={`${adminRecordSection} dispute-decision-panel`}><CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{model.isActionable ? translateText("Dispute decision") : translateText("Recorded outcome")}</h2></CardHeader><DecisionControls model={model} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelect={onSelectChoice} onStart={onStartDecision} /></Card></>}
+      side={<><MemberSummary heading={model.filerRole} id={model.filerId} displayId={model.filerDisplayId} name={model.filerName} href={model.filerHref} translateText={translateText} /><MemberSummary heading={model.respondentRole} id={model.respondentId} displayId={model.respondentDisplayId} name={model.respondentName} href={model.respondentHref} translateText={translateText} /><Card as="section" className={adminRecordSection}><CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{translateText("Related Quest")}</h2></CardHeader><div className={adminRecordSideFacts}><div><span>{translateText("Quest")}</span><strong>{model.questTitle}</strong></div><div><span>{translateText("Quest State")}</span><strong>{translateText(questStateLabel(model.questState))}</strong></div>{model.questState === "QUEST_FAILED" && <div><span>{translateText("Failed at")}</span><strong>{failedAtLabel(model, translateText)}</strong></div>}</div><Button asChild variant="outline" className="mt-3 w-full"><a href={model.questHref ?? questRoutes.list()}>{translateText("Open Quest detail")}</a></Button></Card><Card as="section" className={`${adminRecordSection} dispute-decision-panel`}><CardHeader flush className={adminRecordHeader}><h2 className={adminRecordHeading}>{model.isActionable ? translateText("Dispute decision") : translateText("Recorded outcome")}</h2></CardHeader><DecisionControls model={model} translateText={translateText} selectedChoice={selectedChoice} commandError={commandError} onSelect={onSelectChoice} onStart={onStartDecision} /></Card></>}
     />
   </>;
 }
@@ -320,7 +324,7 @@ function DrawerSections({ model, evidence, evidenceLoading, evidenceError, trans
     evidenceCount={evidence?.proofSubmissions.length ?? 0}
     financialSummary={[{ label: "Amount at risk", value: model.amountAtRiskLabel }]}
     moderationHistory={model.moderationHistory}
-    policyNote="Dispute Cases apply only to Failed Quests. The Funding Reservation remains in place; money can move only Hirer to Worker."
+    policyNote="A Dispute Case can be decided for a Failed Quest or for a completed Group, first-come-first-served Quest with an incomplete Assignment. The Funding Reservation remains in place; money can move only from Hirer to Worker."
     translateText={translateText}
     showCaseMetadata={false}
     showModerationHistory={false}

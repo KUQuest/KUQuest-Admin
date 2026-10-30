@@ -295,6 +295,10 @@ export function disputeCaseModelFromRecord(
   const questTitle = firstReadableText(record.questTitle, quest?.title, record.title) ?? missingValue;
   const questDisplayId = displayAdminId(record.questDisplayId, quest?.displayId, questId);
   const questState = questStateFor(record.questState ?? quest?.questStatus);
+  const assignments = Array.isArray(quest?.assignments) ? quest.assignments : [];
+  const hasIncompleteAssignment = assignments.some((assignment) =>
+    asRecord(assignment)?.assignmentStatus === "ASSIGNMENT_INCOMPLETE"
+  );
   const questFailedAtWasReturned = Boolean(quest && Object.hasOwn(quest, "failedAt"))
     || Object.hasOwn(record, "failedAt")
     || Object.hasOwn(record, "questFailedAt");
@@ -395,7 +399,11 @@ export function disputeCaseModelFromRecord(
     status,
     statusLabel: disputeCaseStatusLabel(status),
     badgeClass: statusBadgeClass(status),
-    isActionable: canResolveDispute(questState, status) && !decisionWindowExpired,
+    isActionable: canResolveDispute(questState, status, {
+      mode: text(quest?.mode),
+      participation: text(quest?.participation),
+      hasIncompleteAssignment,
+    }) && !decisionWindowExpired,
     decisionDeadlineAt,
     decisionWindowExpired,
     automaticDismissal,

@@ -148,7 +148,7 @@ export function DisputeCaseBoard({ initialData }: { initialData?: DisputeCasePag
 
   return (
     <main id="dispute-main" className="admin-route-page dispute-case-board" tabIndex={-1}>
-      <AdminPageHeader title={translateText("Dispute Cases")} description={translateText("Review failed Quest settlement decisions.")} />
+      <AdminPageHeader title={translateText("Dispute Cases")} description={translateText("Review settlement decisions for Failed Quests and completed partial-result Team Quests.")} />
       <Card as="section" className="overflow-hidden" aria-labelledby="dispute-case-board-heading">
         <CardHeader className="flex min-h-[60px] items-center justify-between gap-4">
           <div><CardTitle id="dispute-case-board-heading">{translateText("Dispute Cases")}</CardTitle><CardDescription>{translateText("A Dispute Case can redirect settlement from the Hirer to the Worker or dismiss the case.")}</CardDescription></div><span className={adminBoardCount}>{visibleModels.length} {translateText("shown")}</span>
