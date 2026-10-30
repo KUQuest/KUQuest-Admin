@@ -4,12 +4,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarDays } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from "react";
 
 import { AdminLoading } from "../../../components/admin/admin-feedback";
 import { AdminDrawer } from "../../../components/admin/admin-drawer";
 import { AdminPageHeader } from "../../../components/admin/admin-page-header";
-import { Button, Card, CardContent, CardHeader, EmptyState, Table } from "../../../components/ui";
+import { Button, Card, CardContent, CardHeader, EmptyState, Input, Table } from "../../../components/ui";
 import { useAdminShell } from "../../../components/admin/admin-shell-context";
 import { adminRecordCount, adminRecordHeader, adminRecordHeading, adminRecordSection } from "../../../components/admin/admin-record-styles";
 import { ADMIN_LEDGER_EVENT_TYPES } from "../api/admin-api";
@@ -379,6 +379,20 @@ function MemberPayoutPreview({
   preview?: boolean;
 }) {
   const payouts = model.payouts.items ?? [];
+  const [payoutSearch, setPayoutSearch] = useState("");
+  const updatePayoutSearch = useCallback((event: ChangeEvent<HTMLInputElement>) => setPayoutSearch(event.currentTarget.value), []);
+  const normalizedPayoutSearch = payoutSearch.trim().toLocaleLowerCase();
+  const filteredPayouts = normalizedPayoutSearch
+    ? payouts.filter((payout) => [
+      payout.displayId,
+      payout.status,
+      payoutStatusLabel(payout.status),
+      payout.createdAt,
+      payout.bankName,
+      payout.maskedDestinationValue,
+      formatMoneySatang(payout.amountSatang),
+    ].some((value) => value?.toLocaleLowerCase().includes(normalizedPayoutSearch)))
+    : payouts;
   const successfulPayouts = payouts.filter((payout) => payout.status === "SUCCEEDED");
   const successfulAmountSatang = successfulPayouts.reduce((total, payout) => total + payout.amountSatang, 0);
   const payoutSummaryMismatch = model.payouts.complete && model.payouts.items !== null
@@ -401,7 +415,7 @@ function MemberPayoutPreview({
   const payoutErrorText = model.payouts.error
     ? translateText(model.payouts.error.kind === "contract" ? payoutContractMessage : model.payouts.error.message)
     : null;
-  const shownPayouts = preview ? payouts.slice(0, 3) : payouts;
+  const shownPayouts = preview ? payouts.slice(0, 3) : filteredPayouts;
 
   return (
     <Card as="section" className={className}>
@@ -410,12 +424,18 @@ function MemberPayoutPreview({
           <h2>{translateText("Payouts")}</h2>
           <p>{translateText("Summary shows successful Payout totals. History shows all statuses.")}</p>
         </div>
-        <span className={adminRecordCount}>{collectionCountLabel(model.payouts, translateText, "Payout details are not available.", payoutContractMessage)}</span>
+        <span className={adminRecordCount} aria-live="polite">{normalizedPayoutSearch ? `${filteredPayouts.length} ${translateText(filteredPayouts.length === 1 ? "matching record" : "matching records")}` : collectionCountLabel(model.payouts, translateText, "Payout details are not available.", payoutContractMessage)}</span>
       </CardHeader>
       <div className="user-payout-stat-list mb-3 grid grid-cols-2 border-y border-admin-border">
         <div className="grid gap-[3px] border-r border-admin-border px-2 py-[9px]"><strong className="text-[17px]">{payoutCountText}</strong><span className="text-xs text-admin-muted">{translateText("Successful Payouts")}</span></div>
         <div className="grid gap-[3px] px-2 py-[9px]"><strong className="text-[17px]">{totalText}</strong><span className="text-xs text-admin-muted">{translateText("Total paid out")}</span></div>
       </div>
+      {!preview ? <div className="mb-3 flex flex-wrap items-center gap-3">
+        <label className="min-w-0 max-w-[520px] flex-1" htmlFor="member-payout-search">
+          <span className="visually-hidden">{translateText("Search Payouts")}</span>
+          <Input className="h-10 min-h-10 px-3 py-2 text-sm" id="member-payout-search" type="search" placeholder={translateText("Search Payouts by ID, status, amount, or bank")} value={payoutSearch} onChange={updatePayoutSearch} autoComplete="off" />
+        </label>
+      </div> : null}
       {payoutErrorText && payouts.length > 0 ? <p className="audit-note" role="alert">{payoutErrorText}</p> : null}
       {shownPayouts.length ? (
         <div className="user-payout-list grid">
@@ -433,7 +453,7 @@ function MemberPayoutPreview({
             </div>
           ))}
         </div>
-      ) : null}
+      ) : !preview && normalizedPayoutSearch ? <p className="audit-note" role="status">{translateText("No Payouts match your search.")}</p> : null}
       {state ? <p className="audit-note" role={model.payouts.error ? "alert" : undefined}>{state}</p> : null}
     </Card>
   );
@@ -490,6 +510,35 @@ function OverviewTab({ model, translateText, onOpenReviews }: { model: MemberMod
 
 function ActivityTab({ model, translateText }: { model: MemberModel; translateText: (value: string) => string }) {
   const history = model.questHistory.items ?? [];
+  const [historyQuery, setHistoryQuery] = useState("");
+  const updateHistoryQuery = useCallback((event: ChangeEvent<HTMLInputElement>) => setHistoryQuery(event.currentTarget.value), []);
+  const normalizedHistoryQuery = historyQuery.trim().toLocaleLowerCase();
+  const filteredHistory = normalizedHistoryQuery
+    ? history.filter((entry) => {
+      const status = memberQuestHistoryStatusLabel(entry);
+      const searchableValues = [
+        entry.quest.title,
+        entry.quest.displayId,
+        entry.role,
+        translateText(entry.role),
+        status,
+        translateText(status),
+        entry.assignmentStatus,
+        entry.quest.questStatus,
+        entry.quest.questStatusChangedAt ? formatAdminTimestamp(entry.quest.questStatusChangedAt, "Asia/Bangkok") : "",
+        entry.assignmentStatusChangedAt ? formatAdminTimestamp(entry.assignmentStatusChangedAt, "Asia/Bangkok") : "",
+        entry.startedAt ? formatAdminTimestamp(entry.startedAt, "Asia/Bangkok") : "",
+        ...entry.relatedMembers.flatMap((related) => [
+          related.role,
+          translateText(related.role),
+          related.member.displayId,
+          related.member.firstName,
+          related.member.lastName,
+        ]),
+      ];
+      return searchableValues.some((value) => value?.toLocaleLowerCase().includes(normalizedHistoryQuery));
+    })
+    : history;
   const state = collectionStateMessage(
     model.questHistory,
     "No Quest history.",
@@ -498,33 +547,60 @@ function ActivityTab({ model, translateText }: { model: MemberModel; translateTe
   );
   return (
     <Card as="section" className="user-detail-panel user-tab-panel col-span-full min-w-0 p-[16px_18px]">
-      <CardHeader flush className="user-panel-heading">
+      <CardHeader flush className="user-panel-heading flex items-center justify-between gap-3">
         <h2>{translateText("Quest history")}</h2>
         <span className={adminRecordCount}>{collectionCountLabel(model.questHistory, translateText, "Quest history is not available.")}</span>
       </CardHeader>
       {history.length ? (
-        <div className="user-quest-history-list grid">
-          {history.map((entry) => {
-            const quest = entry.quest;
-            const status = memberQuestHistoryStatusLabel(entry);
-            const statusDate = memberQuestHistoryStatusDate(entry);
-            return <Link className="user-quest-history-row grid grid-cols-[minmax(0,1fr)_auto] gap-[18px] border-t border-admin-border py-[15px] text-admin-text no-underline first:border-t-0 first:pt-0 hover:text-admin-accent max-[900px]:grid-cols-1 max-[900px]:gap-2.5" key={`${entry.role}:${quest.id}`} href={entry.href}>
-              <div className="user-quest-history-primary min-w-0">
-                <div className="user-quest-history-title flex flex-wrap items-baseline gap-[7px]">
-                  <strong className="text-[17px] leading-[1.4]">{quest.title}</strong>
-                  <span className="text-[15px] leading-[1.4] text-admin-muted">{quest.displayId}</span>
-                </div>
-                <div className="user-quest-history-fields mt-2.5 grid grid-cols-[minmax(120px,.8fr)_minmax(155px,1fr)_minmax(250px,1.7fr)_minmax(115px,.8fr)] gap-3 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
-                  <div className="user-quest-history-field grid min-w-0 content-start gap-0.5"><span className="text-[15px] leading-[1.4] text-admin-muted">{translateText("Role")}</span><strong className="text-[17px] leading-[1.4]">{translateText(entry.role)}</strong></div>
-                  <div className="user-quest-history-field grid min-w-0 content-start gap-0.5"><span className="text-[15px] leading-[1.4] text-admin-muted">{translateText(entry.role === "WORKER" ? "Assignment status" : "Quest status")}</span><strong className="text-[17px] leading-[1.4]">{translateText(status)}</strong></div>
-                  <div className="user-quest-history-field grid min-w-0 content-start gap-0.5"><span className="text-[15px] leading-[1.4] text-admin-muted">{translateText(entry.role === "WORKER" ? "Assignment status date" : "Quest status date")}</span><strong className="text-[17px] leading-[1.4]">{statusDate ? formatAdminTimestamp(statusDate, "Asia/Bangkok") : translateText("Not provided by the Admin API")}</strong></div>
-                  {entry.startedAt ? <div className="user-quest-history-field grid min-w-0 content-start gap-0.5"><span className="text-[15px] leading-[1.4] text-admin-muted">{translateText("Started Work")}</span><strong className="text-[17px] leading-[1.4]">{formatAdminTimestamp(entry.startedAt, "Asia/Bangkok")}</strong></div> : null}
-                </div>
-                {entry.relatedMembers.length ? <p className="mb-0 mt-2 text-[15px] text-admin-muted">{entry.relatedMembers.map((related) => `${related.role}: ${related.member.displayId} · ${related.member.firstName} ${related.member.lastName}`).join(" · ")}</p> : null}
-              </div>
-            </Link>;
-          })}
-        </div>
+        <>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-admin-border pb-4">
+            <label className="min-w-0 max-w-[520px] flex-1" htmlFor="member-quest-history-search">
+              <span className="visually-hidden">{translateText("Search Quest history")}</span>
+              <Input
+                className="h-10 min-h-10 px-3 py-2 text-sm"
+                id="member-quest-history-search"
+                type="search"
+                placeholder={translateText("Search Quest history by title, ID, status, role, or Member")}
+                value={historyQuery}
+                onChange={updateHistoryQuery}
+                autoComplete="off"
+                autoCapitalize="none"
+                spellCheck={false}
+              />
+            </label>
+            {normalizedHistoryQuery ? <span className="text-sm text-admin-muted" role="status" aria-live="polite">{filteredHistory.length} {translateText(filteredHistory.length === 1 ? "matching record" : "matching records")}</span> : null}
+          </div>
+          {filteredHistory.length ? <>
+            <p className="mb-2 hidden rounded-[7px] border border-admin-border bg-admin-soft px-2.5 py-2 text-sm text-admin-muted max-[1100px]:block">{translateText("On narrow screens, scroll horizontally to view all Quest history columns.")}</p>
+            <div className="min-w-0 overflow-x-auto [scrollbar-gutter:stable] max-[600px]:[overscroll-behavior-inline:contain]" role="region" aria-label={translateText("Member Quest history table")}>
+              <Table className="min-w-[1100px] [&_td]:align-middle [&_td_small]:mt-[3px]">
+                <caption>{translateText("Quest history for this Member")}</caption>
+                <thead><tr>
+                  <th className="min-w-[280px]">{translateText("Quest")}</th>
+                  <th>{translateText("Role")}</th>
+                  <th>{translateText("Quest / Assignment status")}</th>
+                  <th>{translateText("Status date")}</th>
+                  <th>{translateText("Started Work")}</th>
+                  <th className="min-w-[240px]">{translateText("Related Members")}</th>
+                </tr></thead>
+                <tbody>{filteredHistory.map((entry) => {
+                  const quest = entry.quest;
+                  const status = memberQuestHistoryStatusLabel(entry);
+                  const statusDate = memberQuestHistoryStatusDate(entry);
+                  const relatedMembers = entry.relatedMembers.map((related) => `${translateText(related.role)}: ${related.member.displayId} · ${related.member.firstName} ${related.member.lastName}`).join(" · ");
+                  return <tr key={`${entry.role}:${quest.id}`}>
+                    <td><Link className="font-semibold text-admin-text no-underline hover:text-admin-accent" href={entry.href}>{quest.title}</Link><small>{quest.displayId}</small></td>
+                    <td>{translateText(entry.role)}</td>
+                    <td><span className="visually-hidden">{translateText(entry.role === "WORKER" ? "Assignment status" : "Quest status")}: </span>{translateText(status)}</td>
+                    <td>{statusDate ? formatAdminTimestamp(statusDate, "Asia/Bangkok") : translateText("Not provided by the Admin API")}</td>
+                    <td>{entry.startedAt ? formatAdminTimestamp(entry.startedAt, "Asia/Bangkok") : "—"}</td>
+                    <td>{relatedMembers || "—"}</td>
+                  </tr>;
+                })}</tbody>
+              </Table>
+            </div>
+          </> : <p className="audit-note" role="status">{translateText("No Quest history matches your search.")}</p>}
+        </>
       ) : null}
       {state ? <p className="audit-note" role={model.questHistory.error ? "alert" : undefined}>{state}</p> : null}
       {history.length && model.questHistory.error ? <p className="audit-note" role="alert">{translateText(model.questHistory.error.message)}</p> : null}
@@ -542,6 +618,28 @@ function MemberTopUpsTab({ model, translateText }: { model: MemberModel; transla
     () => topUpQuery.data?.pages.flatMap((page) => page.items) ?? [],
     [topUpQuery.data?.pages],
   );
+  const [topUpSearch, setTopUpSearch] = useState("");
+  const updateTopUpSearch = useCallback((event: ChangeEvent<HTMLInputElement>) => setTopUpSearch(event.currentTarget.value), []);
+  const normalizedTopUpSearch = topUpSearch.trim().toLocaleLowerCase();
+  const filteredTopUps = normalizedTopUpSearch
+    ? topUps.filter((topUp) => {
+      const statusLabel = TOP_UP_BOARD_TABS.find((tab) => tab.id === topUp.topUpStatus)?.label ?? topUp.topUpStatus;
+      const paymentMethod = formatTopUpPaymentMethod(topUp.paymentMethod);
+      const searchableValues = [
+        topUp.displayId,
+        topUp.providerReference,
+        topUp.topUpStatus,
+        translateText(statusLabel),
+        topUp.paymentMethod,
+        translateText(paymentMethod),
+        formatMoneySatang(topUp.creditAmountSatang),
+        formatMoneySatang(topUp.paymentTotalSatang),
+        formatAdminTimestamp(topUp.createdAt),
+        topUp.paidAt ? formatAdminTimestamp(topUp.paidAt) : "",
+      ];
+      return searchableValues.some((value) => value?.toLocaleLowerCase().includes(normalizedTopUpSearch));
+    })
+    : topUps;
   const [selectedTopUp, setSelectedTopUp] = useState<AdminTopUpListItem | null>(null);
   const [drawerOpener, setDrawerOpener] = useState<HTMLElement | null>(null);
   const error = topUpQuery.error instanceof Error ? topUpQuery.error.message : null;
@@ -555,35 +653,45 @@ function MemberTopUpsTab({ model, translateText }: { model: MemberModel; transla
     <Card as="section" className="user-detail-panel user-tab-panel col-span-full min-w-0 p-[16px_18px]" data-member-top-ups>
       <CardHeader flush className="user-panel-heading">
         <div><h2>{translateText("Top-ups")}</h2><p>{translateText("Top-up records for this Member.")}</p></div>
-        <span className={adminRecordCount}>{topUps.length} {translateText("shown")}</span>
+        <span className={adminRecordCount} aria-live="polite">{filteredTopUps.length} {translateText("shown")}</span>
       </CardHeader>
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        <label className="min-w-0 max-w-[520px] flex-1" htmlFor="member-top-up-search">
+          <span className="visually-hidden">{translateText("Search Top-ups")}</span>
+          <Input className="h-10 min-h-10 px-3 py-2 text-sm" id="member-top-up-search" type="search" placeholder={translateText("Search loaded Top-ups by ID, status, or Provider reference")} value={topUpSearch} onChange={updateTopUpSearch} autoComplete="off" />
+        </label>
+      </div>
       {topUpQuery.isPending ? <p className="audit-note" aria-live="polite">{translateText("Loading Top-ups…")}</p> : null}
       {error && !topUps.length ? <div className="m-3 rounded-admin-sm border border-admin-danger bg-admin-danger-soft p-3 text-sm" role="alert">{translateText(error)} <Button variant="outline" size="sm" type="button" onClick={() => { void topUpQuery.refetch(); }}>{translateText("Try again")}</Button></div> : null}
-      {!topUpQuery.isPending && !error && !topUps.length ? <EmptyState title={translateText("No Top-ups found")} description={translateText("This Member has no Top-up records.")} /> : null}
+      {!topUpQuery.isPending && !error && !topUps.length ? normalizedTopUpSearch
+        ? <EmptyState title={translateText("No matching Top-ups")} description={translateText("No loaded Top-ups match your search.")} />
+        : <EmptyState title={translateText("No Top-ups found")} description={translateText("This Member has no Top-up records.")} /> : null}
       {topUps.length ? <>
         {error ? <p className="field-error" role="alert">{translateText(error)}</p> : null}
-        <p className="mb-2 hidden rounded-[7px] border border-admin-border bg-admin-soft px-2.5 py-2 text-[15px] leading-[1.4] text-admin-muted max-[600px]:block">{translateText("On narrow screens, scroll horizontally to view all Top-up columns.")}</p>
-        <div className="min-w-0 overflow-x-auto [scrollbar-gutter:stable] max-[600px]:[overscroll-behavior-inline:contain]" role="region" aria-label={translateText("Member Top-ups table")}>
-          <Table className="min-w-[900px] [&_td_small]:mt-[3px] [&_td.money]:whitespace-nowrap">
-            <caption>{translateText("Top-ups for this Member")}</caption>
-            <thead><tr><th>{translateText("Top-up")}</th><th>{translateText("Credit amount")}</th><th>{translateText("Payment total")}</th><th>{translateText("Payment method")}</th><th>{translateText("Status")}</th><th>{translateText("Created")}</th><th>{translateText("Paid at")}</th></tr></thead>
-            <tbody>{topUps.map((topUp) => {
-              const statusLabel = TOP_UP_BOARD_TABS.find((tab) => tab.id === topUp.topUpStatus)?.label ?? topUp.topUpStatus;
-              return <tr
-                data-member-top-up-row={topUp.id}
-                key={topUp.id}
-              >
-                <td><button className="row-record-button" type="button" data-member-top-up-drawer-trigger={topUp.id} aria-label={`${translateText("Open Top-up")} ${topUp.displayId}`} onClick={(event) => openTopUp(topUp, event.currentTarget)}>{topUp.displayId}</button><small>{topUp.providerReference ?? translateText("Provider reference not provided")}</small></td>
-                <td className="money">{formatMoneySatang(topUp.creditAmountSatang)}</td>
-                <td className="money">{formatMoneySatang(topUp.paymentTotalSatang)}</td>
-                <td>{translateText(formatTopUpPaymentMethod(topUp.paymentMethod))}</td>
-                <td><span className={`badge ${statusBadgeClass(topUp.topUpStatus)}`}>{translateText(statusLabel)}</span></td>
-                <td><time dateTime={topUp.createdAt}>{formatAdminTimestamp(topUp.createdAt)}</time></td>
-                <td>{topUp.paidAt ? <time dateTime={topUp.paidAt}>{formatAdminTimestamp(topUp.paidAt)}</time> : "—"}</td>
-              </tr>;
-            })}</tbody>
-          </Table>
-        </div>
+        {filteredTopUps.length ? <>
+          <p className="mb-2 hidden rounded-[7px] border border-admin-border bg-admin-soft px-2.5 py-2 text-[15px] leading-[1.4] text-admin-muted max-[600px]:block">{translateText("On narrow screens, scroll horizontally to view all Top-up columns.")}</p>
+          <div className="min-w-0 overflow-x-auto [scrollbar-gutter:stable] max-[600px]:[overscroll-behavior-inline:contain]" role="region" aria-label={translateText("Member Top-ups table")}>
+            <Table className="min-w-[900px] [&_td_small]:mt-[3px] [&_td.money]:whitespace-nowrap">
+              <caption>{translateText("Top-ups for this Member")}</caption>
+              <thead><tr><th>{translateText("Top-up")}</th><th>{translateText("Credit amount")}</th><th>{translateText("Payment total")}</th><th>{translateText("Payment method")}</th><th>{translateText("Status")}</th><th>{translateText("Created")}</th><th>{translateText("Paid at")}</th></tr></thead>
+              <tbody>{filteredTopUps.map((topUp) => {
+                const statusLabel = TOP_UP_BOARD_TABS.find((tab) => tab.id === topUp.topUpStatus)?.label ?? topUp.topUpStatus;
+                return <tr
+                  data-member-top-up-row={topUp.id}
+                  key={topUp.id}
+                >
+                  <td><button className="row-record-button" type="button" data-member-top-up-drawer-trigger={topUp.id} aria-label={`${translateText("Open Top-up")} ${topUp.displayId}`} onClick={(event) => openTopUp(topUp, event.currentTarget)}>{topUp.displayId}</button><small>{topUp.providerReference ?? translateText("Provider reference not provided")}</small></td>
+                  <td className="money">{formatMoneySatang(topUp.creditAmountSatang)}</td>
+                  <td className="money">{formatMoneySatang(topUp.paymentTotalSatang)}</td>
+                  <td>{translateText(formatTopUpPaymentMethod(topUp.paymentMethod))}</td>
+                  <td><span className={`badge ${statusBadgeClass(topUp.topUpStatus)}`}>{translateText(statusLabel)}</span></td>
+                  <td><time dateTime={topUp.createdAt}>{formatAdminTimestamp(topUp.createdAt)}</time></td>
+                  <td>{topUp.paidAt ? <time dateTime={topUp.paidAt}>{formatAdminTimestamp(topUp.paidAt)}</time> : "—"}</td>
+                </tr>;
+              })}</tbody>
+            </Table>
+          </div>
+        </> : <p className="audit-note" role="status">{translateText("No loaded Top-ups match your search.")}</p>}
       </> : null}
       {topUpQuery.hasNextPage ? <div className="border-t border-admin-border px-1 py-3 text-sm text-admin-muted">
         <Button variant="outline" size="sm" type="button" onClick={() => { void topUpQuery.fetchNextPage(); }} disabled={topUpQuery.isFetchingNextPage}>{translateText(topUpQuery.isFetchingNextPage ? "Loading more Top-ups…" : "Load more Top-ups")}</Button>
