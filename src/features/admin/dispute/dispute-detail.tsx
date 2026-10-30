@@ -206,7 +206,7 @@ function EvidenceSection({ evidence, loading, error, translateText, compact = fa
                 <strong>{translateText("Proof file")} {fileIndex + 1}</strong>
                 <small className="break-words text-admin-muted">{file.contentType} · {evidenceFileSize(file.sizeBytes)} · {translateText("Link expires")} {formatAdminTimestamp(file.urlExpiresAt, "Asia/Bangkok")}</small>
               </span>
-              <Button asChild variant="primary" size="sm" className="shrink-0">
+              <Button asChild variant="primary" size="sm" className="dispute-evidence-open-link shrink-0">
                 <a href={file.url} rel="noreferrer" target="_blank" aria-label={`${translateText("Open file")} ${fileIndex + 1}`}>
                   <ExternalLink aria-hidden="true" className="size-4" focusable="false" />
                   {translateText("Open file")}

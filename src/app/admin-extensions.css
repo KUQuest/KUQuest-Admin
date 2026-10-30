@@ -973,11 +973,15 @@ dialog.drawer.dispute-case-drawer .field-error {
 /* Admin record text should read as part of the current surface, not as a
    second blue/underlined visual system. Keep the native link semantics and
    navigation, but make every non-button link look like surrounding text. */
-.admin-shell a:not(.btn):not([data-slot="button"]),
-.admin-shell a:not(.btn):not([data-slot="button"]):visited,
-.admin-shell a:not(.btn):not([data-slot="button"]):hover {
+.admin-shell a:not(.btn):not([data-slot="button"]):not(.dispute-evidence-open-link),
+.admin-shell a:not(.btn):not([data-slot="button"]):not(.dispute-evidence-open-link):visited,
+.admin-shell a:not(.btn):not([data-slot="button"]):not(.dispute-evidence-open-link):hover {
   color: inherit !important;
   text-decoration: none !important;
+}
+
+.admin-shell a.dispute-evidence-open-link {
+  color: white !important;
 }
 
 .admin-shell a:not(.btn):not([data-slot="button"]):focus-visible {
