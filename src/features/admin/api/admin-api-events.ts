@@ -1,4 +1,5 @@
 import { getApiUrl } from "../../../lib/api/client";
+import { ADMIN_EVENT_SUBJECT_TYPES } from "./admin-api-types-commands";
 import type { AdminEvent, AdminEventSubscription } from "./admin-api";
 
 type AdminEventCallbacks = {
@@ -7,17 +8,9 @@ type AdminEventCallbacks = {
   onError?: (error: Event) => void;
 };
 
-const adminEventSubjectTypes: readonly AdminEvent["subjectType"][] = [
-  "QUEST",
-  "DISPUTE_CASE",
-  "REPORT_CASE",
-  "CONDUCT_REPORT",
-  "MEMBER",
-  "WALLET",
-  "PAYOUT",
-  "TOP_UP",
-  "ADMIN_ACTIVITY_LOG",
-];
+function isAdminEventSubjectType(value: unknown): value is AdminEvent["subjectType"] {
+  return ADMIN_EVENT_SUBJECT_TYPES.some((subjectType) => subjectType === value);
+}
 
 function isAdminEvent(value: unknown): value is AdminEvent {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
@@ -25,7 +18,7 @@ function isAdminEvent(value: unknown): value is AdminEvent {
   return event.type === "RESOURCE_UPDATED"
     && typeof event.subjectId === "string"
     && event.subjectId.length > 0
-    && adminEventSubjectTypes.includes(event.subjectType as AdminEvent["subjectType"]);
+    && isAdminEventSubjectType(event.subjectType);
 }
 
 export function subscribeToAdminEvents({

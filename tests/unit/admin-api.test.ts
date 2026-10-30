@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it } from "bun:test";
+import { QueryClient } from "@tanstack/react-query";
 
+import { invalidateActiveAdminQueries, invalidateAdminQueriesForEvent } from "../../src/features/admin/admin-live-invalidation";
 import {
   adminApi,
   subscribeToAdminEvents,
@@ -1013,7 +1015,7 @@ describe("Admin API boundary", () => {
     expect(request?.headers.get("idempotency-key")).toBe("evidence-read-1");
   });
 
-  it("opens one credentialed SSE invalidation stream and parses metadata", () => {
+  it("opens one credentialed SSE invalidation stream, parses RESOURCE_UPDATED events, and reports reconnects", () => {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test/";
 
     class FakeEventSource {
@@ -1039,28 +1041,72 @@ describe("Admin API boundary", () => {
       close(): void {}
 
       emit(type: string, data: unknown): void {
+        this.emitRaw(type, JSON.stringify(data));
+      }
+
+      emitRaw(type: string, data: string): void {
         this.listeners.get(type)?.(new MessageEvent(type, {
-          data: JSON.stringify(data),
+          data,
         }));
       }
     }
 
     globalThis.EventSource = FakeEventSource as unknown as typeof EventSource;
     const received: AdminEvent[] = [];
-    const subscription = subscribeToAdminEvents((event) => received.push(event));
+    const queryClient = new QueryClient();
+    const overviewQueryKey = ["admin", "overview"] as const;
+    const reportBoardQueryKey = ["admin", "report-cases", "board"] as const;
+    const reportDetailQueryKey = ["admin", "report-cases", "detail", "report-1"] as const;
+    queryClient.setQueryData(overviewQueryKey, { refreshed: false });
+    queryClient.setQueryData(reportBoardQueryKey, { memberName: "Old name" });
+    queryClient.setQueryData(reportDetailQueryKey, { memberName: "Old name" });
+    let openCount = 0;
+    const subscription = subscribeToAdminEvents({
+      onEvent: (event) => {
+        received.push(event);
+        void invalidateAdminQueriesForEvent(queryClient, event);
+      },
+      onOpen: () => {
+        openCount += 1;
+        void invalidateActiveAdminQueries(queryClient);
+      },
+    });
 
+    FakeEventSource.instance.emit("open", {});
+    expect(queryClient.getQueryState(overviewQueryKey)?.isInvalidated).toBe(true);
+    queryClient.setQueryData(overviewQueryKey, { refreshed: true });
     FakeEventSource.instance.emit("message", {
       success: true,
-      data: { type: "QUEST_UPDATED", subjectId: "quest-1", version: 3 },
+      data: { type: "RESOURCE_UPDATED", subjectType: "MEMBER", subjectId: "member-1" },
     });
+    expect(queryClient.getQueryState(reportBoardQueryKey)?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(reportDetailQueryKey)?.isInvalidated).toBe(true);
+    queryClient.setQueryData(overviewQueryKey, { refreshed: false });
+    FakeEventSource.instance.emit("message", {
+      success: true,
+      data: { type: "QUEST_UPDATED", subjectId: "quest-2" },
+    });
+    FakeEventSource.instance.emit("message", {
+      success: true,
+      data: { type: "RESOURCE_UPDATED", subjectType: "UNKNOWN", subjectId: "resource-1" },
+    });
+    FakeEventSource.instance.emit("message", {
+      success: true,
+      data: { type: "RESOURCE_UPDATED", subjectType: "MEMBER", subjectId: "" },
+    });
+    FakeEventSource.instance.emitRaw("message", "{ malformed json");
+    FakeEventSource.instance.emit("open", {});
+    expect(queryClient.getQueryState(overviewQueryKey)?.isInvalidated).toBe(true);
     subscription.close();
+    queryClient.clear();
 
     expect(FakeEventSource.instance.url).toBe("https://api.example.test/api/v1/admin/events");
     expect(FakeEventSource.instance.init).toEqual({ withCredentials: true });
+    expect(openCount).toBe(2);
     expect(received).toEqual([{
-      type: "QUEST_UPDATED",
-      subjectId: "quest-1",
-      version: 3,
+      type: "RESOURCE_UPDATED",
+      subjectType: "MEMBER",
+      subjectId: "member-1",
     }]);
   });
 });
