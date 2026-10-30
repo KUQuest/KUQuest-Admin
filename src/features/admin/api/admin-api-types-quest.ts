@@ -112,7 +112,15 @@ export type AdminQuestDetail = AdminQuest & {
     reviewNote: string | null;
     submittedAt: string;
     reviewedAt: string | null;
-    files: Array<{ fileId: string; contentType: string; sizeBytes: number; position: number }>;
+    reviewedBy: "HIRER" | "AUTO_APPROVE" | null;
+    files: Array<{
+      fileId: string;
+      contentType: string;
+      sizeBytes: number;
+      position: number;
+      url: string;
+      urlExpiresAt: string;
+    }>;
   }>;
   editHistory: Array<
     | {
